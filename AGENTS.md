@@ -73,6 +73,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   viewer authorization boundary.
 - The orchestrator `feature-flags` module owns the typed registry, persisted runtime intent, revision, and immutable hot-path snapshot. Sidecars receive only their owned effective subset through authenticated synchronization and never persist platform feature values. Gate coarse use-case boundaries; feature flags do not replace permissions, health, or authentication.
 - `feature.ocr`, `feature.firewall`, and `feature.image-builder` are enforced locally by the orchestrator. `feature.display-virtual` is synchronized to the display sidecar and must fail closed for new virtual surfaces when state is absent, stale, or disabled.
+- Firewall feature checks must allow saving and applying disabled app policies and creating unrestricted apps. Gate restricted operations on the resulting policy state before persisting; preserve ownership and unrestricted-internet permissions. Disabling the feature leaves existing host rules unchanged.
 - OCR uses one deployment language through `OCR_LANGUAGE` and one request/response `language` value. Keep image validation, the quality-gated preprocessing cascade, and Paddle runtime ownership separated under `apps/ocr-sidecar/ocr_sidecar`.
 - Display recording has been removed. Do not reintroduce recording routes, state, generated contracts, or viewer controls without a new bounded-storage and lifecycle design.
 - Treat display sidecar scrcpy/server/socket startup ordering as a protected invariant. Do not reorder awaited ADB commands, socket listener registration, socket reads, process launch, retry, or cleanup without a dedicated manual Redroid verification pass. Refactoring without that pass is limited to pure SPS parsing, compatibility-probe parsing, retry classification, and stream-option selection.
@@ -114,6 +115,8 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Match existing formatting. Do not introduce unrelated formatting churn.
 - Follow `docs/web-design-system.md` for web UI work. Feature code must use semantic tokens, documented page families,
   shared surfaces, `FormField`, and shared feedback components instead of feature-local visual recipes.
+- Neutral panels, editor sections, and summary cards share the `Surface` panel treatment (`surface-editor`, panel radius, no visible border/shadow/blur). Use `DetailFields` for resource metadata and reuse it during loading.
+- Keep canvas, panels, controls, and floating surfaces in the same neutral palette, independent of the selected accent. Reserve accent tints for actions, links, focus, and selection; do not reintroduce a global accent wash or transparent editor panels.
 - Treat `Surface` `data-tone` styling as authoritative across notices, service banners, and toasts; successful mutation
   completion uses the success variant and must retain its visible semantic tint in light, dark, and OLED themes.
 - Use `Section.headingSpacing` and `Section.description` for heading rhythm and helper copy. Do not add ad-hoc title
@@ -128,12 +131,19 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   shell, responsive layout, `Section`, `DataGrid` column definitions, table markup, and scroll container; do not copy
   widths or layout class strings into route loaders. Keep `loading.tsx` files as thin feature entrypoints, render known
   page chrome immediately, and describe cell placeholders through the owning grid column metadata.
-- Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Use its filter sidebar/drawer only for
+- Form loading may reuse real field groups through `FormLoadingBoundary`; keep controls inert and separately disable data fetching and mutations. Preserve query-selected resource views during loading instead of falling back to Overview or Models.
+- Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Grids use an unboxed toolbar,
+  a transparent body, quiet header fill with the shared control radius, and horizontal separators; do not add feature-specific
+  rounded table frames. Use filter sheets only for
   page-level datasets with meaningful structured facets; embedded related-resource grids and small fixed datasets use
   its search-only mode. Keep enabled filter chrome real during loading, and keep feature-specific filter controls and
-  validated state in the owning feature. Desktop filter sidebars start closed; preserve the filter button, active
-  count/chips, reset behavior, and mobile drawer. Do not add separate search buttons, filter popovers, or column-header
+  validated state in the owning feature. Filter sheets start closed and never reduce table width; preserve the filter button, active
+  count/chips, reset behavior, and keyboard focus restoration. Do not add separate search buttons, filter popovers, or column-header
   filtering.
+- Grid selection swaps search and bulk-action toolbar modes in the same reserved space. Keep inactive
+  controls inert and hidden from assistive technology; selecting rows must not move the table.
+- Grid selection uses softly rounded background emphasis without accent stripes. Bulk toolbars swap immediately, with ghost actions and `danger-ghost` for destructive actions. Sheet transitions use Base UI starting/ending states and keep the backdrop transparent through unmount.
+- Query-selected nested service loaders must retain the Docker/Orchestrator detail layout; profile route and inner Suspense loaders must both retain the profile list and device pane. Feature loaders may show stable shell-manifest metadata, but must mask availability and enabled values.
 - Keep the protected route loading matrix at 36 renderable routes with thin feature-owned loaders; the legacy
   display-sessions redirect is the only loader-free exclusion. Explicit Suspense boundaries reuse the same feature
   loading component as the route loader.
@@ -164,3 +174,57 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Use `pnpm check` before finishing large or cross-cutting work when time permits.
 - If you cannot run a relevant check, state exactly what was not run and why.
 - Review AGENTS.md file and update it if the change affects any agent's behavior, capabilities, or assumptions.
+
+## Standard editor composition
+
+- Ordinary create/edit and settings pages use `EditorPage`, a full-width canvas with a normal page header, rounded semantic section panels, and labels above compact controls. Keep workspace and list pages on their existing page family.
+- Use compact Select or SingleSelectCombobox choices, FileUploadField uploads, and exact numeric inputs; reserve sliders for streaming settings. Keep section headings inside panels and remove row dividers. Collapse optional advanced groups through unboxed Section expanders, retaining drafts and revealing validation errors.
+- Keep editable runtime defaults separate from read-only deployment details and immediate maintenance actions. Preserve drafts during maintenance refreshes, and explain the scope of cleanup and restore operations before running them.
+- FormField places descriptions directly beneath labels, before controls; use its shared spacing rather than per-feature label margins. Validation errors remain associated with their controls.
+- Reuse feature-owned editor geometry in loading states and keep dialog actions in their footer.
+- User/group editors use retained-draft tabs through `AccessEditorLayout`. Membership and permission catalogs use
+  shared paginated DataGridWorkspace/DataGrid; membership dialogs use MultiSelectCombobox with a bounded chip area.
+  Reorder using the full membership order, not searched/page positions. Keep quotas visible inside the access panel,
+  explain unlimited admin access once, and block user Save while a profile photo is being prepared. Profile photos remain local drafts until explicit Save, including in the current-user profile dialog. Editor dialogs provide their own containment; keep their sections flat without nested panels or outer section padding.
+- User/group editors reuse their feature-owned access layout and permission editor. Distinguish effective access from Inherit/Allow/Deny user overrides; Inherit removes an override; group Not set removes a group decision rather than writing a denial. Preview ordered group merging (later defined values win), server fallback groups, and unconditional Admin access accurately. Preserve multi-select chips and keyboard behavior; do not turn category filtering into hidden bulk permission changes.
+
+- Image builders remain workspaces with shared feature-owned ready/loading layouts, rounded resource panels, one header Build action, explicit template application, grouped validation, and stable-height build logs. Keep uploaded context selection searchable, preserve upload/validation bounds, and reject duplicate starts or stale polling responses after terminal transitions.
+
+## Operator console navigation
+
+- Device-agent workspaces constrain desktop height at the resource layout, not in the transcript. Keep conversation scrolling independent, preserve draft access while stopped, and share composer/loading geometry.
+- Device-agent composers keep setup/device guidance inside the composer, suggestions on the left, and direct model selection beside send. Group model choices by provider; optional vision and time limits belong in More options. Preserve provider/model pairs and existing capability checks.
+
+- Preserve readable resource identity: shared page titles and breadcrumbs wrap; header actions remain reachable.
+  Keep the sidebar bounded to the viewport and preserve the shell skip-to-content destination.
+- Filters must remove explicitly cleared URL fields. Use resource names in filter chips, label each filter control,
+  and keep whole-dataset actions available without row selection. Pending mutations prevent conflicting actions;
+  partial bulk failures retain failed items for retry.
+
+- Settings mutations send only fields owned by the editing workflow. Services saves connections, Runtime defaults saves runtime fields, and image-builder default actions save only the image; never resend hidden settings snapshots.
+- AI providers use Models and Connection resource views. Keep model purposes and per-provider defaults explicit, preserving planning-to-controller compatibility and first-enabled default fallback. Registration/download save immediately; other model and connection changes remain a page draft. Block registration/download and saved-connection checks while that draft is dirty. Provider discovery, manual model ID registration, and Ollama download are distinct actions; preserve exact IDs and existing permission checks.
+- Services owns the Connections and Features views. Keep disabled services discoverable, preserve requested versus effective feature state, and keep feature toggles immediate while connection edits require Save. Feature management remains at `/platform/features`, nested under Services in navigation and breadcrumbs.
+
+- Runtime Maintenance and overview Infrastructure diagnostics remain visible as regular sections, without collapse controls.
+
+- App resource URLs open the overview; retain the viewer at `/viewer/apps/[id]` and resource destinations at `/app/[id]?view=<section>` (including configuration, AI agent, and workflows). Use the feature-owned resource layout in ready and loading states.
+- Keep the Android device visible across app resource views through AppDeviceLayout, sized to available viewport height. App Configuration shows Runtime settings as a visible section panel; technical Details and Logs belong only in Diagnostics. Use one resource navigation row for overview, configuration, activity, diagnostics, and permitted runtime tools. Streaming settings live beside the viewer. Breadcrumbs use the same section labels as URLs; old manage/workspace URLs redirect. Local management destinations use links with aria-current. Preserve permission and foreign-owner checks for diagnostics and runtime interaction.
+- App diagnostics infrastructure references link to container/image/network pages only when the viewer has administrator access; backend-detail permission alone must not enable infrastructure links. Destination server authorization remains authoritative.
+- Use shared `ResourceLink` for navigable resource names/references in grid cells and details; show accent color at rest, hover/focus underline, and visible keyboard focus. Keep descriptive metadata muted. Application references use `ApplicationReference` with resolved names above IDs; resolve names in authorized server reads through one application-summary lookup per dataset.
+- Runtime container, image, and network actions belong in the resource page header, including loading geometry; Overview sections hold information. Preserve mutation confirmation and disabled states.
+- Use shared `ResourceNavigation` for resource section switchers (including app and container views), keeping visual states, overflow handling, and focus styles in one place.
+- Workflow workspaces place details above the sequence/inspector, expose Visual editor and YAML modes, and share Editor / Run history navigation. Mobile step inspectors open only on explicit selection and restore focus on dismissal. Trigger dialogs group identity, target, and schedule without nested panels; grids show a single last-run result and contextual resource links. Loading states reuse those same compositions.
+- Workflow run history uses `?run=` selection and must verify owner and workflow membership for runs outside the recent page. Historical replay must preserve known terminal state.
+- App Activity reuses the audit grid with server-enforced application resource scope and existing administrator authorization; embedded search/reset/sort/pagination and export must retain that scope. Global audit maintenance actions stay on the audit page.
+- Platform Operations groups totals and bounded previews (at most five rows per group); avoid per-app error banners. Directory/resource links use shared link styling, and failed refreshes retain a warning instead of suggesting zero failures.
+- Platform operations snapshots use the admin-only BFF query, bounded previews, and explicit refresh semantics. Do not imply the lifecycle timestamp summary is a complete audit log.
+
+## Audit activity presentation
+
+- Audit log and embedded app activity share the time-first grid, compact summary, and event inspector. Keep raw IDs/actions, exact timestamps, request data, and JSON in the inspector instead of duplicating them in every row. Use readable attempt labels, shared DetailFields/JsonViewer, and labeled searchable actor/action filters.
+- Preserve admin authorization and server-enforced app scope through filtering, reset, pagination, sorting, and CSV export. Retention and purge remain global audit actions. Ready/loading states reuse the same feature-owned shell and grid columns.
+- Use the same validated URL filters for controls, queries, navigation, and export. Date-only filters use inclusive UTC boundaries. Export follows the current sort with an explicit 5,000-event cap; readable operation labels remain searchable through the shared audit presentation model. Show app Activity navigation only to administrators.
+
+- Services uses the shell health snapshot for Orchestrator, Docker/runtime, Display, Firewall, and OCR. Docker diagnostics and persisted operation limits belong to the Docker service resource view; preserve active and queued operations during limit changes. Runtime-default resets must not reset separately managed Docker limits.
+- Keep dialog payloads mounted until `onOpenChangeComplete(false)` before clearing them; closing animation must never render an empty/header-only form. Combobox empty-state live regions remain mounted, with padding on their message content only.
+- Trigger dialogs use searchable resource choices with descriptions/IDs and selected context. Reuse owner-scoped tag facets and workflow tags through the shared MultiSelectCombobox with explicit creation; never commit typed tag searches on blur. Trigger descriptions persist through the API and participate in grid search.

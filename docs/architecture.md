@@ -110,6 +110,10 @@ to the display sidecar; absent, stale, or disabled state blocks new virtual surf
 Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can
 finish, existing virtual displays drain, and disabling the firewall feature does not remove
 existing host rules. Feature flags do not replace authentication, permissions, or health checks.
+App network policies can still be saved or reapplied with restrictions disabled while the firewall
+feature is off. Creating or starting an unrestricted app remains available to users with the required
+permissions. Restricted policy updates, starts, and bulk reconciliation require firewall enforcement.
+To remove existing host rules, enable the firewall feature and apply the app's disabled policy.
 
 ## Code boundaries
 

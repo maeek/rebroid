@@ -7,7 +7,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | Guide                       | Covers                                                                              |
 | --------------------------- | ----------------------------------------------------------------------------------- |
 | [Deployment](deployment.md) | Host requirements, Compose, HTTPS, networking, and configuration.                   |
-| [Operations](operations.md) | Health checks, troubleshooting, state resets, Google Play images, and AI providers. |
+| [Operations](operations.md) | Service health, Docker operation limits, troubleshooting, state resets, image builds, and AI providers. |
 
 ## Understand and contribute
 
@@ -18,6 +18,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | [Orchestrator architecture](orchestrator-architecture.md)          | Domain boundaries, lifecycle jobs, automation execution, and AI decisions.              |
 | [AI automation](../apps/orchestrator/src/automations/ai/README.md) | Device tasks, workflow drafts, decisions, evidence, and provider/perception boundaries. |
 | [Web contributor guide](web-contributor-guide.md)                  | Page structure, browser/server contracts, and code placement.                           |
+| [Operator console](operator-console.md) | Resource navigation, lifecycle diagnosis, run history, and operational overview. |
 | [Web design system](web-design-system.md)                          | Shared page layouts, tokens, controls, feedback, and loading states.                    |
 | [Web security](web-security.md)                                    | Sessions, authorization, MFA, audit records, and public error handling.                 |
 | [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, recovery, and manual verification.                |
