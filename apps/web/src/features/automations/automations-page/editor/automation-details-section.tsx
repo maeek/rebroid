@@ -2,6 +2,7 @@
 
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { AutomationTagsInput } from '../shared/automation-tags-input'
@@ -17,18 +18,21 @@ export function AutomationDetailsSection({
   className?: string
 }) {
   return (
-    <section className={cn('flex flex-col w-full gap-4 pb-4', className)}>
-      <div className='flex h-8 items-center justify-between gap-3'>
-        <h2 className='text-xl font-medium'>Details</h2>
-      </div>
-      <div className='grid gap-4'>
+    <Section
+      surface='panel'
+      title='Workflow details'
+      className={cn('min-w-0', className)}
+    >
+      <div className='grid min-w-0 items-start gap-4 md:grid-cols-2'>
         <FormField
           controlId='automation-name'
           label='Name'
           layout='vertical'
+          required
         >
           <Input
             value={form.name}
+            required
             onChange={event => onChange({ name: event.target.value })}
           />
         </FormField>
@@ -36,9 +40,11 @@ export function AutomationDetailsSection({
           controlId='automation-description'
           label='Description'
           layout='vertical'
+          className='md:col-start-2 md:row-span-2'
         >
           <Textarea
             value={form.description}
+            className='min-h-28 md:min-h-36'
             onChange={event => onChange({ description: event.target.value })}
           />
         </FormField>
@@ -48,6 +54,6 @@ export function AutomationDetailsSection({
           onChange={tags => onChange({ tags })}
         />
       </div>
-    </section>
+    </Section>
   )
 }

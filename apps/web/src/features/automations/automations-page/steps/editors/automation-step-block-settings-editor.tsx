@@ -2,6 +2,7 @@
 
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -120,15 +121,11 @@ function SwitchBlockSettings({
             Add case
           </Button>
         </div>
-        {step.cases.length === 0 ? (
-          <p className='rounded-control border border-dashed border-surface-border/60 px-3 py-4 text-center text-sm text-foreground-muted'>
-            No cases yet.
-          </p>
-        ) : null}
+        {step.cases.length === 0 ? <p className='py-4 text-sm text-foreground-muted'>No cases yet.</p> : null}
         {step.cases.map((item, index) => (
           <div
             key={item.clientKey}
-            className='grid gap-3 rounded-control border border-surface-border/60 bg-background/20 p-3'
+            className='grid min-w-0 gap-4 rounded-control bg-control/25 p-3'
           >
             <div className='flex items-end gap-2'>
               <div className='grid flex-1 gap-2'>
@@ -169,8 +166,10 @@ function RepeatBlockSettings({
 }) {
   return (
     <div className='grid gap-5'>
-      <div className='grid gap-2'>
-        <Label>Mode</Label>
+      <FormField
+        label='Mode'
+        layout='vertical'
+      >
         <Select
           value={step.mode}
           onValueChange={mode => onChange({ ...step, mode: mode })}
@@ -183,7 +182,7 @@ function RepeatBlockSettings({
             <SelectItem value='while'>While condition</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
       {step.mode === 'count' ? (
         <NumberField
           id={`${step.clientKey}-count`}
@@ -222,15 +221,19 @@ function NumberField({
   onChange: (value: number) => void
 }) {
   return (
-    <div className='grid gap-2'>
-      <Label htmlFor={id}>{label}</Label>
+    <FormField
+      controlId={id}
+      label={label}
+      layout='vertical'
+    >
       <Input
         id={id}
         type='number'
         min={1}
+        className='max-w-48'
         value={value}
         onChange={event => onChange(Math.max(1, Number(event.target.value) || 1))}
       />
-    </div>
+    </FormField>
   )
 }

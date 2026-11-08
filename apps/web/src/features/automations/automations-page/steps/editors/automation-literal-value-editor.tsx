@@ -1,7 +1,7 @@
 'use client'
 
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { literalKind as resolveLiteralKind, defaultLiteralValue } from '../value-ref/automation-value-ref-utils'
 
@@ -26,8 +26,11 @@ export function AutomationLiteralValueEditor({
 
   return (
     <div className='grid gap-3 md:grid-cols-[9rem_minmax(0,1fr)]'>
-      <div className='grid gap-2'>
-        <Label htmlFor={`${id}-type`}>Type</Label>
+      <FormField
+        controlId={`${id}-type`}
+        label='Type'
+        layout='vertical'
+      >
         <Select
           value={kind}
           onValueChange={nextKind => onChange(defaultLiteralValue(nextKind))}
@@ -45,9 +48,12 @@ export function AutomationLiteralValueEditor({
             <SelectItem value='null'>Empty</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      <div className='grid gap-2'>
-        <Label htmlFor={id}>{label}</Label>
+      </FormField>
+      <FormField
+        controlId={id}
+        label={label}
+        layout='vertical'
+      >
         {kind === 'boolean' ? (
           <Select
             value={value === true ? 'true' : 'false'}
@@ -68,12 +74,13 @@ export function AutomationLiteralValueEditor({
           <Input
             id={id}
             type={kind === 'number' ? 'number' : 'text'}
+            className={kind === 'number' ? 'max-w-48' : undefined}
             disabled={kind === 'null'}
             value={kind === 'null' ? '' : literalInputValue(value)}
             onChange={event => onChange(kind === 'number' ? Number(event.target.value) || 0 : event.target.value)}
           />
         )}
-      </div>
+      </FormField>
     </div>
   )
 }

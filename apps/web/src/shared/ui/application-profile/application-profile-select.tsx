@@ -1,21 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 import type { MouseEvent } from 'react'
-import { IconDatabase, IconDatabasePlus, IconLoader2, IconSparkles, IconTrash } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { IconDatabase, IconDatabasePlus, IconSparkles, IconTrash } from '@tabler/icons-react'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { cn } from '@/lib/utils'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { SavedApplicationProfile } from '@/shared/model/application-profile/profile-history'
@@ -55,21 +48,27 @@ export const ApplicationProfileSelect = ({
   canDeleteProfiles,
   onDeleteProfile
 }: ApplicationProfileSelectProps) => {
+  const nameId = useId()
   const [editNewProfileName, setEditNewProfileName] = useState(false)
   const [profileToDelete, setProfileToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const persistentProfiles = useMemo(
-    () => savedProfiles.filter(profile => profile.mode === 'persistent'),
-    [savedProfiles]
-  )
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const selectedName = name.trim()
+  const persistentProfiles = useMemo(() => {
+    const saved = savedProfiles.filter(profile => profile.mode === 'persistent')
+    if (
+      mode !== 'persistent' ||
+      !selectedName ||
+      editNewProfileName ||
+      saved.some(profile => profile.name === selectedName)
+    )
+      return saved
+    return [...saved, { mode: 'persistent' as const, name: selectedName }]
+  }, [editNewProfileName, mode, savedProfiles, selectedName])
   const selectedSavedProfile = persistentProfiles.some(profile => profile.name === selectedName)
-  const value =
-    mode === 'temporary'
-      ? temporaryValue
-      : editNewProfileName || !selectedSavedProfile
-        ? newProfileValue
-        : persistentValueFor(selectedName)
+  let value = persistentValueFor(selectedName)
+  if (mode === 'temporary') value = temporaryValue
+  else if (editNewProfileName || !selectedSavedProfile) value = newProfileValue
 
   const handleValueChange = (nextValue: string) => {
     if (nextValue === temporaryValue) {
@@ -95,18 +94,22 @@ export const ApplicationProfileSelect = ({
   const requestDelete = (event: MouseEvent, profileName: string) => {
     event.preventDefault()
     event.stopPropagation()
+    setDeleteError(null)
     setProfileToDelete(profileName)
   }
 
   const confirmDelete = async () => {
-    if (!profileToDelete || !onDeleteProfile) {
+    if (!profileToDelete || !onDeleteProfile || deleting) {
       return
     }
 
     setDeleting(true)
+    setDeleteError(null)
     try {
       await onDeleteProfile(profileToDelete)
       setProfileToDelete(null)
+    } catch (error) {
+      setDeleteError(getDisplayErrorMessage(error))
     } finally {
       setDeleting(false)
     }
@@ -114,8 +117,10 @@ export const ApplicationProfileSelect = ({
 
   return (
     <div className='grid gap-4'>
-      <div className='grid gap-2'>
-        <Label>Profiles</Label>
+      <FormField
+        label='Profile'
+        layout='vertical'
+      >
         <Select
           value={value}
           disabled={disabled}
@@ -145,7 +150,8 @@ export const ApplicationProfileSelect = ({
             {persistentProfiles.map(profile => {
               const isActive = selectedProfile?.mode === 'persistent' && selectedProfile.name === profile.name
               const isSelected = mode === 'persistent' && selectedName === profile.name
-              const canDelete = Boolean(canDeleteProfiles && onDeleteProfile && !isActive)
+              const saved = savedProfiles.some(item => item.mode === 'persistent' && item.name === profile.name)
+              const canDelete = Boolean(canDeleteProfiles && onDeleteProfile && saved && !isActive)
 
               return (
                 <SelectItem
@@ -167,7 +173,7 @@ export const ApplicationProfileSelect = ({
                       <span className='block truncate font-medium'>
                         {profile.name}
                         <Visible when={isActive}>
-                          <span className='ml-1 font-normal text-primary'>(Running)</span>
+                          <span className='ml-1 font-normal text-primary'>(Active)</span>
                         </Visible>
                       </span>
                       <span className='block truncate text-xs text-foreground-muted'>
@@ -213,55 +219,35 @@ export const ApplicationProfileSelect = ({
             </Visible>
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
 
       <Visible when={allowCustomName && editNewProfileName}>
-        <div className='grid gap-2'>
-          <Label htmlFor='new-application-profile-name'>New profile</Label>
+        <FormField
+          label='New profile name'
+          controlId={nameId}
+          layout='vertical'
+        >
           <Input
-            id='new-application-profile-name'
             value={name}
             disabled={disabled}
             placeholder='default'
             onChange={event => onNameChange(event.target.value)}
           />
-        </div>
+        </FormField>
       </Visible>
 
-      <Dialog
+      <ConfirmMutationDialog
         open={Boolean(profileToDelete)}
         onOpenChange={open => !open && setProfileToDelete(null)}
-      >
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Remove profile</DialogTitle>
-            <DialogDescription>
-              Delete the saved profile and its persistent runtime data volume. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={deleting}
-              onClick={() => setProfileToDelete(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type='button'
-              variant='danger'
-              disabled={deleting}
-              onClick={() => void confirmDelete()}
-            >
-              <Visible when={deleting}>
-                <IconLoader2 className='size-4 animate-spin' />
-              </Visible>
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title='Remove profile?'
+        description='Delete the saved profile and its persistent data. This cannot be undone.'
+        summary={profileToDelete}
+        consequence={deleteError}
+        confirmLabel='Remove profile'
+        pendingLabel='Removing…'
+        pending={deleting}
+        onConfirm={() => void confirmDelete()}
+      />
     </div>
   )
 }

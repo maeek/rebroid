@@ -1,4 +1,4 @@
-import { NumberField, SegmentedField, TextField } from '../shared/action-fields'
+import { NumberField, SelectField, TextField } from '../shared/action-fields'
 import {
   booleanInputValue,
   normalizeBooleanInput,
@@ -31,7 +31,7 @@ export const listPackagesAction: AutomationActionDefinition = {
         value={stringInputValue(input, 'query')}
         onChange={value => patchInput({ query: value })}
       />
-      <SegmentedField
+      <SelectField
         label='Package set'
         value={booleanInputValue(input, 'includeSystem', false) ? 'all' : 'third-party'}
         options={[

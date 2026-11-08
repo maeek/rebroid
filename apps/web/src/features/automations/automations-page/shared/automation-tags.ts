@@ -16,3 +16,12 @@ export const createAutomationTag = (name: string, color = defaultAutomationTagCo
   name: normalizeTagName(name),
   color: normalizeTagColor(color)
 })
+
+export function buildAutomationTagCatalog(names: string[], tags: AutomationTag[]) {
+  const byName = new Map<string, AutomationTag>()
+  for (const tag of [...tags, ...names.map(name => createAutomationTag(name))]) {
+    const key = tag.name.trim().toLocaleLowerCase()
+    if (key && !byName.has(key)) byName.set(key, tag)
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
+}

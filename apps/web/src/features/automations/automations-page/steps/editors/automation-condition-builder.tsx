@@ -3,7 +3,8 @@
 import { operatorsForType } from '@rebroid/automation-core/metadata'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationReferencePicker } from '../value-ref/automation-reference-picker'
 import {
@@ -72,9 +73,9 @@ export function AutomationConditionBuilder({
   }
 
   return (
-    <div className='grid gap-3'>
-      <Label>{label}</Label>
-      <div className='grid gap-3 rounded-control border border-surface-border/60 p-3'>
+    <fieldset className='grid min-w-0 gap-4'>
+      <legend className='mb-4 text-sm font-medium'>{label}</legend>
+      <div className='grid min-w-0 gap-4'>
         {groups.map((group, groupIndex) => (
           <div
             key={groupIndex}
@@ -123,7 +124,7 @@ export function AutomationConditionBuilder({
           Or group
         </Button>
       </div>
-    </div>
+    </fieldset>
   )
 }
 
@@ -166,16 +167,19 @@ function ConditionRow({
   }
 
   return (
-    <div className='grid gap-3 rounded-control border border-surface-border/50 bg-surface-band/45 p-3'>
+    <div className='grid min-w-0 gap-4 rounded-control bg-control/25 p-3'>
       <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
         <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3'>
           {condition.value.source === 'literal' ? (
-            <div className='grid gap-2'>
-              <Label>Value</Label>
-              <div className='rounded-control border border-surface-border/60 bg-control/40 px-3 py-2 text-sm'>
-                {valueRefLabel(condition.value, stepOptions)}
-              </div>
-            </div>
+            <FormField
+              label='Value'
+              layout='vertical'
+            >
+              <Input
+                readOnly
+                value={valueRefLabel(condition.value, stepOptions)}
+              />
+            </FormField>
           ) : (
             <AutomationReferencePicker
               id={`${id}-value`}
@@ -185,8 +189,11 @@ function ConditionRow({
               onChange={setValue}
             />
           )}
-          <div className='grid gap-2'>
-            <Label htmlFor={`${id}-operator`}>Condition</Label>
+          <FormField
+            controlId={`${id}-operator`}
+            label='Condition'
+            layout='vertical'
+          >
             <Select
               value={operator}
               onValueChange={nextOperator => setOperator(nextOperator)}
@@ -208,7 +215,7 @@ function ConditionRow({
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
         </div>
         <div className='flex items-end justify-end'>
           <Button

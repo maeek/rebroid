@@ -16,6 +16,17 @@ import type { AutomationDefinitionStep } from '@rebroid/automation-core/definiti
 const automation = (id: string): Automation => ({ id, name: id }) as Automation
 
 describe('automations table model', () => {
+  it('clears workflow filters without restoring their previous values', () => {
+    const url = new URL(
+      buildAutomationsGridHref({
+        gridQuery: { q: 'smoke', tag: 'nightly', targetApplicationId: 'app-1', status: 'failed', lastRun: '7d' },
+        pageSize: 20,
+        patch: { tag: undefined, targetApplicationId: undefined, status: undefined, lastRun: undefined, page: 1 }
+      }),
+      'https://rebroid.test'
+    )
+    expect([...url.searchParams.keys()]).toEqual(['q', 'page', 'pageSize'])
+  })
   it('labels workflow statuses for display', () => {
     expect(automationStatusLabel('never_run')).toBe('Never run')
     expect(automationStatusLabel('success')).toBe('Success')

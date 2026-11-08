@@ -37,6 +37,7 @@ export const AutomationsTableToolbar = ({
   children: ReactNode
 }) => (
   <DataGridWorkspace
+    disabled={busy}
     search={search}
     searchPlaceholder='Search workflows'
     onSearchChange={onSearchChange}
@@ -50,7 +51,9 @@ export const AutomationsTableToolbar = ({
             {
               id: 'target',
               label: 'Target',
-              value: gridQuery.targetApplicationId,
+              value:
+                applications.find(app => app.id === gridQuery.targetApplicationId)?.name ??
+                gridQuery.targetApplicationId,
               onRemove: () => onUpdateGrid({ targetApplicationId: undefined, page: 1 })
             }
           ]
@@ -83,7 +86,7 @@ export const AutomationsTableToolbar = ({
     bulkActions={
       <Button
         size='sm'
-        variant='danger'
+        variant='danger-ghost'
         disabled={busy || selectedCount === 0}
         onClick={onBulkDelete}
       >

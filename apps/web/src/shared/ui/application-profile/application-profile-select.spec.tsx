@@ -128,9 +128,43 @@ describe('ApplicationProfileSelect', () => {
     openSelect()
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Remove work' }), { pointerType: 'mouse' })
     fireEvent.click(screen.getByRole('button', { name: 'Remove work' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove profile' }))
 
     await waitFor(() => expect(onDeleteProfile).toHaveBeenCalledWith('work'))
     expect(onNameChange).not.toHaveBeenCalledWith('work')
+  })
+  it('shows the configured persistent profile before its saved data is created', () => {
+    render(
+      <ApplicationProfileSelect
+        mode='persistent'
+        name='default'
+        savedProfiles={[]}
+        onNameChange={vi.fn()}
+      />
+    )
+    expect(screen.getByRole('combobox', { name: 'Profile' })).toHaveTextContent('default')
+  })
+
+  it('retains a failed removal for retry instead of rejecting outside the dialog', async () => {
+    const remove = vi.fn().mockRejectedValueOnce(new Error('Profile is in use.')).mockResolvedValueOnce(undefined)
+    render(
+      <ApplicationProfileSelect
+        mode='persistent'
+        name='default'
+        savedProfiles={savedProfiles}
+        selectedProfile={{ mode: 'persistent', name: 'default' }}
+        canDeleteProfiles
+        onDeleteProfile={remove}
+        onNameChange={vi.fn()}
+      />
+    )
+    openSelect()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove work' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove profile' }))
+    expect(await screen.findByText('Profile is in use.')).toBeVisible()
+    expect(screen.getByRole('dialog', { name: 'Remove profile?' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove profile' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(remove).toHaveBeenCalledTimes(2)
   })
 })

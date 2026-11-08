@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { toast } from '@/hooks/use-toast'
@@ -12,10 +10,11 @@ import { deleteAutomationAction } from '@/server/orchestrator/automations/automa
 import { serializeSortParam } from '@/shared/model/search-params'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { sortFromSearchParam } from '../shared/grid-query-utils'
+import { WorkflowRunResult } from '../shared/workflow-run-result'
 import {
-  automationStatusLabel,
   automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
   countAutomationSteps,
@@ -35,41 +34,28 @@ import type {
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
 
-const statusVariant = (status: Automation['lastStatus']) => {
-  if (status === 'success') return 'success'
-  if (status === 'failed') return 'danger'
-  return 'neutral'
-}
-
-const formatDate = (value: string | null) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      }).format(new Date(value))
-    : '-'
-
-const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => (
-  <div className='flex flex-wrap gap-1'>
-    {tags.length === 0 ? (
-      <span className='text-sm text-foreground-muted'>-</span>
-    ) : (
-      tags.map(tag => (
+const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => {
+  if (tags.length === 0) return null
+  return (
+    <div className='flex flex-wrap gap-1'>
+      {tags.map(tag => (
         <AutomationTagBadge
           key={tag.name}
           tag={tag}
         />
-      ))
-    )}
-  </div>
-)
+      ))}
+    </div>
+  )
+}
 
 export function AutomationsTable({
   applications,
   automationsPage,
   gridQuery,
-  triggers
+  triggers,
+  loading = false
 }: {
+  loading?: boolean
   applications: AndroidApplication[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
@@ -123,26 +109,19 @@ export function AutomationsTable({
           const href = `/automations/${row.original.id}`
           return (
             <div className='grid gap-1'>
-              <Link
+              <ResourceLink
                 href={href}
-                className='font-medium text-foreground hover:text-primary'
+                className='font-medium'
               >
                 {row.original.name}
-              </Link>
-              <span className='line-clamp-1 text-sm text-foreground-muted'>
-                {row.original.description || 'No description'}
-              </span>
+              </ResourceLink>
+              {row.original.description ? (
+                <span className='line-clamp-1 text-xs text-foreground-muted'>{row.original.description}</span>
+              ) : null}
+              <WorkflowTags tags={row.original.tags} />
             </div>
           )
         }
-      },
-      {
-        id: 'tags',
-        header: 'Tags',
-        size: 176,
-        enableSorting: false,
-        meta: { label: 'Tags', skeleton: { kind: 'badge' } },
-        cell: ({ row }) => <WorkflowTags tags={row.original.tags} />
       },
       {
         id: 'apps',
@@ -153,9 +132,20 @@ export function AutomationsTable({
         cell: ({ row }) => {
           const appIds = Array.from(automationAppIds.get(row.original.id) ?? [])
           return (
-            <span className='text-sm text-foreground-muted'>
-              {appIds.length === 0 ? '-' : appIds.map(id => appNameById.get(id) ?? id).join(', ')}
-            </span>
+            <div className='grid gap-1 text-sm'>
+              {appIds.length === 0 ? (
+                <span className='text-foreground-muted'>—</span>
+              ) : (
+                appIds.map(id => (
+                  <ResourceLink
+                    key={id}
+                    href={`/app/${encodeURIComponent(id)}`}
+                  >
+                    {appNameById.get(id) ?? id}
+                  </ResourceLink>
+                ))
+              )}
+            </div>
           )
         }
       },
@@ -179,19 +169,14 @@ export function AutomationsTable({
         accessorFn: automation => automation.lastRunAt ?? '',
         header: 'Last run',
         size: 176,
-        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-28' } },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatDate(row.original.lastRunAt)}</span>
-      },
-      {
-        id: 'lastStatus',
-        accessorFn: automation => automation.lastStatus,
-        header: 'Status',
-        size: 128,
-        meta: { label: 'Status', skeleton: { kind: 'badge' } },
+        meta: { label: 'Last run', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <Badge variant={statusVariant(row.original.lastStatus)}>
-            {automationStatusLabel(row.original.lastStatus)}
-          </Badge>
+          <WorkflowRunResult
+            status={row.original.lastStatus}
+            at={row.original.lastRunAt}
+            error={row.original.lastError}
+            workflowId={row.original.id}
+          />
         )
       }
     ],
@@ -206,13 +191,14 @@ export function AutomationsTable({
         gridQuery={gridQuery}
         search={search}
         selectedCount={selectedAutomations.length}
-        busy={busy}
+        busy={busy || loading}
         onBulkDelete={() => setBulkDeleteOpen(true)}
         onSearchChange={setSearch}
         onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
         onUpdateGrid={pushGridParams}
       >
         <DataGrid
+          loading={loading}
           columns={columns}
           data={automationsPage.items}
           totalItems={automationsPage.total}
@@ -225,10 +211,11 @@ export function AutomationsTable({
             pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })
           }}
           selection={{
+            disabled: busy || loading,
             selectedIds,
             onSelectedIdsChange: setSelectedIds
           }}
-          minWidth='72rem'
+          minWidth='60rem'
           emptyState={<div className='text-center text-foreground-muted'>No workflows match the current filters.</div>}
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
@@ -244,12 +231,16 @@ export function AutomationsTable({
                     Delete selected ({selectedAutomations.length})
                   </ContextMenuItem>
                 ) : null}
-                <ContextMenuItem onSelect={() => router.push(`/automations/${row.original.id}/traces`)}>
+                <ContextMenuItem
+                  disabled={busy}
+                  onSelect={() => router.push(`/automations/${encodeURIComponent(row.original.id)}/traces`)}
+                >
                   <IconActivityHeartbeat className='mr-2 size-4' />
-                  Traces
+                  Run history
                 </ContextMenuItem>
                 <ContextMenuItem
                   className='text-danger focus:text-danger'
+                  disabled={busy}
                   onSelect={() => setPendingDelete(row.original)}
                 >
                   <IconTrash className='mr-2 size-4' />
@@ -260,6 +251,7 @@ export function AutomationsTable({
           }}
         />
         <DataGridPagination
+          loading={loading}
           totalItems={automationsPage.total}
           pageIndex={automationsPage.page - 1}
           pageSize={automationsPage.pageSize}

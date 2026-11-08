@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from '@/components/ui/drawer'
+import { Surface } from '@/components/ui/surface'
 import { AutomationStepBlockSettingsEditor } from '../editors/automation-step-block-settings-editor'
 import { AutomationStepEditor } from '../editors/automation-step-editor'
 import { AutomationStepYamlEditor } from '../editors/automation-step-yaml-editor'
@@ -13,6 +14,8 @@ import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export function AutomationStepInspector({
   step,
+  mobileOpen,
+  returnFocus,
   rootSteps,
   commands,
   commandByUses,
@@ -22,6 +25,8 @@ export function AutomationStepInspector({
   onClose
 }: {
   step: AutomationStepForm | null
+  mobileOpen: boolean
+  returnFocus: () => HTMLElement | null
   rootSteps: AutomationStepForm[]
   commands: AutomationCommand[]
   commandByUses: Map<string, AutomationCommand>
@@ -34,8 +39,14 @@ export function AutomationStepInspector({
 
   return (
     <>
-      <aside className='hidden min-w-0 xl:block'>
-        <div className='overflow-hidden rounded-panel border border-surface-border/70 bg-surface-panel/50 dark:bg-white/7 backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]'>
+      <aside
+        aria-label='Step configuration'
+        className='hidden min-w-0 xl:block'
+      >
+        <Surface
+          level='panel'
+          className='overflow-hidden'
+        >
           {step ? (
             <AutomationStepInspectorContent
               step={step}
@@ -47,19 +58,25 @@ export function AutomationStepInspector({
               onChange={onChange}
             />
           ) : (
-            <div className='px-4 py-10 text-center text-sm text-foreground-muted'>Select a step to edit.</div>
+            <div className='grid min-h-56 content-center gap-2 px-6 py-10 text-center text-sm text-foreground-muted'>
+              <span className='font-medium text-foreground'>Step configuration</span>
+              <span>Select a step from the sequence to edit its action and settings.</span>
+            </div>
           )}
-        </div>
+        </Surface>
       </aside>
 
       {isDesktop === false ? (
         <Drawer
-          open={Boolean(step)}
+          open={mobileOpen && Boolean(step)}
           onOpenChange={open => {
             if (!open) onClose()
           }}
         >
-          <DrawerContent className='max-h-[88dvh] overflow-hidden rounded-t-xl border-surface-border/80 bg-background/95'>
+          <DrawerContent
+            className='max-h-[88dvh] overflow-hidden'
+            finalFocus={returnFocus}
+          >
             <DrawerTitle className='sr-only'>{step ? 'Edit step' : 'No step selected'}</DrawerTitle>
             <DrawerDescription className='sr-only'>Edit the selected workflow step.</DrawerDescription>
             {step ? (
@@ -116,7 +133,7 @@ function AutomationStepInspectorContent({
         onToggleYaml={step.kind === 'action' ? () => onYamlStepKeyChange(yamlMode ? null : step.clientKey) : undefined}
         onClose={onClose}
       />
-      <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto px-4 py-4'>
+      <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto px-6 pb-6 max-sm:px-4 max-sm:pb-4'>
         {step.kind === 'action' ? (
           yamlMode ? (
             <AutomationStepYamlEditor

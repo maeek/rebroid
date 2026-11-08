@@ -70,12 +70,8 @@ export const countActiveAutomationFilters = ({
 
 export const buildAutomationsGridHref = ({ gridQuery, pageSize, patch }: AutomationsGridHrefInput) => {
   const params = compactGridParams({
-    q: patch.q ?? gridQuery.q,
-    tag: patch.tag ?? gridQuery.tag,
-    targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
-    status: patch.status ?? gridQuery.status,
-    lastRun: patch.lastRun ?? gridQuery.lastRun,
-    sort: patch.sort ?? gridQuery.sort,
+    ...gridQuery,
+    ...patch,
     page: patch.page ?? gridQuery.page ?? 1,
     pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
   })

@@ -52,4 +52,26 @@ describe('AutomationRunLiveEvents', () => {
     expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
     expect(sendBff).not.toHaveBeenCalled()
   })
+  it('describes missing historical events without suggesting a completed run is still active', async () => {
+    vi.mocked(getBff).mockResolvedValue({ events: [], streamUrl: 'ws://example.test/events' })
+    render(
+      <AutomationRunLiveEvents
+        run={{ ...run, status: 'failed' }}
+        allowCancel={false}
+      />
+    )
+    expect(await screen.findByText('No recorded events')).toBeTruthy()
+    expect(screen.queryByText('Waiting for activity')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
+  })
+  it('preserves the recorded terminal status while replaying earlier events', async () => {
+    vi.mocked(getBff).mockResolvedValue({
+      events: [{ ...failedEvent, type: 'run.started', message: 'Earlier start event' }],
+      streamUrl: 'ws://example.test/events'
+    })
+    render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
+    expect(await screen.findByText('Earlier start event')).toBeTruthy()
+    expect(screen.getByText('Failed')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
+  })
 })

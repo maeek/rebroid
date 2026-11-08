@@ -1,26 +1,25 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
+import { Notice } from '@/components/ui/notice'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
+import { ResourceLink } from '@/shared/ui/resource-link'
+import { AutomationRunInspector } from './automation-run-inspector'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 const statusVariant = (status: AutomationRunStatus) =>
   status === 'failed' || status === 'canceled' ? 'danger' : status === 'success' ? 'success' : 'neutral'
-
-const dateLabel = (value: string | null) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-      }).format(new Date(value))
-    : '-'
 
 const durationMs = (run: AutomationRun) => {
   if (!run.startedAt || !run.completedAt) return null
@@ -73,11 +72,25 @@ const sortRuns = (runs: AutomationRun[], sorting: SortingState) => {
 
 export function AutomationTracesSection({
   applications,
-  runs
+  runs,
+  loading = false
 }: {
+  loading?: boolean
   applications: AndroidApplication[]
   runs: AutomationRun[]
 }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const selectedRun = runs.find(run => run.id === searchParams.get('run')) ?? null
+  const selectRun = useCallback(
+    (id: string | null) => {
+      const query = new URLSearchParams(searchParams.toString())
+      if (id) query.set('run', id)
+      else query.delete('run')
+      router.replace(`?${query.toString()}`, { scroll: false })
+    },
+    [router, searchParams]
+  )
   const [sorting, setSorting] = useState<SortingState>([{ id: 'startedAt', desc: true }])
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
@@ -114,9 +127,18 @@ export function AutomationTracesSection({
         size: 176,
         meta: { label: 'Started', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>
-            {dateLabel(row.original.startedAt ?? row.original.createdAt)}
-          </span>
+          <Button
+            type='button'
+            variant='link'
+            className='h-auto p-0 text-left [&_time]:text-inherit'
+            aria-label={`Inspect run ${row.original.id}`}
+            onClick={() => selectRun(row.original.id)}
+          >
+            <DateTimeValue
+              value={row.original.startedAt ?? row.original.createdAt}
+              compact
+            />
+          </Button>
         )
       },
       {
@@ -137,7 +159,9 @@ export function AutomationTracesSection({
           const application = applicationById.get(row.original.targetApplicationId)
           return (
             <div className='grid gap-1 text-sm'>
-              <span className='truncate text-foreground'>{application?.name ?? row.original.targetApplicationId}</span>
+              <ResourceLink href={`/app/${encodeURIComponent(row.original.targetApplicationId)}`}>
+                {application?.name ?? row.original.targetApplicationId}
+              </ResourceLink>
               <span className='truncate text-foreground-muted'>
                 {row.original.targetProfileName ?? 'default'} / {row.original.targetProfileMode ?? 'persistent'}
               </span>
@@ -175,19 +199,31 @@ export function AutomationTracesSection({
             >
               {row.original.status}
             </Badge>
-            {row.original.error ? <span className='truncate text-xs text-danger'>{row.original.error}</span> : null}
           </div>
         )
       }
     ],
-    [applicationById]
+    [applicationById, selectRun]
   )
 
   return (
-    <section className='grid gap-3'>
-      <div className='flex h-8 items-center justify-between gap-3'>
-        <h2 className='text-xl font-medium'>Traces</h2>
-      </div>
+    <Section
+      surface='plain'
+      title='Executions'
+      description='Select a run to inspect its steps, errors, and recorded events.'
+    >
+      {!loading && searchParams.get('run') && !selectedRun ? (
+        <Notice
+          tone='warning'
+          title='Requested run unavailable'
+          description='The run may have been removed or access is restricted.'
+        />
+      ) : null}
+      <AutomationRunInspector
+        run={selectedRun}
+        targetName={selectedRun ? applicationById.get(selectedRun.targetApplicationId)?.name : undefined}
+        onClose={() => selectRun(null)}
+      />
 
       {activeRuns.length > 0 ? (
         <div className='grid gap-3 lg:grid-cols-2'>
@@ -201,8 +237,9 @@ export function AutomationTracesSection({
       ) : null}
 
       <DataGridWorkspace
+        disabled={loading}
         search={searchDraft}
-        searchPlaceholder='Search traces'
+        searchPlaceholder='Search runs, targets, or errors'
         onSearchChange={setSearchDraft}
         onSearch={setSearch}
         filters={
@@ -306,6 +343,8 @@ export function AutomationTracesSection({
         }}
       >
         <DataGrid
+          loading={loading}
+          rowActivation={{ getLabel: run => `Inspect run ${run.id}`, onActivate: run => selectRun(run.id) }}
           columns={columns}
           data={sortedRuns}
           totalItems={sortedRuns.length}
@@ -319,11 +358,11 @@ export function AutomationTracesSection({
           minWidth='72rem'
           emptyState={
             <div className='text-center text-foreground-muted'>
-              No traces yet. Run this flow from an app or trigger to inspect execution history here.
+              No runs match the current filters. Run this workflow from an app or trigger to record an execution.
             </div>
           }
         />
       </DataGridWorkspace>
-    </section>
+    </Section>
   )
 }

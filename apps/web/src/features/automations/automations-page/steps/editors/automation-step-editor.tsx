@@ -1,6 +1,6 @@
 'use client'
 
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import {
   getActionUiStateFromInput,
@@ -73,14 +73,17 @@ export function AutomationStepEditor({
         contentClassName='gap-5'
         className={surface === 'plain' ? 'bg-transparent p-0 shadow-none' : undefined}
       >
-        <div className='grid gap-2'>
-          <Label>Action</Label>
+        <FormField
+          label='Action'
+          description='Choose the action this step performs.'
+          layout='vertical'
+        >
           <AutomationActionPicker
             commands={commands}
             value={step.uses}
             onChange={updateAction}
           />
-        </div>
+        </FormField>
 
         {definition.renderEditor({
           command,

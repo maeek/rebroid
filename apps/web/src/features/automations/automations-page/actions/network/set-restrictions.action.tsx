@@ -1,4 +1,4 @@
-import { SegmentedField } from '../shared/action-fields'
+import { SelectField } from '../shared/action-fields'
 import { booleanInputValue, normalizeBooleanInput } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 
@@ -10,7 +10,7 @@ export const setRestrictionsAction: AutomationActionDefinition = {
   normalizeInput: input => normalizeBooleanInput(input, 'enabled'),
   summary: input => (booleanInputValue(input, 'enabled') ? 'enabled' : 'disabled'),
   renderEditor: ({ input, patchInput }) => (
-    <SegmentedField
+    <SelectField
       label='Restrictions'
       value={booleanInputValue(input, 'enabled') ? 'enabled' : 'disabled'}
       options={['enabled', 'disabled']}

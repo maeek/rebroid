@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { Section } from '@/components/ui/section'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -8,7 +10,7 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('./monaco-yaml/automation-monaco-yaml-editor').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <div className='h-136 w-full rounded-control border border-surface-border/60 bg-surface-band/35' />
+    loading: () => <Skeleton className='h-136 w-full' />
   }
 )
 
@@ -26,10 +28,10 @@ export function AutomationYamlEditorSection({
   className?: string
 }) {
   return (
-    <section className={cn('flex min-h-0 min-w-0 w-full flex-col gap-3', className)}>
-      <div className='flex h-8 items-center justify-between gap-3'>
-        <h2 className='text-xl font-medium'>YAML</h2>
-      </div>
+    <Section
+      surface='panel'
+      className={cn('min-h-0 min-w-0', className)}
+    >
       <AutomationMonacoYamlEditor
         value={yaml}
         commands={commands}
@@ -37,6 +39,6 @@ export function AutomationYamlEditorSection({
         onChange={onYamlChange}
         onValidationChange={onValidationChange}
       />
-    </section>
+    </Section>
   )
 }

@@ -13,25 +13,37 @@ export function AutomationsListPage({
   initialApplications,
   automationsPage,
   gridQuery,
-  initialTriggers
+  initialTriggers,
+  loading = false
 }: AutomationsListPageProps) {
   return (
     <StandardPage className='gap-2'>
       <PageHeader
         section={{ label: 'Automations' }}
         title='Workflows'
-        description='User-owned Android automation workflows.'
+        description='Create reusable workflows and review their latest execution.'
         actions={
-          <Button asChild>
-            <Link href='/automations/create'>
-              <IconPlus className='size-4' />
-              New flow
-            </Link>
+          <Button
+            asChild={!loading}
+            disabled={loading}
+          >
+            {loading ? (
+              <span>
+                <IconPlus className='size-4' />
+                New workflow
+              </span>
+            ) : (
+              <Link href='/automations/create'>
+                <IconPlus className='size-4' />
+                New workflow
+              </Link>
+            )}
           </Button>
         }
       />
 
-      {automationsPage.total === 0 &&
+      {!loading &&
+      automationsPage.total === 0 &&
       !gridQuery.q &&
       !gridQuery.tag &&
       !gridQuery.targetApplicationId &&
@@ -41,6 +53,7 @@ export function AutomationsListPage({
       ) : (
         <PageContent className='pt-2'>
           <AutomationsTable
+            loading={loading}
             applications={initialApplications}
             automationsPage={automationsPage}
             gridQuery={gridQuery}

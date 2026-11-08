@@ -1,7 +1,10 @@
 'use client'
 
+import { useContext } from 'react'
 import { IconFileCode, IconRoute, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
+import { Skeleton } from '@/components/ui/skeleton'
 import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
 import { stepKindLabel, stepSummary, stepTitle } from '../shared/automation-step-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
@@ -20,8 +23,9 @@ export function AutomationStepInspectorHeader({
   onToggleYaml?: () => void
   onClose?: () => void
 }) {
+  const loading = useContext(FormLoadingContext)
   return (
-    <div className='flex min-w-0 items-start justify-between gap-3 border-b border-surface-border/60 px-4 py-4'>
+    <div className='flex min-w-0 items-start justify-between gap-3 px-6 pt-6 pb-4 max-sm:px-4 max-sm:pt-4'>
       <div className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3'>
         <span className='flex size-9 shrink-0 items-center justify-center rounded-control bg-background/70 text-primary'>
           {step.kind === 'action' ? (
@@ -34,13 +38,15 @@ export function AutomationStepInspectorHeader({
           )}
         </span>
         <div className='min-w-0'>
-          <div className='flex min-w-0 items-center gap-2'>
-            <h3 className='truncate text-base font-medium'>{stepTitle(step, command)}</h3>
-            <span className='rounded-control border border-surface-border/60 px-1.5 py-0.5 text-xs uppercase tracking-normal text-foreground-muted'>
-              {stepKindLabel(step)}
-            </span>
+          <div className='flex min-w-0 flex-wrap items-center gap-2'>
+            <h3 className='break-words text-base font-medium'>
+              {loading ? <Skeleton className='h-6 w-40 max-w-full' /> : stepTitle(step, command)}
+            </h3>
+            <span className='text-xs text-foreground-muted'>{loading ? null : stepKindLabel(step)}</span>
           </div>
-          <p className='truncate text-xs text-foreground-muted'>{stepSummary(step)}</p>
+          <p className='truncate text-xs text-foreground-muted'>
+            {loading ? <Skeleton className='h-3 w-48 max-w-full' /> : stepSummary(step)}
+          </p>
         </div>
       </div>
       <div className='flex shrink-0 items-center gap-1'>

@@ -1,6 +1,6 @@
 import { IconCalendarTime, IconDeviceMobileCog, IconPlus, IconRobot } from '@tabler/icons-react'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 type AutomationEmptySplashVariant = 'automations' | 'triggers' | 'trigger-prerequisites'
 
@@ -13,14 +13,14 @@ const copy = {
   },
   triggers: {
     title: 'No triggers yet',
-    description: 'Create a trigger to run an automation against an app profile on a schedule.',
+    description: 'Create a trigger to run a workflow against an app profile on a schedule.',
     action: 'New trigger',
     href: null
   },
   'trigger-prerequisites': {
     title: 'No trigger target yet',
-    description: 'Create an automation first, then connect it to an app profile with a trigger.',
-    action: 'Create automation',
+    description: 'Create a workflow and an app, then connect them with a scheduled trigger.',
+    action: 'New workflow',
     href: '/automations/create'
   }
 } satisfies Record<
@@ -43,15 +43,6 @@ export function AutomationEmptySplash({
 }) {
   const Icon = icons[variant]
   const content = copy[variant]
-  const action = (
-    <Badge
-      variant='success'
-      className='gap-2 px-4 py-2 text-sm hover:bg-primary/20'
-    >
-      <IconPlus className='size-4' />
-      {content.action}
-    </Badge>
-  )
 
   return (
     <div className='px-6 py-12 max-sm:px-4'>
@@ -68,15 +59,20 @@ export function AutomationEmptySplash({
             <p className='text-foreground-muted'>{content.description}</p>
           </div>
           {content.href ? (
-            <Link href={content.href}>{action}</Link>
+            <Button asChild>
+              <Link href={content.href}>
+                <IconPlus className='size-4' />
+                {content.action}
+              </Link>
+            </Button>
           ) : (
-            <button
+            <Button
               type='button'
-              className='appearance-none border-0 bg-transparent p-0'
               onClick={onAction}
             >
-              {action}
-            </button>
+              <IconPlus className='size-4' />
+              {content.action}
+            </Button>
           )}
         </div>
       </div>

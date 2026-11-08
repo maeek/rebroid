@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
+import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import {
@@ -126,13 +127,12 @@ export function AutomationStepOutlineListView({
   }
 
   return (
-    <section className={cn('grid min-w-0 content-start gap-3', root ? null : 'gap-2')}>
-      {root ? (
-        <div className='flex h-8 items-center justify-between gap-3'>
-          <h3 className='text-xl font-medium'>Steps</h3>
-        </div>
-      ) : null}
-
+    <Section
+      surface={root ? 'panel' : 'plain'}
+      title={root ? 'Step sequence' : undefined}
+      className='min-w-0'
+      contentClassName='gap-3'
+    >
       <div
         ref={setNodeRef}
         className={cn(
@@ -179,8 +179,8 @@ export function AutomationStepOutlineListView({
         </div>
 
         {steps.length === 0 ? (
-          <div className='rounded-control border border-dashed border-surface-border/60 px-3 py-3 text-center text-sm text-foreground-muted'>
-            Drop steps here
+          <div className='px-3 py-5 text-center text-sm text-foreground-muted'>
+            {root ? 'Add your first step to begin.' : 'Drop steps here'}
           </div>
         ) : null}
         <AutomationStepAddRow
@@ -189,7 +189,7 @@ export function AutomationStepOutlineListView({
           onPaste={() => void pasteStep()}
         />
       </div>
-    </section>
+    </Section>
   )
 }
 

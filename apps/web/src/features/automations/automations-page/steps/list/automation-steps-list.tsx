@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -57,7 +57,6 @@ export function AutomationStepsList({
   onYamlStepKeyChange,
   onChange,
   onStepChange,
-  details,
   className
 }: {
   steps: AutomationStepForm[]
@@ -71,9 +70,21 @@ export function AutomationStepsList({
   onYamlStepKeyChange: (clientKey: string | null) => void
   onChange: (steps: AutomationStepForm[]) => void
   onStepChange: (index: number, step: AutomationStepForm) => void
-  details?: ReactNode
   className?: string
 }) {
+  const workspaceRef = useRef<HTMLDivElement | null>(null)
+  const returnFocus = () =>
+    Array.from(workspaceRef.current?.querySelectorAll<HTMLButtonElement>('button[data-step-select]') ?? []).find(
+      button => button.dataset.stepSelect === selectedStepKey
+    ) ?? null
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const selectStep = useCallback(
+    (key: string | null) => {
+      onSelectStep(key)
+      setInspectorOpen(Boolean(key))
+    },
+    [onSelectStep]
+  )
   const [activeStepId, setActiveStepId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<AutomationStepDropTarget>(null)
   const safeSteps = useMemo(() => steps.filter(isAutomationStepForm), [steps])
@@ -97,7 +108,7 @@ export function AutomationStepsList({
     if (!target) return
 
     onChange(moveStepToList(safeSteps, activeId, target.listId, target.index))
-    onSelectStep(activeId)
+    selectStep(activeId)
   }
 
   const updateList = useCallback(
@@ -126,15 +137,16 @@ export function AutomationStepsList({
     (step: AutomationStepForm) => {
       const nextStep = makeAutomationStepIdsUnique(step, safeSteps)
       onChange([...safeSteps, nextStep])
-      onSelectStep(nextStep.clientKey)
+      selectStep(nextStep.clientKey)
       if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
       toast({ title: 'Block pasted' })
     },
-    [onChange, onOpenBlock, onSelectStep, safeSteps]
+    [onChange, onOpenBlock, selectStep, safeSteps]
   )
 
   useEffect(() => {
     const handlePaste = (event: ClipboardEvent) => {
+      if (workspaceRef.current?.closest('[inert]')) return
       if (isEditablePasteTarget(event.target)) return
 
       const text = event.clipboardData?.getData('text/plain') ?? ''
@@ -160,7 +172,7 @@ export function AutomationStepsList({
       openBlockKeys,
       yamlStepKey,
       dropTarget,
-      onSelectStep,
+      onSelectStep: selectStep,
       onToggleBlock,
       onOpenBlock,
       onSetYamlStepKey: onYamlStepKeyChange,
@@ -176,7 +188,7 @@ export function AutomationStepsList({
       openBlockKeys,
       yamlStepKey,
       dropTarget,
-      onSelectStep,
+      selectStep,
       onToggleBlock,
       onOpenBlock,
       onYamlStepKeyChange,
@@ -187,7 +199,10 @@ export function AutomationStepsList({
   )
 
   return (
-    <div className={className}>
+    <div
+      ref={workspaceRef}
+      className={className}
+    >
       <DndContext
         id='automation-steps'
         sensors={sensors}
@@ -207,7 +222,6 @@ export function AutomationStepsList({
         <AutomationStepsProvider value={stepsContext}>
           <div className={automationVisualWorkspaceClassName}>
             <div className={automationVisualPrimaryClassName}>
-              {details}
               <AutomationStepOutlineListView
                 listId={ROOT_STEP_LIST_ID}
                 steps={safeSteps}
@@ -217,6 +231,8 @@ export function AutomationStepsList({
             <div className={`contents ${automationVisualSecondaryDesktopClassName}`}>
               <AutomationStepInspector
                 step={selectedStep}
+                mobileOpen={inspectorOpen}
+                returnFocus={returnFocus}
                 rootSteps={safeSteps}
                 commands={commands}
                 commandByUses={commandByUses}
@@ -227,7 +243,7 @@ export function AutomationStepsList({
                   if (selectedLocation.listId === ROOT_STEP_LIST_ID) onStepChange(selectedLocation.index, nextStep)
                   else onChange(replaceStepInList(safeSteps, selectedLocation.listId, selectedLocation.index, nextStep))
                 }}
-                onClose={() => onSelectStep(null)}
+                onClose={() => setInspectorOpen(false)}
               />
             </div>
           </div>

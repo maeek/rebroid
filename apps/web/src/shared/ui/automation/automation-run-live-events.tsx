@@ -128,6 +128,7 @@ export function AutomationRunLiveEvents({
         return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
       })
       for (const event of nextEvents) {
+        if (terminalStatuses.has(statusRef.current)) break
         const nextStatus = statusFromEvent(event)
         if (nextStatus) applyStatus(nextStatus)
       }
@@ -139,7 +140,6 @@ export function AutomationRunLiveEvents({
           `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${lastSequenceRef.current}`
         )
         appendEvents(live.events)
-        if (closed || !activeStatuses.has(statusRef.current)) return
         if (closed || !activeStatuses.has(statusRef.current)) return
         socket = new WebSocket(live.streamUrl)
         socket.onmessage = message => {
@@ -249,8 +249,14 @@ export function AutomationRunLiveEvents({
               <IconActivity className={cn('size-4', activeStatuses.has(localStatus) && 'animate-pulse')} />
             </span>
             <div>
-              <p className='text-sm font-medium text-foreground'>Waiting for activity</p>
-              <p className='mt-0.5 text-xs text-foreground-muted'>New events will appear here as the run progresses.</p>
+              <p className='text-sm font-medium text-foreground'>
+                {activeStatuses.has(localStatus) ? 'Waiting for activity' : 'No recorded events'}
+              </p>
+              <p className='mt-0.5 text-xs text-foreground-muted'>
+                {activeStatuses.has(localStatus)
+                  ? 'New events will appear here as the run progresses.'
+                  : 'Use the run summary and step results to inspect this completed execution.'}
+              </p>
             </div>
           </div>
         ) : (

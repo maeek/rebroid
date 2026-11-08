@@ -30,17 +30,6 @@ export const useUnsavedAutomationNavigation = ({
   const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null)
   const confirmedNavigationRef = useRef(false)
 
-  const requestNavigation = useCallback(
-    (href: string) => {
-      if (hasUnsavedChanges) {
-        setPendingNavigationHref(href)
-        return
-      }
-      push(href)
-    },
-    [hasUnsavedChanges, push]
-  )
-
   const confirmPendingNavigation = useCallback(() => {
     const href = pendingNavigationHref
     if (!href) return
@@ -85,7 +74,6 @@ export const useUnsavedAutomationNavigation = ({
   return {
     confirmPendingNavigation,
     pendingNavigationHref,
-    requestNavigation,
     setPendingNavigationHref
   }
 }

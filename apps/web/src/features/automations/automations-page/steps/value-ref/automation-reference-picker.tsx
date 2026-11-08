@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { buildReferenceOptions, referenceOptionId, valueRefFromReferenceId } from './automation-value-ref-utils'
 import type { AutomationStepReferenceOption } from './automation-value-ref-constants'
@@ -28,8 +28,11 @@ export function AutomationReferencePicker({
   }
 
   return (
-    <div className='grid gap-2'>
-      <Label htmlFor={id}>{label}</Label>
+    <FormField
+      controlId={id}
+      label={label}
+      layout='vertical'
+    >
       <Select
         value={selectedId}
         onValueChange={nextId => {
@@ -83,6 +86,6 @@ export function AutomationReferencePicker({
           )}
         </SelectContent>
       </Select>
-    </div>
+    </FormField>
   )
 }

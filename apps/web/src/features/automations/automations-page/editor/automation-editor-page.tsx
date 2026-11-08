@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { cn } from '@/lib/utils'
 import {
   createAutomationAction,
   deleteAutomationAction,
@@ -15,11 +14,11 @@ import {
 import { consumePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { WorkflowResourceNavigation } from '../shared/workflow-resource-navigation'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
 import { AutomationDetailsSection } from './automation-details-section'
 import { AutomationEditorActions } from './automation-editor-actions'
 import { AiDraftDialog } from './automation-editor-dialogs'
-import { automationYamlWorkspaceClassName } from './automation-editor-layout'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
@@ -35,6 +34,7 @@ import { useAutomationEditorSelection } from './use-automation-editor-selection'
 import { useAutomationEditorYaml } from './use-automation-editor-yaml'
 import { useAutomationWorkflowFiles } from './use-automation-workflow-files'
 import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
+import { WorkflowEditorWorkspace } from './workflow-editor-workspace'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/shared/contracts/automation'
 
@@ -56,6 +56,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   } = useAutomationEditorSelection(form.steps)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [saving, setSaving] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const isNew = !automation
   const title = isNew ? 'New workflow' : automation.name
@@ -79,11 +80,10 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     setYamlOpen,
     setYamlDraft
   })
-  const { confirmPendingNavigation, pendingNavigationHref, requestNavigation, setPendingNavigationHref } =
-    useUnsavedAutomationNavigation({
-      hasUnsavedChanges: hasUnsavedHistory,
-      push: router.push
-    })
+  const { confirmPendingNavigation, pendingNavigationHref, setPendingNavigationHref } = useUnsavedAutomationNavigation({
+    hasUnsavedChanges: hasUnsavedHistory,
+    push: router.push
+  })
   const {
     aiDraftOpen,
     aiDraftPrompt,
@@ -187,12 +187,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     updateSteps(form.steps.map((item, itemIndex) => (itemIndex === index ? step : item)))
   }
 
-  const showTraces = () => {
-    if (automation) {
-      requestNavigation(`/automations/${automation.id}/traces`)
-    }
-  }
-
   const persistAutomation = async (input: { yaml: string }) => {
     const wasNew = !automation
     const saved = automation ? await updateAutomationAction(automation.id, input) : await createAutomationAction(input)
@@ -206,7 +200,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
       yamlOpen,
       yamlDraft: yamlOpen ? saved.yaml : yamlDraft
     })
-    toast({ title: wasNew ? 'Automation created' : 'Automation updated' })
+    toast({ title: wasNew ? 'Workflow created' : 'Workflow updated', variant: 'success' })
     if (wasNew) {
       router.replace(`/automations/${saved.id}`)
     }
@@ -215,16 +209,18 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
   const save = async () => {
     if (yamlOpen && !yamlValid) return
     setBusy(true)
+    setSaving(true)
     try {
       await persistAutomation(yamlOpen ? { yaml: yamlDraft } : formToSaveInput(form))
     } catch (error) {
       toast({
-        title: 'Could not save automation',
+        title: 'Could not save workflow',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
       setBusy(false)
+      setSaving(false)
     }
   }
 
@@ -233,11 +229,11 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     setBusy(true)
     try {
       await deleteAutomationAction(automation.id)
-      toast({ title: 'Automation deleted' })
+      toast({ title: 'Workflow deleted', variant: 'success' })
       router.replace('/automations')
     } catch (error) {
       toast({
-        title: 'Could not delete automation',
+        title: 'Could not delete workflow',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
@@ -257,6 +253,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         actions={
           <AutomationEditorActions
             busy={busy}
+            saving={saving}
             canDraftFromPrompt={canDraftFromPrompt}
             canDelete={Boolean(automation)}
             yamlOpen={yamlOpen}
@@ -266,8 +263,6 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
             onExport={exportWorkflow}
             onImport={importWorkflow}
             onSave={() => void save()}
-            onShowTraces={showTraces}
-            onToggleYaml={toggleYamlEditor}
           />
         }
       />
@@ -295,55 +290,55 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         onSubmitClarification={() => void submitClarification()}
       />
 
-      <PageContent className={cn('grid gap-6 pt-2', yamlOpen ? automationYamlWorkspaceClassName : null)}>
-        {yamlOpen ? (
-          <>
-            <AutomationDetailsSection
-              form={form}
-              onChange={updateForm}
-            />
-            <AutomationYamlEditorSection
-              yaml={yamlDraft}
-              commands={initialCommands}
-              onYamlChange={yaml =>
-                commitEditorChange(() => ({
-                  ...currentSnapshot(),
-                  yamlDraft: yaml
-                }))
-              }
-              onValidationChange={(valid, messages) => {
-                if (!valid) {
-                  setYamlValid(false)
-                  setYamlError(messages[0] ?? 'Automation YAML is invalid.')
-                  return
-                }
-                setYamlValid(true)
-                setYamlError(null)
-              }}
-            />
-          </>
-        ) : (
-          <AutomationStepsList
-            steps={form.steps}
-            commands={initialCommands}
-            selectedStepKey={selectedStepKey}
-            openBlockKeys={openBlockKeys}
-            yamlStepKey={yamlStepKey}
-            onSelectStep={setSelectedStepKey}
-            onToggleBlock={toggleBlock}
-            onOpenBlock={openBlock}
-            onYamlStepKeyChange={setYamlStepKey}
-            onChange={updateSteps}
-            onStepChange={updateStepAt}
+      <PageContent className='grid gap-6 pt-2'>
+        <WorkflowResourceNavigation
+          workflowId={automation?.id}
+          active='editor'
+        />
+        <fieldset
+          disabled={busy}
+          inert={busy || undefined}
+          className='min-w-0'
+        >
+          <WorkflowEditorWorkspace
             details={
               <AutomationDetailsSection
                 form={form}
                 onChange={updateForm}
               />
             }
-            className='w-full'
-          />
-        )}
+            yamlOpen={yamlOpen}
+            disabled={busy}
+            onToggleYaml={toggleYamlEditor}
+          >
+            {yamlOpen ? (
+              <AutomationYamlEditorSection
+                yaml={yamlDraft}
+                commands={initialCommands}
+                onYamlChange={yaml => commitEditorChange(() => ({ ...currentSnapshot(), yamlDraft: yaml }))}
+                onValidationChange={(valid, messages) => {
+                  setYamlValid(valid)
+                  setYamlError(valid ? null : (messages[0] ?? 'Workflow YAML is invalid.'))
+                }}
+              />
+            ) : (
+              <AutomationStepsList
+                steps={form.steps}
+                commands={initialCommands}
+                selectedStepKey={selectedStepKey}
+                openBlockKeys={openBlockKeys}
+                yamlStepKey={yamlStepKey}
+                onSelectStep={setSelectedStepKey}
+                onToggleBlock={toggleBlock}
+                onOpenBlock={openBlock}
+                onYamlStepKeyChange={setYamlStepKey}
+                onChange={updateSteps}
+                onStepChange={updateStepAt}
+                className='w-full'
+              />
+            )}
+          </WorkflowEditorWorkspace>
+        </fieldset>
       </PageContent>
 
       <input

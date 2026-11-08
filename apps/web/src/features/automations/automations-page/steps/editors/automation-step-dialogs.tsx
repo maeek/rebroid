@@ -11,8 +11,8 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export function AutomationStepSettingsDialog({
@@ -37,20 +37,24 @@ export function AutomationStepSettingsDialog({
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent>
+      <DialogContent data-editor-dialog=''>
         <DialogHeader>
           <DialogTitle>Step settings</DialogTitle>
           <DialogDescription className='sr-only'>Edit selected step settings.</DialogDescription>
         </DialogHeader>
-        <div className='grid gap-2'>
-          <Label htmlFor='automation-selected-step-id'>Step id</Label>
+        <FormField
+          controlId='automation-selected-step-id'
+          label='Step ID'
+          description='Used when referencing this step from other steps.'
+          layout='vertical'
+        >
           <Input
             id='automation-selected-step-id'
             value={stepId}
             placeholder='Generated when empty'
             onChange={event => setStepId(event.target.value)}
           />
-        </div>
+        </FormField>
         <DialogFooter>
           <Button
             variant='secondary'

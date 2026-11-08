@@ -1,4 +1,4 @@
-import { NumberField, SegmentedField } from '../shared/action-fields'
+import { NumberField, SelectField } from '../shared/action-fields'
 import { percentToPixel, pixelToPercent } from '../shared/coordinate-helpers'
 import { numberInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
@@ -53,7 +53,7 @@ export const swipeAction: AutomationActionDefinition = {
 
     return (
       <div className='grid gap-3'>
-        <SegmentedField
+        <SelectField
           label='Preset'
           value='custom'
           options={[
@@ -64,7 +64,7 @@ export const swipeAction: AutomationActionDefinition = {
           ]}
           onChange={value => patchInput(swipePreset(value))}
         />
-        <SegmentedField
+        <SelectField
           label='Position mode'
           value={mode}
           options={['pixels', 'percent']}

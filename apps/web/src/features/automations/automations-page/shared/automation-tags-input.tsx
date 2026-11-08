@@ -1,8 +1,9 @@
 'use client'
 
-import { type KeyboardEvent, useState } from 'react'
+import { type InputHTMLAttributes, type KeyboardEvent, type ReactNode, useState } from 'react'
 import { IconPalette, IconTrash, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -29,11 +30,13 @@ const colorText = (hex: string) => {
 export function AutomationTagsInput({
   id,
   label = 'Tags',
+  description,
   value,
   onChange
 }: {
   id: string
   label?: string
+  description?: string
   value: AutomationTag[]
   onChange: (tags: AutomationTag[]) => void
 }) {
@@ -91,13 +94,17 @@ export function AutomationTagsInput({
   }
 
   return (
-    <div className='grid gap-2'>
-      <Label htmlFor={id}>{label}</Label>
-      <div
-        className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-control px-3 py-2',
-          chipInputSurfaceClassName
-        )}
+    <FormField
+      controlId={id}
+      label={label}
+      description={description}
+      layout='vertical'
+    >
+      <TagInputControl
+        value={draft}
+        onBlur={commitDraft}
+        onChange={event => setDraft(event.target.value)}
+        onKeyDown={handleKeyDown}
       >
         {value.map(tag => (
           <Popover
@@ -128,16 +135,25 @@ export function AutomationTagsInput({
             </PopoverContent>
           </Popover>
         ))}
-        <input
-          id={id}
-          value={draft}
-          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
-          placeholder='Add tag and press Enter'
-          onBlur={commitDraft}
-          onChange={event => setDraft(event.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-      </div>
+      </TagInputControl>
+    </FormField>
+  )
+}
+
+function TagInputControl({ children, ...props }: InputHTMLAttributes<HTMLInputElement> & { children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'flex min-h-9 w-full flex-wrap items-center gap-1 rounded-control px-3 py-1 focus-within:ring-2 focus-within:ring-ring',
+        chipInputSurfaceClassName
+      )}
+    >
+      {children}
+      <input
+        {...props}
+        className='h-6 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
+        placeholder='Add tag and press Enter'
+      />
     </div>
   )
 }
@@ -184,8 +200,10 @@ function TagEditor({
           <IconX className='size-4' />
         </button>
       </div>
-      <div className='grid gap-2'>
-        <Label>Name</Label>
+      <FormField
+        label='Name'
+        layout='vertical'
+      >
         <Input
           value={name}
           maxLength={48}
@@ -198,7 +216,7 @@ function TagEditor({
             }
           }}
         />
-      </div>
+      </FormField>
       <div className='grid gap-2'>
         <Label>Color</Label>
         <div className='grid grid-cols-[2.5rem_minmax(0,1fr)] gap-2'>
@@ -214,6 +232,8 @@ function TagEditor({
           />
           <Input
             value={color}
+            aria-label='Tag color hex value'
+            aria-invalid={!colorValid}
             placeholder='#64748b'
             onBlur={applyColor}
             onChange={event => setColor(event.target.value)}

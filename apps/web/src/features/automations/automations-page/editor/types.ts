@@ -10,6 +10,7 @@ import type {
 } from '@/shared/contracts/automation'
 
 export interface AutomationsListPageProps {
+  loading?: boolean
   initialApplications: AndroidApplication[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
@@ -22,6 +23,7 @@ export interface AutomationEditorPageProps {
 }
 
 export interface AutomationTriggersPageProps {
+  loading?: boolean
   initialApplications: AndroidApplication[]
   initialAutomations: Automation[]
   triggersPage: AutomationTriggersGridPage

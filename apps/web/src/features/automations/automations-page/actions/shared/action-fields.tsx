@@ -1,6 +1,5 @@
-import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -24,18 +23,18 @@ export function NumberField({
   onChange: (value: number) => void
 }) {
   return (
-    <div className='grid gap-2'>
-      <Label>{label}</Label>
-      <div className='grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2'>
-        <Input
-          type='number'
-          inputMode='numeric'
-          value={String(value)}
-          onChange={event => onChange(Number(event.target.value || 0))}
-        />
-        {suffix ? <span className='text-xs text-foreground-muted'>{suffix}</span> : null}
-      </div>
-    </div>
+    <FormField
+      label={suffix ? `${label} (${suffix})` : label}
+      layout='vertical'
+    >
+      <Input
+        type='number'
+        className='max-w-48'
+        inputMode='numeric'
+        value={String(value)}
+        onChange={event => onChange(Number(event.target.value || 0))}
+      />
+    </FormField>
   )
 }
 
@@ -49,13 +48,16 @@ export function TextField({
   onChange: (value: string) => void
 }) {
   return (
-    <div className='grid gap-2'>
-      <Label>{label}</Label>
+    <FormField
+      label={label}
+      layout='vertical'
+    >
       <Input
+        className='max-w-[40rem]'
         value={value}
         onChange={event => onChange(event.target.value)}
       />
-    </div>
+    </FormField>
   )
 }
 
@@ -69,14 +71,16 @@ export function TextareaField({
   onChange: (value: string) => void
 }) {
   return (
-    <div className='grid gap-2'>
-      <Label>{label}</Label>
+    <FormField
+      label={label}
+      layout='vertical'
+    >
       <Textarea
         value={value}
-        className='min-h-28'
+        className='min-h-28 max-w-[40rem]'
         onChange={event => onChange(event.target.value)}
       />
-    </div>
+    </FormField>
   )
 }
 
@@ -94,13 +98,15 @@ export function SelectField({
   const normalizedOptions = normalizeOptions(options)
 
   return (
-    <div className='grid gap-2'>
-      <Label>{label}</Label>
+    <FormField
+      label={label}
+      layout='vertical'
+    >
       <Select
         value={value}
         onValueChange={onChange}
       >
-        <SelectTrigger className='w-full'>
+        <SelectTrigger className='w-full max-w-[40rem]'>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -114,42 +120,10 @@ export function SelectField({
           ))}
         </SelectContent>
       </Select>
-    </div>
-  )
-}
-
-export function SegmentedField({
-  label,
-  value,
-  options,
-  onChange
-}: {
-  label: string
-  value: string
-  options: Array<string | SelectOption>
-  onChange: (value: string) => void
-}) {
-  const normalizedOptions = normalizeOptions(options)
-
-  return (
-    <div className='grid gap-2'>
-      <Label>{label}</Label>
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(7rem,1fr))] gap-2'>
-        {normalizedOptions.map(option => (
-          <Button
-            key={option.value}
-            type='button'
-            variant={value === option.value ? 'primary' : 'secondary'}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label ?? option.value}
-          </Button>
-        ))}
-      </div>
-    </div>
+    </FormField>
   )
 }
 
 export function NoInputState({ message = 'No settings.' }: { message?: string }) {
-  return <p className='rounded-control bg-surface-band/45 px-3 py-3 text-sm text-foreground-muted'>{message}</p>
+  return <p className='text-sm text-foreground-muted'>{message}</p>
 }

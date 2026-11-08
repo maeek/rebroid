@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useContext, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import {
   IconArrowDown,
@@ -23,6 +23,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
+import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
 import { AutomationStepSettingsDialog } from '../editors/automation-step-dialogs'
@@ -74,6 +76,7 @@ export function AutomationStepOutlineRow({
     onStepChange,
     onSetYamlStepKey
   } = useAutomationStepsContext()
+  const loading = useContext(FormLoadingContext)
   const [stepSettingsOpen, setStepSettingsOpen] = useState(false)
   const command = step.kind === 'action' ? commandByUses.get(step.uses) : undefined
   const selected = selectedStepKey === step.clientKey
@@ -95,14 +98,11 @@ export function AutomationStepOutlineRow({
         ref={setNodeRef}
         data-automation-step-item='true'
         className={cn(
-          'group relative grid min-h-14 rounded-control border transition-colors',
-          selected
-            ? 'border-primary/45 bg-primary/8 shadow-[0_0_0_1px_hsl(var(--primary)/0.08)]'
-            : 'border-surface-border/60 bg-surface-panel/45 hover:border-surface-border/80 hover:bg-surface-panel/60',
+          'group relative grid min-h-14 rounded-control transition-colors',
+          selected ? 'bg-primary/10' : 'bg-control/25 hover:bg-control-hover/50',
           isDragging ? 'pointer-events-none opacity-0' : null
         )}
       >
-        {selected ? <div className='absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary' /> : null}
         <div className='grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-2 py-1.5'>
           <button
             type='button'
@@ -117,7 +117,10 @@ export function AutomationStepOutlineRow({
 
           <button
             type='button'
-            className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control px-1 py-1 text-left'
+            className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            data-step-select={step.clientKey}
+            aria-pressed={selected}
+            aria-label={`Edit step ${index + 1}: ${stepTitle(step, command)}`}
             onClick={() => onSelectStep(step.clientKey)}
           >
             <span className='flex size-8 shrink-0 items-center justify-center rounded-control bg-background/65 text-primary'>
@@ -132,12 +135,16 @@ export function AutomationStepOutlineRow({
             </span>
             <span className='min-w-0'>
               <span className='flex min-w-0 items-center gap-2'>
-                <span className='truncate text-sm font-medium'>{stepTitle(step, command)}</span>
-                <span className='hidden rounded-control border border-surface-border/60 px-1.5 py-0.5 text-xs uppercase tracking-normal text-foreground-muted sm:inline'>
-                  {stepKindLabel(step)}
+                <span className='truncate text-sm font-medium'>
+                  {loading ? <Skeleton className='h-4 w-32 max-w-full' /> : stepTitle(step, command)}
+                </span>
+                <span className='hidden text-xs text-foreground-muted sm:inline'>
+                  {loading ? null : stepKindLabel(step)}
                 </span>
               </span>
-              <span className='block truncate text-xs text-foreground-muted'>{stepSummary(step)}</span>
+              <span className='block truncate text-xs text-foreground-muted'>
+                {loading ? <Skeleton className='h-3 w-40 max-w-full' /> : stepSummary(step)}
+              </span>
             </span>
           </button>
 
@@ -219,6 +226,22 @@ export function AutomationStepOutlineRow({
                     Edit YAML
                   </DropdownMenuItem>
                 ) : null}
+                <DropdownMenuItem
+                  className='gap-2 px-3 py-2 sm:hidden'
+                  disabled={!canMoveUp}
+                  onSelect={onMoveUp}
+                >
+                  <IconArrowUp className='size-4' />
+                  Move step up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className='gap-2 px-3 py-2 sm:hidden'
+                  disabled={!canMoveDown}
+                  onSelect={onMoveDown}
+                >
+                  <IconArrowDown className='size-4' />
+                  Move step down
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className='gap-2 px-3 py-2'
