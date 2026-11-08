@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { DataGridEmptyContext } from './data-grid-empty-state'
 import { DataGridToolbar } from './data-grid-toolbar'
 
 export type DataGridFilterEntry = {
@@ -157,7 +158,20 @@ export const DataGridWorkspace = ({
           ) : null}
         </div>
 
-        <div className='grid min-w-0 gap-3'>{children}</div>
+        <DataGridEmptyContext.Provider
+          value={{
+            hasSearch: Boolean(search.trim()),
+            hasFilters: activeFilters.length > 0,
+            disabled,
+            clearSearch: () => {
+              onSearchChange('')
+              onSearch('')
+            },
+            clearFilters: onResetFilters
+          }}
+        >
+          <div className='grid min-w-0 gap-3'>{children}</div>
+        </DataGridEmptyContext.Provider>
 
         {hasFilters ? (
           <SheetContent className='flex w-full flex-col overflow-y-auto sm:max-w-md'>
