@@ -19,10 +19,10 @@ export const sortTasks = (
       const multiplier = item.desc ? -1 : 1
       let result = 0
       if (item.id === 'name') result = left.name.localeCompare(right.name)
-      else if (item.id === 'state') {
-        result = Number(left.enabled) - Number(right.enabled) || left.lastStatus.localeCompare(right.lastStatus)
-      } else if (item.id === 'schedule') result = left.cronExpression.localeCompare(right.cronExpression)
-      else if (item.id === 'nextRunAt') result = sortDate(left.nextRunAt, right.nextRunAt)
+      else if (item.id === 'enabled') result = Number(left.enabled) - Number(right.enabled)
+      else if (item.id === 'schedule') result = left.cronExpression.localeCompare(right.cronExpression)
+      else if (item.id === 'nextRunAt')
+        result = sortDate(left.enabled ? left.nextRunAt : null, right.enabled ? right.nextRunAt : null)
       else if (item.id === 'lastRunAt') result = sortDate(left.lastRunAt, right.lastRunAt)
       else if (item.id === 'action') result = actionLabel(left).localeCompare(actionLabel(right))
       if (result !== 0) return result * multiplier

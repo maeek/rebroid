@@ -1,5 +1,6 @@
 'use client'
 
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Visible } from '@/components/ui/visible'
@@ -16,78 +17,96 @@ export const ScheduleEditor = ({
   schedule: ScheduleDraft
   onScheduleChange: (patch: Partial<ScheduleDraft>) => void
 }) => (
-  <div className='grid gap-3'>
-    <div className='text-sm font-medium text-foreground'>Schedule</div>
-    <div className='flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center'>
-      <Select
-        value={schedule.frequency}
-        onValueChange={value => onScheduleChange({ frequency: value })}
+  <fieldset className='grid min-w-0 gap-4'>
+    <legend className='mb-4 text-sm font-medium text-foreground'>Schedule</legend>
+    <div className='grid min-w-0 gap-4 sm:grid-cols-2'>
+      <FormField
+        label='Frequency'
+        layout='vertical'
       >
-        <SelectTrigger className='w-full sm:w-auto sm:min-w-36 sm:shrink-0'>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value='hourly'>Every few hours</SelectItem>
-          <SelectItem value='daily'>Every day</SelectItem>
-          <SelectItem value='weekly'>Every week</SelectItem>
-          <SelectItem value='monthly'>Every month</SelectItem>
-        </SelectContent>
-      </Select>
+        <Select
+          value={schedule.frequency}
+          onValueChange={value => onScheduleChange({ frequency: value })}
+        >
+          <SelectTrigger className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='hourly'>Every few hours</SelectItem>
+            <SelectItem value='daily'>Every day</SelectItem>
+            <SelectItem value='weekly'>Every week</SelectItem>
+            <SelectItem value='monthly'>Every month</SelectItem>
+          </SelectContent>
+        </Select>
+      </FormField>
       <Visible when={schedule.frequency === 'hourly'}>
-        <div className='flex min-w-0 items-center gap-2 sm:flex-1 sm:basis-64 sm:max-w-md'>
-          <span className='text-sm text-foreground-muted'>Every</span>
+        <FormField
+          label='Interval (hours)'
+          layout='vertical'
+        >
           <Input
             type='number'
-            className='min-w-0 flex-1'
+            className='max-w-48'
             min={1}
             max={24}
             value={schedule.intervalHours}
             onChange={event => onScheduleChange({ intervalHours: clampInteger(Number(event.target.value), 1, 24) })}
           />
-          <span className='text-sm text-foreground-muted'>hours</span>
-        </div>
+        </FormField>
       </Visible>
       <Visible when={schedule.frequency !== 'hourly'}>
-        <Input
-          type='time'
-          className='min-w-0 sm:flex-1 sm:basis-64 sm:max-w-md'
-          value={schedule.time}
-          onChange={event => onScheduleChange({ time: event.target.value || defaultSchedule.time })}
-        />
+        <FormField
+          label='Time'
+          layout='vertical'
+        >
+          <Input
+            type='time'
+            value={schedule.time}
+            onChange={event => onScheduleChange({ time: event.target.value || defaultSchedule.time })}
+          />
+        </FormField>
+      </Visible>
+      <Visible when={schedule.frequency === 'weekly'}>
+        <FormField
+          label='Day of week'
+          layout='vertical'
+        >
+          <Select
+            value={schedule.weekday}
+            onValueChange={weekday => onScheduleChange({ weekday })}
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {weekdays.map(day => (
+                <SelectItem
+                  key={day.value}
+                  value={day.value}
+                >
+                  {day.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+      </Visible>
+      <Visible when={schedule.frequency === 'monthly'}>
+        <FormField
+          label='Day of month'
+          description='Choose a day from 1 to 28.'
+          layout='vertical'
+        >
+          <Input
+            type='number'
+            className='max-w-48'
+            min={1}
+            max={28}
+            value={schedule.monthDay}
+            onChange={event => onScheduleChange({ monthDay: clampInteger(Number(event.target.value), 1, 28) })}
+          />
+        </FormField>
       </Visible>
     </div>
-    <Visible when={schedule.frequency === 'weekly'}>
-      <Select
-        value={schedule.weekday}
-        onValueChange={weekday => onScheduleChange({ weekday })}
-      >
-        <SelectTrigger className='w-full sm:max-w-md'>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {weekdays.map(day => (
-            <SelectItem
-              key={day.value}
-              value={day.value}
-            >
-              {day.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </Visible>
-    <Visible when={schedule.frequency === 'monthly'}>
-      <div className='flex items-center gap-2'>
-        <span className='text-sm text-foreground-muted'>Day</span>
-        <Input
-          type='number'
-          min={1}
-          max={28}
-          value={schedule.monthDay}
-          onChange={event => onScheduleChange({ monthDay: clampInteger(Number(event.target.value), 1, 28) })}
-        />
-        <span className='text-sm text-foreground-muted'>of each month</span>
-      </div>
-    </Visible>
-  </div>
+  </fieldset>
 )

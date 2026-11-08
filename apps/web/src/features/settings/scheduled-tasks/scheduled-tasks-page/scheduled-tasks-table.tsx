@@ -2,28 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Visible } from '@/components/ui/visible'
-import {
-  dateLabel,
-  scheduleLabel,
-  statusLabel,
-  statusVariant
-} from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { scheduledTaskColumns } from './scheduled-task-columns'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type { SortingState } from '@tanstack/react-table'
 
-export const ScheduledTasksTable = () => {
+export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) => {
   const { actionByType, busyTaskId, deleteTask, openEditForm, runNow, tasks, toggleEnabled } =
     useScheduledTasksControllerContext()
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
@@ -82,93 +74,20 @@ export const ScheduledTasksTable = () => {
     setPendingDelete([])
   }
 
-  const columns = useMemo<ColumnDef<ScheduledTask>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: task => task.name,
-        header: 'Task',
-        size: 384,
-        meta: { label: 'Task', skeleton: { kind: 'stacked' } },
-        cell: ({ row }) => (
-          <div className='grid gap-1'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <span className='font-medium text-foreground'>{row.original.name}</span>
-              <Badge variant='neutral'>{row.original.kind === 'predefined' ? 'Built-in' : 'Custom'}</Badge>
-            </div>
-            <span className='text-foreground-muted'>{actionLabel(row.original)}</span>
-            <Visible when={row.original.lastError}>
-              <span className='max-w-lg truncate text-danger'>{row.original.lastError}</span>
-            </Visible>
-          </div>
-        )
-      },
-      {
-        id: 'state',
-        accessorFn: task => `${task.enabled ? 'enabled' : 'paused'}:${task.lastStatus}`,
-        header: 'State',
-        size: 176,
-        meta: { label: 'State', skeleton: { kind: 'badge', width: 'w-28' } },
-        cell: ({ row }) => (
-          <div className='flex flex-wrap gap-2'>
-            <Badge variant={row.original.enabled ? 'success' : 'neutral'}>
-              {row.original.enabled ? 'Enabled' : 'Paused'}
-            </Badge>
-            <Badge variant={statusVariant(row.original.lastStatus)}>{statusLabel(row.original.lastStatus)}</Badge>
-          </div>
-        )
-      },
-      {
-        id: 'schedule',
-        accessorFn: task => task.cronExpression,
-        header: 'Schedule',
-        size: 176,
-        meta: { label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>{scheduleLabel(row.original.cronExpression)}</span>
-        )
-      },
-      {
-        id: 'nextRunAt',
-        accessorFn: task => task.nextRunAt ?? '',
-        header: 'Next run',
-        size: 176,
-        meta: { label: 'Next run', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
-      },
-      {
-        id: 'lastRunAt',
-        accessorFn: task => task.lastRunAt ?? '',
-        header: 'Last run',
-        size: 176,
-        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
-      },
-      {
-        id: 'enabled',
-        accessorFn: task => task.enabled,
-        header: 'Enabled',
-        size: 112,
-        meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
-        cell: ({ row }) => (
-          <div className='flex justify-center'>
-            <Switch
-              checked={row.original.enabled}
-              disabled={busyTaskId === row.original.id}
-              aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
-              onCheckedChange={enabled => void toggleEnabled(row.original, enabled)}
-            />
-          </div>
-        )
-      }
-    ],
-    [actionLabel, busyTaskId, toggleEnabled]
+  const columns = useMemo(
+    () => scheduledTaskColumns({ actionLabel, busyTaskId, openEditForm, toggleEnabled }),
+    [actionLabel, busyTaskId, openEditForm, toggleEnabled]
   )
 
   return (
     <>
-      <div className='grid gap-3'>
+      <div
+        className='grid gap-3'
+        data-testid={loading ? 'scheduler-grid-skeleton' : undefined}
+      >
         <DataGridWorkspace
+          disabled={loading}
+          filterTitle='Filter scheduled tasks'
           search={searchDraft}
           searchPlaceholder='Search scheduled tasks'
           onSearchChange={setSearchDraft}
@@ -234,13 +153,34 @@ export const ScheduledTasksTable = () => {
           }
           activeFilters={[
             ...(kindFilter !== 'all'
-              ? [{ id: 'kind', label: 'Kind', value: kindFilter, onRemove: () => setKindFilter('all') }]
+              ? [
+                  {
+                    id: 'kind',
+                    label: 'Kind',
+                    value: kindFilter === 'predefined' ? 'Built-in' : 'Custom',
+                    onRemove: () => setKindFilter('all')
+                  }
+                ]
               : []),
             ...(enabledFilter !== 'all'
-              ? [{ id: 'enabled', label: 'State', value: enabledFilter, onRemove: () => setEnabledFilter('all') }]
+              ? [
+                  {
+                    id: 'enabled',
+                    label: 'State',
+                    value: enabledFilter === 'enabled' ? 'Enabled' : 'Paused',
+                    onRemove: () => setEnabledFilter('all')
+                  }
+                ]
               : []),
             ...(statusFilter !== 'all'
-              ? [{ id: 'status', label: 'Result', value: statusFilter, onRemove: () => setStatusFilter('all') }]
+              ? [
+                  {
+                    id: 'status',
+                    label: 'Result',
+                    value: statusFilter === 'never_run' ? 'Never run' : statusFilter,
+                    onRemove: () => setStatusFilter('all')
+                  }
+                ]
               : [])
           ]}
           onResetFilters={() => {
@@ -253,7 +193,7 @@ export const ScheduledTasksTable = () => {
             <>
               <Button
                 size='sm'
-                variant='secondary'
+                variant='ghost'
                 disabled={busyTaskId !== null}
                 onClick={() => void runSelected()}
               >
@@ -261,7 +201,7 @@ export const ScheduledTasksTable = () => {
               </Button>
               <Button
                 size='sm'
-                variant='secondary'
+                variant='ghost'
                 disabled={busyTaskId !== null}
                 onClick={() => void updateSelectedEnabled(true)}
               >
@@ -269,7 +209,7 @@ export const ScheduledTasksTable = () => {
               </Button>
               <Button
                 size='sm'
-                variant='secondary'
+                variant='ghost'
                 disabled={busyTaskId !== null}
                 onClick={() => void updateSelectedEnabled(false)}
               >
@@ -277,7 +217,7 @@ export const ScheduledTasksTable = () => {
               </Button>
               <Button
                 size='sm'
-                variant='danger'
+                variant='danger-ghost'
                 disabled={busyTaskId !== null || !selectedTasksAreCustom}
                 onClick={() => setPendingDelete(selectedTasks)}
               >
@@ -302,7 +242,8 @@ export const ScheduledTasksTable = () => {
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}
-            minWidth='82rem'
+            minWidth='66.5rem'
+            loading={loading ? { rowCount: 5, selectable: true, rowMenu: true } : false}
             emptyState={<div className='text-center text-foreground-muted'>No scheduled tasks configured.</div>}
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedTasks.length > 1

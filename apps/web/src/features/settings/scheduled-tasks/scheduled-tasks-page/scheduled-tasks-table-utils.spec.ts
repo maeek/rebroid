@@ -39,4 +39,16 @@ describe('scheduled tasks table utils', () => {
       'later'
     ])
   })
+
+  it('sorts disabled tasks by their empty next-run value, ignoring stale dates', () => {
+    const tasks = [
+      task({ id: 'enabled', nextRunAt: '2026-01-02T00:00:00.000Z' }),
+      task({ id: 'disabled', enabled: false, nextRunAt: '2026-01-03T00:00:00.000Z' })
+    ]
+
+    expect(sortTasks(tasks, [{ id: 'nextRunAt', desc: false }], item => item.actionType).map(item => item.id)).toEqual([
+      'disabled',
+      'enabled'
+    ])
+  })
 })
