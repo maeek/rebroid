@@ -60,6 +60,14 @@ export class AndroidAppsConfigurationService {
         ? this.apks.get(dto.uploadedApkId)
         : Promise.resolve(null),
     ]);
+    if (
+      uploadedApk &&
+      uploadedApk.ownerUserId !== (dto.ownerUserId?.trim() || null)
+    ) {
+      throw new ConflictException(
+        'Uploaded APK does not belong to this application owner.',
+      );
+    }
     const containerImage = resolveContainerImage(
       dto.containerImage ?? settings.defaultContainerImage,
       settings.dockerImageRegistry,
@@ -159,6 +167,11 @@ export class AndroidAppsConfigurationService {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
     const uploadedApk = await this.apks.get(dto.uploadedApkId);
+    if (uploadedApk.ownerUserId !== app.ownerUserId) {
+      throw new ConflictException(
+        'Uploaded APK does not belong to this application owner.',
+      );
+    }
     this.applicationFactory.applyUploadedApk(app, uploadedApk);
     await this.writer.save(app);
 
