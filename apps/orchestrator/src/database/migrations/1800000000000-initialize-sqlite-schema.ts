@@ -399,6 +399,7 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
           { name: 'ownerUserId', type: 'text', isNullable: false },
           { name: 'name', type: 'varchar', isNullable: false },
+          { name: 'description', type: 'text', isNullable: true },
           { name: 'automationId', type: 'varchar', isNullable: false },
           { name: 'targetApplicationId', type: 'varchar', isNullable: false },
           { name: 'profileMode', type: 'varchar', isNullable: true },

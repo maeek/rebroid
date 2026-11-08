@@ -81,6 +81,19 @@ describe('AppModule', () => {
     expect(response.headers['cache-control']).toBe('no-store');
 
     const dataSource = app.get(DataSource);
+    const schemaQueryRunner = dataSource.createQueryRunner();
+    try {
+      for (const entity of dataSource.entityMetadatas) {
+        const table = await schemaQueryRunner.getTable(entity.tableName);
+        expect(table?.columns.map((column) => column.name)).toEqual(
+          expect.arrayContaining(
+            entity.columns.map((column) => column.databaseName),
+          ),
+        );
+      }
+    } finally {
+      await schemaQueryRunner.release();
+    }
     const journalMode = (await dataSource.query(
       'PRAGMA journal_mode',
     )) as Array<{
