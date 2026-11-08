@@ -2,11 +2,13 @@
 
 import { IconLoader2, IconPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
 export const SurfaceTabs = ({
+  loading = false,
   activeSurface,
   isAddingDisplay,
   surfaces,
@@ -14,6 +16,7 @@ export const SurfaceTabs = ({
   onSelectSurface,
   onScrollSurfaceIntoView
 }: {
+  loading?: boolean
   activeSurface?: DisplayViewerSurface
   isAddingDisplay: boolean
   surfaces: DisplayViewerSurface[]
@@ -29,6 +32,7 @@ export const SurfaceTabs = ({
   return (
     <div className='flex shrink-0 items-center justify-between gap-3 pt-2 sm:px-6 sm:pt-3'>
       <div className='flex min-w-0 items-center gap-2 overflow-x-auto'>
+        {loading ? <Skeleton className='h-8 w-28' /> : null}
         {surfaces.map(surface => (
           <Button
             key={surface.id}
@@ -49,7 +53,7 @@ export const SurfaceTabs = ({
             type='button'
             size='sm'
             variant='secondary'
-            disabled={isAddingDisplay}
+            disabled={loading || isAddingDisplay}
             onClick={onAddDisplay}
             className='h-8 shrink-0 gap-1.5 px-3 text-xs'
           >

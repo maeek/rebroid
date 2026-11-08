@@ -48,8 +48,7 @@ export const CreateAppNetworkAccessSection = ({
     <AppNetworkPolicyEditorSection
       title='Network access'
       surface='plain'
-      sectionDescription='Choose outbound access before the app is provisioned. API/default destinations are applied automatically.'
-      modeDescription='Limit Android traffic to the API and explicit CIDR ranges, or allow unrestricted outbound access.'
+      modeDescription='Restrict outbound traffic to the API and allowed IPv4 ranges.'
       unrestrictedLabel='Unrestricted outbound access'
       modeValue={values.networkPolicyEnabled}
       onModeChange={value => onChange({ networkPolicyEnabled: value })}

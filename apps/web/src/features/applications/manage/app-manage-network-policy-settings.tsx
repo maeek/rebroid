@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Visible } from '@/components/ui/visible'
 import { getInvalidCidrMessage } from '@/features/applications/components/app-form-utils'
 import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
@@ -13,6 +13,7 @@ import {
   applyNetworkPolicyAction,
   updateNetworkPolicyAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 type AppManageNetworkPolicySettingsProps = {
@@ -29,7 +30,8 @@ const getPolicyMessage = (app: AppDefinition) =>
 export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetworkPolicySettingsProps) => {
   const [networkPolicyEnabled, setNetworkPolicyEnabled] = useState(app.networkPolicyEnabled)
   const [networkPolicyAllowCidrs, setNetworkPolicyAllowCidrs] = useState<string[]>(app.networkPolicyAllowCidrs ?? [])
-  const [isSaving, setIsSaving] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'save' | 'apply' | null>(null)
+  const isSaving = pendingAction !== null
   const isDirtyRef = useRef(false)
   const previousAppIdRef = useRef(app.id)
 
@@ -51,10 +53,12 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
   }
 
   const persistNetworkPolicy = async () => {
-    const updated = await updateNetworkPolicyAction(app.id, {
-      networkPolicyEnabled,
-      networkPolicyAllowCidrs
-    })
+    const updated = unwrapActionResult(
+      await updateNetworkPolicyAction(app.id, {
+        networkPolicyEnabled,
+        networkPolicyAllowCidrs
+      })
+    )
     const mapped = mapAndroidApplicationToAppDefinition(updated)
     onUpdated(mapped)
     syncFromApp(mapped)
@@ -63,10 +67,10 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
   }
 
   const handleSaveNetworkPolicy = async () => {
-    setIsSaving(true)
+    setPendingAction('save')
     try {
       await persistNetworkPolicy()
-      toast({ title: 'Network policy saved' })
+      toast({ title: 'Network policy saved', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not save network policy',
@@ -74,22 +78,22 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setPendingAction(null)
     }
   }
 
   const handleApplyNetworkPolicy = async () => {
-    setIsSaving(true)
+    setPendingAction('apply')
     try {
       if (isDirtyRef.current) {
         await persistNetworkPolicy()
+      } else {
+        const updated = unwrapActionResult(await applyNetworkPolicyAction(app.id))
+        const mapped = mapAndroidApplicationToAppDefinition(updated)
+        onUpdated(mapped)
+        syncFromApp(mapped)
       }
-
-      const updated = await applyNetworkPolicyAction(app.id)
-      const mapped = mapAndroidApplicationToAppDefinition(updated)
-      onUpdated(mapped)
-      syncFromApp(mapped)
-      toast({ title: 'Network policy applied' })
+      toast({ title: 'Network policy updated', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not apply policy',
@@ -97,7 +101,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
         variant: 'danger'
       })
     } finally {
-      setIsSaving(false)
+      setPendingAction(null)
     }
   }
 
@@ -125,8 +129,8 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       topSection={
         <div className='flex flex-col gap-2'>
           <div className='flex flex-wrap items-center gap-2'>
-            <Badge variant={networkPolicyEnabled ? 'success' : 'neutral'}>
-              {networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
+            <Badge variant={app.networkPolicyEnabled ? 'success' : 'neutral'}>
+              {app.networkPolicyEnabled ? 'Restricted' : 'Unrestricted'}
             </Badge>
             <Badge
               variant={app.networkPolicyResult?.status === 'error' ? 'danger' : 'neutral'}
@@ -159,21 +163,25 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
       isBusy={isSaving}
       sectionActions={
         <div className='flex gap-2'>
-          <Button
+          <MutationButton
             type='button'
+            pending={pendingAction === 'save'}
             disabled={isSaving}
+            pendingLabel='Saving…'
             onClick={() => void handleSaveNetworkPolicy()}
           >
             Save policy
-          </Button>
-          <Button
+          </MutationButton>
+          <MutationButton
             type='button'
             variant='secondary'
+            pending={pendingAction === 'apply'}
             disabled={isSaving}
+            pendingLabel='Updating…'
             onClick={() => void handleApplyNetworkPolicy()}
           >
             Apply now
-          </Button>
+          </MutationButton>
         </div>
       }
       restrictedLabel='Only API plus allowlist'

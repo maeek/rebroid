@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconShieldLock } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { StateView } from '@/shared/ui/state-view'
+import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 
@@ -60,20 +61,16 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
   }
 
   return (
-    <div
-      className={cn(
-        'flex w-full flex-col items-center justify-start gap-4 max-sm:max-w-full',
-        {
-          'max-w-none lg:sticky lg:top-10 lg:min-w-0 lg:flex-1 lg:self-stretch lg:pr-4 lg:pt-6':
-            placement === 'side' && useDisplayWorkspace,
-          'max-w-[min(100%,42rem)] lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6':
-            placement === 'side' && !useDisplayWorkspace,
-          'max-w-none': placement === 'top'
-        },
-        'max-sm:px-1'
-      )}
+    <AppViewerPaneLayout
+      placement={placement}
+      workspace={useDisplayWorkspace}
     >
-      <div className='relative flex w-full items-center justify-center'>
+      {canAttach ? (
+        <div className='flex w-full shrink-0 justify-end'>
+          <AppViewerStreamingSettings />
+        </div>
+      ) : null}
+      <div className='relative flex w-full min-h-0 items-center justify-center'>
         <Visible when={canAttach && runtimeAvailable}>
           <DisplayViewerEmbed
             key={app.id}
@@ -113,6 +110,31 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
           </div>
         </Visible>
       </div>
-    </div>
+    </AppViewerPaneLayout>
   )
 }
+
+export const AppViewerPaneLayout = ({
+  placement = 'side',
+  workspace = false,
+  children
+}: {
+  placement?: 'side' | 'top'
+  workspace?: boolean
+  children: ReactNode
+}) => (
+  <div
+    className={cn(
+      'flex w-full flex-col items-center justify-start gap-3 max-sm:max-w-full [--app-viewer-height:calc(100dvh-9rem)]',
+      {
+        'max-w-none lg:sticky lg:top-10 lg:min-w-0 lg:flex-1 lg:self-stretch lg:pr-4 lg:pt-6':
+          placement === 'side' && workspace,
+        'max-w-[min(100%,42rem)] lg:sticky lg:top-10 lg:self-start lg:pr-4 lg:pt-6': placement === 'side' && !workspace,
+        'max-w-none': placement === 'top'
+      },
+      'max-sm:px-1'
+    )}
+  >
+    {children}
+  </div>
+)

@@ -1,6 +1,6 @@
 'use client'
 
-import { IconLoader2, IconPlayerPlayFilled } from '@tabler/icons-react'
+import { IconPlayerPlayFilled } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Visible } from '@/components/ui/visible'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { useRuntimePowerActionContext } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime-power-action-context'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 
@@ -33,9 +33,15 @@ export const StartProfileDialog = () => {
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={next => {
+        if (!isRunningAction) onOpenChange(next)
+      }}
     >
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-md'
+        showCloseButton={!isRunningAction}
+      >
         <DialogHeader>
           <DialogTitle>Start app</DialogTitle>
           <DialogDescription>Choose the saved profile for this session before the app starts.</DialogDescription>
@@ -44,6 +50,7 @@ export const StartProfileDialog = () => {
           mode={profileMode}
           name={profileName}
           savedProfiles={savedProfiles}
+          selectedProfile={app ? { mode: app.profileMode, name: app.profileName ?? 'default' } : undefined}
           disabled={isRunningAction}
           canDeleteProfiles={canDeleteProfiles}
           onDeleteProfile={onProfileDelete}
@@ -58,19 +65,15 @@ export const StartProfileDialog = () => {
           >
             Cancel
           </Button>
-          <Button
-            variant='primary'
-            disabled={!app || isRunningAction}
+          <MutationButton
+            disabled={!app}
+            pending={isRunningAction}
+            pendingLabel='Starting…'
             onClick={onStart}
           >
-            <Visible when={isRunningAction}>
-              <IconLoader2 className='size-4 animate-spin' />
-            </Visible>
-            <Visible when={!isRunningAction}>
-              <IconPlayerPlayFilled className='size-4' />
-            </Visible>
-            Start
-          </Button>
+            <IconPlayerPlayFilled className='size-4' />
+            Start app
+          </MutationButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

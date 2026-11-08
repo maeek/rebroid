@@ -17,8 +17,8 @@ import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 
 const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
-  <label className='flex flex-col gap-1.5 min-w-0 lg:flex-row lg:py-1 lg:items-center'>
-    <span className='text-xs font-medium uppercase tracking-wide lg:flex-1/4'>{label}</span>
+  <label className='flex flex-col gap-1.5 min-w-0'>
+    <span className='text-xs font-medium text-foreground-muted'>{label}</span>
     {children}
   </label>
 )
@@ -33,7 +33,7 @@ const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetri
   const fresh = metricIsFresh(metrics)
 
   return (
-    <div className='grid gap-2 sm:grid-cols-2 xl:grid-cols-4'>
+    <div className='grid gap-2 sm:grid-cols-2'>
       <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconActivityHeartbeat className='size-4 text-primary' />
         <span className='text-foreground-muted'>Source FPS</span>
@@ -82,7 +82,7 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
   return (
     <details className='rounded-control border border-surface-border/70 bg-surface-band/20 px-3 py-2 text-xs'>
       <summary className='cursor-pointer font-medium text-foreground'>Streaming diagnostics</summary>
-      <div className='mt-2 grid gap-x-6 lg:grid-cols-2'>
+      <div className='mt-2 grid gap-x-6'>
         <DiagnosticValue
           label='Pipeline FPS'
           value={[

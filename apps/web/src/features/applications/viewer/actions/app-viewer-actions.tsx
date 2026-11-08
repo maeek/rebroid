@@ -20,7 +20,7 @@ export const AppViewerActions = ({
   mode = 'workspace'
 }: {
   className?: string
-  mode?: 'workspace' | 'details'
+  mode?: 'workspace' | 'details' | 'resource'
 }) => {
   const { app, initialSettings, isForeignOwnedApp, permissions } = useApplicationViewerContext()
   const [logsOpen, setLogsOpen] = useState(false)
@@ -28,8 +28,8 @@ export const AppViewerActions = ({
   const canStart = hasPermission(permissions, 'applications:start')
   const canStop = hasPermission(permissions, 'applications:stop')
   const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
-  const canDelete = mode !== 'workspace' && hasPermission(permissions, 'applications:delete')
-  const canRunAutomations = mode === 'details' && canUseRuntime && hasPermission(permissions, 'automations:run')
+  const canDelete = mode === 'details' && hasPermission(permissions, 'applications:delete')
+  const canRunAutomations = mode !== 'workspace' && canUseRuntime && hasPermission(permissions, 'automations:run')
   const showSettingsAction = Boolean(app?.id) && (mode === 'workspace' || mode === 'details')
   const showLogsAction = canViewLogs && mode === 'details'
 
@@ -67,7 +67,7 @@ export const AppViewerActions = ({
               size='icon-md'
               aria-label='Manage application settings'
             >
-              <Link href={`/app/${app?.id}/manage`}>
+              <Link href={`/app/${app?.id}?view=configuration`}>
                 <IconSettings className='size-4' />
               </Link>
             </Button>

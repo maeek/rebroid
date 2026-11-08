@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { IconLoader2, IconPlayerPlay, IconRobot } from '@tabler/icons-react'
+import { useEffect, useRef, useState } from 'react'
+import { IconPlayerPlay, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,10 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
@@ -28,6 +30,7 @@ import type { Automation, AutomationRun } from '@/shared/contracts/automation'
 
 export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
   const { app, permissions, setApp } = useApplicationViewerContext()
+  const mutationPending = useRef(false)
   const [open, setOpen] = useState(false)
   const [automations, setAutomations] = useState<Automation[]>([])
   const [automationId, setAutomationId] = useState('')
@@ -39,22 +42,31 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
 
   useEffect(() => {
     if (!open) return
+    let cancelled = false
     setProfileMode(app?.profileMode ?? 'persistent')
     setProfileName(app?.profileName ?? 'default')
     setLoading(true)
+    setAutomations([])
     void listRunnableAutomationsAction()
       .then(items => {
+        if (cancelled) return
         setAutomations(items)
-        setAutomationId(current => current || items[0]?.id || '')
+        setAutomationId(current => (items.some(item => item.id === current) ? current : items[0]?.id || ''))
       })
       .catch(error => {
+        if (cancelled) return
         toast({
           title: 'Could not load workflows',
           description: error instanceof Error ? error.message : 'Unknown error',
           variant: 'danger'
         })
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [app?.profileMode, app?.profileName, open])
 
   if (!app?.id) {
@@ -92,7 +104,8 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
   }
 
   const run = async () => {
-    if (!automationId) return
+    if (!automationId || loading || mutationPending.current) return
+    mutationPending.current = true
     setRunning(true)
     try {
       const result = await runAutomationAction(automationId, {
@@ -102,8 +115,8 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         startPolicy: startIfNeeded ? 'start-if-needed' : 'require-running'
       })
       toast({
-        title: 'Automation queued',
-        description: `Run ${result.id.slice(0, 8)} started.`,
+        title: 'Workflow queued',
+        description: `Run ${result.id.slice(0, 8)} was added to the queue.`,
         variant: 'success'
       })
       onRunStarted?.(result)
@@ -115,6 +128,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         variant: 'danger'
       })
     } finally {
+      mutationPending.current = false
       setRunning(false)
     }
   }
@@ -135,47 +149,40 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
       </Tooltip>
       <Dialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={next => {
+          if (!running) setOpen(next)
+        }}
       >
-        <DialogContent className='sm:max-w-2xl'>
+        <DialogContent
+          data-editor-dialog=''
+          className='sm:max-w-2xl'
+          showCloseButton={!running}
+        >
           <DialogHeader>
             <DialogTitle>Run workflow</DialogTitle>
             <DialogDescription>Select a workflow and runtime profile for this app.</DialogDescription>
           </DialogHeader>
-          <div className='grid gap-5'>
-            <div className='grid gap-2'>
-              <label
-                htmlFor='run-workflow-selection'
-                className='text-sm font-medium text-foreground'
-              >
-                Workflow
-              </label>
-              <Select
+          <fieldset
+            disabled={running}
+            className='grid min-w-0 gap-4'
+          >
+            <FormField
+              label='Workflow'
+              layout='vertical'
+            >
+              <SingleSelectCombobox
                 value={automationId}
-                disabled={loading || automations.length === 0}
+                disabled={loading || running || automations.length === 0}
                 onValueChange={setAutomationId}
-              >
-                <SelectTrigger
-                  id='run-workflow-selection'
-                  className='w-full'
-                >
-                  <SelectValue placeholder={loading ? 'Loading workflows...' : 'Choose workflow'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {automations.map(automation => (
-                    <SelectItem
-                      key={automation.id}
-                      value={automation.id}
-                    >
-                      {automation.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Visible when={!loading && automations.length === 0}>
-                <p className='text-sm text-foreground-muted'>No workflows are available yet.</p>
-              </Visible>
-            </div>
+                placeholder={loading ? 'Loading workflows…' : 'Search workflows'}
+                options={automations.map(workflow => ({ value: workflow.id, label: workflow.name }))}
+              />
+            </FormField>
+            <Visible when={!loading && automations.length === 0}>
+              <p className='text-sm text-foreground-muted'>
+                No workflows are available. Create a workflow or ask its owner for access.
+              </p>
+            </Visible>
             <ApplicationProfileSelect
               mode={profileMode}
               name={profileName}
@@ -187,18 +194,18 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
               onModeChange={setProfileMode}
               onNameChange={setProfileName}
             />
-            <label
-              htmlFor='run-workflow-start-if-needed'
-              className='flex items-center gap-2 text-sm text-foreground'
+            <FormField
+              label='Start app if needed'
+              description='Start a stopped app before running the workflow. Otherwise, the app must already be running.'
+              layout='vertical'
             >
-              <Checkbox
-                id='run-workflow-start-if-needed'
+              <Switch
                 checked={startIfNeeded}
-                onCheckedChange={checked => setStartIfNeeded(checked === true)}
+                disabled={running}
+                onCheckedChange={setStartIfNeeded}
               />
-              Start app before running if needed
-            </label>
-          </div>
+            </FormField>
+          </fieldset>
           <DialogFooter>
             <Button
               variant='secondary'
@@ -207,18 +214,15 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
             >
               Cancel
             </Button>
-            <Button
-              disabled={!automationId || running || loading}
+            <MutationButton
+              disabled={!automationId || loading || !automations.some(workflow => workflow.id === automationId)}
+              pending={running}
+              pendingLabel='Queuing…'
               onClick={() => void run()}
             >
-              <Visible when={running}>
-                <IconLoader2 className='size-4 animate-spin' />
-              </Visible>
-              <Visible when={!running}>
-                <IconPlayerPlay className='size-4' />
-              </Visible>
-              Run
-            </Button>
+              <IconPlayerPlay className='size-4' />
+              Run workflow
+            </MutationButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

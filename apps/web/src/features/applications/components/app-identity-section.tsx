@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react'
+import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
@@ -27,12 +28,12 @@ export const AppIdentitySection = ({
   isUploadingApk,
   onApkSelect,
   iconSlot,
-  nameDescription = 'Display name shown in the UI for this app. Minimum 2 characters.',
-  apkDescription = 'Optional Android package. It uploads first so metadata and icons can be extracted before the app is created.',
+  nameDescription = 'At least 2 characters.',
+  apkDescription = 'Optional. Upload an APK to extract its app details and icon.',
   nameRequired = true,
   nameLabel = 'Name',
   nameMinLength = 2,
-  surface = 'band'
+  surface = 'plain'
 }: AppIdentitySectionProps) => {
   const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     onNameChange(event.target.value)
@@ -50,11 +51,8 @@ export const AppIdentitySection = ({
       headingSpacing='default'
       contentClassName='gap-5'
     >
-      <div className='grid gap-5 xl:grid-cols-[max-content_1fr]'>
-        <Visible when={iconSlot}>
-          <div className='border-surface-border/60 xl:pr-5'>{iconSlot}</div>
-        </Visible>
-        <div className='flex flex-col gap-6'>
+      <div className='grid'>
+        <div className='flex flex-col gap-5'>
           <FormField
             label={nameLabel}
             description={nameDescription}
@@ -76,18 +74,24 @@ export const AppIdentitySection = ({
             layout='vertical'
             className={verticalSettingClassName}
           >
-            <div className='flex w-full flex-col gap-2'>
-              <Input
-                type='file'
-                accept='.apk,application/vnd.android.package-archive'
-                disabled={isUploadingApk}
-                onChange={handleApkSelect}
-              />
-              <Visible when={uploadedApkLabel}>
-                <p className='text-sm text-foreground-muted'>{uploadedApkLabel}</p>
-              </Visible>
-            </div>
+            <FileUploadField
+              accept='.apk,application/vnd.android.package-archive'
+              pending={isUploadingApk}
+              onChange={handleApkSelect}
+              aria-label='APK file'
+              buttonLabel='Upload APK'
+              filenameLabel={uploadedApkLabel}
+            />
           </FormField>
+          <Visible when={iconSlot}>
+            <FormField
+              label='Icon'
+              description='Optional launcher artwork for this app.'
+              layout='vertical'
+            >
+              {iconSlot}
+            </FormField>
+          </Visible>
         </div>
       </div>
     </Section>

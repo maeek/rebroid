@@ -15,8 +15,6 @@ export const revalidateApplicationList = () => {
 
 export const revalidateApplicationDetail = (id: string) => {
   revalidatePath(`/app/${id}`)
-  revalidatePath(`/app/${id}/manage`)
-  revalidatePath(`/app/${id}/manage/profiles`)
 }
 
 export const revalidateOrchestratorPages = () => {

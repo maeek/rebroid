@@ -1,5 +1,5 @@
 import { CreateAppForm } from '@/features/applications/create/create-app-form'
-import { StandardPage } from '@/shared/ui/page/page-layout'
+import { EditorPage } from '@/shared/ui/page/editor-page'
 import { getCreateAppPageData } from './page-data.server'
 
 export const CreateAppPageEntry = async ({
@@ -10,7 +10,10 @@ export const CreateAppPageEntry = async ({
     await getCreateAppPageData(uploadedApkId)
 
   return (
-    <StandardPage className='gap-2'>
+    <EditorPage
+      width='full'
+      className='gap-2'
+    >
       <CreateAppForm
         images={images}
         initialContainerImage={initialImage}
@@ -19,6 +22,6 @@ export const CreateAppPageEntry = async ({
         canBuildImages={canBuildImages}
         initialUploadedApk={initialUploadedApk}
       />
-    </StandardPage>
+    </EditorPage>
   )
 }

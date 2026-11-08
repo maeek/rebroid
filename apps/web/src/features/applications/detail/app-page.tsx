@@ -1,9 +1,13 @@
 'use client'
+import type { ReactNode } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { StandardPageSplit } from '@/shared/ui/page/page-layout'
+import { AppDeviceLayout } from './app-device-layout'
+import { AppResourceHome } from './app-resource-home'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
@@ -17,7 +21,8 @@ export const AppViewerPage = ({
   initialSettings,
   currentOwnerUserId,
   isAdmin,
-  viewMode = 'workspace'
+  viewMode = 'workspace',
+  activity
 }: {
   app?: AppDefinition
   permissions: PermissionMap
@@ -25,6 +30,7 @@ export const AppViewerPage = ({
   currentOwnerUserId: string
   isAdmin: boolean
   viewMode?: 'workspace' | 'details'
+  activity?: ReactNode
 }) => {
   return (
     <ApplicationViewerProvider
@@ -34,13 +40,24 @@ export const AppViewerPage = ({
       isAdmin={isAdmin}
       permissions={permissions}
     >
-      <AppViewerPageContent viewMode={viewMode} />
+      <AppViewerPageContent
+        viewMode={viewMode}
+        activity={activity}
+      />
     </ApplicationViewerProvider>
   )
 }
 
-const AppViewerPageContent = ({ viewMode = 'workspace' }: { viewMode?: 'workspace' | 'details' }) => {
+const AppViewerPageContent = ({
+  viewMode = 'workspace',
+  activity
+}: {
+  viewMode?: 'workspace' | 'details'
+  activity?: ReactNode
+}) => {
   const { app } = useApplicationViewerContext()
+  const search = useSearchParams()
+  const view = search.get('view') ?? 'overview'
   const isDetailsView = viewMode === 'details'
 
   if (!app) {
@@ -48,14 +65,25 @@ const AppViewerPageContent = ({ viewMode = 'workspace' }: { viewMode?: 'workspac
   }
 
   if (!isDetailsView) {
+    const section = view === 'activity' || view === 'diagnostics' ? view : 'overview'
     return (
-      <StandardPageSplit className='h-auto min-h-[calc(100vh-4rem)] items-start'>
+      <AppDeviceLayout
+        viewer={<AppViewerPane placement='top' />}
+        contained={view === 'ai-agent'}
+      >
         <PageBackdrop
           imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
           opacity={0.08}
         />
-        <AppWorkspaceContent />
-      </StandardPageSplit>
+        {view === 'ai-agent' || view === 'workflows' || view === 'clipboard' || view === 'files' ? (
+          <AppWorkspaceContent toolId={view} />
+        ) : (
+          <AppResourceHome
+            view={section}
+            activity={activity}
+          />
+        )}
+      </AppDeviceLayout>
     )
   }
 

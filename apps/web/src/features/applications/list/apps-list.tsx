@@ -3,6 +3,7 @@ import { Visible } from '@/components/ui/visible'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
+import { AppsAttentionSummary } from './components/apps-attention-summary'
 import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
@@ -60,6 +61,7 @@ export const AppsList = ({
     <AppsListProvider value={contextValue}>
       <AppsListHeader />
       <AppsListBulkDialog />
+      <AppsAttentionSummary apps={availableApps} />
       <div className='flex flex-col gap-10 py-4'>
         <AppsGridSection
           title='My apps'

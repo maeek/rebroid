@@ -74,7 +74,7 @@ const DisplayLoadingSurface = ({ app, description }: { app: AppDefinition; descr
   const layout = getViewerFrameLayout(app, viewerOrientation(app))
 
   return (
-    <div className='flex min-h-136 w-full items-center justify-center p-4 sm:p-6'>
+    <div className='flex w-full items-center justify-center'>
       <div
         className={getViewerFrameClassName(false)}
         style={getViewerFrameStyle(layout, false)}
@@ -215,7 +215,7 @@ export const DisplayViewerEmbed = ({
   }
 
   return (
-    <div className='relative h-[min(74dvh,62rem)] min-h-104 w-full overflow-hidden sm:h-[min(86dvh,64rem)] sm:min-h-136'>
+    <div className='relative h-[var(--app-viewer-height,calc(100dvh-6rem))] min-h-0 w-full overflow-hidden'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
         <div className='absolute left-3 right-3 top-3 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>

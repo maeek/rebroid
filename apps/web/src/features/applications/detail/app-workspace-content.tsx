@@ -1,46 +1,61 @@
-import { Badge } from '@/components/ui/badge'
-import { Visible } from '@/components/ui/visible'
+import type { ReactNode } from 'react'
+import { Notice } from '@/components/ui/notice'
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { RuntimeToolsPanel } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { PageContent } from '@/shared/ui/page/page-layout'
-import { AppViewerPane } from './app-viewer-pane'
+import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
+import { AppResourceLayout } from './app-resource-layout'
+import { AppResourceNavigation } from './app-resource-navigation'
 import { useApplicationViewerApp } from './application-viewer-context'
+import type { RuntimeToolId } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-definitions'
 
-export const AppWorkspaceContent = () => {
-  const { app, isForeignOwnedApp } = useApplicationViewerApp()
-
+export const AppWorkspaceContent = ({ toolId }: { toolId: RuntimeToolId }) => {
   return (
-    <>
-      <PageContent className='min-w-0 gap-5 pr-6 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch'>
-        <div className='flex w-full grow flex-col gap-5 lg:min-h-0 lg:flex-1'>
-          <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: app.name }]} />
-          <AppViewerHeading
-            app={app}
-            showStatusBadge
-          >
-            <AppViewerActions mode='workspace' />
-          </AppViewerHeading>
-          <Visible when={isForeignOwnedApp}>
-            <Badge
-              variant='outline'
-              className='w-fit'
-            >
-              Owner: {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown'}
-            </Badge>
-          </Visible>
-          <div className='hidden min-h-[24rem] grow flex-col lg:flex lg:min-h-0 lg:flex-1'>
-            <RuntimeToolsPanel />
-          </div>
-        </div>
-      </PageContent>
-      <div className='flex w-full max-w-[min(100%,42rem)] items-start justify-center rounded-panel px-2 py-2 max-sm:px-1 max-sm:py-2 sm:p-4 lg:sticky lg:top-10 lg:min-h-[calc(100dvh-4rem)] lg:flex-1 lg:self-stretch lg:items-stretch lg:pr-4 lg:pt-6'>
-        <AppViewerPane placement='top' />
-      </div>
-      <div className='w-full px-1 lg:hidden'>
-        <RuntimeToolsPanel />
-      </div>
-    </>
+    <AppWorkspaceLayout toolId={toolId}>
+      <RuntimeToolsPanel toolId={toolId} />
+    </AppWorkspaceLayout>
+  )
+}
+
+export const AppWorkspaceLayout = ({ toolId, children }: { toolId: RuntimeToolId; children: ReactNode }) => {
+  const { app, permissions, isForeignOwnedApp, canViewAuditActivity } = useApplicationViewerApp()
+  return (
+    <AppResourceLayout
+      workspace={toolId === 'ai-agent'}
+      breadcrumbs={
+        <AppResourceBreadcrumbs
+          appId={app.id}
+          appName={app.name}
+          view={toolId}
+        />
+      }
+      heading={
+        <AppViewerHeading
+          app={app}
+          showStatusBadge
+        >
+          <AppViewerActions mode='resource' />
+        </AppViewerHeading>
+      }
+      navigation={
+        <AppResourceNavigation
+          appId={app.id}
+          active={toolId}
+          permissions={permissions}
+          isForeignOwnedApp={isForeignOwnedApp}
+          canViewAuditActivity={canViewAuditActivity}
+        />
+      }
+      status={null}
+    >
+      {isForeignOwnedApp ? (
+        <Notice
+          title='Separate session required'
+          description='Runtime tools are only available in your own app session.'
+        />
+      ) : (
+        children
+      )}
+    </AppResourceLayout>
   )
 }

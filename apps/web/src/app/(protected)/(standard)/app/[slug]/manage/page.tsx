@@ -1,5 +1,7 @@
-import { ManageAppPageEntry } from '@/features/applications/pages/manage-app/page-entry'
+import { redirect } from 'next/navigation'
+import { appResourceHref } from '@/features/applications/detail/app-resource-links'
 
-export default function ManagePage({ params }: { params: Promise<{ slug: string }> }) {
-  return <ManageAppPageEntry params={params} />
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  redirect(appResourceHref(slug, 'configuration'))
 }

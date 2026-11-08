@@ -66,10 +66,11 @@ export const AppNetworkPolicyEditorSection = ({
       >
         <Select
           value={modeValue ? 'enabled' : 'disabled'}
+          disabled={isBusy}
           onValueChange={value => onModeChange(value === 'enabled')}
         >
           <SelectTrigger className='w-full'>
-            <SelectValue />
+            <SelectValue>{modeValue ? restrictedLabel : unrestrictedLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='enabled'>{restrictedLabel}</SelectItem>
@@ -82,11 +83,11 @@ export const AppNetworkPolicyEditorSection = ({
           </SelectContent>
         </Select>
       </FormField>
-      <div className='flex w-full flex-col gap-3'>
-        <div className='grid gap-1'>
-          <div className='text-sm font-bold text-foreground'>{allowlistTitle}</div>
-          <p className='text-xs leading-relaxed text-foreground-muted'>{allowlistDescription}</p>
-        </div>
+      <FormField
+        label={allowlistTitle}
+        description={allowlistDescription}
+        layout='vertical'
+      >
         <NetworkAccessInput
           cidrs={allowCidrs}
           disabled={isBusy}
@@ -95,7 +96,7 @@ export const AppNetworkPolicyEditorSection = ({
           onRemoveCidr={onRemoveCidr}
           onInvalidCidr={onInvalidCidr}
         />
-      </div>
+      </FormField>
       <Visible when={sectionActions}>
         <div className='flex gap-2'>{sectionActions}</div>
       </Visible>

@@ -9,6 +9,7 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { toast } from '@/hooks/use-toast'
 import { formatDateLocale } from '@/lib/format'
 import { updateNetworkPolicyAction } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import {
   adbAddressForApp,
   getAppAllowCidrs,
@@ -210,10 +211,12 @@ export const AppInfoNetworkSection = ({
     setIsSaving(true)
 
     try {
-      const updated = await updateNetworkPolicyAction(app.id, {
-        networkPolicyEnabled: app.networkPolicyEnabled,
-        networkPolicyAllowCidrs: nextCidrs
-      })
+      const updated = unwrapActionResult(
+        await updateNetworkPolicyAction(app.id, {
+          networkPolicyEnabled: app.networkPolicyEnabled,
+          networkPolicyAllowCidrs: nextCidrs
+        })
+      )
       const mapped = mapAndroidApplicationToAppDefinition(updated)
       hasPendingLocalChangesRef.current = false
       setAllowCidrs(mapped.networkPolicyAllowCidrs)

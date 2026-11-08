@@ -72,6 +72,7 @@ export const AppViewer = ({
 
   return (
     <div
+      data-viewer-frame
       className={getViewerFrameClassName(fullscreen)}
       onContextMenu={event => event.preventDefault()}
       style={getViewerFrameStyle(layout, fullscreen)}

@@ -1,30 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { IconDatabase, IconLoader2, IconTrash } from '@tabler/icons-react'
+import { IconDatabase, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { Section } from '@/components/ui/section'
+import { Skeleton } from '@/components/ui/skeleton'
+import { editorSectionClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
+import { AppResourceBreadcrumbs } from '@/features/applications/detail/app-resource-breadcrumbs'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { toast } from '@/hooks/use-toast'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { PageContent, StandardPageSplit } from '@/shared/ui/page/page-layout'
+import { PageContent } from '@/shared/ui/page/page-layout'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; permissions: PermissionMap }) => {
@@ -42,7 +38,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
   const activeProfileName = currentApp.profileMode === 'persistent' ? (currentApp.profileName ?? 'default') : null
 
   const deleteProfile = async () => {
-    if (!profileToDelete) {
+    if (!profileToDelete || deleting) {
       return
     }
 
@@ -75,102 +71,111 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
   }
 
   return (
-    <StandardPageSplit>
+    <EditorPage>
       <PageBackdrop
         imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
         opacity={0.08}
       />
       <PageContent>
-        <PageBreadcrumbs
-          items={[
-            { label: 'Apps', href: '/apps' },
-            { label: currentApp.name, href: `/app/${currentApp.id}` },
-            { label: 'Manage', href: `/app/${currentApp.id}/manage` },
-            { label: 'Profiles' }
-          ]}
+        <AppResourceBreadcrumbs
+          appId={currentApp.id}
+          appName={currentApp.name}
+          view='profiles'
         />
         <AppViewerHeading app={currentApp} />
-        <Section
-          surface='plain'
-          title='Profiles'
-          headingSpacing='default'
-          contentClassName='gap-3'
-        >
-          <Visible when={persistentProfiles.length === 0}>
-            <p className='text-sm text-foreground-muted'>No saved persistent profiles are available yet.</p>
-          </Visible>
-          {persistentProfiles.map(profile => {
-            const isActive = activeProfileName === profile.name
-            const canRemove = canDeleteProfiles && !isActive
-
-            return (
-              <div
-                key={profile.name}
-                className='flex min-w-0 items-center gap-3 rounded-control border border-surface-border/70 bg-surface-panel/45 p-3'
-              >
-                <span className='grid size-9 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted'>
-                  <IconDatabase className='size-4' />
-                </span>
-                <div className='min-w-0 flex-1'>
-                  <div className='flex flex-wrap items-center gap-2'>
-                    <p className='truncate text-sm font-medium'>{profile.name}</p>
-                    <Visible when={isActive}>
-                      <Badge variant='outline'>Active</Badge>
-                    </Visible>
-                  </div>
-                  <p className='text-xs text-foreground-muted'>
-                    Persistent runtime data volume for this application profile.
-                  </p>
-                </div>
-                <Button
-                  type='button'
-                  variant='danger'
-                  size='sm'
-                  disabled={!canRemove}
-                  onClick={() => setProfileToDelete(profile.name)}
-                >
-                  <IconTrash className='size-4' />
-                  Remove
-                </Button>
-              </div>
-            )
-          })}
-        </Section>
+        <AppProfilesSection
+          profiles={persistentProfiles}
+          activeProfileName={activeProfileName}
+          canDeleteProfiles={canDeleteProfiles}
+          onRemove={setProfileToDelete}
+        />
       </PageContent>
-      <Dialog
+      <ConfirmMutationDialog
         open={Boolean(profileToDelete)}
         onOpenChange={open => !open && setProfileToDelete(null)}
-      >
-        <DialogContent className='sm:max-w-md'>
-          <DialogHeader>
-            <DialogTitle>Remove profile</DialogTitle>
-            <DialogDescription>
-              Delete the saved profile and its persistent runtime data volume. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={deleting}
-              onClick={() => setProfileToDelete(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type='button'
-              variant='danger'
-              disabled={deleting}
-              onClick={() => void deleteProfile()}
-            >
-              <Visible when={deleting}>
-                <IconLoader2 className='size-4 animate-spin' />
-              </Visible>
-              Remove
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </StandardPageSplit>
+        title='Remove profile?'
+        description='Delete the saved profile and its persistent data. This cannot be undone.'
+        summary={profileToDelete}
+        confirmLabel='Remove profile'
+        pendingLabel='Removing…'
+        pending={deleting}
+        onConfirm={() => void deleteProfile()}
+      />
+    </EditorPage>
   )
 }
+
+export const AppProfilesSection = ({
+  profiles,
+  activeProfileName = null,
+  canDeleteProfiles = false,
+  onRemove,
+  loading = false
+}: {
+  profiles: AppDefinition['savedProfiles']
+  activeProfileName?: string | null
+  canDeleteProfiles?: boolean
+  onRemove: (name: string) => void
+  loading?: boolean
+}) => (
+  <Section
+    surface='plain'
+    className={editorSectionClassName}
+    title='Profiles'
+    description='Saved app data. The active profile cannot be removed.'
+    headingSpacing='default'
+    contentClassName='gap-3'
+  >
+    <Visible when={!loading && profiles.length === 0}>
+      <p className='text-sm text-foreground-muted'>No saved persistent profiles are available yet.</p>
+    </Visible>
+    {(loading
+      ? Array.from({ length: 3 }, (_, index) => ({ name: String(index), mode: 'persistent' as const }))
+      : profiles
+    ).map(profile => {
+      const isActive = activeProfileName === profile.name
+      const canRemove = !loading && canDeleteProfiles && !isActive
+
+      return (
+        <div
+          key={profile.name}
+          className='flex min-w-0 flex-wrap items-center gap-3 rounded-control bg-surface-band/30 p-3'
+        >
+          <span className='grid size-9 shrink-0 place-items-center rounded-control bg-surface-band text-foreground-muted'>
+            <IconDatabase className='size-4' />
+          </span>
+          <div className='min-w-0 flex-1 basis-40'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <p className='text-sm font-medium [overflow-wrap:anywhere]'>
+                {loading ? (
+                  <Skeleton
+                    as='span'
+                    className='my-0.5 block h-4 w-32'
+                  />
+                ) : (
+                  profile.name
+                )}
+              </p>
+              <Visible when={isActive}>
+                <Badge variant='outline'>Active</Badge>
+              </Visible>
+            </div>
+            <p className='text-xs text-foreground-muted'>
+              Persistent runtime data volume for this application profile.
+            </p>
+          </div>
+          <Button
+            type='button'
+            variant='danger'
+            size='sm'
+            disabled={!canRemove}
+            onClick={() => onRemove(profile.name)}
+          >
+            <IconTrash className='size-4' />
+            Remove
+          </Button>
+        </div>
+      )
+    })}
+  </Section>
+)

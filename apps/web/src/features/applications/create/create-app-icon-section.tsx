@@ -1,18 +1,24 @@
-import { type ChangeEvent, useRef } from 'react'
+import { type ChangeEvent, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { EditorFormContext } from '@/components/ui/editor-form-context'
+import { FileUploadField } from '@/components/ui/file-upload-field'
+import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 
 type AppFormIconSectionProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   appId?: string
   appName: string
   iconPreview: string | null
   autoExtractIcon: boolean
   hasExtractedIcon: boolean
   disabled?: boolean
+  pending?: boolean
   surface?: 'plain' | 'band' | 'panel'
   showDescription?: boolean
   showAutoExtract?: boolean
@@ -22,12 +28,16 @@ type AppFormIconSectionProps = {
 }
 
 export const AppFormIconSection = ({
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   appId = 'new',
   appName,
   iconPreview,
   autoExtractIcon,
   hasExtractedIcon,
   disabled = false,
+  pending = false,
   surface = 'plain',
   showDescription = true,
   showAutoExtract = true,
@@ -35,13 +45,9 @@ export const AppFormIconSection = ({
   onClearIcon,
   onAutoExtractIconChange
 }: AppFormIconSectionProps) => {
-  const inputRef = useRef<HTMLInputElement>(null)
-
+  const [uploadRevision, setUploadRevision] = useState(0)
   const handleClearIcon = () => {
-    if (inputRef.current) {
-      inputRef.current.value = ''
-    }
-
+    setUploadRevision(current => current + 1)
     onClearIcon()
   }
 
@@ -57,51 +63,58 @@ export const AppFormIconSection = ({
           Optional app icon for the web UI. Square images work best and are optimized locally before upload.
         </p>
       </Visible>
-      <div className='flex w-full flex-col items-center gap-5'>
+      <div className='grid w-full grid-cols-[3rem_minmax(0,1fr)] items-center gap-4'>
         <AppIcon
           appId={appId}
           appName={appName || 'App'}
           icon={iconPreview}
-          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-36'
+          className='size-12 text-base'
         />
-
-        <div className='flex w-full gap-2 max-sm:flex-col'>
-          <Input
-            ref={inputRef}
-            type='file'
-            accept='image/*'
-            disabled={disabled}
-            onChange={event => onIconChange(event)}
-          />
-          <Visible when={iconPreview}>
-            <Button
-              type='button'
-              variant='ghost'
-              className='shrink-0'
+        <div className='grid min-w-0 justify-items-start gap-3'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <FileUploadField
+              className='w-auto'
+              id={id}
+              aria-describedby={ariaDescribedBy}
+              aria-invalid={ariaInvalid}
+              key={uploadRevision}
+              aria-label='App icon'
+              accept='image/*'
+              pending={pending}
               disabled={disabled}
-              onClick={handleClearIcon}
-            >
-              Clear icon
-            </Button>
+              onChange={onIconChange}
+              buttonLabel='Upload icon'
+              emptyLabel='Optional'
+            />
+            <Visible when={iconPreview}>
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                disabled={disabled}
+                onClick={handleClearIcon}
+              >
+                Remove icon
+              </Button>
+            </Visible>
+          </div>
+          <Visible when={showAutoExtract}>
+            <EditorFormContext.Provider value={false}>
+              <FormField
+                label='Use icon from APK'
+                className='w-fit justify-start gap-3'
+                layout='horizontal'
+                description={hasExtractedIcon ? 'Launcher icon available.' : undefined}
+              >
+                <Switch
+                  checked={autoExtractIcon}
+                  disabled={!hasExtractedIcon || disabled}
+                  onCheckedChange={onAutoExtractIconChange}
+                />
+              </FormField>
+            </EditorFormContext.Provider>
           </Visible>
         </div>
-        <Visible when={showAutoExtract}>
-          <div className='flex w-full items-center justify-between gap-4'>
-            <div className='flex min-w-0 flex-col'>
-              <span className='text-sm font-medium'>Auto extract from APK</span>
-              <span className='text-xs text-foreground-muted'>
-                {hasExtractedIcon
-                  ? 'A launcher icon was found during APK upload.'
-                  : 'Upload an APK to extract its launcher icon.'}
-              </span>
-            </div>
-            <Switch
-              checked={autoExtractIcon}
-              disabled={!hasExtractedIcon}
-              onCheckedChange={onAutoExtractIconChange}
-            />
-          </div>
-        </Visible>
       </div>
     </Section>
   )

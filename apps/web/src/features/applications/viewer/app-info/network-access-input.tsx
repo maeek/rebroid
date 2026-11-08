@@ -5,6 +5,9 @@ import { chipInputSurfaceClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type NetworkAccessInputProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   cidrs: string[]
   disabled?: boolean
   isBusy?: boolean
@@ -36,6 +39,9 @@ const normalizeCidrInput = (value: string) => {
 }
 
 export const NetworkAccessInput = ({
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   cidrs,
   disabled,
   isBusy,
@@ -103,6 +109,9 @@ export const NetworkAccessInput = ({
           </Badge>
         ))}
         <input
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           value={draft}
           disabled={disabled || isBusy}
           className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'

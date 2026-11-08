@@ -1,22 +1,6 @@
-import type { HTMLAttributes } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AppIdentitySection } from './app-identity-section'
-
-vi.mock('@/components/ui/input', () => ({
-  Input: (props: Record<string, unknown>) => {
-    const inputProps = props as {
-      type?: string
-      value?: string
-    } & HTMLAttributes<HTMLInputElement>
-    return (
-      <input
-        {...inputProps}
-        data-testid={inputProps.type === 'file' ? 'apk-input' : 'name-input'}
-      />
-    )
-  }
-}))
 
 describe('AppIdentitySection', () => {
   it('shows uploaded apk label and forwards name changes', () => {
@@ -35,11 +19,11 @@ describe('AppIdentitySection', () => {
 
     expect(screen.getByText('Uploaded acme.apk · 3.14 MB').textContent).toBe('Uploaded acme.apk · 3.14 MB')
 
-    const nameInput = screen.getByTestId('name-input')
+    const nameInput = screen.getByRole('textbox', { name: /Name/ })
     fireEvent.change(nameInput, { target: { value: 'Acme App Updated' } })
     expect(onNameChange).toHaveBeenCalledWith('Acme App Updated')
 
-    const fileInput = screen.getByTestId('apk-input')
+    const fileInput = screen.getByLabelText('APK file', { exact: true })
     const apk = new File(['payload'], 'acme.apk', {
       type: 'application/vnd.android.package-archive'
     })

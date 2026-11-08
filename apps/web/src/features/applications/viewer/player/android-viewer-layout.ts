@@ -40,8 +40,8 @@ export const getViewerFrameLayout = (
   const { width, height } = getViewerFrameSize(app, orientation)
   const aspectRatioValue = width / height
   const isWide = width > height
-  const nonFullscreenMaxHeight = isWide ? 'min(70vh, 42rem)' : 'min(72vh, 54rem)'
-  const nonFullscreenMaxWidth = isWide ? '68rem' : '28rem'
+  const nonFullscreenMaxHeight = 'var(--app-viewer-height, calc(100dvh - 6rem))'
+  const nonFullscreenMaxWidth = '100%'
   const fullscreenMaxHeight = '100dvh'
   const fullscreenMaxWidth = '100dvw'
 

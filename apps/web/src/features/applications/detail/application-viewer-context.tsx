@@ -26,6 +26,8 @@ type ApplicationViewerContextValue = {
   canAttach: boolean
   canCaptureScreenshot: boolean
   canControlViewer: boolean
+  canViewInfrastructure: boolean
+  canViewAuditActivity: boolean
   canStartCurrentApp: boolean
   initialSettings: OrchestratorUiSettings
   isForeignOwnedApp: boolean
@@ -37,7 +39,7 @@ type ApplicationViewerContextValue = {
   viewerSettings: ViewerSettings
 }
 
-const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)
+export const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)
 
 const isEditableElement = (target: EventTarget | null) => {
   if (!(target instanceof HTMLElement)) {
@@ -58,7 +60,8 @@ export const ApplicationViewerProvider = ({
   currentOwnerUserId,
   initialSettings,
   isAdmin,
-  permissions
+  permissions,
+  refreshEnabled = true
 }: {
   app?: AppDefinition
   children: ReactNode
@@ -66,6 +69,7 @@ export const ApplicationViewerProvider = ({
   initialSettings: OrchestratorUiSettings
   isAdmin: boolean
   permissions: PermissionMap
+  refreshEnabled?: boolean
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
@@ -141,7 +145,7 @@ export const ApplicationViewerProvider = ({
     ['applications', currentAppId],
     () => getApplicationAction(currentAppId!),
     {
-      enabled: Boolean(currentAppId),
+      enabled: refreshEnabled && Boolean(currentAppId),
       intervalMs: refreshIntervalMs
     }
   )
@@ -169,6 +173,8 @@ export const ApplicationViewerProvider = ({
         canCaptureScreenshot,
         canControlViewer,
         canStartCurrentApp,
+        canViewInfrastructure: isAdmin,
+        canViewAuditActivity: isAdmin,
         initialSettings,
         isForeignOwnedApp,
         permissions,

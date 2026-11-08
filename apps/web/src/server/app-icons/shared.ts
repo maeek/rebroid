@@ -8,5 +8,4 @@ export const requireUser = async () => {
 export const revalidateAppIconPaths = (appId: string) => {
   revalidatePath('/apps')
   revalidatePath(`/app/${appId}`)
-  revalidatePath(`/app/${appId}/manage`)
 }

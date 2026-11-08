@@ -1,139 +1,118 @@
 import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
-import { AppInfoRow } from '@/features/applications/viewer/app-info/app-info-row'
+import { editorSectionClassName } from '@/components/ui/surface'
 import { formatDateLocale } from '@/lib/format'
+import { DetailFields, type DetailField } from '@/shared/ui/detail-fields'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-const formatResources = (app: AppDefinition) => {
-  const memory = app.memoryLimitMb ? `${app.memoryLimitMb} MB` : 'unlimited'
-  const cpu = app.cpuLimitCpus ?? 'unlimited'
-  return `RAM ${memory}, CPU ${cpu}`
-}
-
-const formatProfile = (app: AppDefinition) => `${app.profileName ?? 'default'} / ${app.profileMode}`
-
-const formatVolume = (app: AppDefinition) =>
-  app.profileMode === 'temporary' ? 'Temporary container data' : app.volumeName
-
-const formatPolicyStatus = (app: AppDefinition) =>
-  app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
-
-export const AppManageTechnicalDetails = ({ app }: { app: AppDefinition }) => {
-  const adbAddress = `${app.containerName}:${app.adbPort}`
-  const policyMessage = app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage
-  const applicationError = app.applicationError
+export const AppManageTechnicalDetails = ({
+  app,
+  canViewInfrastructure = false,
+  loading = false
+}: {
+  app?: AppDefinition
+  canViewInfrastructure?: boolean
+  loading?: boolean
+}) => {
+  const resourceValue = (value: string | undefined, href: string) =>
+    canViewInfrastructure && value ? <ResourceLink href={href}>{value}</ResourceLink> : value
+  const containerValue = (value: string | undefined) =>
+    app?.containerId ? resourceValue(value, `/runtime/containers/${encodeURIComponent(app?.containerId)}`) : value
+  const policyMessage = app?.networkPolicyResult?.hint ?? app?.networkPolicyResult?.message ?? app?.networkPolicyMessage
+  const adbAddress = `${app?.containerName}:${app?.adbPort}`
+  const containerFields: DetailField[] = [
+    {
+      label: 'Container name',
+      value: containerValue(app?.containerName),
+      copyValue: app?.containerName,
+      code: true,
+      fullWidth: true
+    },
+    {
+      label: 'Container ID',
+      value: app?.containerId ? containerValue(app?.containerId) : 'Not created',
+      copyValue: app?.containerId ?? undefined,
+      code: true,
+      fullWidth: true
+    },
+    {
+      label: 'Image',
+      value: resourceValue(app?.containerImage, `/runtime/images/${encodeURIComponent(app?.containerImage ?? '')}`),
+      copyValue: app?.containerImage,
+      code: true,
+      fullWidth: true
+    },
+    {
+      label: 'Volume',
+      value: app?.profileMode === 'temporary' ? 'Temporary container data' : app?.volumeName,
+      copyValue: app?.profileMode === 'temporary' ? undefined : (app?.volumeName ?? undefined),
+      code: true,
+      fullWidth: true
+    }
+  ]
+  if (loading || app?.containerArgs)
+    containerFields.push({
+      label: 'Container arguments',
+      value: app?.containerArgs,
+      copyValue: app?.containerArgs ?? undefined,
+      code: true,
+      fullWidth: true
+    })
+  const networkFields: DetailField[] = [
+    {
+      label: 'Network',
+      value: resourceValue(app?.networkName, `/runtime/networks/${encodeURIComponent(app?.networkName ?? '')}`),
+      copyValue: app?.networkName,
+      code: true
+    },
+    { label: 'Transport', value: app?.scrcpyTransport },
+    { label: 'ADB', value: adbAddress, copyValue: adbAddress, code: true, fullWidth: true },
+    { label: 'Network policy', value: app?.networkPolicyResult?.status ?? app?.networkPolicyStatus ?? 'Not applied' }
+  ]
+  if (app?.networkPolicyAppliedAt)
+    networkFields.push({ label: 'Policy applied', value: formatDateLocale(app?.networkPolicyAppliedAt) })
+  if (policyMessage) networkFields.push({ label: 'Policy message', value: policyMessage, fullWidth: true })
 
   return (
     <Section
       title='Details'
-      surface='panel'
-      collapsible
+      surface='plain'
+      className={editorSectionClassName}
       headingSpacing='default'
-      contentClassName='flex-col'
+      contentClassName='gap-6'
     >
-      <AppInfoRow
-        label='App ID'
-        value={app.id}
-        copyValue={app.id}
+      <DetailFields
+        loading={loading}
+        title='Application'
+        fields={[
+          { label: 'App ID', value: app?.id, copyValue: app?.id, code: true, fullWidth: true },
+          {
+            label: 'APK',
+            value: app?.apkOriginalName ?? 'No APK uploaded',
+            copyValue: app?.apkOriginalName ?? undefined
+          },
+          { label: 'Profile', value: `${app?.profileName ?? 'default'} / ${app?.profileMode}` },
+          {
+            label: 'Memory limit',
+            value: app?.memoryLimitMb === null ? 'Runtime default' : `${app?.memoryLimitMb} MB`
+          },
+          { label: 'CPU limit', value: app?.cpuLimitCpus === null ? 'Runtime default' : `${app?.cpuLimitCpus} cores` },
+          {
+            label: 'Idle timeout',
+            value: app?.inactivityTimeoutSeconds === -1 ? 'Unlimited' : `${app?.inactivityTimeoutSeconds} seconds`
+          },
+          { label: 'Updated', value: app?.updatedAt ? formatDateLocale(app.updatedAt) : undefined }
+        ]}
       />
-      <AppInfoRow
-        label='APK'
-        value={app.apkOriginalName ?? 'No APK uploaded'}
-        copyValue={app.apkOriginalName ?? undefined}
+      <DetailFields
+        loading={loading}
+        title='Container'
+        fields={containerFields}
       />
-      <Visible when={app.lastError}>
-        <AppInfoRow
-          label='Last error'
-          value={app.lastError}
-          copyValue={app.lastError ?? undefined}
-        />
-      </Visible>
-      <Visible when={applicationError}>
-        <AppInfoRow
-          label='Error code'
-          value={`${applicationError?.code} (${applicationError?.phase})`}
-          copyValue={applicationError ? `${applicationError.code}:${applicationError.phase}` : undefined}
-        />
-      </Visible>
-      <Visible when={applicationError?.hint}>
-        <AppInfoRow
-          label='Error hint'
-          value={applicationError?.hint ?? ''}
-          copyValue={applicationError?.hint ?? undefined}
-        />
-      </Visible>
-      <AppInfoRow
-        label='Profile'
-        value={formatProfile(app)}
-      />
-      <AppInfoRow
-        label='Resources'
-        value={formatResources(app)}
-      />
-      <AppInfoRow
-        label='Idle timeout'
-        value={`${app.inactivityTimeoutSeconds}s`}
-      />
-      <AppInfoRow
-        label='Container name'
-        value={app.containerName}
-        copyValue={app.containerName}
-      />
-      <AppInfoRow
-        label='Container ID'
-        value={app.containerId ?? 'Not created'}
-        copyValue={app.containerId ?? undefined}
-      />
-      <AppInfoRow
-        label='Image'
-        value={app.containerImage}
-        copyValue={app.containerImage}
-      />
-      <AppInfoRow
-        label='Volume'
-        value={formatVolume(app)}
-        copyValue={app.profileMode === 'temporary' ? undefined : app.volumeName}
-      />
-      <Visible when={app.containerArgs}>
-        <AppInfoRow
-          label='Container args'
-          value={app.containerArgs}
-          copyValue={app.containerArgs ?? undefined}
-        />
-      </Visible>
-      <AppInfoRow
-        label='Network'
-        value={app.networkName}
-        copyValue={app.networkName}
-      />
-      <AppInfoRow
-        label='Network policy'
-        value={formatPolicyStatus(app)}
-      />
-      <Visible when={app.networkPolicyAppliedAt}>
-        <AppInfoRow
-          label='Policy applied'
-          value={formatDateLocale(app.networkPolicyAppliedAt as Date)}
-        />
-      </Visible>
-      <Visible when={policyMessage}>
-        <AppInfoRow
-          label='Policy message'
-          value={policyMessage}
-        />
-      </Visible>
-      <AppInfoRow
-        label='ADB'
-        value={adbAddress}
-        copyValue={adbAddress}
-      />
-      <AppInfoRow
-        label='Transport'
-        value={app.scrcpyTransport}
-      />
-      <AppInfoRow
-        label='Updated'
-        value={formatDateLocale(app.updatedAt)}
+      <DetailFields
+        loading={loading}
+        title='Network'
+        fields={networkFields}
       />
     </Section>
   )

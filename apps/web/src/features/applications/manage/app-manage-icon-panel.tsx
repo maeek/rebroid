@@ -1,7 +1,4 @@
 import { useState, type ChangeEvent } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Visible } from '@/components/ui/visible'
 import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
 import { toast } from '@/hooks/use-toast'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
@@ -14,10 +11,12 @@ import {
   isFileWithinApkLimit,
   useOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 type AppManageIconPanelProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   appId: string
   appName: string
   icon: string | null
@@ -27,6 +26,9 @@ type AppManageIconPanelProps = {
 }
 
 export const AppManageIconPanel = ({
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
   appId,
   appName,
   icon,
@@ -57,7 +59,7 @@ export const AppManageIconPanel = ({
       const storedIcon = unwrapActionResult(await setAppIconAction(appId, optimizedIcon))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: storedIcon, openedAt: Date.now() }])
       onIconChange(storedIcon, true)
-      toast({ title: 'Icon updated' })
+      toast({ title: 'Icon updated', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not update icon',
@@ -76,7 +78,7 @@ export const AppManageIconPanel = ({
       unwrapActionResult(await removeAppIconAction(appId))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: null, openedAt: Date.now() }])
       onIconChange(null, true)
-      toast({ title: 'Icon cleared' })
+      toast({ title: 'Icon cleared', variant: 'success' })
     } catch (error) {
       toast({
         title: 'Could not clear icon',
@@ -88,40 +90,13 @@ export const AppManageIconPanel = ({
     }
   }
 
-  if (compact) {
-    return (
-      <div className='flex w-full flex-col items-center gap-5'>
-        <AppIcon
-          appId={appId}
-          appName={appName || 'App'}
-          icon={icon}
-          className='size-44 text-4xl shadow-[0_18px_60px_rgba(0,0,0,0.24)] max-sm:size-36'
-        />
-        <div className='flex w-full gap-2 max-sm:flex-col'>
-          <Input
-            type='file'
-            accept='image/*'
-            disabled={isUploadingIcon}
-            onChange={event => void handleIconUpload(event)}
-          />
-          <Visible when={icon}>
-            <Button
-              type='button'
-              variant='secondary'
-              className='shrink-0'
-              disabled={isUploadingIcon}
-              onClick={() => void handleClearIcon()}
-            >
-              Clear
-            </Button>
-          </Visible>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <AppFormIconSection
+      id={id}
+      aria-describedby={ariaDescribedBy}
+      aria-invalid={ariaInvalid}
+      showDescription={!compact}
+      pending={isUploadingIcon}
       appId={appId}
       appName={appName}
       iconPreview={icon}

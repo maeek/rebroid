@@ -40,12 +40,12 @@ export const AppResourceLimitsSection = ({
         className={verticalSettingClassName}
       >
         <NumberSliderField
+          showSlider={false}
           value={values.memoryLimitMb}
           min={128}
           max={resourceLimits?.maxMemoryMb}
           placeholder='MB'
           suffix=' MB'
-          rangeLabel='RAM limit range'
           allowEmpty
           onValueChange={value => onChange({ memoryLimitMb: value })}
         />
@@ -57,13 +57,13 @@ export const AppResourceLimitsSection = ({
         className={verticalSettingClassName}
       >
         <NumberSliderField
+          showSlider={false}
           value={values.cpuLimitCpus}
           min={0.1}
           max={resourceLimits?.maxCpuCpus}
           step={0.1}
           placeholder='cores'
           suffix=' cores'
-          rangeLabel='CPU limit range'
           allowEmpty
           onValueChange={value => onChange({ cpuLimitCpus: value })}
         />

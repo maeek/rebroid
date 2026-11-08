@@ -1,73 +1,61 @@
-import { IconAlertTriangle, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
-import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Notice } from '@/components/ui/notice'
 import { ImagePullProgress } from '@/features/applications/viewer/components/image-pull-progress'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplicationStatusDetail } from '@/shared/contracts/application'
 
-type AppImagePullProgress = {
-  status: string
-  current: string
-  total: string
-  layerId: string | null
-  percent: number
-} | null
-
-const hasRuntimeRecreateBadge = (app: AppDefinition) => app.recreateContainerOnNextStart === true
-
-const getAppImagePullProgress = (app: AppDefinition): AppImagePullProgress => app.imagePullProgress
-
-const getStatusIcon = (app: AppDefinition) => {
-  if (app.status === 'error') {
-    return <IconAlertTriangle className='mr-4 size-6 text-danger' />
-  }
-
-  if (app.status === 'provisioning' || app.status === 'removing') {
-    return <IconLoader2 className='mr-4 size-6 animate-spin text-primary' />
-  }
-
-  return <IconCircleCheck className='mr-4 size-6 text-primary' />
-}
-
-export const AppViewerStatusSection = ({ app }: { app: AppDefinition }) => {
+export const AppViewerStatusSection = ({
+  app,
+  canDiagnose = false,
+  showErrorDetails = false
+}: {
+  app: AppDefinition
+  canDiagnose?: boolean
+  showErrorDetails?: boolean
+}) => {
   const isError = app.status === 'error'
-  const statusDetail = (app as AppDefinition & { statusDetail: AndroidApplicationStatusDetail | null }).statusDetail
-  const statusTitle = statusDetail?.title ?? app.lifecycleStage.replaceAll('_', ' ')
-  const statusDescription = statusDetail?.description ?? app.statusMessage
-
+  const description = app.statusDetail?.description ?? app.statusMessage
+  let tone: 'danger' | 'success' | 'info' = 'info'
+  if (isError) tone = 'danger'
+  else if (app.running) tone = 'success'
+  const hint = showErrorDetails ? app.applicationError?.hint : null
   return (
-    <Section
-      surface='plain'
-      className={
-        isError
-          ? 'flex flex-row border border-danger/25 bg-danger/10 px-4 py-3 hover:bg-danger/16'
-          : 'flex flex-row border border-primary/20 bg-primary/10 px-4 py-3 hover:bg-primary/20'
-      }
-      contentClassName='grow shrink'
-      orientation='horizontal'
-    >
-      {getStatusIcon(app)}
-      <div className='flex w-full grow flex-col gap-1'>
-        <div className='flex items-center gap-2'>
-          <span className='text-foreground'>{statusTitle}</span>
-          <Badge
-            variant={isError ? 'danger' : 'success'}
-            className='capitalize'
-          >
-            {app.status}
-          </Badge>
-          <Visible when={hasRuntimeRecreateBadge(app)}>
-            <Badge variant='warning'>Runtime modified</Badge>
-          </Visible>
-        </div>
-        <Visible when={statusDescription && !hasRuntimeRecreateBadge(app)}>
+    <div className='grid gap-3'>
+      <Notice
+        tone={tone}
+        title={app.statusDetail?.title ?? (isError ? 'App needs attention' : app.lifecycleStage.replaceAll('_', ' '))}
+        actions={
+          isError && canDiagnose ? (
+            <Button
+              asChild
+              variant='outline'
+              size='sm'
+            >
+              <Link href={`/app/${encodeURIComponent(app.id)}?view=diagnostics`}>Inspect failure</Link>
+            </Button>
+          ) : undefined
+        }
+      >
+        {description ? (
           <ImagePullProgress
-            statusMessage={statusDescription}
-            progress={getAppImagePullProgress(app)}
+            statusMessage={description}
+            progress={app.imagePullProgress}
           />
-        </Visible>
-      </div>
-    </Section>
+        ) : null}
+        {hint ? <p className='text-sm'>{hint}</p> : null}
+        {showErrorDetails && app.applicationError ? (
+          <p className='text-xs text-foreground-muted'>
+            Reference: {app.applicationError.code} · {app.applicationError.phase}
+          </p>
+        ) : null}
+      </Notice>
+      {app.recreateContainerOnNextStart ? (
+        <Notice
+          tone='warning'
+          title='Configuration saved; runtime update pending'
+          description='The container will be recreated with these changes on its next start.'
+        />
+      ) : null}
+    </div>
   )
 }

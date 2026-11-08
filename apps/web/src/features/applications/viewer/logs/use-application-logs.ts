@@ -76,23 +76,23 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
   }, [app, refreshLogs, source, sourceUnavailable])
 
   useEffect(() => {
+    setLog(undefined)
+    setHasAttemptedLoad(false)
+  }, [app?.id, source])
+
+  useEffect(() => {
     if (refreshedLog) {
       setLog(refreshedLog)
     }
   }, [refreshedLog])
 
   useEffect(() => {
-    setLog(undefined)
-    setHasAttemptedLoad(false)
-  }, [app?.id, source])
-
-  useEffect(() => {
-    if (!enabled || !loadWhenEnabled || log || isLoading || hasAttemptedLoad) {
+    if (!enabled || !loadWhenEnabled || log || refreshedLog || isLoading || hasAttemptedLoad) {
       return
     }
 
     void loadLogs()
-  }, [enabled, hasAttemptedLoad, isLoading, loadLogs, loadWhenEnabled, log])
+  }, [enabled, hasAttemptedLoad, isLoading, loadLogs, loadWhenEnabled, log, refreshedLog])
 
   useEffect(() => {
     if (!enabled || !isLive || sourceUnavailable) {
