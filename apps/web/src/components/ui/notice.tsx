@@ -36,7 +36,7 @@ export const Notice = ({
     tone={tone}
     role={tone === 'danger' ? 'alert' : 'status'}
     aria-live={live === 'off' ? undefined : live}
-    className={cn('flex w-full items-start gap-3 px-4 py-3 text-sm', className)}
+    className={cn('flex w-full items-start gap-3 px-4 py-3 text-sm max-sm:flex-wrap', className)}
   >
     <span
       aria-hidden='true'
@@ -49,6 +49,8 @@ export const Notice = ({
       {description ? <div className='text-foreground-muted'>{description}</div> : null}
       {children}
     </div>
-    {actions ? <div className='flex shrink-0 flex-wrap items-center gap-2'>{actions}</div> : null}
+    {actions ? (
+      <div className='flex shrink-0 flex-wrap items-center gap-2 max-sm:ml-8 max-sm:w-full'>{actions}</div>
+    ) : null}
   </Surface>
 )

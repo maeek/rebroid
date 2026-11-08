@@ -5,9 +5,11 @@ import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import type { SystemResources } from '@/shared/contracts/system-resources'
 
 export const PlatformResources = ({
-  resources
+  resources,
+  loading = !resources
 }: {
   resources?: SystemResources
+  loading?: boolean
   isRefreshing?: boolean
   onRefresh?: () => Promise<void>
 }) => {
@@ -21,16 +23,19 @@ export const PlatformResources = ({
     >
       <div className='grid grid-cols-3 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard
+          loading={loading}
           label='Containers'
           value={resources?.containersTotal ?? 0}
           hint='Managed containers visible to Docker'
         />
         <QuickGlanceCard
+          loading={loading}
           label='Running'
           value={resources?.containersRunning ?? 0}
           hint='Managed containers currently running'
         />
         <QuickGlanceCard
+          loading={loading}
           label='Stopped'
           value={resources?.containersStopped ?? 0}
           hint='Managed containers not currently running'

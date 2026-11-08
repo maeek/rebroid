@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 export type SearchFieldProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   value: string
   placeholder: string
   onValueChange: (value: string) => void
@@ -25,7 +28,10 @@ export const SearchField = ({
   debounceMs = 300,
   disabled = false,
   className,
-  ariaLabel
+  ariaLabel,
+  id,
+  'aria-describedby': describedBy,
+  'aria-invalid': invalid
 }: SearchFieldProps) => {
   const lastCommittedValue = useRef(value)
   const pendingTimeout = useRef<number | null>(null)
@@ -60,6 +66,9 @@ export const SearchField = ({
         className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-foreground-muted'
       />
       <Input
+        id={id}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         type='search'
         value={value}
         placeholder={placeholder}

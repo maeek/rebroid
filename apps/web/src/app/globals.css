@@ -11,11 +11,11 @@
 :root,
 .light {
   --palette-neutral-0: 0 0% 100%;
-  --palette-neutral-50: 24 18% 97%;
-  --palette-neutral-100: 24 20% 95%;
-  --palette-neutral-200: 240 5.9% 86%;
-  --palette-neutral-300: 24 10% 76%;
-  --palette-neutral-500: 240 3.8% 46.1%;
+  --palette-neutral-50: 220 10% 97%;
+  --palette-neutral-100: 220 10% 94%;
+  --palette-neutral-200: 220 8% 86%;
+  --palette-neutral-300: 220 6% 76%;
+  --palette-neutral-500: 220 6% 42%;
   --palette-neutral-650: 220 14% 56%;
   --palette-neutral-950: 240 10% 3.9%;
   --palette-blue-35: 206 100% 35%;
@@ -32,10 +32,12 @@
   --foreground-subtle: var(--palette-neutral-500);
   --surface: var(--palette-neutral-0);
   --surface-panel: var(--palette-neutral-50);
+  --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-0);
+  --surface-dialog: var(--palette-neutral-100);
   --surface-border: var(--palette-neutral-200);
-  --primary: var(--palette-blue-40);
+  --primary: var(--palette-blue-35);
   --primary-foreground: var(--palette-neutral-0);
   --accent: var(--palette-blue-94);
   --accent-foreground: var(--palette-blue-35);
@@ -47,8 +49,8 @@
   --success-foreground: var(--palette-neutral-0);
   --warning: var(--palette-amber);
   --warning-foreground: var(--palette-neutral-0);
-  --control: var(--palette-neutral-50);
-  --control-hover: var(--palette-neutral-100);
+  --control: var(--palette-neutral-0);
+  --control-hover: var(--palette-neutral-50);
   --control-border: var(--palette-neutral-300);
   --control-border-strong: var(--palette-neutral-650);
   --ring: var(--palette-blue-40);
@@ -69,17 +71,16 @@
 
 .dark {
   --palette-neutral-0: 0 0% 98%;
-  --palette-neutral-50: 223 18% 10%;
-  --palette-neutral-75: 224 18% 9%;
-  --palette-neutral-100: 222 18% 16%;
-  --palette-neutral-125: 222 19% 17%;
-  --palette-neutral-150: 220 11% 20%;
-  --palette-neutral-200: 220 11% 24%;
-  --palette-neutral-225: 220 11% 26%;
-  --palette-neutral-300: 223 12% 32%;
-  --palette-neutral-450: 223 12% 44%;
-  --palette-neutral-560: 223 12% 56%;
-  --palette-neutral-700: 218 13% 72%;
+  --palette-neutral-50: 220 10% 10%;
+  --palette-neutral-75: 220 10% 9%;
+  --palette-neutral-100: 220 9% 14%;
+  --palette-neutral-125: 220 9% 18%;
+  --palette-neutral-150: 220 9% 19%;
+  --palette-neutral-200: 220 9% 23%;
+  --palette-neutral-300: 220 8% 32%;
+  --palette-neutral-450: 220 8% 44%;
+  --palette-neutral-560: 220 8% 56%;
+  --palette-neutral-700: 220 8% 72%;
   --palette-blue-55: 206 100% 55%;
   --palette-navy-950: 222 47% 11%;
   --palette-red: 0 72% 62%;
@@ -92,13 +93,15 @@
   --foreground-subtle: var(--palette-neutral-560);
   --surface: var(--palette-neutral-100);
   --surface-panel: var(--palette-neutral-100);
+  --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-125);
   --surface-elevated: var(--palette-neutral-125);
+  --surface-dialog: var(--palette-neutral-50);
   --surface-border: var(--palette-neutral-300);
   --primary: var(--palette-blue-55);
   --primary-foreground: var(--palette-navy-950);
-  --accent: var(--palette-neutral-225);
-  --accent-foreground: var(--foreground);
+  --accent: 206 45% 18%;
+  --accent-foreground: var(--primary);
   --info: var(--palette-blue-55);
   --info-foreground: var(--palette-navy-950);
   --danger: var(--palette-red);
@@ -107,8 +110,8 @@
   --success-foreground: var(--palette-navy-950);
   --warning: var(--palette-amber);
   --warning-foreground: var(--palette-navy-950);
-  --control: 224 17% 25%;
-  --control-hover: 224 17% 29%;
+  --control: var(--palette-neutral-150);
+  --control-hover: var(--palette-neutral-200);
   --control-border: var(--palette-neutral-450);
   --control-border-strong: var(--palette-neutral-560);
   --ring: var(--palette-blue-55);
@@ -152,8 +155,10 @@
   --foreground-subtle: var(--palette-neutral-580);
   --surface: var(--palette-neutral-50);
   --surface-panel: var(--palette-neutral-75);
-  --surface-band: var(--palette-neutral-50);
+  --surface-editor: var(--palette-neutral-75);
+  --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-100);
+  --surface-dialog: var(--palette-neutral-50);
   --surface-border: var(--palette-neutral-180);
   --primary: var(--palette-blue-60);
   --primary-foreground: var(--palette-navy-950);
@@ -189,7 +194,7 @@
 
 :root[data-accent='cyan'],
 .light[data-accent='cyan'] {
-  --primary: 190 95% 31%;
+  --primary: 190 95% 28%;
   --primary-foreground: var(--palette-neutral-0);
   --ring: 190 95% 31%;
   --accent: 190 78% 93%;
@@ -198,7 +203,7 @@
 
 :root[data-accent='green'],
 .light[data-accent='green'] {
-  --primary: 154 68% 30%;
+  --primary: 154 68% 28%;
   --primary-foreground: var(--palette-neutral-0);
   --ring: 154 68% 30%;
   --accent: 154 58% 93%;
@@ -234,8 +239,8 @@
 
 :root[data-accent='amber'],
 .light[data-accent='amber'] {
-  --primary: 32 95% 40%;
-  --primary-foreground: var(--palette-neutral-950);
+  --primary: 32 95% 32%;
+  --primary-foreground: var(--palette-neutral-0);
   --ring: 32 95% 40%;
   --accent: 38 92% 92%;
   --accent-foreground: 32 95% 29%;
@@ -344,8 +349,10 @@
   --color-foreground-subtle: hsl(var(--foreground-subtle));
   --color-surface: hsl(var(--surface));
   --color-surface-panel: hsl(var(--surface-panel));
+  --color-surface-editor: hsl(var(--surface-editor));
   --color-surface-band: hsl(var(--surface-band));
   --color-surface-elevated: hsl(var(--surface-elevated));
+  --color-surface-dialog: hsl(var(--surface-dialog));
   --color-surface-border: hsl(var(--surface-border));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
@@ -432,5 +439,34 @@
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: hsl(var(--control-border-strong) / 0.78);
+  }
+}
+
+/* Standard editors own their geometry without narrowing workspace pages. */
+.editor-page input:not([type='file']):not([type='checkbox']):not([type='number']),
+.editor-page textarea,
+.editor-page [role='combobox'] {
+  max-width: 100%;
+}
+.editor-page input[type='number'] {
+  max-width: 12rem;
+}
+[data-editor-dialog] input[type='number'] {
+  max-width: 12rem;
+}
+
+.editor-page,
+.editor-page > *,
+.editor-page section,
+.editor-page form {
+  min-width: 0;
+}
+
+.app-device-layout {
+  --app-viewer-height: calc(100dvh - 6rem);
+}
+@media (min-width: 1024px) {
+  .app-device-pane {
+    height: var(--app-viewer-height);
   }
 }

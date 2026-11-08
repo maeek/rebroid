@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react'
+import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 
 export type ViewerStreamingSliderValues = {
@@ -35,27 +36,32 @@ const viewerStreamingSliderFields: ViewerStreamingSliderFieldDefinition[] = [
 
 const DefaultSetting = ({
   label,
-  description: _description,
+  description,
   children
 }: {
   label: string
   description: string
   children: ReactNode
 }) => (
-  <label className='grid min-w-0 gap-2'>
-    <span className='text-xs font-medium uppercase tracking-wide text-foreground-muted'>{label}</span>
+  <FormField
+    label={label}
+    description={description}
+    layout='vertical'
+  >
     {children}
-  </label>
+  </FormField>
 )
 
 export const ViewerStreamingSliderFields = ({
   values,
   onChange,
-  SettingComponent = DefaultSetting
+  SettingComponent = DefaultSetting,
+  loading = false
 }: {
   values: ViewerStreamingSliderValues
   onChange: (patch: Partial<ViewerStreamingSliderValues>) => void
   SettingComponent?: ComponentType<{ label: string; description: string; children: ReactNode }>
+  loading?: boolean
 }) => (
   <>
     {viewerStreamingSliderFields.map(field => (
@@ -65,6 +71,7 @@ export const ViewerStreamingSliderFields = ({
         description={field.description}
       >
         <NumberSliderField
+          loading={loading}
           value={String(values[field.key])}
           min={field.min}
           max={field.max}

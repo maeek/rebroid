@@ -30,10 +30,10 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
 
           return (
             <Fragment key={index}>
-              <BreadcrumbItem>
+              <BreadcrumbItem className='min-w-0 max-w-full [overflow-wrap:anywhere]'>
                 <Visible when={isLast}>
                   <BreadcrumbPage>
-                    <div className='flex gap-2 items-center'>
+                    <div className='flex min-w-0 flex-wrap items-center gap-2'>
                       {item.label}
                       {item.badge}
                     </div>
@@ -47,7 +47,7 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
                 {!isLast && !item.href ? <span>{item.label}</span> : null}
               </BreadcrumbItem>
               <Visible when={!isLast}>
-                <BreadcrumbSeparator />
+                <BreadcrumbSeparator className='shrink-0' />
               </Visible>
             </Fragment>
           )

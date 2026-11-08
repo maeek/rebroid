@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { EditorFormContext } from './editor-form-context'
 import { Section } from './section'
 
 describe('Section', () => {
@@ -36,5 +37,46 @@ describe('Section', () => {
     )
 
     expect(screen.getByTestId('section-heading')).toHaveClass(expectedClassName)
+  })
+  it('retains draft values while collapsed and reveals validation errors', async () => {
+    const { rerender } = render(
+      <EditorFormContext.Provider value={true}>
+        <Section
+          title='Advanced'
+          surface='plain'
+          collapsible
+        >
+          <input
+            aria-label='Limit'
+            defaultValue='42'
+          />
+        </Section>
+      </EditorFormContext.Provider>
+    )
+    const control = screen.getByLabelText('Limit')
+    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+    expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.change(control, { target: { value: '64' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced' }))
+    rerender(
+      <EditorFormContext.Provider value={true}>
+        <Section
+          title='Advanced'
+          surface='plain'
+          collapsible
+        >
+          <input
+            aria-label='Limit'
+            defaultValue='42'
+            aria-invalid='true'
+          />
+        </Section>
+      </EditorFormContext.Provider>
+    )
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Advanced' })).toHaveAttribute('aria-expanded', 'true')
+    )
+    expect(control).toHaveValue('64')
   })
 })

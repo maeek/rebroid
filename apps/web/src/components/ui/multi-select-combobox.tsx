@@ -23,6 +23,7 @@ type MultiSelectComboboxProps = {
   'aria-describedby'?: string
   'aria-invalid'?: boolean
   className?: string
+  createOption?: (query: string) => MultiSelectComboboxOption | null
   disabled?: boolean
   emptyLabel?: string
   id?: string
@@ -37,6 +38,7 @@ export const MultiSelectCombobox = ({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   className,
+  createOption,
   disabled = false,
   emptyLabel = 'No options found.',
   id,
@@ -47,16 +49,39 @@ export const MultiSelectCombobox = ({
   value
 }: MultiSelectComboboxProps) => {
   const [open, setOpen] = React.useState(false)
-  const optionsByValue = React.useMemo(() => new Map(options.map(option => [option.value, option])), [options])
+  const [query, setQuery] = React.useState('')
+  const customOption = React.useMemo(() => {
+    const candidate = createOption?.(query.trim())
+    if (!candidate || value.includes(candidate.value)) return null
+    const key = candidate.label.trim().toLocaleLowerCase()
+    if (options.some(option => option.value === candidate.value || option.label.trim().toLocaleLowerCase() === key)) {
+      return null
+    }
+    return candidate
+  }, [createOption, options, query, value])
+  const availableOptions = React.useMemo(
+    () => (customOption ? [...options, customOption] : options),
+    [customOption, options]
+  )
+  const optionsByValue = React.useMemo(
+    () => new Map(availableOptions.map(option => [option.value, option])),
+    [availableOptions]
+  )
   const searchableText = React.useMemo(
     () =>
       new Map(
-        options.map(option => [
+        availableOptions.map(option => [
           option.value,
           [option.label, option.description, ...(option.keywords ?? [])].filter(Boolean).join(' ').toLocaleLowerCase()
         ])
       ),
-    [options]
+    [availableOptions]
+  )
+
+  const items = React.useMemo(() => availableOptions.map(option => option.value), [availableOptions])
+  const filteredItems = React.useMemo(
+    () => items.filter(item => searchableText.get(item)?.includes(query.trim().toLocaleLowerCase())),
+    [items, query, searchableText]
   )
 
   return (
@@ -67,12 +92,15 @@ export const MultiSelectCombobox = ({
       open={open}
       onOpenChange={setOpen}
       autoHighlight
-      items={options.map(option => option.value)}
+      items={items}
+      filteredItems={filteredItems}
+      inputValue={query}
+      onInputValueChange={setQuery}
       value={value}
-      onValueChange={onValueChange}
-      filter={(optionValue, query) =>
-        searchableText.get(optionValue)?.includes(query.trim().toLocaleLowerCase()) ?? false
-      }
+      onValueChange={nextValue => {
+        onValueChange(nextValue)
+        if (createOption) setQuery('')
+      }}
     >
       <Combobox.Chips
         data-slot='multi-select-combobox'
@@ -131,8 +159,8 @@ export const MultiSelectCombobox = ({
               floatingSurfaceClassName
             )}
           >
-            <Combobox.Empty className='px-3 py-6 text-center text-sm text-foreground-muted'>
-              {emptyLabel}
+            <Combobox.Empty className='text-center text-sm text-foreground-muted'>
+              <span className='block px-3 py-6'>{emptyLabel}</span>
             </Combobox.Empty>
             <Combobox.List className='scrollbar-thin max-h-[min(var(--available-height),20rem)] overflow-y-auto p-1'>
               {(optionValue: string, index: number) => {
@@ -152,7 +180,9 @@ export const MultiSelectCombobox = ({
                     )}
                   >
                     <span className='grid min-w-0 flex-1 gap-0.5'>
-                      <span className='truncate text-sm font-medium'>{option.label}</span>
+                      <span className='truncate text-sm font-medium'>
+                        {option.value === customOption?.value ? `Create “${option.label}”` : option.label}
+                      </span>
                       {option.description ? (
                         <span className='text-xs leading-5 text-foreground-muted'>{option.description}</span>
                       ) : null}

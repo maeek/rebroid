@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
-import { Surface } from '@/components/ui/surface'
+import { Skeleton } from '@/components/ui/skeleton'
+import { editorSectionClassName, Surface } from '@/components/ui/surface'
 
 const statusTone = (status: string, ok: boolean) => {
   if (status === 'offline') {
@@ -30,7 +31,8 @@ export const PlatformStatusBanner = ({
   message,
   actions,
   details,
-  detailTitle = 'Technical details'
+  detailTitle = 'Details',
+  loading = false
 }: {
   status: string
   ok: boolean
@@ -38,41 +40,48 @@ export const PlatformStatusBanner = ({
   actions?: ReactNode
   details?: ReactNode
   detailTitle?: string
+  loading?: boolean
 }) => {
   const tone = statusTone(status, ok)
 
   return (
-    <Surface
-      level='band'
-      tone={tone.surface}
-      role='status'
-      aria-live='polite'
-      className='w-full px-4 py-3'
-    >
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div className='flex min-w-0 flex-wrap items-center gap-3'>
-          <Badge
-            className='capitalize'
-            variant={tone.badge}
-          >
-            {status}
-          </Badge>
-          <span className='min-w-0 text-sm text-foreground-muted'>{message}</span>
+    <div className='grid w-full gap-3'>
+      <Surface
+        level='band'
+        tone={loading ? 'neutral' : tone.surface}
+        role={loading ? undefined : 'status'}
+        aria-label={loading ? 'Loading service health' : undefined}
+        aria-busy={loading || undefined}
+        aria-live={loading ? 'off' : 'polite'}
+        className='w-full rounded-panel px-4 py-2'
+      >
+        <div className='flex flex-wrap items-center justify-between gap-4'>
+          <div className='flex min-w-0 flex-wrap items-center gap-3'>
+            <Badge
+              className='w-fit justify-self-start capitalize'
+              variant={loading ? 'neutral' : tone.badge}
+            >
+              {loading ? <Skeleton className='h-4 w-12' /> : status}
+            </Badge>
+            {loading ? (
+              <Skeleton className='h-6 w-56 max-w-full' />
+            ) : (
+              <span className='min-w-0 text-sm leading-6 text-foreground'>{message}</span>
+            )}
+          </div>
+          {actions}
         </div>
-        {actions}
-      </div>
+      </Surface>
       {details ? (
         <Section
           surface='plain'
           title={detailTitle}
-          collapsible
-          className='mt-3'
-          titleClassName='border-t border-surface-border/60 pt-3 text-sm text-foreground-muted'
-          contentClassName='gap-3'
+          className={editorSectionClassName}
+          headingSpacing='compact'
         >
           {details}
         </Section>
       ) : null}
-    </Surface>
+    </div>
   )
 }

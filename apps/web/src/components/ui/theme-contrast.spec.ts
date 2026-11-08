@@ -184,6 +184,13 @@ describe('theme contrast tokens', () => {
     ['foreground', 'surface-panel'],
     ['foreground', 'surface-band'],
     ['foreground', 'surface-elevated'],
+    ['foreground', 'surface-dialog'],
+    ['foreground-muted', 'surface-dialog'],
+    ['foreground', 'control'],
+    ['foreground-muted', 'control'],
+    ['foreground-muted', 'surface-editor'],
+    ['primary', 'surface-editor'],
+    ['primary', 'control'],
     ['primary-foreground', 'primary'],
     ['accent-foreground', 'accent'],
     ['info-foreground', 'info'],
@@ -201,9 +208,10 @@ describe('theme contrast tokens', () => {
 
   it.each(themeModes)('%s text pairs meet 4.5:1', (_mode, tokens) => {
     for (const [foreground, background] of textPairs) {
-      expect(contrastRatio(requireToken(tokens, foreground), requireToken(tokens, background))).toBeGreaterThanOrEqual(
-        4.5
-      )
+      expect(
+        contrastRatio(requireToken(tokens, foreground), requireToken(tokens, background)),
+        `${foreground} on ${background}`
+      ).toBeGreaterThanOrEqual(4.5)
     }
   })
 
@@ -231,9 +239,10 @@ describe('theme contrast tokens', () => {
 
   it.each(accentThemeModes)('%s accent text pairs meet 4.5:1', (_label, tokens) => {
     for (const [foreground, background] of textPairs) {
-      expect(contrastRatio(requireToken(tokens, foreground), requireToken(tokens, background))).toBeGreaterThanOrEqual(
-        4.5
-      )
+      expect(
+        contrastRatio(requireToken(tokens, foreground), requireToken(tokens, background)),
+        `${foreground} on ${background}`
+      ).toBeGreaterThanOrEqual(4.5)
     }
 
     const activeAccentBackground = blendHslOverHsl(

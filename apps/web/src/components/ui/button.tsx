@@ -9,11 +9,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'border-primary/30 bg-primary text-primary-foreground shadow-emphasis hover:bg-primary/90',
-        danger: 'border-danger/30 bg-danger text-danger-foreground shadow-emphasis hover:bg-danger/88',
+        primary: 'border-primary/30 bg-primary text-primary-foreground shadow-none hover:bg-primary/90',
+        danger: 'border-danger/30 bg-danger text-danger-foreground shadow-none hover:bg-danger/88',
+        'danger-ghost':
+          'border-transparent bg-transparent text-danger shadow-none hover:bg-danger/10 hover:text-danger',
         outline: cn(controlSurfaceClassName, controlHoverClassName, 'hover:text-foreground'),
         secondary:
-          'border-surface-border/70 bg-surface-band text-foreground shadow-control hover:bg-surface-band/86 hover:text-foreground',
+          'border-transparent bg-surface-band text-foreground shadow-none hover:bg-control-hover hover:text-foreground',
         ghost: 'border-transparent shadow-none hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/60',
         link: 'text-primary underline-offset-4 hover:underline border-none',
         bare: 'border-transparent bg-transparent p-0 text-current shadow-none hover:text-primary'

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { formatDateLocale } from '@/lib/format'
-import { JsonViewer } from '@/shared/ui/json-viewer'
 
 export const formatPlatformDate = (value: string | null | undefined) => {
   if (!value) {
@@ -21,10 +20,8 @@ export const formatPlatformBytes = (bytes: number) => {
 }
 
 export const PlatformDetailRow = ({ label, value }: { label: string; value: ReactNode }) => (
-  <div className='grid grid-cols-[11rem_minmax(0,1fr)] gap-4 border-b border-surface-border/50 py-3 text-sm last:border-b-0 max-sm:grid-cols-1 max-sm:gap-1'>
-    <div className='font-medium uppercase text-foreground-muted'>{label}</div>
-    <div className='min-w-0 break-all text-right text-foreground-muted max-sm:text-left'>{value ?? 'none'}</div>
+  <div className='grid min-w-0 content-start gap-1 py-1 text-sm'>
+    <div className='text-xs font-medium text-foreground-muted'>{label}</div>
+    <div className='min-w-0 break-all leading-5 text-foreground'>{value ?? 'none'}</div>
   </div>
 )
-
-export const PlatformJsonBlock = ({ value }: { value: unknown }) => <JsonViewer value={value} />

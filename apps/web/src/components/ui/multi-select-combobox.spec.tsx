@@ -39,6 +39,20 @@ describe('MultiSelectCombobox', () => {
     expect(screen.queryByRole('button', { name: 'Remove Administrators' })).toBeNull()
   })
 
+  it('updates a second search immediately after selection and reopening', async () => {
+    render(<TestCombobox />)
+    const input = screen.getByPlaceholderText('Search groups')
+    fireEvent.click(input)
+    fireEvent.input(input, { target: { value: 'admin' }, inputType: 'insertText' })
+    fireEvent.click(await screen.findByRole('option', { name: /Administrators/ }))
+    fireEvent.keyDown(input, { key: 'Escape' })
+    fireEvent.click(input)
+    fireEvent.input(input, { target: { value: 'users' }, inputType: 'insertText' })
+    fireEvent.click(await screen.findByRole('option', { name: /Users/ }))
+    expect(screen.getByRole('button', { name: 'Remove Administrators' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Remove Users' })).toBeVisible()
+  })
+
   it('supports keyboard navigation', async () => {
     render(<TestCombobox />)
 

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -20,6 +20,7 @@ export const ConfirmMutationDialog = ({
   confirmLabel,
   consequence,
   description,
+  finalFocus,
   open,
   pending = false,
   pendingLabel,
@@ -34,6 +35,7 @@ export const ConfirmMutationDialog = ({
   confirmLabel: string
   consequence?: ReactNode
   description: ReactNode
+  finalFocus?: ComponentProps<typeof DialogContent>['finalFocus']
   open: boolean
   pending?: boolean
   pendingLabel?: string
@@ -53,6 +55,7 @@ export const ConfirmMutationDialog = ({
     <DialogContent
       className='sm:max-w-md'
       showCloseButton={!pending}
+      finalFocus={finalFocus}
     >
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>

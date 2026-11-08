@@ -3,6 +3,12 @@
 import { createContext, useContext, useId, type KeyboardEvent, type ReactNode } from 'react'
 import { focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import {
+  resourceNavigationActiveClassName,
+  resourceNavigationItemClassName,
+  resourceNavigationInteractiveClassName,
+  resourceNavigationListClassName
+} from '@/shared/ui/resource-navigation-style'
 
 type TabsContextValue = {
   baseId: string
@@ -41,6 +47,8 @@ export const TabsRoot = ({
   )
 }
 
+const TabsListVariantContext = createContext<'segmented' | 'scrollable' | 'immersive' | 'resource'>('segmented')
+
 export const TabsList = ({
   actions,
   ariaLabel,
@@ -52,24 +60,27 @@ export const TabsList = ({
   ariaLabel: string
   children: ReactNode
   className?: string
-  variant?: 'segmented' | 'scrollable' | 'immersive'
+  variant?: 'segmented' | 'scrollable' | 'immersive' | 'resource'
 }) => (
-  <div className={cn('flex min-w-0 items-center gap-2', className)}>
-    <div
-      role='tablist'
-      aria-label={ariaLabel}
-      data-variant={variant}
-      className={cn('min-w-0 flex-1', {
-        'flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1': variant === 'segmented',
-        'scrollbar-thin flex gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
-          variant === 'scrollable',
-        'scrollbar-thin flex gap-1 overflow-x-auto': variant === 'immersive'
-      })}
-    >
-      {children}
+  <TabsListVariantContext.Provider value={variant}>
+    <div className={cn('flex min-w-0 items-center gap-2', className)}>
+      <div
+        role='tablist'
+        aria-label={ariaLabel}
+        data-variant={variant}
+        className={cn('min-w-0 flex-1', {
+          [resourceNavigationListClassName]: variant === 'resource',
+          'flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1': variant === 'segmented',
+          'scrollbar-thin flex gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
+            variant === 'scrollable',
+          'scrollbar-thin flex gap-1 overflow-x-auto': variant === 'immersive'
+        })}
+      >
+        {children}
+      </div>
+      {actions ? <div className='shrink-0'>{actions}</div> : null}
     </div>
-    {actions ? <div className='shrink-0'>{actions}</div> : null}
-  </div>
+  </TabsListVariantContext.Provider>
 )
 
 const focusTab = (event: KeyboardEvent<HTMLButtonElement>, offset: number | 'first' | 'last') => {
@@ -101,6 +112,7 @@ export const TabsTrigger = ({
 }) => {
   const context = useTabsContext()
   const active = context.value === value
+  const resource = useContext(TabsListVariantContext) === 'resource'
 
   return (
     <button
@@ -113,8 +125,17 @@ export const TabsTrigger = ({
       disabled={disabled}
       className={cn(
         focusRingClassName,
-        'flex min-h-8 flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow] hover:bg-control/50 hover:text-foreground disabled:pointer-events-none disabled:opacity-50',
-        active && 'border-surface-border/65 bg-control text-foreground shadow-control',
+        resource
+          ? cn(
+              resourceNavigationItemClassName,
+              resourceNavigationInteractiveClassName,
+              active && resourceNavigationActiveClassName
+            )
+          : cn(
+              'flex min-h-8 flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow] hover:bg-control/50 hover:text-foreground',
+              active && 'border-surface-border/65 bg-control text-foreground shadow-control'
+            ),
+        'disabled:pointer-events-none disabled:opacity-50',
         className
       )}
       onClick={() => context.onValueChange(value)}

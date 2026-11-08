@@ -1,26 +1,21 @@
-import { useMemo, useState } from 'react'
-import { IconBox, IconCheck, IconChevronDown } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { cn } from '@/lib/utils'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import {
   findPlatformImageByReference,
   resolvePlatformImageRuntimeMetadata
 } from '@/shared/model/runtime-image/runtime-image-metadata'
-import { SearchField } from '@/shared/ui/search-field'
 import type { PlatformImage } from '@/shared/contracts/platform'
 
 type RuntimeImagePickerProps = {
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   images: PlatformImage[]
   value: string
   onChange: (value: string) => void
   disabled?: boolean
   placeholder?: string
 }
-
-const imageSearchText = (image: PlatformImage) =>
-  [imageDisplayName(image), image.shortId, image.id, ...image.repoTags, ...image.repoDigests].join(' ').toLowerCase()
 
 const runtimeImageSummary = (image: PlatformImage) => {
   const { metadata } = resolvePlatformImageRuntimeMetadata(image)
@@ -45,113 +40,28 @@ export const RuntimeImagePicker = ({
   value,
   onChange,
   disabled = false,
-  placeholder = 'Choose an image'
+  placeholder = 'Choose an image',
+  ...attributes
 }: RuntimeImagePickerProps) => {
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
   const selectedImage = findPlatformImageByReference(images, value)
-  const runtimeImages = useMemo(
-    () => images.filter(image => isRuntimeImageCandidate(image) || image.id === selectedImage?.id),
-    [images, selectedImage?.id]
-  )
-  const matches = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    const filtered = normalized
-      ? runtimeImages.filter(image => imageSearchText(image).includes(normalized))
-      : runtimeImages
-    return filtered.slice(0, 12)
-  }, [query, runtimeImages])
-
-  const selectImage = (image: PlatformImage) => {
-    onChange(imageDisplayName(image))
-    setOpen(false)
-    setQuery('')
-  }
-
-  const handleOpenChange = (nextOpen: boolean) => {
-    setOpen(nextOpen)
-    if (!nextOpen) setQuery('')
-  }
-
+  const options = images
+    .filter(image => isRuntimeImageCandidate(image) || image.id === selectedImage?.id)
+    .map(image => ({
+      value: imageDisplayName(image),
+      label: imageDisplayName(image),
+      description: runtimeImageSummary(image),
+      keywords: [image.id, image.shortId, ...image.repoTags, ...image.repoDigests]
+    }))
+  if (value && !options.some(option => option.value === value))
+    options.unshift({ value, label: value, description: 'Image metadata unavailable', keywords: [] })
   return (
-    <Popover
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          type='button'
-          variant='outline'
-          role='combobox'
-          aria-expanded={open}
-          disabled={disabled}
-          className='h-auto min-h-12 w-full justify-between px-3 py-2 text-left'
-        >
-          <span className='flex min-w-0 items-center gap-3'>
-            <IconBox className='size-4 text-foreground-muted' />
-            <span className='flex min-w-0 flex-col'>
-              <span className='truncate font-mono text-xs font-medium'>
-                {selectedImage ? imageDisplayName(selectedImage) : value || placeholder}
-              </span>
-              <span className='truncate text-xs font-normal text-foreground-muted'>
-                {selectedImage ? runtimeImageSummary(selectedImage) : 'Image metadata unavailable'}
-              </span>
-            </span>
-          </span>
-          <IconChevronDown className='size-4 text-foreground-muted' />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        align='start'
-        collisionAvoidance={{ side: 'shift', align: 'shift', fallbackAxisSide: 'none' }}
-        collisionPadding={12}
-        sideOffset={6}
-        className='w-[var(--anchor-width)] max-w-[calc(100vw-1.5rem)] p-1.5'
-      >
-        <div className='grid gap-2'>
-          <SearchField
-            value={query}
-            placeholder='Filter runtime images'
-            onValueChange={setQuery}
-          />
-          <div
-            className='grid max-h-[min(20rem,var(--available-height))] gap-0.5 overflow-auto overscroll-contain'
-            role='listbox'
-            aria-label='Runtime images'
-          >
-            {matches.map(image => {
-              const selected = selectedImage?.id === image.id
-              return (
-                <Button
-                  key={image.id}
-                  type='button'
-                  variant='ghost'
-                  role='option'
-                  aria-selected={selected}
-                  className={cn(
-                    'h-auto min-h-11 justify-start gap-2 px-2 py-2 text-left',
-                    selected ? 'bg-primary/10' : null
-                  )}
-                  onClick={() => selectImage(image)}
-                >
-                  <span className='flex size-5 items-center justify-center'>
-                    {selected ? <IconCheck className='size-4 text-primary' /> : null}
-                  </span>
-                  <span className='flex min-w-0 flex-1 flex-col'>
-                    <span className='truncate font-mono text-xs font-medium'>{imageDisplayName(image)}</span>
-                    <span className='truncate text-xs font-normal text-foreground-muted'>
-                      {runtimeImageSummary(image)}
-                    </span>
-                  </span>
-                </Button>
-              )
-            })}
-            {matches.length === 0 ? (
-              <div className='px-3 py-6 text-center text-sm text-foreground-muted'>No matching images.</div>
-            ) : null}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <SingleSelectCombobox
+      {...attributes}
+      options={options}
+      value={value}
+      onValueChange={onChange}
+      disabled={disabled}
+      placeholder={placeholder}
+    />
   )
 }

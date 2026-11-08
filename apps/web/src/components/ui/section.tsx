@@ -1,7 +1,8 @@
 'use client'
-import { ReactNode, useState } from 'react'
+import { ReactNode, useContext, useEffect, useId, useRef, useState } from 'react'
 import { IconChevronDown } from '@tabler/icons-react'
-import { bandSurfaceClassName, panelSurfaceClassName } from '@/components/ui/surface'
+import { EditorFormContext, EditorSectionContext } from '@/components/ui/editor-form-context'
+import { bandSurfaceClassName, editorSectionClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +16,9 @@ interface SectionProps {
   collapsible?: boolean
   contentClassName?: string
   defaultOpen?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  summary?: ReactNode
   description?: ReactNode
   headingLevel?: 2 | 3
   headingSpacing?: SectionHeadingSpacing
@@ -32,6 +36,9 @@ export const Section = ({
   collapsible,
   contentClassName,
   defaultOpen = false,
+  open,
+  onOpenChange,
+  summary,
   description,
   headingLevel = 2,
   headingSpacing = 'default',
@@ -39,16 +46,49 @@ export const Section = ({
   titleClassName,
   surface
 }: SectionProps) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const inEditor = useContext(EditorFormContext)
+  const insideEditorSection = useContext(EditorSectionContext)
+  const editorContainer = inEditor && !insideEditorSection && !collapsible
+  const editorExpansion = inEditor && !insideEditorSection && Boolean(collapsible)
+  const effectiveSurface = inEditor ? 'plain' : surface
+  const [internalOpen, setInternalOpen] = useState(defaultOpen)
+  const isOpen = open ?? internalOpen
+  const contentId = useId()
+  const contentRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = contentRef.current
+    if (!node || !collapsible || isOpen) return
+    const revealErrors = () => {
+      if (node.querySelector('[aria-invalid="true"], [role="alert"]')) {
+        setInternalOpen(true)
+        onOpenChange?.(true)
+      }
+    }
+    revealErrors()
+    const observer = new MutationObserver(revealErrors)
+    observer.observe(node, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['aria-invalid', 'role']
+    })
+    return () => observer.disconnect()
+  }, [collapsible, isOpen, onOpenChange])
+  const setIsOpen = (next: boolean) => {
+    setInternalOpen(next)
+    onOpenChange?.(next)
+  }
   const Heading = headingLevel === 2 ? 'h2' : 'h3'
-  const panelCollapsible = surface === 'panel' && Boolean(collapsible)
+  const panelCollapsible = effectiveSurface === 'panel' && Boolean(collapsible)
   const content = (
     <div
-      className={cn('flex', contentClassName, {
+      className={cn('flex min-w-0', inEditor && 'gap-4', contentClassName, {
         'flex-col': orientation === 'vertical'
       })}
     >
-      {children}
+      <EditorSectionContext.Provider value={insideEditorSection || editorContainer || editorExpansion}>
+        {children}
+      </EditorSectionContext.Provider>
     </div>
   )
 
@@ -56,14 +96,15 @@ export const Section = ({
     <section
       aria-label={typeof title === 'string' ? title : undefined}
       data-slot='section'
-      data-surface={surface}
+      data-surface={editorContainer ? 'editor' : effectiveSurface}
       className={cn(
         'flex flex-col w-full rounded-panel',
         {
-          [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: surface === 'band',
-          [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: surface === 'panel',
+          [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: effectiveSurface === 'band',
+          [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: effectiveSurface === 'panel',
           'p-0': panelCollapsible
         },
+        editorContainer && editorSectionClassName,
         className
       )}
     >
@@ -72,15 +113,17 @@ export const Section = ({
           <button
             type='button'
             aria-expanded={isOpen}
+            aria-controls={contentId}
             className={cn(
               'flex w-full items-center justify-between text-left',
               { 'px-6 py-5 max-sm:px-4 max-sm:py-4': panelCollapsible },
               titleClassName
             )}
-            onClick={() => setIsOpen(open => !open)}
+            onClick={() => setIsOpen(!isOpen)}
           >
             <span className='grid gap-1'>
               <Heading className='font-medium'>{title}</Heading>
+              {summary ? <span className='text-xs text-foreground-muted'>{summary}</span> : null}
               <Visible when={description}>
                 <span className='text-sm font-normal text-foreground-muted'>{description}</span>
               </Visible>
@@ -93,6 +136,7 @@ export const Section = ({
           </button>
         ) : (
           <div
+            data-slot='section-heading'
             data-testid='section-heading'
             data-heading-spacing={headingSpacing}
             className={cn(
@@ -120,14 +164,23 @@ export const Section = ({
 
       <Visible when={title && collapsible}>
         <div
+          ref={contentRef}
+          id={contentId}
+          inert={!isOpen}
+          aria-hidden={!isOpen}
+          onInvalidCapture={() => setIsOpen(true)}
           className={cn(
             'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
             {
               'px-6 max-sm:px-4': panelCollapsible,
-              'grid-rows-[1fr] opacity-100 pt-2': isOpen,
+              'grid-rows-[1fr] opacity-100': isOpen,
+              'pt-4': isOpen && !panelCollapsible && headingSpacing === 'default',
+              'pt-2': isOpen && (panelCollapsible || headingSpacing === 'compact'),
               'pb-6 max-sm:pb-4': isOpen && panelCollapsible,
+              'mt-4': isOpen && editorExpansion,
               'grid-rows-[0fr] opacity-0 pt-0 pb-0': !isOpen
-            }
+            },
+            editorExpansion && isOpen && editorSectionClassName
           )}
         >
           <div className='min-h-0'>{content}</div>

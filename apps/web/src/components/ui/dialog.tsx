@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
+import { EditorFormContext, EditorSectionContext } from '@/components/ui/editor-form-context'
 import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
@@ -88,9 +89,11 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  'data-editor-dialog': editorDialog,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Popup> & {
   showCloseButton?: boolean
+  'data-editor-dialog'?: string
 }) {
   return (
     <DialogPortal data-slot='dialog-portal'>
@@ -98,14 +101,18 @@ function DialogContent({
       <DialogPrimitive.Viewport className='scrollbar-thin pointer-events-none fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto p-4'>
         <DialogPrimitive.Popup
           data-slot='dialog-content'
+          data-editor-dialog={editorDialog}
           className={cn(
             'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-panel p-6 shadow-emphasis shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
             floatingSurfaceClassName,
+            'bg-surface-dialog',
             className
           )}
           {...props}
         >
-          {children}
+          <EditorFormContext.Provider value={editorDialog !== undefined}>
+            <EditorSectionContext.Provider value={editorDialog !== undefined}>{children}</EditorSectionContext.Provider>
+          </EditorFormContext.Provider>
           <Visible when={showCloseButton}>
             <DialogPrimitive.Close
               data-slot='dialog-close'

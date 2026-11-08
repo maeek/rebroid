@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
 import { safeVibrate } from '@/lib/safe-vibrate'
 import { cn } from '@/lib/utils'
+import { Skeleton } from './skeleton'
 import { Slider } from './slider'
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
@@ -22,6 +23,7 @@ type NumberFieldBaseProps = {
   allowEmpty?: boolean
   clearLabel?: string
   className?: string
+  loading?: boolean
 }
 
 type NumberSliderFieldProps = NumberFieldBaseProps &
@@ -52,7 +54,8 @@ export const NumberSliderField = ({
   showSlider = true,
   allowEmpty,
   clearLabel = 'Default',
-  className
+  className,
+  loading = false
 }: NumberSliderFieldProps) => {
   const hasMax = typeof max === 'number' && Number.isFinite(max) && max >= min
   const sliderMax = hasMax ? Number(max) : undefined
@@ -78,20 +81,24 @@ export const NumberSliderField = ({
   return (
     <div className={cn('flex w-full flex-col gap-2', className)}>
       <div className='flex min-w-0 items-center gap-2'>
-        <Input
-          id={id}
-          aria-describedby={ariaDescribedBy}
-          aria-invalid={ariaInvalid}
-          className='min-w-0'
-          value={value}
-          min={min}
-          max={hasMax ? max : undefined}
-          step={step}
-          type='number'
-          placeholder={placeholder}
-          onBlur={normalizeOnBlur}
-          onChange={event => onValueChange(event.target.value)}
-        />
+        {loading ? (
+          <Skeleton className='h-9 w-full max-w-48' />
+        ) : (
+          <Input
+            id={id}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
+            className='min-w-0 max-w-48'
+            value={value}
+            min={min}
+            max={hasMax ? max : undefined}
+            step={step}
+            type='number'
+            placeholder={placeholder}
+            onBlur={normalizeOnBlur}
+            onChange={event => onValueChange(event.target.value)}
+          />
+        )}
         <Visible when={inputSuffix}>
           <span className='shrink-0 whitespace-nowrap text-sm text-foreground-muted'>{inputSuffix}</span>
         </Visible>
@@ -101,6 +108,7 @@ export const NumberSliderField = ({
             variant='outline'
             size='sm'
             className='h-9'
+            disabled={loading}
             onClick={() => onValueChange('')}
           >
             {clearLabel}
@@ -109,18 +117,24 @@ export const NumberSliderField = ({
       </div>
       {showSlider && sliderMax !== undefined ? (
         <div className='grid w-full min-w-0 gap-1'>
-          <Slider
-            aria-label={rangeLabel}
-            min={min}
-            max={sliderMax}
-            step={step}
-            value={[sliderValue]}
-            onValueChange={v => {
-              onValueChange(String(v[0]))
-              safeVibrate(30)
-            }}
-            className='min-w-0'
-          />
+          {loading ? (
+            <div className='flex h-9 items-center'>
+              <Skeleton className='h-2 w-full' />
+            </div>
+          ) : (
+            <Slider
+              aria-label={rangeLabel}
+              min={min}
+              max={sliderMax}
+              step={step}
+              value={[sliderValue]}
+              onValueChange={v => {
+                onValueChange(String(v[0]))
+                safeVibrate(30)
+              }}
+              className='min-w-0'
+            />
+          )}
           <div className='flex items-center justify-between px-0.5 text-xs font-medium leading-none text-foreground-subtle'>
             <span>
               {min}

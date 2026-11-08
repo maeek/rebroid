@@ -14,7 +14,7 @@ type BackdropLayer = Required<Pick<BlurredImageBackdropProps, 'fallbackBackgroun
   imageSrc?: string | null
 }
 
-const defaultFallbackBackground = 'hsl(var(--primary) / 0.045)'
+const defaultFallbackBackground = 'transparent'
 
 const toLayer = ({
   imageSrc,

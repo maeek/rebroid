@@ -1,25 +1,27 @@
 'use client'
 
 import { IconCheck } from '@tabler/icons-react'
-import { cn } from '@/lib/utils'
+import { FormField } from '@/components/ui/form-field'
+import { Skeleton } from '@/components/ui/skeleton'
 import { accentColorPresets, type AccentColor } from '@/shared/model/theme/accent-color'
 
 export const AccentColorPicker = ({
   className,
   value,
-  onChange
+  onChange,
+  loading = false
 }: {
   className?: string
   value: AccentColor
   onChange: (accentColor: AccentColor) => void
+  loading?: boolean
 }) => (
-  <section className={cn('grid gap-3', className)}>
-    <div>
-      <h3 className='text-sm font-medium'>Accent color</h3>
-      <p className='text-sm text-foreground-muted'>
-        Primary actions, highlights, and navigation accents use this color.
-      </p>
-    </div>
+  <FormField
+    label='Accent color'
+    description='Primary actions, highlights, and navigation accents use this color.'
+    layout='vertical'
+    className={className}
+  >
     <div
       role='radiogroup'
       aria-label='Accent color'
@@ -28,11 +30,20 @@ export const AccentColorPicker = ({
       {accentColorPresets.map(preset => {
         const selected = value === preset.id
 
+        if (loading)
+          return (
+            <Skeleton
+              key={preset.id}
+              className='size-12 rounded-full'
+            />
+          )
+
         return (
           <button
             key={preset.id}
             type='button'
             role='radio'
+            aria-label={preset.label}
             aria-checked={selected}
             className='flex size-12 shrink-0 items-center justify-center rounded-full border border-black/10 shadow-control'
             style={{ backgroundColor: `hsl(${preset.swatch})` }}
@@ -45,5 +56,5 @@ export const AccentColorPicker = ({
         )
       })}
     </div>
-  </section>
+  </FormField>
 )

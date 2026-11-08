@@ -1,51 +1,125 @@
 'use client'
 
-import { useState } from 'react'
-import { IconCheck, IconCopy, IconTextWrap } from '@tabler/icons-react'
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to focus the scrollable code region. */
+
+import { useState, useTransition } from 'react'
+import { IconCopy, IconTextWrap } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Section } from '@/components/ui/section'
+import { Skeleton } from '@/components/ui/skeleton'
+import { editorSectionClassName } from '@/components/ui/surface'
+import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
-export const JsonViewer = ({ value, className }: { value: unknown; className?: string }) => {
-  const [wrap, setWrap] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const output = JSON.stringify(value, null, 2)
+const JsonTokens = ({ output }: { output: string }) => (
+  <>
+    {output
+      .split(/("(?:[^"\\]|\\.)*"\s*:|"(?:[^"\\]|\\.)*"|\b(?:true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g)
+      .map((token, index) => {
+        let color = 'text-foreground-muted'
+        if (token.startsWith('"')) color = token.trimEnd().endsWith(':') ? 'text-primary' : 'text-foreground'
+        else if (/^(true|false|null)$/.test(token)) color = 'text-warning'
+        else if (/^-?\d/.test(token)) color = 'text-info'
+        return (
+          <span
+            key={index}
+            className={color}
+          >
+            {token}
+          </span>
+        )
+      })}
+  </>
+)
 
-  const copy = async () => {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1500)
-  }
+export const JsonViewer = ({
+  value,
+  title = 'JSON',
+  className,
+  loading = false
+}: {
+  value: unknown
+  title?: string
+  className?: string
+  loading?: boolean
+}) => {
+  const [wrap, setWrap] = useState(true)
+  const [copying, startCopy] = useTransition()
+  const output = JSON.stringify(value, null, 2) ?? 'null'
 
   return (
-    <div className={cn('overflow-hidden rounded-panel border border-surface-border/60 bg-surface-band/45', className)}>
-      <div className='flex items-center justify-end gap-1 border-b border-surface-border/60 px-2 py-1.5'>
-        <Button
-          type='button'
-          variant='ghost'
-          size='sm'
-          aria-pressed={wrap}
-          onClick={() => setWrap(current => !current)}
-        >
-          <IconTextWrap className='size-4' />
-          Wrap
-        </Button>
-        <Button
-          type='button'
-          variant='ghost'
-          size='sm'
-          onClick={() => void copy()}
-        >
-          {copied ? <IconCheck className='size-4 text-success' /> : <IconCopy className='size-4' />}
-          {copied ? 'Copied' : 'Copy'}
-        </Button>
-      </div>
-      <pre
-        className={cn('max-h-[32rem] overflow-auto p-4 font-mono text-xs leading-6 text-foreground-muted', {
-          'whitespace-pre-wrap break-all': wrap
-        })}
+    <Section
+      surface='plain'
+      title={title}
+      className={cn(editorSectionClassName, className)}
+      actions={
+        <>
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            aria-pressed={wrap}
+            disabled={loading}
+            onClick={() => setWrap(current => !current)}
+          >
+            <IconTextWrap className='size-4' /> Wrap
+          </Button>
+          <MutationButton
+            type='button'
+            variant='ghost'
+            size='sm'
+            pending={copying}
+            disabled={loading}
+            pendingLabel='Copying…'
+            onClick={() =>
+              startCopy(async () => {
+                try {
+                  await navigator.clipboard.writeText(output)
+                  toast({ title: 'JSON copied', variant: 'success' })
+                } catch {
+                  toast({ title: 'Could not copy JSON', variant: 'danger' })
+                }
+              })
+            }
+          >
+            <IconCopy className='size-4' /> Copy
+          </MutationButton>
+        </>
+      }
+    >
+      {}
+      <div
+        tabIndex={0}
+        role='region'
+        aria-label={`${title} JSON`}
+        className='max-h-[40rem] min-w-0 overflow-auto rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       >
-        {output}
-      </pre>
-    </div>
+        <pre
+          className={cn(
+            'm-0 font-mono text-sm leading-7 tabular-nums',
+            wrap ? 'whitespace-pre-wrap [overflow-wrap:anywhere]' : 'whitespace-pre'
+          )}
+        >
+          {loading ? (
+            <span
+              className='grid gap-3 py-1'
+              aria-label='Loading JSON'
+            >
+              {Array.from({ length: 12 }, (_, index) => (
+                <Skeleton
+                  key={index}
+                  className='h-4 w-3/4'
+                />
+              ))}
+            </span>
+          ) : (
+            <code>
+              <JsonTokens output={output} />
+            </code>
+          )}
+        </pre>
+      </div>
+    </Section>
   )
 }

@@ -8,6 +8,7 @@ import { floatingSurfaceClassName, overlayClassName } from '@/components/ui/surf
 import { cn } from '@/lib/utils'
 
 const Sheet = SheetPrimitive.Root
+const SheetTrigger = SheetPrimitive.Trigger
 
 const SheetPortal = SheetPrimitive.Portal
 
@@ -17,8 +18,9 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Backdrop
     ref={ref}
+    data-slot='sheet-overlay'
     className={cn(
-      'fixed inset-0 z-50 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0',
+      'fixed inset-0 z-50 opacity-100 transition-opacity duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none',
       overlayClassName,
       className
     )}
@@ -28,15 +30,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = 'SheetOverlay'
 
 const sheetVariants = cva(
-  'scrollbar-thin fixed z-50 gap-4 overflow-x-hidden p-6 shadow-floating transition ease-in-out data-[closed]:duration-300 data-[open]:duration-500 data-[open]:animate-in data-[closed]:animate-out',
+  'scrollbar-thin fixed z-50 gap-4 overflow-x-hidden p-6 shadow-floating transition-transform duration-200 ease-out motion-reduce:transition-none',
   {
     variants: {
       side: {
-        top: 'inset-x-0 top-0 border-b data-[closed]:slide-out-to-top data-[open]:slide-in-from-top',
-        bottom: 'inset-x-0 bottom-0 border-t data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom',
-        left: 'inset-y-0 left-0 h-full w-3/4 border-r data-[closed]:slide-out-to-left data-[open]:slide-in-from-left sm:max-w-sm',
+        top: 'inset-x-0 top-0 border-b data-[starting-style]:-translate-y-full data-[ending-style]:-translate-y-full',
+        bottom:
+          'inset-x-0 bottom-0 border-t data-[starting-style]:translate-y-full data-[ending-style]:translate-y-full',
+        left: 'inset-y-0 left-0 h-full w-3/4 border-r data-[starting-style]:-translate-x-full data-[ending-style]:-translate-x-full sm:max-w-sm',
         right:
-          'inset-y-0 right-0 h-full w-3/4 border-l data-[closed]:slide-out-to-right data-[open]:slide-in-from-right sm:max-w-sm'
+          'inset-y-0 right-0 h-full w-3/4 border-l data-[starting-style]:translate-x-full data-[ending-style]:translate-x-full sm:max-w-sm'
       }
     },
     defaultVariants: {
@@ -54,7 +57,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Pop
       <SheetOverlay />
       <SheetPrimitive.Popup
         ref={ref}
-        className={cn(sheetVariants({ side }), floatingSurfaceClassName, className)}
+        className={cn(sheetVariants({ side }), floatingSurfaceClassName, 'rounded-none! border-0!', className)}
         {...props}
       >
         <SheetPrimitive.Close className='absolute right-4 top-4 rounded-control opacity-70 ring-offset-background transition-[background-color,opacity] hover:bg-surface-band/80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-surface-band'>
@@ -100,4 +103,4 @@ const SheetDescription = React.forwardRef<
 ))
 SheetDescription.displayName = 'SheetDescription'
 
-export { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription }
+export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription }
