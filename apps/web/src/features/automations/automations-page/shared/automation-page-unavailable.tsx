@@ -1,8 +1,8 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage, PageContent } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
+import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
 
-export const AutomationPageUnavailable = ({ title, href }: { title: string; href: string }) => (
+export const AutomationPageUnavailable = ({ title }: { title: string }) => (
   <StandardPage className='gap-2'>
     <PageHeader
       section={{ label: 'Automations' }}
@@ -10,14 +10,10 @@ export const AutomationPageUnavailable = ({ title, href }: { title: string; href
       description='Automation data is temporarily unavailable.'
     />
     <PageContent>
-      <StateView
-        kind='unavailable'
+      <PageLoadFailure
         title='Automation service unavailable'
         description='The page could not load automation data from the orchestrator.'
-        actions={[
-          { label: 'Refresh', href },
-          { label: 'Back to workflows', href: '/automations' }
-        ]}
+        backAction={{ label: 'Back to workflows', href: '/automations' }}
       />
     </PageContent>
   </StandardPage>

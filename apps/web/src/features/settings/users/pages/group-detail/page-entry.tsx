@@ -22,6 +22,7 @@ export default async function GroupDetailPageEntry({ params }: GroupDetailPageEn
         />
         <PageContent>
           <StateView
+            scope='page'
             kind='not-found'
             title='Group not found'
             description='The group may have been removed or the link may be stale.'

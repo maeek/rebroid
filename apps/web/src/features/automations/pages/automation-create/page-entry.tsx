@@ -6,12 +6,7 @@ export async function AutomationCreatePageEntry() {
   const { commands, orchestratorError } = await loadAutomationCreatePageData()
 
   if (orchestratorError) {
-    return (
-      <AutomationPageUnavailable
-        title='New workflow'
-        href='/automations/create'
-      />
-    )
+    return <AutomationPageUnavailable title='New workflow' />
   }
 
   return <AutomationEditorPage initialCommands={commands} />

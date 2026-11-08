@@ -1,7 +1,7 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
 import { RuntimeContainerDetail } from '../../details/runtime-container-detail/runtime-container-detail'
+import { RuntimeDetailUnavailable } from '../runtime-detail-unavailable'
 import { loadRuntimeContainerDetailPageData } from './page-data.server'
 
 export async function RuntimeContainerDetailPageEntry({
@@ -26,7 +26,7 @@ export async function RuntimeContainerDetailPageEntry({
         />
       </StandardPage>
     )
-  } catch {
+  } catch (error) {
     return (
       <StandardPage className='gap-2'>
         <PageHeader
@@ -36,16 +36,11 @@ export async function RuntimeContainerDetailPageEntry({
           description='Container details could not be loaded.'
         />
         <PageContent>
-          <StateView
-            kind='not-found'
-            title='Container not found'
-            description='The container may have been removed or Docker may no longer know this id.'
-            actions={[
-              {
-                label: 'Back to containers',
-                href: '/runtime/containers'
-              }
-            ]}
+          <RuntimeDetailUnavailable
+            error={error}
+            resource='Container'
+            href='/runtime/containers'
+            backLabel='Back to containers'
           />
         </PageContent>
       </StandardPage>

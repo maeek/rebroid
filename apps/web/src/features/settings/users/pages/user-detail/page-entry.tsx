@@ -22,6 +22,7 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
         />
         <PageContent>
           <StateView
+            scope='page'
             kind='not-found'
             title='User not found'
             description='The account may have been removed or the link may be stale.'

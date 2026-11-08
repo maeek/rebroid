@@ -11,12 +11,7 @@ export async function AutomationTriggersPageEntry({
     await loadAutomationTriggersPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
-    return (
-      <AutomationPageUnavailable
-        title='Triggers'
-        href='/automations/triggers'
-      />
-    )
+    return <AutomationPageUnavailable title='Triggers' />
   }
 
   return (

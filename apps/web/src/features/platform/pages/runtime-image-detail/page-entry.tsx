@@ -1,7 +1,7 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
 import { RuntimeImageDetail } from '../../details/runtime-image-detail'
+import { RuntimeDetailUnavailable } from '../runtime-detail-unavailable'
 import { loadRuntimeImageDetailPageData } from './page-data.server'
 
 export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +15,7 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
         <RuntimeImageDetail details={details} />
       </StandardPage>
     )
-  } catch {
+  } catch (error) {
     return (
       <StandardPage className='gap-2'>
         <PageHeader
@@ -25,11 +25,11 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
           description='Image details could not be loaded.'
         />
         <PageContent>
-          <StateView
-            kind='not-found'
-            title='Image not found'
-            description='The image may have been removed or Docker may no longer know this id.'
-            actions={[{ label: 'Back to images', href: '/runtime/images' }]}
+          <RuntimeDetailUnavailable
+            error={error}
+            resource='Image'
+            href='/runtime/images'
+            backLabel='Back to images'
           />
         </PageContent>
       </StandardPage>

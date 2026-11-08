@@ -11,7 +11,6 @@ const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promi
       <PlatformRouteUnavailable
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
-        href='/runtime/images'
         section={{ label: 'Runtime' }}
       />
     )

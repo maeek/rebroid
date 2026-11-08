@@ -1,7 +1,7 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
 import { RuntimeNetworkDetail } from '../../details/runtime-network-detail'
+import { RuntimeDetailUnavailable } from '../runtime-detail-unavailable'
 import { loadRuntimeNetworkDetailPageData } from './page-data.server'
 
 export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +15,7 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
         <RuntimeNetworkDetail details={details} />
       </StandardPage>
     )
-  } catch {
+  } catch (error) {
     return (
       <StandardPage className='gap-2'>
         <PageHeader
@@ -25,11 +25,11 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
           description='Network details could not be loaded.'
         />
         <PageContent>
-          <StateView
-            kind='not-found'
-            title='Network not found'
-            description='The network may have been removed or Docker may no longer know this id.'
-            actions={[{ label: 'Back to networks', href: '/runtime/networks' }]}
+          <RuntimeDetailUnavailable
+            error={error}
+            resource='Network'
+            href='/runtime/networks'
+            backLabel='Back to networks'
           />
         </PageContent>
       </StandardPage>

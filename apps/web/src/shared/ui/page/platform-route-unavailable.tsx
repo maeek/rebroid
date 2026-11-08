@@ -1,22 +1,18 @@
 import type { ReactNode } from 'react'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
+import { PageLoadFailure } from './page-load-failure'
 
 export const PlatformRouteUnavailable = ({
   title,
   leading,
   description,
-  href,
-  section,
-  actionLabel = 'Refresh'
+  section
 }: {
   title: string
   leading?: ReactNode
   description: string
-  href: string
   section: { label: string; href?: string }
-  actionLabel?: string
 }) => (
   <StandardPage className='gap-2'>
     <PageHeader
@@ -26,14 +22,10 @@ export const PlatformRouteUnavailable = ({
       section={section}
     />
     <PageContent>
-      <StateView
-        kind='unavailable'
+      <PageLoadFailure
         title='Service unavailable'
         description='The page could not load data from the orchestrator.'
-        actions={[
-          { label: actionLabel, href },
-          { label: 'Back to apps', href: '/apps' }
-        ]}
+        backAction={{ label: 'Back to apps', href: '/apps' }}
       />
     </PageContent>
   </StandardPage>

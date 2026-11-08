@@ -9,12 +9,7 @@ const AutomationEditPageContent = async ({ params }: { params: Promise<{ id: str
   const { automation, commands, orchestratorError } = await loadAutomationEditPageData(id)
 
   if (orchestratorError || !automation) {
-    return (
-      <AutomationPageUnavailable
-        title='Workflow'
-        href={`/automations/${id}`}
-      />
-    )
+    return <AutomationPageUnavailable title='Workflow' />
   }
 
   return (
