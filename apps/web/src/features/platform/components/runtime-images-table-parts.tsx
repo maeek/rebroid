@@ -1,8 +1,8 @@
-import Link from 'next/link'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatUtcDate } from '@/lib/format'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { RuntimeImageBadges } from './runtime-image-badges'
 import { formatImageContainerCount, formatImageSize, getImageSecondaryLabel } from './runtime-images-section-model'
 import type { PlatformImage } from '@/shared/contracts/platform'
@@ -16,12 +16,12 @@ const ImageNameCell = ({ image }: { image: PlatformImage }) => {
     <div className='flex min-w-[18rem] flex-col gap-1'>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link
+          <ResourceLink
             href={`/runtime/images/${encodeURIComponent(image.id)}`}
-            className='block truncate font-medium hover:text-primary'
+            className='block min-w-0 whitespace-normal break-words font-medium'
           >
             {name}
-          </Link>
+          </ResourceLink>
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{name}</TooltipContent>
       </Tooltip>

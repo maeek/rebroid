@@ -19,7 +19,7 @@ export const ContainerDetailProvider = ({
 }: {
   children: ReactNode
   details: PlatformContainerDetails
-  initialLogs: PlatformContainerLog
+  initialLogs?: PlatformContainerLog
 }) => {
   const controller = useContainerDetailController({ container: details.container, initialLogs })
 

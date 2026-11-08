@@ -148,7 +148,7 @@ export const RuntimeNetworksSection = ({
           bulkActions={
             <Button
               type='button'
-              variant='danger'
+              variant='danger-ghost'
               disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
               onClick={() => setPendingRemove(selectedNetworks)}
             >

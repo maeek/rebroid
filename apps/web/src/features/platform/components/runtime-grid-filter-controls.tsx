@@ -2,6 +2,7 @@
 
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import type {
   PlatformContainersGridPage,
   PlatformContainersGridQuery,
@@ -18,8 +19,10 @@ const FilterSelect = ({
   value,
   options,
   allLabel,
-  onValueChange
+  onValueChange,
+  searchable = false
 }: {
+  searchable?: boolean
   label: string
   value?: string
   options: Array<{ value: string; label?: string }>
@@ -30,25 +33,36 @@ const FilterSelect = ({
     label={label}
     layout='vertical'
   >
-    <Select
-      value={value ?? all}
-      onValueChange={nextValue => onValueChange(nextValue === all ? undefined : nextValue)}
-    >
-      <SelectTrigger className='w-full'>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={all}>{allLabel}</SelectItem>
-        {options.map(option => (
-          <SelectItem
-            key={option.value}
-            value={option.value}
-          >
-            {option.label ?? option.value}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    {searchable ? (
+      <SingleSelectCombobox
+        value={value ?? all}
+        options={[
+          { value: all, label: allLabel },
+          ...options.map(option => ({ value: option.value, label: option.label ?? option.value }))
+        ]}
+        onValueChange={next => onValueChange(next === all ? undefined : next)}
+      />
+    ) : (
+      <Select
+        value={value ?? all}
+        onValueChange={nextValue => onValueChange(nextValue === all ? undefined : nextValue)}
+      >
+        <SelectTrigger className='w-full'>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={all}>{allLabel}</SelectItem>
+          {options.map(option => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+            >
+              {option.label ?? option.value}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )}
   </FormField>
 )
 
@@ -102,13 +116,18 @@ export const RuntimeContainerFilters = ({
     />
     <FilterSelect
       label='Application'
+      searchable
       value={query.application}
-      options={page.facets.applications.map(value => ({ value }))}
+      options={page.facets.applications.map(value => ({
+        value,
+        label: page.facets.applicationNames?.[value] ?? value
+      }))}
       allLabel='Any application'
       onValueChange={application => onUpdate({ application, page: 1 })}
     />
     <FilterSelect
       label='Image'
+      searchable
       value={query.image}
       options={page.facets.images.map(value => ({ value }))}
       allLabel='Any image'
@@ -116,6 +135,7 @@ export const RuntimeContainerFilters = ({
     />
     <FilterSelect
       label='Network'
+      searchable
       value={query.network}
       options={page.facets.networks.map(value => ({ value }))}
       allLabel='Any network'

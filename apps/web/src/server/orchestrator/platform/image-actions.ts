@@ -4,6 +4,7 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { requireFeature } from '../features'
 import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
+import { resolveContainerApplicationNames } from './container-application-names'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformImagesGridPage } from './platform-grid-utils'
 import type {
@@ -29,7 +30,8 @@ export const listPlatformImagesGridAction = async (
 
 export const getPlatformImageAction = async (id: string) => {
   await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformImage(id)
+  const details = await orchestratorPlatformClient.getPlatformImage(id)
+  return { ...details, relatedContainers: await resolveContainerApplicationNames(details.relatedContainers) }
 }
 
 export const removePlatformImageAction = async (id: string, force = false) =>

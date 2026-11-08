@@ -30,7 +30,7 @@ describe('runtime inventory loading geometry', () => {
   it('uses the real container columns without a duplicate actions column', () => {
     render(<RuntimeContainersPageLoading />)
 
-    expectLoadingGrid('1440px', ['Container', 'State', 'Image', 'Application', 'Networks'])
+    expectLoadingGrid('1368px', ['Container', 'State', 'Image', 'Application', 'Networks'])
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
   })
 

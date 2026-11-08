@@ -155,7 +155,7 @@ export const RuntimeImagesSection = ({
           bulkActions={
             <Button
               type='button'
-              variant='danger'
+              variant='danger-ghost'
               disabled={busyId === 'bulk' || !canRemoveSelectedImages(selectedImages)}
               onClick={() => setPendingRemove(selectedImages)}
             >

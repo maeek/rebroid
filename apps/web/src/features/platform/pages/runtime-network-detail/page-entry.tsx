@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
@@ -13,21 +12,6 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
 
     return (
       <StandardPage className='gap-2'>
-        <PageHeader
-          section={{ label: 'Runtime' }}
-          trail={[{ label: 'Networks', href: '/runtime/networks' }]}
-          title={details.network.name}
-          description='Network details, attached containers, and raw Docker metadata.'
-          badges={
-            <>
-              {details.network.managed ? <Badge variant='success'>managed</Badge> : null}
-              {details.network.internal ? <Badge variant='neutral'>internal</Badge> : null}
-              {details.network.attachable ? <Badge variant='neutral'>attachable</Badge> : null}
-              {details.network.ingress ? <Badge variant='neutral'>ingress</Badge> : null}
-            </>
-          }
-          meta={<span className='font-mono'>{details.network.shortId}</span>}
-        />
         <RuntimeNetworkDetail details={details} />
       </StandardPage>
     )

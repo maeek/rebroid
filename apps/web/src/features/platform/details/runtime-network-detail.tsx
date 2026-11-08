@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -14,16 +14,22 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Section } from '@/components/ui/section'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { RelatedContainersGrid } from '@/features/platform/details/related-containers-grid'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { DefinitionTable } from '@/shared/ui/definition-table'
+import { DetailFields } from '@/shared/ui/detail-fields'
+import { JsonViewer } from '@/shared/ui/json-viewer'
+import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
-import { PlatformJsonBlock, formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
+import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
+import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
+import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
+import type { PlatformNetworkDetails } from '@/shared/contracts/platform'
+
 type RuntimeNetworkDetailProps = {
   details: import('@/shared/contracts/platform').PlatformNetworkDetails
 }
@@ -55,81 +61,20 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
 
   return (
     <>
-      <PageContent>
-        <Section
-          title='Overview'
-          surface='plain'
-          contentClassName='gap-5'
-        >
-          <div className='flex flex-wrap items-center justify-between gap-4'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <Visible when={network.managed}>
-                <Badge variant='success'>managed</Badge>
-              </Visible>
-              <Visible when={network.internal}>
-                <Badge variant='neutral'>internal</Badge>
-              </Visible>
-              <span className='font-mono text-xs text-foreground-muted'>{network.shortId}</span>
-            </div>
-            <Button
-              type='button'
-              variant='danger'
-              disabled={isRemoving || network.containers.length > 0}
-              onClick={() => setRemoveDialogOpen(true)}
-            >
-              <IconTrash className='size-4' />
-              Remove
-            </Button>
-          </div>
-          <DefinitionTable
-            columns={2}
-            items={[
-              { label: 'Driver', value: network.driver },
-              { label: 'Subnets', value: network.subnets.length > 0 ? network.subnets.join(', ') : 'none' },
-              { label: 'Scope', value: network.scope },
-              { label: 'Gateways', value: network.gateways.length > 0 ? network.gateways.join(', ') : 'none' },
-              { label: 'Created', value: formatPlatformDate(network.createdAt) },
-              { label: 'Containers', value: network.containers.length }
-            ]}
-          />
-        </Section>
-
-        <Section
-          surface='plain'
-          title='Related containers'
-          contentClassName='gap-4'
-          headingSpacing='compact'
-        >
-          <Visible when={details.relatedContainers.length > 0}>
-            <RelatedContainersGrid
-              containers={details.relatedContainers}
-              relation='image'
-            />
-          </Visible>
-          <Visible when={details.relatedContainers.length === 0}>
-            <p className='text-sm text-foreground-muted'>No local containers are attached to this network.</p>
-          </Visible>
-        </Section>
-
-        <Section
-          title='Labels'
-          surface='plain'
-          contentClassName='gap-4'
-          headingSpacing='default'
-        >
-          <PlatformJsonBlock value={network.labels} />
-        </Section>
-
-        <Section
-          title='Raw inspect'
-          surface='plain'
-          collapsible
-          contentClassName='gap-4'
-          headingSpacing='default'
-        >
-          <PlatformJsonBlock value={details.inspect} />
-        </Section>
-      </PageContent>
+      <RuntimeNetworkPageContent
+        details={details}
+        actions={
+          <Button
+            type='button'
+            variant='danger'
+            disabled={isRemoving || network.containers.length > 0}
+            onClick={() => setRemoveDialogOpen(true)}
+          >
+            <IconTrash className='size-4' />
+            Remove
+          </Button>
+        }
+      />
 
       <Dialog
         modal
@@ -157,6 +102,99 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
+
+export const RuntimeNetworkPageContent = ({
+  details,
+  actions,
+  loading = false
+}: {
+  details?: PlatformNetworkDetails
+  actions?: ReactNode
+  loading?: boolean
+}) => {
+  const network = details?.network
+  return (
+    <>
+      <PageHeader
+        section={{ label: 'Runtime' }}
+        breadcrumbLabel={network ? undefined : 'Network'}
+        trail={[{ label: 'Networks', href: '/runtime/networks' }]}
+        title={network?.name ?? <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' />}
+        badges={
+          <>
+            {loading ? <Skeleton className='h-5 w-16' /> : null}
+            {network?.managed ? <Badge variant='success'>managed</Badge> : null}
+            {network?.internal ? <Badge variant='neutral'>internal</Badge> : null}
+            {network?.attachable ? <Badge variant='neutral'>attachable</Badge> : null}
+            {network?.ingress ? <Badge variant='neutral'>ingress</Badge> : null}
+          </>
+        }
+        meta={<span className='font-mono'>{network?.shortId}</span>}
+        actions={
+          actions ?? (
+            <Button
+              type='button'
+              variant='danger'
+              disabled
+            >
+              <IconTrash className='size-4' />
+              Remove
+            </Button>
+          )
+        }
+      />
+      <PageContent>
+        <PlatformResourceSection
+          title='Overview'
+          surface='plain'
+          contentClassName='gap-5'
+        >
+          <DetailFields
+            loading={loading}
+            title='Network'
+            fields={[
+              { label: 'Network ID', value: network?.id, copyValue: network?.id, code: true, fullWidth: true },
+              { label: 'Driver', value: network?.driver },
+              { label: 'Subnets', value: (network?.subnets.length ?? 0) > 0 ? network?.subnets.join(', ') : 'none' },
+              { label: 'Scope', value: network?.scope },
+              { label: 'Gateways', value: (network?.gateways.length ?? 0) > 0 ? network?.gateways.join(', ') : 'none' },
+              { label: 'Created', value: formatPlatformDate(network?.createdAt) },
+              { label: 'Containers', value: network?.containers.length }
+            ]}
+          />
+        </PlatformResourceSection>
+
+        <PlatformResourceSection
+          surface='plain'
+          title='Related containers'
+          contentClassName='gap-4'
+          headingSpacing='compact'
+        >
+          <Visible when={loading || (details?.relatedContainers.length ?? 0) > 0}>
+            <RelatedContainersGrid
+              containers={details?.relatedContainers ?? []}
+              loading={loading}
+              relation='image'
+            />
+          </Visible>
+          <Visible when={!loading && details?.relatedContainers.length === 0}>
+            <p className='text-sm text-foreground-muted'>No local containers are attached to this network.</p>
+          </Visible>
+        </PlatformResourceSection>
+
+        <PlatformLabelsSection
+          labels={network?.labels ?? {}}
+          loading={loading}
+        />
+        <JsonViewer
+          title='Raw inspect'
+          value={details?.inspect}
+          loading={loading}
+        />
+      </PageContent>
     </>
   )
 }

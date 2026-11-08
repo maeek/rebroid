@@ -1,6 +1,5 @@
 'use client'
 
-import { Section } from '@/components/ui/section'
 import { ContainerActionDialog } from '@/features/platform/details/runtime-container-detail/container-action-dialog'
 import {
   ContainerDetailProvider,
@@ -9,66 +8,61 @@ import {
 import { ContainerLogsSection } from '@/features/platform/details/runtime-container-detail/container-logs-section'
 import { ContainerOverviewSection } from '@/features/platform/details/runtime-container-detail/container-overview-section'
 import { LiveResourcesSection } from '@/features/platform/details/runtime-container-detail/live-resources-section'
-import {
-  RelatedImageSection,
-  RelatedNetworksSection
-} from '@/features/platform/details/runtime-container-detail/related-container-sections'
+import { JsonViewer } from '@/shared/ui/json-viewer'
 import { PageContent } from '@/shared/ui/page/page-layout'
-import { PlatformJsonBlock } from '@/shared/ui/platform/platform-detail-parts'
+import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
+import { ContainerResourceHeader } from './container-resource-header'
+import { ContainerResourceNavigation } from './container-resource-navigation'
+import { RelatedResourcesSection } from './related-container-sections'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 
 export const RuntimeContainerDetail = ({
   details,
-  initialLogs
+  initialLogs,
+  view = 'overview'
 }: {
   details: PlatformContainerDetails
-  initialLogs: PlatformContainerLog
+  view?: 'overview' | 'logs'
+  initialLogs?: PlatformContainerLog
 }) => {
   return (
     <ContainerDetailProvider
       details={details}
       initialLogs={initialLogs}
     >
-      <RuntimeContainerDetailContent />
+      <RuntimeContainerDetailContent view={view} />
     </ContainerDetailProvider>
   )
 }
 
-const RuntimeContainerDetailContent = () => {
+const RuntimeContainerDetailContent = ({ view }: { view: 'overview' | 'logs' }) => {
   const { details } = useContainerDetailContext()
   const container = details.container
 
   return (
     <>
+      <ContainerResourceHeader />
       <PageContent>
-        <ContainerOverviewSection />
+        <ContainerResourceNavigation
+          id={container.id}
+          view={view}
+        />
+        {view === 'logs' ? (
+          <ContainerLogsSection />
+        ) : (
+          <>
+            <ContainerOverviewSection />
+            <RelatedResourcesSection />
 
-        <LiveResourcesSection />
+            {container.state === 'running' ? <LiveResourcesSection /> : null}
 
-        <div className='grid gap-6 xl:grid-cols-2'>
-          <RelatedImageSection />
-          <RelatedNetworksSection />
-        </div>
-
-        <ContainerLogsSection />
-
-        <Section
-          title='Labels'
-          surface='plain'
-          contentClassName='gap-4'
-          headingSpacing='default'
-        >
-          <PlatformJsonBlock value={container.labels} />
-        </Section>
-
-        <Section
-          title='Raw inspect'
-          surface='plain'
-          collapsible
-          contentClassName='gap-4'
-        >
-          <PlatformJsonBlock value={details.inspect} />
-        </Section>
+            <PlatformLabelsSection labels={container.labels} />
+            <JsonViewer
+              title='Raw inspect'
+              value={details.inspect}
+            />
+          </>
+        )}
       </PageContent>
 
       <ContainerActionDialog />

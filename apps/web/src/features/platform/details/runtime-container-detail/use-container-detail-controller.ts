@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   actionDialogCopy,
@@ -44,9 +44,13 @@ const useContainerStats = (container: PlatformContainerDetails['container']) => 
   return { stats, statsError, isRefreshingStats, refreshStats }
 }
 
-const useContainerLogs = (containerId: string, initialLogs: PlatformContainerLog) => {
+const useContainerLogs = (containerId: string, initialLogs?: PlatformContainerLog) => {
   const [logs, setLogs] = useState(initialLogs)
   const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
+
+  useEffect(() => {
+    setLogs(initialLogs)
+  }, [containerId, initialLogs])
 
   const refreshLogs = async () => {
     setIsRefreshingLogs(true)
@@ -118,7 +122,7 @@ export const useContainerDetailController = ({
   initialLogs,
   container
 }: {
-  initialLogs: PlatformContainerLog
+  initialLogs?: PlatformContainerLog
   container: PlatformContainerDetails['container']
 }) => {
   const stats = useContainerStats(container)

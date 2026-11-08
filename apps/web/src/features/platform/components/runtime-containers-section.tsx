@@ -96,7 +96,7 @@ export const RuntimeContainersSection = ({
           {
             id: 'application',
             label: 'Application',
-            value: gridQuery.application,
+            value: containersPage.facets.applicationNames?.[gridQuery.application] ?? gridQuery.application,
             onRemove: () => pushGridParams({ application: undefined, page: 1 })
           }
         ]
@@ -177,7 +177,7 @@ export const RuntimeContainersSection = ({
             <>
               <Button
                 type='button'
-                variant='secondary'
+                variant='ghost'
                 disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
                 onClick={() => setPendingBulkAction('stop')}
               >
@@ -185,7 +185,7 @@ export const RuntimeContainersSection = ({
               </Button>
               <Button
                 type='button'
-                variant='danger'
+                variant='danger-ghost'
                 disabled={busyId === 'bulk' || !canRunBulkContainerAction(selectedContainers)}
                 onClick={() => setPendingBulkAction('remove')}
               >

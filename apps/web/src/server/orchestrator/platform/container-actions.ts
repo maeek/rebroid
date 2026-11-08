@@ -3,25 +3,29 @@
 import { runSafeAction } from '@/server/actions/safe-action'
 import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
+import { resolveContainerApplicationNames } from './container-application-names'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformContainersGridPage } from './platform-grid-utils'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
 export const listPlatformContainersAction = async () => {
   await requireAdminUser()
-  return orchestratorPlatformClient.listPlatformContainers()
+  return resolveContainerApplicationNames(await orchestratorPlatformClient.listPlatformContainers())
 }
 
 export const listPlatformContainersGridAction = async (
   query: PlatformContainersGridQuery = {}
 ): Promise<PlatformContainersGridPage> => {
   await requireAdminUser()
-  return platformContainersGridPage(await orchestratorPlatformClient.listPlatformContainers(), query)
+  const containers = await resolveContainerApplicationNames(await orchestratorPlatformClient.listPlatformContainers())
+  return platformContainersGridPage(containers, query)
 }
 
 export const getPlatformContainerAction = async (id: string) => {
   await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformContainer(id)
+  const details = await orchestratorPlatformClient.getPlatformContainer(id)
+  const [container] = await resolveContainerApplicationNames([details.container])
+  return { ...details, container: container ?? details.container }
 }
 
 export const getPlatformContainerLogsAction = async (id: string, tail = 500) => {

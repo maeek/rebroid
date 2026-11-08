@@ -52,7 +52,10 @@ const sortContainers = (containers: PlatformContainer[], sort?: string) => {
       if (item.id === 'name') result = containerName(left).localeCompare(containerName(right))
       else if (item.id === 'state') result = left.state.localeCompare(right.state)
       else if (item.id === 'image') result = left.image.localeCompare(right.image)
-      else if (item.id === 'applicationId') result = (left.applicationId ?? '').localeCompare(right.applicationId ?? '')
+      else if (item.id === 'applicationId')
+        result = (left.applicationName ?? left.applicationId ?? '').localeCompare(
+          right.applicationName ?? right.applicationId ?? ''
+        )
       if (result !== 0) return result * multiplier
     }
     return left.id.localeCompare(right.id)
@@ -87,6 +90,7 @@ export const platformContainersGridPage = (
           container.status,
           container.orphaned ? 'orphaned' : '',
           container.applicationId ?? '',
+          container.applicationName ?? '',
           container.component ?? '',
           ...container.networks
         ]
@@ -106,6 +110,13 @@ export const platformContainersGridPage = (
     facets: {
       states: uniqueValues(containers.map(container => container.state)),
       applications: uniqueValues(containers.map(container => container.applicationId)),
+      applicationNames: Object.fromEntries(
+        containers.flatMap(container =>
+          container.applicationId && container.applicationName
+            ? [[container.applicationId, container.applicationName]]
+            : []
+        )
+      ),
       images: uniqueValues(containers.map(container => container.image)),
       networks: uniqueValues(containers.flatMap(container => container.networks))
     }

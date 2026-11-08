@@ -1,23 +1,26 @@
-import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import type { PlatformNetwork } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
-  <div className='flex min-w-[16rem] flex-col gap-1'>
+  <div className='flex min-w-0 flex-col gap-1.5'>
     <div className='flex min-w-0 items-center gap-2'>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link
+          <ResourceLink
             href={`/runtime/networks/${network.id}`}
-            className='block min-w-0 truncate font-medium hover:text-primary'
+            className='block min-w-0 whitespace-normal break-words font-medium'
           >
             {network.name}
-          </Link>
+          </ResourceLink>
         </TooltipTrigger>
         <TooltipContent className='max-w-sm break-all'>{network.name}</TooltipContent>
       </Tooltip>
+    </div>
+    <div className='flex flex-wrap items-center gap-2'>
+      <span className='font-mono text-xs text-foreground-muted'>{network.shortId}</span>
       <Visible when={network.managed}>
         <span className='shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary'>managed</span>
       </Visible>
@@ -25,7 +28,6 @@ const NetworkNameCell = ({ network }: { network: PlatformNetwork }) => (
         <span className='shrink-0 rounded-full bg-surface-band px-2 py-0.5 text-xs text-foreground'>internal</span>
       </Visible>
     </div>
-    <div className='truncate text-xs text-foreground-muted'>{network.shortId}</div>
   </div>
 )
 

@@ -1,121 +1,100 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
-import { useContainerDetailContext } from '@/features/platform/details/runtime-container-detail/container-detail-context'
-import {
-  getRelatedImageSize,
-  getRelatedImageTags
-} from '@/features/platform/details/runtime-container-detail/container-detail-utils'
-import { DataGrid } from '@/shared/ui/data-grid/data-grid'
-import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
-import { DefinitionTable } from '@/shared/ui/definition-table'
-import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
-import type { PlatformNetwork } from '@/shared/contracts/platform'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ReactNode } from 'react'
+import { IconApps, IconArrowUpRight, IconBox, IconNetwork } from '@tabler/icons-react'
+import Link from 'next/link'
+import { Skeleton } from '@/components/ui/skeleton'
+import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
+import { useContainerDetailContext } from './container-detail-context'
+import { getRelatedImageSize, getRelatedImageTags } from './container-detail-utils'
 
-export const RelatedImageSection = () => {
-  const { details } = useContainerDetailContext()
-  const relatedImage = details.relatedImage
+const RelatedResourcesLayout = ({ children }: { children: ReactNode }) => (
+  <PlatformResourceSection
+    title='Related resources'
+    surface='plain'
+  >
+    <ul className='grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3'>{children}</ul>
+  </PlatformResourceSection>
+)
 
-  return (
-    <Section
-      title='Related image'
-      surface='plain'
-      contentClassName='gap-3'
+export const RelatedResourcesSkeleton = () => (
+  <RelatedResourcesLayout>
+    {Array.from({ length: 3 }, (_, index) => (
+      <li key={index}>
+        <Skeleton className='h-24 w-full rounded-control' />
+      </li>
+    ))}
+  </RelatedResourcesLayout>
+)
+
+const ResourceLink = ({
+  href,
+  kind,
+  name,
+  metadata,
+  icon
+}: {
+  href: string
+  kind: string
+  name: string
+  metadata: string
+  icon: ReactNode
+}) => (
+  <li className='min-w-0'>
+    <Link
+      href={href}
+      className='group flex h-full min-w-0 items-start gap-3 rounded-control border border-surface-border/60 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
     >
-      <Visible when={relatedImage}>
-        <>
-          <DefinitionTable
-            items={[
-              { label: 'Tags', value: getRelatedImageTags(relatedImage) },
-              { label: 'Size', value: getRelatedImageSize(relatedImage) },
-              { label: 'Created', value: formatPlatformDate(relatedImage?.createdAt ?? null) }
-            ]}
-          />
-        </>
-      </Visible>
-      <Visible when={!relatedImage}>
-        <p className='text-sm text-foreground-muted'>The related image is no longer present locally.</p>
-      </Visible>
-    </Section>
-  )
-}
+      <span className='mt-0.5 shrink-0 text-foreground-muted'>{icon}</span>
+      <span className='grid min-w-0 flex-1 gap-1'>
+        <span className='text-xs font-medium text-foreground-muted'>{kind}</span>
+        <span className='break-words text-sm font-medium text-primary [overflow-wrap:anywhere]'>{name}</span>
+        <span className='text-xs leading-5 text-foreground-muted [overflow-wrap:anywhere]'>{metadata}</span>
+      </span>
+      <IconArrowUpRight className='mt-1 size-4 shrink-0 text-foreground-muted group-hover:text-primary' />
+    </Link>
+  </li>
+)
 
-export const RelatedNetworksSection = () => {
+export const RelatedResourcesSection = () => {
   const { details } = useContainerDetailContext()
-  const networks = details.relatedNetworks
-  const [searchDraft, setSearchDraft] = useState('')
-  const [search, setSearch] = useState('')
-  const visibleNetworks = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    if (!query) return networks
-    return networks.filter(network =>
-      `${network.name} ${network.id} ${network.subnets.join(' ')}`.toLowerCase().includes(query)
-    )
-  }, [networks, search])
-  const columns = useMemo<ColumnDef<PlatformNetwork>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: network => network.name,
-        header: 'Name',
-        size: 280,
-        meta: { label: 'Name', skeleton: { kind: 'stacked' } },
-        cell: ({ row }) => <span className='font-medium'>{row.original.name}</span>
-      },
-      {
-        id: 'driver',
-        accessorFn: network => network.driver,
-        header: 'Driver',
-        size: 140,
-        meta: { label: 'Driver', skeleton: { kind: 'text' } },
-        cell: ({ row }) => <span className='text-foreground-muted'>{row.original.driver}</span>
-      },
-      {
-        id: 'subnet',
-        header: 'Subnet',
-        size: 280,
-        meta: { label: 'Subnet', skeleton: { kind: 'text' } },
-        cell: ({ row }) => (
-          <span className='text-foreground-muted'>
-            {row.original.subnets.length > 0 ? row.original.subnets.join(', ') : 'none'}
-          </span>
-        )
-      }
-    ],
-    []
-  )
-
+  const { container, relatedImage, relatedNetworks } = details
   return (
-    <Section
-      surface='plain'
-      title='Related networks'
-      contentClassName='gap-3'
-    >
-      <Visible when={networks.length > 0}>
-        <DataGridWorkspace
-          search={searchDraft}
-          searchPlaceholder='Search related networks'
-          onSearchChange={setSearchDraft}
-          onSearch={setSearch}
-        >
-          <DataGrid
-            columns={columns}
-            data={visibleNetworks}
-            totalItems={visibleNetworks.length}
-            pageIndex={0}
-            pageSize={Math.max(visibleNetworks.length, 1)}
-            getRowId={network => network.id}
-            minWidth='44rem'
-            emptyState={<div className='text-center text-foreground-muted'>No related networks match this search.</div>}
-          />
-        </DataGridWorkspace>
-      </Visible>
-      <Visible when={networks.length === 0}>
-        <p className='text-sm text-foreground-muted'>No related networks were found for this container.</p>
-      </Visible>
-    </Section>
+    <RelatedResourcesLayout>
+      {container.applicationId ? (
+        <ResourceLink
+          href={`/app/${encodeURIComponent(container.applicationId)}`}
+          kind='Application'
+          name={container.applicationName || 'Open application'}
+          metadata={container.applicationId}
+          icon={<IconApps className='size-5' />}
+        />
+      ) : null}
+      {relatedImage ? (
+        <ResourceLink
+          href={`/runtime/images/${encodeURIComponent(relatedImage.id)}`}
+          kind='Image'
+          name={getRelatedImageTags(relatedImage)}
+          metadata={`${getRelatedImageSize(relatedImage)} · ${relatedImage.shortId}`}
+          icon={<IconBox className='size-5' />}
+        />
+      ) : null}
+      {relatedNetworks.map(network => (
+        <ResourceLink
+          key={network.id}
+          href={`/runtime/networks/${encodeURIComponent(network.id)}`}
+          kind='Network'
+          name={network.name}
+          metadata={[network.driver, ...network.subnets].join(' · ')}
+          icon={<IconNetwork className='size-5' />}
+        />
+      ))}
+      {!relatedImage ? (
+        <li className='p-4 text-sm text-foreground-muted'>The container image is no longer present locally.</li>
+      ) : null}
+      {relatedNetworks.length === 0 ? (
+        <li className='p-4 text-sm text-foreground-muted'>No networks attached.</li>
+      ) : null}
+    </RelatedResourcesLayout>
   )
 }

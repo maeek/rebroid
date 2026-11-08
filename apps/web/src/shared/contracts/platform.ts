@@ -1,15 +1,31 @@
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
-export type PlatformContainer = OrchestratorApiSchemas['DockerPlatformContainerDto']
-export type PlatformContainerDetails = OrchestratorApiSchemas['DockerPlatformContainerDetailsDto']
+export type PlatformContainer = OrchestratorApiSchemas['DockerPlatformContainerDto'] & {
+  applicationName?: string | null
+}
+export type PlatformContainerDetails = Omit<
+  OrchestratorApiSchemas['DockerPlatformContainerDetailsDto'],
+  'container'
+> & {
+  container: PlatformContainer
+}
 export type PlatformContainerLog = OrchestratorApiSchemas['DockerPlatformContainerLogDto']
 export type PlatformContainerStats = OrchestratorApiSchemas['DockerPlatformContainerStatsDto']
 export type PlatformImage = OrchestratorApiSchemas['DockerPlatformImageDto']
-export type PlatformImageDetails = Omit<OrchestratorApiSchemas['DockerPlatformImageDetailsDto'], 'image'> & {
+export type PlatformImageDetails = Omit<
+  OrchestratorApiSchemas['DockerPlatformImageDetailsDto'],
+  'image' | 'relatedContainers'
+> & {
   image: PlatformImage
+  relatedContainers: PlatformContainer[]
 }
 export type PlatformNetwork = OrchestratorApiSchemas['DockerPlatformNetworkDto']
-export type PlatformNetworkDetails = OrchestratorApiSchemas['DockerPlatformNetworkDetailsDto']
+export type PlatformNetworkDetails = Omit<
+  OrchestratorApiSchemas['DockerPlatformNetworkDetailsDto'],
+  'relatedContainers'
+> & {
+  relatedContainers: PlatformContainer[]
+}
 
 export type PlatformResourceOwnership = 'managed' | 'all'
 export type PlatformUsageFilter = 'all' | 'in-use' | 'unused' | 'unknown'
@@ -60,6 +76,7 @@ export interface PlatformContainersGridPage {
   facets: {
     states: string[]
     applications: string[]
+    applicationNames?: Record<string, string>
     images: string[]
     networks: string[]
   }

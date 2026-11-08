@@ -1,7 +1,6 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import {
   useContainerDetailContext,
@@ -16,6 +15,7 @@ import {
   getRefreshIcon,
   isStatsRefreshDisabled
 } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
+import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
 export const LiveResourcesSection = () => {
@@ -24,7 +24,7 @@ export const LiveResourcesSection = () => {
   const containerState = details.container.state
 
   return (
-    <Section
+    <PlatformResourceSection
       surface='plain'
       contentClassName='gap-4'
     >
@@ -70,6 +70,6 @@ export const LiveResourcesSection = () => {
         />
       </div>
       <div className='text-xs text-foreground-muted'>{formatStatsSample(containerState, stats)}</div>
-    </Section>
+    </PlatformResourceSection>
   )
 }

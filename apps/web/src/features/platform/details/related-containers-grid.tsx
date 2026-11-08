@@ -5,17 +5,21 @@ import { IconEye } from '@tabler/icons-react'
 import Link from 'next/link'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
+import { ApplicationReference } from '@/shared/ui/application-reference'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import type { PlatformContainer } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const RelatedContainersGrid = ({
   containers,
-  relation
+  relation,
+  loading = false
 }: {
   containers: PlatformContainer[]
   relation: 'application' | 'image'
+  loading?: boolean
 }) => {
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
@@ -24,7 +28,7 @@ export const RelatedContainersGrid = ({
     return containers.filter(container => {
       if (
         query &&
-        !`${container.names.join(' ')} ${container.id} ${container.image} ${container.applicationId ?? ''}`
+        !`${container.names.join(' ')} ${container.id} ${container.image} ${container.applicationId ?? ''} ${container.applicationName ?? ''}`
           .toLowerCase()
           .includes(query)
       )
@@ -42,12 +46,12 @@ export const RelatedContainersGrid = ({
         meta: { label: 'Container', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
           <div className='grid gap-1'>
-            <Link
-              className='truncate font-medium hover:text-primary'
-              href={`/runtime/containers/${row.original.id}`}
+            <ResourceLink
+              className='whitespace-normal break-words font-medium'
+              href={`/runtime/containers/${encodeURIComponent(row.original.id)}`}
             >
               {row.original.names[0] ?? row.original.shortId}
-            </Link>
+            </ResourceLink>
             <span className='truncate font-mono text-xs text-foreground-muted'>{row.original.shortId}</span>
           </div>
         )
@@ -63,15 +67,37 @@ export const RelatedContainersGrid = ({
       {
         id: 'relation',
         accessorFn: container =>
-          relation === 'application' ? (container.applicationId ?? 'unmanaged') : container.image,
+          relation === 'application'
+            ? (container.applicationName ?? container.applicationId ?? 'unmanaged')
+            : container.image,
         header: relation === 'application' ? 'Application' : 'Image',
         size: 320,
-        meta: { label: relation === 'application' ? 'Application' : 'Image', skeleton: { kind: 'text' } },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>
-            {relation === 'application' ? (row.original.applicationId ?? 'unmanaged') : row.original.image}
-          </span>
-        )
+        meta: {
+          label: relation === 'application' ? 'Application' : 'Image',
+          skeleton: { kind: relation === 'application' ? 'stacked' : 'text' }
+        },
+        cell: ({ row }) => {
+          const container = row.original
+          if (relation === 'application' && container.applicationId) {
+            return (
+              <ApplicationReference
+                id={container.applicationId}
+                name={container.applicationName}
+              />
+            )
+          }
+          if (relation === 'image' && container.imageId) {
+            return (
+              <ResourceLink
+                href={`/runtime/images/${encodeURIComponent(container.imageId)}`}
+                className='whitespace-normal break-words'
+              >
+                {container.image}
+              </ResourceLink>
+            )
+          }
+          return <span className='text-foreground-muted'>{relation === 'image' ? container.image : 'Unmanaged'}</span>
+        }
       }
     ],
     [relation]
@@ -79,12 +105,14 @@ export const RelatedContainersGrid = ({
 
   return (
     <DataGridWorkspace
+      disabled={loading}
       search={searchDraft}
       searchPlaceholder='Search related containers'
       onSearchChange={setSearchDraft}
       onSearch={setSearch}
     >
       <DataGrid
+        loading={loading}
         columns={columns}
         data={visibleContainers}
         totalItems={visibleContainers.length}
