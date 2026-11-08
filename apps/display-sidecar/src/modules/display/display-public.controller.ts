@@ -88,7 +88,7 @@ export class DisplayPublicController {
     this.sessions.assertStreamToken(id, body.token ?? null);
     return {
       ok: true,
-      ...(await this.controls.execute(id, { type: "keyboard", ...body })),
+      ...(await this.controls.execute(id, { ...body, type: "keyboard" })),
     };
   }
 
@@ -103,7 +103,7 @@ export class DisplayPublicController {
     this.sessions.assertStreamToken(id, body.token ?? null);
     return {
       ok: true,
-      ...(await this.controls.execute(id, { type: "touch", ...body })),
+      ...(await this.controls.execute(id, { ...body, type: "touch" })),
     };
   }
 }

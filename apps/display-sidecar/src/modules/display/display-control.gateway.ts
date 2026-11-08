@@ -7,7 +7,7 @@ import type { DisplayControlRequest } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { displayControlError } from "./display-control-response";
 
-@WebSocketGateway({ path: "/rebroid/display/control" })
+@WebSocketGateway({ path: "/rebroid/display/control", maxPayload: 256 * 1024 })
 export class DisplayControlGateway implements OnGatewayConnection {
   private readonly logger = new Logger(DisplayControlGateway.name);
 

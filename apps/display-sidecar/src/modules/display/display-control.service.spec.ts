@@ -64,3 +64,12 @@ test("controls expose stable invalid and reconnecting errors", async () => {
       ).includes("control_reconnecting"),
   );
 });
+
+test("unknown control types cannot fall through to clipboard execution", async () => {
+  await assert.rejects(
+    service(true).execute("session", {
+      type: "unknown",
+      text: "secret",
+    } as unknown as DisplayControlRequest),
+  );
+});

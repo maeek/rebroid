@@ -9,6 +9,7 @@ import { AdbService } from "../adb/adb.service";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { DisplaySessionService } from "./display-session.service";
+import { validateDisplayControl } from "./display-control-validation";
 import type { DisplayControlRequest } from "./display.types";
 
 @Injectable()
@@ -20,6 +21,7 @@ export class DisplayControlService {
   ) {}
 
   async execute(sessionId: string, request: DisplayControlRequest) {
+    request = validateDisplayControl(request);
     const session = this.sessions.get(sessionId);
     this.sessions.assertCapability(
       session,
@@ -82,6 +84,9 @@ export class DisplayControlService {
         this.scrcpy.sendTouchEvent(sessionId, request),
         () => this.adb.touchEvent(udid, request),
       );
+    }
+    if (request.type !== "clipboard") {
+      throw new BadRequestException("Invalid viewer control type.");
     }
     return this.withFallback(
       sessionId,
