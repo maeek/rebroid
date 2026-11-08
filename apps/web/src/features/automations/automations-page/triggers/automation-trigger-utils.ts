@@ -1,6 +1,6 @@
 import { defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
 import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
-import type { AutomationLastStatus, AutomationStartPolicy, AutomationTrigger } from '@/shared/contracts/automation'
+import type { AutomationStartPolicy, AutomationTrigger } from '@/shared/contracts/automation'
 
 export type LastRunFilter = 'all' | 'never' | '7d' | '30d' | '90d'
 
@@ -10,16 +10,6 @@ export const appProfileMode = (app: AndroidApplication | null | undefined): Appl
 export const appProfileName = (app: AndroidApplication | null | undefined) => app?.storage.profileName ?? 'default'
 
 export const appSavedProfiles = (app: AndroidApplication | null | undefined) => app?.storage.savedProfiles ?? []
-
-export const statusVariant = (status: AutomationLastStatus) =>
-  status === 'success' ? 'success' : status === 'failed' ? 'danger' : 'neutral'
-
-export const statusLabel = (status: AutomationLastStatus) => {
-  if (status === 'never_run') return 'Never run'
-  if (status === 'success') return 'Success'
-  if (status === 'running') return 'Running'
-  return 'Failed'
-}
 
 export const getScheduleCron = (trigger: AutomationTrigger) => {
   const cronExpression = trigger.triggerConfig.cronExpression

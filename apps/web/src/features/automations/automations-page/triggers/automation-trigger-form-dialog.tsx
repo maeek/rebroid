@@ -1,8 +1,7 @@
 'use client'
 
-import { IconLoader2, IconPlus } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconPlus } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -11,180 +10,208 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { Switch } from '@/components/ui/switch'
-import { Visible } from '@/components/ui/visible'
+import { Textarea } from '@/components/ui/textarea'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 import { ScheduleEditor } from '@/shared/ui/schedule/schedule-editor'
-import { AutomationTagsInput } from '../shared/automation-tags-input'
+import { triggerApplicationOption, triggerWorkflowOption } from './automation-trigger-resource-options'
+import { AutomationTriggerTagPicker } from './automation-trigger-tag-picker'
 import { appProfileMode, appProfileName, appSavedProfiles } from './automation-trigger-utils'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { Automation } from '@/shared/contracts/automation'
+import type { AutomationTag } from '@rebroid/automation-core/definition'
 
 export function AutomationTriggerFormDialog({
   applications,
   automations,
+  tagSuggestions,
   form,
+  open,
+  onOpenChangeComplete,
   saving,
   selectedApplication,
   onOpenChange,
   onSave,
   onUpdateForm,
+  onUpdateWorkflow,
   onUpdateTargetApplication
 }: {
   applications: AndroidApplication[]
   automations: Automation[]
+  tagSuggestions: AutomationTag[]
   form: TriggerFormState | null
+  open: boolean
+  onOpenChangeComplete: (open: boolean) => void
   saving: boolean
   selectedApplication?: AndroidApplication
   onOpenChange: (open: boolean) => void
   onSave: () => void
   onUpdateForm: (updater: (current: TriggerFormState) => TriggerFormState) => void
+  onUpdateWorkflow: (automationId: string) => void
   onUpdateTargetApplication: (targetApplicationId: string) => void
 }) {
+  const selectedWorkflow = automations.find(automation => automation.id === form?.automationId)
+  const validTarget = Boolean(selectedApplication && selectedWorkflow)
   return (
     <Dialog
-      open={Boolean(form)}
-      onOpenChange={onOpenChange}
+      open={open}
+      onOpenChangeComplete={onOpenChangeComplete}
+      onOpenChange={nextOpen => {
+        if (!saving) onOpenChange(nextOpen)
+      }}
     >
-      <DialogContent className='sm:max-w-2xl'>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-2xl'
+        showCloseButton={!saving}
+      >
         <DialogHeader>
           <DialogTitle>{form?.id ? 'Edit trigger' : 'New trigger'}</DialogTitle>
-          <DialogDescription>Schedule an automation against an app profile.</DialogDescription>
+          <DialogDescription>Choose a workflow, target app, and schedule.</DialogDescription>
         </DialogHeader>
         {form ? (
           <form
-            className='grid gap-5'
+            className='grid gap-6'
             onSubmit={event => {
               event.preventDefault()
-              onSave()
+              if (!saving) onSave()
             }}
           >
-            <div className='flex flex-wrap items-center justify-between gap-3'>
-              <div className='text-sm font-medium text-foreground'>Trigger details</div>
-              <label
-                htmlFor='automation-trigger-enabled'
-                className='flex items-center gap-3 text-sm text-foreground'
+            <fieldset
+              disabled={saving}
+              className='grid min-w-0 gap-6'
+            >
+              <FormField
+                label='Name'
+                description='A recognizable name for this scheduled run.'
+                layout='vertical'
+                required
+              >
+                <Input
+                  value={form.name}
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  onChange={event => onUpdateForm(current => ({ ...current, name: event.target.value }))}
+                />
+              </FormField>
+              <FormField
+                label='Description'
+                description='Explain what this trigger runs and when to use it.'
+                layout='vertical'
+              >
+                <Textarea
+                  value={form.description}
+                  rows={2}
+                  maxLength={2000}
+                  onChange={event => onUpdateForm(current => ({ ...current, description: event.target.value }))}
+                />
+              </FormField>
+              <AutomationTriggerTagPicker
+                suggestions={tagSuggestions}
+                value={form.tags}
+                disabled={saving}
+                onChange={tags => onUpdateForm(current => ({ ...current, tags }))}
+              />
+              <fieldset className='grid min-w-0 gap-4'>
+                <legend className='mb-4 text-sm font-medium'>Workflow and target</legend>
+                <FormField
+                  label='Workflow'
+                  description={
+                    selectedWorkflow
+                      ? triggerWorkflowOption(selectedWorkflow).description
+                      : 'Search by name, description, ID, or tag.'
+                  }
+                  error={
+                    form.automationId && !selectedWorkflow
+                      ? 'This workflow is no longer available. Choose another workflow.'
+                      : undefined
+                  }
+                  layout='vertical'
+                  required
+                >
+                  <SingleSelectCombobox
+                    options={automations.map(triggerWorkflowOption)}
+                    value={form.automationId}
+                    disabled={saving}
+                    placeholder='Search workflows'
+                    onValueChange={onUpdateWorkflow}
+                  />
+                </FormField>
+                <FormField
+                  label='Target app'
+                  description={
+                    selectedApplication
+                      ? triggerApplicationOption(selectedApplication).description
+                      : 'Search by name, package, image, or ID.'
+                  }
+                  error={
+                    form.targetApplicationId && !selectedApplication
+                      ? 'This app is no longer available. Choose another app.'
+                      : undefined
+                  }
+                  layout='vertical'
+                  required
+                >
+                  <SingleSelectCombobox
+                    options={applications.map(triggerApplicationOption)}
+                    value={form.targetApplicationId}
+                    disabled={saving}
+                    placeholder='Search apps'
+                    onValueChange={onUpdateTargetApplication}
+                  />
+                </FormField>
+                <ApplicationProfileSelect
+                  disabled={saving}
+                  mode={form.profileMode}
+                  name={form.profileName}
+                  savedProfiles={appSavedProfiles(selectedApplication)}
+                  selectedProfile={{
+                    mode: appProfileMode(selectedApplication),
+                    name: appProfileName(selectedApplication)
+                  }}
+                  onModeChange={profileMode => onUpdateForm(current => ({ ...current, profileMode }))}
+                  onNameChange={profileName => onUpdateForm(current => ({ ...current, profileName }))}
+                />
+                <FormField
+                  label='Start app if needed'
+                  description='Start a stopped app before running the workflow. Otherwise, the app must already be running.'
+                  layout='horizontal'
+                >
+                  <Switch
+                    checked={form.startPolicy === 'start-if-needed'}
+                    onCheckedChange={checked =>
+                      onUpdateForm(current => ({
+                        ...current,
+                        startPolicy: checked ? 'start-if-needed' : 'require-running'
+                      }))
+                    }
+                  />
+                </FormField>
+              </fieldset>
+              <ScheduleEditor
+                schedule={form.schedule}
+                onScheduleChange={patch =>
+                  onUpdateForm(current => ({ ...current, schedule: { ...current.schedule, ...patch } }))
+                }
+              />
+              <FormField
+                label='Enabled'
+                description='Run automatically on this schedule.'
+                layout='horizontal'
               >
                 <Switch
-                  id='automation-trigger-enabled'
+                  disabled={saving}
                   checked={form.enabled}
                   onCheckedChange={enabled => onUpdateForm(current => ({ ...current, enabled }))}
                 />
-                Enabled
-              </label>
-            </div>
-            <div className='grid gap-2'>
-              <label
-                htmlFor='automation-trigger-name'
-                className='text-sm font-medium text-foreground'
-              >
-                Name
-              </label>
-              <Input
-                id='automation-trigger-name'
-                value={form.name}
-                onChange={event => onUpdateForm(current => ({ ...current, name: event.target.value }))}
-              />
-            </div>
-            <div className='grid gap-2'>
-              <label
-                htmlFor='automation-trigger-automation'
-                className='text-sm font-medium text-foreground'
-              >
-                Automation
-              </label>
-              <Select
-                value={form.automationId}
-                onValueChange={automationId => onUpdateForm(current => ({ ...current, automationId }))}
-              >
-                <SelectTrigger
-                  id='automation-trigger-automation'
-                  className='w-full'
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {automations.map(automation => (
-                    <SelectItem
-                      key={automation.id}
-                      value={automation.id}
-                    >
-                      {automation.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='grid gap-2'>
-              <label
-                htmlFor='automation-trigger-target'
-                className='text-sm font-medium text-foreground'
-              >
-                Target app
-              </label>
-              <Select
-                value={form.targetApplicationId}
-                onValueChange={onUpdateTargetApplication}
-              >
-                <SelectTrigger
-                  id='automation-trigger-target'
-                  className='w-full'
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {applications.map(application => (
-                    <SelectItem
-                      key={application.id}
-                      value={application.id}
-                    >
-                      {application.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <ApplicationProfileSelect
-              mode={form.profileMode}
-              name={form.profileName}
-              savedProfiles={appSavedProfiles(selectedApplication)}
-              selectedProfile={{
-                mode: appProfileMode(selectedApplication),
-                name: appProfileName(selectedApplication)
-              }}
-              onModeChange={profileMode => onUpdateForm(current => ({ ...current, profileMode }))}
-              onNameChange={profileName => onUpdateForm(current => ({ ...current, profileName }))}
-            />
-            <AutomationTagsInput
-              id='automation-trigger-tags'
-              value={form.tags}
-              onChange={tags => onUpdateForm(current => ({ ...current, tags }))}
-            />
-            <ScheduleEditor
-              schedule={form.schedule}
-              onScheduleChange={patch =>
-                onUpdateForm(current => ({ ...current, schedule: { ...current.schedule, ...patch } }))
-              }
-            />
-            <label
-              htmlFor='automation-trigger-start-if-needed'
-              className='flex items-center gap-2 text-sm text-foreground'
-            >
-              <Checkbox
-                id='automation-trigger-start-if-needed'
-                checked={form.startPolicy === 'start-if-needed'}
-                onCheckedChange={checked =>
-                  onUpdateForm(current => ({
-                    ...current,
-                    startPolicy: checked === true ? 'start-if-needed' : 'require-running'
-                  }))
-                }
-              />
-              Start app before running if needed
-            </label>
+              </FormField>
+            </fieldset>
             <DialogFooter>
               <Button
                 type='button'
@@ -194,18 +221,15 @@ export function AutomationTriggerFormDialog({
               >
                 Cancel
               </Button>
-              <Button
+              <MutationButton
                 type='submit'
-                disabled={saving || form.name.trim().length < 2}
+                pending={saving}
+                pendingLabel={form.id ? 'Saving…' : 'Creating…'}
+                disabled={form.name.trim().length < 2 || !validTarget}
               >
-                <Visible when={saving}>
-                  <IconLoader2 className='size-4 animate-spin' />
-                </Visible>
-                <Visible when={!saving}>
-                  <IconPlus className='size-4' />
-                </Visible>
+                {form.id ? <IconDeviceFloppy className='size-4' /> : <IconPlus className='size-4' />}
                 {form.id ? 'Save changes' : 'Create trigger'}
-              </Button>
+              </MutationButton>
             </DialogFooter>
           </form>
         ) : null}

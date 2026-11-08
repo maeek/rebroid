@@ -6,6 +6,7 @@ import type { AutomationTag } from '@rebroid/automation-core/definition'
 export type TriggerFormState = {
   id?: string
   name: string
+  description: string
   automationId: string
   targetApplicationId: string
   profileMode: ApplicationProfileMode

@@ -2,31 +2,30 @@
 
 import { useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
-import { dateLabel, scheduleLabel } from '@/shared/model/schedule/schedule-format'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
+import { ResourceLink } from '@/shared/ui/resource-link'
+import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
-import { getScheduleCron, statusLabel, statusVariant } from './automation-trigger-utils'
+import { WorkflowRunResult } from '../shared/workflow-run-result'
+import { getScheduleCron } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 function TriggerTags({ tags }: { tags: AutomationTag[] }) {
+  if (tags.length === 0) return null
   return (
     <div className='flex flex-wrap gap-1'>
-      {tags.length === 0 ? (
-        <span className='text-sm text-foreground-muted'>-</span>
-      ) : (
-        tags.map(tag => (
-          <AutomationTagBadge
-            key={tag.name}
-            tag={tag}
-          />
-        ))
-      )}
+      {tags.map(tag => (
+        <AutomationTagBadge
+          key={tag.name}
+          tag={tag}
+        />
+      ))}
     </div>
   )
 }
@@ -35,6 +34,8 @@ export function AutomationTriggersTable({
   applicationById,
   automationById,
   busyId,
+  disabled = false,
+  loading = false,
   selectedIds,
   sorting,
   triggers,
@@ -51,6 +52,8 @@ export function AutomationTriggersTable({
   applicationById: Map<string, AndroidApplication>
   automationById: Map<string, Automation>
   busyId: string | null
+  disabled?: boolean
+  loading?: boolean
   selectedIds: Set<string>
   sorting: SortingState
   triggers: AutomationTrigger[]
@@ -78,23 +81,28 @@ export function AutomationTriggersTable({
           return (
             <div className='grid gap-1'>
               <div className='flex flex-wrap items-center gap-2'>
-                <span className='font-medium text-foreground'>{trigger.name}</span>
-                <Badge variant='neutral'>Schedule</Badge>
-                <Badge variant={statusVariant(trigger.lastStatus)}>{statusLabel(trigger.lastStatus)}</Badge>
+                <button
+                  type='button'
+                  disabled={disabled}
+                  onClick={() => onEdit(trigger)}
+                  className='text-left font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50'
+                >
+                  {trigger.name}
+                </button>
               </div>
-              <span className='truncate text-sm text-foreground-muted'>{automation?.name ?? trigger.automationId}</span>
-              {trigger.lastError ? <span className='truncate text-sm text-danger'>{trigger.lastError}</span> : null}
+              {trigger.description ? (
+                <p className='line-clamp-2 text-xs text-foreground-muted'>{trigger.description}</p>
+              ) : null}
+              <ResourceLink
+                href={`/automations/${encodeURIComponent(trigger.automationId)}`}
+                className='truncate text-xs'
+              >
+                {automation?.name ?? trigger.automationId}
+              </ResourceLink>
+              <TriggerTags tags={trigger.tags} />
             </div>
           )
         }
-      },
-      {
-        id: 'tags',
-        header: 'Tags',
-        size: 176,
-        enableSorting: false,
-        meta: { label: 'Tags', skeleton: { kind: 'badge' } },
-        cell: ({ row }) => <TriggerTags tags={row.original.tags} />
       },
       {
         id: 'target',
@@ -107,7 +115,12 @@ export function AutomationTriggersTable({
           const application = applicationById.get(trigger.targetApplicationId)
           return (
             <div className='grid gap-1 text-sm text-foreground-muted'>
-              <span className='truncate text-foreground'>{application?.name ?? trigger.targetApplicationId}</span>
+              <ResourceLink
+                href={`/app/${encodeURIComponent(trigger.targetApplicationId)}`}
+                className='truncate'
+              >
+                {application?.name ?? trigger.targetApplicationId}
+              </ResourceLink>
               <span className='truncate'>
                 {trigger.profileName ?? 'default'} / {trigger.profileMode ?? 'persistent'}
               </span>
@@ -121,9 +134,7 @@ export function AutomationTriggersTable({
         size: 176,
         enableSorting: false,
         meta: { label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => (
-          <span className='text-sm text-foreground-muted'>{scheduleLabel(getScheduleCron(row.original))}</span>
-        )
+        cell: ({ row }) => <ScheduleValue expression={getScheduleCron(row.original)} />
       },
       {
         id: 'nextRunAt',
@@ -131,15 +142,27 @@ export function AutomationTriggersTable({
         header: 'Next run',
         size: 176,
         meta: { label: 'Next run', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.nextRunAt)}</span>
+        cell: ({ row }) => (
+          <DateTimeValue
+            value={row.original.enabled ? row.original.nextRunAt : null}
+            emptyLabel='No run scheduled'
+          />
+        )
       },
       {
         id: 'lastRunAt',
         accessorFn: trigger => trigger.lastRunAt ?? '',
-        header: 'Last trace',
+        header: 'Last run',
         size: 176,
-        meta: { label: 'Last trace', skeleton: { kind: 'text', width: 'w-32' } },
-        cell: ({ row }) => <span className='text-sm text-foreground-muted'>{dateLabel(row.original.lastRunAt)}</span>
+        meta: { label: 'Last run', skeleton: { kind: 'stacked' } },
+        cell: ({ row }) => (
+          <WorkflowRunResult
+            status={row.original.lastStatus}
+            at={row.original.lastRunAt}
+            error={row.original.lastError}
+            workflowId={row.original.automationId}
+          />
+        )
       },
       {
         id: 'enabled',
@@ -148,9 +171,9 @@ export function AutomationTriggersTable({
         size: 128,
         meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
         cell: ({ row }) => {
-          const busy = busyId === row.original.id
+          const busy = disabled || busyId === row.original.id
           return (
-            <div className='flex justify-center'>
+            <div className='flex items-center'>
               <Switch
                 checked={row.original.enabled}
                 disabled={busy}
@@ -162,11 +185,12 @@ export function AutomationTriggersTable({
         }
       }
     ],
-    [applicationById, automationById, busyId, onToggleEnabled]
+    [applicationById, automationById, busyId, disabled, onEdit, onToggleEnabled]
   )
 
   return (
     <DataGrid
+      loading={loading}
       columns={columns}
       data={triggers}
       totalItems={triggers.length}
@@ -176,10 +200,11 @@ export function AutomationTriggersTable({
       sorting={sorting}
       onSortingChange={updater => onSortingChange(typeof updater === 'function' ? updater(sorting) : updater)}
       selection={{
+        disabled,
         selectedIds,
         onSelectedIdsChange
       }}
-      minWidth='86rem'
+      minWidth='72rem'
       emptyState={<div className='text-center text-foreground-muted'>No triggers match the current filters.</div>}
       rowContextMenu={row => {
         const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
@@ -187,13 +212,20 @@ export function AutomationTriggersTable({
           <>
             {hasBulkSelection ? (
               <>
-                <ContextMenuItem onSelect={() => void onEnableSelected()}>
+                <ContextMenuItem
+                  disabled={disabled}
+                  onSelect={() => void onEnableSelected()}
+                >
                   Enable selected ({selectedIds.size})
                 </ContextMenuItem>
-                <ContextMenuItem onSelect={() => void onDisableSelected()}>
+                <ContextMenuItem
+                  disabled={disabled}
+                  onSelect={() => void onDisableSelected()}
+                >
                   Disable selected ({selectedIds.size})
                 </ContextMenuItem>
                 <ContextMenuItem
+                  disabled={disabled}
                   className='text-danger focus:text-danger'
                   onSelect={onDeleteSelected}
                 >
@@ -202,15 +234,22 @@ export function AutomationTriggersTable({
                 </ContextMenuItem>
               </>
             ) : null}
-            <ContextMenuItem onSelect={() => onEdit(row.original)}>
+            <ContextMenuItem
+              disabled={disabled}
+              onSelect={() => onEdit(row.original)}
+            >
               <IconEdit className='mr-2 size-4' />
               Edit
             </ContextMenuItem>
-            <ContextMenuItem onSelect={() => void onRun(row.original)}>
+            <ContextMenuItem
+              disabled={disabled}
+              onSelect={() => void onRun(row.original)}
+            >
               <IconPlayerPlayFilled className='mr-2 size-4' />
               Run now
             </ContextMenuItem>
             <ContextMenuItem
+              disabled={disabled}
               className='text-danger focus:text-danger'
               onSelect={() => onDelete(row.original)}
             >

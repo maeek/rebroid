@@ -19,12 +19,12 @@ type TriggerGridHrefInput = {
 type TriggerOperationToast = {
   title: string
   description?: string
-  variant?: 'danger'
+  variant: 'danger' | 'success'
 }
 
 export const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
   if (automation && app) {
-    return `${automation.name} on ${app.name}`
+    return `${automation.name} on ${app.name}`.slice(0, 120)
   }
 
   return 'New workflow trigger'
@@ -38,13 +38,8 @@ export const activeTriggerFilterCount = (query: AutomationTriggersGridQuery) =>
 
 export const buildAutomationTriggersGridHref = ({ gridQuery, pageSize, patch }: TriggerGridHrefInput) => {
   const params = compactGridParams({
-    q: patch.q ?? gridQuery.q,
-    tag: patch.tag ?? gridQuery.tag,
-    targetApplicationId: patch.targetApplicationId ?? gridQuery.targetApplicationId,
-    enabled: patch.enabled ?? gridQuery.enabled,
-    status: patch.status ?? gridQuery.status,
-    lastRun: patch.lastRun ?? gridQuery.lastRun,
-    sort: patch.sort ?? gridQuery.sort,
+    ...gridQuery,
+    ...patch,
     page: patch.page ?? gridQuery.page ?? 1,
     pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
   })
@@ -82,7 +77,7 @@ export const summarizeTriggerBulkUpdateResults = (
     }
   }
 
-  return { title: enabled ? 'Selected triggers enabled' : 'Selected triggers disabled' }
+  return { title: enabled ? 'Selected triggers enabled' : 'Selected triggers disabled', variant: 'success' }
 }
 
 export const summarizeTriggerBulkDeleteResults = (
@@ -99,7 +94,7 @@ export const summarizeTriggerBulkDeleteResults = (
     }
   }
 
-  return { title: 'Selected triggers deleted' }
+  return { title: 'Selected triggers deleted', variant: 'success' }
 }
 
 export const newTriggerFormState = ({
@@ -110,6 +105,7 @@ export const newTriggerFormState = ({
   app: AndroidApplication
 }): TriggerFormState => ({
   name: defaultTriggerName(automation, app),
+  description: '',
   automationId: automation.id,
   targetApplicationId: app.id,
   profileMode: appProfileMode(app),
@@ -129,6 +125,7 @@ export const editTriggerFormState = ({
 }): TriggerFormState => ({
   id: trigger.id,
   name: trigger.name,
+  description: trigger.description ?? '',
   automationId: trigger.automationId,
   targetApplicationId: trigger.targetApplicationId,
   profileMode: (trigger.profileMode as ApplicationProfileMode | null) ?? appProfileMode(app),
@@ -142,16 +139,37 @@ export const editTriggerFormState = ({
 export const applyTriggerTargetApplication = (
   form: TriggerFormState,
   targetApplicationId: string,
-  app: AndroidApplication | undefined
+  app: AndroidApplication | undefined,
+  workflow?: Automation,
+  previousApp?: AndroidApplication
 ): TriggerFormState => ({
   ...form,
+  name:
+    !form.id && workflow && form.name === defaultTriggerName(workflow, previousApp)
+      ? defaultTriggerName(workflow, app)
+      : form.name,
   targetApplicationId,
   profileMode: appProfileMode(app),
   profileName: appProfileName(app)
 })
 
+export const applyTriggerWorkflow = (
+  form: TriggerFormState,
+  workflow: Automation | undefined,
+  previousWorkflow: Automation | undefined,
+  app: AndroidApplication | undefined
+): TriggerFormState => ({
+  ...form,
+  automationId: workflow?.id ?? '',
+  name:
+    !form.id && app && form.name === defaultTriggerName(previousWorkflow, app)
+      ? defaultTriggerName(workflow, app)
+      : form.name
+})
+
 export const triggerFormSavePayload = (form: TriggerFormState): SaveAutomationTriggerInput => ({
   name: form.name.trim(),
+  description: form.description.trim() || null,
   automationId: form.automationId,
   targetApplicationId: form.targetApplicationId,
   profileMode: form.profileMode,

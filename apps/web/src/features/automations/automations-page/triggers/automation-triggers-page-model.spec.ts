@@ -3,6 +3,7 @@ import { defaultSchedule } from '@/shared/model/automation-schedule'
 import {
   activeTriggerFilterCount,
   applyTriggerTargetApplication,
+  applyTriggerWorkflow,
   buildAutomationTriggersGridHref,
   defaultTriggerName,
   deletedTriggerIdsFromResults,
@@ -112,6 +113,17 @@ describe('automation triggers page model', () => {
     })
   })
 
+  it('keeps an automatically suggested name in sync without overwriting custom or saved names', () => {
+    const original = newTriggerFormState({ automation, app: app() })
+    const next = { ...automation, id: 'workflow-2', name: 'Evening check' }
+    expect(applyTriggerWorkflow(original, next, automation, app()).name).toBe('Evening check on Pixel 9')
+    expect(applyTriggerWorkflow({ ...original, name: 'My schedule' }, next, automation, app()).name).toBe('My schedule')
+    expect(applyTriggerWorkflow({ ...original, id: 'saved' }, next, automation, app()).name).toBe(original.name)
+    expect(
+      applyTriggerTargetApplication(original, 'app-2', app('app-2', { name: 'Tablet' }), automation, app()).name
+    ).toBe('Daily smoke test on Tablet')
+  })
+
   it('builds save payloads with normalized names and profile fallback', () => {
     const form: TriggerFormState = {
       ...newTriggerFormState({ automation, app: app() }),
@@ -129,6 +141,14 @@ describe('automation triggers page model', () => {
         startPolicy: 'start-if-needed'
       }
     })
+  })
+
+  it('hydrates, trims, and explicitly clears the optional description', () => {
+    const form = editTriggerFormState({ trigger: trigger('a', { description: 'Morning stock check' }), app: app() })
+    expect(form.description).toBe('Morning stock check')
+    expect(triggerFormSavePayload({ ...form, description: '  Updated notes  ' }).description).toBe('Updated notes')
+    expect(triggerFormSavePayload({ ...form, description: '  ' }).description).toBeNull()
+    expect(newTriggerFormState({ automation, app: app() }).description).toBe('')
   })
 
   it('derives active filters and selection state', () => {
@@ -168,6 +188,33 @@ describe('automation triggers page model', () => {
     )
   })
 
+  it('removes cleared filters from the URL while keeping unrelated state', () => {
+    const url = new URL(
+      buildAutomationTriggersGridHref({
+        gridQuery: {
+          q: 'night',
+          tag: 'nightly',
+          targetApplicationId: 'app-1',
+          enabled: 'true',
+          status: 'failed',
+          lastRun: '7d'
+        },
+        pageSize: 20,
+        patch: {
+          tag: undefined,
+          targetApplicationId: undefined,
+          enabled: undefined,
+          status: undefined,
+          lastRun: undefined,
+          page: 1
+        }
+      }),
+      'https://rebroid.test'
+    )
+    expect([...url.searchParams.keys()]).toEqual(['q', 'page', 'pageSize'])
+    expect(url.searchParams.get('q')).toBe('night')
+  })
+
   it('extracts fulfilled deleted trigger ids from settled results', () => {
     const triggers = [trigger('a'), trigger('b'), trigger('c')]
     const results = [
@@ -187,10 +234,12 @@ describe('automation triggers page model', () => {
     const fulfilledResults = [{ status: 'fulfilled', value: undefined }] satisfies PromiseSettledResult<unknown>[]
 
     expect(summarizeTriggerBulkUpdateResults(fulfilledResults, true)).toEqual({
-      title: 'Selected triggers enabled'
+      title: 'Selected triggers enabled',
+      variant: 'success'
     })
     expect(summarizeTriggerBulkUpdateResults(fulfilledResults, false)).toEqual({
-      title: 'Selected triggers disabled'
+      title: 'Selected triggers disabled',
+      variant: 'success'
     })
     expect(summarizeTriggerBulkUpdateResults(mixedResults, true)).toEqual({
       title: 'Some triggers could not be updated',
@@ -198,7 +247,8 @@ describe('automation triggers page model', () => {
       variant: 'danger'
     })
     expect(summarizeTriggerBulkDeleteResults(fulfilledResults, new Set(['a']))).toEqual({
-      title: 'Selected triggers deleted'
+      title: 'Selected triggers deleted',
+      variant: 'success'
     })
     expect(summarizeTriggerBulkDeleteResults(mixedResults, new Set(['a']))).toEqual({
       title: 'Some triggers could not be deleted',

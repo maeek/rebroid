@@ -1,8 +1,9 @@
 import { type ReactNode } from 'react'
 import { IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Visible } from '@/components/ui/visible'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import {
   AutomationLastRunFilter,
@@ -20,6 +21,8 @@ export const AutomationTriggersToolbar = ({
   gridQuery,
   search,
   selectedCount,
+  pending,
+  disabled,
   onSearchChange,
   onSearchSubmit,
   onUpdateGrid,
@@ -33,6 +36,8 @@ export const AutomationTriggersToolbar = ({
   gridQuery: AutomationTriggersGridQuery
   search: string
   selectedCount: number
+  pending?: 'enable' | 'disable' | 'delete' | null
+  disabled?: boolean
   onSearchChange: (search: string) => void
   onSearchSubmit: (value: string) => void
   onUpdateGrid: (patch: Partial<AutomationTriggersGridQuery>) => void
@@ -42,6 +47,7 @@ export const AutomationTriggersToolbar = ({
   children: ReactNode
 }) => (
   <DataGridWorkspace
+    disabled={disabled}
     search={search}
     searchPlaceholder='Search triggers'
     onSearchChange={onSearchChange}
@@ -55,7 +61,9 @@ export const AutomationTriggersToolbar = ({
             {
               id: 'target',
               label: 'Target',
-              value: gridQuery.targetApplicationId,
+              value:
+                applications.find(app => app.id === gridQuery.targetApplicationId)?.name ??
+                gridQuery.targetApplicationId,
               onRemove: () => onUpdateGrid({ targetApplicationId: undefined, page: 1 })
             }
           ]
@@ -104,23 +112,30 @@ export const AutomationTriggersToolbar = ({
     selectedCount={selectedCount}
     bulkActions={
       <>
-        <Button
+        <MutationButton
           size='sm'
-          variant='secondary'
+          variant='ghost'
+          disabled={disabled}
+          pending={pending === 'enable'}
+          pendingLabel='Enabling…'
           onClick={onEnable}
         >
           Enable
-        </Button>
-        <Button
+        </MutationButton>
+        <MutationButton
           size='sm'
-          variant='secondary'
+          variant='ghost'
+          disabled={disabled}
+          pending={pending === 'disable'}
+          pendingLabel='Disabling…'
           onClick={onDisable}
         >
           Disable
-        </Button>
+        </MutationButton>
         <Button
           size='sm'
-          variant='danger'
+          variant='danger-ghost'
+          disabled={disabled}
           onClick={onDelete}
         >
           <IconTrash className='size-4' />
@@ -140,24 +155,29 @@ export const AutomationTriggersToolbar = ({
           value={gridQuery.targetApplicationId}
           onChange={targetApplicationId => onUpdateGrid({ targetApplicationId, page: 1 })}
         />
-        <Select
-          value={gridQuery.enabled ?? allFilterValue}
-          onValueChange={value =>
-            onUpdateGrid({
-              enabled: value === allFilterValue ? undefined : value,
-              page: 1
-            })
-          }
+        <FormField
+          label='State'
+          layout='vertical'
         >
-          <SelectTrigger className='w-full'>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={allFilterValue}>Any state</SelectItem>
-            <SelectItem value='true'>Enabled</SelectItem>
-            <SelectItem value='false'>Disabled</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select
+            value={gridQuery.enabled ?? allFilterValue}
+            onValueChange={value =>
+              onUpdateGrid({
+                enabled: value === allFilterValue ? undefined : value,
+                page: 1
+              })
+            }
+          >
+            <SelectTrigger className='w-full'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={allFilterValue}>Any state</SelectItem>
+              <SelectItem value='true'>Enabled</SelectItem>
+              <SelectItem value='false'>Disabled</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
         <AutomationLastStatusFilter
           value={gridQuery.status}
           onChange={status => onUpdateGrid({ status, page: 1 })}
@@ -171,46 +191,4 @@ export const AutomationTriggersToolbar = ({
   >
     {children}
   </DataGridWorkspace>
-)
-
-export const AutomationTriggerBulkBar = ({
-  selectedCount,
-  onDelete,
-  onDisable,
-  onEnable
-}: {
-  selectedCount: number
-  onDelete: () => void
-  onDisable: () => void
-  onEnable: () => void
-}) => (
-  <Visible when={selectedCount > 0}>
-    <div className='flex flex-wrap items-center justify-between gap-3 rounded-panel border border-surface-border bg-surface-panel/50 px-4 py-3 text-sm'>
-      <span className='text-foreground-muted'>{selectedCount} selected</span>
-      <div className='flex flex-wrap gap-2'>
-        <Button
-          size='sm'
-          variant='secondary'
-          onClick={onEnable}
-        >
-          Enable
-        </Button>
-        <Button
-          size='sm'
-          variant='secondary'
-          onClick={onDisable}
-        >
-          Disable
-        </Button>
-        <Button
-          size='sm'
-          variant='danger'
-          onClick={onDelete}
-        >
-          <IconTrash className='size-4' />
-          Delete
-        </Button>
-      </div>
-    </div>
-  </Visible>
 )
