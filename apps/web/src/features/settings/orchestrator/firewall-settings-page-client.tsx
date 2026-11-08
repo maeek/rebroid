@@ -10,10 +10,12 @@ import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 
 export const FirewallSettingsPageClient = ({
   initialHealth,
-  initialApplications
+  initialApplications,
+  loading = false
 }: {
   initialHealth: ServiceHealth
   initialApplications: AndroidApplication[]
+  loading?: boolean
 }) => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -31,7 +33,7 @@ export const FirewallSettingsPageClient = ({
         description='Apply outbound network restrictions to application containers.'
         actions={
           <PlatformPageRefreshButton
-            isRefreshing={isRefreshing}
+            isRefreshing={isRefreshing || loading}
             onRefresh={refresh}
           />
         }
@@ -39,6 +41,7 @@ export const FirewallSettingsPageClient = ({
       <PageContent>
         <FirewallSettings
           initialHealth={initialHealth}
+          loading={loading}
           initialApplications={initialApplications}
           refreshKey={refreshKey}
           onRefreshComplete={() => setIsRefreshing(false)}

@@ -1,16 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconLoader2, IconShieldCheck } from '@tabler/icons-react'
-import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { IconShieldCheck } from '@tabler/icons-react'
 import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Visible } from '@/components/ui/visible'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
@@ -19,16 +15,15 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
+import { useFirewallPolicyColumns } from './firewall-policy-columns'
 import {
   clampFirewallPageIndex,
-  firewallAllowlistDisplay,
-  firewallPolicyResultDisplay,
   firewallReconcileActionState,
-  firewallRestrictionLabel,
   filterFirewallApplications,
   mergeFirewallApplications,
   paginateFirewallApplications,
@@ -39,46 +34,23 @@ import {
 } from './firewall-settings-model'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { ServiceHealth } from '@/shared/contracts/diagnostics'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-
-const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
-  const { empty, hiddenCidrs, visibleCidrs } = firewallAllowlistDisplay(cidrs)
-
-  if (empty) return <span className='text-sm text-foreground-muted'>No custom CIDRs</span>
-
-  return (
-    <div className='flex max-w-[24rem] flex-wrap gap-1'>
-      {visibleCidrs.map(cidr => (
-        <Badge
-          key={cidr}
-          variant='neutral'
-        >
-          {cidr}
-        </Badge>
-      ))}
-      <Visible when={hiddenCidrs.length > 0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge variant='outline'>+{hiddenCidrs.length}</Badge>
-          </TooltipTrigger>
-          <TooltipContent className='max-w-sm break-all'>{hiddenCidrs.join(', ')}</TooltipContent>
-        </Tooltip>
-      </Visible>
-    </div>
-  )
-}
+import type { SortingState } from '@tanstack/react-table'
 
 export const FirewallSettings = ({
   initialHealth,
   initialApplications,
   refreshKey = 0,
-  onRefreshComplete
+  onRefreshComplete,
+  loading = false
 }: {
   initialHealth: ServiceHealth
   initialApplications: AndroidApplication[]
   refreshKey?: number
   onRefreshComplete?: () => void
+  loading?: boolean
 }) => {
+  const lastRefreshKey = useRef(refreshKey)
+  const mutationPending = useRef(false)
   const [applications, setApplications] = useState(initialApplications)
   const [health, setHealth] = useState(initialHealth)
   const [busy, setBusy] = useState<string | null>(null)
@@ -132,15 +104,21 @@ export const FirewallSettings = ({
     []
   )
 
+  const loadSnapshot = useCallback(async () => {
+    const [nextHealth, nextApplications] = await Promise.all([getOrchestratorHealthAction(), listApplicationsAction()])
+    setHealth(nextHealth.services.firewall)
+    setApplications(nextApplications)
+  }, [])
+
   const refresh = useCallback(async () => {
+    if (mutationPending.current) {
+      onRefreshComplete?.()
+      return
+    }
+    mutationPending.current = true
     setBusy('refresh')
     try {
-      const [nextHealth, nextApplications] = await Promise.all([
-        getOrchestratorHealthAction(),
-        listApplicationsAction()
-      ])
-      setHealth(nextHealth.services.firewall)
-      setApplications(nextApplications)
+      await loadSnapshot()
     } catch (error) {
       toast({
         title: 'Could not load network access policies',
@@ -148,23 +126,32 @@ export const FirewallSettings = ({
         variant: 'danger'
       })
     } finally {
+      mutationPending.current = false
       setBusy(null)
       onRefreshComplete?.()
     }
-  }, [onRefreshComplete])
+  }, [loadSnapshot, onRefreshComplete])
 
   useEffect(() => {
-    if (refreshKey > 0) {
+    if (refreshKey !== lastRefreshKey.current) {
+      lastRefreshKey.current = refreshKey
       void refresh()
     }
   }, [refresh, refreshKey])
 
   const setRestricted = useCallback(
     async (application: AndroidApplication, enabled: boolean) => {
+      if (mutationPending.current) return
+      mutationPending.current = true
       setBusy(application.id)
       try {
-        replaceApplication(await updateNetworkPolicyAction(application.id, { networkPolicyEnabled: enabled }))
-        toast({ title: enabled ? 'Restricted network access enabled' : 'Unrestricted network access enabled' })
+        replaceApplication(
+          unwrapActionResult(await updateNetworkPolicyAction(application.id, { networkPolicyEnabled: enabled }))
+        )
+        toast({
+          title: enabled ? 'Restricted network access enabled' : 'Unrestricted network access enabled',
+          variant: 'success'
+        })
       } catch (error) {
         toast({
           title: 'Could not update network access policy',
@@ -172,6 +159,7 @@ export const FirewallSettings = ({
           variant: 'danger'
         })
       } finally {
+        mutationPending.current = false
         setBusy(null)
       }
     },
@@ -179,19 +167,35 @@ export const FirewallSettings = ({
   )
 
   const reconcileSelected = async () => {
+    if (mutationPending.current) return
+    mutationPending.current = true
     const targets = selectedApplications
     setBusy('reconcile')
     try {
       if (targets.length === 0) {
         await reconcileNetworkPoliciesAction()
-        await refresh()
-        toast({ title: 'Network policy rules reconciled and stale rules pruned' })
+        await loadSnapshot()
+        toast({ title: 'Network policies reconciled', description: 'Stale rules were pruned.', variant: 'success' })
         return
       }
-      const updated = await Promise.all(targets.map(application => applyNetworkPolicyAction(application.id)))
+      const results = await Promise.allSettled(
+        targets.map(async application => unwrapActionResult(await applyNetworkPolicyAction(application.id)))
+      )
+      const updated = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []))
+      const failedIds = targets
+        .filter((_, index) => results[index]?.status === 'rejected')
+        .map(application => application.id)
       setApplications(current => mergeFirewallApplications(current, updated))
-      setSelectedIds(new Set())
-      toast({ title: 'Selected network access policies reconciled' })
+      setSelectedIds(new Set(failedIds))
+      toast(
+        failedIds.length > 0
+          ? {
+              title: 'Some network policies could not be reconciled',
+              description: `${updated.length} updated. ${failedIds.length} remain selected for retry.`,
+              variant: 'danger'
+            }
+          : { title: 'Selected network access policies reconciled', variant: 'success' }
+      )
     } catch (error) {
       toast({
         title: 'Could not reconcile network access policies',
@@ -199,105 +203,29 @@ export const FirewallSettings = ({
         variant: 'danger'
       })
     } finally {
+      mutationPending.current = false
       setBusy(null)
     }
   }
 
-  const columns = useMemo<ColumnDef<AndroidApplication>[]>(
-    () => [
-      {
-        id: 'name',
-        accessorFn: application => application.name,
-        header: 'Application',
-        size: 288,
-        meta: { label: 'Application' },
-        cell: ({ row }) => (
-          <div className='grid gap-1'>
-            <Link
-              className='truncate font-medium hover:text-primary'
-              href={`/app/${row.original.id}/manage`}
-            >
-              {row.original.name}
-            </Link>
-            <div className='truncate text-xs text-foreground-muted'>{row.original.id}</div>
-          </div>
-        )
-      },
-      {
-        id: 'runtime',
-        accessorFn: application => application.status.currentStatus,
-        header: 'Runtime',
-        size: 128,
-        meta: { label: 'Runtime' },
-        cell: ({ row }) => (
-          <span className='capitalize text-sm text-foreground-muted'>{row.original.status.currentStatus}</span>
-        )
-      },
-      {
-        id: 'allowlist',
-        header: 'Allowlist',
-        size: 416,
-        enableSorting: false,
-        meta: { label: 'Allowlist' },
-        cell: ({ row }) => <AllowlistBadges cidrs={row.original.network.policy.allowCidrs} />
-      },
-      {
-        id: 'result',
-        accessorFn: application => application.network.policy.result?.code ?? application.network.policy.status ?? '',
-        header: 'Result',
-        size: 176,
-        meta: { label: 'Result' },
-        cell: ({ row }) => {
-          const result = firewallPolicyResultDisplay(row.original)
-          return (
-            <Badge
-              className='capitalize'
-              variant={result.variant}
-            >
-              {result.label}
-            </Badge>
-          )
-        }
-      },
-      {
-        id: 'restricted',
-        accessorFn: application => application.network.policy.enabled,
-        header: 'Restricted',
-        size: 176,
-        meta: { label: 'Restricted' },
-        cell: ({ row }) => {
-          const label = firewallRestrictionLabel(row.original)
-          return (
-            <label className='flex items-center justify-end gap-2'>
-              <span className='text-xs text-foreground-muted'>{label}</span>
-              <Switch
-                checked={row.original.network.policy.enabled}
-                disabled={busy !== null}
-                aria-label={`Toggle restricted network access for ${row.original.name}`}
-                onCheckedChange={checked => void setRestricted(row.original, checked)}
-              />
-            </label>
-          )
-        }
-      }
-    ],
-    [busy, setRestricted]
-  )
+  const columns = useFirewallPolicyColumns({ disabled: loading || busy !== null, onSetRestricted: setRestricted })
 
   return (
     <>
       <PlatformStatusBanner
+        loading={loading}
         status={health.status}
         ok={health.ok}
         message={health.message}
       />
       <Section
         surface='plain'
-        title='Network policies'
+        title='Application access'
         headingSpacing='compact'
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          disabled={busy !== null}
           search={search}
           searchPlaceholder='Search policies'
           onSearchChange={setSearch}
@@ -407,25 +335,37 @@ export const FirewallSettings = ({
             setResultFilter('all')
           }}
           selectedCount={selectedApplications.length}
+          actions={
+            <MutationButton
+              type='button'
+              variant='ghost'
+              disabled={loading || reconcileAction.disabled}
+              pending={reconcileAction.busy}
+              pendingLabel='Reconciling…'
+              onClick={() => void reconcileSelected()}
+            >
+              <IconShieldCheck className='size-4' />
+              Reconcile all
+            </MutationButton>
+          }
           bulkActions={
-            <Button
+            <MutationButton
               type='button'
               variant='ghost'
               disabled={reconcileAction.disabled}
+              pending={reconcileAction.busy}
+              pendingLabel='Reconciling…'
               onClick={() => void reconcileSelected()}
             >
-              {reconcileAction.busy ? (
-                <IconLoader2 className='size-4 animate-spin' />
-              ) : (
-                <IconShieldCheck className='size-4' />
-              )}
+              <IconShieldCheck className='size-4' />
               {reconcileAction.label}
-            </Button>
+            </MutationButton>
           }
         >
           <TooltipProvider delayDuration={150}>
             <DataGrid
               columns={columns}
+              loading={loading ? { rowCount: 4, selectable: true, rowMenu: false } : false}
               data={paginatedApplications}
               totalItems={sortedApplications.length}
               pageIndex={pageIndex}
@@ -437,23 +377,30 @@ export const FirewallSettings = ({
                 setPageIndex(0)
               }}
               selection={{
+                disabled: busy !== null,
                 selectedIds,
                 onSelectedIdsChange: setSelectedIds
               }}
               minWidth='74rem'
               emptyState={
                 <div className='text-center text-foreground-muted'>
-                  {submittedSearch ? 'No policies match this search.' : 'No application containers are configured.'}
+                  {submittedSearch || restrictionFilter !== 'all' || runtimeFilter !== 'all' || resultFilter !== 'all'
+                    ? 'No policies match the current filters.'
+                    : 'No application containers are configured.'}
                 </div>
               }
             />
           </TooltipProvider>
           <DataGridPagination
+            loading={loading}
             totalItems={sortedApplications.length}
             pageIndex={pageIndex}
             pageSize={pageSize}
             onPageIndexChange={setPageIndex}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={size => {
+              setPageSize(size)
+              setPageIndex(0)
+            }}
           />
         </DataGridWorkspace>
       </Section>
