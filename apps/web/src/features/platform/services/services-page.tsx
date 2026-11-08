@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { IconCast, IconServer, IconBrandDocker } from '@tabler/icons-react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
@@ -30,7 +30,6 @@ export const PlatformServicesPage = ({
   initialSettings: OrchestratorUiSettings
   requestedServiceId?: string | null
 }) => {
-  const pathname = usePathname()
   const router = useRouter()
   const [refreshing, startRefresh] = useTransition()
   const [form, setForm] = useState({ services: initialSettings.services, savedServices: initialSettings.services })
@@ -40,12 +39,13 @@ export const PlatformServicesPage = ({
   const [pendingAction, setPendingAction] = useState<'save' | null>(null)
   const { isFeatureEnabled } = useFeatureFlags()
 
-  const setServiceRoute = useCallback(
-    (serviceId: ServiceId | null) => {
-      router.replace(serviceId ? `${pathname}?service=${serviceId}` : pathname, { scroll: false })
-    },
-    [pathname, router]
-  )
+  const setServiceRoute = useCallback((serviceId: ServiceId | null) => {
+    const url = new URL(window.location.href)
+    if (serviceId) url.searchParams.set('service', serviceId)
+    else url.searchParams.delete('service')
+    // Dialog selection is local state; server navigation remounts the inventory.
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [])
 
   const openServiceEditor = useCallback(
     (serviceId: ServiceId) => {
@@ -143,7 +143,7 @@ export const PlatformServicesPage = ({
 
   useEffect(() => {
     const snapshot = JSON.stringify(initialSettings.services)
-    // Editor query changes can return identical settings; retain the current draft.
+    // Identical settings from a refresh must not overwrite the current draft.
     if (initialSettingsSnapshot.current === snapshot) return
     initialSettingsSnapshot.current = snapshot
     setForm(current => ({
@@ -156,9 +156,11 @@ export const PlatformServicesPage = ({
   }, [initialSettings])
 
   useEffect(() => {
-    const nextService = isServiceId(requestedServiceId) ? requestedServiceId : null
-    setEditingService(nextService && isFeatureEnabled(serviceMeta[nextService].featureKey) ? nextService : null)
-  }, [isFeatureEnabled, requestedServiceId])
+    setEditingService(isServiceId(requestedServiceId) ? requestedServiceId : null)
+  }, [requestedServiceId])
+
+  const allowedEditingService =
+    editingService && isFeatureEnabled(serviceMeta[editingService].featureKey) ? editingService : null
 
   const updateServices = (nextServices: OptionalServicesUiSettings) => {
     setForm(current => ({ ...current, services: nextServices }))
@@ -210,7 +212,7 @@ export const PlatformServicesPage = ({
         onActivate={activateService}
       />
       <ServiceSettingsDialog
-        serviceId={editingService}
+        serviceId={allowedEditingService}
         services={services}
         onChange={updateServices}
         onClose={closeServiceEditor}

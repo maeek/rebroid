@@ -1,6 +1,56 @@
 import { expect, test } from '@playwright/test'
 import { dockerOperationLimitsSchema } from '../src/shared/contracts/docker-operation-limits'
 
+test('service editors open without reloading the inventory and close without flashing', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=services-all#connections')
+  const search = page.getByPlaceholder('Search services')
+  await search.fill('Firewall')
+  const row = page.getByRole('row', { name: 'Edit Firewall agent' })
+  await expect(page.getByRole('table').getByRole('row')).toHaveCount(2)
+  await row.evaluate(element => element.setAttribute('data-retained-row', 'true'))
+  const navigations: string[] = []
+  page.on('request', request => {
+    if (new URL(request.url()).searchParams.has('service')) navigations.push(request.url())
+  })
+  const edit = row.getByRole('button', { name: 'Edit', exact: true })
+  await edit.click()
+  const dialog = page.getByRole('dialog', { name: 'Firewall agent' })
+  await expect(dialog).toBeVisible()
+  await expect(page).toHaveURL(/editor=services-all&service=firewall#connections$/)
+  await dialog.getByLabel('Endpoint').fill('/tmp/draft-firewall.sock')
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  const closing = await page.evaluate(async () => {
+    const heights: number[] = []
+    let disappeared = false
+    let reappeared = false
+    const start = performance.now()
+    await new Promise<void>(resolve => {
+      const frame = () => {
+        const popup = document.querySelector('[role="dialog"]')
+        if (popup) {
+          heights.push(popup.getBoundingClientRect().height)
+          if (disappeared) reappeared = true
+        } else disappeared = true
+        if (performance.now() - start >= 400) resolve()
+        else requestAnimationFrame(frame)
+      }
+      requestAnimationFrame(frame)
+    })
+    return { heights, reappeared }
+  })
+  expect(closing.reappeared).toBe(false)
+  for (const height of closing.heights) expect(height).toBeGreaterThan(250)
+  await expect(dialog).toHaveCount(0)
+  await expect(edit).toBeFocused()
+  await expect(row).toHaveAttribute('data-retained-row', 'true')
+  await expect(search).toHaveValue('Firewall')
+  await expect(page).toHaveURL(/editor=services-all#connections$/)
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+  await edit.click()
+  await expect(dialog.getByLabel('Endpoint')).toHaveValue('/tmp/draft-firewall.sock')
+  expect(navigations).toEqual([])
+})
+
 test('Docker failures stay compact and offer scoped recovery', async ({ page }) => {
   let limitsUnavailable = true
   const limits = {

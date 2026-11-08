@@ -15,6 +15,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
+import { useDialogPayload } from '@/hooks/use-dialog-payload'
 import { serviceMeta, updateService, type ServiceId } from './service-definitions'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -25,7 +26,7 @@ const numberValue = (value: number, fallback: number) => (Number.isFinite(value)
 export const ServiceSettingsDialog = ({
   onChange,
   onClose,
-  serviceId,
+  serviceId: currentServiceId,
   services
 }: {
   onChange: (services: OptionalServicesUiSettings) => void
@@ -34,10 +35,11 @@ export const ServiceSettingsDialog = ({
   services: OptionalServicesUiSettings
 }) => {
   const [tab, setTab] = useState<DialogTab>('connection')
+  const { payload: serviceId, onOpenChangeComplete } = useDialogPayload(currentServiceId)
 
   useEffect(() => {
-    if (serviceId) setTab('connection')
-  }, [serviceId])
+    if (currentServiceId) setTab('connection')
+  }, [currentServiceId])
 
   if (!serviceId) {
     return (
@@ -56,7 +58,8 @@ export const ServiceSettingsDialog = ({
 
   return (
     <Dialog
-      open
+      open={currentServiceId !== null}
+      onOpenChangeComplete={onOpenChangeComplete}
       onOpenChange={open => {
         if (!open) onClose()
       }}

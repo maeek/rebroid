@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -46,6 +46,10 @@ const manifest: FeatureFlagManifest = {
 }
 
 describe('PlatformServicesPage', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/platform/services')
+  })
+
   it('shows all five services with observed health and infrastructure destinations', () => {
     render(
       <FeatureFlagsProvider manifest={manifest}>
@@ -102,12 +106,64 @@ describe('PlatformServicesPage', () => {
     fireEvent.click(screen.getByRole('row', { name: 'Edit OCR perception' }))
 
     expect(screen.getByRole('dialog', { name: 'OCR perception' })).toBeInTheDocument()
-    expect(navigation.replace).toHaveBeenCalledWith('/platform/services?service=ocr', { scroll: false })
+    expect(window.location.search).toBe('?service=ocr')
+    expect(navigation.replace).not.toHaveBeenCalled()
+    expect(navigation.refresh).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(window.location.search).toBe('')
     fireEvent.keyDown(screen.getByRole('row', { name: 'View sessions for Display service' }), { key: 'Enter' })
 
     expect(navigation.push).toHaveBeenCalledWith('/platform/services/display-sessions')
+  })
+
+  it('keeps the filtered grid mounted while opening and closing a service editor', async () => {
+    window.history.replaceState(null, '', '/platform/services?source=health#connections')
+    render(
+      <FeatureFlagsProvider manifest={manifest}>
+        <PlatformServicesPage
+          initialSettings={defaultOrchestratorUiSettings}
+          initialHealth={servicesPreviewHealth}
+        />
+      </FeatureFlagsProvider>
+    )
+    const search = screen.getByPlaceholderText('Search services')
+    fireEvent.change(search, { target: { value: 'Firewall' } })
+    const row = screen.getByRole('row', { name: 'Edit Firewall agent' })
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit' }))
+    expect(screen.getByRole('dialog', { name: 'Firewall agent' })).toBeInTheDocument()
+    expect(window.location.search).toBe('?source=health&service=firewall')
+    expect(window.location.hash).toBe('#connections')
+    fireEvent.change(screen.getByLabelText('Endpoint'), { target: { value: '/tmp/another-agent.sock' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('row', { name: 'Edit Firewall agent' })).toBe(row)
+    expect(search).toHaveValue('Firewall')
+    expect(window.location.search).toBe('?source=health')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(navigation.replace).not.toHaveBeenCalled()
+    expect(navigation.push).not.toHaveBeenCalled()
+    expect(navigation.refresh).not.toHaveBeenCalled()
+  })
+
+  it('opens an enabled service deep link without navigating and stays closed after a health refresh', async () => {
+    window.history.replaceState(null, '', '/platform/services?service=firewall')
+    const page = (flags: FeatureFlagManifest) => (
+      <FeatureFlagsProvider manifest={flags}>
+        <PlatformServicesPage
+          initialSettings={defaultOrchestratorUiSettings}
+          initialHealth={servicesPreviewHealth}
+          requestedServiceId='firewall'
+        />
+      </FeatureFlagsProvider>
+    )
+    const { rerender } = render(page(manifest))
+    expect(screen.getByRole('dialog', { name: 'Firewall agent' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(page(structuredClone(manifest)))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(navigation.replace).not.toHaveBeenCalled()
   })
 
   it('keeps disabled services discoverable without opening their configuration or save actions', () => {
