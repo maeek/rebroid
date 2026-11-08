@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import {
   assertAutomationPermission,
@@ -225,6 +226,7 @@ export const createAutomationAction = async (input: SaveAutomationInput) => {
 export const updateAutomationAction = async (id: string, input: Partial<SaveAutomationInput>) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
+  input = z.object({ yaml: z.string().optional() }).strict().parse(input)
   let payload = input
   if (input.yaml !== undefined) {
     const validation = await orchestratorAutomationsClient.validateYaml(input.yaml)

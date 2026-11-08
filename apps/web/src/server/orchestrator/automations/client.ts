@@ -50,7 +50,7 @@ export const orchestratorAutomationsClient = {
     const query = new URLSearchParams({ ownerUserId })
     for (const [key, value] of Object.entries(input)) {
       const text = String(value ?? '').trim()
-      if (text) query.set(key, text)
+      if (text && key !== 'ownerUserId') query.set(key, text)
     }
     return emptyRequest<AutomationsGridPage>(`/automations/grid?${query.toString()}`)
   },
@@ -64,7 +64,7 @@ export const orchestratorAutomationsClient = {
   },
 
   create(ownerUserId: string, input: SaveAutomationInput) {
-    return jsonRequest<Automation>('/automations', 'POST', { ownerUserId, ...input })
+    return jsonRequest<Automation>('/automations', 'POST', { ...input, ownerUserId })
   },
 
   update(ownerUserId: string, id: string, input: Partial<SaveAutomationInput>) {
@@ -79,8 +79,8 @@ export const orchestratorAutomationsClient = {
 
   run(ownerUserId: string, id: string, input: RunAutomationInput) {
     return jsonRequest<AutomationRun>(`/automations/${encodeURIComponent(id)}/runs`, 'POST', {
-      ownerUserId,
-      ...input
+      ...input,
+      ownerUserId
     })
   },
 
@@ -115,11 +115,11 @@ export const orchestratorAutomationsClient = {
   },
 
   runAdHocAi(ownerUserId: string, input: RunAdHocAiAutomationInput) {
-    return jsonRequest<AutomationRun>('/automations/ai/runs', 'POST', { ownerUserId, ...input })
+    return jsonRequest<AutomationRun>('/automations/ai/runs', 'POST', { ...input, ownerUserId })
   },
 
   suggestAdHocAiPrompts(ownerUserId: string, input: SuggestAdHocAiPromptsInput) {
-    return jsonRequest<AiPromptSuggestions>('/automations/ai/suggestions', 'POST', { ownerUserId, ...input })
+    return jsonRequest<AiPromptSuggestions>('/automations/ai/suggestions', 'POST', { ...input, ownerUserId })
   },
 
   listAdHocAiRuns(ownerUserId: string, targetApplicationId: string, limit = 20) {
@@ -150,7 +150,7 @@ export const orchestratorAutomationsClient = {
     const query = new URLSearchParams({ ownerUserId })
     for (const [key, value] of Object.entries(input)) {
       const text = String(value ?? '').trim()
-      if (text) query.set(key, text)
+      if (text && key !== 'ownerUserId') query.set(key, text)
     }
     return emptyRequest<AutomationTriggersGridPage>(`/automations/triggers/grid?${query.toString()}`)
   },
@@ -160,7 +160,7 @@ export const orchestratorAutomationsClient = {
   },
 
   createTrigger(ownerUserId: string, input: SaveAutomationTriggerInput) {
-    return jsonRequest<AutomationTrigger>('/automations/triggers', 'POST', { ownerUserId, ...input })
+    return jsonRequest<AutomationTrigger>('/automations/triggers', 'POST', { ...input, ownerUserId })
   },
 
   updateTrigger(ownerUserId: string, id: string, input: Partial<SaveAutomationTriggerInput>) {
