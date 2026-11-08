@@ -115,8 +115,8 @@ export const PermissionEditor = ({
             title='Full administrator access'
             description={
               isUser
-                ? 'Admin users have every permission and unlimited quotas. Group settings and user overrides cannot restrict this role.'
-                : 'Admin groups grant every permission and unlimited quotas. Choose the User template to customize access.'
+                ? 'Admin users have every permission. Group settings and user overrides cannot restrict this role.'
+                : 'Admin groups grant every permission. Choose the User template to customize access.'
             }
           />
         ) : null}

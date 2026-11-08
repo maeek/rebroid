@@ -35,9 +35,9 @@ for (const editor of ['user', 'group']) {
         await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
         await expect(page.getByRole('button', { name: 'Edit membership', exact: true })).toBeFocused()
       }
-      await page.getByRole('tab', { name: 'Permissions & quotas', exact: true }).click()
+      await page.getByRole('tab', { name: 'Permissions', exact: true }).click()
       await expect(page.getByRole('table').getByRole('row')).toHaveCount(11)
-      await expect(page.getByRole('spinbutton', { name: 'Max Open Apps', exact: true })).toBeVisible()
+      await expect(page.getByRole('spinbutton', { name: 'Max Open Apps', exact: true })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Quotas', exact: true })).toHaveCount(0)
       if (width >= 1440) {
         const search = await page.getByRole('searchbox', { name: 'Search permissions', exact: true }).boundingBox()
@@ -50,6 +50,10 @@ for (const editor of ['user', 'group']) {
       await page.getByRole('option', { name: 'Deny', exact: true }).click()
       await expect(choice).toHaveText('Deny')
       await expect(choice).toBeFocused()
+      await page.getByRole('tab', { name: 'Quotas', exact: true }).click()
+      await expect(page.getByRole('table')).toHaveCount(0)
+      const quota = page.getByRole('spinbutton', { name: 'Max Open Apps', exact: true })
+      await quota.fill('7')
       for (const theme of ['light', 'dark', 'oled']) {
         await page.evaluate(value => {
           document.documentElement.className = value
@@ -63,8 +67,10 @@ for (const editor of ['user', 'group']) {
       }
       await page.getByRole('tab', { name: editor === 'user' ? 'Account' : 'Details', exact: true }).click()
       await expect(page.getByRole('textbox', { name: identity, exact: false }).first()).toHaveValue('Draft name')
-      await page.getByRole('tab', { name: 'Permissions & quotas', exact: true }).click()
+      await page.getByRole('tab', { name: 'Permissions', exact: true }).click()
       await expect(choice).toHaveText('Deny')
+      await page.getByRole('tab', { name: 'Quotas', exact: true }).click()
+      await expect(quota).toHaveValue('7')
     }
   })
 }

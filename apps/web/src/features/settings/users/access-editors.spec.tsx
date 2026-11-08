@@ -97,14 +97,14 @@ describe('access editors', () => {
         groups={groups}
       />
     )
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions & quotas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
     const permission = screen
       .getAllByRole('row')
       .find(item => within(item).queryByText('Create applications', { exact: true }))!
     expect(within(permission).getByText('Not granted', { exact: true })).toBeVisible()
     fireEvent.click(screen.getByRole('tab', { name: 'Groups' }))
     fireEvent.click(screen.getByRole('button', { name: 'Move Auditors earlier' }))
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions & quotas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
     expect(within(permission).getByText('Granted', { exact: true })).toBeVisible()
     expect(within(permission).getByText('From Operators')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Save User' }))
@@ -126,14 +126,23 @@ describe('access editors', () => {
         groups={groups}
       />
     )
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max Open Apps' }), { target: { value: '6' } })
+    fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
     await selectOption(/^Role/, 'Admin')
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions & quotas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
     expect(screen.getByText('Full administrator access')).toBeVisible()
     expect(screen.queryByRole('combobox', { name: 'Override Delete applications' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+    expect(screen.getByText(/Administrators have unlimited quotas/)).toBeVisible()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('spinbutton')).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
     await selectOption(/^Role/, 'User')
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions & quotas' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
     expect(screen.getByRole('combobox', { name: 'Override Delete applications' })).toHaveTextContent('Deny')
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+    expect(screen.getByRole('spinbutton', { name: 'Max Open Apps' })).toHaveValue(6)
   })
 
   it('retains edited group permissions after save failure and blocks duplicate saves while pending', async () => {
@@ -145,16 +154,23 @@ describe('access editors', () => {
         })
     )
     render(<GroupEditPage group={groups[0]} />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions & quotas' }))
-    expect(screen.getByRole('spinbutton', { name: 'Max Open Apps' })).toBeVisible()
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
+    expect(screen.queryByRole('spinbutton', { name: 'Max Open Apps' })).toBeNull()
     await selectOption(/^Set Start applications$/, 'Grant')
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max Open Apps' }), { target: { value: '7' } })
+    expect(screen.queryByRole('table')).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save Group' }))
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Set Start applications' })).toBeDisabled()
     expect(mocks.updateGroup).toHaveBeenCalledTimes(1)
     expect(mocks.updateGroup).toHaveBeenCalledWith(
       groups[0].id,
-      expect.objectContaining({ permissions: { 'applications:create': true, 'applications:start': true } })
+      expect.objectContaining({
+        permissions: { 'applications:create': true, 'applications:start': true },
+        quotas: { ...defaultUserQuota, maxOpenApps: 7 }
+      })
     )
     resolve({
       ok: false,
@@ -163,6 +179,8 @@ describe('access editors', () => {
     })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save Group' })).toBeEnabled())
     expect(screen.getByRole('combobox', { name: 'Set Start applications' })).toHaveTextContent('Grant')
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+    expect(screen.getByRole('spinbutton', { name: 'Max Open Apps' })).toHaveValue(7)
     expect(mocks.refresh).not.toHaveBeenCalled()
   })
 })

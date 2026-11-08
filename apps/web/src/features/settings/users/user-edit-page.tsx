@@ -16,6 +16,7 @@ import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupMembershipEditor } from './components/group-membership-editor'
@@ -141,8 +142,15 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 onChange={permissionOverrides => updateDraft({ permissionOverrides })}
               />
             }
+            quotasDescription={draft.role === 'admin' ? 'Resource limits for applications and sessions.' : undefined}
             quotas={
-              draft.role === 'admin' ? undefined : (
+              draft.role === 'admin' ? (
+                <StateView
+                  kind='not-applicable'
+                  title='Unlimited quotas'
+                  description='Administrators have unlimited quotas. Group limits and user overrides do not restrict this role.'
+                />
+              ) : (
                 <QuotaFields
                   quotas={draft.quotas}
                   resourceLimits={resourceLimits}

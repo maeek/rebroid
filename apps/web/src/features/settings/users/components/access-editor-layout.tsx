@@ -9,12 +9,14 @@ export const AccessEditorLayout = ({
   access,
   permissions,
   quotas,
+  quotasDescription = 'Resource limits for applications and sessions. Changes apply when you save.',
   loading = false
 }: {
   identity: ReactNode
   access?: ReactNode
   permissions: ReactNode
-  quotas?: ReactNode
+  quotas: ReactNode
+  quotasDescription?: string
   loading?: boolean
 }) => {
   const [tab, setTab] = useState('account')
@@ -30,7 +32,8 @@ export const AccessEditorLayout = ({
       >
         <TabsTrigger value='account'>{access ? 'Account' : 'Details'}</TabsTrigger>
         {access ? <TabsTrigger value='groups'>Groups</TabsTrigger> : null}
-        <TabsTrigger value='permissions'>Permissions & quotas</TabsTrigger>
+        <TabsTrigger value='permissions'>Permissions</TabsTrigger>
+        <TabsTrigger value='quotas'>Quotas</TabsTrigger>
       </TabsList>
       <TabsPanel value='account'>
         <div className='grid min-w-0 gap-6'>{identity}</div>
@@ -48,7 +51,7 @@ export const AccessEditorLayout = ({
       ) : null}
       <TabsPanel value='permissions'>
         <Section
-          title='Permissions & quotas'
+          title='Permissions'
           description={
             access
               ? 'Review effective access and its source. Use an override only when this user needs an exception.'
@@ -57,16 +60,15 @@ export const AccessEditorLayout = ({
           surface='plain'
         >
           {permissions}
-          {quotas ? (
-            <Section
-              title='Quotas'
-              headingLevel={3}
-              description='Optional resource limits. Changes apply when you save.'
-              surface='plain'
-            >
-              {quotas}
-            </Section>
-          ) : null}
+        </Section>
+      </TabsPanel>
+      <TabsPanel value='quotas'>
+        <Section
+          title='Quotas'
+          description={quotasDescription}
+          surface='plain'
+        >
+          {quotas}
         </Section>
       </TabsPanel>
       {loading ? (

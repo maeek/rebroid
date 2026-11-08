@@ -12,6 +12,7 @@ import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-lim
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { StateView } from '@/shared/ui/state-view'
 import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupDetailsSections } from './components/identity-fields'
 import { PermissionEditor } from './components/permission-editor'
@@ -87,8 +88,15 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
                 onChange={permissions => updateDraft({ permissions })}
               />
             }
+            quotasDescription={draft.role === 'admin' ? 'Resource limits for applications and sessions.' : undefined}
             quotas={
-              draft.role === 'admin' ? undefined : (
+              draft.role === 'admin' ? (
+                <StateView
+                  kind='not-applicable'
+                  title='Unlimited quotas'
+                  description='Administrators have unlimited quotas. Group resource limits do not restrict administrator users.'
+                />
+              ) : (
                 <QuotaFields
                   quotas={draft.quotas}
                   resourceLimits={resourceLimits}
