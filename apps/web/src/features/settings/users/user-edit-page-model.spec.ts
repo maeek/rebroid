@@ -127,16 +127,39 @@ describe('user edit page model', () => {
 
   it('maps inherited group permissions by selected groups', () => {
     expect(getPermissionInheritanceMap(groups, ['operators', 'auditors'], 'user')).toMatchObject({
-      'applications:start': ['Operators', 'Auditors'],
-      'applications:create': ['Operators'],
-      'applications:view-logs': ['Auditors']
+      'applications:start': { allowed: true, source: 'Auditors' },
+      'applications:create': { allowed: true, source: 'Operators' },
+      'applications:view-logs': { allowed: true, source: 'Auditors' }
+    })
+  })
+
+  it('follows selected group order and preserves explicit denials', () => {
+    const conflicting = [groups[0], { ...groups[1], permissions: { 'applications:start': false } }]
+    expect(getPermissionInheritanceMap(conflicting, ['operators', 'auditors'], 'user')['applications:start']).toEqual({
+      allowed: false,
+      source: 'Auditors'
+    })
+    expect(getPermissionInheritanceMap(conflicting, ['auditors', 'operators'], 'user')['applications:start']).toEqual({
+      allowed: true,
+      source: 'Operators'
+    })
+  })
+
+  it('uses the same fallback group as the server when membership is empty or missing', () => {
+    expect(getPermissionInheritanceMap(groups, [], 'user')['applications:start']).toEqual({
+      allowed: true,
+      source: 'Operators'
+    })
+    expect(getPermissionInheritanceMap(groups, ['deleted'], 'user')['applications:start']).toEqual({
+      allowed: true,
+      source: 'Operators'
     })
   })
 
   it('marks admin role permissions as inherited when no selected group grants them', () => {
     const inheritance = getPermissionInheritanceMap(groups, [], 'admin')
 
-    expect(inheritance['applications:start']).toEqual(['Admin role'])
-    expect(inheritance['automations:manage-ai-providers']).toEqual(['Admin role'])
+    expect(inheritance['applications:start']).toEqual({ allowed: true, source: 'Admin role' })
+    expect(inheritance['automations:manage-ai-providers']).toEqual({ allowed: true, source: 'Admin role' })
   })
 })

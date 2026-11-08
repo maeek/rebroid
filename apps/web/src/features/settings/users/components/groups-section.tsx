@@ -13,13 +13,16 @@ import { toast } from '@/hooks/use-toast'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 
 export const GroupsSection = ({
   groups,
+  loading = false,
   onGroupsDeleted
 }: {
+  loading?: boolean
   groups: UserGroup[]
   onGroupsDeleted: (groupIds: Set<string>) => void
 }) => {
@@ -59,10 +62,10 @@ export const GroupsSection = ({
       size: 480,
       meta: { label: 'Group', skeleton: { kind: 'stacked' } },
       cell: ({ row }) => (
-        <Link href={`/security/groups/${row.original.id}`}>
-          <div className='font-medium hover:underline hover:text-primary'>{row.original.name}</div>
+        <ResourceLink href={`/security/groups/${row.original.id}`}>
+          <div className='font-medium'>{row.original.name}</div>
           <div className='text-xs text-foreground-muted'>{row.original.description}</div>
-        </Link>
+        </ResourceLink>
       )
     },
     {
@@ -114,6 +117,7 @@ export const GroupsSection = ({
         contentClassName='gap-3'
       >
         <DataGridWorkspace
+          disabled={loading}
           search={searchDraft}
           searchPlaceholder='Search groups'
           onSearchChange={setSearchDraft}
@@ -148,7 +152,7 @@ export const GroupsSection = ({
           bulkActions={
             <Button
               type='button'
-              variant='danger'
+              variant='danger-ghost'
               disabled={isSaving}
               onClick={() => setPendingDeleteGroups(selectedGroups)}
             >
@@ -158,6 +162,7 @@ export const GroupsSection = ({
           }
         >
           <DataGrid
+            loading={loading}
             columns={columns}
             data={sortedGroups}
             totalItems={sortedGroups.length}
@@ -169,6 +174,7 @@ export const GroupsSection = ({
               setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
             }
             selection={{
+              disabled: loading,
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}

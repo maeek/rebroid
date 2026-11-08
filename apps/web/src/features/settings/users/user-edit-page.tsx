@@ -5,27 +5,25 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
+import { Notice } from '@/components/ui/notice'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
+import { PageContent } from '@/shared/ui/page/page-layout'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
-import { GroupMembershipPicker } from './components/group-membership-picker'
-import { PermissionSwitchTable } from './components/permission-switch-table'
+import { AccessEditorLayout } from './components/access-editor-layout'
+import { GroupMembershipEditor } from './components/group-membership-editor'
+import { UserAccountSections } from './components/identity-fields'
+import { PermissionEditor } from './components/permission-editor'
 import { QuotaFields } from './components/quota-fields'
-import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft, toUserRole } from './user-edit-page-model'
+import { resolveUserGroups } from './model/permission-access'
+import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft } from './user-edit-page-model'
 import type { UserDraft } from './user-edit-page-model'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
@@ -33,6 +31,8 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   const router = useRouter()
   const [draft, setDraft] = useState(() => toUserDraft(user))
   const [isSaving, setIsSaving] = useState(false)
+  const [avatarPending, setAvatarPending] = useState(false)
+  const busy = isSaving || avatarPending
   const resourceLimits = useResourceLimitBounds(true)
   const inheritedPermissions = useMemo(
     () => getPermissionInheritanceMap(groups, draft.groupIds, draft.role),
@@ -44,6 +44,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   }
 
   const saveUser = async () => {
+    if (busy) return
     setIsSaving(true)
     try {
       unwrapActionResult(await updateUserAction(user.id, buildUserUpdateInput(draft)))
@@ -61,7 +62,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   }
 
   return (
-    <StandardPage className='gap-2'>
+    <EditorPage className='gap-2'>
       <PageBackdrop
         imageSrc={draft.avatarDataUrl}
         opacity={0.08}
@@ -88,16 +89,10 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
         actions={
           <>
             {user.passwordChangeRequired ? <Badge variant='warning'>Password change required</Badge> : null}
-            <Label className='flex items-center gap-2 cursor-pointer select-none font-normal'>
-              Active Account
-              <Switch
-                checked={!draft.disabled}
-                onCheckedChange={checked => updateDraft({ disabled: !checked })}
-              />
-            </Label>
             <MutationButton
               pending={isSaving}
               pendingLabel='Saving…'
+              disabled={avatarPending}
               onClick={() => void saveUser()}
             >
               <IconDeviceFloppy className='size-4' />
@@ -106,118 +101,58 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
           </>
         }
       />
-      <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
-        <div className='grid content-start gap-6'>
-          <Section
-            title='Account'
-            surface='panel'
-            headingSpacing='default'
-            contentClassName='gap-5'
-          >
-            <UserAvatarInput
-              name={draft.name || draft.username}
-              avatar={draft.avatarDataUrl}
-              onChange={avatarDataUrl => updateDraft({ avatarDataUrl })}
-            />
-            <div className='grid gap-4 md:grid-cols-2'>
-              <FormField
-                label='Username'
-                required
-                layout='vertical'
-              >
-                <Input
-                  value={draft.username}
-                  required
-                  aria-required='true'
-                  autoComplete='username'
-                  onChange={event => updateDraft({ username: event.target.value })}
-                />
-              </FormField>
-              <FormField
-                label='Display Name'
-                layout='vertical'
-              >
-                <Input
-                  value={draft.name}
-                  autoComplete='name'
-                  onChange={event => updateDraft({ name: event.target.value })}
-                />
-              </FormField>
-              <FormField
-                label='New Password'
-                layout='vertical'
-              >
-                <div className='grid gap-2'>
-                  <Input
-                    value={draft.password}
-                    type='password'
-                    autoComplete='new-password'
-                    placeholder='Leave empty to keep current password'
-                    onChange={event => updateDraft({ password: event.target.value })}
-                  />
-                  <p className='text-xs text-foreground-muted'>Password resets require a change on next login.</p>
-                </div>
-              </FormField>
-              <FormField
-                label='Role'
-                required
-                layout='vertical'
-              >
-                <Select
-                  value={draft.role}
-                  onValueChange={value => updateDraft({ role: toUserRole(value) })}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue className='w-auto' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='user'>User</SelectItem>
-                    <SelectItem value='admin'>Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-          </Section>
-          <Section
-            title='Groups'
-            surface='panel'
-            headingSpacing='default'
-            contentClassName='gap-5'
-          >
-            <GroupMembershipPicker
-              groups={groups}
-              selectedGroupIds={draft.groupIds}
-              onChange={groupIds => updateDraft({ groupIds })}
-            />
-          </Section>
-          <Section
-            title='Quotas'
-            surface='panel'
-            headingSpacing='default'
-            contentClassName='gap-5'
-          >
-            <QuotaFields
-              quotas={draft.quotas}
-              resourceLimits={resourceLimits}
-              onChange={quotas => updateDraft({ quotas })}
-            />
-          </Section>
-        </div>
-        <Section
-          title='Permissions'
-          description='Group permissions are inherited. Toggling a permission here creates a user-level override.'
-          surface='panel'
-          headingSpacing='default'
-          contentClassName='gap-4'
-          className='xl:sticky xl:top-4'
+      <PageContent>
+        <fieldset
+          disabled={busy}
+          className='min-w-0'
+          aria-busy={busy}
         >
-          <PermissionSwitchTable
-            permissions={draft.permissionOverrides}
-            inheritedPermissions={inheritedPermissions}
-            onChange={permissionOverrides => updateDraft({ permissionOverrides })}
+          <AccessEditorLayout
+            identity={
+              <UserAccountSections
+                disabled={busy}
+                draft={draft}
+                onChange={updateDraft}
+                onAvatarPendingChange={setAvatarPending}
+              />
+            }
+            access={
+              <>
+                <GroupMembershipEditor
+                  groups={groups}
+                  selectedGroupIds={draft.groupIds}
+                  disabled={busy}
+                  onChange={groupIds => updateDraft({ groupIds })}
+                />
+                {draft.groupIds.length === 0 ? (
+                  <Notice
+                    title='Default group applies'
+                    description={`${resolveUserGroups(groups, [], draft.role)[0]?.name ?? 'No group'} is used when no groups are selected.`}
+                  />
+                ) : null}
+              </>
+            }
+            permissions={
+              <PermissionEditor
+                permissions={draft.permissionOverrides}
+                inheritedPermissions={inheritedPermissions}
+                admin={draft.role === 'admin'}
+                disabled={busy}
+                onChange={permissionOverrides => updateDraft({ permissionOverrides })}
+              />
+            }
+            quotas={
+              draft.role === 'admin' ? undefined : (
+                <QuotaFields
+                  quotas={draft.quotas}
+                  resourceLimits={resourceLimits}
+                  onChange={quotas => updateDraft({ quotas })}
+                />
+              )
+            }
           />
-        </Section>
+        </fieldset>
       </PageContent>
-    </StandardPage>
+    </EditorPage>
   )
 }

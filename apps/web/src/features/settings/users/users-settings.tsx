@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
@@ -18,8 +18,10 @@ import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 export const UsersSettings = ({
   initialUsers,
   initialGroups,
-  initialPasswordMinimumLength
+  initialPasswordMinimumLength,
+  loading = false
 }: {
+  loading?: boolean
   initialUsers: PublicUser[]
   initialGroups: UserGroup[]
   initialPasswordMinimumLength: number
@@ -27,6 +29,8 @@ export const UsersSettings = ({
   const [users, setUsers] = useState(initialUsers)
   const groups = initialGroups
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
+  const [pendingDisableUsers, setPendingDisableUsers] = useState<PublicUser[]>([])
+  const lastUserActionRef = useRef<HTMLElement | null>(null)
   const [pendingDeleteUser, setPendingDeleteUser] = useState<PublicUser | null>(null)
   const [pendingDeleteUsers, setPendingDeleteUsers] = useState<PublicUser[]>([])
 
@@ -40,21 +44,8 @@ export const UsersSettings = ({
     })
   }
 
-  const toggleDisabled = async (user: PublicUser) => {
-    setBusyUserId(user.id)
-    try {
-      const updated = unwrapActionResult(await setUserDisabledAction(user.id, !user.disabled))
-      upsertUser(updated)
-      toast({ title: updated.disabled ? 'User disabled' : 'User enabled', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not update user',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setBusyUserId(null)
-    }
+  const requestDisableUsers = (targets: PublicUser[]) => {
+    setPendingDisableUsers(targets.filter(user => !user.disabled))
   }
 
   const deleteUser = async (id: string) => {
@@ -76,16 +67,20 @@ export const UsersSettings = ({
   }
 
   const setUsersDisabled = async (targets: PublicUser[], disabled: boolean) => {
-    if (targets.length === 0) return
-    setBusyUserId('bulk')
+    const changedUsers = targets.filter(user => user.disabled !== disabled)
+    if (changedUsers.length === 0) return
+    setBusyUserId(changedUsers.length === 1 ? changedUsers[0].id : 'bulk')
     try {
-      const results = await Promise.all(targets.map(user => setUserDisabledAction(user.id, disabled)))
+      const results = await Promise.all(changedUsers.map(user => setUserDisabledAction(user.id, disabled)))
       const updatedUsers = results
         .map(result => (result.ok ? result.data : null))
         .filter((user): user is PublicUser => Boolean(user))
       setUsers(current => current.map(user => updatedUsers.find(updated => updated.id === user.id) ?? user))
+      if (disabled) setPendingDisableUsers(changedUsers.filter((_, index) => !results[index].ok))
       const failedCount = results.length - updatedUsers.length
       const firstError = results.find(result => !result.ok)?.error.message
+      let successTitle = disabled ? 'Selected users disabled' : 'Selected users enabled'
+      if (changedUsers.length === 1) successTitle = disabled ? 'User disabled' : 'User enabled'
       toast(
         failedCount > 0
           ? {
@@ -93,8 +88,10 @@ export const UsersSettings = ({
               description: firstError ?? `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
               variant: 'danger'
             }
-          : { title: disabled ? 'Selected users disabled' : 'Selected users enabled', variant: 'success' }
+          : { title: successTitle, variant: 'success' }
       )
+    } catch (error) {
+      toast({ title: 'Could not update users', description: getDisplayErrorMessage(error), variant: 'danger' })
     } finally {
       setBusyUserId(null)
     }
@@ -135,15 +132,24 @@ export const UsersSettings = ({
         title='Users'
         actions={
           <>
-            <PasswordPolicyDialog initialPasswordMinimumLength={initialPasswordMinimumLength} />
+            <PasswordPolicyDialog
+              initialPasswordMinimumLength={initialPasswordMinimumLength}
+              disabled={loading}
+            />
             <CreateUserDialog
+              disabled={loading}
               groups={groups}
               onCreated={upsertUser}
             />
           </>
         }
       />
-      <section className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'>
+      <section
+        className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'
+        onFocusCapture={event => {
+          if (event.currentTarget.contains(event.target)) lastUserActionRef.current = event.target
+        }}
+      >
         <Section
           surface='plain'
           title='Existing Users'
@@ -151,17 +157,47 @@ export const UsersSettings = ({
           contentClassName='gap-3'
         >
           <UsersGrid
+            loading={loading}
             users={users}
             groups={groups}
             busyUserId={busyUserId}
-            onToggleDisabled={user => void toggleDisabled(user)}
+            onDisable={user => requestDisableUsers([user])}
+            onEnable={user => void setUsersDisabled([user], false)}
             onDelete={setPendingDeleteUser}
             onDeleteSelected={setPendingDeleteUsers}
-            onDisableSelected={targets => void setUsersDisabled(targets, true)}
+            onDisableSelected={requestDisableUsers}
             onEnableSelected={targets => void setUsersDisabled(targets, false)}
           />
         </Section>
       </section>
+      <ConfirmMutationDialog
+        open={pendingDisableUsers.length > 0}
+        finalFocus={lastUserActionRef}
+        title={
+          pendingDisableUsers.length === 1
+            ? `Disable ${pendingDisableUsers[0].name}?`
+            : `Disable ${pendingDisableUsers.length} users?`
+        }
+        description='Disabling access signs users out and prevents new sign-ins. You can enable them again later.'
+        summary={
+          <span>
+            {pendingDisableUsers
+              .slice(0, 5)
+              .map(user => user.username)
+              .join(', ')}
+            {pendingDisableUsers.length > 5 ? ` and ${pendingDisableUsers.length - 5} more` : null}
+          </span>
+        }
+        confirmLabel={pendingDisableUsers.length === 1 ? 'Disable user' : 'Disable users'}
+        tone='warning'
+        pending={busyUserId !== null}
+        pendingLabel='Disabling…'
+        confirmDisabled={pendingDisableUsers.length === 0}
+        onConfirm={() => void setUsersDisabled(pendingDisableUsers, true)}
+        onOpenChange={isOpen => {
+          if (!isOpen) setPendingDisableUsers([])
+        }}
+      />
       <ConfirmMutationDialog
         open={Boolean(pendingDeleteUser)}
         title={`Delete ${pendingDeleteUser?.username ?? 'user'}?`}

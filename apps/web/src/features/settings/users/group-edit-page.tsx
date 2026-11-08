@@ -3,23 +3,20 @@
 import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
-import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { PermissionSwitchTable } from './components/permission-switch-table'
+import { PageContent } from '@/shared/ui/page/page-layout'
+import { AccessEditorLayout } from './components/access-editor-layout'
+import { GroupDetailsSections } from './components/identity-fields'
+import { PermissionEditor } from './components/permission-editor'
 import { QuotaFields } from './components/quota-fields'
 import { buildGroupUpdateInput, toGroupDraft, type GroupDraft } from './group-edit-page-model'
-import { toUserRole } from './user-edit-page-model'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
 export const GroupEditPage = ({ group }: { group: UserGroup }) => {
@@ -50,7 +47,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   }
 
   return (
-    <StandardPage className='gap-2'>
+    <EditorPage className='gap-2'>
       <PageHeader
         section={{ label: 'Security' }}
         trail={[{ label: 'Groups', href: '/security/groups' }]}
@@ -68,84 +65,40 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           </MutationButton>
         }
       />
-      <PageContent className='grid xl:grid-cols-[minmax(0,1fr)_minmax(28rem,0.85fr)]'>
-        <div className='grid content-start gap-6'>
-          <Section
-            title='Group Details'
-            surface='panel'
-            headingSpacing='default'
-            contentClassName='gap-5'
-          >
-            <div className='grid gap-4 md:grid-cols-2'>
-              <FormField
-                label='Name'
-                required
-                layout='vertical'
-              >
-                <Input
-                  value={draft.name}
-                  required
-                  aria-required='true'
-                  onChange={event => updateDraft({ name: event.target.value })}
-                />
-              </FormField>
-              <FormField
-                label='Role Template'
-                required
-                layout='vertical'
-              >
-                <Select
-                  value={draft.role}
-                  onValueChange={value => updateDraft({ role: toUserRole(value) })}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='user'>User</SelectItem>
-                    <SelectItem value='admin'>Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
-            <FormField
-              label='Description'
-              layout='vertical'
-            >
-              <Textarea
-                value={draft.description}
-                rows={4}
-                onChange={event => updateDraft({ description: event.target.value })}
-              />
-            </FormField>
-          </Section>
-          <Section
-            title='Quotas'
-            surface='panel'
-            headingSpacing='default'
-            contentClassName='gap-5'
-          >
-            <QuotaFields
-              quotas={draft.quotas}
-              resourceLimits={resourceLimits}
-              onChange={quotas => updateDraft({ quotas })}
-            />
-          </Section>
-        </div>
-        <Section
-          title='Permissions'
-          description='These permissions are inherited by every group member.'
-          surface='panel'
-          headingSpacing='default'
-          contentClassName='gap-4'
-          className='xl:sticky xl:top-4'
+      <PageContent>
+        <fieldset
+          disabled={isSaving}
+          className='min-w-0'
+          aria-busy={isSaving}
         >
-          <PermissionSwitchTable
-            permissions={draft.permissions}
-            onChange={permissions => updateDraft({ permissions })}
+          <AccessEditorLayout
+            identity={
+              <GroupDetailsSections
+                disabled={isSaving}
+                draft={draft}
+                onChange={updateDraft}
+              />
+            }
+            permissions={
+              <PermissionEditor
+                permissions={draft.permissions}
+                admin={draft.role === 'admin'}
+                disabled={isSaving}
+                onChange={permissions => updateDraft({ permissions })}
+              />
+            }
+            quotas={
+              draft.role === 'admin' ? undefined : (
+                <QuotaFields
+                  quotas={draft.quotas}
+                  resourceLimits={resourceLimits}
+                  onChange={quotas => updateDraft({ quotas })}
+                />
+              )
+            }
           />
-        </Section>
+        </fieldset>
       </PageContent>
-    </StandardPage>
+    </EditorPage>
   )
 }

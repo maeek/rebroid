@@ -7,7 +7,13 @@ import { CreateGroupDialog } from './components/create-group-dialog'
 import { GroupsSection } from './components/groups-section'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
-export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }) => {
+export const GroupsSettings = ({
+  initialGroups,
+  loading = false
+}: {
+  initialGroups: UserGroup[]
+  loading?: boolean
+}) => {
   const [groups, setGroups] = useState(initialGroups)
 
   return (
@@ -17,6 +23,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
         title='Groups'
         actions={
           <CreateGroupDialog
+            disabled={loading}
             onCreated={group =>
               setGroups(current =>
                 current.some(item => item.id === group.id)
@@ -29,6 +36,7 @@ export const GroupsSettings = ({ initialGroups }: { initialGroups: UserGroup[] }
       />
       <PageContent>
         <GroupsSection
+          loading={loading}
           groups={groups}
           onGroupsDeleted={groupIds => setGroups(current => current.filter(group => !groupIds.has(group.id)))}
         />

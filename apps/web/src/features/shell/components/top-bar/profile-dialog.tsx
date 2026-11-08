@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -11,11 +11,10 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { changeCurrentPasswordAction } from '@/server/users/actions/change-current-password-action'
 import { beginMfaSetupAction, confirmMfaSetupAction, disableMfaAction } from '@/server/users/actions/mfa-actions'
 import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
-import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
-import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
+import { ProfilePhotoSettings } from './profile-photo-settings'
 import type { AccentColor } from '@/shared/model/theme/accent-color'
 
 export const ProfileDialog = ({
@@ -35,8 +34,6 @@ export const ProfileDialog = ({
   onOpenChange: (open: boolean) => void
   onAvatarSaved: (avatar: string | null) => void
 }) => {
-  const [draftAvatar, setDraftAvatar] = useState(avatar)
-  const [isSavingAvatar, setIsSavingAvatar] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -61,10 +58,6 @@ export const ProfileDialog = ({
       })
   })
 
-  useEffect(() => {
-    setDraftAvatar(avatar)
-  }, [avatar])
-
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       setCurrentPassword('')
@@ -75,27 +68,6 @@ export const ProfileDialog = ({
       setMfaSecret(null)
     }
     onOpenChange(nextOpen)
-  }
-
-  const saveAvatar = async (nextAvatar: string | null) => {
-    const previousAvatar = draftAvatar
-    setDraftAvatar(nextAvatar)
-    setIsSavingAvatar(true)
-
-    try {
-      const user = unwrapActionResult(await updateCurrentProfileAction({ avatarDataUrl: nextAvatar }))
-      onAvatarSaved(user.avatarDataUrl)
-      toast({ title: nextAvatar ? 'Avatar uploaded' : 'Avatar cleared' })
-    } catch (error) {
-      setDraftAvatar(previousAvatar)
-      toast({
-        title: 'Could not update avatar',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSavingAvatar(false)
-    }
   }
 
   const changePassword = async () => {
@@ -176,11 +148,10 @@ export const ProfileDialog = ({
           <DialogTitle>Profile</DialogTitle>
           <DialogDescription>Manage your web UI profile and password.</DialogDescription>
         </DialogHeader>
-        <UserAvatarInput
+        <ProfilePhotoSettings
           name={name}
-          avatar={draftAvatar}
-          disabled={isSavingAvatar}
-          onChange={nextAvatar => void saveAvatar(nextAvatar)}
+          avatar={avatar}
+          onSaved={onAvatarSaved}
         />
         <AccentColorPicker
           className='border-t border-surface-border/60 pt-4'

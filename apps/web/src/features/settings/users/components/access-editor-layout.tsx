@@ -1,0 +1,82 @@
+'use client'
+
+import { useState, type ReactNode } from 'react'
+import { Section } from '@/components/ui/section'
+import { TabsRoot, TabsList, TabsTrigger, TabsPanel } from '@/components/ui/tabs'
+
+export const AccessEditorLayout = ({
+  identity,
+  access,
+  permissions,
+  quotas,
+  loading = false
+}: {
+  identity: ReactNode
+  access?: ReactNode
+  permissions: ReactNode
+  quotas?: ReactNode
+  loading?: boolean
+}) => {
+  const [tab, setTab] = useState('account')
+  return (
+    <TabsRoot
+      value={tab}
+      onValueChange={setTab}
+      className='grid min-w-0 gap-6'
+    >
+      <TabsList
+        ariaLabel={access ? 'User settings' : 'Group settings'}
+        variant='resource'
+      >
+        <TabsTrigger value='account'>{access ? 'Account' : 'Details'}</TabsTrigger>
+        {access ? <TabsTrigger value='groups'>Groups</TabsTrigger> : null}
+        <TabsTrigger value='permissions'>Permissions & quotas</TabsTrigger>
+      </TabsList>
+      <TabsPanel value='account'>
+        <div className='grid min-w-0 gap-6'>{identity}</div>
+      </TabsPanel>
+      {access ? (
+        <TabsPanel value='groups'>
+          <Section
+            title='Group membership'
+            description='Later groups take precedence when permissions or quotas conflict. User overrides apply last.'
+            surface='plain'
+          >
+            {access}
+          </Section>
+        </TabsPanel>
+      ) : null}
+      <TabsPanel value='permissions'>
+        <Section
+          title='Permissions & quotas'
+          description={
+            access
+              ? 'Review effective access and its source. Use an override only when this user needs an exception.'
+              : 'Grant or deny permissions for members. Not set leaves a permission to other groups; later groups take precedence.'
+          }
+          surface='plain'
+        >
+          {permissions}
+          {quotas ? (
+            <Section
+              title='Quotas'
+              headingLevel={3}
+              description='Optional resource limits. Changes apply when you save.'
+              surface='plain'
+            >
+              {quotas}
+            </Section>
+          ) : null}
+        </Section>
+      </TabsPanel>
+      {loading ? (
+        <span
+          className='sr-only'
+          role='status'
+        >
+          Loading settings
+        </span>
+      ) : null}
+    </TabsRoot>
+  )
+}

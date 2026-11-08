@@ -29,7 +29,7 @@ import {
   fullPermissions,
   unlimitedQuota
 } from '@/shared/permissions/permissions'
-import { PermissionSwitchTable } from './permission-switch-table'
+import { PermissionEditor } from './permission-editor'
 import { QuotaFields } from './quota-fields'
 import type { CreateUserGroupInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
@@ -66,7 +66,13 @@ export const buildCreateGroupInput = (draft: CreateGroupDraft): CreateUserGroupI
   quotas: draft.role === 'admin' ? { ...unlimitedQuota } : draft.quotas
 })
 
-export const CreateGroupDialog = ({ onCreated }: { onCreated: (group: UserGroup) => void }) => {
+export const CreateGroupDialog = ({
+  onCreated,
+  disabled = false
+}: {
+  onCreated: (group: UserGroup) => void
+  disabled?: boolean
+}) => {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<CreateGroupDraft>(createInitialGroupDraft)
@@ -113,12 +119,18 @@ export const CreateGroupDialog = ({ onCreated }: { onCreated: (group: UserGroup)
       }}
     >
       <DialogTrigger asChild>
-        <Button size='sm'>
+        <Button
+          size='sm'
+          disabled={disabled}
+        >
           <IconPlus className='size-4' />
           New group
         </Button>
       </DialogTrigger>
-      <DialogContent className='flex max-h-[min(52rem,calc(100dvh-2rem))] flex-col sm:max-w-3xl'>
+      <DialogContent
+        data-editor-dialog=''
+        className='flex max-h-[min(52rem,calc(100dvh-2rem))] flex-col sm:max-w-3xl'
+      >
         <DialogHeader>
           <DialogTitle>Create group</DialogTitle>
           <DialogDescription>
@@ -223,7 +235,8 @@ export const CreateGroupDialog = ({ onCreated }: { onCreated: (group: UserGroup)
                   them.
                 </Notice>
               ) : (
-                <PermissionSwitchTable
+                <PermissionEditor
+                  disabled={isSaving}
                   permissions={draft.permissions}
                   onChange={permissions => updateDraft({ permissions })}
                 />

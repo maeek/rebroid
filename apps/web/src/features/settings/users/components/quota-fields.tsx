@@ -1,5 +1,6 @@
 'use client'
 
+import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
@@ -88,32 +89,28 @@ export const QuotaFields = ({
   }
 
   return (
-    <div className='grid gap-5'>
+    <div className='grid gap-4 sm:grid-cols-2'>
       {quotaFields.map(field => (
-        <div
+        <FormField
           key={field.key}
-          className='grid gap-3'
+          label={field.label}
+          description={field.description}
+          layout='vertical'
         >
-          <div className='grid gap-1'>
-            <div className='font-bold text-sm text-foreground'>{field.label}</div>
-            <div className='text-xs leading-relaxed text-foreground-muted'>{field.description}</div>
-          </div>
-          <div className='w-full'>
-            <NumberSliderField
-              value={valueToInput(quotas[field.key])}
-              min={field.min}
-              max={maxForField(field)}
-              step={field.step}
-              placeholder='Unlimited'
-              suffix={field.suffix}
-              inputSuffix={field.inputSuffix}
-              rangeLabel={`${field.label} range`}
-              allowEmpty
-              clearLabel='Unlimited'
-              onValueChange={value => setQuota(field.key, value)}
-            />
-          </div>
-        </div>
+          <NumberSliderField
+            showSlider={false}
+            value={valueToInput(quotas[field.key])}
+            min={field.min}
+            max={maxForField(field)}
+            step={field.step}
+            placeholder='Unlimited'
+            suffix={field.suffix}
+            inputSuffix={field.inputSuffix}
+            allowEmpty
+            clearLabel='Unlimited'
+            onValueChange={value => setQuota(field.key, value)}
+          />
+        </FormField>
       ))}
     </div>
   )

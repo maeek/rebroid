@@ -20,7 +20,13 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 
-export const PasswordPolicyDialog = ({ initialPasswordMinimumLength }: { initialPasswordMinimumLength: number }) => {
+export const PasswordPolicyDialog = ({
+  initialPasswordMinimumLength,
+  disabled = false
+}: {
+  initialPasswordMinimumLength: number
+  disabled?: boolean
+}) => {
   const [open, setOpen] = useState(false)
   const [passwordMinimumLength, setPasswordMinimumLength] = useState(initialPasswordMinimumLength)
   const [savedPasswordMinimumLength, setSavedPasswordMinimumLength] = useState(initialPasswordMinimumLength)
@@ -60,6 +66,7 @@ export const PasswordPolicyDialog = ({ initialPasswordMinimumLength }: { initial
     >
       <DialogTrigger asChild>
         <Button
+          disabled={disabled}
           size='sm'
           variant='secondary'
         >
@@ -67,7 +74,10 @@ export const PasswordPolicyDialog = ({ initialPasswordMinimumLength }: { initial
           Password policy
         </Button>
       </DialogTrigger>
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-lg'
+      >
         <DialogHeader>
           <DialogTitle>Password policy</DialogTitle>
           <DialogDescription>

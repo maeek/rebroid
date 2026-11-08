@@ -1,5 +1,5 @@
 import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
-import type { PermissionInheritanceMap } from './components/permission-switch-table'
+import { resolveUserGroups, type PermissionInheritanceMap } from './model/permission-access'
 import type { PublicUser, UserEditorInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 
 export type UserDraft = {
@@ -45,21 +45,16 @@ export const getPermissionInheritanceMap = (
   groupIds: string[],
   role: UserRole
 ): PermissionInheritanceMap => {
-  const assignedGroups = groups.filter(group => groupIds.includes(group.id))
+  if (role === 'admin') {
+    return Object.fromEntries(allPermissionIds.map(id => [id, { allowed: true, source: 'Admin role' }]))
+  }
 
-  return allPermissionIds.reduce<PermissionInheritanceMap>((inheritance, permissionId) => {
-    const inheritedFrom = assignedGroups
-      .filter(group => group.permissions[permissionId] === true)
-      .map(group => group.name)
-
-    if (role === 'admin' && inheritedFrom.length === 0) {
-      inheritedFrom.push('Admin role')
+  const inheritance: PermissionInheritanceMap = {}
+  for (const group of resolveUserGroups(groups, groupIds, role)) {
+    for (const id of allPermissionIds) {
+      const allowed = group.permissions[id]
+      if (allowed !== undefined) inheritance[id] = { allowed, source: group.name }
     }
-
-    if (inheritedFrom.length > 0) {
-      inheritance[permissionId] = inheritedFrom
-    }
-
-    return inheritance
-  }, {})
+  }
+  return inheritance
 }

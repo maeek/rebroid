@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { IconTrash } from '@tabler/icons-react'
-import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +10,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -40,7 +40,7 @@ const sortUsers = (users: PublicUser[], groups: UserGroup[], sorting: SortingSta
 }
 
 const UserIdentity = ({ user }: { user: PublicUser }) => (
-  <Link href={`/security/users/${user.id}`}>
+  <ResourceLink href={`/security/users/${user.id}`}>
     <div className='flex min-w-0 items-center gap-3'>
       <Avatar className='size-9'>
         <AvatarImage src={user.avatarDataUrl ?? ''} />
@@ -54,68 +54,63 @@ const UserIdentity = ({ user }: { user: PublicUser }) => (
         </AvatarFallback>
       </Avatar>
       <div className='min-w-0'>
-        <div className='truncate font-medium hover:underline hover:text-primary focus:underline'>{user.name}</div>
+        <div className='truncate font-medium'>{user.name}</div>
         <div className='truncate text-xs text-foreground-muted'>{user.username}</div>
       </div>
     </div>
-  </Link>
+  </ResourceLink>
 )
 
 const GroupBadges = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => (
   <div className='flex flex-wrap gap-1.5'>
     {user.groupIds.map(groupId => (
-      <Link
+      <ResourceLink
         href={`/security/groups/${groupId}`}
         key={groupId}
       >
         <Badge
           variant='neutral'
-          className='max-w-full truncate'
+          className='max-w-full truncate text-primary hover:underline'
         >
           {groupLabel(groups, groupId)}
         </Badge>
-      </Link>
+      </ResourceLink>
     ))}
   </div>
 )
 
-const UserStatus = ({
-  user,
-  busy,
-  onToggleDisabled
-}: {
-  user: PublicUser
-  busy: boolean
-  onToggleDisabled: (user: PublicUser) => void
-}) => (
-  <div className='flex flex-wrap items-center gap-2'>
-    <Button
-      type='button'
-      variant='link'
-      disabled={busy}
-      className={user.disabled ? 'h-auto px-0 text-danger' : 'h-auto px-0 text-primary'}
-      onClick={() => onToggleDisabled(user)}
-    >
-      {user.disabled ? 'Disabled' : 'Active'}
-    </Button>
+const UserStatus = ({ user, busy }: { user: PublicUser; busy: boolean }) => (
+  <div
+    aria-busy={busy}
+    className='flex flex-wrap items-center gap-2'
+  >
+    {busy ? (
+      <Badge variant='neutral'>Updating…</Badge>
+    ) : (
+      <Badge variant={user.disabled ? 'neutral' : 'success'}>{user.disabled ? 'Disabled' : 'Active'}</Badge>
+    )}
     {user.passwordChangeRequired ? <Badge variant='warning'>Password change</Badge> : null}
   </div>
 )
 
 export const UsersGrid = ({
   users,
+  loading = false,
   groups,
   busyUserId,
-  onToggleDisabled,
+  onDisable,
+  onEnable,
   onDelete,
   onDeleteSelected,
   onDisableSelected,
   onEnableSelected
 }: {
+  loading?: boolean
   users: PublicUser[]
   groups: UserGroup[]
   busyUserId: string | null
-  onToggleDisabled: (user: PublicUser) => void
+  onDisable: (user: PublicUser) => void
+  onEnable: (user: PublicUser) => void
   onDelete: (user: PublicUser) => void
   onDeleteSelected: (users: PublicUser[]) => void
   onDisableSelected: (users: PublicUser[]) => void
@@ -189,17 +184,17 @@ export const UsersGrid = ({
           <UserStatus
             user={row.original}
             busy={busyUserId === row.original.id}
-            onToggleDisabled={onToggleDisabled}
           />
         )
       }
     ],
-    [busyUserId, groups, onToggleDisabled]
+    [busyUserId, groups]
   )
 
   return (
     <div className='grid gap-3'>
       <DataGridWorkspace
+        disabled={loading}
         search={searchDraft}
         searchPlaceholder='Search users'
         onSearchChange={setSearchDraft}
@@ -283,23 +278,23 @@ export const UsersGrid = ({
           <>
             <Button
               type='button'
-              variant='secondary'
-              disabled={busyUserId !== null}
+              variant='ghost'
+              disabled={busyUserId !== null || !selectedUsers.some(user => user.disabled)}
               onClick={() => onEnableSelected(selectedUsers)}
             >
               Enable selected
             </Button>
             <Button
               type='button'
-              variant='secondary'
-              disabled={busyUserId !== null}
+              variant='ghost'
+              disabled={busyUserId !== null || !selectedUsers.some(user => !user.disabled)}
               onClick={() => onDisableSelected(selectedUsers)}
             >
               Disable selected
             </Button>
             <Button
               type='button'
-              variant='danger'
+              variant='danger-ghost'
               disabled={busyUserId !== null}
               onClick={() => onDeleteSelected(selectedUsers)}
             >
@@ -310,6 +305,7 @@ export const UsersGrid = ({
         }
       >
         <DataGrid
+          loading={loading}
           columns={columns}
           data={sortedUsers}
           totalItems={sortedUsers.length}
@@ -321,6 +317,7 @@ export const UsersGrid = ({
             setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
           }
           selection={{
+            disabled: loading,
             selectedIds,
             onSelectedIdsChange: setSelectedIds
           }}
@@ -333,13 +330,13 @@ export const UsersGrid = ({
                 {hasBulkSelection ? (
                   <>
                     <ContextMenuItem
-                      disabled={busyUserId !== null}
+                      disabled={busyUserId !== null || !selectedUsers.some(user => user.disabled)}
                       onSelect={() => onEnableSelected(selectedUsers)}
                     >
                       Enable selected ({selectedUsers.length})
                     </ContextMenuItem>
                     <ContextMenuItem
-                      disabled={busyUserId !== null}
+                      disabled={busyUserId !== null || !selectedUsers.some(user => !user.disabled)}
                       onSelect={() => onDisableSelected(selectedUsers)}
                     >
                       Disable selected ({selectedUsers.length})
@@ -355,14 +352,17 @@ export const UsersGrid = ({
                   </>
                 ) : null}
                 <ContextMenuItem
-                  disabled={busyUserId === row.original.id}
-                  onSelect={() => onToggleDisabled(row.original)}
+                  disabled={busyUserId !== null}
+                  onSelect={() => {
+                    if (row.original.disabled) onEnable(row.original)
+                    else onDisable(row.original)
+                  }}
                 >
-                  {row.original.disabled ? 'Enable' : 'Disable'}
+                  {row.original.disabled ? 'Enable user' : 'Disable user…'}
                 </ContextMenuItem>
                 <ContextMenuItem
                   className='text-danger focus:text-danger'
-                  disabled={busyUserId === row.original.id}
+                  disabled={busyUserId !== null}
                   onSelect={() => onDelete(row.original)}
                 >
                   <IconTrash className='mr-2 size-4' />

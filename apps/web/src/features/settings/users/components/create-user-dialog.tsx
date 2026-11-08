@@ -26,8 +26,10 @@ import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-us
 
 export const CreateUserDialog = ({
   groups,
-  onCreated
+  onCreated,
+  disabled = false
 }: {
+  disabled?: boolean
   groups: UserGroup[]
   onCreated: (user: PublicUser) => void
 }) => {
@@ -69,12 +71,18 @@ export const CreateUserDialog = ({
       onOpenChange={setOpen}
     >
       <DialogTrigger asChild>
-        <Button size='sm'>
+        <Button
+          size='sm'
+          disabled={disabled}
+        >
           <IconPlus className='size-4' />
           New user
         </Button>
       </DialogTrigger>
-      <DialogContent className='sm:max-w-2xl'>
+      <DialogContent
+        data-editor-dialog=''
+        className='sm:max-w-2xl'
+      >
         <DialogHeader>
           <DialogTitle>Create User</DialogTitle>
           <DialogDescription>Create a username/password account and assign its groups.</DialogDescription>

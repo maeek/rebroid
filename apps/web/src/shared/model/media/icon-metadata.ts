@@ -3,7 +3,9 @@
 export const optimizeIconFile = (file: File, size = 256) =>
   new Promise<string>((resolve, reject) => {
     const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
     image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
       const canvas = document.createElement('canvas')
       canvas.width = size
       canvas.height = size
@@ -20,6 +22,9 @@ export const optimizeIconFile = (file: File, size = 256) =>
       context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size)
       resolve(canvas.toDataURL('image/webp', 0.9))
     }
-    image.onerror = () => reject(new Error('Could not load icon image.'))
-    image.src = URL.createObjectURL(file)
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Could not load icon image.'))
+    }
+    image.src = objectUrl
   })
