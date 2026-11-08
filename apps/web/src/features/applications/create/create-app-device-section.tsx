@@ -7,8 +7,10 @@ import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { Visible } from '@/components/ui/visible'
 import { verticalSettingClassName } from '@/features/applications/components/app-form-utils'
+import { CodeViewer } from '@/shared/ui/code-viewer'
 import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
 import { getCustomDisplayConfig } from './create-app-form-model'
+import { formatRuntimeArguments } from './format-runtime-arguments'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { PlatformImage } from '@/shared/contracts/platform'
 
@@ -74,12 +76,16 @@ export const CreateAppDeviceSection = ({
           <EditorFormContext.Provider value={false}>
             <div className='grid gap-5 pt-4'>
               <Visible when={isRedroidRuntime}>
-                <div className='grid gap-2 text-xs text-foreground-muted'>
-                  <p>Effective ReDroid defaults, including the selected display profile:</p>
-                  <pre className='max-h-44 overflow-auto rounded-control bg-surface-panel/40 px-3 py-2 font-mono leading-5 whitespace-pre-wrap'>
-                    {redroidDefaultArgs.split(' ').join('\n')}
-                  </pre>
-                  <p>The managed ADB endpoint uses TCP port 5555. Additional values override matching keys.</p>
+                <div className='grid gap-4'>
+                  <CodeViewer
+                    title='Effective arguments'
+                    formatLabel='Shell'
+                    description='ReDroid defaults, including the selected display profile.'
+                    output={formatRuntimeArguments(redroidDefaultArgs)}
+                  />
+                  <p className='text-xs text-foreground-muted'>
+                    The managed ADB endpoint uses TCP port 5555. Additional values override matching keys.
+                  </p>
                 </div>
               </Visible>
               <FormField
