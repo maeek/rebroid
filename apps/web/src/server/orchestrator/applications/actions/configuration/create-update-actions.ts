@@ -145,7 +145,7 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
 
 export const createApplicationAction = async (input: CreateApplicationActionInput) => {
   const user = await getCurrentUserContext()
-  if (input.networkPolicyEnabled !== undefined || input.networkPolicyAllowCidrs !== undefined) {
+  if (input.networkPolicyEnabled !== false) {
     await requireFeature('feature.firewall')
   }
   if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {

@@ -21,7 +21,6 @@ export class AndroidAppsNetworkController {
   }
 
   @Patch('apps/:id/network-policy')
-  @RequiresFeature('feature.firewall')
   @ApiOperation({
     summary: 'Update and reconcile the app container egress allowlist.',
   })
@@ -36,7 +35,6 @@ export class AndroidAppsNetworkController {
   }
 
   @Post('apps/:id/network-policy/apply')
-  @RequiresFeature('feature.firewall')
   @ApiOperation({
     summary:
       'Re-apply the stored network policy without restarting the container.',

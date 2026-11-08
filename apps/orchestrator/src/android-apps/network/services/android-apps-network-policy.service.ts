@@ -7,6 +7,7 @@ import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network.service';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 
 @Injectable()
 export class AndroidAppsNetworkPolicyService {
@@ -16,11 +17,15 @@ export class AndroidAppsNetworkPolicyService {
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
     private readonly writer: AndroidAppsStateWriter,
     private readonly networkPolicy: NetworkPolicyService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   /** Saves network policy settings and reapplies them. */
   async updateNetworkPolicy(id: string, dto: UpdateNetworkPolicyDto) {
     const app = await this.reconciler.reconcileById(id);
+    if (dto.networkPolicyEnabled ?? app.networkPolicyEnabled) {
+      this.features.assertEnabled('feature.firewall');
+    }
     if (dto.networkPolicyEnabled !== undefined) {
       app.networkPolicyEnabled = dto.networkPolicyEnabled;
     }
@@ -35,6 +40,9 @@ export class AndroidAppsNetworkPolicyService {
   /** Reapplies network policy for one app. */
   async applyNetworkPolicy(id: string): Promise<AndroidApplication> {
     const app = await this.reconciler.reconcileById(id);
+    if (app.networkPolicyEnabled) {
+      this.features.assertEnabled('feature.firewall');
+    }
     await this.runtimeNetwork.reconcilePolicy(app, {
       failClosed: app.status === AndroidApplicationStatus.Running,
     });

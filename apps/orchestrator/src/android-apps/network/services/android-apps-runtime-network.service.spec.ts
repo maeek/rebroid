@@ -34,6 +34,19 @@ const app = {
 } as AndroidApplication;
 
 describe('AndroidAppsRuntimeNetworkService', () => {
+  it('does not stop an unrestricted runtime when firewall enforcement is disabled', async () => {
+    const { service, stopContainer } = createService(
+      jest.fn().mockResolvedValue({
+        status: 'skipped',
+        message: 'Firewall enforcement is disabled.',
+      }),
+    );
+    await expect(
+      service.enforcePolicyAfterStart({ ...app, networkPolicyEnabled: false }),
+    ).resolves.toMatchObject({ status: 'skipped' });
+    expect(stopContainer).not.toHaveBeenCalled();
+  });
+
   it('keeps a runtime running after post-start policy enforcement succeeds', async () => {
     const { service, stopContainer } = createService(
       jest.fn().mockResolvedValue({
