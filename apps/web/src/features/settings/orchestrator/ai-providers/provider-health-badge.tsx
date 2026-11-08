@@ -188,7 +188,7 @@ export const ProviderHealthBannerContent = ({
   return (
     <Surface
       level='band'
-      tone={healthTone(health)}
+      tone={loading ? 'neutral' : healthTone(health)}
       className='flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3'
     >
       <div className='flex min-w-0 flex-wrap items-center gap-3'>

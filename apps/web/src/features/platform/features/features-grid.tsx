@@ -35,7 +35,15 @@ export const FeaturesGrid = ({
         size: 320,
         meta: {
           label: 'Feature',
-          skeleton: { kind: 'custom', render: index => <FeatureIdentity feature={features[index]} /> }
+          skeleton: {
+            kind: 'custom',
+            render: index => (
+              <FeatureIdentity
+                feature={features[index]}
+                loading
+              />
+            )
+          }
         },
         cell: ({ row: { original: feature } }) => <FeatureIdentity feature={feature} />
       },

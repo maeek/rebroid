@@ -85,6 +85,7 @@ test('current page loaders fit all supported widths and themes without runtime e
         await page.evaluate(value => {
           document.documentElement.className = value
         }, theme)
+        await expect(page.locator('[data-tone]:not([data-tone="neutral"]):visible')).toHaveCount(0)
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
           `${variant} ${width} ${theme}`
@@ -108,6 +109,37 @@ test('loading editor cannot receive keyboard focus', async ({ page }) => {
   expect(await page.evaluate(() => Boolean(document.activeElement?.closest('[inert]')))).toBe(false)
   await expect(page.getByRole('textbox')).toHaveCount(0)
   await expect(page.getByRole('combobox')).toHaveCount(0)
+})
+
+test('platform subpage loaders retain their own destination and chrome', async ({ page }) => {
+  const destinations = [
+    ['runtime-loading', 'Runtime defaults', 'Image defaults'],
+    ['scheduler-loading', 'Scheduler', 'Task'],
+    ['services-all-loading', 'Services', 'Connection'],
+    ['features-loading', 'Services', 'OCR perception'],
+    ['ai-list-loading', 'AI', 'Providers'],
+    ['display-sessions-loading', 'Display sessions', 'Sessions']
+  ] as const
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 1000 })
+    for (const [variant, title, content] of destinations) {
+      await page.goto(`/skeleton-contract-test?editor=${variant}`)
+      await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
+      await expect(page.getByText(content, { exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Recently opened', exact: true })).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: 'Capacity', exact: true })).toHaveCount(0)
+      for (const theme of ['light', 'dark', 'oled']) {
+        await page.evaluate(value => {
+          document.documentElement.className = value
+        }, theme)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      }
+    }
+  }
+  expect(errors).toEqual([])
 })
 
 test('Features loader preserves its feature catalog and row geometry', async ({ page }) => {

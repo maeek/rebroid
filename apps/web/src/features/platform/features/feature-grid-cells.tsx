@@ -1,19 +1,23 @@
 import { IconAdjustments, IconArrowRight } from '@tabler/icons-react'
 import { Skeleton, SkeletonMask } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
+import { cn } from '@/lib/utils'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { featureDestination, featureLabel } from './feature-presentation'
 import { getEffectiveFeatureStatus } from './feature-status'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
-export const FeatureIdentity = ({ feature }: { feature?: FeatureFlagState }) => (
+export const FeatureIdentity = ({ feature, loading = false }: { feature?: FeatureFlagState; loading?: boolean }) => (
   <div
     id={feature?.key}
     className='flex min-w-0 scroll-mt-24 items-center gap-3'
   >
     <div
       aria-hidden='true'
-      className='flex size-9 shrink-0 items-center justify-center rounded-control bg-primary/10 text-primary'
+      className={cn(
+        'flex size-9 shrink-0 items-center justify-center rounded-control',
+        loading ? 'bg-control/60 text-foreground-muted' : 'bg-primary/10 text-primary'
+      )}
     >
       <IconAdjustments className='size-5' />
     </div>

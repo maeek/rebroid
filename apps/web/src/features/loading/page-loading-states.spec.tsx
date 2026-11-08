@@ -91,6 +91,7 @@ describe('feature-owned page loading states', () => {
     serviceId => {
       const fetch = vi.spyOn(globalThis, 'fetch')
       renderLoading(<InfrastructureServiceSkeleton serviceId={serviceId} />)
+      expect(screen.queryByRole('alert')).toBeNull()
       expect(
         screen.getByRole('heading', { name: serviceId === 'docker' ? 'Docker' : 'Orchestrator', level: 1 })
       ).toBeVisible()

@@ -39,7 +39,7 @@ export const QuickGlanceCard = ({
         <div className='flex items-center gap-2 text-sm font-medium text-foreground-muted'>
           <span
             aria-hidden='true'
-            className={cn('size-2 shrink-0 rounded-full', toneMarkerClassName[tone])}
+            className={cn('size-2 shrink-0 rounded-full', toneMarkerClassName[loading ? 'neutral' : tone])}
           />
           <span>{label}</span>
         </div>

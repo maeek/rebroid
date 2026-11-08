@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -15,13 +15,13 @@ const renderableRoutes = [
   '(standard)/automations/[id]/traces',
   '(standard)/automations/create',
   '(standard)/automations/triggers',
-  '(standard)/platform',
-  '(standard)/platform/ai',
+  '(standard)/platform/(overview)',
+  '(standard)/platform/ai/(providers)',
   '(standard)/platform/ai/[providerId]',
   '(standard)/platform/features',
   '(standard)/platform/runtime',
   '(standard)/platform/scheduler',
-  '(standard)/platform/services',
+  '(standard)/platform/services/(connections)',
   '(standard)/platform/services/display-sessions',
   '(standard)/preferences/general',
   '(standard)/runtime/containers',
@@ -59,6 +59,11 @@ const dataGridLoadingOwners = [
 describe('protected route loading contract', () => {
   it('covers all 36 renderable routes with thin feature-owned loaders', () => {
     expect(renderableRoutes).toHaveLength(36)
+    const discoveredRoutes = readdirSync(protectedRoot, { recursive: true, encoding: 'utf8' })
+      .filter(path => path.endsWith('/page.tsx'))
+      .map(path => path.slice(0, -'/page.tsx'.length))
+      .filter(route => route !== '(standard)/platform/display-sessions')
+    expect(discoveredRoutes.sort()).toEqual([...renderableRoutes].sort())
 
     for (const route of renderableRoutes) {
       const pagePath = resolve(protectedRoot, route, 'page.tsx')
@@ -83,6 +88,21 @@ describe('protected route loading contract', () => {
     expect(existsSync(resolve(protectedRoot, route, 'page.tsx'))).toBe(true)
     expect(existsSync(resolve(protectedRoot, route, 'loading.tsx'))).toBe(false)
     expect(existsSync(resolve(protectedRoot, '(standard)/app/[slug]/details/loading.tsx'))).toBe(false)
+  })
+
+  it('scopes platform loaders to their destination instead of inheriting an index page fallback', () => {
+    const platformRoutes = renderableRoutes.filter(route => route.startsWith('(standard)/platform/'))
+
+    for (const route of platformRoutes) {
+      const segments = route.split('/')
+      for (let depth = 2; depth < segments.length; depth++) {
+        const ancestor = segments.slice(0, depth).join('/')
+        expect(existsSync(resolve(protectedRoot, ancestor, 'loading.tsx')), `${route} inherits ${ancestor}`).toBe(false)
+      }
+    }
+
+    const layout = readFileSync(resolve(protectedRoot, '(standard)/platform/layout.tsx'), 'utf8')
+    expect(layout).toContain('await requireAdmin()')
   })
 
   it('constructs loading DataGrid functions inside client boundaries', () => {

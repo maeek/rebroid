@@ -99,7 +99,7 @@ export function AutomationStepOutlineRow({
         data-automation-step-item='true'
         className={cn(
           'group relative grid min-h-14 rounded-control transition-colors',
-          selected ? 'bg-primary/10' : 'bg-control/25 hover:bg-control-hover/50',
+          selected && !loading ? 'bg-primary/10' : 'bg-control/25 hover:bg-control-hover/50',
           isDragging ? 'pointer-events-none opacity-0' : null
         )}
       >
@@ -123,7 +123,12 @@ export function AutomationStepOutlineRow({
             aria-label={`Edit step ${index + 1}: ${stepTitle(step, command)}`}
             onClick={() => onSelectStep(step.clientKey)}
           >
-            <span className='flex size-8 shrink-0 items-center justify-center rounded-control bg-background/65 text-primary'>
+            <span
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-control bg-background/65',
+                loading ? 'text-foreground-muted' : 'text-primary'
+              )}
+            >
               {step.kind === 'action' ? (
                 <AutomationCommandIcon
                   uses={step.uses}

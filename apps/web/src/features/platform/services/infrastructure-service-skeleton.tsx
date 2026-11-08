@@ -19,6 +19,7 @@ export const InfrastructureServiceSkeleton = ({ serviceId }: { serviceId: 'orche
     }
     health={
       <Notice
+        loading
         live='off'
         title={<Skeleton className='h-5 w-20' />}
         description={<Skeleton className='h-5 w-full max-w-96' />}
