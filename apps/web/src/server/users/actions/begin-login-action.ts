@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { z } from 'zod'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
-import { clearLoginAttempts, consumeLoginAttempt, loginSourceFromHeaders } from '@/server/auth/login-security'
+import { consumeLoginAttempt, loginSourceFromHeaders } from '@/server/auth/login-security'
 import { userService } from '@/server/auth/user'
 import { PublicActionError } from '@/server/errors/public-action-error'
 
@@ -35,7 +35,6 @@ export const beginLoginAction = async (input: { username: string; password: stri
         details: { username: parsed.data.username }
       })
       if (!result) throw invalidCredentials()
-      clearLoginAttempts(attempt.keys)
       return {
         mfaRequired: result.mfaRequired,
         passwordChangeRequired: result.passwordChangeRequired

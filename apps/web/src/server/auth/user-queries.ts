@@ -49,12 +49,14 @@ export const authenticate = async (username: string, password: string, mfaCode?:
     const recoveryIndex = user.mfaRecoveryCodeHashes.indexOf(recoveryHash)
     if (!totpValid && recoveryIndex < 0) return null
     if (recoveryIndex >= 0) {
-      await mutateUsersFile(current => {
+      const consumed = await mutateUsersFile(current => {
         const currentUser = current.users.find(item => item.id === user.id)
         const currentIndex = currentUser?.mfaRecoveryCodeHashes.indexOf(recoveryHash) ?? -1
-        if (!currentUser || currentIndex < 0) return
+        if (!currentUser || currentIndex < 0) return false
         currentUser.mfaRecoveryCodeHashes.splice(currentIndex, 1)
+        return true
       })
+      if (!consumed) return null
     }
   }
   if (passwordHashNeedsUpgrade(user.passwordHash)) {

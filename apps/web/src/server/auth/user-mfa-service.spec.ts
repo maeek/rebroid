@@ -41,7 +41,11 @@ describe('user MFA service', () => {
     })
     await expect(userService.authenticate('user', 'replacement-password')).resolves.toBeNull()
     await expect(userService.authenticate('user', 'replacement-password', '287082')).resolves.not.toBeNull()
-    await expect(userService.authenticate('user', 'replacement-password', recoveryCodes[0])).resolves.not.toBeNull()
+    const concurrent = await Promise.all([
+      userService.authenticate('user', 'replacement-password', recoveryCodes[0]),
+      userService.authenticate('user', 'replacement-password', recoveryCodes[0])
+    ])
+    expect(concurrent.filter(Boolean)).toHaveLength(1)
     await expect(userService.authenticate('user', 'replacement-password', recoveryCodes[0])).resolves.toBeNull()
     await expect(userService.getUserById(user.id)).resolves.toMatchObject({ mfaEnabled: true })
   })
