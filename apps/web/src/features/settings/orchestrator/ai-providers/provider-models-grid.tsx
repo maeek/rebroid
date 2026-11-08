@@ -5,6 +5,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderModelAddDialog, ProviderModelDownloadStatus } from './provider-model-download'
@@ -213,12 +214,10 @@ export const ProviderModelsGrid = ({
           minWidth='54rem'
           loading={loading ? { rowCount: 4 } : false}
           emptyState={
-            <div className='grid gap-2 py-4 text-center'>
-              <span className='font-medium'>No models added</span>
-              <span className='text-sm text-foreground-muted'>
-                Add a model available on the provider, enter its ID, or download one with Ollama.
-              </span>
-            </div>
+            <DataGridEmptyState
+              title='No models added'
+              description='Add a model from this provider to make it available for automation.'
+            />
           }
           rowContextMenu={row => (
             <>

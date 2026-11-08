@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { scheduledTaskColumns } from './scheduled-task-columns'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
@@ -244,7 +245,12 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
             }}
             minWidth='66.5rem'
             loading={loading ? { rowCount: 5, selectable: true, rowMenu: true } : false}
-            emptyState={<div className='text-center text-foreground-muted'>No scheduled tasks configured.</div>}
+            emptyState={
+              <DataGridEmptyState
+                title='No scheduled tasks yet'
+                description='Create a task to run maintenance on a schedule.'
+              />
+            }
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedTasks.length > 1
               return (

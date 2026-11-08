@@ -9,6 +9,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { useRuntimeImageActions } from '../hooks/use-runtime-image-actions'
@@ -178,9 +179,10 @@ export const RuntimeImagesSection = ({
                 onSelectedIdsChange: setSelectedIds
               }}
               emptyState={
-                <div className='text-center text-foreground-muted'>
-                  {gridQuery.q ? 'No images match this search.' : 'No images are visible to Docker.'}
-                </div>
+                <DataGridEmptyState
+                  title='No images'
+                  description='No images are available in the current Docker inventory.'
+                />
               }
               rowContextMenu={row => {
                 const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1

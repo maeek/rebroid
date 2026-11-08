@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { IconEye, IconSearch } from '@tabler/icons-react'
+import { IconEye } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
@@ -10,28 +10,12 @@ import {
   auditTargetLabel
 } from '@/shared/model/audit-event-presentation'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { useActivityController, useActivityData } from '../activity-context'
 import { outcomeTone } from '../activity-format'
 import type { AuditEvent } from '@/shared/contracts/audit'
 import type { ColumnDef } from '@tanstack/react-table'
-
-const ActivityEventsEmptyState = ({ resetFilters }: { resetFilters: () => void }) => (
-  <div className='mx-auto flex max-w-md flex-col items-center text-center'>
-    <IconSearch className='mb-3 size-6 text-foreground-muted' />
-    <div className='font-medium'>No activity found</div>
-    <p className='mt-1 text-sm text-foreground-muted'>
-      Try clearing filters or widening the date range. New audit events appear here after actions finish.
-    </p>
-    <Button
-      className='mt-4'
-      variant='secondary'
-      onClick={resetFilters}
-    >
-      Clear filters
-    </Button>
-  </div>
-)
 
 export const ActivityEventsDataTable = () => {
   const { result, sorting, loading } = useActivityData()
@@ -134,7 +118,12 @@ export const ActivityEventsDataTable = () => {
         controller.setSorting(nextSorting)
       }}
       minWidth='60rem'
-      emptyState={<ActivityEventsEmptyState resetFilters={controller.resetFilters} />}
+      emptyState={
+        <DataGridEmptyState
+          title='No activity yet'
+          description='Recorded events will appear here after actions finish. You can also widen the date range.'
+        />
+      }
       rowActivation={{
         getLabel: event => `Inspect ${auditActionLabel(event.action)} by ${auditActorLabel(event)}`,
         onActivate: setSelectedEvent

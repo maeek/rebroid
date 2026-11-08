@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { permissionCategories, permissionDefinitions, type PermissionMap } from '@/shared/permissions/permissions'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import {
@@ -225,7 +226,23 @@ export const PermissionEditor = ({
             getRowId={permission => permission.id}
             loading={loading && { rowCount: 6 }}
             emptyState={
-              <p className='text-center text-sm text-foreground-muted'>No permissions match these filters.</p>
+              <DataGridEmptyState
+                title={view === 'overrides' ? 'No user overrides' : 'No permissions available'}
+                description={
+                  view === 'overrides'
+                    ? 'Access is inherited from the selected role and groups.'
+                    : 'Permissions will appear here when they are available.'
+                }
+                filtered={Boolean(search.trim()) || category !== 'all'}
+                onReset={
+                  category !== 'all'
+                    ? () => {
+                        setCategory('all')
+                        setPageIndex(0)
+                      }
+                    : undefined
+                }
+              />
             }
           />
           <DataGridPagination

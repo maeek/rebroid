@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { IconPencil, IconTrash } from '@tabler/icons-react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { aiProviderKindLabel } from '@/shared/model/ai-model-catalog'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { ProviderHealthBadge } from './provider-health-badge'
@@ -176,10 +176,10 @@ export const ProvidersGrid = ({
           minWidth='58rem'
           loading={loading ? { rowCount: 5 } : false}
           emptyState={
-            <div className='flex items-center justify-center gap-2 text-center text-foreground-muted'>
-              <GradientSparklesIcon className='size-4' />
-              No providers configured. Add a provider to connect your models.
-            </div>
+            <DataGridEmptyState
+              title='No providers configured'
+              description='Add a provider to connect your models.'
+            />
           }
           rowContextMenu={row => {
             const provider = row.original

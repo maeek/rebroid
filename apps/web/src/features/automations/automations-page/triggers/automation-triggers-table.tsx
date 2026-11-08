@@ -5,6 +5,7 @@ import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Switch } from '@/components/ui/switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
@@ -205,7 +206,12 @@ export function AutomationTriggersTable({
         onSelectedIdsChange
       }}
       minWidth='72rem'
-      emptyState={<div className='text-center text-foreground-muted'>No triggers match the current filters.</div>}
+      emptyState={
+        <DataGridEmptyState
+          title='No triggers yet'
+          description='Create a trigger to run a workflow on a schedule.'
+        />
+      }
       rowContextMenu={row => {
         const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
         return (

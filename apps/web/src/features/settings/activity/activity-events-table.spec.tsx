@@ -58,6 +58,23 @@ describe('audit log workspace', () => {
     expect(exportUrl.searchParams.get('resourceId')).toBe('app-reports')
   })
 
+  it('does not mistake the fixed app scope for a user filter in empty activity', () => {
+    render(
+      <ActivityEventsTable
+        {...previewActivityProps}
+        application={{ id: 'app-reports', name: 'Reports worker' }}
+        filters={{ resourceType: 'application', resourceId: 'app-reports' }}
+        result={{ ...previewActivityProps.result, events: [], total: 0 }}
+      />
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('No activity yet')
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute(
+      'href',
+      '/api/activity/export?resourceType=application&resourceId=app-reports&sort=createdAt%3Adesc'
+    )
+  })
+
   it('requires explicit purge confirmation and prevents dismissal while it is pending', async () => {
     let finish: ((value: { purged: number }) => void) | undefined
     const request = new Promise<{ purged: number }>(resolve => {

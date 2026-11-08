@@ -6,6 +6,7 @@ import { Skeleton, SkeletonMask } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { FeatureAvailability, FeatureIdentity, FeatureManageLink } from './feature-grid-cells'
 import { featureLabel } from './feature-presentation'
@@ -186,7 +187,12 @@ export const FeaturesGrid = ({
         getRowId={feature => feature.key}
         minWidth='59rem'
         loading={loading ? { rowCount: features.length || 4, selectable: false, rowMenu: false } : false}
-        emptyState={<div className='text-center text-foreground-muted'>No features match your search.</div>}
+        emptyState={
+          <DataGridEmptyState
+            title='No features available'
+            description='Platform capabilities will appear here when they are available.'
+          />
+        }
       />
     </DataGridWorkspace>
   )

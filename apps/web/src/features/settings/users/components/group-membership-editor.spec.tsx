@@ -42,7 +42,7 @@ describe('GroupMembershipEditor', () => {
     expect(screen.getByTestId('order')).toHaveTextContent('group-9,group-11,group-10')
     fireEvent.click(screen.getByRole('button', { name: 'Remove Group 11' }))
     expect(screen.getByTestId('order')).not.toHaveTextContent('group-11')
-    expect(screen.getByText('No assigned groups match your search.')).toBeVisible()
+    expect(screen.getByText('No matching results')).toBeVisible()
   })
 
   it('keeps membership edits staged until Apply and discards changes on Cancel', async () => {

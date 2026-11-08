@@ -17,6 +17,7 @@ import { listApplicationsAction } from '@/server/orchestrator/applications/actio
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
@@ -383,11 +384,10 @@ export const FirewallSettings = ({
               }}
               minWidth='74rem'
               emptyState={
-                <div className='text-center text-foreground-muted'>
-                  {submittedSearch || restrictionFilter !== 'all' || runtimeFilter !== 'all' || resultFilter !== 'all'
-                    ? 'No policies match the current filters.'
-                    : 'No application containers are configured.'}
-                </div>
+                <DataGridEmptyState
+                  title='No app policies'
+                  description='Network policies will appear here when application containers are configured.'
+                />
               }
             />
           </TooltipProvider>

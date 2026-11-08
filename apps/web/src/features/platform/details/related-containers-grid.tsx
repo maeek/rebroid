@@ -7,6 +7,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { ContainerStateBadge } from '@/features/platform/components/runtime-containers-table-parts'
 import { ApplicationReference } from '@/shared/ui/application-reference'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { PlatformContainer } from '@/shared/contracts/platform'
@@ -120,7 +121,12 @@ export const RelatedContainersGrid = ({
         pageSize={Math.max(visibleContainers.length, 1)}
         getRowId={container => container.id}
         minWidth='48rem'
-        emptyState={<div className='text-center text-foreground-muted'>No related containers match this search.</div>}
+        emptyState={
+          <DataGridEmptyState
+            title='No related containers'
+            description='No containers currently use this resource.'
+          />
+        }
         rowContextMenu={row => (
           <ContextMenuItem asChild>
             <Link href={`/runtime/containers/${row.original.id}`}>

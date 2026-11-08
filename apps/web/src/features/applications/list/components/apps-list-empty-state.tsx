@@ -12,6 +12,7 @@ export const AppsListEmptyState = ({ canCreate }: { canCreate: boolean }) => {
       />
       <PageContent>
         <StateView
+          scope='page'
           kind='empty'
           title='No Android apps yet'
           description={
@@ -19,7 +20,7 @@ export const AppsListEmptyState = ({ canCreate }: { canCreate: boolean }) => {
               ? 'Create your first isolated app, upload an APK if needed, and Rebroid will prepare it.'
               : 'No apps are available for your account.'
           }
-          icon={<IconBrandAndroid className='size-10' />}
+          icon={<IconBrandAndroid className='size-6' />}
           actions={canCreate ? [{ label: 'Create app', href: '/apps/create' }] : undefined}
         />
       </PageContent>

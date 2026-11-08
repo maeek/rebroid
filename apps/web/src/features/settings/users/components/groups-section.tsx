@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { UserGroup } from '@/shared/contracts/auth-user'
@@ -179,7 +180,12 @@ export const GroupsSection = ({
               onSelectedIdsChange: setSelectedIds
             }}
             minWidth='38rem'
-            emptyState={<div className='text-center text-foreground-muted'>No groups have been created.</div>}
+            emptyState={
+              <DataGridEmptyState
+                title='No groups yet'
+                description='Create a group to manage shared permissions and quotas.'
+              />
+            }
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedGroups.length > 1
               return (

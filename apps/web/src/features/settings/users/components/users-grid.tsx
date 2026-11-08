@@ -9,6 +9,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
@@ -322,7 +323,12 @@ export const UsersGrid = ({
             onSelectedIdsChange: setSelectedIds
           }}
           minWidth='64rem'
-          emptyState={<div className='text-center text-foreground-muted'>No users have been created.</div>}
+          emptyState={
+            <DataGridEmptyState
+              title='No users yet'
+              description='Add a user to grant access to the platform.'
+            />
+          }
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedUsers.length > 1
             return (

@@ -65,7 +65,7 @@ describe('PermissionEditor', () => {
     expect(screen.getByText('Delete applications', { exact: true })).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Reset all overrides' }))
     expect(screen.getByTestId('payload')).toHaveTextContent('{}')
-    expect(screen.getByText('No permissions match these filters.')).toBeVisible()
+    expect(screen.getByText('No user overrides')).toBeVisible()
   })
 
   it('does not pretend a user override can restrict an administrator', () => {

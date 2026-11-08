@@ -5,6 +5,7 @@ import { IconArrowRight, IconPencil } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { ServiceId } from './service-definitions'
@@ -193,7 +194,12 @@ export const ServicesGrid = ({
         }}
         minWidth='61rem'
         loading={loading ? { rowCount: 5 } : false}
-        emptyState={<div className='text-center text-foreground-muted'>No services match your search.</div>}
+        emptyState={
+          <DataGridEmptyState
+            title='No services available'
+            description='Services will appear here when they are available.'
+          />
+        }
       />
     </DataGridWorkspace>
   )

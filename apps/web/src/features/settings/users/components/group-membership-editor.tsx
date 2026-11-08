@@ -12,6 +12,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { GroupMembershipGrid, type Membership } from './group-membership-grid'
@@ -99,9 +100,10 @@ export const GroupMembershipEditor = ({
           getRowId={row => row.id}
           loading={loading && { rowCount: 3 }}
           emptyState={
-            <p className='text-center text-sm text-foreground-muted'>
-              {search ? 'No assigned groups match your search.' : 'No groups assigned. The default group applies.'}
-            </p>
+            <DataGridEmptyState
+              title='No groups assigned'
+              description='The default group applies. Use Edit membership to assign groups.'
+            />
           }
         />
         <DataGridPagination

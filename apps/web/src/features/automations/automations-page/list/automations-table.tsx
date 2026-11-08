@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { serializeSortParam } from '@/shared/model/search-params'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
@@ -216,7 +217,12 @@ export function AutomationsTable({
             onSelectedIdsChange: setSelectedIds
           }}
           minWidth='60rem'
-          emptyState={<div className='text-center text-foreground-muted'>No workflows match the current filters.</div>}
+          emptyState={
+            <DataGridEmptyState
+              title='No workflows yet'
+              description='Create a workflow to reuse a sequence of device actions.'
+            />
+          }
           rowContextMenu={row => {
             const hasBulkSelection = selectedIds.has(row.original.id) && selectedAutomations.length > 1
             return (

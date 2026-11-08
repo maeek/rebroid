@@ -10,6 +10,7 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
@@ -357,9 +358,10 @@ export function AutomationTracesSection({
           }
           minWidth='72rem'
           emptyState={
-            <div className='text-center text-foreground-muted'>
-              No runs match the current filters. Run this workflow from an app or trigger to record an execution.
-            </div>
+            <DataGridEmptyState
+              title='No runs yet'
+              description='Run this workflow from an app or trigger to record an execution.'
+            />
           }
         />
       </DataGridWorkspace>

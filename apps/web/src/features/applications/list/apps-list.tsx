@@ -46,6 +46,7 @@ export const AppsList = ({
         />
         <PageContent>
           <StateView
+            scope='page'
             kind='unavailable'
             title='Orchestrator unavailable'
             description='The web app is still available, but Android app management is temporarily offline.'

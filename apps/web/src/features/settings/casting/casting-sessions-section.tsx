@@ -7,6 +7,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
+import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { createCastingSessionColumns } from './casting-sessions-grid'
@@ -29,7 +30,6 @@ export const CastingSessionsSection = ({
     sessions,
     search,
     setSearch,
-    submittedSearch,
     setSubmittedSearch,
     statusFilter,
     setStatusFilter,
@@ -217,9 +217,10 @@ export const CastingSessionsSection = ({
             selection={{ disabled: loading, selectedIds, onSelectedIdsChange: setSelectedIds }}
             minWidth='76rem'
             emptyState={
-              <div className='text-center text-foreground-muted'>
-                {submittedSearch ? 'No sessions match this search.' : 'No casting sessions are known to the sidecar.'}
-              </div>
+              <DataGridEmptyState
+                title='No viewer sessions'
+                description='Open an app viewer to start a display session.'
+              />
             }
             rowContextMenu={row => {
               const hasBulkSelection = selectedIds.has(row.original.id) && selectedSessions.length > 1
