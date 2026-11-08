@@ -58,6 +58,7 @@ import {
 import { ConsoleShellPreview } from '@/features/shell/components/console-shell-preview'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
+import { FeedbackPreview } from '@/shared/testing/feedback-preview'
 import {
   AppActivityPreview,
   AuditLogPreview,
@@ -72,6 +73,7 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
   const editor = (await searchParams).editor
+  if (editor === 'feedback') return <FeedbackPreview />
   if (editor === 'app-loading')
     return (
       <main className='min-h-screen bg-background pt-16'>
