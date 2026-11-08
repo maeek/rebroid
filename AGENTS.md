@@ -131,6 +131,10 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   shell, responsive layout, `Section`, `DataGrid` column definitions, table markup, and scroll container; do not copy
   widths or layout class strings into route loaders. Keep `loading.tsx` files as thin feature entrypoints, render known
   page chrome immediately, and describe cell placeholders through the owning grid column metadata.
+- Scope index-page loading boundaries to leaf route groups when their URL also has nested pages. Platform overview,
+  provider-list, and services-inventory loaders must not wrap other platform destinations; retain shared authorization.
+- Loading content uses neutral surfaces and placeholders, including notice panels, health badges, metric markers,
+  and resource icons. Reserve semantic status colors for loaded content; use `Notice.loading` for notice skeletons.
 - Form loading may reuse real field groups through `FormLoadingBoundary`; keep controls inert and separately disable data fetching and mutations. Preserve query-selected resource views during loading instead of falling back to Overview or Models.
 - Compose every interactive `DataGrid` through the shared `DataGridWorkspace`. Grids use an unboxed toolbar,
   a transparent body, quiet header fill with the shared control radius, and horizontal separators; do not add feature-specific
@@ -228,3 +232,5 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Services uses the shell health snapshot for Orchestrator, Docker/runtime, Display, Firewall, and OCR. Docker diagnostics and persisted operation limits belong to the Docker service resource view; preserve active and queued operations during limit changes. Runtime-default resets must not reset separately managed Docker limits.
 - Keep dialog payloads mounted until `onOpenChangeComplete(false)` before clearing them; closing animation must never render an empty/header-only form. Combobox empty-state live regions remain mounted, with padding on their message content only.
 - Trigger dialogs use searchable resource choices with descriptions/IDs and selected context. Reuse owner-scoped tag facets and workflow tags through the shared MultiSelectCombobox with explicit creation; never commit typed tag searches on blur. Trigger descriptions persist through the API and participate in grid search.
+
+- App discovery retains the icon gallery, shared search/selection toolbar, and visible app action menus. Scope bulk actions to selected visible results. Overview recent shortcuts use authenticated per-user visit order, excluding deleted/inaccessible apps; do not reuse the sidebar’s running-first ordering.

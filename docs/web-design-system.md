@@ -142,8 +142,17 @@ loading reuses the shell manifest for stable names, descriptions, and row count 
 availability, enabled state, and destinations until refreshed data is ready. Unknown values
 remain placeholders rather than zero counts, empty results, or inferred health states.
 
+Loading content is monotone: use neutral surfaces and skeletons for notices, health panels, metric
+markers, and resource icons. Use `Notice` with `loading` for notice placeholders so its background
+and icon are neutral and it does not announce an unknown status. Semantic info, success, warning,
+and error colors appear only with loaded content. Known navigation and safe actions retain their
+normal chrome.
+
 Route `loading.tsx` files are thin feature entrypoints. Explicit Suspense fallbacks reuse the same
-feature loading component. The protected-route matrix remains 36 renderable routes with feature-owned
+feature loading component. Scope index-page loaders to a leaf route group when that URL also has
+nested pages: the platform overview, provider list, and service inventory must not become fallbacks
+for their detail pages. Route groups preserve the public URLs and the shared authorization layout.
+The protected-route matrix remains 36 renderable routes with feature-owned
 loaders; the legacy display-sessions redirect is the only loader-free exclusion.
 
 ## Responsive behavior and accessibility
@@ -366,3 +375,18 @@ well as stored action IDs. CSV export preserves filters and current sort order a
 up to 5,000 events; make the cap explicit when more events match. App Activity links require the
 same administrator access as the audit loader and export. Keep search drafts through navigation
 and reset the event inspector when switching applications.
+
+## App discovery
+
+Apps retains a transparent icon gallery with the icon above its name and quiet status text. Apply a
+surface highlight only on hover, keyboard focus, or selection. Use a responsive, bounded tile width
+and consistent icon/name/status geometry. Use the shared search/selection workspace for discovery and bulk actions; keep Create app
+in the header and a visible keyboard-accessible menu on each tile. Search names, package, image,
+owner, and IDs; combine it with status and sorting. Bulk actions target selected visible results only.
+Expose failed apps through status filtering instead of repeating their errors above the gallery.
+Loading reuses the gallery toolbar, grid, and tile content.
+
+Overview puts a bounded Recently opened row before operational summaries. Use the authenticated
+per-user visit history in visit order; exclude deleted and inaccessible apps and do not substitute
+unvisited running apps. Keep status secondary to the clickable app name. Loading uses the same
+shortcut component; empty and unavailable histories retain access to All apps.
