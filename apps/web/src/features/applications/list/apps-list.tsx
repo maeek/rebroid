@@ -1,9 +1,10 @@
 'use client'
-import { Visible } from '@/components/ui/visible'
+import { Button } from '@/components/ui/button'
+import { Section } from '@/components/ui/section'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
-import { AppsAttentionSummary } from './components/apps-attention-summary'
+import { AppsGalleryToolbar } from './components/apps-gallery-toolbar'
 import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
@@ -15,21 +16,24 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const AppsList = ({
+  canCreate,
   yourApps,
   currentOwnerUserId,
   initialSettings,
   orchestratorError
 }: {
+  canCreate: boolean
   yourApps: AppDefinition[]
   currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
   orchestratorError?: string | null
 }) => {
-  const { availableApps, contextValue, hasApps } = useAppsListController({
-    currentOwnerUserId,
-    initialSettings,
-    yourApps
-  })
+  const { availableApps, search, setSearch, statusFilter, setStatusFilter, contextValue, hasApps } =
+    useAppsListController({
+      currentOwnerUserId,
+      initialSettings,
+      yourApps
+    })
   const currentUserApps = availableApps.filter(app => app.ownerUserId === currentOwnerUserId)
   const otherUserApps = availableApps.filter(app => app.ownerUserId !== currentOwnerUserId)
 
@@ -37,7 +41,6 @@ export const AppsList = ({
     return (
       <>
         <PageHeader
-          section={{ label: 'Apps' }}
           title='Apps'
           description='Create, monitor, and manage isolated Android applications.'
         />
@@ -54,27 +57,61 @@ export const AppsList = ({
   }
 
   if (!hasApps) {
-    return <AppsListEmptyState />
+    return <AppsListEmptyState canCreate={canCreate} />
   }
 
   return (
     <AppsListProvider value={contextValue}>
-      <AppsListHeader />
+      <AppsListHeader canCreate={canCreate} />
       <AppsListBulkDialog />
-      <AppsAttentionSummary apps={availableApps} />
-      <div className='flex flex-col gap-10 py-4'>
-        <AppsGridSection
-          title='My apps'
-          apps={currentUserApps}
-        />
-        <Visible when={otherUserApps.length > 0}>
-          <AppsGridSection
-            title='Other users'
-            apps={otherUserApps}
-            showOwner
-          />
-        </Visible>
-      </div>
+      <PageContent>
+        <AppsGalleryToolbar
+          search={search}
+          onSearchChange={setSearch}
+          status={statusFilter}
+          onStatusChange={value => {
+            if (
+              value === 'all' ||
+              value === 'running' ||
+              value === 'stopped' ||
+              value === 'error' ||
+              value === 'working'
+            )
+              setStatusFilter(value)
+          }}
+        >
+          {availableApps.length ? (
+            <div className='grid gap-6'>
+              <AppsGridSection
+                title='My apps'
+                apps={currentUserApps}
+              />
+              <AppsGridSection
+                title='Other users’ apps'
+                apps={otherUserApps}
+                showOwner
+              />
+            </div>
+          ) : (
+            <Section
+              surface='panel'
+              title='No matching apps'
+              description='Try a different name or status.'
+            >
+              <Button
+                variant='ghost'
+                className='w-fit'
+                onClick={() => {
+                  setSearch('')
+                  setStatusFilter('all')
+                }}
+              >
+                Clear search and filters
+              </Button>
+            </Section>
+          )}
+        </AppsGalleryToolbar>
+      </PageContent>
     </AppsListProvider>
   )
 }
@@ -93,7 +130,10 @@ const AppsGridSection = ({
   }
 
   return (
-    <AppsGridLayout title={title}>
+    <AppsGridLayout
+      title={title}
+      count={apps.length}
+    >
       {apps.map(app => (
         <AppsListItem
           key={app.id}

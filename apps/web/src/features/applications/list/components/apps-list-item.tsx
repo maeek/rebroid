@@ -1,165 +1,117 @@
 import {
-  IconAlertTriangle,
   IconCheck,
-  IconLoader2,
+  IconDotsVertical,
   IconPlayerPlayFilled,
   IconPlayerStopFilled,
+  IconSettings,
   IconTrash,
   IconX
 } from '@tabler/icons-react'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
-import { Visible } from '@/components/ui/visible'
-import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { focusRingClassName } from '@/components/ui/surface'
+import { cn } from '@/lib/utils'
+import { AppGalleryTile, AppGalleryStatus } from './app-gallery-tile'
 import { useAppsListContext } from './apps-list-context'
 import { getAppStatusLabel, isAppBusy } from './apps-list.utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export const AppsListItem = ({ app, showOwner = false }: { app: AppDefinition; showOwner?: boolean }) => {
-  const { isManaging, openPendingAppAction, selectedIds, startApp, toggleSelected } = useAppsListContext()
+  const { isManaging, isBulkWorking, openPendingAppAction, selectedIds, startApp, toggleSelected } =
+    useAppsListContext()
   const isSelected = selectedIds.has(app.id)
-  const busy = isAppBusy(app)
-  const itemStatus = getAppStatusLabel(app)
-  const canControlRuntime = !showOwner
-
+  const busy = isAppBusy(app) || isBulkWorking
+  const content = (
+    <AppGalleryTile
+      app={app}
+      status={
+        <AppGalleryStatus
+          app={app}
+          label={getAppStatusLabel(app)}
+        />
+      }
+      showOwner={showOwner}
+    />
+  )
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>
-        <>
-          <Visible when={isManaging}>
-            <button
-              type='button'
-              className='flex w-full flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden rounded-panel border border-transparent p-2 transition hover:border-primary/30 hover:bg-primary/5 data-[selected=true]:border-primary/50 data-[selected=true]:bg-primary/10'
-              data-selected={isSelected}
-              onClick={() => toggleSelected(app.id)}
-            >
-              <AppTileContent
-                app={app}
-                busy={busy}
-                isSelected={isSelected}
-                itemStatus={itemStatus}
-                showOwner={showOwner}
-                showSelection
-              />
-            </button>
-          </Visible>
-          <Visible when={!isManaging}>
-            <Link href={`/app/${app.id}`}>
-              <div className='flex flex-col items-center justify-center cursor-pointer gap-2 overflow-hidden p-2'>
-                <AppTileContent
-                  app={app}
-                  busy={busy}
-                  isSelected={isSelected}
-                  itemStatus={itemStatus}
-                  showOwner={showOwner}
-                />
-              </div>
+    <div
+      className={cn('relative min-w-0 rounded-panel text-foreground', isManaging && isSelected && 'bg-accent')}
+      data-app-tile={app.id}
+    >
+      {isManaging ? (
+        <button
+          type='button'
+          aria-label={`Select ${app.name}`}
+          aria-pressed={isSelected}
+          disabled={isBulkWorking}
+          onClick={() => toggleSelected(app.id)}
+          className={cn(
+            focusRingClassName,
+            'block w-full rounded-panel text-left hover:bg-control-hover focus-visible:bg-control-hover'
+          )}
+        >
+          <span
+            className={cn(
+              'absolute left-3 top-3 flex size-4 items-center justify-center rounded-full bg-control text-foreground-muted',
+              isSelected && 'bg-primary text-primary-foreground'
+            )}
+            aria-hidden='true'
+          >
+            {isSelected ? <IconCheck className='size-3' /> : null}
+          </span>
+          {content}
+        </button>
+      ) : (
+        <Link
+          href={`/app/${encodeURIComponent(app.id)}`}
+          aria-label={`Open ${app.name}`}
+          className={cn(
+            focusRingClassName,
+            'block rounded-panel hover:bg-control-hover focus-visible:bg-control-hover'
+          )}
+        >
+          {content}
+        </Link>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type='button'
+            variant='ghost'
+            size='icon-sm'
+            className='absolute right-1.5 top-1.5'
+            aria-label={`Actions for ${app.name}`}
+            disabled={isManaging || isBulkWorking}
+          >
+            <IconDotsVertical className='size-4' />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align='end'>
+          <DropdownMenuItem asChild>
+            <Link href={`/app/${encodeURIComponent(app.id)}?view=configuration`}>
+              <IconSettings className='size-4' /> Configuration
             </Link>
-          </Visible>
-        </>
-      </ContextMenuTrigger>
-      <ContextMenuContent className='w-52'>
-        <Visible when={canControlRuntime && app.running}>
-          <ContextMenuItem
-            disabled={app.status === 'removing'}
-            onClick={() => openPendingAppAction({ action: 'stop', app })}
+          </DropdownMenuItem>
+          {!showOwner ? (
+            <DropdownMenuItem
+              disabled={busy}
+              onClick={() => (app.running ? openPendingAppAction({ action: 'stop', app }) : void startApp(app))}
+            >
+              {app.running ? <IconPlayerStopFilled className='size-4' /> : <IconPlayerPlayFilled className='size-4' />}
+              {app.running ? 'Stop app…' : 'Start app'}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem
+            className='text-danger'
+            disabled={app.status === 'removing' || isBulkWorking}
+            onClick={() => openPendingAppAction({ action: 'delete', app })}
           >
-            <IconPlayerStopFilled /> Stop
-          </ContextMenuItem>
-        </Visible>
-        <Visible when={canControlRuntime && !app.running}>
-          <ContextMenuItem
-            disabled={busy}
-            onClick={() => void startApp(app)}
-          >
-            <IconPlayerPlayFilled /> Run
-          </ContextMenuItem>
-        </Visible>
-        <ContextMenuItem
-          inset
-          disabled
-        >
-          Reset
-        </ContextMenuItem>
-        <ContextMenuItem
-          variant='danger'
-          disabled={app.status === 'removing'}
-          onClick={() => openPendingAppAction({ action: 'delete', app })}
-        >
-          {app.status === 'provisioning' ? <IconX className='text-danger' /> : <IconTrash className='text-danger' />}
-          {app.status === 'provisioning' ? 'Kill and delete' : 'Delete'}
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+            {app.status === 'provisioning' ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
+            {app.status === 'provisioning' ? 'Cancel and delete…' : 'Delete app…'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
-
-const OwnerBadge = ({ app }: { app: AppDefinition }) => (
-  <Badge
-    variant='outline'
-    className='max-w-full truncate text-xs'
-  >
-    {app.ownerDisplayName ?? app.ownerUserId ?? 'Unknown owner'}
-  </Badge>
-)
-
-const AppTileContent = ({
-  app,
-  busy,
-  isSelected,
-  itemStatus,
-  showOwner,
-  showSelection = false
-}: {
-  app: AppDefinition
-  busy: boolean
-  isSelected: boolean
-  itemStatus: string
-  showOwner: boolean
-  showSelection?: boolean
-}) => (
-  <>
-    <div className='relative size-20 transition-all hover:scale-95 hover:saturate-150 min-[360px]:size-24'>
-      <Visible when={showSelection}>
-        <span
-          className='absolute left-1 top-1 z-20 flex size-5 items-center justify-center rounded-control border border-primary bg-background text-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground'
-          data-selected={isSelected}
-          aria-hidden='true'
-        >
-          <Visible when={isSelected}>
-            <IconCheck className='size-4' />
-          </Visible>
-        </span>
-      </Visible>
-      <Visible when={app.running}>
-        <>
-          <div className='absolute top-2 right-2 rounded-feature size-4 bg-primary/95 z-10' />
-          <div className='absolute top-2 right-2 rounded-feature size-4 bg-primary z-10 animate-ping duration-[2s]' />
-        </>
-      </Visible>
-      <Visible when={app.status === 'error'}>
-        <IconAlertTriangle className='absolute top-1 right-1 size-5 text-danger z-10' />
-      </Visible>
-      <Visible when={busy}>
-        <IconLoader2 className='absolute top-1 right-1 size-5 text-primary z-10 animate-spin' />
-      </Visible>
-      <AppIcon
-        appId={app.id}
-        appName={app.name}
-        icon={app.icon}
-        className='absolute top-[50%] left-[50%] size-16 translate-x-[-50%] translate-y-[-50%] min-[360px]:size-20'
-      />
-    </div>
-    <span className='text-sm text-ellipsis w-full text-nowrap overflow-hidden text-center lg:px-2'>{app.name}</span>
-    <Badge
-      variant={app.status === 'error' ? 'danger' : 'neutral'}
-      className='max-w-full text-xs capitalize'
-    >
-      {itemStatus}
-    </Badge>
-    <Visible when={showOwner}>
-      <OwnerBadge app={app} />
-    </Visible>
-  </>
-)

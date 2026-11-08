@@ -35,3 +35,14 @@ export const selectNavigationAppEntries = <TApp extends NavigationApp>(
     ...recentApps
   ]
 }
+
+export const selectRecentlyOpenedAppEntries = <TApp extends NavigationApp>(apps: TApp[], recent: StoredRecentApp[]) => {
+  const appsById = new Map(apps.map(app => [app.id, app]))
+  return recent
+    .toSorted((left, right) => right.openedAt - left.openedAt)
+    .flatMap(item => {
+      const app = appsById.get(item.id)
+      return app ? [{ app, openedAt: item.openedAt }] : []
+    })
+    .slice(0, navigationAppsLimit)
+}

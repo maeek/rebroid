@@ -4,6 +4,7 @@ import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-ref
 import { PlatformOperationsContent } from './platform-operations-content'
 import { PlatformOverviewLayout } from './platform-overview-layout'
 import { PlatformCapacityContent } from './platform-quick-glance-section'
+import { PlatformRecentAppsContent } from './platform-recent-apps'
 
 export const PlatformOverviewPageSkeleton = () => (
   <PlatformOverviewLayout
@@ -13,6 +14,7 @@ export const PlatformOverviewPageSkeleton = () => (
         onRefresh={() => undefined}
       />
     }
+    recentApps={<PlatformRecentAppsContent loading />}
     operations={<PlatformOperationsContent snapshot={null} />}
     capacity={<PlatformCapacityContent loading />}
   />

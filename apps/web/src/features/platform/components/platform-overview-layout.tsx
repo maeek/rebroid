@@ -7,11 +7,13 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 export const PlatformOverviewLayout = ({
   actions,
   operations,
-  capacity
+  capacity,
+  recentApps
 }: {
   actions: ReactNode
   operations: ReactNode
   capacity: ReactNode
+  recentApps: ReactNode
 }) => (
   <StandardPage className='gap-2'>
     <PageHeader
@@ -20,6 +22,7 @@ export const PlatformOverviewLayout = ({
       actions={actions}
     />
     <section className='flex w-full flex-col gap-6 px-6 pb-4 max-sm:px-4'>
+      {recentApps}
       {operations}
       <Section
         surface='plain'

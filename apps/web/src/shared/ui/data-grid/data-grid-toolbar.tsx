@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 import { SearchField } from '@/shared/ui/search-field'
 
 export type DataGridToolbarProps = {
@@ -12,6 +13,7 @@ export type DataGridToolbarProps = {
   selectedCount?: number
   actions?: ReactNode
   disabled?: boolean
+  layout?: 'spread' | 'compact'
 }
 
 export function DataGridToolbar({
@@ -22,18 +24,21 @@ export function DataGridToolbar({
   filterControl,
   selectedCount = 0,
   actions,
-  disabled = false
+  disabled = false,
+  layout = 'spread'
 }: DataGridToolbarProps) {
   return (
     <div
       aria-busy={disabled || undefined}
-      className='flex flex-wrap items-end justify-between gap-x-4 gap-y-2'
+      className={cn('flex flex-wrap items-end gap-x-4 gap-y-2', layout === 'spread' && 'justify-between')}
     >
       <fieldset
         className='contents'
         disabled={disabled}
       >
-        <div className='flex min-w-0 flex-1 basis-72 items-center gap-2'>
+        <div
+          className={cn('flex min-w-0 items-center gap-2', layout === 'spread' ? 'flex-1 basis-72' : 'w-full sm:w-80')}
+        >
           <SearchField
             value={search}
             placeholder={searchPlaceholder}

@@ -3,6 +3,8 @@ import { CreateAppPageLoading } from '@/features/applications/create/create-app-
 import { CreateAppPreview } from '@/features/applications/create/create-app-preview'
 import { AppPageSkeleton, AppProfilesPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import { AppResourcePreview } from '@/features/applications/detail/app-resource-preview'
+import { AppsGalleryPreview } from '@/features/applications/list/apps-gallery-preview'
+import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
 import {
   AutomationCreatePageSkeleton,
   AutomationEditorPageSkeleton,
@@ -19,6 +21,7 @@ import {
   AutomationTriggersPreview
 } from '@/features/automations/automations-page/triggers/automation-triggers-preview'
 import { PlatformOperationsPreview } from '@/features/platform/components/platform-operations-preview'
+import { PlatformOverviewPageClient } from '@/features/platform/components/platform-overview-page-client'
 import { PlatformOverviewPageSkeleton } from '@/features/platform/components/platform-overview-page-skeleton'
 import { RuntimeContainerDetailPageLoading } from '@/features/platform/components/platform-page-skeletons/platform-container-detail-page-skeleton'
 import {
@@ -87,6 +90,9 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
         <AppProfilesPageSkeleton />
       </main>
     )
+  if (editor === 'apps-gallery') return <AppsGalleryPreview />
+  if (editor === 'apps-gallery-loading') return <AppsPageSkeleton />
+  if (editor === 'overview') return <PlatformOverviewPageClient />
   if (editor === 'workflow') return <WorkflowEditorPreview />
   if (editor === 'agent') return <AppResourcePreview agent />
   if (editor === 'workflow-create') return <WorkflowEditorPreview creating />

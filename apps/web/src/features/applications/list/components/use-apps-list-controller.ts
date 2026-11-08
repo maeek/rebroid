@@ -31,6 +31,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app-sort'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { filterGalleryApps, type AppsGalleryStatus } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication } from '@/shared/contracts/application'
@@ -58,6 +59,8 @@ export const useAppsListController = ({
   const [apps, setApps] = useState(yourApps)
   const [isManaging, setIsManaging] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<AppsGalleryStatus>('all')
   const [sortMode, setSortMode] = useState<AppsListSortMode>('name-asc')
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
@@ -191,9 +194,14 @@ export const useAppsListController = ({
   }
 
   const sortedApps = useMemo(() => sortApps(apps, sortMode), [apps, sortMode])
+  const visibleApps = useMemo(
+    () => filterGalleryApps(sortedApps, search, statusFilter),
+    [sortedApps, search, statusFilter]
+  )
+  const visibleSelectedIds = retainVisibleSelectedIds(visibleApps, selectedIds)
   const { activeBulkApps, allSelected, deletableSelectedApps, stoppableSelectedApps } = deriveAppsListSelection({
-    apps: sortedApps,
-    selectedIds,
+    apps: visibleApps,
+    selectedIds: visibleSelectedIds,
     currentOwnerUserId,
     bulkAction
   })
@@ -204,7 +212,7 @@ export const useAppsListController = ({
       return
     }
 
-    setSelectedIds(new Set(sortedApps.map(app => app.id)))
+    setSelectedIds(new Set(visibleApps.map(app => app.id)))
   }
 
   const handleBulkStop = async (appsToStop: AppDefinition[]) => {
@@ -318,8 +326,8 @@ export const useAppsListController = ({
       await deleteApp(pendingAppAction.app)
     },
     removeDataOnDelete: settings.removeDataOnDelete,
-    selectedIds,
-    selectionCount: selectedIds.size,
+    selectedIds: visibleSelectedIds,
+    selectionCount: visibleSelectedIds.size,
     setSortMode,
     startApp,
     startManaging: () => setIsManaging(true),
@@ -331,7 +339,11 @@ export const useAppsListController = ({
   }
 
   return {
-    availableApps: sortedApps,
+    availableApps: visibleApps,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
     contextValue,
     hasApps: apps.length > 0
   }

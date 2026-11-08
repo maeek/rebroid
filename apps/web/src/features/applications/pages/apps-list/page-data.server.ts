@@ -4,6 +4,7 @@ import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { getOwnerDisplayName, getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
+import { hasPermission } from '@/shared/permissions/permissions'
 
 export const getAppsListPageData = async () => {
   const initialSettingsPromise = getServerOrchestratorUiSettings()
@@ -38,6 +39,7 @@ export const getAppsListPageData = async () => {
 
   return {
     apps,
+    canCreate: user.role === 'admin' || hasPermission(user.permissions, 'applications:create'),
     currentOwnerUserId: user.ownerUserId,
     initialSettings,
     orchestratorError

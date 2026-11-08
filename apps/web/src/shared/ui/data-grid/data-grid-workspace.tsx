@@ -30,6 +30,7 @@ export type DataGridWorkspaceProps = {
   actions?: ReactNode
   notice?: ReactNode
   disabled?: boolean
+  toolbarLayout?: 'spread' | 'compact'
   children: ReactNode
   className?: string
 }
@@ -49,6 +50,7 @@ export const DataGridWorkspace = ({
   actions,
   notice,
   disabled = false,
+  toolbarLayout = 'spread',
   children,
   className
 }: DataGridWorkspaceProps) => {
@@ -96,6 +98,7 @@ export const DataGridWorkspace = ({
                 }
                 actions={actions}
                 disabled={disabled}
+                layout={toolbarLayout}
               />
             </div>
             {bulkActions || hasSelection ? (
