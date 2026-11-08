@@ -181,15 +181,18 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 
 ## Standard editor composition
 
+- Text inputs and selection controls fill their assigned field column consistently; size columns in the form layout, not through control-specific width caps. Keep numeric inputs compact and toolbar/table controls explicitly sized.
 - Ordinary create/edit and settings pages use `EditorPage`, a full-width canvas with a normal page header, rounded semantic section panels, and labels above compact controls. Keep workspace and list pages on their existing page family.
 - Use compact Select or SingleSelectCombobox choices, FileUploadField uploads, and exact numeric inputs; reserve sliders for streaming settings. Keep section headings inside panels and remove row dividers. Collapse optional advanced groups through unboxed Section expanders, retaining drafts and revealing validation errors.
 - Keep editable runtime defaults separate from read-only deployment details and immediate maintenance actions. Preserve drafts during maintenance refreshes, and explain the scope of cleanup and restore operations before running them.
 - FormField places descriptions directly beneath labels, before controls; use its shared spacing rather than per-feature label margins. Validation errors remain associated with their controls.
 - Reuse feature-owned editor geometry in loading states and keep dialog actions in their footer.
+- Empty/error feedback uses scope-sized `StateView`; grids use `DataGridEmptyState` outside table scrolling. Distinguish no data, filtered results, unavailable data, and not-applicable role rules; recovery never removes fixed authorization or app scope.
+- Small administrative policies and operation limits use a saved-value summary with an explicit Edit action and a focused single-column dialog. Save applies the draft; Cancel discards it. Keep failed drafts and restore trigger focus on close.
 - User/group editors use retained-draft tabs through `AccessEditorLayout`. Membership and permission catalogs use
   shared paginated DataGridWorkspace/DataGrid; membership dialogs use MultiSelectCombobox with a bounded chip area.
-  Reorder using the full membership order, not searched/page positions. Keep quotas visible inside the access panel,
-  explain unlimited admin access once, and block user Save while a profile photo is being prepared. Profile photos remain local drafts until explicit Save, including in the current-user profile dialog. Editor dialogs provide their own containment; keep their sections flat without nested panels or outer section padding.
+  Reorder using the full membership order, not searched/page positions. Keep quotas in their own tab and section,
+  explain unlimited quotas there, and block user Save while a profile photo is being prepared. Profile photos remain local drafts until explicit Save, including in the current-user profile dialog. Editor dialogs provide their own containment; keep their sections flat without nested panels or outer section padding.
 - User/group editors reuse their feature-owned access layout and permission editor. Distinguish effective access from Inherit/Allow/Deny user overrides; Inherit removes an override; group Not set removes a group decision rather than writing a denial. Preview ordered group merging (later defined values win), server fallback groups, and unconditional Admin access accurately. Preserve multi-select chips and keyboard behavior; do not turn category filtering into hidden bulk permission changes.
 
 - Image builders remain workspaces with shared feature-owned ready/loading layouts, rounded resource panels, one header Build action, explicit template application, grouped validation, and stable-height build logs. Keep uploaded context selection searchable, preserve upload/validation bounds, and reject duplicate starts or stale polling responses after terminal transitions.

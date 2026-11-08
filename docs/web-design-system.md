@@ -72,6 +72,22 @@ Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic ton
 - Successful mutations use the success toast variant. Informational toasts are for facts, not completion.
 - Page notices and service banners span the content width; badges remain intrinsic.
 
+Empty and error states use `StateView` at the scope of the missing content. Section states stay
+compact and left-aligned; page states use bounded spacing; only immersive viewer states fill their
+parent. Use a small neutral icon and concise title, reason, and relevant next step. Avoid decorative
+circles, nested cards, viewport-height placeholders inside sections, and raw internal error text.
+Unavailable/error states use an alert and preserve request references; empty and not-applicable
+states are informational. Administrator quotas show Unlimited quotas and explain the role rule,
+without disabled inputs or misleading save instructions.
+
+Grid empty states use `DataGridEmptyState`, outside the horizontally scrolling table so the message
+and recovery actions remain visible on mobile. Keep headers and search/filter controls available.
+An empty dataset explains what belongs there; a filtered dataset offers Clear search and/or Clear
+filters through its owning workspace. Never clear a fixed app/owner scope. Keep create actions
+permission-aware and avoid duplicating an action already in the page header. On refresh failure,
+keep usable existing data and show an inline notice; replace content only when nothing loaded.
+Loading remains a neutral skeleton, never a fabricated empty, failure, or successful state.
+
 ## Controls and forms
 
 Use shared controls, including their focus and keyboard behavior:
@@ -178,7 +194,11 @@ Standard sections use the rounded, opaque semantic surface-editor panel (soft ne
 slightly raised charcoal in dark, and near-black in OLED) with the heading inside,
 24px outer padding (16px on mobile), and no row dividers. Keep 24px between sections and
 16px between fields. FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
-Text and selection controls cap at 40rem; numeric inputs at 12rem. Use SingleSelectCombobox
+Text inputs, text areas, Select, and SingleSelectCombobox fill their assigned field column. Width belongs
+to the form layout, not the control type: do not put a hidden maximum width on searchable pickers or
+individual text fields. Related fields may share equal responsive columns. Keep numeric inputs capped
+at 12rem and toolbar or table-cell controls explicitly sized for their context. Loading controls use
+the same field widths as ready controls. Use SingleSelectCombobox
 for searchable catalogs, Select for fixed choices, and MultiSelectCombobox for relationships.
 Use FileUploadField for uploads and exact numeric inputs for quantities; sliders remain reserved
 for streaming adjustments. Inline compound controls may explicitly opt out of editor field layout.
@@ -246,6 +266,8 @@ Infrastructure detail pages for containers, images, and networks use `PlatformRe
 App and infrastructure summaries use shared `DetailFields`: labels above values, two columns when space permits, full-width technical identifiers and arguments, and copy actions beside labels on hover or keyboard focus. Keep status and ownership badges in the page header rather than repeating them inside detail sections. Detail placeholders use the same component's loading mode.
 
 Container pages put a concise identity/configuration overview first, followed by linked application, image, and network cards in Related resources. Do not repeat those relationships in separate summary tables. Show live metrics only for running containers. Labels use readable key/value fields; raw inspect remains visible in a single `JsonViewer` section with syntax coloring and header-level wrap/copy actions, without a nested surface or disclosure.
+
+`JsonViewer` and runtime argument previews share `CodeViewer` typography, scrolling, and wrap/copy controls. Embed argument previews directly in their existing section. Format shell arguments one per line with safe quoting and continuation backslashes between lines; copying preserves that exact text.
 
 Container logs have a dedicated `?view=logs` destination beside Overview. Fetch logs only for that destination; the default overview does not render an empty log console or request log data.
 
@@ -315,16 +337,22 @@ engine reachability with runtime suitability. Orchestrator and Docker have resou
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.
+Small administrative policies and limits use a read-only summary with an explicit Edit action and
+a focused shared dialog, matching Password policy. Keep labels and descriptions above compact
+controls in one column; Save applies the draft and Cancel discards it. Retain failed drafts, show
+errors in the editor, and restore focus to Edit after closing. Operation-limit summaries use readable
+durations; editing preserves exact milliseconds and existing bounds. Loading reuses the summary
+with a disabled Edit action, rather than displaying an editable form.
 
 AI provider resources separate Models from Connection through the shared resource navigation. Models show explicit defaults for Device control, Planning, and Screen understanding, a compact registered-model list, and model settings in a flat dialog. Planning also includes device control, matching API normalization; disabling or removing a default previews the first enabled eligible fallback. Purpose assignments describe intended use and must not imply verified model capabilities. Preserve exact model IDs and keep readable display names separate.
 
 Adding a model distinguishes searchable provider discovery, manual ID registration, and Ollama download. Exclude already configured IDs. Registration and download requests save immediately; model settings, availability, removal, defaults, and connection edits stay in the page draft until Save. Block immediate model operations while that draft is dirty, and expose Discard changes. Downloads retain background progress; transient progress-read failures do not mark the server job failed. Connection checks use the saved configuration and are disabled while edits are unsaved. Creation puts name and endpoint essentials first, with protocol and server compatibility in an optional group. Keep credentials masked, provider family separate from transport, and all mutations behind existing authorization.
 
 User and group editors share `AccessEditorLayout` in ready and loading states. User editors separate Account,
-Groups, and Permissions & quotas through the shared keyboard-accessible tabs with resource-navigation styling.
-Group editors use Details and Permissions & quotas. Tabs retain mounted drafts and search/page state; the header
-Save persists the whole editor. Quotas are visible within the access panel, without a disclosure or nested card.
-Administrator access and unlimited quotas are explained together, without a redundant quota-only notice.
+Groups, Permissions, and Quotas through the shared keyboard-accessible tabs with resource-navigation styling.
+Group editors use Details, Permissions, and Quotas. Tabs retain mounted drafts and search/page state; the header
+Save persists the whole editor. Quotas have their own section and tab, separate from the permission table,
+without a disclosure or nested card. Explain unlimited administrator quotas in the Quotas tab.
 The Account tab groups identity, password, account status, appearance, and access role in separate shared Section
 containers. Group Details keeps name and role together and gives description its own Notes section. These sections
 are owned by the same components in ready and loading states, without an enclosing Account card.
