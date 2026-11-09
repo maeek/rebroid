@@ -1,18 +1,11 @@
 export type AutomationAiProviderKind =
-  | 'openai'
-  | 'openai-compatible'
-  | 'ollama';
+  'openai' | 'openai-compatible' | 'ollama';
 
 export type AutomationAiProviderProtocol =
-  | 'openai-chat-completions'
-  | 'ollama-native-chat';
+  'openai-chat-completions' | 'ollama-native-chat';
 
 export type AutomationAiProviderServerFlavor =
-  | 'auto'
-  | 'openai'
-  | 'llama-cpp'
-  | 'lemonade'
-  | 'ollama';
+  'auto' | 'openai' | 'llama-cpp' | 'lemonade' | 'ollama';
 
 export interface AutomationAiProvider {
   id: string;
@@ -47,9 +40,7 @@ export interface AutomationAiProviderModelCapabilities {
 }
 
 export type AutomationAiThinkingMode =
-  | 'disabled'
-  | 'bounded'
-  | 'provider-default';
+  'disabled' | 'bounded' | 'provider-default';
 
 export interface AutomationAiProviderModelSettings {
   systemPrompt?: string | null;

@@ -17,7 +17,7 @@ const nativePortraitConfiguration = annexB(
 const boxTypes = (buffer) => {
   const types = [];
   const bytes = new Uint8Array(buffer);
-  for (let index = 0; index + 8 <= bytes.byteLength; ) {
+  for (let index = 0; index + 8 <= bytes.byteLength;) {
     const view = new DataView(bytes.buffer, bytes.byteOffset + index);
     const size = view.getUint32(0);
     if (size < 8 || index + size > bytes.byteLength) break;

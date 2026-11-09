@@ -75,10 +75,7 @@ export class AndroidAppsSidecarAdbService {
   async rotateDisplay(
     app: AndroidApplication,
     orientation:
-      | 'portrait'
-      | 'landscape'
-      | 'reverse-portrait'
-      | 'reverse-landscape',
+      'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
   ) {
     return this.request<{ executed: boolean }>(app, '/rotate-display', {
       method: 'POST',

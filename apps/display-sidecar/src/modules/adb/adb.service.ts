@@ -330,10 +330,7 @@ export class AdbService {
   async rotateDisplayTo(
     udid: string,
     orientation:
-      | "portrait"
-      | "landscape"
-      | "reverse-portrait"
-      | "reverse-landscape",
+      "portrait" | "landscape" | "reverse-portrait" | "reverse-landscape",
   ) {
     const rotationByOrientation = {
       portrait: "0",

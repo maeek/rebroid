@@ -4,9 +4,7 @@ import type { MediaQueueSnapshot } from "./scrcpy-media-queue";
 export type ScrcpyVideoCodec = "h264";
 export type ScrcpyTunnelMode = "direct" | "reverse" | "forward";
 export type ScrcpyCompatibilityMode =
-  | "normal"
-  | "audio-disabled"
-  | "stream-control-disabled";
+  "normal" | "audio-disabled" | "stream-control-disabled";
 
 export interface ScrcpyAudioPacket {
   data: Buffer;

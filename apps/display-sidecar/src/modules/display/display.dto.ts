@@ -3,10 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { DisplayFeatureStateDto } from "../shared/sidecar-feature.dto";
 
 export type DisplaySessionStatus =
-  | "created"
-  | "active"
-  | "released"
-  | "expired";
+  "created" | "active" | "released" | "expired";
 
 export class DisplayNewDisplayDto {
   @ApiProperty({ example: 1280 })

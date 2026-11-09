@@ -63,10 +63,7 @@ export interface AutomationRepeatStepForm {
 }
 
 export type AutomationStepForm =
-  | AutomationActionStepForm
-  | AutomationConditionStepForm
-  | AutomationSwitchStepForm
-  | AutomationRepeatStepForm
+  AutomationActionStepForm | AutomationConditionStepForm | AutomationSwitchStepForm | AutomationRepeatStepForm
 
 export interface AutomationFormState {
   id: string | null
