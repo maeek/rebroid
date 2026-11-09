@@ -42,4 +42,22 @@ describe('GApps package path validation', () => {
       ),
     ).toThrow(/nested under a symlink/);
   });
+
+  it('rejects a directory entry that reuses an extracted symlink path', () => {
+    expect(() =>
+      rejectGappsSymlinkParent('system/product', new Set(['system/product'])),
+    ).toThrow(/duplicate/);
+  });
+
+  it('allows upward traversal before descending into the target tree', () => {
+    expect(() =>
+      validateGappsSymlinkTarget('system/product/link', '../lib/libfoo.so'),
+    ).not.toThrow();
+    expect(() =>
+      validateGappsSymlinkTarget(
+        'system/product/link',
+        'other/link/../libfoo.so',
+      ),
+    ).toThrow(/ambiguous/);
+  });
 });

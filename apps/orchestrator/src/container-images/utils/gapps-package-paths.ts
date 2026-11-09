@@ -23,6 +23,9 @@ export const rejectGappsSymlinkParent = (
   symlinks: ReadonlySet<string>,
 ) => {
   const parts = path.split('/');
+  if (symlinks.has(path)) {
+    throw new Error(`GApps package contains a duplicate symlink path: ${path}`);
+  }
   for (let index = 1; index < parts.length; index += 1) {
     if (symlinks.has(parts.slice(0, index).join('/'))) {
       throw new Error(`GApps package entry is nested under a symlink: ${path}`);
@@ -33,6 +36,12 @@ export const rejectGappsSymlinkParent = (
 export const validateGappsSymlinkTarget = (path: string, target: string) => {
   if (!target || target.includes('\\') || posix.isAbsolute(target)) {
     throw new Error(`GApps package contains an unsafe symlink: ${path}`);
+  }
+  // Only climb before descending into components that might themselves be symlinks.
+  const components = target.split('/').filter((part) => part && part !== '.');
+  const firstDescent = components.findIndex((part) => part !== '..');
+  if (firstDescent !== -1 && components.slice(firstDescent).includes('..')) {
+    throw new Error(`GApps package contains an ambiguous symlink: ${path}`);
   }
   const resolved = posix.normalize(posix.join(posix.dirname(path), target));
   const fromRoot = posix.relative('system', resolved);
