@@ -17,6 +17,10 @@ export interface DockerNetworkRuntimePort {
     networkName: string,
   ): Promise<string | null>;
   getNetworkGateway(networkName: string): Promise<string | null>;
+  getManagedIpv4Subnet(
+    applicationId: string,
+    networkName: string,
+  ): Promise<string>;
   getOrchestratorIp(networkName: string): Promise<string | null>;
   connectContainerToNetwork(
     containerId: string,

@@ -101,23 +101,28 @@ export class AndroidAppsRuntimeNetworkService {
     return result;
   }
 
-  /**
-   * Applies fail-closed policy after Docker has started the container and assigned
-   * its network address. A persistent enforcement failure stops the runtime.
-   */
-  async enforcePolicyAfterStart(
+  /** Block forwarding until the container has an address and its policy is active. */
+  async startWithPolicy(
     app: AndroidApplication,
+    start: () => Promise<void>,
     options: {
       log?: boolean;
       recordLastStartedAt?: boolean;
       retryAttempts?: number;
     } = {},
   ) {
+    let guard: string | undefined;
     try {
-      return await this.reconcilePolicy(app, {
+      if (app.networkPolicyEnabled) {
+        guard = await this.networkPolicy.guardStartup(app);
+      }
+      await start();
+      const result = await this.reconcilePolicy(app, {
         ...options,
         failClosed: true,
       });
+      if (guard) await this.networkPolicy.releaseStartupGuard(app.id, guard);
+      return result;
     } catch (error) {
       const message = getErrorMessage(error);
       await this.logs
@@ -128,6 +133,11 @@ export class AndroidAppsRuntimeNetworkService {
         .catch(() => undefined);
       if (app.containerId) {
         await this.containers.stopContainer(app.containerId, 10);
+      }
+      if (guard) {
+        await this.networkPolicy
+          .releaseStartupGuard(app.id, guard)
+          .catch(() => undefined);
       }
       throw error;
     }

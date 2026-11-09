@@ -64,4 +64,17 @@ export class AndroidAppsStateWriter {
   ) {
     await this.applications.updateNetworkPolicyState(applicationId, patch);
   }
+
+  async saveNetworkPolicyConfiguration(
+    applicationId: string,
+    patch: Parameters<
+      AndroidApplicationsRepository['updateNetworkPolicyConfiguration']
+    >[1],
+  ) {
+    const result = await this.applications.updateNetworkPolicyConfiguration(
+      applicationId,
+      patch,
+    );
+    return result.affected === 1;
+  }
 }

@@ -46,6 +46,7 @@ export class AndroidAppsRemovalCleanupService {
     this.releaseDisplaySessionsInBackground(app.id, 'removing');
     await this.runtimeNetwork.releaseRuntimeSupport(app);
     await this.networks.removeNetwork(app.networkName);
+    await this.networkPolicy.removeStartupGuard(app.id);
 
     if (!removeData) {
       return;
@@ -76,6 +77,7 @@ export class AndroidAppsRemovalCleanupService {
     }
     await this.networkPolicy.remove(app);
     await this.networks.removeNetwork(app.networkName, app.id);
+    await this.networkPolicy.removeStartupGuard(app.id);
   }
 
   releaseDisplaySessionsInBackground(applicationId: string, operation: string) {

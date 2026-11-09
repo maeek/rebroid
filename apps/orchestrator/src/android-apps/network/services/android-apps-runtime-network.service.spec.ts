@@ -10,10 +10,13 @@ import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network
 const createService = (
   apply: jest.Mock,
   stopContainer = jest.fn().mockResolvedValue(undefined),
-) => ({
-  service: new AndroidAppsRuntimeNetworkService(
+) => {
+  const guardStartup = jest.fn().mockResolvedValue('guard-token');
+  const releaseStartupGuard = jest.fn().mockResolvedValue(undefined);
+  const start = jest.fn().mockResolvedValue(undefined);
+  const service = new AndroidAppsRuntimeNetworkService(
     {} as NetworkIsolationService,
-    { apply } as unknown as NetworkPolicyService,
+    { apply, guardStartup, releaseStartupGuard } as unknown as NetworkPolicyService,
     {
       append: jest.fn().mockResolvedValue(undefined),
     } as unknown as AndroidAppsLogService,
@@ -23,9 +26,9 @@ const createService = (
     } as unknown as AndroidAppsStateWriter,
     {} as AndroidAppsViewerNetworkService,
     { stopContainer } as unknown as DockerContainerLifecycleService,
-  ),
-  stopContainer,
-});
+  );
+  return { service, stopContainer, guardStartup, releaseStartupGuard, start };
+};
 
 const app = {
   id: 'app-1',
@@ -35,20 +38,22 @@ const app = {
 
 describe('AndroidAppsRuntimeNetworkService', () => {
   it('does not stop an unrestricted runtime when firewall enforcement is disabled', async () => {
-    const { service, stopContainer } = createService(
+    const { service, stopContainer, start, guardStartup, releaseStartupGuard } = createService(
       jest.fn().mockResolvedValue({
         status: 'skipped',
         message: 'Firewall enforcement is disabled.',
       }),
     );
     await expect(
-      service.enforcePolicyAfterStart({ ...app, networkPolicyEnabled: false }),
+      service.startWithPolicy({ ...app, networkPolicyEnabled: false }, start),
     ).resolves.toMatchObject({ status: 'skipped' });
+    expect(guardStartup).not.toHaveBeenCalled();
+    expect(releaseStartupGuard).not.toHaveBeenCalled();
     expect(stopContainer).not.toHaveBeenCalled();
   });
 
   it('keeps a runtime running after post-start policy enforcement succeeds', async () => {
-    const { service, stopContainer } = createService(
+    const { service, stopContainer, start, guardStartup, releaseStartupGuard } = createService(
       jest.fn().mockResolvedValue({
         status: 'applied',
         message: 'Policy applied.',
@@ -56,14 +61,23 @@ describe('AndroidAppsRuntimeNetworkService', () => {
     );
 
     await expect(
-      service.enforcePolicyAfterStart({ ...app }, { retryAttempts: 1 }),
+      service.startWithPolicy({ ...app }, start, { retryAttempts: 1 }),
     ).resolves.toMatchObject({ status: 'applied' });
 
+    expect(guardStartup.mock.invocationCallOrder[0]).toBeLessThan(start.mock.invocationCallOrder[0]);
+    expect(start.mock.invocationCallOrder[0]).toBeLessThan(releaseStartupGuard.mock.invocationCallOrder[0]);
     expect(stopContainer).not.toHaveBeenCalled();
   });
 
+  it('refuses to start if the startup guard could not be applied', async () => {
+    const { service, guardStartup, start } = createService(jest.fn());
+    guardStartup.mockRejectedValue(new Error('Firewall unavailable'));
+    await expect(service.startWithPolicy({ ...app }, start)).rejects.toThrow('Firewall unavailable');
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it('uses a graceful stop after persistent post-start policy failure', async () => {
-    const { service, stopContainer } = createService(
+    const { service, stopContainer, start, guardStartup, releaseStartupGuard } = createService(
       jest.fn().mockResolvedValue({
         status: 'skipped',
         message: 'Container network address is not available yet.',
@@ -71,11 +85,13 @@ describe('AndroidAppsRuntimeNetworkService', () => {
     );
 
     await expect(
-      service.enforcePolicyAfterStart({ ...app }, { retryAttempts: 1 }),
+      service.startWithPolicy({ ...app }, start, { retryAttempts: 1 }),
     ).rejects.toThrow(
       'Outbound policy enforcement failed: Container network address is not available yet.',
     );
 
+    expect(guardStartup).toHaveBeenCalled();
     expect(stopContainer).toHaveBeenCalledWith('container-1', 10);
+    expect(stopContainer.mock.invocationCallOrder[0]).toBeLessThan(releaseStartupGuard.mock.invocationCallOrder[0]);
   });
 });

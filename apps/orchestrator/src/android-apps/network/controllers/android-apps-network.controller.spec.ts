@@ -36,7 +36,10 @@ describe('application network policy with firewall disabled', () => {
       networkPolicyAllowCidrs: '[]',
       status: AndroidApplicationStatus.Stopped,
     } as AndroidApplication;
-    save.mockReset().mockResolvedValue(undefined);
+    save.mockReset().mockImplementation((_id, patch) => {
+      Object.assign(app, patch);
+      return Promise.resolve(true);
+    });
     reconcilePolicy.mockReset().mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       controllers: [AndroidAppsNetworkController],
@@ -63,7 +66,10 @@ describe('application network policy with firewall disabled', () => {
           provide: AndroidAppsRuntimeStateReconciler,
           useValue: { reconcileById: () => Promise.resolve(app) },
         },
-        { provide: AndroidAppsStateWriter, useValue: { save } },
+        {
+          provide: AndroidAppsStateWriter,
+          useValue: { saveNetworkPolicyConfiguration: save },
+        },
         { provide: NetworkPolicyService, useValue: {} },
       ],
     }).compile();
@@ -96,7 +102,10 @@ describe('application network policy with firewall disabled', () => {
       enabled: false,
       allowCidrs: ['10.0.0.0/8'],
     });
-    expect(save).toHaveBeenCalledWith(app);
+    expect(save).toHaveBeenCalledWith(app.id, {
+      networkPolicyEnabled: false,
+      networkPolicyAllowCidrs: '["10.0.0.0/8"]',
+    });
     expect(reconcilePolicy).toHaveBeenCalledWith(app, { failClosed: false });
   });
 

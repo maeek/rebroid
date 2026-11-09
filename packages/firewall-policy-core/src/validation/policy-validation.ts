@@ -16,7 +16,15 @@ export const validatePolicy = (
   if (!CONTAINER_ID.test(body.containerId ?? "")) {
     throw new Error("Invalid container id.");
   }
-  if (!normalizeIpv4Cidr(`${body.containerIp ?? ""}/32`)) {
+  const startup = body.startup === true;
+  const source = body.containerIp ?? "";
+  const sourceCidr = normalizeIpv4Cidr(source);
+  if (
+    !sourceCidr ||
+    (startup
+      ? !/\/([1-9]|[12]\d|3[0-2])$/.test(source) || sourceCidr !== source
+      : source.includes("/"))
+  ) {
     throw new Error("Invalid container address.");
   }
   if (!Number.isSafeInteger(body.generation) || (body.generation ?? -1) < 0) {
@@ -36,6 +44,9 @@ export const validatePolicy = (
   if (allowCidrs.some((cidr) => cidr === null)) {
     throw new Error("Only IPv4 CIDRs are supported.");
   }
+  if (startup && (body.enabled === false || allowCidrs.length > 0)) {
+    throw new Error("Invalid startup policy.");
+  }
   return {
     applicationId,
     containerId: body.containerId!,
@@ -43,6 +54,7 @@ export const validatePolicy = (
     enabled: body.enabled !== false,
     allowCidrs: uniqueStrings(allowCidrs as string[]),
     generation: body.generation!,
+    ...(startup ? { startup: true } : {}),
   };
 };
 

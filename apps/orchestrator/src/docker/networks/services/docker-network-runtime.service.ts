@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
+import { normalizeIpv4Cidr } from '@rebroid/firewall-policy-core/policy';
 import { DockerEngineService } from '../../docker-engine.service';
 import type { DockerNetworkRuntimePort } from '../../contracts/docker-network-runtime.port';
 
@@ -87,6 +88,25 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
       `Inspect network ${networkName}`,
     );
     return network.IPAM?.Config?.find((item) => item.Gateway)?.Gateway ?? null;
+  }
+
+  async getManagedIpv4Subnet(applicationId: string, networkName: string) {
+    const inspect = await this.inspectNetworkIfPresent(networkName);
+    const [subnet] = inspect?.IPAM?.Config ?? [];
+    const cidr = subnet?.Subnet ? normalizeIpv4Cidr(subnet.Subnet) : null;
+    if (
+      !inspect ||
+      !this.isManagedAppNetwork(inspect.Labels, applicationId) ||
+      inspect.EnableIPv6 ||
+      inspect.IPAM?.Config?.length !== 1 ||
+      !cidr ||
+      cidr.endsWith('/0')
+    ) {
+      throw new Error(
+        'Restricted startup requires a managed network with one IPv4 subnet.',
+      );
+    }
+    return cidr;
   }
 
   /**

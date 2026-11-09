@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
@@ -85,6 +85,21 @@ export class AndroidApplicationsRepository
       Partial<Pick<AndroidApplication, 'lastStartedAt'>>,
   ) {
     return this.applications.update(applicationId, patch);
+  }
+
+  updateNetworkPolicyConfiguration(
+    applicationId: string,
+    patch: Partial<
+      Pick<
+        AndroidApplication,
+        'networkPolicyEnabled' | 'networkPolicyAllowCidrs'
+      >
+    >,
+  ) {
+    return this.applications.update(
+      { id: applicationId, status: Not(AndroidApplicationStatus.Provisioning) },
+      patch,
+    );
   }
 
   findForList(query: ListAndroidApplicationsDto) {

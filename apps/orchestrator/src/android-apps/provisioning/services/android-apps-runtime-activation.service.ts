@@ -224,12 +224,19 @@ export class AndroidAppsRuntimeActivationService {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
       statusMessage: 'Starting application container.',
     });
-    await this.lifecycle.startContainer(app.containerId);
-    await this.network.enforcePolicyAfterStart(app, {
-      log: kind === AndroidAppLifecycleJobKind.Provision,
-      recordLastStartedAt: true,
-      retryAttempts: 10,
-    });
+    const containerId = app.containerId;
+    await this.network.startWithPolicy(
+      app,
+      () => {
+        this.tracker.ensureActive(app.id);
+        return this.lifecycle.startContainer(containerId);
+      },
+      {
+        log: kind === AndroidAppLifecycleJobKind.Provision,
+        recordLastStartedAt: true,
+        retryAttempts: 10,
+      },
+    );
     await this.logs.append(app.id, 'Container start requested', {
       containerId: app.containerId,
     });

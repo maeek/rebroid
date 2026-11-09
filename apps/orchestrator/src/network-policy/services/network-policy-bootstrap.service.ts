@@ -45,9 +45,10 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
 
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
+        const startedAt = Date.now();
         const applications =
           await this.applications.findRunningNetworkPolicyTargets();
-        await this.policies.reconcile(applications);
+        await this.policies.reconcile(applications, startedAt);
         return;
       } catch (error) {
         this.logger.warn(

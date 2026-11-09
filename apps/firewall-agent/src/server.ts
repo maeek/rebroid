@@ -100,11 +100,28 @@ export const createFirewallAgentServer = ({
 
     try {
       if (request.url === "/v1/reconcile" && request.method === "PUT") {
-        const desired = validatePolicies(
-          (await readJsonBody(request)) as {
-            policies?: Partial<FirewallPolicy>[];
-          },
-        );
+        const input = (await readJsonBody(request)) as {
+          policies?: Partial<FirewallPolicy>[];
+          startedAt?: number;
+        };
+        const desired = validatePolicies(input);
+        if (
+          input.startedAt !== undefined &&
+          (!Number.isSafeInteger(input.startedAt) || input.startedAt < 0)
+        ) {
+          throw new Error("Invalid reconciliation timestamp.");
+        }
+        const current = store.snapshot();
+        for (const [id, policy] of current) {
+          if (
+            policy.startup ||
+            current.get(`startup-${id}`)?.startup ||
+            (input.startedAt !== undefined &&
+              policy.generation >= input.startedAt)
+          ) {
+            desired.set(id, policy);
+          }
+        }
         const policies = store.replace(desired);
         adapter.reconcile(policies);
         json(response, 200, {

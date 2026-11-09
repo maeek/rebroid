@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
@@ -26,14 +26,27 @@ export class AndroidAppsNetworkPolicyService {
     if (dto.networkPolicyEnabled ?? app.networkPolicyEnabled) {
       this.features.assertEnabled('feature.firewall');
     }
-    if (dto.networkPolicyEnabled !== undefined) {
-      app.networkPolicyEnabled = dto.networkPolicyEnabled;
+    if (
+      dto.networkPolicyEnabled !== undefined ||
+      dto.networkPolicyAllowCidrs !== undefined
+    ) {
+      const saved = await this.writer.saveNetworkPolicyConfiguration(id, {
+        ...(dto.networkPolicyEnabled === undefined
+          ? {}
+          : { networkPolicyEnabled: dto.networkPolicyEnabled }),
+        ...(dto.networkPolicyAllowCidrs === undefined
+          ? {}
+          : {
+              networkPolicyAllowCidrs: JSON.stringify(
+                dto.networkPolicyAllowCidrs,
+              ),
+            }),
+      });
+      if (!saved)
+        throw new ConflictException(
+          'Wait for the app to finish starting before changing its network policy.',
+        );
     }
-    if (dto.networkPolicyAllowCidrs !== undefined) {
-      app.networkPolicyAllowCidrs = JSON.stringify(dto.networkPolicyAllowCidrs);
-    }
-
-    await this.writer.save(app);
     return this.applyNetworkPolicy(id);
   }
 
@@ -51,8 +64,9 @@ export class AndroidAppsNetworkPolicyService {
 
   /** Rebuilds the agent rule set from stored apps, pruning stale rules. */
   async reconcileNetworkPolicies() {
+    const startedAt = Date.now();
     const apps = await this.queries.listStored({});
-    await this.networkPolicy.reconcile(apps);
+    await this.networkPolicy.reconcile(apps, startedAt);
     return { reconciled: apps.length };
   }
 }

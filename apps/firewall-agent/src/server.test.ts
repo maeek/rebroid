@@ -141,3 +141,52 @@ test("removing a stale runtime policy preserves the replacement policy", async (
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("reconciliation preserves an in-flight startup guard and a policy newer than its snapshot", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
+  const store = new FirewallPolicyStore(join(directory, "policies.json"));
+  const server = createFirewallAgentServer({
+    secret: "secret",
+    adapter,
+    store,
+  });
+  const runtimePolicy = {
+    applicationId: "app-1",
+    containerId: "container-1",
+    containerIp: "10.0.0.2",
+    enabled: true,
+    allowCidrs: [],
+    generation: 2,
+  };
+  try {
+    store.set(runtimePolicy);
+    store.set({
+      ...runtimePolicy,
+      applicationId: "startup-app-1",
+      containerIp: "10.0.0.0/24",
+      startup: true,
+    });
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    const reconcile = (startedAt: number) =>
+      fetch(`http://127.0.0.1:${port}/v1/reconcile`, {
+        method: "PUT",
+        headers: { "x-firewall-agent-secret": "secret" },
+        body: JSON.stringify({ policies: [], startedAt }),
+      });
+
+    assert.equal((await reconcile(3)).status, 200);
+    assert.equal(store.get("startup-app-1")?.startup, true);
+    assert.deepEqual(store.get("app-1"), runtimePolicy);
+    store.delete("startup-app-1");
+    assert.equal((await reconcile(1)).status, 200);
+    assert.deepEqual(store.get("app-1"), runtimePolicy);
+    assert.equal((await reconcile(3)).status, 200);
+    assert.equal(store.get("app-1"), undefined);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

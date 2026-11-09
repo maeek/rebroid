@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import type { NetworkPolicyTarget } from '../../android-apps/contracts/android-apps-runtime-inventory.port';
 import {
@@ -78,7 +79,12 @@ export class NetworkPolicyService {
     }
 
     try {
-      await this.agent.apply(app.id, policy.agentPolicy);
+      const response = await this.agent.apply(app.id, policy.agentPolicy);
+      if (response.status !== 'applied') {
+        throw new Error(
+          'The firewall agent did not acknowledge the application policy.',
+        );
+      }
       return {
         status: 'applied',
         message: this.appliedMessage(policy.destinations),
@@ -95,7 +101,7 @@ export class NetworkPolicyService {
     }
   }
 
-  async reconcile(apps: NetworkPolicyTarget[]) {
+  async reconcile(apps: NetworkPolicyTarget[], startedAt: number) {
     if (!this.features.isEnabled('feature.firewall')) return;
     const policies = (
       await mapWithConcurrency(
@@ -109,7 +115,46 @@ export class NetworkPolicyService {
         },
       )
     ).filter((policy): policy is NonNullable<typeof policy> => Boolean(policy));
-    await this.agent.reconcile(policies);
+    await this.agent.reconcile(policies, startedAt);
+  }
+
+  async guardStartup(app: NetworkPolicyTarget) {
+    this.features.assertEnabled('feature.firewall');
+    const subnet = await this.networks.getManagedIpv4Subnet(
+      app.id,
+      app.networkName,
+    );
+    const token = randomUUID();
+    const result = await this.agent.apply(`startup-${app.id}`, {
+      containerId: token,
+      containerIp: subnet,
+      enabled: true,
+      allowCidrs: [],
+      generation: Date.now(),
+      startup: true,
+    });
+    if (result.status !== 'applied') {
+      throw new Error(
+        'The firewall agent did not acknowledge the startup guard.',
+      );
+    }
+    return token;
+  }
+
+  async releaseStartupGuard(appId: string, token: string) {
+    const result = await this.agent.remove(`startup-${appId}`, token);
+    if (result.status !== 'applied') {
+      throw new Error('The startup firewall guard could not be released.');
+    }
+  }
+
+  async removeStartupGuard(appId: string) {
+    if (!this.features.isEnabled('feature.firewall')) return;
+    await this.agent.remove(`startup-${appId}`).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not clear startup firewall guard for ${appId}: ${String(error)}`,
+      );
+    });
   }
 
   async remove(

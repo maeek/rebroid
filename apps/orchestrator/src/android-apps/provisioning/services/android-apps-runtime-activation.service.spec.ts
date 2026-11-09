@@ -28,7 +28,10 @@ describe('AndroidAppsRuntimeActivationService', () => {
       {
         attachRuntimeSupport: jest.fn(),
         createRuntimeBoundary,
-        enforcePolicyAfterStart: jest.fn(),
+        startWithPolicy: (
+          _app: AndroidApplication,
+          start: () => Promise<void>,
+        ) => start(),
       } as never,
       { updateProgress } as never,
       { ensureActive: jest.fn() } as never,

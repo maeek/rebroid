@@ -5,6 +5,7 @@ export interface FirewallPolicy {
   enabled: boolean;
   allowCidrs: string[];
   generation: number;
+  startup?: true;
 }
 
 export type FirewallAgentPolicy = Omit<FirewallPolicy, "applicationId">;

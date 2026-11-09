@@ -45,8 +45,11 @@ export class FirewallAgentClientService {
     );
   }
 
-  reconcile(policies: Array<FirewallAgentPolicy & { applicationId: string }>) {
-    return this.send('PUT', '/v1/reconcile', { policies });
+  reconcile(
+    policies: Array<FirewallAgentPolicy & { applicationId: string }>,
+    startedAt: number,
+  ) {
+    return this.send('PUT', '/v1/reconcile', { policies, startedAt });
   }
 
   private send(

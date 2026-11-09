@@ -12,6 +12,11 @@ const APP_CHAIN_PREFIX = "RB_APP_";
 const LEGACY_APP_CHAIN_PREFIX = "REBROID_APP_";
 const NFT_TABLE = "rebroid_fw";
 
+const startupFirst = (policies: Map<string, FirewallPolicy>) =>
+  [...policies.values()].sort(
+    (a, b) => Number(Boolean(b.startup)) - Number(Boolean(a.startup)),
+  );
+
 export interface FirewallAdapter {
   name: string;
   initialize(): void;
@@ -95,7 +100,7 @@ export class IptablesAdapter implements FirewallAdapter {
     }
     this.runner.run("iptables", ["-A", nextChain, "-j", "REJECT"]);
     this.runner.run("iptables", [
-      "-A",
+      policy.startup ? "-I" : "-A",
       ROOT_CHAIN,
       "-s",
       policy.containerIp,
@@ -122,7 +127,7 @@ export class IptablesAdapter implements FirewallAdapter {
     this.removeChain(nextRoot);
     this.runner.run("iptables", ["-N", nextRoot]);
     const replacements: Array<{ chain: string; nextChain: string }> = [];
-    for (const policy of policies.values()) {
+    for (const policy of startupFirst(policies)) {
       if (!policy.enabled) continue;
       const chain = chainName(policy.applicationId);
       const nextChain = this.createNextPolicyChain(chain, policy.allowCidrs);
@@ -240,7 +245,7 @@ export class NftablesAdapter implements FirewallAdapter {
       " chain forward {",
       "  type filter hook forward priority -1; policy accept;",
     ];
-    for (const policy of policies.values()) {
+    for (const policy of startupFirst(policies)) {
       if (!policy.enabled) continue;
       if (policy.allowCidrs.length) {
         lines.push(

@@ -40,12 +40,19 @@ Ports declare independent capabilities; they must not derive their types from co
 
 ## Application lifecycle
 
-Creating, starting, installing an APK, or removing an app reserves one persisted lifecycle job.
+Creating, starting, recreating the runtime, installing an APK, or removing an app reserves one persisted lifecycle job.
 At most one job is active for an application. Application and job transitions are committed together;
 late progress or completion is ignored after a newer operation takes ownership.
 
 - **Create and start** share runtime activation: resolve the image, prepare boundaries, create or start
   the container, apply network policy, and wait for Android readiness.
+  The owner's open-app limit is checked in the same database transaction that records the new app
+  or marks an existing one as starting. Clone, Recreate, and automation starts share that admission check.
+  Restricted startup installs a temporary forwarding block on the managed IPv4 subnet before starting
+  the container. The app's allowlist takes over after the firewall agent acknowledges it.
+- **Recreate** replaces the stopped or errored app's container and managed network, then uses the
+  same activation path. It keeps profile volumes. Interrupted recreation is reported as an error
+  so the operator can retry.
 - **APK installation** receives a guarded handoff when the runtime needs the attached package installed.
 - **Stop** cancels active work before stopping runtime resources.
 - **Remove** replaces the reservation and performs bounded cleanup of runtime, network, volume, and viewer resources.
