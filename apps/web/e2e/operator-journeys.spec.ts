@@ -55,7 +55,7 @@ for (const width of [390, 1440]) {
     await expect(
       page.getByRole('navigation', { name: 'App sections' }).getByRole('link', { name: 'Diagnostics', exact: true })
     ).toHaveAttribute('href', '/app/preview-app?view=diagnostics')
-    await expect(page.getByRole('link', { name: 'Open viewer' })).toHaveAttribute('href', '/viewer/apps/preview-app')
+    await expect(page.getByRole('link', { name: 'Open viewer' })).toHaveCount(0)
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
         document.documentElement.className = value
@@ -470,7 +470,7 @@ test('services connects feature management and keeps disabled services discovera
       'href',
       '/platform/features#feature.ocr'
     )
-    await expect(ocr).toContainText('Unavailable')
+    await expect(ocr.getByRole('cell', { name: 'Disabled', exact: true })).toBeVisible()
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
         document.documentElement.className = value
@@ -520,4 +520,54 @@ test('services connects feature management and keeps disabled services discovera
   await page.goto('/skeleton-contract-test?editor=features')
   expect((await page.getByRole('table').boundingBox())!.y).toBe(loadingY)
   expect(errors).toEqual([])
+})
+
+test('embedded Files keeps folder navigation, filtering, and details in one workspace', async ({ page }) => {
+  const directory = {
+    name: 'Pictures',
+    path: '/data/Pictures',
+    type: 'directory',
+    sizeBytes: null,
+    modifiedAt: null,
+    itemCount: 1
+  }
+  const file = {
+    name: 'screen.txt',
+    path: '/data/Pictures/screen.txt',
+    type: 'file',
+    sizeBytes: 1024,
+    modifiedAt: null,
+    itemCount: null
+  }
+  await page.route('**/api/bff/applications/preview-app/runtime/files?*', route => {
+    const path = new URL(route.request().url()).searchParams.get('path')
+    return route.fulfill({ json: { ok: true, requestId: 'preview', data: path === '/data' ? [directory] : [file] } })
+  })
+  await page.goto('/skeleton-contract-test?editor=app-resource&view=files')
+  await expect(page.getByRole('button', { name: 'Upload files' })).toBeVisible()
+  await expect
+    .poll(() =>
+      page.getByRole('table').evaluate(table => {
+        const scroll = table.parentElement!
+        return scroll.scrollWidth - scroll.clientWidth
+      })
+    )
+    .toBe(0)
+  await page.getByRole('button', { name: 'Pictures', exact: true }).press('Enter')
+  const currentFolder = page.getByRole('navigation', { name: 'Current folder' })
+  const folder = currentFolder.getByText('Pictures')
+  await expect(folder).toHaveAttribute('aria-current', 'location')
+  await expect(folder).toBeFocused()
+
+  const search = page.getByRole('searchbox', { name: 'Search this folder' })
+  await search.fill('missing')
+  await expect(page.getByText('No matching results')).toBeVisible()
+  await search.fill('')
+  const fileButton = page.getByRole('button', { name: 'screen.txt', exact: true })
+  await fileButton.click()
+  await expect(page.getByRole('dialog', { name: 'File details' })).toContainText(file.path)
+  await page.keyboard.press('Escape')
+  await expect(fileButton).toBeFocused()
+  await currentFolder.getByRole('button', { name: 'data', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Pictures', exact: true })).toBeVisible()
 })

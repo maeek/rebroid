@@ -46,6 +46,41 @@ const manifest: FeatureFlagManifest = {
 }
 
 describe('PlatformServicesPage', () => {
+  it('retains connection drafts through an outage and restores them after recovery', () => {
+    const page = (online: boolean) => (
+      <FeatureFlagsProvider manifest={manifest}>
+        <PlatformServicesPage
+          initialSettings={defaultOrchestratorUiSettings}
+          initialHealth={online ? servicesPreviewHealth : null}
+        />
+      </FeatureFlagsProvider>
+    )
+    const { rerender } = render(page(true))
+    fireEvent.click(screen.getByRole('button', { name: 'OCR perception' }))
+    fireEvent.change(screen.getByLabelText('Endpoint'), { target: { value: 'http://saved-draft:4300' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    rerender(page(false))
+    expect(screen.getByText('Services could not be refreshed')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    rerender(page(true))
+    fireEvent.click(screen.getByRole('button', { name: 'OCR perception' }))
+    expect(screen.getByLabelText('Endpoint')).toHaveValue('http://saved-draft:4300')
+  })
+  it('shows one page failure instead of unknown rows and editable fallback settings on initial outage', () => {
+    render(
+      <FeatureFlagsProvider manifest={manifest}>
+        <PlatformServicesPage
+          initialSettings={defaultOrchestratorUiSettings}
+          initialHealth={null}
+        />
+      </FeatureFlagsProvider>
+    )
+    expect(screen.getByRole('heading', { name: 'Services unavailable' })).toBeVisible()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+  })
+
   beforeEach(() => {
     window.history.replaceState(null, '', '/platform/services')
   })

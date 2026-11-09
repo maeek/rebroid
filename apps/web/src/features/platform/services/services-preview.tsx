@@ -64,10 +64,16 @@ export const FeaturesPreview = ({ loading = false }: { loading?: boolean }) => (
   </FeatureFlagsProvider>
 )
 
-export const InfrastructureServicePreview = ({ serviceId }: { serviceId: 'orchestrator' | 'docker' }) => (
+export const InfrastructureServicePreview = ({
+  serviceId,
+  unavailable = false
+}: {
+  serviceId: 'orchestrator' | 'docker'
+  unavailable?: boolean
+}) => (
   <InfrastructureServicePage
     serviceId={serviceId}
-    initialHealth={servicesPreviewHealth}
+    initialHealth={unavailable ? null : servicesPreviewHealth}
     apiUrl='http://orchestrator:4100'
   />
 )
@@ -75,18 +81,20 @@ export const InfrastructureServicePreview = ({ serviceId }: { serviceId: 'orches
 export const ServicesPreview = ({
   all = false,
   editing = false,
-  loading = false
+  loading = false,
+  unavailable = false
 }: {
   all?: boolean
   editing?: boolean
   loading?: boolean
+  unavailable?: boolean
 }) => (
   <FeatureFlagsProvider manifest={servicesPreviewManifest(all)}>
     {loading ? (
       <PlatformServicesPageSkeleton />
     ) : (
       <PlatformServicesPage
-        initialHealth={servicesPreviewHealth}
+        initialHealth={unavailable ? null : servicesPreviewHealth}
         initialSettings={defaultOrchestratorUiSettings}
         requestedServiceId={editing ? 'ocr' : undefined}
       />

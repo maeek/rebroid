@@ -9,14 +9,16 @@ import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-ope
 
 const previewLimit = 5
 
+const runTraceHref = (automationId: string, runId: string) =>
+  `/automations/${encodeURIComponent(automationId)}/traces?run=${encodeURIComponent(runId)}`
+
 const OperationsGroup = ({
   title,
   total,
   shown,
   empty,
   children,
-  attention = false,
-  unavailable = false
+  attention = false
 }: {
   title: string
   total?: number
@@ -24,10 +26,8 @@ const OperationsGroup = ({
   empty: string
   children: ReactNode
   attention?: boolean
-  unavailable?: boolean
 }) => {
   let count: ReactNode = <Skeleton className='h-8 w-8' />
-  if (unavailable) count = <span className='text-foreground-muted'>—</span>
   if (total !== undefined)
     count = (
       <span
@@ -37,8 +37,7 @@ const OperationsGroup = ({
       </span>
     )
   let content: ReactNode
-  if (unavailable) content = <p className='text-sm text-foreground-muted'>Unavailable</p>
-  else if (total === undefined)
+  if (total === undefined)
     content = (
       <div
         role='status'
@@ -95,10 +94,12 @@ const AppOperationRow = ({ id, name, detail }: { id: string; name: string; detai
 
 export const PlatformOperationsContent = ({
   snapshot,
-  error = false
+  error = false,
+  requestId
 }: {
   snapshot: PlatformOperationsSnapshot | null
   error?: boolean
+  requestId?: string
 }) => {
   const failed = snapshot?.failed.slice(0, previewLimit) ?? []
   const pending = snapshot?.pending.slice(0, previewLimit) ?? []
@@ -138,68 +139,77 @@ export const PlatformOperationsContent = ({
       {error ? (
         <Notice
           tone='warning'
-          title='Operations could not be refreshed'
-          description='Use All apps or All workflows to inspect resources. Previously loaded results may be out of date.'
-        />
+          title={snapshot ? 'Operations could not be refreshed' : 'Operations unavailable'}
+          description={
+            snapshot
+              ? 'Showing the last loaded snapshot. Refresh Overview to try again.'
+              : 'App health and workflow activity could not be loaded. Refresh Overview to try again.'
+          }
+        >
+          {requestId ? <p className='text-xs [overflow-wrap:anywhere]'>Reference: {requestId}</p> : null}
+        </Notice>
       ) : null}
-      <div className='grid min-w-0 items-stretch gap-4 lg:grid-cols-3'>
-        <OperationsGroup
-          unavailable={error && !snapshot}
-          title='Apps needing attention'
-          total={snapshot?.failedCount}
-          shown={failed.length}
-          empty='No app failures.'
-          attention
-        >
-          {failed.map(app => (
-            <AppOperationRow
-              key={app.id}
-              id={app.id}
-              name={app.name}
-              detail={app.description ?? 'Open the app to inspect failure details.'}
-            />
-          ))}
-        </OperationsGroup>
-        <OperationsGroup
-          unavailable={error && !snapshot}
-          title='App operations'
-          total={snapshot?.pendingCount}
-          shown={pending.length}
-          empty='No app operations in progress.'
-        >
-          {pending.map(app => (
-            <AppOperationRow
-              key={app.id}
-              id={app.id}
-              name={app.name}
-              detail={app.title}
-            />
-          ))}
-        </OperationsGroup>
-        <OperationsGroup
-          unavailable={error && !snapshot}
-          title='Active workflow runs'
-          total={snapshot?.activeRunCount}
-          shown={runs.length}
-          empty='No active workflow runs.'
-        >
-          {runs.map(run => (
-            <li
-              key={run.id}
-              className='flex min-w-0 flex-wrap items-center justify-between gap-2'
+      {snapshot || !error ? (
+        <>
+          <div className='grid min-w-0 items-stretch gap-4 lg:grid-cols-3'>
+            <OperationsGroup
+              title='Apps needing attention'
+              total={snapshot?.failedCount}
+              shown={failed.length}
+              empty='No app failures.'
+              attention
             >
-              <ResourceLink
-                href={`/automations/${encodeURIComponent(run.automationId)}/traces?run=${encodeURIComponent(run.id)}`}
-                className='text-sm font-medium'
-              >
-                Run {run.id.slice(0, 8)}
-              </ResourceLink>
-              <AutomationRunStatusBadge status={run.status} />
-            </li>
-          ))}
-        </OperationsGroup>
-      </div>
-      <p className='text-xs text-foreground-muted'>Snapshot updates when you refresh. Open a resource for details.</p>
+              {failed.map(app => (
+                <AppOperationRow
+                  key={app.id}
+                  id={app.id}
+                  name={app.name}
+                  detail={app.description ?? 'Open the app to inspect failure details.'}
+                />
+              ))}
+            </OperationsGroup>
+            <OperationsGroup
+              title='App operations'
+              total={snapshot?.pendingCount}
+              shown={pending.length}
+              empty='No app operations in progress.'
+            >
+              {pending.map(app => (
+                <AppOperationRow
+                  key={app.id}
+                  id={app.id}
+                  name={app.name}
+                  detail={app.title}
+                />
+              ))}
+            </OperationsGroup>
+            <OperationsGroup
+              title='Active workflow runs'
+              total={snapshot?.activeRunCount}
+              shown={runs.length}
+              empty='No active workflow runs.'
+            >
+              {runs.map(run => (
+                <li
+                  key={run.id}
+                  className='flex min-w-0 flex-wrap items-center justify-between gap-2'
+                >
+                  <ResourceLink
+                    href={runTraceHref(run.automationId, run.id)}
+                    className='text-sm font-medium'
+                  >
+                    Run {run.id.slice(0, 8)}
+                  </ResourceLink>
+                  <AutomationRunStatusBadge status={run.status} />
+                </li>
+              ))}
+            </OperationsGroup>
+          </div>
+          <p className='text-xs text-foreground-muted'>
+            Snapshot updates when you refresh. Open a resource for details.
+          </p>
+        </>
+      ) : null}
     </Section>
   )
 }

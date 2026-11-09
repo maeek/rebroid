@@ -14,7 +14,7 @@ export const PageLoadFailure = ({
   title: string
   description: string
   requestId?: string
-  backAction: StateViewAction
+  backAction?: StateViewAction
   retry?: boolean
 }) => {
   const router = useRouter()
@@ -22,6 +22,7 @@ export const PageLoadFailure = ({
   return (
     <StateView
       scope='page'
+      headingLevel={2}
       kind={retry ? 'unavailable' : 'not-found'}
       title={title}
       description={description}
@@ -31,13 +32,14 @@ export const PageLoadFailure = ({
           ? [
               {
                 label: 'Try again',
+                variant: 'primary' as const,
                 pending,
                 pendingLabel: 'Retrying…',
                 onClick: () => startTransition(() => router.refresh())
               }
             ]
           : []),
-        backAction
+        ...(backAction ? [backAction] : [])
       ]}
     />
   )

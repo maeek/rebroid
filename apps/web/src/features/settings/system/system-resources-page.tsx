@@ -19,11 +19,13 @@ export function SystemResourcesPage() {
     return (await response.json()) as SystemStats
   }
 
-  const { data: systemUtilization, isLoading } = usePollingQuery<SystemStats>(
-    'system:host-stats',
-    fetchSystemUtilization,
-    { intervalMs: 5000 }
-  )
+  const {
+    data: systemUtilization,
+    isLoading,
+    error: systemError,
+    isValidating: isRefreshingSystem,
+    mutate
+  } = usePollingQuery<SystemStats>('system:host-stats', fetchSystemUtilization, { intervalMs: 5000 })
   const {
     data: resources,
     error: caughtResourcesError,
@@ -40,6 +42,11 @@ export function SystemResourcesPage() {
       <Visible when={!isLoading}>
         <SystemResourcesContent
           systemUtilization={systemUtilization}
+          systemError={Boolean(systemError)}
+          isRefreshingSystem={isRefreshingSystem}
+          refreshSystem={async () => {
+            await mutate()
+          }}
           resources={resources}
           resourcesError={resourcesError}
           isRefreshingResources={isRefreshingResources}

@@ -23,11 +23,21 @@ export class OrchestratorRequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly requestId = 'unknown'
+    readonly requestId = 'unknown',
+    readonly details?: { code?: string; fields?: string[] }
   ) {
     super(message)
     this.name = 'OrchestratorRequestError'
   }
+}
+
+const parseResponseError = async (response: Response, requestId: string) => {
+  const body: unknown = await response.json().catch(() => null)
+  const details = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
+  return new OrchestratorRequestError(getErrorMessage(body, response.statusText), response.status, requestId, {
+    code: typeof details.code === 'string' ? details.code : undefined,
+    fields: Array.isArray(details.fields) ? details.fields.filter(field => typeof field === 'string') : undefined
+  })
 }
 
 interface OrchestratorRequestInit extends RequestInit {
@@ -99,8 +109,7 @@ export async function request<T>(path: string, init?: OrchestratorRequestInit, p
   }
 
   if (!response.ok) {
-    const error: unknown = await response.json().catch(() => ({ message: response.statusText }))
-    throw new OrchestratorRequestError(getErrorMessage(error, response.statusText), response.status, requestId)
+    throw await parseResponseError(response, requestId)
   }
 
   if (response.status === 204) return undefined as T
@@ -141,8 +150,7 @@ export async function responseRequest(path: string, init?: OrchestratorRequestIn
   }
 
   if (!response.ok) {
-    const error: unknown = await response.json().catch(() => ({ message: response.statusText }))
-    throw new OrchestratorRequestError(getErrorMessage(error, response.statusText), response.status, requestId)
+    throw await parseResponseError(response, requestId)
   }
 
   return response

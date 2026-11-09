@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconArrowUpRight } from '@tabler/icons-react'
 import { Section } from '@/components/ui/section'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
@@ -29,7 +30,19 @@ export const PlatformOverviewLayout = ({
         title='Capacity'
         headingSpacing='compact'
         contentClassName='gap-4'
-        actions={<ResourceLink href='/platform/services?service=docker'>Infrastructure diagnostics</ResourceLink>}
+        actions={
+          <ResourceLink
+            href='/platform/services?service=docker'
+            className='inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium'
+          >
+            Infrastructure diagnostics
+            <IconArrowUpRight
+              className='size-4'
+              aria-hidden='true'
+            />
+          </ResourceLink>
+        }
+        titleClassName='flex-wrap'
       >
         {capacity}
       </Section>

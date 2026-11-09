@@ -5,16 +5,14 @@ import {
   getOrchestratorHealthAction,
   listDisplaySidecarSessionsAction
 } from '@/server/orchestrator/diagnostics/actions'
+import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 
-export const loadPlatformDisplaySessionsPageData = async () => {
+export const loadPlatformDisplaySessionsPageData = async (initialHealth?: OrchestratorHealth) => {
   await requireAdmin()
 
-  const [health, applications, users] = await Promise.all([
-    getOrchestratorHealthAction(),
-    listApplicationsAction(),
-    userService.listUsers()
-  ])
-  const sessions = health.services.display.ok ? await listDisplaySidecarSessionsAction().catch(() => []) : []
+  const health = initialHealth ?? (await getOrchestratorHealthAction())
+  const [applications, users] = await Promise.all([listApplicationsAction(), userService.listUsers()])
+  const sessions = health.services.display.ok ? await listDisplaySidecarSessionsAction() : []
 
   return {
     applications,

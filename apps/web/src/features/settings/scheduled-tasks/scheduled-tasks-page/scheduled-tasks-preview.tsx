@@ -15,24 +15,22 @@ const previewNames = new Map([
 const previewSchedules = ['0 2 * * *', '0 4 * * 0', '0 3 * * *', '0 5 1 * *']
 
 export const schedulerPreviewTasks: ScheduledTask[] = [
-  ...schedulerPreviewActions.map(
-    (action, index): ScheduledTask => ({
-      id: `task-${index}`,
-      name: previewNames.get(action.type) ?? action.label,
-      actionType: action.type,
-      enabled: index < 3,
-      kind: 'predefined',
-      predefinedKey: action.type,
-      cronExpression: previewSchedules[index],
-      payload: null,
-      lastRunAt: index === 0 ? '2026-11-07T02:00:00.000Z' : null,
-      nextRunAt: index < 3 ? '2026-11-08T02:00:00.000Z' : null,
-      lastStatus: index === 0 ? 'success' : 'never_run',
-      lastError: null,
-      createdAt: '2026-11-01T12:00:00.000Z',
-      updatedAt: '2026-11-07T12:00:00.000Z'
-    })
-  ),
+  ...schedulerPreviewActions.map((action, index): ScheduledTask => ({
+    id: `task-${index}`,
+    name: previewNames.get(action.type) ?? action.label,
+    actionType: action.type,
+    enabled: index < 3,
+    kind: 'predefined',
+    predefinedKey: action.type,
+    cronExpression: previewSchedules[index],
+    payload: null,
+    lastRunAt: index === 0 ? '2026-11-07T02:00:00.000Z' : null,
+    nextRunAt: index < 3 ? '2026-11-08T02:00:00.000Z' : null,
+    lastStatus: index === 0 ? 'success' : 'never_run',
+    lastError: null,
+    createdAt: '2026-11-01T12:00:00.000Z',
+    updatedAt: '2026-11-07T12:00:00.000Z'
+  })),
   {
     id: 'custom-cleanup',
     name: 'Weekend image cleanup',

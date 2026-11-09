@@ -1,20 +1,17 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from '@/hooks/use-toast'
-import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { PlatformRuntimePageClient } from './pages/platform-runtime/page-client'
 import { PlatformRuntimeForm } from './platform-runtime-form'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
-vi.mock('@/server/orchestrator/diagnostics/actions', () => ({
-  getOrchestratorHealthAction: vi.fn(() =>
-    Promise.resolve({ services: { orchestrator: { ok: true }, docker: { ok: true } } })
-  )
-}))
 vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
   saveOrchestratorUiSettings: vi.fn(),
   resetOrchestratorUiSettings: vi.fn()
@@ -41,6 +38,24 @@ beforeEach(() => {
 })
 
 describe('Runtime defaults workflow', () => {
+  it('retains an existing draft through an outage and resumes editing after recovery', () => {
+    const data = { images: [], initialSettings }
+    const { rerender } = render(<PlatformRuntimePageClient data={data} />)
+    const registry = screen.getByLabelText('Image registry')
+    fireEvent.change(registry, { target: { value: 'registry.example' } })
+    rerender(<PlatformRuntimePageClient data={null} />)
+    expect(registry).toHaveValue('registry.example')
+    expect(registry).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.getByText('Runtime defaults could not be refreshed')).toBeVisible()
+    rerender(
+      <PlatformRuntimePageClient data={{ ...data, initialSettings: { ...initialSettings, maxApkUploadSizeMb: 128 } }} />
+    )
+    expect(registry).toHaveValue('registry.example')
+    expect(registry).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
   it('separates the read-only connection and lets users discard local changes', async () => {
     renderForm()
     const registry = await screen.findByLabelText('Image registry')
@@ -108,13 +123,5 @@ describe('Runtime defaults workflow', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(screen.getByRole('switch', { name: 'Remove app data on delete' })).not.toBeChecked()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
-  })
-
-  it('keeps settings and maintenance unavailable when the health check fails', async () => {
-    vi.mocked(getOrchestratorHealthAction).mockRejectedValueOnce(new Error('offline'))
-    renderForm()
-    expect(await screen.findByText('Orchestrator unavailable')).toBeVisible()
-    expect(screen.queryByRole('textbox')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Restore defaults…' })).toBeNull()
   })
 })

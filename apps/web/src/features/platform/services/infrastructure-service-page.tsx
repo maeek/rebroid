@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Notice } from '@/components/ui/notice'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
@@ -22,14 +22,15 @@ export const InfrastructureServicePage = ({
 }) => {
   const router = useRouter()
   const [refreshKey, setRefreshKey] = useState(0)
-  const [refreshing, setRefreshing] = useState(false)
+  const [refreshing, startRefresh] = useTransition()
   const isDocker = serviceId === 'docker'
-  const health = isDocker && initialHealth ? dockerRuntimeHealth(initialHealth) : initialHealth?.services.orchestrator
+  const canReadDiagnostics = initialHealth?.services.orchestrator.ok === true
+  const dockerHealth = initialHealth && canReadDiagnostics ? dockerRuntimeHealth(initialHealth) : undefined
+  const health = isDocker ? dockerHealth : initialHealth?.services.orchestrator
   const state = serviceHealthState(health)
   const refresh = () => {
-    router.refresh()
-    setRefreshKey(value => value + 1)
-    setRefreshing(isDocker)
+    startRefresh(() => router.refresh())
+    if (canReadDiagnostics) setRefreshKey(value => value + 1)
   }
   return (
     <InfrastructureServiceLayout
@@ -45,18 +46,15 @@ export const InfrastructureServicePage = ({
         <Notice
           tone={state.tone === 'neutral' ? 'info' : state.tone}
           title={state.label}
-          description={state.description}
+          description={
+            isDocker && !canReadDiagnostics
+              ? 'The orchestrator could not be reached, so Docker health, operation limits, and diagnostics are unavailable. Refresh to check again.'
+              : state.description
+          }
         />
       }
-      limits={isDocker ? <DockerOperationLimitsSection onSaved={refresh} /> : undefined}
-      diagnostics={
-        isDocker ? (
-          <DockerMetricsDashboard
-            refreshKey={refreshKey}
-            onRefreshComplete={() => setRefreshing(false)}
-          />
-        ) : undefined
-      }
+      limits={isDocker && canReadDiagnostics ? <DockerOperationLimitsSection onSaved={refresh} /> : undefined}
+      diagnostics={isDocker && canReadDiagnostics ? <DockerMetricsDashboard refreshKey={refreshKey} /> : undefined}
     />
   )
 }

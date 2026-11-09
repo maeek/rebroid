@@ -37,6 +37,18 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 describe('Runtime maintenance', () => {
+  it('blocks an already open confirmation when the runtime becomes unavailable', async () => {
+    const { rerender } = render(<PlatformRuntimeMaintenanceSection />)
+    fireEvent.click(screen.getByRole('button', { name: 'Clean up stopped containers' }))
+    const dialog = await screen.findByRole('dialog')
+    rerender(<PlatformRuntimeMaintenanceSection disabled />)
+    const confirm = within(dialog).getByRole('button', { name: 'Clean up' })
+    expect(confirm).toBeDisabled()
+    fireEvent.click(confirm)
+    expect(pruneContainersAction).not.toHaveBeenCalled()
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeEnabled()
+  })
+
   it.each([
     ['unused apk uploads', cleanupUploadedApksAction],
     ['dangling images', pruneImagesAction],

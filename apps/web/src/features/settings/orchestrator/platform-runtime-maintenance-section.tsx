@@ -24,7 +24,7 @@ export const PlatformRuntimeMaintenanceSection = ({
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState<{ title: string; description: string; tone: NoticeTone } | null>(null)
   const runSelected = async () => {
-    if (!selected || pending) return
+    if (!selected || pending || disabled || loading) return
     setPending(true)
     setFeedback(null)
     try {
@@ -112,6 +112,7 @@ export const PlatformRuntimeMaintenanceSection = ({
         description={selected?.description}
         consequence={selected?.consequence}
         confirmLabel='Clean up'
+        confirmDisabled={disabled || loading}
         pending={pending}
         pendingLabel='Cleaning up…'
         onConfirm={() => void runSelected()}

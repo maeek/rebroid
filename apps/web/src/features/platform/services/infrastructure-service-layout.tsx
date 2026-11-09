@@ -34,13 +34,15 @@ export const InfrastructureServiceLayout = ({
       {serviceId === 'docker' ? (
         <>
           {limits}
-          <Section
-            surface='plain'
-            title='Infrastructure diagnostics'
-            description='Live Docker transport metrics, queues, retries, and recent failures.'
-          >
-            {diagnostics}
-          </Section>
+          {diagnostics ? (
+            <Section
+              surface='plain'
+              title='Infrastructure diagnostics'
+              description='Live Docker transport metrics, queues, retries, and recent failures.'
+            >
+              {diagnostics}
+            </Section>
+          ) : null}
         </>
       ) : (
         <Section

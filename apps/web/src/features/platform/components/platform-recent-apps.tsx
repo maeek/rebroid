@@ -79,7 +79,7 @@ export const PlatformRecentAppsContent = ({
         ) : (
           <p className={`${panelSurfaceClassName} col-span-full p-4 text-sm text-foreground-muted`}>
             {error
-              ? 'Recently opened apps are unavailable. Open All apps to continue.'
+              ? 'Recently opened apps could not be loaded. Refresh Overview to try again.'
               : 'Apps you open will appear here for quick access.'}
           </p>
         )}

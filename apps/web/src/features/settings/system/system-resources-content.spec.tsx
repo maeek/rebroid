@@ -1,48 +1,36 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SystemResourcesContent } from './system-resources-content'
-import type { SystemResources } from '@/shared/contracts/system-resources'
+import type { SystemStats } from '@/shared/contracts/system-stats'
 
-vi.mock('./system-resource-charts', () => ({ SystemResourceCharts: () => null }))
-const resources: SystemResources = {
-  hostMemoryBytes: null,
-  hostCpuCores: null,
-  dockerRootAvailableBytes: null,
-  containersTotal: 3,
-  containersRunning: 1,
-  containersStopped: 2,
-  managedContainersCpuUsagePercent: 12.3,
-  managedContainersMemoryUsageBytes: 1024,
-  containerStatsCollectedAt: '2026-11-08T10:00:00Z',
-  containers: []
-}
+vi.mock('./system-resource-charts', () => ({ SystemResourceCharts: () => <div>Host charts</div> }))
+vi.mock('./details-table', () => ({ DetailsTable: () => <div>Host data</div> }))
 
-describe('resource feedback', () => {
-  it('keeps the last sample readable when a refresh fails', () => {
-    const refresh = vi.fn()
+describe('resource outage scope', () => {
+  it('replaces all dependent sections with one page failure when nothing loaded', () => {
     render(
       <SystemResourcesContent
-        resources={resources}
+        systemError
         resourcesError
-        refreshResources={refresh}
       />
     )
-    expect(screen.getByText('12.3%')).toBeVisible()
-    expect(screen.getByText('Showing the last available sample. Try again to update it.')).toBeVisible()
-    expect(screen.queryByRole('heading', { name: 'Orchestrator resources unavailable' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(refresh).toHaveBeenCalledOnce()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 2, name: 'Resources unavailable' })).toBeVisible()
+    expect(screen.queryByText('Host data')).toBeNull()
+    expect(screen.queryByText('Host charts')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Managed containers' })).toBeNull()
   })
 
-  it('shows a bounded retry state when no sample has loaded', () => {
+  it('keeps independent host data available during an orchestrator outage', () => {
     render(
       <SystemResourcesContent
+        systemUtilization={{} as SystemStats}
         resourcesError
-        isRefreshingResources
       />
     )
-    expect(screen.getByRole('alert')).toHaveTextContent('Orchestrator resources unavailable')
-    expect(screen.getByRole('button', { name: 'Retrying…' })).toBeDisabled()
-    expect(screen.queryByText('Showing the last available sample. Try again to update it.')).toBeNull()
+    expect(screen.getByText('Host data')).toBeVisible()
+    expect(screen.getByText('Host charts')).toBeVisible()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByText('Orchestrator resources unavailable')).toBeVisible()
   })
 })

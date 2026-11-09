@@ -1,18 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { toast } from '@/hooks/use-toast'
-import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { StateView } from '@/shared/ui/state-view'
 import { PlatformRuntimePageLayout } from './platform-runtime-page-layout'
-import { PlatformRuntimePageSkeleton } from './platform-runtime-page-skeleton'
 import type { PlatformImage } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings, RuntimeAdminUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -26,20 +26,23 @@ const runtimeSettingsInput = (settings: OrchestratorUiSettings): Omit<RuntimeAdm
 
 export const PlatformRuntimeForm = ({
   images,
-  initialSettings
+  initialSettings,
+  unavailable = false
 }: {
   images: PlatformImage[]
   initialSettings: OrchestratorUiSettings
+  unavailable?: boolean
 }) => {
+  const router = useRouter()
+  const [refreshing, startRefresh] = useTransition()
   const [form, setForm] = useState({ settings: initialSettings, savedSettings: initialSettings })
   const { settings, savedSettings } = form
   const [operation, setOperation] = useState<'save' | 'restore' | null>(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
-  const [healthState, setHealthState] = useState<'checking' | 'online' | 'offline'>('checking')
   const initialSnapshot = useRef(JSON.stringify(initialSettings))
   const hasChanges =
     JSON.stringify(runtimeSettingsInput(settings)) !== JSON.stringify(runtimeSettingsInput(savedSettings))
-  const isBusy = operation !== null
+  const isBusy = operation !== null || unavailable
 
   useEffect(() => {
     const snapshot = JSON.stringify(initialSettings)
@@ -52,19 +55,6 @@ export const PlatformRuntimeForm = ({
       return { settings: dirty ? current.settings : initialSettings, savedSettings: initialSettings }
     })
   }, [initialSettings])
-
-  const checkHealth = async () => {
-    setHealthState('checking')
-    try {
-      const health = await getOrchestratorHealthAction()
-      setHealthState(health.services.orchestrator.ok && health.services.docker.ok ? 'online' : 'offline')
-    } catch {
-      setHealthState('offline')
-    }
-  }
-  useEffect(() => {
-    void checkHealth()
-  }, [])
 
   const saveSettings = async () => {
     if (isBusy || !hasChanges) return
@@ -105,20 +95,6 @@ export const PlatformRuntimeForm = ({
     }
   }
 
-  if (healthState === 'checking') return <PlatformRuntimePageSkeleton />
-  if (healthState === 'offline')
-    return (
-      <PlatformRuntimePageLayout showActions={false}>
-        <StateView
-          kind='unavailable'
-          title='Orchestrator unavailable'
-          description='Docker settings and platform management are offline until the orchestrator responds.'
-          detail='Check the orchestrator service and Docker, then try again.'
-          actions={[{ label: 'Try again', onClick: () => void checkHealth() }]}
-        />
-      </PlatformRuntimePageLayout>
-    )
-
   return (
     <PlatformRuntimePageLayout
       isSaving={operation === 'save'}
@@ -126,6 +102,22 @@ export const PlatformRuntimeForm = ({
       hasChanges={hasChanges}
       onDiscard={() => setForm(current => ({ ...current, settings: current.savedSettings }))}
     >
+      {unavailable ? (
+        <Notice
+          tone='warning'
+          title='Runtime defaults could not be refreshed'
+          description='Your draft is kept. Settings and maintenance will be available when the runtime service responds.'
+          actions={
+            <MutationButton
+              pending={refreshing}
+              pendingLabel='Retrying…'
+              onClick={() => startRefresh(() => router.refresh())}
+            >
+              Try again
+            </MutationButton>
+          }
+        />
+      ) : null}
       <form
         id='runtime-defaults-form'
         aria-label='Runtime defaults'
@@ -152,6 +144,7 @@ export const PlatformRuntimeForm = ({
         description='Reset the default image, registry, inactivity timeout, APK upload limit, and optional service connection settings.'
         consequence='This replaces unsaved edits and saves immediately. The app data deletion policy and existing app definitions are unchanged.'
         confirmLabel='Restore defaults'
+        confirmDisabled={unavailable}
         tone='warning'
         pending={operation === 'restore'}
         pendingLabel='Restoring…'

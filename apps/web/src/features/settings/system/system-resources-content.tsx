@@ -18,6 +18,9 @@ export const SystemResourcesContent = ({
   systemUtilization,
   resources,
   resourcesError = false,
+  systemError = false,
+  isRefreshingSystem = false,
+  refreshSystem = () => Promise.resolve(),
   isRefreshingResources = false,
   refreshResources = () => Promise.resolve(),
   loading = false
@@ -25,6 +28,9 @@ export const SystemResourcesContent = ({
   systemUtilization?: SystemStats
   resources?: SystemResources
   resourcesError?: boolean
+  systemError?: boolean
+  isRefreshingSystem?: boolean
+  refreshSystem?: () => Promise<void>
   isRefreshingResources?: boolean
   refreshResources?: () => Promise<void>
   loading?: boolean
@@ -35,84 +41,130 @@ export const SystemResourcesContent = ({
       title='Resources'
     />
     <PageContent>
-      <div className='grid gap-6 xl:grid-cols-2'>
-        <Section
-          title='Host system'
-          surface='panel'
-          headingSpacing='default'
-          contentClassName='gap-3'
-          className='h-full'
-        >
-          <p className='text-sm text-foreground-muted'>
-            Operating-system level CPU and memory stats for the machine running the orchestrator.
-          </p>
-          <DetailsTable
-            systemUtilization={systemUtilization}
-            loading={loading}
-          />
-        </Section>
-        <Section
-          title='Managed containers'
-          surface='panel'
-          headingSpacing='default'
-          contentClassName='gap-3'
-          className='h-full'
-        >
-          <p className='text-sm text-foreground-muted'>
-            Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
-          </p>
-          <Visible when={resourcesError && Boolean(resources)}>
-            <Notice
-              tone='warning'
-              title='Could not refresh container resources'
-              description='Showing the last available sample. Try again to update it.'
-              actions={
-                <MutationButton
-                  variant='ghost'
-                  pending={isRefreshingResources}
-                  pendingLabel='Retrying…'
-                  onClick={() => void refreshResources()}
-                >
-                  Try again
-                </MutationButton>
+      {!loading && systemError && resourcesError && !systemUtilization && !resources ? (
+        <StateView
+          scope='page'
+          headingLevel={2}
+          kind='unavailable'
+          title='Resources unavailable'
+          description='Host and container resources could not be loaded. Try again in a moment.'
+          actions={[
+            {
+              label: 'Try again',
+              variant: 'primary',
+              pending: isRefreshingSystem || isRefreshingResources,
+              pendingLabel: 'Retrying…',
+              onClick: () => {
+                void Promise.all([refreshSystem(), refreshResources()])
               }
-            />
-          </Visible>
-          <Visible when={resourcesError && !resources}>
-            <StateView
-              kind='unavailable'
-              title='Orchestrator resources unavailable'
-              description='Docker inventory could not be loaded from the orchestrator.'
-              actions={[
-                {
-                  label: 'Try again',
-                  onClick: () => void refreshResources(),
-                  pending: isRefreshingResources,
-                  pendingLabel: 'Retrying…'
-                }
-              ]}
-            />
-          </Visible>
-          <Visible when={!resourcesError || Boolean(resources)}>
-            <ManagedContainerDetailsTable
-              resources={resources}
-              loading={loading || !resources}
-            />
-          </Visible>
-        </Section>
-      </div>
-      <Visible when={!resourcesError || Boolean(resources)}>
-        <PlatformResources
-          loading={loading || !resources}
-          resources={resources}
-          isRefreshing={isRefreshingResources}
-          onRefresh={refreshResources}
+            },
+            { label: 'Go to overview', href: '/platform' }
+          ]}
         />
-      </Visible>
-      <SystemResourceCharts
-        stats={systemUtilization}
-        loading={loading}
-      />
+      ) : (
+        <>
+          <div className='grid gap-6 xl:grid-cols-2'>
+            <Section
+              title='Host system'
+              surface='panel'
+              headingSpacing='default'
+              contentClassName='gap-3'
+              className='h-full'
+            >
+              <p className='text-sm text-foreground-muted'>
+                Operating-system level CPU and memory stats for the machine running the web service.
+              </p>
+              {systemError ? (
+                <Notice
+                  tone='warning'
+                  title='Host resources unavailable'
+                  description={
+                    systemUtilization ? 'Showing the last available sample.' : 'Host statistics could not be loaded.'
+                  }
+                  actions={
+                    <MutationButton
+                      pending={isRefreshingSystem}
+                      pendingLabel='Retrying…'
+                      onClick={() => void refreshSystem()}
+                    >
+                      Try again
+                    </MutationButton>
+                  }
+                />
+              ) : null}
+              {loading || systemUtilization ? (
+                <DetailsTable
+                  systemUtilization={systemUtilization}
+                  loading={loading}
+                />
+              ) : null}
+            </Section>
+            <Section
+              title='Managed containers'
+              surface='panel'
+              headingSpacing='default'
+              contentClassName='gap-3'
+              className='h-full'
+            >
+              <p className='text-sm text-foreground-muted'>
+                Live aggregated Docker stats across managed app containers, shown separately from host-level usage.
+              </p>
+              <Visible when={resourcesError && Boolean(resources)}>
+                <Notice
+                  tone='warning'
+                  title='Could not refresh container resources'
+                  description='Showing the last available sample. Try again to update it.'
+                  actions={
+                    <MutationButton
+                      variant='ghost'
+                      pending={isRefreshingResources}
+                      pendingLabel='Retrying…'
+                      onClick={() => void refreshResources()}
+                    >
+                      Try again
+                    </MutationButton>
+                  }
+                />
+              </Visible>
+              <Visible when={resourcesError && !resources}>
+                <StateView
+                  kind='unavailable'
+                  title='Orchestrator resources unavailable'
+                  description='Docker inventory could not be loaded from the orchestrator.'
+                  actions={[
+                    {
+                      label: 'Try again',
+                      onClick: () => void refreshResources(),
+                      pending: isRefreshingResources,
+                      pendingLabel: 'Retrying…'
+                    }
+                  ]}
+                />
+              </Visible>
+              <Visible when={!resourcesError || Boolean(resources)}>
+                <ManagedContainerDetailsTable
+                  resources={resources}
+                  loading={loading || !resources}
+                />
+              </Visible>
+            </Section>
+          </div>
+          <Visible when={!resourcesError || Boolean(resources)}>
+            <PlatformResources
+              loading={loading || !resources}
+              resources={resources}
+              isRefreshing={isRefreshingResources}
+              onRefresh={refreshResources}
+            />
+          </Visible>
+          {loading || systemUtilization ? (
+            <SystemResourceCharts
+              stats={systemUtilization}
+              loading={loading}
+            />
+          ) : null}
+        </>
+      )}
     </PageContent>
   </StandardPage>
 )

@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { IconCast, IconServer, IconBrandDocker } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { Notice } from '@/components/ui/notice'
 import { toast } from '@/hooks/use-toast'
 import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
 import { serviceDetails, serviceIds, serviceMeta, isServiceId, type ServiceId } from './service-definitions'
 import { serviceHealthState } from './service-health-state'
 import { ServiceSettingsDialog } from './service-settings-dialog'
@@ -32,6 +34,9 @@ export const PlatformServicesPage = ({
 }) => {
   const router = useRouter()
   const [refreshing, startRefresh] = useTransition()
+  const unavailable = initialHealth?.services.orchestrator.ok !== true
+  const [hasLoaded, setHasLoaded] = useState(!unavailable)
+  if (!unavailable && !hasLoaded) setHasLoaded(true)
   const [form, setForm] = useState({ services: initialSettings.services, savedServices: initialSettings.services })
   const { services, savedServices } = form
   const initialSettingsSnapshot = useRef(JSON.stringify(initialSettings.services))
@@ -142,6 +147,7 @@ export const PlatformServicesPage = ({
   const hasChanges = JSON.stringify(services) !== JSON.stringify(savedServices)
 
   useEffect(() => {
+    if (unavailable) return
     const snapshot = JSON.stringify(initialSettings.services)
     // Identical settings from a refresh must not overwrite the current draft.
     if (initialSettingsSnapshot.current === snapshot) return
@@ -153,7 +159,7 @@ export const PlatformServicesPage = ({
           : current.services,
       savedServices: initialSettings.services
     }))
-  }, [initialSettings])
+  }, [initialSettings, unavailable])
 
   useEffect(() => {
     setEditingService(isServiceId(requestedServiceId) ? requestedServiceId : null)
@@ -167,7 +173,7 @@ export const PlatformServicesPage = ({
   }
 
   const saveSettings = async () => {
-    if (pendingAction || !hasChanges) return
+    if (pendingAction || !hasChanges || unavailable) return
     setPendingAction('save')
     try {
       const saved = await saveOrchestratorUiSettings({ services })
@@ -185,6 +191,17 @@ export const PlatformServicesPage = ({
     }
   }
 
+  if (unavailable && !hasLoaded)
+    return (
+      <ServicesPageLayout>
+        <PageLoadFailure
+          title='Services unavailable'
+          description='Service connections and health could not be loaded from the orchestrator.'
+          backAction={{ label: 'Go to overview', href: '/platform' }}
+        />
+      </ServicesPageLayout>
+    )
+
   return (
     <ServicesPageLayout
       actions={
@@ -193,7 +210,7 @@ export const PlatformServicesPage = ({
             isRefreshing={refreshing}
             onRefresh={() => startRefresh(() => router.refresh())}
           />
-          {hasConfiguration || hasChanges ? (
+          {!unavailable && (hasConfiguration || hasChanges) ? (
             <ServicesPageActions
               hasChanges={hasChanges}
               saving={pendingAction === 'save'}
@@ -205,14 +222,21 @@ export const PlatformServicesPage = ({
       }
       meta={hasConfiguration || hasChanges ? <ServicesSaveStatus hasChanges={hasChanges} /> : undefined}
     >
+      {unavailable ? (
+        <Notice
+          tone='warning'
+          title='Services could not be refreshed'
+          description='Your connection draft is kept. Refresh to reconnect before making changes.'
+        />
+      ) : null}
       <ServicesGrid
-        disabled={pendingAction !== null}
+        disabled={pendingAction !== null || unavailable}
         rows={serviceRows}
         onEdit={openServiceEditor}
         onActivate={activateService}
       />
       <ServiceSettingsDialog
-        serviceId={allowedEditingService}
+        serviceId={unavailable ? null : allowedEditingService}
         services={services}
         onChange={updateServices}
         onClose={closeServiceEditor}

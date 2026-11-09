@@ -13,7 +13,7 @@ export const AutomationPageUnavailable = ({ title }: { title: string }) => (
       <PageLoadFailure
         title='Automation service unavailable'
         description='The page could not load automation data from the orchestrator.'
-        backAction={{ label: 'Back to workflows', href: '/automations' }}
+        backAction={{ label: 'Go to overview', href: '/platform' }}
       />
     </PageContent>
   </StandardPage>

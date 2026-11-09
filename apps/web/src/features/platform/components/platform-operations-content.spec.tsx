@@ -37,8 +37,11 @@ describe('platform operations presentation', () => {
         error
       />
     )
-    expect(screen.getByText('Operations could not be refreshed')).toBeVisible()
-    expect(screen.getAllByText('Unavailable')).toHaveLength(3)
+    expect(screen.getByText('Operations unavailable')).toBeVisible()
+    expect(screen.queryByRole('region', { name: 'Apps needing attention' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'App operations' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Active workflow runs' })).toBeNull()
+    expect(screen.queryByText(/Snapshot updates/)).toBeNull()
     expect(screen.queryByText('No app failures.')).toBeNull()
   })
   it('retains the last snapshot with a refresh warning', () => {
@@ -46,9 +49,12 @@ describe('platform operations presentation', () => {
       <PlatformOperationsContent
         snapshot={snapshot}
         error
+        requestId='operations-request'
       />
     )
     expect(screen.getByText('Operations could not be refreshed')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Worker 0' })).toBeVisible()
+    expect(screen.getByText(/Showing the last loaded snapshot/)).toBeVisible()
+    expect(screen.getByText('Reference: operations-request')).toBeVisible()
   })
 })

@@ -36,6 +36,7 @@ import {
   InfrastructureServicePreview
 } from '@/features/platform/services/services-preview'
 import { AppActivityLoading, ActivityPageSkeleton } from '@/features/settings/activity/activity-page-skeleton'
+import { CastingSettingsPageClient } from '@/features/settings/casting/casting-settings-page-client'
 import { PlatformDisplaySessionsPageSkeleton } from '@/features/settings/casting/pages/platform-display-sessions/page-skeleton'
 import {
   AiProvidersPageSkeleton,
@@ -44,9 +45,11 @@ import {
 import { AiProvidersPreview } from '@/features/settings/orchestrator/ai-providers/ai-providers-preview'
 import { FirewallSettingsPageClient } from '@/features/settings/orchestrator/firewall-settings-page-client'
 import { SecurityNetworkPoliciesPageLoading } from '@/features/settings/orchestrator/firewall-settings-page-loading'
+import { PlatformRuntimeUnavailable } from '@/features/settings/orchestrator/platform-runtime-unavailable'
 import { RuntimeSettingsPreview } from '@/features/settings/orchestrator/runtime-settings-preview'
 import { ScheduledTasksPageSkeleton } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-page-skeleton'
 import { ScheduledTasksPreview } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-preview'
+import { SystemResourcesContent } from '@/features/settings/system/system-resources-content'
 import { SystemResourcesPageSkeleton } from '@/features/settings/system/system-resources-page-skeleton'
 import { UserEditorPreview } from '@/features/settings/users/user-editor-preview'
 import {
@@ -59,6 +62,7 @@ import { ConsoleShellPreview } from '@/features/shell/components/console-shell-p
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
 import { FeedbackPreview } from '@/shared/testing/feedback-preview'
+import { PageFailurePreview } from '@/shared/testing/page-failure-preview'
 import {
   AppActivityPreview,
   AuditLogPreview,
@@ -73,6 +77,34 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
   const editor = (await searchParams).editor
+  if (editor === 'services-unavailable') return <ServicesPreview unavailable />
+  if (editor === 'resources-unavailable')
+    return (
+      <SystemResourcesContent
+        systemError
+        resourcesError
+      />
+    )
+  if (editor === 'display-offline')
+    return (
+      <CastingSettingsPageClient
+        initialHealth={{ ok: false, status: 'offline', message: 'Display service is offline.' }}
+        initialSessions={[]}
+        applications={[]}
+        owners={[]}
+      />
+    )
+  if (editor === 'runtime-unavailable') return <PlatformRuntimeUnavailable />
+  if (editor === 'service-docker-unavailable')
+    return (
+      <InfrastructureServicePreview
+        serviceId='docker'
+        unavailable
+      />
+    )
+  if (editor === 'failure-unavailable') return <PageFailurePreview kind='unavailable' />
+  if (editor === 'failure-not-found') return <PageFailurePreview kind='not-found' />
+  if (editor === 'failure-error') return <PageFailurePreview kind='error' />
   if (editor === 'feedback') return <FeedbackPreview />
   if (editor === 'app-loading')
     return (

@@ -1,16 +1,16 @@
 import { orchestratorApkUploadsClient } from '@/server/orchestrator/applications/apk-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
+import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { listPlatformImagesAction } from '@/server/orchestrator/platform/image-actions'
 
 export const getCreateAppPageData = async (uploadedApkId?: string) => {
   const userPromise = getCurrentUserContext()
   const [initialSettings, user, images, uploadedApks] = await Promise.all([
-    getServerOrchestratorUiSettings(),
+    getRequiredServerOrchestratorUiSettings(),
     userPromise,
-    listPlatformImagesAction().catch(() => []),
+    userPromise.then(currentUser => (currentUser.role === 'admin' ? listPlatformImagesAction() : [])),
     userPromise.then(currentUser =>
-      uploadedApkId ? orchestratorApkUploadsClient.listUploadedApks(currentUser.ownerUserId).catch(() => []) : []
+      uploadedApkId ? orchestratorApkUploadsClient.listUploadedApks(currentUser.ownerUserId) : []
     )
   ])
 
