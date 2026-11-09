@@ -7,7 +7,7 @@ import {
   validatePolicy,
   type FirewallCommandRunner,
 } from "./firewall";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FirewallPolicyStore } from "./policy-store";
@@ -100,12 +100,16 @@ test("policy storage atomically replaces and reloads desired state", () => {
       allowCidrs: ["10.0.0.0/8"],
       generation: 3,
     });
-    store.set(policy);
-    assert.equal(JSON.parse(readFileSync(statePath, "utf8"))[0].generation, 3);
+    writeFileSync(statePath, JSON.stringify([policy]));
+    const state = store.load();
+    assert.equal(state.policies.get("app-1")?.generation, 3);
+    state.removals.set("app-2", 4);
+    store.save(state);
     assert.equal(
-      new FirewallPolicyStore(statePath).load().get("app-1")?.generation,
+      JSON.parse(readFileSync(statePath, "utf8")).policies[0].generation,
       3,
     );
+    assert.deepEqual(new FirewallPolicyStore(statePath).load(), state);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

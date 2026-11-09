@@ -62,11 +62,13 @@ export class AndroidAppsRuntimeNetworkService {
       recordLastStartedAt?: boolean;
       failClosed?: boolean;
       retryAttempts?: number;
+      generation?: number;
     } = {},
   ) {
     const result = await this.applyPolicyWithRetries(
       app,
       options.retryAttempts ?? 1,
+      options.generation ?? Date.now(),
     );
     app.networkPolicyStatus = result.status;
     app.networkPolicyMessage = result.message;
@@ -101,6 +103,15 @@ export class AndroidAppsRuntimeNetworkService {
     return result;
   }
 
+  async reapplyRunningPolicy(app: AndroidApplication, generation: number) {
+    try {
+      return await this.reconcilePolicy(app, { failClosed: true, generation });
+    } catch (error) {
+      await this.stopAfterPolicyFailure(app, error);
+      throw error;
+    }
+  }
+
   /** Block forwarding until the container has an address and its policy is active. */
   async startWithPolicy(
     app: AndroidApplication,
@@ -124,16 +135,7 @@ export class AndroidAppsRuntimeNetworkService {
       if (guard) await this.networkPolicy.releaseStartupGuard(app.id, guard);
       return result;
     } catch (error) {
-      const message = getErrorMessage(error);
-      await this.logs
-        .append(app.id, 'Stopping runtime after network policy failure', {
-          containerId: app.containerId,
-          message,
-        })
-        .catch(() => undefined);
-      if (app.containerId) {
-        await this.containers.stopContainer(app.containerId, 10);
-      }
+      await this.stopAfterPolicyFailure(app, error);
       if (guard) {
         await this.networkPolicy
           .releaseStartupGuard(app.id, guard)
@@ -143,13 +145,29 @@ export class AndroidAppsRuntimeNetworkService {
     }
   }
 
+  private async stopAfterPolicyFailure(
+    app: AndroidApplication,
+    error: unknown,
+  ) {
+    await this.logs
+      .append(app.id, 'Stopping runtime after network policy failure', {
+        containerId: app.containerId,
+        message: getErrorMessage(error),
+      })
+      .catch(() => undefined);
+    if (app.containerId) {
+      await this.containers.stopContainer(app.containerId, 10);
+    }
+  }
+
   private async applyPolicyWithRetries(
     app: AndroidApplication,
     maxAttempts: number,
+    generation: number,
   ): Promise<AppliedNetworkPolicy> {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        const result = await this.networkPolicy.apply(app);
+        const result = await this.networkPolicy.apply(app, generation);
         if (
           !app.networkPolicyEnabled ||
           result.status === 'applied' ||

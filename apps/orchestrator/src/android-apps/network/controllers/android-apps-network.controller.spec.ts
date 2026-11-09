@@ -26,6 +26,7 @@ describe('application network policy with firewall disabled', () => {
   let firewallEnabled: boolean;
   const save = jest.fn();
   const reconcilePolicy = jest.fn();
+  const reapplyRunningPolicy = jest.fn();
 
   beforeEach(async () => {
     firewallEnabled = false;
@@ -41,6 +42,7 @@ describe('application network policy with firewall disabled', () => {
       return Promise.resolve(true);
     });
     reconcilePolicy.mockReset().mockResolvedValue(undefined);
+    reapplyRunningPolicy.mockReset().mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
       controllers: [AndroidAppsNetworkController],
       providers: [
@@ -56,7 +58,7 @@ describe('application network policy with firewall disabled', () => {
         },
         {
           provide: AndroidAppsRuntimeNetworkService,
-          useValue: { reconcilePolicy },
+          useValue: { reconcilePolicy, reapplyRunningPolicy },
         },
         {
           provide: AndroidAppsQueryService,
@@ -106,7 +108,10 @@ describe('application network policy with firewall disabled', () => {
       networkPolicyEnabled: false,
       networkPolicyAllowCidrs: '["10.0.0.0/8"]',
     });
-    expect(reconcilePolicy).toHaveBeenCalledWith(app, { failClosed: false });
+    expect(reconcilePolicy).toHaveBeenCalledWith(app, {
+      generation: expect.any(Number),
+    });
+    expect(reapplyRunningPolicy).not.toHaveBeenCalled();
   });
 
   it.each([true, undefined])(
@@ -166,6 +171,7 @@ describe('application network policy with firewall disabled', () => {
       payload: { networkPolicyEnabled: true },
     });
     expect(response.statusCode).toBe(200);
-    expect(reconcilePolicy).toHaveBeenCalledWith(app, { failClosed: true });
+    expect(reapplyRunningPolicy).toHaveBeenCalledWith(app, expect.any(Number));
+    expect(reconcilePolicy).not.toHaveBeenCalled();
   });
 });

@@ -77,5 +77,11 @@ describe("firewall policy core", () => {
   it("detects broad internet coverage", () => {
     assert.equal(allowsBroadInternetAccess(["0.0.0.0/0"]), true);
     assert.equal(allowsBroadInternetAccess(["10.0.0.0/8"]), false);
+    assert.equal(allowsBroadInternetAccess(["0.0.0.0/1"]), true);
+    assert.equal(allowsBroadInternetAccess(["1.0.0.0/17", "8.0.0.0/17"]), true);
+    assert.equal(
+      allowsBroadInternetAccess(["1.0.0.0/17", "1.0.0.0/18"]),
+      false,
+    );
   });
 });

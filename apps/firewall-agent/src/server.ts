@@ -6,6 +6,7 @@ import {
   validatePolicies,
   validatePolicy,
 } from "./firewall";
+import { FirewallPolicyCommands } from "./policy-commands";
 import { FirewallPolicyStore } from "./policy-store";
 
 const maximumBodyBytes = 128 * 1024;
@@ -77,6 +78,7 @@ export const createFirewallAgentServer = ({
   adapter,
   store,
 }: FirewallAgentServerOptions) => {
+  const commands = adapter && new FirewallPolicyCommands(adapter, store);
   const server = createServer(async (request, response) => {
     if (request.url === "/v1/health" && request.method === "GET") {
       json(response, startupError ? 503 : 200, {
@@ -91,7 +93,7 @@ export const createFirewallAgentServer = ({
       json(response, 401, { message: "Unauthorized." });
       return;
     }
-    if (startupError || !adapter) {
+    if (startupError || !commands) {
       json(response, 503, {
         message: startupError ?? "Firewall adapter is unavailable.",
       });
@@ -111,19 +113,10 @@ export const createFirewallAgentServer = ({
         ) {
           throw new Error("Invalid reconciliation timestamp.");
         }
-        const current = store.snapshot();
-        for (const [id, policy] of current) {
-          if (
-            policy.startup ||
-            current.get(`startup-${id}`)?.startup ||
-            (input.startedAt !== undefined &&
-              policy.generation >= input.startedAt)
-          ) {
-            desired.set(id, policy);
-          }
+        if (commands.reconcile(desired, input.startedAt) === "stale") {
+          json(response, 409, { message: "Stale reconciliation timestamp." });
+          return;
         }
-        const policies = store.replace(desired);
-        adapter.reconcile(policies);
         json(response, 200, {
           status: "applied",
           message: "Firewall policies reconciled.",
@@ -138,23 +131,38 @@ export const createFirewallAgentServer = ({
       }
       const applicationId = decodeURIComponent(match[1]);
       if (request.method === "DELETE") {
+        if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/.test(applicationId)) {
+          json(response, 400, { message: "Invalid application id." });
+          return;
+        }
+        let expectedContainerId: string | undefined;
+        let generation: number | undefined;
         if (query !== undefined) {
-          const params = [...new URLSearchParams(query)];
-          const [[key, containerId] = []] = params;
-          if (params.length !== 1 || key !== "containerId" || !containerId) {
+          const params = new URLSearchParams(query);
+          const containerIds = params.getAll("containerId");
+          const generations = params.getAll("generation");
+          if (
+            containerIds.length !== 1 ||
+            !containerIds[0] ||
+            generations.length > 1 ||
+            params.size !== containerIds.length + generations.length ||
+            (generations.length > 0 &&
+              (!/^\d+$/.test(generations[0]) ||
+                !Number.isSafeInteger(Number(generations[0]))))
+          ) {
             json(response, 400, { message: "Invalid policy removal query." });
             return;
           }
-          // A replacement runtime may already have installed its own policy.
-          if (store.get(applicationId)?.containerId !== containerId) {
-            json(response, 200, { status: "unchanged" });
-            return;
-          }
+          expectedContainerId = containerIds[0];
+          if (generations.length) generation = Number(generations[0]);
         }
-        const policies = store.snapshot();
-        policies.delete(applicationId);
-        adapter.remove(applicationId, policies);
-        store.delete(applicationId);
+        if (
+          commands.remove(applicationId, expectedContainerId, generation) ===
+          "unchanged"
+        ) {
+          json(response, 200, { status: "unchanged" });
+          return;
+        }
         json(response, 200, {
           status: "applied",
           message: "Firewall policy removed.",
@@ -166,14 +174,10 @@ export const createFirewallAgentServer = ({
           applicationId,
           await readJsonBody(request),
         );
-        const existing = store.get(applicationId);
-        if (existing && existing.generation > policy.generation) {
+        if (commands.apply(policy) === "stale") {
           json(response, 409, { message: "Stale policy generation." });
           return;
         }
-        const policies = store.set(policy);
-        if (policy.enabled) adapter.apply(policy, policies);
-        else adapter.remove(applicationId, policies);
         json(response, 200, {
           status: "applied",
           message: "Firewall policy applied.",

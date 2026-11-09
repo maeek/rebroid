@@ -20,6 +20,11 @@ const ipv4Range = (cidr: string) => {
   return { start, end: start + size - 1 };
 };
 
+const privateRanges = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"].map(
+  (cidr) => ipv4Range(cidr)!,
+);
+const broadPublicAddressCount = 2 ** 16;
+
 export const allowsBroadInternetAccess = (cidrs: string[]) => {
   if (cidrs.some(isBroadInternetCidr)) {
     return true;
@@ -30,14 +35,22 @@ export const allowsBroadInternetAccess = (cidrs: string[]) => {
     .filter((range): range is NonNullable<typeof range> => Boolean(range))
     .sort((left, right) => left.start - right.start);
   let coveredThrough = -1;
+  let publicAddresses = 0;
   for (const range of ranges) {
-    if (range.start > coveredThrough + 1) {
-      return false;
+    const start = Math.max(range.start, coveredThrough + 1);
+    if (start > range.end) continue;
+    let addressCount = range.end - start + 1;
+    for (const privateRange of privateRanges) {
+      addressCount -= Math.max(
+        0,
+        Math.min(range.end, privateRange.end) -
+          Math.max(start, privateRange.start) +
+          1,
+      );
     }
-    coveredThrough = Math.max(coveredThrough, range.end);
-    if (coveredThrough >= 2 ** 32 - 1) {
-      return true;
-    }
+    publicAddresses += addressCount;
+    if (publicAddresses >= broadPublicAddressCount) return true;
+    coveredThrough = range.end;
   }
 
   return false;

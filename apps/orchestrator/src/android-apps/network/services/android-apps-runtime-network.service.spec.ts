@@ -37,6 +37,12 @@ const app = {
 } as AndroidApplication;
 
 describe('AndroidAppsRuntimeNetworkService', () => {
+  it('stops an already running restricted app when reapplying its policy fails', async () => {
+    const { service, stopContainer } = createService(jest.fn().mockRejectedValue(new Error('Firewall unavailable')));
+    await expect(service.reapplyRunningPolicy({ ...app }, 100)).rejects.toThrow('Firewall unavailable');
+    expect(stopContainer).toHaveBeenCalledWith('container-1', 10);
+  });
+
   it('does not stop an unrestricted runtime when firewall enforcement is disabled', async () => {
     const { service, stopContainer, start, guardStartup, releaseStartupGuard } = createService(
       jest.fn().mockResolvedValue({

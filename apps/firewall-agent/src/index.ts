@@ -21,7 +21,7 @@ if (!secret) {
 }
 
 try {
-  const policies = store.load();
+  const { policies } = store.load();
   adapter = detectAdapter(firewallAgentConfig.adapter);
   adapter.initialize();
   adapter.reconcile(policies);

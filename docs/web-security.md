@@ -67,6 +67,10 @@ access. Third-party images require custom-image permission, and only administrat
 or clone them when privileged runtime mode is enabled. Uploaded APK assignment requires the
 application's owner to own the upload.
 
+Unrestricted egress and allowlists covering at least 65,536 distinct IPv4 addresses outside
+RFC 1918 private ranges require internet egress permission. If reapplying a restricted policy
+to a running app fails, the orchestrator stops that runtime.
+
 Server Actions default to a 4 MB body limit (`NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT`).
 Streaming upload routes retain their separate 512 MB proxy ceiling
 (`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`) and enforce their own authenticated file limits.

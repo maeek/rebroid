@@ -46,7 +46,10 @@ export class NetworkPolicyService {
     private readonly features: FeatureFlagsService,
   ) {}
 
-  async apply(app: NetworkPolicyTarget): Promise<AppliedNetworkPolicy> {
+  async apply(
+    app: NetworkPolicyTarget,
+    generation = Date.now(),
+  ): Promise<AppliedNetworkPolicy> {
     if (!this.features.isEnabled('feature.firewall')) {
       return app.networkPolicyEnabled
         ? {
@@ -63,14 +66,14 @@ export class NetworkPolicyService {
       };
     }
     if (!app.networkPolicyEnabled) {
-      await this.remove(app);
+      await this.remove(app, app.containerId, generation);
       return {
         status: 'skipped',
         message: 'Network policy is disabled for this application.',
       };
     }
 
-    const policy = await this.resolvePolicy(app);
+    const policy = await this.resolvePolicy(app, generation);
     if (!policy) {
       return {
         status: 'skipped',
@@ -108,7 +111,7 @@ export class NetworkPolicyService {
         apps.filter((app) => app.containerId && app.networkPolicyEnabled),
         4,
         async (app) => {
-          const policy = await this.resolvePolicy(app);
+          const policy = await this.resolvePolicy(app, startedAt);
           return policy
             ? { applicationId: app.id, ...policy.agentPolicy }
             : null;
@@ -160,17 +163,20 @@ export class NetworkPolicyService {
   async remove(
     app: Pick<NetworkPolicyTarget, 'id'>,
     expectedContainerId?: string,
+    generation?: number,
   ) {
     if (!this.features.isEnabled('feature.firewall')) return;
-    await this.agent.remove(app.id, expectedContainerId).catch((error) => {
-      this.logger.warn(
-        `Could not remove firewall policy for ${app.id}: ${
-          error instanceof Error
-            ? error.message
-            : 'unknown firewall agent error'
-        }`,
-      );
-    });
+    await this.agent
+      .remove(app.id, expectedContainerId, generation)
+      .catch((error) => {
+        this.logger.warn(
+          `Could not remove firewall policy for ${app.id}: ${
+            error instanceof Error
+              ? error.message
+              : 'unknown firewall agent error'
+          }`,
+        );
+      });
   }
 
   private async validatedContainerIp(app: NetworkPolicyTarget) {
@@ -191,7 +197,7 @@ export class NetworkPolicyService {
     );
   }
 
-  private async resolvePolicy(app: NetworkPolicyTarget) {
+  private async resolvePolicy(app: NetworkPolicyTarget, generation: number) {
     const containerIp = await this.validatedContainerIp(app);
     if (!containerIp || !app.containerId) {
       return null;
@@ -204,7 +210,7 @@ export class NetworkPolicyService {
         containerIp,
         enabled: true,
         allowCidrs: destinations.cidrs,
-        generation: Date.now(),
+        generation,
       },
     };
   }
