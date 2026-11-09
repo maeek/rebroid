@@ -128,36 +128,7 @@ const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceV
 
 const AppOverviewSkeleton = () => (
   <LoadingAppLayout>
-    <AppResourceOverviewLayout
-      summary={<AppConfigurationSummary loading />}
-      actions={
-        <Section
-          surface='plain'
-          title='Next actions'
-          orientation='horizontal'
-          contentClassName='flex-wrap gap-3'
-        >
-          <Button
-            variant='outline'
-            disabled
-          >
-            Edit configuration
-          </Button>
-          <Button
-            variant='outline'
-            disabled
-          >
-            Inspect diagnostics
-          </Button>
-          <Button
-            variant='outline'
-            disabled
-          >
-            Related workflows
-          </Button>
-        </Section>
-      }
-    />
+    <AppResourceOverviewLayout summary={<AppConfigurationSummary loading />} />
   </LoadingAppLayout>
 )
 

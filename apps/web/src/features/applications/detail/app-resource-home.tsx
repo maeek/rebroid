@@ -74,37 +74,6 @@ export const AppResourceHome = ({
               canViewInfrastructure={canViewInfrastructure}
             />
           }
-          actions={
-            <Section
-              surface='plain'
-              title='Next actions'
-              orientation='horizontal'
-              contentClassName='flex-wrap gap-3'
-            >
-              <Button
-                asChild
-                variant='outline'
-              >
-                <Link href={appResourceHref(app.id, 'configuration')}>Edit configuration</Link>
-              </Button>
-              {canDiagnose ? (
-                <Button
-                  asChild
-                  variant='outline'
-                >
-                  <Link href={`${base}?view=diagnostics`}>Inspect diagnostics</Link>
-                </Button>
-              ) : null}
-              {hasPermission(permissions, 'automations:manage') ? (
-                <Button
-                  asChild
-                  variant='outline'
-                >
-                  <Link href={`/automations?targetApplicationId=${encodeURIComponent(app.id)}`}>Related workflows</Link>
-                </Button>
-              ) : null}
-            </Section>
-          }
         />
       ) : null}
       {view === 'activity'

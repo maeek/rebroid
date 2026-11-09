@@ -23,7 +23,7 @@ export const AppResourceLayout = ({
   </PageContent>
 )
 
-export const AppResourceOverviewLayout = ({ summary, actions }: { summary: ReactNode; actions: ReactNode }) => (
+export const AppResourceOverviewLayout = ({ summary, actions }: { summary: ReactNode; actions?: ReactNode }) => (
   <div className='grid items-start gap-6 '>
     {summary}
     {actions}
