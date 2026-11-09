@@ -92,6 +92,26 @@ describe('AutomationRunEventStreamService', () => {
     );
   });
 
+  it('ends an open stream when its authorization expires', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    const unsubscribe = jest.fn();
+    const service = new AutomationRunEventStreamService({
+      subscribeWithReplay: jest.fn().mockResolvedValue(unsubscribe),
+    } as never);
+    const handler = await registerHandler(service);
+    const { token } = service.createSubscribeToken('owner-1', 'run-1');
+    const socket = createSocket();
+
+    await handler(socket, { url: `/?token=${token}` });
+    jest.advanceTimersByTime(60_000);
+
+    expect(socket.close).toHaveBeenCalledWith(
+      1008,
+      'Automation event stream authorization expired.',
+    );
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
   it('streams replay callbacks, heartbeats, and handles an early close', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-01-01T00:00:00Z'));
     const unsubscribe = jest.fn();

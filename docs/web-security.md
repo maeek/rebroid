@@ -25,7 +25,8 @@ permissions fail closed.
 
 Cookie-authenticated mutation APIs require a same-origin `Origin`. NextAuth keeps its own CSRF
 handling. Display session tokens and automation subscription tokens grant narrow, short-lived
-access; platform feature flags never replace permission checks.
+access. Open automation streams expire with their token and reconnect through the web
+authorization check. Platform feature flags never replace permission checks.
 
 ## Proxies and public output
 

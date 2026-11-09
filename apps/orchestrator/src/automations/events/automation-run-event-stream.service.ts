@@ -56,7 +56,11 @@ export class AutomationRunEventStreamService {
           : 0;
         const subscription = this.consumeToken(token);
         const send = (payload: unknown) => {
-          if (socket.readyState === 1) {
+          if (
+            !cleanedUp &&
+            Date.now() < subscription.expiresAt &&
+            socket.readyState === 1
+          ) {
             socket.send(JSON.stringify(payload));
           }
         };
@@ -67,9 +71,20 @@ export class AutomationRunEventStreamService {
         const cleanup = () => {
           if (cleanedUp) return;
           cleanedUp = true;
+          clearTimeout(expiry);
           if (heartbeat) clearInterval(heartbeat);
           unsubscribe?.();
         };
+        const expiry = setTimeout(
+          () => {
+            cleanup();
+            socket.close(
+              1008,
+              'Automation event stream authorization expired.',
+            );
+          },
+          Math.max(0, subscription.expiresAt - Date.now()),
+        );
         socket.once('close', cleanup);
         socket.once('error', cleanup);
         try {
