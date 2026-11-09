@@ -39,10 +39,9 @@ export const useDisplayViewerShellState = ({
   const surfaceSessionIdsRef = useRef<Record<string, string>>({})
   const scrollSettleTimerRef = useRef<number | null>(null)
   const streamStatusTimersRef = useRef<Record<string, number | undefined>>({})
-  const [rotatedSurfaceIds, setRotatedSurfaceIds] = useState<Record<string, boolean>>({})
+  const [streamSizes, setStreamSizes] = useState<Record<string, { width: number; height: number }>>({})
   const [streamStatuses, setStreamStatuses] = useState<Record<string, DisplayViewerStreamStatus | undefined>>({})
-  const [streamMetrics, setStreamMetrics] = useState<Record<string, DisplayViewerStreamMetrics | undefined>>({})
-  const [workspaceHeight, setWorkspaceHeight] = useState(0)
+  const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 })
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [fullscreenSurfaceId, setFullscreenSurfaceId] = useState<string | null>(null)
   const { fullscreen, fullscreenElement, toggleFullscreen } = useFullscreenState()
@@ -78,15 +77,12 @@ export const useDisplayViewerShellState = ({
     const surfaceSessionChanged = (surfaceId: string) =>
       surfaceSessionIdsRef.current[surfaceId] !== undefined &&
       surfaceSessionIdsRef.current[surfaceId] !== nextSurfaceSessionIds[surfaceId]
-    setRotatedSurfaceIds(current =>
-      Object.fromEntries(Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId)))
-    )
     setStreamStatuses(current =>
       Object.fromEntries(
         Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId) && !surfaceSessionChanged(surfaceId))
       )
     )
-    setStreamMetrics(current =>
+    setStreamSizes(current =>
       Object.fromEntries(
         Object.entries(current).filter(([surfaceId]) => surfaceIds.has(surfaceId) && !surfaceSessionChanged(surfaceId))
       )
@@ -120,12 +116,12 @@ export const useDisplayViewerShellState = ({
       return
     }
 
-    const updateHeight = () => {
-      setWorkspaceHeight(container.clientHeight)
+    const updateSize = () => {
+      setWorkspaceSize({ width: container.clientWidth, height: container.clientHeight })
     }
-    const observer = new ResizeObserver(updateHeight)
+    const observer = new ResizeObserver(updateSize)
     observer.observe(container)
-    updateHeight()
+    updateSize()
 
     return () => {
       observer.disconnect()
@@ -201,19 +197,6 @@ export const useDisplayViewerShellState = ({
     })
   }
 
-  const rotateSurface = (surface: DisplayViewerSurface) => {
-    setRotatedSurfaceIds(current => ({
-      ...current,
-      [surface.id]: !current[surface.id]
-    }))
-  }
-
-  const rotateActiveSurface = () => {
-    if (activeSurface) {
-      rotateSurface(activeSurface)
-    }
-  }
-
   const setSurfaceStreamStatus = (surfaceId: string, status: DisplayViewerStreamStatus) => {
     const existingTimer = streamStatusTimersRef.current[surfaceId]
     if (existingTimer !== undefined) {
@@ -244,10 +227,15 @@ export const useDisplayViewerShellState = ({
   }
 
   const setSurfaceStreamMetrics = (surfaceId: string, metrics: DisplayViewerStreamMetrics) => {
-    setStreamMetrics(current => ({
-      ...current,
-      [surfaceId]: metrics
-    }))
+    const { width, height } = metrics
+    if (width && width > 0 && height && height > 0) {
+      setStreamSizes(current => {
+        const previous = current[surfaceId]
+        return previous?.width === width && previous.height === height
+          ? current
+          : { ...current, [surfaceId]: { width, height } }
+      })
+    }
     onStreamMetrics?.(surfaceId, metrics)
   }
 
@@ -265,19 +253,16 @@ export const useDisplayViewerShellState = ({
     fullscreenSurfaceId,
     keyboardCaptureEnabled,
     orderedSurfaces,
-    rotatedSurfaceIds,
+    streamSizes,
     scrollContainerRef,
     setSurfaceStreamMetrics,
     setSurfaceStreamStatus,
     surfaceViewportElementsRef,
-    streamMetrics,
     streamStatuses,
     viewerActions,
     windowSize,
-    workspaceHeight,
+    workspaceSize,
     handleWorkspaceScroll,
-    rotateActiveSurface,
-    rotateSurface,
     scrollSurfaceIntoView,
     setActiveSurfaceId,
     surfaceElementsRef,

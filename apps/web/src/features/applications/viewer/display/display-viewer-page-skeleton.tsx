@@ -18,20 +18,20 @@ export const DisplayViewerPageSkeleton = () => (
         onScrollSurfaceIntoView={noop}
       />
     }
-    controls={
-      <div className='flex items-center justify-center gap-2'>
+  >
+    <div className='flex min-w-0 items-start gap-2'>
+      <div className='flex w-[min(calc(100vw-3.5rem),calc((100dvh-3rem)*9/16))] flex-col overflow-hidden rounded-panel'>
+        <Skeleton className='h-8 w-full rounded-b-none' />
+        <Skeleton className='aspect-[9/16] w-full rounded-t-none' />
+      </div>
+      <div className='grid w-8 gap-1.5'>
         {Array.from({ length: 10 }, (_, index) => (
           <Skeleton
             key={index}
-            className='size-8 rounded-full'
+            className='size-8'
           />
         ))}
       </div>
-    }
-  >
-    <div className='flex h-full max-h-[calc(100dvh-7.75rem)] w-auto max-w-full aspect-[9/16] flex-col overflow-hidden rounded-panel'>
-      <Skeleton className='h-10 w-full rounded-t-lg' />
-      <Skeleton className='min-h-0 flex-1 rounded-b-lg border border-surface-border/70' />
     </div>
   </DisplayViewerLayout>
 )

@@ -13,7 +13,6 @@ import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-con
 import { hasPermission } from '@/shared/permissions/permissions'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceLayout, AppResourceOverviewLayout } from './app-resource-layout'
 import { appResourceHref } from './app-resource-links'
 import { AppResourceNavigation } from './app-resource-navigation'
@@ -36,13 +35,6 @@ export const AppResourceHome = ({
 
   return (
     <AppResourceLayout
-      breadcrumbs={
-        <AppResourceBreadcrumbs
-          appId={app.id}
-          appName={app.name}
-          view={view}
-        />
-      }
       heading={
         <AppViewerHeading
           app={app}
@@ -89,11 +81,6 @@ export const AppResourceHome = ({
               orientation='horizontal'
               contentClassName='flex-wrap gap-3'
             >
-              {!isForeignOwnedApp ? (
-                <Button asChild>
-                  <Link href={`/viewer/apps/${encodeURIComponent(app.id)}`}>Open viewer</Link>
-                </Button>
-              ) : null}
               <Button
                 asChild
                 variant='outline'
@@ -175,7 +162,6 @@ export const AppConfigurationSummary = ({
   >
     <DetailFields
       loading={loading}
-      title='Application'
       fields={[
         { label: 'Name', value: app?.name },
         { label: 'APK', value: app?.apkOriginalName ?? 'No APK installed' },

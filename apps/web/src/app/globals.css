@@ -465,8 +465,11 @@
 .app-device-layout {
   --app-viewer-height: calc(100dvh - 6rem);
 }
+.app-device-pane[data-viewer-placement='top'] {
+  --app-viewer-height: calc(100dvh - 9rem);
+}
 @media (min-width: 1024px) {
-  .app-device-pane {
+  .app-device-pane:not([data-viewer-placement='top']) {
     height: var(--app-viewer-height);
   }
 }

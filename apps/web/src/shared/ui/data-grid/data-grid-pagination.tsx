@@ -21,6 +21,7 @@ export function DataGridPagination({
   pageSizeOptions?: number[]
   totalItems: number
   onPageIndexChange: (pageIndex: number) => void
+  /** Apply the size and return to the first page in the same update. */
   onPageSizeChange: (pageSize: number) => void
   loading?: boolean
 }) {
@@ -42,10 +43,7 @@ export function DataGridPagination({
           <Select
             disabled={loading}
             value={String(pageSize)}
-            onValueChange={value => {
-              onPageSizeChange(Number(value))
-              onPageIndexChange(0)
-            }}
+            onValueChange={value => onPageSizeChange(Number(value))}
           >
             <SelectTrigger
               size='sm'

@@ -1,174 +1,124 @@
-import {
-  IconArrowUp,
-  IconArrowsSort,
-  IconFolderPlus,
-  IconLoader2,
-  IconRefresh,
-  IconSearch,
-  IconUpload
-} from '@tabler/icons-react'
+import type { Ref } from 'react'
+import { IconChevronDown, IconChevronRight, IconFolder, IconFolderPlus, IconUpload } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { cn } from '@/lib/utils'
-import {
-  parentRuntimePath,
-  runtimeFilesRootPath,
-  runtimePathForPartIndex,
-  runtimePathParts,
-  type RuntimeFileSort,
-  type RuntimeFileSortDirection
-} from './downloads-tools-section-model'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { runtimeFileLocations, runtimePathForPartIndex, runtimePathParts } from './downloads-tools-section-model'
 
 export const RuntimeFileToolbar = ({
   canManageFiles,
   currentPath,
-  isRefreshing,
-  onBrowse,
+  currentFolderRef,
+  disabled = false,
   onCreateFolder,
   onPathChange,
-  onRefresh,
-  onSearchChange,
-  onSortChange,
-  onSortDirectionChange,
-  onUpload,
-  searchQuery,
-  sort,
-  sortDirection
+  onUpload
 }: {
   canManageFiles: boolean
   currentPath: string
-  isRefreshing: boolean
-  onBrowse: () => void
+  currentFolderRef?: Ref<HTMLSpanElement>
+  disabled?: boolean
   onCreateFolder: () => void
   onPathChange: (path: string) => void
-  onRefresh: () => void
-  onSearchChange: (value: string) => void
-  onSortChange: (value: RuntimeFileSort) => void
-  onSortDirectionChange: (value: RuntimeFileSortDirection) => void
   onUpload: () => void
-  searchQuery: string
-  sort: RuntimeFileSort
-  sortDirection: RuntimeFileSortDirection
 }) => {
   const pathParts = runtimePathParts(currentPath)
 
   return (
-    <div className='grid gap-3 border-b border-surface-border/60 px-3 py-3 max-sm:[&_button]:min-h-11 sm:px-4'>
-      <div className='flex min-w-0 items-center justify-between gap-3'>
-        <div className='scrollbar-thin flex min-w-0 items-center gap-1 overflow-x-auto whitespace-nowrap text-sm'>
+    <div className='grid min-w-0 gap-3'>
+      <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type='button'
+              size='sm'
+              variant='outline'
+              disabled={disabled}
+            >
+              <IconFolder className='size-4' />
+              Locations
+              <IconChevronDown className='size-3.5' />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='start'>
+            {runtimeFileLocations.map(location => (
+              <DropdownMenuItem
+                key={location.path}
+                aria-current={currentPath === location.path ? 'location' : undefined}
+                onClick={() => onPathChange(location.path)}
+              >
+                {location.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className='flex flex-wrap gap-2'>
+          {canManageFiles ? (
+            <Button
+              type='button'
+              size='sm'
+              variant='outline'
+              disabled={disabled}
+              onClick={onCreateFolder}
+            >
+              <IconFolderPlus className='size-4' />
+              New folder
+            </Button>
+          ) : null}
+          <Button
+            type='button'
+            size='sm'
+            disabled={disabled}
+            onClick={onUpload}
+          >
+            <IconUpload className='size-4' />
+            Upload files
+          </Button>
+        </div>
+      </div>
+      <nav
+        aria-label='Current folder'
+        className='min-w-0'
+      >
+        <ol className='flex min-w-0 flex-wrap items-center gap-x-1 text-sm'>
           {pathParts.map((part, index) => {
             const path = runtimePathForPartIndex(pathParts, index)
-            const active = path === currentPath
             return (
-              <span
+              <li
                 key={path}
                 className='flex min-w-0 items-center gap-1'
               >
-                <span className='text-foreground-muted'>/</span>
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='bare'
-                  className={cn('h-8 px-1', active ? 'text-foreground' : 'text-foreground-muted')}
-                  disabled={active}
-                  onClick={() => onPathChange(path)}
-                >
-                  {part}
-                </Button>
-              </span>
+                {index > 0 ? (
+                  <IconChevronRight
+                    aria-hidden
+                    className='size-3 shrink-0 text-foreground-muted'
+                  />
+                ) : null}
+                {path === currentPath ? (
+                  <span
+                    ref={currentFolderRef}
+                    className='min-w-0 break-all px-1 font-medium'
+                    aria-current='location'
+                    tabIndex={-1}
+                  >
+                    {part}
+                  </span>
+                ) : (
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='bare'
+                    className='h-auto min-w-0 whitespace-normal break-all px-1 text-left text-foreground-muted'
+                    disabled={disabled}
+                    onClick={() => onPathChange(path)}
+                  >
+                    {part}
+                  </Button>
+                )}
+              </li>
             )
           })}
-        </div>
-        <Button
-          type='button'
-          size='sm'
-          onClick={onUpload}
-        >
-          <IconUpload className='size-4' />
-          <span className='hidden sm:inline'>Upload files</span>
-          <span className='sm:hidden'>Upload</span>
-        </Button>
-      </div>
-
-      <div className='flex flex-wrap items-center gap-2'>
-        <Button
-          type='button'
-          size='sm'
-          variant='outline'
-          className='lg:hidden'
-          onClick={onBrowse}
-        >
-          Browse
-        </Button>
-        <Button
-          type='button'
-          size='icon-sm'
-          variant='ghost'
-          disabled={currentPath === runtimeFilesRootPath}
-          onClick={() => onPathChange(parentRuntimePath(currentPath))}
-          aria-label='Go to parent folder'
-        >
-          <IconArrowUp className='size-4' />
-        </Button>
-        <div className='relative min-w-44 flex-1 sm:max-w-72'>
-          <IconSearch className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground-muted' />
-          <Input
-            value={searchQuery}
-            className='pl-9 max-sm:min-h-11'
-            placeholder='Search this folder'
-            aria-label='Search this folder'
-            onChange={event => onSearchChange(event.target.value)}
-          />
-        </div>
-        <Select
-          value={sort}
-          onValueChange={onSortChange}
-        >
-          <SelectTrigger
-            size='sm'
-            className='w-28 max-sm:min-h-11'
-            aria-label='Sort files by'
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align='end'>
-            <SelectItem value='name'>Name</SelectItem>
-            <SelectItem value='modified'>Modified</SelectItem>
-            <SelectItem value='size'>Size</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          type='button'
-          size='icon-sm'
-          variant='ghost'
-          onClick={() => onSortDirectionChange(sortDirection === 'asc' ? 'desc' : 'asc')}
-          aria-label={sortDirection === 'asc' ? 'Sort descending' : 'Sort ascending'}
-        >
-          <IconArrowsSort className='size-4' />
-        </Button>
-        {canManageFiles ? (
-          <Button
-            type='button'
-            size='icon-sm'
-            variant='ghost'
-            onClick={onCreateFolder}
-            aria-label='Create folder'
-          >
-            <IconFolderPlus className='size-4' />
-          </Button>
-        ) : null}
-        <Button
-          type='button'
-          size='icon-sm'
-          variant='ghost'
-          disabled={isRefreshing}
-          onClick={onRefresh}
-          aria-label='Refresh files'
-        >
-          {isRefreshing ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
-        </Button>
-      </div>
+        </ol>
+      </nav>
     </div>
   )
 }

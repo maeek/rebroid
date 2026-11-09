@@ -5,6 +5,8 @@ import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { viewerPlacementOptions } from '@/shared/model/settings/viewer-placement'
+import { useViewerPlacement } from '@/shared/model/settings/viewer-placement-context'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -35,6 +37,7 @@ export const GeneralSettingsFields = ({
         loading={loading}
         onChange={onAccentColorChange}
       />
+      <ViewerPlacementField loading={loading} />
     </Section>
     <Section
       surface='plain'
@@ -145,3 +148,34 @@ export const GeneralSettingsFields = ({
     </Section>
   </>
 )
+
+const ViewerPlacementField = ({ loading }: { loading: boolean }) => {
+  const { placement, setPlacement } = useViewerPlacement()
+  return (
+    <FormField
+      label='Viewer layout'
+      description='Choose where the Viewer appears on app pages. Applies immediately in this browser.'
+      layout='vertical'
+    >
+      <Select
+        value={placement}
+        onValueChange={setPlacement}
+        disabled={loading}
+      >
+        <SelectTrigger className='w-full'>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {viewerPlacementOptions.map(({ value, label }) => (
+            <SelectItem
+              key={value}
+              value={value}
+            >
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
+  )
+}

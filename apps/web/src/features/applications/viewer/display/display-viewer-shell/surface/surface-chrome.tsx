@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import {
   IconAlertTriangle,
   IconArrowsMaximize,
@@ -53,6 +54,8 @@ const StreamStatusIndicator = ({ status }: { status: DisplayViewerStreamStatus }
 
 export const SurfaceChrome = ({
   isActive,
+  showName,
+  actions,
   isClosing,
   isFullscreen,
   streamStatus,
@@ -62,6 +65,8 @@ export const SurfaceChrome = ({
   onToggleFullscreen
 }: {
   isActive: boolean
+  showName: boolean
+  actions?: ReactNode
   isClosing: boolean
   isFullscreen: boolean
   streamStatus?: DisplayViewerStreamStatus
@@ -72,18 +77,19 @@ export const SurfaceChrome = ({
 }) => (
   <div
     className={cn(
-      'flex h-7 shrink-0 items-center justify-between gap-2 rounded-t-panel border border-b-0 border-surface-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-panel backdrop-blur-md',
+      'flex h-8 shrink-0 items-center justify-between gap-2 rounded-t-panel border border-b-0 border-surface-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-panel backdrop-blur-md',
       'w-full min-w-0',
       isActive && 'bg-surface-band/80'
     )}
   >
-    <div className='flex min-w-0 items-center gap-1.5 overflow-x-auto'>
-      <span className='max-w-32 truncate text-xs font-medium'>{surface.name}</span>
+    <div className='flex min-w-0 items-center gap-1.5 overflow-hidden'>
+      {showName ? <span className='max-w-32 truncate text-xs font-medium'>{surface.name}</span> : null}
       <Visible when={Boolean(streamStatus)}>
         {streamStatus ? <StreamStatusIndicator status={streamStatus} /> : null}
       </Visible>
     </div>
     <div className='flex shrink-0 items-center gap-1'>
+      {actions}
       <IconActionButton
         label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         onClick={onToggleFullscreen}

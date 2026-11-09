@@ -47,8 +47,6 @@ export const RuntimeToolContent = ({
       <DownloadsToolsSection
         app={app}
         permissions={permissions}
-        className={cn(sectionClassName, 'px-0')}
-        hideHeader
       />
     )
   }

@@ -39,22 +39,14 @@ const dispatchLocalViewerCommand = (command: ApplicationViewerControlCommand, su
   )
 }
 
-const runRotateSideEffect = (command: ApplicationViewerControlCommand, onRotateViewer?: () => void) => {
-  if (command === 'rotate') {
-    onRotateViewer?.()
-  }
-}
-
 export const useViewerControlSender = ({
   appId,
   baseControlsDisabled,
-  surfaceId,
-  onRotateViewer
+  surfaceId
 }: {
   appId: string
   baseControlsDisabled: boolean
   surfaceId?: string
-  onRotateViewer?: () => void
 }) => {
   const [pendingCommand, setPendingCommand] = useState<ApplicationViewerControlCommand | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -73,7 +65,6 @@ export const useViewerControlSender = ({
     setPendingCommand(command)
 
     if (dispatchLocalViewerCommand(command, surfaceId)) {
-      runRotateSideEffect(command, onRotateViewer)
       clearLocalPendingTimer(localPendingTimer)
       localPendingTimer.current = window.setTimeout(() => setPendingCommand(null), 160)
       return
@@ -82,7 +73,6 @@ export const useViewerControlSender = ({
     startTransition(async () => {
       try {
         await sendApplicationViewerControlAction(appId, command)
-        runRotateSideEffect(command, onRotateViewer)
       } catch (error) {
         toast({
           title: 'Viewer command failed',

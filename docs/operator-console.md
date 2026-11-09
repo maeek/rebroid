@@ -8,7 +8,7 @@ stays available in expandable sidebar groups. Existing role and capability check
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
 - `/app/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
   and relevant destinations. Reading this page does not reconcile Docker or create a viewer session.
-- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, `clipboard`, and `files`. The viewer remains at `/viewer/apps/[id]`.
+- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, `clipboard`, and `files`. App pages embed the viewer and old `?view=viewer` links open Overview. The separate viewer window uses `/viewer/apps/[id]`.
 - The resource navigation is one row, with permission-based destinations kept consistent across views. Legacy manage/profile paths and workspace queries redirect to the canonical section URLs.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
@@ -17,6 +17,11 @@ stays available in expandable sidebar groups. Existing role and capability check
 Creation lands on the resource overview, allowing provisioning to be observed without opening media.
 Saved runtime changes are distinguished from the currently active runtime; recreation is reported
 as pending until the next start. Lifecycle commands keep their existing server-side authorization.
+
+If Start or Restart cannot recover an app, stop it and choose **Runtime actions → Recreate runtime**.
+Rebroid replaces the app container and its network and starts it with the active profile. Persistent
+profiles and app settings are kept. Changes stored only in the old container are lost.
+Recreate requires ownership and permission to start and stop the app.
 
 ## Automation investigation
 

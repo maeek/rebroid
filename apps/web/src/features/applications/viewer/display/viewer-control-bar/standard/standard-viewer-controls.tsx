@@ -15,8 +15,7 @@ import {
 import { useViewerControlContext } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 
 const standardControlButtonClassName = 'size-8'
-const standardControlGroupClassName =
-  'flex h-8 items-center overflow-hidden rounded-control border border-surface-border/60 bg-surface-band/55'
+const standardControlGroupClassName = 'flex flex-col items-center rounded-control bg-surface-band'
 
 export const StandardViewerControls = () => {
   const {
@@ -33,7 +32,11 @@ export const StandardViewerControls = () => {
   } = useViewerControlContext()
 
   return (
-    <div className='z-50 flex w-full flex-wrap items-center justify-center gap-1.5 pb-1'>
+    <div
+      role='group'
+      aria-label='Device controls'
+      className='flex w-full flex-col items-center gap-1.5'
+    >
       <IconCommandGroup
         buttonClassName={standardControlButtonClassName}
         className={standardControlGroupClassName}
@@ -78,7 +81,7 @@ export const StandardViewerControls = () => {
         />
       </Visible>
       <Visible when={!canControl && runtimeAvailable}>
-        <div className='text-xs text-foreground-muted'>Viewer controls are disabled by permissions.</div>
+        <span className='sr-only'>Viewer controls are disabled by permissions.</span>
       </Visible>
     </div>
   )

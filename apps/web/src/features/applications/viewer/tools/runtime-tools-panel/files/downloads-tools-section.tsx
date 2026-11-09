@@ -1,17 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { cn } from '@/lib/utils'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { StateView } from '@/shared/ui/state-view'
-import { ToolSection } from '../tool-section'
+import { runtimeFilesRootPath } from './downloads-tools-section-model'
 import { RuntimeFileDialogs } from './runtime-file-dialogs'
 import { RuntimeFileInspector } from './runtime-file-inspector'
 import { RuntimeFileList } from './runtime-file-list'
-import { RuntimeFileLocations } from './runtime-file-locations'
 import { RuntimeFileToolbar } from './runtime-file-toolbar'
 import { RuntimeFileUploadQueue } from './runtime-file-upload-queue'
 import { useRuntimeFileBrowser } from './use-runtime-file-browser'
@@ -19,36 +17,15 @@ import { useRuntimeFileUploads } from './use-runtime-file-uploads'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
-const useDesktopWorkspace = () => {
-  const [desktop, setDesktop] = useState(false)
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1024px)')
-    const update = () => setDesktop(media.matches)
-    update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
-  return desktop
-}
-
-export const DownloadsToolsSection = ({
-  app,
-  permissions,
-  className,
-  hideHeader
-}: {
-  app: AppDefinition
-  permissions: PermissionMap
-  className?: string
-  hideHeader?: boolean
-}) => {
+export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition; permissions: PermissionMap }) => {
   const runtimeAvailable = app.status === 'running'
   const canTransferFiles = hasPermission(permissions, 'applications:transfer-files')
   const canManageFiles = hasPermission(permissions, 'applications:manage-files')
-  const desktopWorkspace = useDesktopWorkspace()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
-  const [browseOpen, setBrowseOpen] = useState(false)
+  const fileTriggerRef = useRef<HTMLButtonElement>(null)
+  const currentFolderRef = useRef<HTMLSpanElement>(null)
+  const focusFolderOnNavigation = useRef(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [renameEntry, setRenameEntry] = useState<ApplicationRuntimeFile | null>(null)
@@ -57,23 +34,51 @@ export const DownloadsToolsSection = ({
   const browser = useRuntimeFileBrowser({ appId: app.id, canTransferFiles, runtimeAvailable })
   const uploads = useRuntimeFileUploads(app.id)
 
+  const { currentPath, navigateTo, prefetchPath, setSelectedFile } = browser
+  const navigateToFolder = useCallback(
+    (path: string) => {
+      focusFolderOnNavigation.current = path !== currentPath
+      navigateTo(path)
+    },
+    [currentPath, navigateTo]
+  )
+
   useEffect(() => {
-    if (!desktopWorkspace) return
-    setBrowseOpen(false)
-    setDetailsOpen(false)
-  }, [desktopWorkspace])
+    if (!focusFolderOnNavigation.current) return
+    focusFolderOnNavigation.current = false
+    currentFolderRef.current?.focus()
+  }, [currentPath])
+
+  const openEntry = useCallback(
+    (entry: ApplicationRuntimeFile, trigger?: HTMLButtonElement) => {
+      if (entry.type === 'directory') {
+        navigateToFolder(entry.path)
+        return
+      }
+      fileTriggerRef.current = trigger ?? null
+      setSelectedFile(entry)
+      setDetailsOpen(true)
+    },
+    [navigateToFolder, setSelectedFile]
+  )
+
+  const prefetchFolder = useCallback(
+    (path: string) => {
+      void prefetchPath(path)
+    },
+    [prefetchPath]
+  )
 
   if (!canTransferFiles) return null
 
-  const selectFile = (entry: ApplicationRuntimeFile) => {
-    browser.setSelectedFile(entry)
-    if (!desktopWorkspace) setDetailsOpen(true)
+  const openRename = (entry: ApplicationRuntimeFile) => {
+    setDetailsOpen(false)
+    setRenameEntry(entry)
   }
 
-  const navigateTo = (path: string) => {
-    browser.navigateTo(path)
-    setBrowseOpen(false)
+  const openDelete = (entry: ApplicationRuntimeFile) => {
     setDetailsOpen(false)
+    setDeleteEntry(entry)
   }
 
   const addFiles = (files: FileList | File[]) => {
@@ -83,12 +88,7 @@ export const DownloadsToolsSection = ({
   }
 
   return (
-    <ToolSection
-      title='Files'
-      description='Browse the active runtime data volume and transfer files.'
-      className={className}
-      hideHeader={hideHeader}
-    >
+    <>
       {!runtimeAvailable ? (
         <StateView
           scope='grid'
@@ -98,7 +98,7 @@ export const DownloadsToolsSection = ({
         />
       ) : (
         <div
-          className='relative overflow-hidden rounded-panel border border-surface-border/65 bg-surface-panel/55'
+          className='relative grid min-w-0 gap-4'
           onDragEnter={event => {
             event.preventDefault()
             dragDepthRef.current += 1
@@ -129,73 +129,43 @@ export const DownloadsToolsSection = ({
           <RuntimeFileToolbar
             canManageFiles={canManageFiles}
             currentPath={browser.currentPath}
-            isRefreshing={browser.isRefreshing}
-            searchQuery={browser.searchQuery}
-            sort={browser.sort}
-            sortDirection={browser.sortDirection}
-            onBrowse={() => setBrowseOpen(true)}
+            currentFolderRef={currentFolderRef}
             onCreateFolder={() => setCreateOpen(true)}
-            onPathChange={navigateTo}
-            onRefresh={() => void browser.refresh()}
-            onSearchChange={browser.setSearchQuery}
-            onSortChange={browser.setSort}
-            onSortDirectionChange={browser.setSortDirection}
+            onPathChange={navigateToFolder}
             onUpload={() => fileInputRef.current?.click()}
           />
           <span
             className='sr-only'
             role='status'
-            aria-live='polite'
           >
             {browser.hasLoadedFiles
               ? `${browser.files.length} entries in ${browser.currentPath}${browser.isRefreshing ? ', refreshing' : ''}.`
-              : `Loading ${browser.currentPath}.`}
+              : browser.error
+                ? ''
+                : `Loading ${browser.currentPath}.`}
           </span>
-
-          <div
-            className={cn(
-              'min-h-[28rem] lg:grid',
-              browser.selectedFile ? 'lg:grid-cols-[220px_minmax(0,1fr)_320px]' : 'lg:grid-cols-[220px_minmax(0,1fr)]'
-            )}
-          >
-            <aside className='scrollbar-thin hidden max-h-[38rem] overflow-y-auto border-r border-surface-border/60 p-3 lg:block'>
-              <RuntimeFileLocations
-                appId={app.id}
-                currentPath={browser.currentPath}
-                onNavigate={navigateTo}
-                onPrefetch={path => void browser.prefetchPath(path)}
-              />
-            </aside>
-            <div className='min-w-0'>
-              <RuntimeFileList
-                canManageFiles={canManageFiles}
-                error={browser.error}
-                files={browser.files}
-                hasLoadedFiles={browser.hasLoadedFiles}
-                searchQuery={browser.searchQuery}
-                selectedFile={browser.selectedFile}
-                onDelete={setDeleteEntry}
-                onDownload={entry => void browser.downloadFile(entry)}
-                onPathChange={navigateTo}
-                onPrefetch={path => void browser.prefetchPath(path)}
-                onRefresh={() => void browser.refresh()}
-                onRename={setRenameEntry}
-                onSelect={selectFile}
-              />
-            </div>
-            {browser.selectedFile ? (
-              <aside className='scrollbar-thin hidden max-h-[38rem] overflow-y-auto border-l border-surface-border/60 p-4 lg:block'>
-                <RuntimeFileInspector
-                  appId={app.id}
-                  canManageFiles={canManageFiles}
-                  entry={browser.selectedFile}
-                  onDelete={setDeleteEntry}
-                  onDownload={entry => void browser.downloadFile(entry)}
-                  onRename={setRenameEntry}
-                />
-              </aside>
-            ) : null}
-          </div>
+          <RuntimeFileList
+            key={browser.currentPath}
+            canManageFiles={canManageFiles}
+            error={browser.error}
+            files={browser.files}
+            loading={!browser.hasLoadedFiles && !browser.error}
+            refreshing={browser.isRefreshing}
+            searchQuery={browser.searchQuery}
+            sort={browser.sort}
+            sortDirection={browser.sortDirection}
+            onDelete={openDelete}
+            onDownload={entry => void browser.downloadFile(entry)}
+            onOpen={openEntry}
+            onPrefetch={prefetchFolder}
+            onRefresh={() => void browser.refresh()}
+            onRename={openRename}
+            onSearchChange={browser.setSearchQuery}
+            onSort={(sort, direction) => {
+              browser.setSort(sort)
+              browser.setSortDirection(direction)
+            }}
+          />
 
           <RuntimeFileUploadQueue
             activeCount={uploads.activeCount}
@@ -218,33 +188,12 @@ export const DownloadsToolsSection = ({
       )}
 
       <Sheet
-        open={!desktopWorkspace && browseOpen}
-        onOpenChange={setBrowseOpen}
-      >
-        <SheetContent
-          side='left'
-          className='w-[min(90vw,24rem)] p-4 lg:hidden'
-        >
-          <SheetHeader className='mb-5 pr-8'>
-            <SheetTitle>Browse</SheetTitle>
-            <SheetDescription>Choose a runtime folder.</SheetDescription>
-          </SheetHeader>
-          <RuntimeFileLocations
-            appId={app.id}
-            currentPath={browser.currentPath}
-            onNavigate={navigateTo}
-            onPrefetch={path => void browser.prefetchPath(path)}
-          />
-        </SheetContent>
-      </Sheet>
-
-      <Sheet
-        open={!desktopWorkspace && detailsOpen && browser.selectedFile !== null}
+        open={runtimeAvailable && detailsOpen && browser.selectedFile !== null}
         onOpenChange={setDetailsOpen}
       >
         <SheetContent
-          side='bottom'
-          className='max-h-[85dvh] overflow-y-auto p-4 lg:hidden'
+          className='w-[min(28rem,100vw)] overflow-y-auto bg-surface-dialog sm:max-w-none'
+          finalFocus={fileTriggerRef}
         >
           <SheetHeader className='sr-only'>
             <SheetTitle>File details</SheetTitle>
@@ -255,9 +204,9 @@ export const DownloadsToolsSection = ({
               appId={app.id}
               canManageFiles={canManageFiles}
               entry={browser.selectedFile}
-              onDelete={setDeleteEntry}
+              onDelete={openDelete}
               onDownload={entry => void browser.downloadFile(entry)}
-              onRename={setRenameEntry}
+              onRename={openRename}
             />
           ) : null}
         </SheetContent>
@@ -274,6 +223,38 @@ export const DownloadsToolsSection = ({
         onRename={browser.renameFile}
         onRenameEntryChange={setRenameEntry}
       />
-    </ToolSection>
+    </>
   )
 }
+
+const noop = () => undefined
+
+export const DownloadsToolsLoading = () => (
+  <div className='grid min-w-0 gap-4'>
+    <RuntimeFileToolbar
+      canManageFiles
+      currentPath={runtimeFilesRootPath}
+      disabled
+      onCreateFolder={noop}
+      onPathChange={noop}
+      onUpload={noop}
+    />
+    <RuntimeFileList
+      canManageFiles
+      loading
+      error={null}
+      files={[]}
+      searchQuery=''
+      sort='name'
+      sortDirection='asc'
+      onDelete={noop}
+      onDownload={noop}
+      onOpen={noop}
+      onPrefetch={noop}
+      onRefresh={noop}
+      onRename={noop}
+      onSearchChange={noop}
+      onSort={noop}
+    />
+  </div>
+)

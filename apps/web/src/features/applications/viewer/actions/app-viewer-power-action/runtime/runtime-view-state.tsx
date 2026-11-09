@@ -10,6 +10,7 @@ const runtimeActionLabels: Record<PrimaryLabelKey, string> = {
   starting: 'Starting...',
   stopping: 'Stopping...',
   restarting: 'Restarting...',
+  recreating: 'Recreating...',
   running: 'Stop',
   idle: 'Start'
 }
@@ -51,6 +52,15 @@ export const canStopRuntime = (app: AppDefinition | undefined, canStop: boolean)
 
 export const canRestartRuntime = (app: AppDefinition | undefined, canRestart: boolean) =>
   Boolean(app && app.running && canRestart)
+
+export const canRecreateRuntime = (app: AppDefinition | undefined, canControlPower: boolean) =>
+  Boolean(
+    app &&
+    !app.running &&
+    !getIsStopping(app) &&
+    (app.status === 'stopped' || app.status === 'error') &&
+    canControlPower
+  )
 
 const isRuntimeMenuDisabled = (
   app: AppDefinition | undefined,

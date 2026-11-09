@@ -15,6 +15,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { cn } from '@/lib/utils'
+import { StateIllustration } from './state-illustration'
 
 export type StateViewKind =
   'loading' | 'empty' | 'no-results' | 'not-found' | 'unavailable' | 'error' | 'not-applicable'
@@ -77,6 +78,7 @@ export const StateView = ({
   className,
   description,
   detail,
+  headingLevel,
   icon,
   kind,
   requestId,
@@ -87,15 +89,20 @@ export const StateView = ({
   className?: string
   description: ReactNode
   detail?: ReactNode
+  headingLevel?: 1 | 2 | 3
   icon?: ReactNode
   kind: StateViewKind
   requestId?: string | null
   scope?: StateViewScope
   title: ReactNode
 }) => {
-  const Heading = scope === 'page' || scope === 'immersive' ? 'h1' : 'h3'
+  const level = headingLevel ?? (scope === 'page' || scope === 'immersive' ? 1 : 3)
+  const Heading: 'h1' | 'h2' | 'h3' = `h${level}`
   const dangerous = kind === 'error' || kind === 'unavailable'
   const compact = scope === 'section'
+  const illustrationKind =
+    !icon && scope === 'page' && (kind === 'error' || kind === 'unavailable' || kind === 'not-found') ? kind : null
+  const illustrated = illustrationKind !== null
 
   return (
     <div
@@ -114,23 +121,35 @@ export const StateView = ({
         className
       )}
     >
-      <div className={cn('flex w-full max-w-xl gap-3', compact ? 'items-start' : 'flex-col items-center')}>
+      <div
+        className={cn(
+          'flex w-full max-w-xl gap-3',
+          compact ? 'items-start' : 'flex-col items-center',
+          illustrated && 'gap-6'
+        )}
+      >
         <div
           aria-hidden='true'
-          className={cn('shrink-0 text-foreground-muted [&>svg]:size-6', {
-            'text-danger': dangerous,
+          className={cn('shrink-0 text-foreground-muted', !illustrated && '[&>svg]:size-6', {
+            'text-danger': dangerous && !illustrated,
             'mt-0.5': compact
           })}
         >
-          {icon ?? defaultIcon(kind)}
+          {illustrationKind ? <StateIllustration kind={illustrationKind} /> : (icon ?? defaultIcon(kind))}
         </div>
         <div className={cn('grid min-w-0 gap-3', !compact && 'justify-items-center')}>
           <div className='grid gap-1'>
-            <Heading className={cn('font-medium', scope === 'immersive' ? 'text-xl' : 'text-sm')}>{title}</Heading>
+            <Heading className={cn('font-medium', scope === 'immersive' || illustrated ? 'text-xl' : 'text-sm')}>
+              {title}
+            </Heading>
             <div className='text-sm text-foreground-muted [overflow-wrap:anywhere]'>{description}</div>
           </div>
           {detail ? <div className='w-full text-xs text-foreground-muted'>{detail}</div> : null}
-          {requestId ? <div className='text-xs text-foreground-muted'>Reference: {requestId}</div> : null}
+          {requestId ? (
+            <div className='max-w-full text-xs text-foreground-muted [overflow-wrap:anywhere]'>
+              Reference: {requestId}
+            </div>
+          ) : null}
           {actions?.length ? (
             <div className={cn('flex flex-wrap items-center gap-2', !compact && 'justify-center')}>
               {actions.map((action, index) => (

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
+import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
 import { AppsGalleryToolbar } from './components/apps-gallery-toolbar'
 import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
@@ -45,12 +45,10 @@ export const AppsList = ({
           description='Create, monitor, and manage isolated Android applications.'
         />
         <PageContent>
-          <StateView
-            scope='page'
-            kind='unavailable'
+          <PageLoadFailure
             title='Orchestrator unavailable'
             description='The web app is still available, but Android app management is temporarily offline.'
-            actions={[{ label: 'Refresh', onClick: () => window.location.reload() }]}
+            backAction={{ label: 'Go to overview', href: '/platform' }}
           />
         </PageContent>
       </>

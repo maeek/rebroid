@@ -67,7 +67,7 @@ describe('AppResourceHome', () => {
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull()
     expect(screen.queryByText('Inspect boot output.')).toBeNull()
     expect(screen.getAllByText('Runtime default')).toHaveLength(2)
-    expect(screen.getByRole('link', { name: 'Open viewer' })).toHaveAttribute('href', '/viewer/apps/app-1')
+    expect(screen.queryByRole('link', { name: 'Open viewer' })).toBeNull()
   })
   it('offers a direct failure investigation path for permitted users', () => {
     setup({ 'applications:view-logs': true, 'applications:view-backend-details': true })

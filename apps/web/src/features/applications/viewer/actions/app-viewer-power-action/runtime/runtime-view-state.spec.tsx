@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createRuntimeMenuActions } from './runtime-menu-actions'
 import {
+  canRecreateRuntime,
   canRestartRuntime,
   canStartDefaults,
   canStartProfile,
@@ -13,7 +14,8 @@ const app = (running: boolean): AppDefinition =>
   ({
     id: 'app-1',
     name: 'App',
-    running
+    running,
+    status: running ? 'running' : 'stopped'
   }) as AppDefinition
 
 describe('runtime power action state helpers', () => {
@@ -46,14 +48,23 @@ describe('runtime power action state helpers', () => {
       onStartDefaults: () => undefined,
       onStartProfile: () => undefined,
       onStop: () => undefined,
-      onRestart: () => undefined
+      onRestart: () => undefined,
+      onRecreate: () => undefined
     })
 
     expect(actions.map(action => [action.key, action.disabled])).toEqual([
       ['start-defaults', false],
       ['start-profile', true],
       ['stop', true],
-      ['restart', true]
+      ['restart', true],
+      ['recreate', false]
     ])
+  })
+
+  it('offers recreation only for stopped or errored apps with power control', () => {
+    expect(canRecreateRuntime(app(true), true)).toBe(false)
+    expect(canRecreateRuntime(app(false), false)).toBe(false)
+    expect(canRecreateRuntime({ ...app(false), lifecycleStage: 'stopping' }, true)).toBe(false)
+    expect(canRecreateRuntime({ ...app(false), status: 'error' }, true)).toBe(true)
   })
 })

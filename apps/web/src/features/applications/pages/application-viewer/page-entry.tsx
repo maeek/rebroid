@@ -1,10 +1,9 @@
 import { Suspense, type ReactNode } from 'react'
 import { redirect } from 'next/navigation'
+import { AppPageFailure } from '@/features/applications/components/app-page-failure'
 import { AppViewerPage } from '@/features/applications/detail/app-page'
 import { AppPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import { appResourceHref } from '@/features/applications/detail/app-resource-links'
-import { ManageAppPageEntry } from '@/features/applications/pages/manage-app/page-entry'
-import { ManageAppProfilesPageEntry } from '@/features/applications/pages/manage-app-profiles/page-entry'
 import { getApplicationPageData } from '@/features/applications/pages/shared/application-page-data.server'
 import { getRuntimeTools } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-definitions'
 import { loadApplicationActivity } from '@/server/audit/application-activity-query'
@@ -19,29 +18,43 @@ type PageProps = {
     props: Awaited<ReturnType<typeof loadApplicationActivity>> & { application: { id: string; name: string } }
   ) => ReactNode
 }
-const ApplicationViewerPageContent = async ({ params, searchParams, renderActivity }: PageProps) => {
+const ApplicationViewerPageContent = async ({ params, searchParams, loadingActivity, renderActivity }: PageProps) => {
   const [{ slug }, search] = await Promise.all([params, searchParams])
   const view = firstSearchParamValue(search.view)
-  if (view === 'configuration') return <ManageAppPageEntry params={Promise.resolve({ slug })} />
-  if (view === 'profiles') return <ManageAppProfilesPageEntry params={Promise.resolve({ slug })} />
-  const data = await getApplicationPageData(slug)
+  if (view === 'viewer') redirect(appResourceHref(slug))
+  const result = await getApplicationPageData(slug)
+  if (result.failure) return <AppPageFailure failure={result.failure} />
+  const { data } = result
   if (view === 'workspace')
     redirect(appResourceHref(slug, getRuntimeTools({ permissions: data.permissions })[0]?.id ?? 'overview'))
-  const activity =
-    data.app && data.isAdmin && firstSearchParamValue(search.view) === 'activity'
-      ? await loadApplicationActivity(data.app.id, search)
-      : undefined
   return (
     <AppViewerPage
+      key={data.app?.id}
       {...data}
       activity={
-        activity && data.app
-          ? renderActivity({ ...activity, application: { id: data.app.id, name: data.app.name } })
-          : undefined
+        data.app && data.isAdmin && view === 'activity' ? (
+          <Suspense fallback={loadingActivity}>
+            <ApplicationActivity
+              application={{ id: data.app.id, name: data.app.name }}
+              search={search}
+              renderActivity={renderActivity}
+            />
+          </Suspense>
+        ) : undefined
       }
     />
   )
 }
+
+const ApplicationActivity = async ({
+  application,
+  search,
+  renderActivity
+}: {
+  application: { id: string; name: string }
+  search: AuditSearchParams
+  renderActivity: PageProps['renderActivity']
+}) => renderActivity({ ...(await loadApplicationActivity(application.id, search)), application })
 
 export const ApplicationViewerPageEntry = (props: PageProps) => (
   <Suspense fallback={<AppPageSkeleton activity={props.loadingActivity} />}>

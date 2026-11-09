@@ -3,7 +3,6 @@ import { Notice } from '@/components/ui/notice'
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { RuntimeToolsPanel } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
-import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceLayout } from './app-resource-layout'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { useApplicationViewerApp } from './application-viewer-context'
@@ -22,13 +21,6 @@ export const AppWorkspaceLayout = ({ toolId, children }: { toolId: RuntimeToolId
   return (
     <AppResourceLayout
       workspace={toolId === 'ai-agent'}
-      breadcrumbs={
-        <AppResourceBreadcrumbs
-          appId={app.id}
-          appName={app.name}
-          view={toolId}
-        />
-      }
       heading={
         <AppViewerHeading
           app={app}

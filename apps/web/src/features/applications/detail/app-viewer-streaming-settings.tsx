@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { IconAdjustments } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { StreamingToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/streaming/streaming-tools-section'
 import { useApplicationViewerApp } from './application-viewer-context'
 
@@ -22,17 +23,25 @@ export const AppViewerStreamingSettings = () => {
       open={open}
       onOpenChange={setOpen}
     >
-      <SheetTrigger
-        render={
-          <Button
-            size='sm'
-            variant='ghost'
-          />
-        }
-      >
-        <IconAdjustments className='size-4' /> Streaming settings
-      </SheetTrigger>
-      <SheetContent className='w-[min(32rem,100vw)] overflow-y-auto sm:max-w-none'>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <SheetTrigger
+            render={
+              <Button
+                type='button'
+                size='icon-sm'
+                variant='secondary'
+                className='size-6'
+              />
+            }
+            aria-label='Streaming settings'
+          >
+            <IconAdjustments className='size-3.5' />
+          </SheetTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Streaming settings</TooltipContent>
+      </Tooltip>
+      <SheetContent className='w-[min(32rem,100vw)] overflow-y-auto bg-surface-dialog sm:max-w-none'>
         <SheetHeader className='mb-6 pr-6'>
           <SheetTitle>Streaming settings</SheetTitle>
           <SheetDescription>Viewer quality, transport, and audio. Changes apply immediately.</SheetDescription>

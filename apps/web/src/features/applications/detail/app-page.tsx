@@ -1,13 +1,17 @@
 'use client'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
+import { AppPageFailure } from '@/features/applications/components/app-page-failure'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
+import { AppManage } from '@/features/applications/manage/app-manage'
+import { AppManageProfiles } from '@/features/applications/manage/app-manage-profiles'
 import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { StandardPageSplit } from '@/shared/ui/page/page-layout'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
+import { resolveAppResourceView } from './app-resource-links'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
@@ -55,19 +59,25 @@ const AppViewerPageContent = ({
   viewMode?: 'workspace' | 'details'
   activity?: ReactNode
 }) => {
-  const { app } = useApplicationViewerContext()
+  const { app, permissions } = useApplicationViewerContext()
   const search = useSearchParams()
-  const view = search.get('view') ?? 'overview'
+  const view = resolveAppResourceView(search.get('view'))
   const isDetailsView = viewMode === 'details'
 
   if (!app) {
-    return <AppNotFoundSplash />
+    return <AppPageFailure />
   }
 
   if (!isDetailsView) {
-    const section = view === 'activity' || view === 'diagnostics' ? view : 'overview'
     return (
       <AppDeviceLayout
+        breadcrumbs={
+          <AppResourceBreadcrumbs
+            appId={app.id}
+            appName={app.name}
+            view={view}
+          />
+        }
         viewer={<AppViewerPane placement='top' />}
         contained={view === 'ai-agent'}
       >
@@ -75,14 +85,12 @@ const AppViewerPageContent = ({
           imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
           opacity={0.08}
         />
-        {view === 'ai-agent' || view === 'workflows' || view === 'clipboard' || view === 'files' ? (
-          <AppWorkspaceContent toolId={view} />
-        ) : (
-          <AppResourceHome
-            view={section}
-            activity={activity}
-          />
-        )}
+        <AppResourceBody
+          view={view}
+          activity={activity}
+          app={app}
+          permissions={permissions}
+        />
       </AppDeviceLayout>
     )
   }
@@ -97,4 +105,40 @@ const AppViewerPageContent = ({
       <AppViewerPane />
     </StandardPageSplit>
   )
+}
+
+const AppResourceBody = ({
+  view,
+  activity,
+  app,
+  permissions
+}: {
+  view: ReturnType<typeof resolveAppResourceView>
+  activity?: ReactNode
+  app: AppDefinition
+  permissions: PermissionMap
+}) => {
+  switch (view) {
+    case 'configuration':
+      return <AppManage />
+    case 'profiles':
+      return (
+        <AppManageProfiles
+          app={app}
+          permissions={permissions}
+        />
+      )
+    case 'ai-agent':
+    case 'workflows':
+    case 'clipboard':
+    case 'files':
+      return <AppWorkspaceContent toolId={view} />
+    default:
+      return (
+        <AppResourceHome
+          view={view}
+          activity={activity}
+        />
+      )
+  }
 }

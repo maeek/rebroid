@@ -32,6 +32,7 @@ type RuntimePowerActionContextValue = {
   canDeleteProfiles: boolean
   dialogDisabled: boolean
   isBusy: boolean
+  isRecreatingAction: boolean
   isRestartingAction: boolean
   isRunningAction: boolean
   isStoppingAction: boolean
@@ -43,6 +44,7 @@ type RuntimePowerActionContextValue = {
   primaryVariant: 'primary' | 'secondary'
   profileMode: ApplicationProfileMode
   profileName: string
+  recreateDialogOpen: boolean
   restartDialogOpen: boolean
   savedProfiles: SavedApplicationProfiles
   stopDialogOpen: boolean
@@ -51,6 +53,8 @@ type RuntimePowerActionContextValue = {
   onOpenChange: (open: boolean) => void
   onProfileDelete: (profileName: string) => Promise<void>
   onPrimaryAction: () => void
+  onRecreateConfirm: () => void
+  onRecreateDialogOpenChange: (open: boolean) => void
   onRestartConfirm: () => void
   onRestartDialogOpenChange: (open: boolean) => void
   onStart: () => void
@@ -136,6 +140,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         canRunPrimary: viewState.canRunPrimary,
         dialogDisabled: viewState.dialogDisabled,
         isBusy: viewState.isBusy,
+        isRecreatingAction: runtimeHandlers.actionPhase === 'recreating',
         isRestartingAction: runtimeHandlers.actionPhase === 'restarting',
         isRunningAction,
         isStoppingAction: runtimeHandlers.actionPhase === 'stopping',
@@ -147,6 +152,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         primaryVariant: viewState.primaryVariant,
         profileMode,
         profileName,
+        recreateDialogOpen: runtimeHandlers.recreateDialogOpen,
         restartDialogOpen,
         savedProfiles,
         stopDialogOpen,
@@ -155,6 +161,8 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         onOpenChange: setStartDialogOpen,
         onProfileDelete: handleProfileDelete,
         onPrimaryAction: runtimeHandlers.handlePrimaryAction,
+        onRecreateConfirm: () => void runtimeHandlers.handleRecreate(),
+        onRecreateDialogOpenChange: runtimeHandlers.setRecreateDialogOpen,
         onRestartConfirm: () => void runtimeHandlers.handleRestart(),
         onRestartDialogOpenChange: setRestartDialogOpen,
         onStart: runtimeHandlers.handleProfileStart,

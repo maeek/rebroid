@@ -6,7 +6,8 @@ import { openViewerPopout } from '@/features/applications/viewer/display/display
 import { useDisplayViewerShellState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-shell-state'
 import {
   getDisplayViewportSize,
-  getFullscreenMediaSize
+  fitAspectRatio,
+  fallbackDisplayViewportHeight
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
   DisplayViewerStreamMetrics,
@@ -88,25 +89,26 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     fullscreen,
     fullscreenSurfaceId,
     keyboardCaptureEnabled,
-    rotateSurface,
-    rotatedSurfaceIds,
     setActiveSurfaceId,
     setSurfaceStreamMetrics,
     setSurfaceStreamStatus,
     surfaceElementsRef,
-    streamMetrics,
     streamStatuses,
     surfaceViewportElementsRef,
     toggleFullscreen,
     toggleKeyboardCapture,
     viewerActions,
     windowSize,
-    workspaceHeight
+    workspaceSize,
+    streamSizes
   } = useDisplayViewerContext()
-  const rotated = Boolean(rotatedSurfaceIds[surface.id])
   const fullscreenSurface = fullscreenSurfaceId === surface.id
-  const viewportSize = getDisplayViewportSize({ surface, rotated, workspaceHeight })
-  const mediaSize = fullscreenSurface ? getFullscreenMediaSize({ surface, rotated, windowSize }) : null
+  const displaySize = streamSizes[surface.id] ?? surface.displaySize
+  const ratio = displaySize.width / displaySize.height
+  const viewportSize = getDisplayViewportSize({ ratio, workspaceSize, controlsEnabled })
+  const mediaSize = fullscreenSurface
+    ? fitAspectRatio(ratio, windowSize.width || viewportSize.width, windowSize.height || fallbackDisplayViewportHeight)
+    : null
 
   const toggleSurfaceFullscreen = () => {
     setActiveSurfaceId(surface.id)
@@ -125,13 +127,12 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     isClosing: viewerActions.closingSurfaceId === surface.id,
     keyboardCaptureEnabled,
     mediaSize,
-    streamMetrics: streamMetrics[surface.id],
     streamStatus: streamStatuses[surface.id],
     viewportSize,
+    workspaceHeight: workspaceSize.height,
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onClose: () => viewerActions.closeDisplay(surface),
     onOpenPopout: () => openViewerPopout(applicationId, surface),
-    onRotate: () => rotateSurface(surface),
     onSelect: () => setActiveSurfaceId(surface.id),
     onStreamMetrics: (metrics: DisplayViewerStreamMetrics) => setSurfaceStreamMetrics(surface.id, metrics),
     onStreamStatus: (status: DisplayViewerStreamStatus) => setSurfaceStreamStatus(surface.id, status),
@@ -155,8 +156,6 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     fullscreen,
     keyboardCaptureEnabled,
     orderedSurfaces,
-    rotateActiveSurface,
-    rotateSurface,
     setActiveSurfaceId,
     surfaceViewportElementsRef,
     toggleFullscreen,
@@ -185,7 +184,6 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     surfaceId: surface?.id,
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onOpenPopout: surface ? () => openViewerPopout(applicationId, surface) : undefined,
-    onRotateViewer: surface ? () => rotateSurface(surface) : rotateActiveSurface,
     onToggleFullscreen: toggleSurfaceFullscreen,
     onToggleKeyboardCapture: toggleKeyboardCapture
   }

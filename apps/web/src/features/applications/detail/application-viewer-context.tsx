@@ -60,8 +60,7 @@ export const ApplicationViewerProvider = ({
   currentOwnerUserId,
   initialSettings,
   isAdmin,
-  permissions,
-  refreshEnabled = true
+  permissions
 }: {
   app?: AppDefinition
   children: ReactNode
@@ -69,7 +68,6 @@ export const ApplicationViewerProvider = ({
   initialSettings: OrchestratorUiSettings
   isAdmin: boolean
   permissions: PermissionMap
-  refreshEnabled?: boolean
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
@@ -85,9 +83,15 @@ export const ApplicationViewerProvider = ({
   const canControlViewer = !isForeignOwnedApp && hasPermission(permissions, 'applications:control-viewer')
 
   useEffect(() => {
-    setCurrentApp(app)
-    setViewerStreamMetrics({})
+    setCurrentApp(current => {
+      if (app && current?.id === app.id && current.updatedAt > app.updatedAt) return current
+      return app
+    })
   }, [app])
+
+  useEffect(() => {
+    setViewerStreamMetrics({})
+  }, [app?.id])
 
   useEffect(() => {
     const hasStoredSettings = window.localStorage.getItem(viewerSettingsStorageKey) !== null
@@ -145,7 +149,7 @@ export const ApplicationViewerProvider = ({
     ['applications', currentAppId],
     () => getApplicationAction(currentAppId!),
     {
-      enabled: refreshEnabled && Boolean(currentAppId),
+      enabled: Boolean(currentAppId),
       intervalMs: refreshIntervalMs
     }
   )
@@ -157,6 +161,7 @@ export const ApplicationViewerProvider = ({
 
     setCurrentApp(current => {
       const mapped = mapAndroidApplicationToAppDefinition(refreshedApp)
+      if (current?.id === mapped.id && current.updatedAt > mapped.updatedAt) return current
       return {
         ...mapped,
         icon: current?.icon ?? mapped.icon,

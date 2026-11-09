@@ -26,15 +26,26 @@ describe('app resource navigation', () => {
     )
     expect(screen.getByRole('link', { name: 'Activity' })).toHaveAttribute('aria-current', 'page')
   })
-  it('keeps Diagnostics in the same navigation when using AI tools', () => {
+  it('shows app sections in order and keeps Diagnostics in the same navigation as AI tools', () => {
     render(
       <AppResourceNavigation
         appId='app-1'
         active='ai-agent'
         permissions={fullPermissions}
         isForeignOwnedApp={false}
+        canViewAuditActivity
       />
     )
+    expect(screen.getAllByRole('link').map(link => link.textContent)).toEqual([
+      'Overview',
+      'AI agent',
+      'Workflows',
+      'Files',
+      'Clipboard',
+      'Activity',
+      'Diagnostics',
+      'Configuration'
+    ])
     expect(screen.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('href', '/app/app-1?view=diagnostics')
     expect(screen.getByRole('link', { name: 'AI agent' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute('href', '/app/app-1?view=configuration')

@@ -1,13 +1,7 @@
-import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
-
-export const surfaceChromeHeight = 40
-export const workspaceVerticalPadding = 24
+export const surfaceChromeHeight = 32
+export const workspacePadding = 16
+export const viewerControlRailWidth = 40
 export const fallbackDisplayViewportHeight = 640
-
-export const surfaceAspectRatio = (surface: DisplayViewerSurface, rotated: boolean) =>
-  rotated
-    ? surface.displaySize.height / surface.displaySize.width
-    : surface.displaySize.width / surface.displaySize.height
 
 export const fitAspectRatio = (ratio: number, maxWidth: number, maxHeight: number) => {
   const widthFromHeight = maxHeight * ratio
@@ -25,38 +19,20 @@ export const fitAspectRatio = (ratio: number, maxWidth: number, maxHeight: numbe
 }
 
 export const getDisplayViewportSize = ({
-  rotated,
-  surface,
-  workspaceHeight
+  ratio,
+  workspaceSize,
+  controlsEnabled
 }: {
-  rotated: boolean
-  surface: DisplayViewerSurface
-  workspaceHeight: number
+  ratio: number
+  workspaceSize: { width: number; height: number }
+  controlsEnabled: boolean
 }) => {
-  const availableHeight =
-    workspaceHeight > 0
-      ? Math.max(240, workspaceHeight - workspaceVerticalPadding - surfaceChromeHeight)
-      : fallbackDisplayViewportHeight
-  const ratio = surfaceAspectRatio(surface, rotated)
-
-  return {
-    height: Math.round(availableHeight),
-    width: Math.round(availableHeight * ratio)
-  }
-}
-
-export const getFullscreenMediaSize = ({
-  rotated,
-  surface,
-  windowSize
-}: {
-  rotated: boolean
-  surface: DisplayViewerSurface
-  windowSize: { width: number; height: number }
-}) => {
-  const ratio = surfaceAspectRatio(surface, rotated)
-  const maxWidth = windowSize.width || fallbackDisplayViewportHeight * ratio
-  const maxHeight = windowSize.height || fallbackDisplayViewportHeight
-
-  return fitAspectRatio(ratio, maxWidth, maxHeight)
+  const availableWidth = workspaceSize.width
+    ? Math.max(1, workspaceSize.width - workspacePadding - (controlsEnabled ? viewerControlRailWidth : 0))
+    : 320
+  const availableHeight = workspaceSize.height
+    ? Math.max(1, workspaceSize.height - workspacePadding - surfaceChromeHeight)
+    : fallbackDisplayViewportHeight
+  const fitted = fitAspectRatio(ratio, availableWidth, availableHeight)
+  return { ...fitted, width: Math.min(availableWidth, Math.max(120, fitted.width)) }
 }

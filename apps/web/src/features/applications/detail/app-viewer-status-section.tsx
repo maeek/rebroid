@@ -14,6 +14,7 @@ export const AppViewerStatusSection = ({
   showErrorDetails?: boolean
 }) => {
   const isError = app.status === 'error'
+  const title = app.statusDetail?.title ?? (isError ? 'App needs attention' : app.lifecycleStage.replaceAll('_', ' '))
   const description = app.statusDetail?.description ?? app.statusMessage
   let tone: 'danger' | 'success' | 'info' = 'info'
   if (isError) tone = 'danger'
@@ -23,7 +24,7 @@ export const AppViewerStatusSection = ({
     <div className='grid gap-3'>
       <Notice
         tone={tone}
-        title={app.statusDetail?.title ?? (isError ? 'App needs attention' : app.lifecycleStage.replaceAll('_', ' '))}
+        title={title.charAt(0).toUpperCase() + title.slice(1)}
         actions={
           isError && canDiagnose ? (
             <Button

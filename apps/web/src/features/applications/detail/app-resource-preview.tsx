@@ -3,12 +3,15 @@
 import { useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
+import { AppManage } from '@/features/applications/manage/app-manage'
 import { viewerSettingsFromDefaults } from '@/features/applications/viewer/settings/viewer-settings'
 import { AiAgentPreview } from '@/features/applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-preview'
+import { DownloadsToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/files/downloads-tools-section'
 import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
 import { previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
@@ -40,6 +43,7 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
   const selected = useSearchParams().get('view')
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
+  const breadcrumbView = showAgent ? 'ai-agent' : selected === 'configuration' || selected === 'files' ? selected : view
   return (
     <QueryClientProvider client={queryClient}>
       <ApplicationViewerContext.Provider
@@ -63,6 +67,13 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
       >
         <main className={agent ? 'min-h-screen bg-background pt-16 lg:pl-72' : 'min-h-screen bg-background pt-16'}>
           <AppDeviceLayout
+            breadcrumbs={
+              <AppResourceBreadcrumbs
+                appId={previewApp.id}
+                appName={previewApp.name}
+                view={breadcrumbView}
+              />
+            }
             viewer={<AppViewerPane placement='top' />}
             contained={showAgent}
           >
@@ -70,6 +81,17 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
               <AppWorkspaceLayout toolId='ai-agent'>
                 <RuntimeToolPanelLayout toolId='ai-agent'>
                   <AiAgentPreview />
+                </RuntimeToolPanelLayout>
+              </AppWorkspaceLayout>
+            ) : selected === 'configuration' ? (
+              <AppManage />
+            ) : selected === 'files' ? (
+              <AppWorkspaceLayout toolId='files'>
+                <RuntimeToolPanelLayout toolId='files'>
+                  <DownloadsToolsSection
+                    app={{ ...previewApp, status: 'running', running: true }}
+                    permissions={fullPermissions}
+                  />
                 </RuntimeToolPanelLayout>
               </AppWorkspaceLayout>
             ) : (

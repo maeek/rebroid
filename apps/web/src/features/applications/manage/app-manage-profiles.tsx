@@ -10,16 +10,13 @@ import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { editorSectionClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
-import { AppNotFoundSplash } from '@/features/applications/components/app-not-found-splash'
-import { AppResourceBreadcrumbs } from '@/features/applications/detail/app-resource-breadcrumbs'
+import { AppPageFailure } from '@/features/applications/components/app-page-failure'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { toast } from '@/hooks/use-toast'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { resolveAppIconUrl } from '@/shared/model/media/image-url'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
@@ -31,7 +28,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
   const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
 
   if (!currentApp) {
-    return <AppNotFoundSplash />
+    return <AppPageFailure />
   }
 
   const persistentProfiles = currentApp.savedProfiles.filter(profile => profile.mode === 'persistent')
@@ -72,16 +69,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
 
   return (
     <EditorPage>
-      <PageBackdrop
-        imageSrc={currentApp.icon ? resolveAppIconUrl(currentApp.icon) : null}
-        opacity={0.08}
-      />
       <PageContent>
-        <AppResourceBreadcrumbs
-          appId={currentApp.id}
-          appName={currentApp.name}
-          view='profiles'
-        />
         <AppViewerHeading app={currentApp} />
         <AppProfilesSection
           profiles={persistentProfiles}

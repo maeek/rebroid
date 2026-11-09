@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
@@ -8,7 +9,15 @@ import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-
 import { cn } from '@/lib/utils'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
-export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => {
+export const SurfacePanel = ({
+  surface,
+  showName,
+  chromeActions
+}: {
+  surface: DisplayViewerSurface
+  showName: boolean
+  chromeActions?: ReactNode
+}) => {
   const {
     controlsEnabled,
     fullscreenSurface,
@@ -25,7 +34,8 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
     onToggleFullscreen,
     onViewportElement,
     streamStatus,
-    viewportSize
+    viewportSize,
+    workspaceHeight
   } = useDisplayViewerSurface(surface)
 
   return (
@@ -33,46 +43,61 @@ export const SurfacePanel = ({ surface }: { surface: DisplayViewerSurface }) => 
       ref={onSurfaceElement}
       onFocus={onSelect}
       onPointerDown={onSelect}
-      className='flex shrink-0 snap-center scroll-mx-2 flex-col overflow-hidden rounded-panel sm:scroll-mx-6'
-      style={{ width: viewportSize.width }}
+      aria-label={surface.name}
+      className='flex shrink-0 snap-center items-start gap-2'
     >
-      <SurfaceChrome
-        isActive={isActive}
-        surface={surface}
-        isClosing={isClosing}
-        isFullscreen={fullscreenSurface}
-        streamStatus={streamStatus}
-        onClose={onClose}
-        onOpenPopout={onOpenPopout}
-        onToggleFullscreen={onToggleFullscreen}
-      />
       <div
-        ref={onViewportElement}
-        className={cn(
-          'relative overflow-hidden rounded-b-lg border border-surface-border/70 bg-black',
-          fullscreenSurface && 'flex h-screen w-screen items-center justify-center rounded-none border-0'
-        )}
-        style={fullscreenSurface ? undefined : { height: viewportSize.height }}
+        className='min-w-0'
+        style={{ width: viewportSize.width }}
       >
+        <SurfaceChrome
+          isActive={isActive}
+          showName={showName}
+          actions={chromeActions}
+          surface={surface}
+          isClosing={isClosing}
+          isFullscreen={fullscreenSurface}
+          streamStatus={streamStatus}
+          onClose={onClose}
+          onOpenPopout={onOpenPopout}
+          onToggleFullscreen={onToggleFullscreen}
+        />
         <div
-          className={fullscreenSurface ? 'shrink-0 overflow-hidden bg-black' : 'h-full w-full'}
-          style={mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined}
+          ref={onViewportElement}
+          className={cn(
+            'relative overflow-hidden rounded-b-lg border border-surface-border/70 bg-black',
+            fullscreenSurface && 'flex h-screen w-screen items-center justify-center rounded-none border-0'
+          )}
+          style={fullscreenSurface ? undefined : { height: viewportSize.height }}
         >
-          <DisplayViewerFrame
-            src={surface.src}
-            keyboardCaptureEnabled={keyboardCaptureEnabled}
-            onStreamMetrics={onStreamMetrics}
-            onStreamStatus={onStreamStatus}
-            surfaceId={surface.id}
-          />
+          <div
+            className={fullscreenSurface ? 'shrink-0 overflow-hidden bg-black' : 'h-full w-full'}
+            style={mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined}
+          >
+            <DisplayViewerFrame
+              src={surface.src}
+              keyboardCaptureEnabled={keyboardCaptureEnabled}
+              onStreamMetrics={onStreamMetrics}
+              onStreamStatus={onStreamStatus}
+              surfaceId={surface.id}
+            />
+          </div>
+          <Visible when={controlsEnabled && fullscreenSurface}>
+            <ViewerControlBar
+              mode='floating'
+              surfaceId={surface.id}
+            />
+          </Visible>
         </div>
-        <Visible when={controlsEnabled && fullscreenSurface}>
-          <ViewerControlBar
-            mode='floating'
-            surfaceId={surface.id}
-          />
-        </Visible>
       </div>
+      {controlsEnabled ? (
+        <div
+          className='w-8 shrink-0 overflow-y-auto scrollbar-none'
+          style={{ maxHeight: Math.max(32, workspaceHeight - 16) }}
+        >
+          {isActive ? <ViewerControlBar surfaceId={surface.id} /> : null}
+        </div>
+      ) : null}
     </section>
   )
 }

@@ -65,17 +65,13 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
       placement={placement}
       workspace={useDisplayWorkspace}
     >
-      {canAttach ? (
-        <div className='flex w-full shrink-0 justify-end'>
-          <AppViewerStreamingSettings />
-        </div>
-      ) : null}
       <div className='relative flex w-full min-h-0 items-center justify-center'>
         <Visible when={canAttach && runtimeAvailable}>
           <DisplayViewerEmbed
             key={app.id}
             app={app}
             viewerSettings={viewerSettings}
+            streamingSettings={<AppViewerStreamingSettings />}
             canControlViewer={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
             onViewerSettingsChange={setViewerSettings}
@@ -92,6 +88,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             app={app}
             fullscreen={false}
             orientation={orientation}
+            chrome={<AppViewerStreamingSettings />}
             viewerSettings={viewerSettings}
             canStart={canStartCurrentApp}
             isStarting={isStarting}
@@ -125,7 +122,7 @@ export const AppViewerPaneLayout = ({
 }) => (
   <div
     className={cn(
-      'flex w-full flex-col items-center justify-start gap-3 max-sm:max-w-full [--app-viewer-height:calc(100dvh-9rem)]',
+      'flex w-full flex-col items-center justify-start gap-3 max-sm:max-w-full',
       {
         'max-w-none lg:sticky lg:top-10 lg:min-w-0 lg:flex-1 lg:self-stretch lg:pr-4 lg:pt-6':
           placement === 'side' && workspace,

@@ -3,18 +3,20 @@ import { appResourceHref, appResourceLabels, type AppResourceView } from './app-
 
 export const AppResourceBreadcrumbs = ({
   appId,
-  appName,
+  appName = 'Application',
   view
 }: {
-  appId: string
-  appName: string
+  appId?: string
+  appName?: string
   view: AppResourceView
 }) => (
   <PageBreadcrumbs
     items={[
       { label: 'Apps', href: '/apps' },
-      { label: appName, href: appResourceHref(appId) },
-      ...(view === 'profiles' ? [{ label: 'Configuration', href: appResourceHref(appId, 'configuration') }] : []),
+      { label: appName, href: appId ? appResourceHref(appId) : undefined },
+      ...(view === 'profiles'
+        ? [{ label: 'Configuration', href: appId ? appResourceHref(appId, 'configuration') : undefined }]
+        : []),
       { label: appResourceLabels[view] }
     ]}
   />

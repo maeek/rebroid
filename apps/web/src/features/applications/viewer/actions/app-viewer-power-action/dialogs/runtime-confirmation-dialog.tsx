@@ -6,6 +6,7 @@ import { useRuntimePowerActionContext } from '@/features/applications/viewer/act
 export const RuntimeConfirmationDialog = ({ kind }: { kind: 'stop' | 'restart' }) => {
   const context = useRuntimePowerActionContext()
   const isStop = kind === 'stop'
+  const appName = context.appName || 'app'
   const open = isStop ? context.stopDialogOpen : context.restartDialogOpen
   const onOpenChange = isStop ? context.onStopDialogOpenChange : context.onRestartDialogOpenChange
   const isWorking = isStop ? context.isStoppingAction : context.isRestartingAction
@@ -14,15 +15,16 @@ export const RuntimeConfirmationDialog = ({ kind }: { kind: 'stop' | 'restart' }
   return (
     <ConfirmMutationDialog
       open={open}
-      title={isStop ? `Stop ${context.appName}?` : `Restart ${context.appName}?`}
+      title={isStop ? `Stop ${appName}?` : `Restart ${appName}?`}
       description={
-        isStop ? 'The current Android runtime will stop.' : 'The current Android runtime will stop and start again.'
+        isStop
+          ? 'This stops Android and disconnects active viewers.'
+          : 'This briefly disconnects viewers while the Android runtime restarts.'
       }
-      summary={context.appName}
       consequence={
         isStop
-          ? 'The app record and saved profiles stay ready for the next start.'
-          : 'The active profile is reused when the app starts again.'
+          ? 'You can start the app again with its saved profiles.'
+          : 'The app starts again using its active profile.'
       }
       tone='warning'
       confirmLabel={isStop ? 'Stop app' : 'Restart app'}

@@ -250,7 +250,10 @@ export const PermissionEditor = ({
             pageSize={pageSize}
             totalItems={visible.length}
             onPageIndexChange={setPageIndex}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={size => {
+              setPageSize(size)
+              setPageIndex(0)
+            }}
             loading={loading}
           />
         </DataGridWorkspace>

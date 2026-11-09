@@ -109,10 +109,13 @@ export const GroupMembershipEditor = ({
         <DataGridPagination
           pageIndex={currentPage}
           pageSize={pageSize}
-          pageSizeOptions={[5, 10, 20]}
+          pageSizeOptions={[5, 10, 20, 50, 100]}
           totalItems={rows.length}
           onPageIndexChange={setPageIndex}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={size => {
+            setPageSize(size)
+            setPageIndex(0)
+          }}
           loading={loading}
         />
       </DataGridWorkspace>

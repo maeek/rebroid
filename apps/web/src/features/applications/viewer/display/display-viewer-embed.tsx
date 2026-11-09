@@ -15,6 +15,7 @@ import {
 } from '@/features/applications/viewer/player/android-viewer-layout'
 import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
+import { cn } from '@/lib/utils'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import { StateView } from '@/shared/ui/state-view'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
@@ -70,26 +71,48 @@ const viewerOrientation = (app: AppDefinition): ViewerOrientation => {
   return display.width >= display.height ? 'landscape' : 'portrait'
 }
 
-const DisplayLoadingSurface = ({ app, description }: { app: AppDefinition; description: string }) => {
+const EmbeddedViewerFallback = ({
+  app,
+  loadingDescription,
+  actions,
+  children
+}: {
+  app: AppDefinition
+  loadingDescription: string
+  actions?: ReactNode
+  children?: ReactNode
+}) => {
   const layout = getViewerFrameLayout(app, viewerOrientation(app))
 
   return (
     <div className='flex w-full items-center justify-center'>
       <div
-        className={getViewerFrameClassName(false)}
-        style={getViewerFrameStyle(layout, false)}
+        className={children ? 'relative w-full' : getViewerFrameClassName(false)}
+        style={children ? undefined : getViewerFrameStyle(layout, false)}
       >
-        <ViewerPlaceholderScreen
-          app={app}
-          placeholder={{
-            title: 'Starting live display',
-            description,
-            toneClassName: 'text-primary',
-            Icon: IconLoader2,
-            showSpinner: true,
-            showProgress: false
-          }}
-        />
+        {actions ? (
+          <div
+            className={cn(
+              'flex h-8 items-center justify-end bg-surface-band px-1.5',
+              children ? 'rounded-t-panel' : 'absolute inset-x-0 top-0 z-20'
+            )}
+          >
+            {actions}
+          </div>
+        ) : null}
+        {children ?? (
+          <ViewerPlaceholderScreen
+            app={app}
+            placeholder={{
+              title: 'Starting live display',
+              description: loadingDescription,
+              toneClassName: 'text-primary',
+              Icon: IconLoader2,
+              showSpinner: true,
+              showProgress: false
+            }}
+          />
+        )}
       </div>
     </div>
   )
@@ -101,13 +124,15 @@ export const DisplayViewerEmbed = ({
   canControlViewer,
   canCaptureScreenshot,
   onViewerSettingsChange,
-  onStreamMetrics
+  onStreamMetrics,
+  streamingSettings
 }: {
   app: AppDefinition
   viewerSettings: ViewerSettings
   canControlViewer: boolean
   canCaptureScreenshot: boolean
   onViewerSettingsChange?: (settings: ViewerSettings) => void
+  streamingSettings?: ReactNode
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
 }) => {
   const baseUrl = useBrowserBaseUrl()
@@ -174,43 +199,32 @@ export const DisplayViewerEmbed = ({
     [baseUrl, mainDisplaySize, session, viewerSettings]
   )
 
-  if (sessionError && !session) {
-    return (
-      <EmbeddedViewerSplash
-        title='Viewer unavailable'
-        description='The live display session could not be opened.'
-        detail={sessionError}
-        tone='danger'
-      />
-    )
-  }
+  if (!session?.viewerServiceConfigured || !session.displaySession?.viewerPath || surfaces.length === 0) {
+    let error: { description: string; detail: string } | undefined
+    if (session && !session.viewerServiceConfigured) {
+      error = {
+        description: 'The live display service is not ready.',
+        detail: 'Refresh the viewer or restart the app, then try again.'
+      }
+    } else if (!session && sessionError) {
+      error = { description: 'The live display session could not be opened.', detail: sessionError }
+    }
 
-  if (!session) {
     return (
-      <DisplayLoadingSurface
+      <EmbeddedViewerFallback
         app={app}
-        description='Rebroid is opening the app screen.'
-      />
-    )
-  }
-
-  if (!session.viewerServiceConfigured) {
-    return (
-      <EmbeddedViewerSplash
-        title='Viewer unavailable'
-        description='The live display service is not ready.'
-        detail='Refresh the viewer or restart the app, then try again.'
-        tone='danger'
-      />
-    )
-  }
-
-  if (!session.displaySession?.viewerPath || surfaces.length === 0) {
-    return (
-      <DisplayLoadingSurface
-        app={app}
-        description='Preparing the display session.'
-      />
+        loadingDescription={session ? 'Preparing the display session.' : 'Rebroid is opening the app screen.'}
+        actions={streamingSettings}
+      >
+        {error ? (
+          <EmbeddedViewerSplash
+            title='Viewer unavailable'
+            description={error.description}
+            detail={error.detail}
+            tone='danger'
+          />
+        ) : null}
+      </EmbeddedViewerFallback>
     )
   }
 
@@ -218,7 +232,7 @@ export const DisplayViewerEmbed = ({
     <div className='relative h-[var(--app-viewer-height,calc(100dvh-6rem))] min-h-0 w-full overflow-hidden'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
-        <div className='absolute left-3 right-3 top-3 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
+        <div className='pointer-events-none absolute left-3 right-3 top-10 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
           Viewer connection could not be confirmed yet.
         </div>
       </Visible>
@@ -240,7 +254,10 @@ export const DisplayViewerEmbed = ({
           onStreamMetrics
         }}
       >
-        <DisplayViewerShell className='h-full w-full !bg-transparent' />
+        <DisplayViewerShell
+          className='h-full w-full !bg-transparent'
+          streamingSettings={streamingSettings}
+        />
       </DisplayViewerProvider>
     </div>
   )

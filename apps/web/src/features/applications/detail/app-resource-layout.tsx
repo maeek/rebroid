@@ -4,21 +4,18 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 
 export const AppResourceLayout = ({
   heading,
-  breadcrumbs,
   navigation,
   status,
   children,
   workspace = false
 }: {
   heading: ReactNode
-  breadcrumbs: ReactNode
   navigation: ReactNode
   status: ReactNode
   children: ReactNode
   workspace?: boolean
 }) => (
   <PageContent className={cn(workspace && 'pb-4 lg:h-full lg:min-h-0')}>
-    <div className='shrink-0'>{breadcrumbs}</div>
     <div className='shrink-0'>{heading}</div>
     <div className='shrink-0'>{navigation}</div>
     {status ? <div className='shrink-0'>{status}</div> : null}

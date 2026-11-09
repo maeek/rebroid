@@ -53,8 +53,7 @@ export const ViewerControlProvider = ({
   const { controlsDisabled, pendingCommand, sendControl } = useViewerControlSender({
     appId: controls.appId,
     baseControlsDisabled: !controls.runtimeAvailable || !controls.canControl,
-    surfaceId: controls.surfaceId,
-    onRotateViewer: controls.onRotateViewer
+    surfaceId: controls.surfaceId
   })
   const { handleFloatingPointerDown, handleFloatingPointerMove, handleFloatingPointerUp } = useFloatingToolbarDrag(
     floatingPosition,

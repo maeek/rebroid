@@ -10,6 +10,8 @@ import {
   startAppRuntime,
   stopAppRuntime
 } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-operations'
+import { recreateApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import type {
   PowerActionRuntimeHandlersOptions,
   RuntimeActionPhase
@@ -31,6 +33,7 @@ export const usePowerActionRuntimeHandlers = ({
   setStopDialogOpen
 }: PowerActionRuntimeHandlersOptions) => {
   const [actionPhase, setActionPhase] = useState<RuntimeActionPhase>(null)
+  const [recreateDialogOpen, setRecreateDialogOpen] = useState(false)
 
   const handleStart = (options?: { profileMode?: ApplicationProfileMode; profileName?: string }) =>
     startAppRuntime({ app, options, runAction, setActionPhase, setSavedProfiles })
@@ -53,6 +56,17 @@ export const usePowerActionRuntimeHandlers = ({
     closeDialogOnSuccess(didSucceed, () => setRestartDialogOpen(false))
   }
 
+  const handleRecreate = async () => {
+    if (!app) return
+    setActionPhase('recreating')
+    const success = await runAction(
+      async () => unwrapActionResult(await recreateApplicationAction(app.id)),
+      'Could not recreate runtime'
+    )
+    setActionPhase(null)
+    closeDialogOnSuccess(success, () => setRecreateDialogOpen(false))
+  }
+
   const handlePrimaryAction = () => {
     openPrimaryRuntimeAction({
       app,
@@ -72,7 +86,8 @@ export const usePowerActionRuntimeHandlers = ({
     onStartDefaults: () => void handleStart(),
     onStartProfile: () => setStartDialogOpen(true),
     onStop: () => setStopDialogOpen(true),
-    onRestart: () => setRestartDialogOpen(true)
+    onRestart: () => setRestartDialogOpen(true),
+    onRecreate: () => setRecreateDialogOpen(true)
   })
 
   return {
@@ -81,6 +96,9 @@ export const usePowerActionRuntimeHandlers = ({
     handlePrimaryAction,
     handleProfileStart,
     handleRestart,
-    handleStopConfirm
+    handleStopConfirm,
+    handleRecreate,
+    recreateDialogOpen,
+    setRecreateDialogOpen
   }
 }

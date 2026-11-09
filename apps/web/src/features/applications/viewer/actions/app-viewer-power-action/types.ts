@@ -3,7 +3,7 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
 
-export type RuntimeActionPhase = 'starting' | 'stopping' | 'restarting' | null
+export type RuntimeActionPhase = 'starting' | 'stopping' | 'restarting' | 'recreating' | null
 
 export type RuntimeMenuAction = {
   key: string

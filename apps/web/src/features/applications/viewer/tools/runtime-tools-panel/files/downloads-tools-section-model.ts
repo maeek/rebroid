@@ -1,4 +1,3 @@
-import { formatDateLocale } from '@/lib/format'
 import { formatBytes } from '../runtime-tools-panel.utils'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
@@ -44,11 +43,6 @@ export const runtimeFileNameError = (value: string) => {
 export const runtimeFileEntryDetail = (entry: ApplicationRuntimeFile) => {
   if (entry.type !== 'directory') return formatBytes(entry.sizeBytes ?? 0)
   return entry.itemCount === null ? 'Folder' : runtimeItemLabel(entry.itemCount)
-}
-
-export const runtimeFileEntrySubtitle = (entry: ApplicationRuntimeFile) => {
-  const detail = runtimeFileEntryDetail(entry)
-  return entry.modifiedAt ? `${detail} • ${formatDateLocale(entry.modifiedAt)}` : detail
 }
 
 export const topLoaderProgressForUpload = (progress: number) => Math.min(Math.max(progress / 100, 0.08), 0.95)

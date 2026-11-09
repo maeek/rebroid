@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef } from 'react'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { Visible } from '@/components/ui/visible'
 import {
   getViewerFrameClassName,
@@ -22,6 +22,7 @@ import type { ViewerSettings } from '@/features/applications/viewer/settings/vie
 export type ViewerOrientation = 'portrait' | 'landscape'
 
 type AppViewerProps = {
+  chrome?: ReactNode
   app?: AppDefinition
   fullscreen?: boolean
   orientation?: ViewerOrientation
@@ -54,6 +55,7 @@ const ViewerIframe = ({
 
 export const AppViewer = ({
   app,
+  chrome,
   fullscreen,
   orientation = 'portrait',
   viewerSettings,
@@ -77,6 +79,11 @@ export const AppViewer = ({
       onContextMenu={event => event.preventDefault()}
       style={getViewerFrameStyle(layout, fullscreen)}
     >
+      {chrome ? (
+        <div className='absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-end bg-surface-band px-1.5'>
+          {chrome}
+        </div>
+      ) : null}
       <Visible when={viewerSrc}>
         <ViewerIframe
           src={viewerSrc ?? ''}

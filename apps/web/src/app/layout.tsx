@@ -1,6 +1,6 @@
 import { CSSProperties } from 'react'
 import localFont from 'next/font/local'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 // eslint-disable-next-line import/order
 import Providers from './providers'
 // eslint-disable-next-line import/order
@@ -9,6 +9,8 @@ import NextTopLoader from 'nextjs-toploader'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
+import { isViewerPlacement, viewerPlacementCookie } from '@/shared/model/settings/viewer-placement'
+import { ViewerPlacementProvider } from '@/shared/model/settings/viewer-placement-context'
 import { getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
 import './globals.css'
 
@@ -56,8 +58,9 @@ export const viewport: Viewport = {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerAuthSession()
-  const nonce = (await headers()).get('x-nonce') ?? undefined
+  const [session, requestHeaders, requestCookies] = await Promise.all([getServerAuthSession(), headers(), cookies()])
+  const nonce = requestHeaders.get('x-nonce') ?? undefined
+  const viewerPlacement = requestCookies.get(viewerPlacementCookie)?.value
 
   return (
     <html
@@ -91,7 +94,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               zIndex={9999}
             />
             <div id='modal-root' />
-            <Providers>{children}</Providers>
+            <Providers>
+              <ViewerPlacementProvider
+                initialPlacement={isViewerPlacement(viewerPlacement) ? viewerPlacement : undefined}
+              >
+                {children}
+              </ViewerPlacementProvider>
+            </Providers>
             <Toaster />
           </ThemeProvider>
         </div>

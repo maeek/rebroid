@@ -4,6 +4,7 @@ test('shared app chrome stays fixed when switching between diagnostics and AI ag
   for (const width of [1024, 1440, 2048]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/skeleton-contract-test?editor=agent&view=diagnostics')
+    await page.waitForFunction(() => (history.state as { __NA?: boolean } | null)?.__NA === true)
     const navigation = page.getByRole('navigation', { name: 'App sections' })
     const heading = page.getByRole('heading', { name: 'Inventory worker', exact: true })
     const frame = page.getByRole('complementary', { name: 'Android device' }).locator('[data-viewer-frame]')
@@ -148,4 +149,115 @@ test('agent surfaces stay consistent through themes and loading', async ({ page 
   await expect(page.getByLabel('Loading AI chat history')).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Message the device agent' })).toBeDisabled()
   expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1)
+})
+
+test('app tabs keep the same device and tab position', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  await page.waitForFunction(() => (history.state as { __NA?: boolean } | null)?.__NA === true)
+  const navigation = page.getByRole('navigation', { name: 'App sections' })
+  const pane = page.getByRole('complementary', { name: 'Android device' })
+  const initialNavigation = (await navigation.boundingBox())!
+  const initialPane = (await pane.boundingBox())!
+  await pane.locator('[data-viewer-frame]').evaluate(element => element.setAttribute('data-retained', 'true'))
+
+  for (const [view, label] of [
+    ['configuration', 'Configuration'],
+    ['diagnostics', 'Diagnostics'],
+    ['overview', 'Overview']
+  ]) {
+    await page.evaluate(
+      next => history.pushState(null, '', `/skeleton-contract-test?editor=app-resource&view=${next}`),
+      view
+    )
+    await expect(navigation.getByRole('link', { name: label, exact: true })).toHaveAttribute('aria-current', 'page')
+    await expect(pane.locator('[data-viewer-frame]')).toHaveAttribute('data-retained', 'true')
+    const current = (await navigation.boundingBox())!
+    expect(current.x).toBe(initialNavigation.x)
+    expect(current.y).toBe(initialNavigation.y)
+    expect(await pane.boundingBox()).toEqual(initialPane)
+  }
+})
+
+test('viewer layout keeps breadcrumbs above the device and preserves the mounted viewer', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  const breadcrumbs = page.getByRole('navigation', { name: 'breadcrumb' })
+  const navigation = page.getByRole('navigation', { name: 'App sections' })
+  const pane = page.getByRole('complementary', { name: 'Android device' })
+  const frame = pane.locator('[data-viewer-frame]')
+  const layout = page.getByRole('button', { name: 'Viewer layout' })
+  const initialBreadcrumbs = (await breadcrumbs.boundingBox())!
+  const initialNavigation = (await navigation.boundingBox())!
+  const initialFrame = (await frame.boundingBox())!
+  const appsCrumb = (await breadcrumbs.getByRole('link', { name: 'Apps' }).boundingBox())!
+  const layoutButton = (await layout.boundingBox())!
+  expect(Math.abs(layoutButton.y + layoutButton.height / 2 - (appsCrumb.y + appsCrumb.height / 2))).toBeLessThan(2)
+  await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
+
+  await layout.click()
+  await expect(page.getByRole('menuitemradio', { name: 'Viewer on the right' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('menuitemradio', { name: 'Viewer on top' }).click()
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  await expect(layout).toBeFocused()
+  await expect(frame).toHaveAttribute('data-retained', 'true')
+  await expect(navigation.getByRole('link', { name: 'Viewer', exact: true })).toHaveCount(0)
+  await expect(page).toHaveURL(/editor=app-resource$/)
+
+  const stackedBreadcrumbs = (await breadcrumbs.boundingBox())!
+  const stackedNavigation = (await navigation.boundingBox())!
+  await expect
+    .poll(async () => {
+      const box = (await pane.boundingBox())!
+      return box.y + box.height
+    })
+    .toBeLessThanOrEqual(900 - 16)
+  const stackedPane = (await pane.boundingBox())!
+  expect(stackedBreadcrumbs.y).toBe(initialBreadcrumbs.y)
+  expect(stackedPane.y).toBeGreaterThanOrEqual(stackedBreadcrumbs.y + stackedBreadcrumbs.height)
+  expect(stackedNavigation.y).toBeGreaterThan(stackedPane.y + stackedPane.height)
+  expect(stackedNavigation.width).toBeGreaterThan(initialNavigation.width)
+  await expect
+    .poll(async () => {
+      const box = (await frame.boundingBox())!
+      return Math.abs(box.width / box.height - initialFrame.width / initialFrame.height)
+    })
+    .toBeLessThan(0.01)
+
+  await page.evaluate(() => {
+    window.scrollTo(0, 80)
+    history.pushState(null, '', '/skeleton-contract-test?editor=app-resource&view=diagnostics')
+  })
+  await expect(navigation.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('aria-current', 'page')
+  expect(await page.evaluate(() => scrollY)).toBe(80)
+  await page.evaluate(() => {
+    history.pushState(null, '', '/skeleton-contract-test?editor=app-resource')
+    window.scrollTo(0, 0)
+  })
+  await expect(navigation.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
+
+  await layout.click()
+  await page.getByRole('menuitemradio', { name: 'Viewer on the right' }).click()
+  await expect(pane).not.toHaveAttribute('data-viewer-placement', 'top')
+  await expect(frame).toHaveAttribute('data-retained', 'true')
+  await expect(navigation.getByRole('link', { name: 'Viewer', exact: true })).toHaveCount(0)
+  expect((await navigation.boundingBox())!.y).toBe(initialNavigation.y)
+
+  await layout.click()
+  await page.getByRole('menuitemradio', { name: 'Viewer on top' }).click()
+  const initialHtml = await page.request.get('/skeleton-contract-test?editor=app-resource')
+  expect(await initialHtml.text()).toContain('data-viewer-placement="top"')
+  await page.goto('/skeleton-contract-test?editor=app-resource-loading')
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  expect(await page.evaluate(() => scrollY)).toBe(0)
+
+  await page.goto('/skeleton-contract-test?editor=general')
+  const preference = page.getByRole('combobox', { name: 'Viewer layout' })
+  await expect(preference).toHaveText('Viewer on top')
+  await preference.click()
+  await page.getByRole('option', { name: 'Viewer on the right' }).click()
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  await expect(pane).not.toHaveAttribute('data-viewer-placement', 'top')
 })

@@ -1,8 +1,9 @@
 'use client'
 
-import { IconPlayerPlayFilled, IconPlayerStopFilled, IconRestore } from '@tabler/icons-react'
+import { IconPlayerPlayFilled, IconPlayerStopFilled, IconReplace, IconRestore } from '@tabler/icons-react'
 import {
   canRestartRuntime,
+  canRecreateRuntime,
   canStartDefaults,
   canStartProfile,
   canStopRuntime
@@ -19,7 +20,8 @@ export const createRuntimeMenuActions = ({
   onStartDefaults,
   onStartProfile,
   onStop,
-  onRestart
+  onRestart,
+  onRecreate
 }: {
   app?: AppDefinition
   canStart: boolean
@@ -30,6 +32,7 @@ export const createRuntimeMenuActions = ({
   onStartProfile: () => void
   onStop: () => void
   onRestart: () => void
+  onRecreate: () => void
 }): RuntimeMenuAction[] => [
   {
     key: 'start-defaults',
@@ -58,5 +61,12 @@ export const createRuntimeMenuActions = ({
     icon: <IconRestore className='size-4' />,
     disabled: !canRestartRuntime(app, canRestart),
     onSelect: onRestart
+  },
+  {
+    key: 'recreate',
+    label: 'Recreate runtime…',
+    icon: <IconReplace className='size-4' />,
+    disabled: !canRecreateRuntime(app, canRestart),
+    onSelect: onRecreate
   }
 ]

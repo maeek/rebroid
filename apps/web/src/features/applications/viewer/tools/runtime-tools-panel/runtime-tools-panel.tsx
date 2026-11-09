@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { AiAgentConversationLayout, AiAgentConversationToolbar } from './ai-agent/ai-agent-conversation-layout'
 import { AiAgentTranscript } from './ai-agent/ai-agent-transcript'
+import { DownloadsToolsLoading } from './files/downloads-tools-section'
 import { RuntimeToolContent } from './runtime-tool-content'
 import { runtimeInlineSectionClassName } from './runtime-tool-definitions'
 import { getRuntimeTools, runtimeToolPanelClassName, type RuntimeToolId } from './runtime-tool-definitions'
@@ -102,6 +103,7 @@ export const RuntimeToolsPanelLoading = ({ toolId }: { toolId: RuntimeToolId }) 
         }
       />
     )
+  if (toolId === 'files') content = <DownloadsToolsLoading />
   if (toolId === 'clipboard')
     content = (
       <ToolSection

@@ -1,14 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import {
-  IconAdjustments,
-  IconDatabase,
-  IconDeviceFloppy,
-  IconPlayerPlay,
-  IconRobot,
-  IconTrash
-} from '@tabler/icons-react'
+import { IconDatabase, IconDeviceFloppy, IconPlayerPlay, IconRobot, IconTrash } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
@@ -27,30 +20,33 @@ import { RuntimeToolsPanelLoading } from '@/features/applications/viewer/tools/r
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppConfigurationSummary } from './app-resource-home'
 import { AppResourceLayout, AppResourceOverviewLayout } from './app-resource-layout'
-import { type AppResourceView, appResourceLabels } from './app-resource-links'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { AppViewerPaneLayout } from './app-viewer-pane'
+import type { AppResourceView } from './app-resource-links'
 
 const noop = () => undefined
 
 const DeviceSkeleton = () => (
   <AppViewerPaneLayout placement='top'>
-    <div className='flex w-full shrink-0 justify-end'>
-      <Button
-        variant='ghost'
-        size='sm'
-        disabled
-      >
-        <IconAdjustments className='size-4' />
-        Streaming settings
-      </Button>
+    <div className='flex h-[var(--app-viewer-height)] w-full items-start justify-center gap-2 overflow-hidden p-2'>
+      <div className='w-full max-w-[calc((var(--app-viewer-height)-3rem)*0.47)] overflow-hidden rounded-panel'>
+        <Skeleton className='h-8 w-full rounded-none' />
+        <Skeleton className='aspect-[0.47] w-full rounded-none' />
+      </div>
+      <div className='grid shrink-0 gap-1.5'>
+        {Array.from({ length: 10 }, (_, index) => (
+          <Skeleton
+            key={index}
+            className='size-8'
+          />
+        ))}
+      </div>
     </div>
-    <Skeleton className='h-[var(--app-viewer-height)] w-full max-w-[calc(var(--app-viewer-height)*0.47)] rounded-feature' />
   </AppViewerPaneLayout>
 )
 
@@ -58,25 +54,18 @@ const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceV
   const configuration = view === 'configuration'
   return (
     <AppDeviceLayout
+      breadcrumbs={<AppResourceBreadcrumbs view={view} />}
       viewer={<DeviceSkeleton />}
       contained={view === 'ai-agent'}
+      loading
     >
       <StandardPage className={view === 'ai-agent' ? 'lg:h-full lg:min-h-0' : undefined}>
         <AppResourceLayout
           workspace={view === 'ai-agent'}
-          breadcrumbs={
-            <PageBreadcrumbs
-              items={[
-                { label: 'Apps', href: '/apps' },
-                { label: 'Application' },
-                ...(view !== 'overview' ? [{ label: appResourceLabels[view] }] : [])
-              ]}
-            />
-          }
           heading={
             <AppViewerHeading
               loading
-              showStatusBadge={!configuration}
+              showStatusBadge
             >
               <div className='flex flex-wrap gap-2'>
                 {configuration ? (
@@ -148,7 +137,6 @@ const AppOverviewSkeleton = () => (
           orientation='horizontal'
           contentClassName='flex-wrap gap-3'
         >
-          <Button disabled>Open viewer</Button>
           <Button
             variant='outline'
             disabled
@@ -238,10 +226,13 @@ export const AppManagePageSkeleton = () => {
 }
 
 export const AppProfilesPageSkeleton = () => (
-  <AppDeviceLayout viewer={<DeviceSkeleton />}>
+  <AppDeviceLayout
+    breadcrumbs={<AppResourceBreadcrumbs view='profiles' />}
+    viewer={<DeviceSkeleton />}
+    loading
+  >
     <EditorPage>
       <PageContent>
-        <PageBreadcrumbs items={[{ label: 'Apps', href: '/apps' }, { label: 'Application' }, { label: 'Profiles' }]} />
         <AppViewerHeading loading />
         <AppProfilesSection
           profiles={[]}

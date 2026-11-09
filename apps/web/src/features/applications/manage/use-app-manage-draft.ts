@@ -44,30 +44,11 @@ export const buildAppManageUpdateInput = ({
   containerArgs: canChangeContainerArgs ? draft.containerArgs.trim() || null : undefined
 })
 
-export const useAppManageDraft = (app?: AppDefinition) => {
-  const [currentApp, setCurrentApp] = useState(app)
-  const [draft, setDraft] = useState(() => draftFromApp(app))
+export const useAppManageDraft = (currentApp: AppDefinition) => {
+  const [draft, setDraft] = useState(() => draftFromApp(currentApp))
   const hasPendingAppChangesRef = useRef(false)
   const isIconDirtyRef = useRef(false)
-  const previousAppIdRef = useRef(app?.id)
-
   useEffect(() => {
-    if (app?.id !== previousAppIdRef.current) {
-      previousAppIdRef.current = app?.id
-      hasPendingAppChangesRef.current = false
-      isIconDirtyRef.current = false
-      setDraft(draftFromApp(app))
-    }
-
-    setCurrentApp(current => {
-      if (!app) return app
-      if (app.id !== current?.id) return app
-      return mergeAppPreservingDraftAssets(app, current)
-    })
-  }, [app])
-
-  useEffect(() => {
-    if (!currentApp) return
     setDraft(current => ({
       appName: hasPendingAppChangesRef.current ? current.appName : currentApp.name,
       inactivityTimeoutSeconds: hasPendingAppChangesRef.current
@@ -84,23 +65,19 @@ export const useAppManageDraft = (app?: AppDefinition) => {
     }))
   }, [currentApp])
 
-  const formValues = (
-    currentApp
-      ? {
-          name: draft.appName,
-          containerImage: currentApp.containerImage,
-          inactivityTimeoutSeconds: draft.inactivityTimeoutSeconds,
-          memoryLimitMb: draft.memoryLimitMb,
-          cpuLimitCpus: draft.cpuLimitCpus,
-          customContainerArgs: draft.containerArgs,
-          redroidDisplayProfileId: 'custom',
-          redroidCustomDisplayWidth: '',
-          redroidCustomDisplayHeight: '',
-          redroidCustomDisplayDpi: '',
-          redroidExtraArgs: ''
-        }
-      : null
-  ) satisfies AppFormValues | null
+  const formValues = {
+    name: draft.appName,
+    containerImage: currentApp.containerImage,
+    inactivityTimeoutSeconds: draft.inactivityTimeoutSeconds,
+    memoryLimitMb: draft.memoryLimitMb,
+    cpuLimitCpus: draft.cpuLimitCpus,
+    customContainerArgs: draft.containerArgs,
+    redroidDisplayProfileId: 'custom',
+    redroidCustomDisplayWidth: '',
+    redroidCustomDisplayHeight: '',
+    redroidCustomDisplayDpi: '',
+    redroidExtraArgs: ''
+  } satisfies AppFormValues
 
   const updateForm = useCallback((patch: Partial<AppFormValues>) => {
     hasPendingAppChangesRef.current = true
@@ -121,23 +98,15 @@ export const useAppManageDraft = (app?: AppDefinition) => {
     setDraft(current => ({ ...current, icon: nextIcon }))
   }, [])
 
-  const mergeRefreshedApp = useCallback((nextApp: AppDefinition) => {
-    setCurrentApp(current => mergeAppPreservingDraftAssets(nextApp, current))
-  }, [])
-
-  const markSaved = useCallback((nextApp: AppDefinition) => {
+  const markSaved = () => {
     hasPendingAppChangesRef.current = false
-    setCurrentApp(current => mergeAppPreservingDraftAssets(nextApp, current))
-  }, [])
+  }
 
   return {
-    currentApp,
-    displayApp: currentApp ? { ...currentApp, name: draft.appName, icon: draft.icon } : null,
+    displayApp: { ...currentApp, name: draft.appName, icon: draft.icon },
     draft,
     formValues,
     markSaved,
-    mergeRefreshedApp,
-    setCurrentApp,
     updateForm,
     updateIcon
   }
