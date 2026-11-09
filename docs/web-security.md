@@ -61,9 +61,11 @@ service request logging omit query strings.
 
 Workflow inputs must not override the session owner or supply alternate unchecked definitions.
 Resource quotas apply to effective create defaults and reject unlimited update values under finite
-quotas. Image runtime detection is separate from authorization: only the official Docker Hub
-`redroid/redroid` repository qualifies for Redroid-only access; third-party derivatives require
-custom-image permission. Uploaded APK assignment requires the application's owner to own the upload.
+quotas. The orchestrator authorizes the resolved image for create and clone, including the deployment
+default and registry. The official Docker Hub `redroid/redroid` repository qualifies for Redroid-only
+access. Third-party images require custom-image permission, and only administrators can provision
+or clone them when privileged runtime mode is enabled. Uploaded APK assignment requires the
+application's owner to own the upload.
 
 Server Actions default to a 4 MB body limit (`NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT`).
 Streaming upload routes retain their separate 512 MB proxy ceiling

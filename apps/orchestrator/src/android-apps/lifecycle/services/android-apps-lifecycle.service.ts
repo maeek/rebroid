@@ -6,6 +6,7 @@ import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-app
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
+import type { ApplicationImageAccess } from '../utils/application-image-access';
 import { AndroidAppsConfigurationService } from './android-apps-configuration.service';
 import { AndroidAppsPowerService } from './android-apps-power.service';
 import { AndroidAppsRemovalService } from './android-apps-removal.service';
@@ -20,12 +21,21 @@ export class AndroidAppsLifecycleService {
     private readonly removal: AndroidAppsRemovalService,
   ) {}
 
-  create(dto: CreateAndroidApplicationDto, maxOpenApps?: number) {
-    return this.configuration.create(dto, maxOpenApps);
+  create(
+    dto: CreateAndroidApplicationDto,
+    maxOpenApps?: number,
+    imageAccess?: ApplicationImageAccess,
+  ) {
+    return this.configuration.create(dto, maxOpenApps, imageAccess);
   }
 
-  clone(id: string, dto: CloneAndroidApplicationDto, maxOpenApps?: number) {
-    return this.configuration.clone(id, dto, maxOpenApps);
+  clone(
+    id: string,
+    dto: CloneAndroidApplicationDto,
+    maxOpenApps?: number,
+    imageAccess?: ApplicationImageAccess,
+  ) {
+    return this.configuration.clone(id, dto, maxOpenApps, imageAccess);
   }
 
   update(id: string, dto: UpdateAndroidApplicationDto) {

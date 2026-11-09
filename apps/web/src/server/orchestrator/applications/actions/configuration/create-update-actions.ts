@@ -15,7 +15,6 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
-import { isTrustedRedroidImage } from '../../image-access'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import {
   applyCreateResourceQuotas,
@@ -74,7 +73,7 @@ const assertCanChangeContainerArgs = (
   }
 }
 
-const assertCanUseContainerImage = (
+const assertCanChangeContainerImage = (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,
   input: CreateApplicationActionInput
 ) => {
@@ -87,20 +86,6 @@ const assertCanUseContainerImage = (
       code: 'forbidden',
       status: 403
     })
-  }
-  if (
-    input.containerImage &&
-    isTrustedRedroidImage(input.containerImage) &&
-    !hasPermission(user.permissions, 'applications:use-redroid-images')
-  ) {
-    throw new PublicActionError('You do not have permission to use Redroid images.', { code: 'forbidden', status: 403 })
-  }
-  if (
-    input.containerImage &&
-    !isTrustedRedroidImage(input.containerImage) &&
-    !hasPermission(user.permissions, 'applications:use-custom-images')
-  ) {
-    throw new PublicActionError('You do not have permission to use custom images.', { code: 'forbidden', status: 403 })
   }
 }
 
@@ -166,7 +151,7 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
           status: 403
         })
       }
-      assertCanUseContainerImage(user, input)
+      assertCanChangeContainerImage(user, input)
       assertCanChangeResources(user, input)
       assertCanChangeSessionLimit(user, input)
       assertCanChangeContainerArgs(user, input)
@@ -186,7 +171,8 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
               : input.containerArgs
           },
           requestId,
-          user.quotas.maxOpenApps
+          user.quotas.maxOpenApps,
+          user
         )
         .catch((error: unknown) => {
           throw toCreateApplicationError(error)

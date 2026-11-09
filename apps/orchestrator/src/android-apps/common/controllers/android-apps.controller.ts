@@ -35,6 +35,8 @@ import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-ap
 import { AndroidAppsQueryService } from '../services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../services/android-apps-runtime-state-reconciler.service';
 import { ApiOpenAppQuota, OpenAppQuota } from './open-app-quota-header';
+import { ApiImageAccess, ImageAccess } from './application-image-access-header';
+import type { ApplicationImageAccess } from '../../lifecycle/utils/application-image-access';
 
 @ApiTags('apps')
 @Controller('apps')
@@ -47,6 +49,7 @@ export class AndroidAppsController {
 
   @Post()
   @ApiOpenAppQuota()
+  @ApiImageAccess()
   @ApiOperation({
     summary: 'Provision an isolated application container.',
   })
@@ -125,14 +128,16 @@ export class AndroidAppsController {
   async create(
     @Body() dto: CreateAndroidApplicationDto,
     @OpenAppQuota() maxOpenApps?: number,
+    @ImageAccess() imageAccess?: ApplicationImageAccess,
   ) {
     return ApplicationCommandResultDto.fromEntity(
-      await this.lifecycle.create(dto, maxOpenApps),
+      await this.lifecycle.create(dto, maxOpenApps, imageAccess),
     );
   }
 
   @Post(':id/clone')
   @ApiOpenAppQuota()
+  @ApiImageAccess()
   @ApiOperation({
     summary:
       'Create a separate owner-scoped application from an existing app definition.',
@@ -142,9 +147,10 @@ export class AndroidAppsController {
     @Param('id') id: string,
     @Body() dto: CloneAndroidApplicationDto,
     @OpenAppQuota() maxOpenApps?: number,
+    @ImageAccess() imageAccess?: ApplicationImageAccess,
   ) {
     return ApplicationCommandResultDto.fromEntity(
-      await this.lifecycle.clone(id, dto, maxOpenApps),
+      await this.lifecycle.clone(id, dto, maxOpenApps, imageAccess),
     );
   }
 

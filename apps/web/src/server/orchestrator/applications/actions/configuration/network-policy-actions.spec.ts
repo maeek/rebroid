@@ -144,7 +144,8 @@ describe('network policy actions', () => {
     expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
       expect.objectContaining({ networkPolicyEnabled: false }),
       result.requestId,
-      null
+      null,
+      expect.objectContaining({ role: 'admin' })
     )
     expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
     expect(requireFeature).not.toHaveBeenCalled()
@@ -193,7 +194,8 @@ describe('network policy actions', () => {
     expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
       expect.anything(),
       result.requestId,
-      null
+      null,
+      expect.objectContaining({ role: 'admin' })
     )
   })
 

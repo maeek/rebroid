@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { isTrustedRedroidImage } from './image-access'
-describe('Redroid image authorization', () => {
-  it.each(['attacker/redroid', 'attacker/redroid-payload', 'evil.example/redroid/redroid', 'redroid/redroid-payload'])(
-    'rejects publisher spoofing: %s',
-    image => expect(isTrustedRedroidImage(image)).toBe(false)
-  )
-  it.each(['redroid/redroid:14', 'docker.io/redroid/redroid:14', 'redroid/redroid@sha256:abc'])(
-    'recognizes the trusted repository: %s',
-    image => expect(isTrustedRedroidImage(image)).toBe(true)
-  )
+import { applicationImageAccessHeaders } from './image-access'
+
+describe('application image access', () => {
+  it('distinguishes a non-admin with both permissions from an administrator', () => {
+    const permissions = {
+      'applications:use-redroid-images': true,
+      'applications:use-custom-images': true
+    }
+    expect(applicationImageAccessHeaders({ role: 'user', permissions })).toEqual({ 'x-rebroid-image-access': 'all' })
+    expect(applicationImageAccessHeaders({ role: 'admin', permissions })).toEqual({ 'x-rebroid-image-access': 'admin' })
+    expect(applicationImageAccessHeaders({ role: 'user', permissions: {} })).toEqual({
+      'x-rebroid-image-access': 'none'
+    })
+  })
 })

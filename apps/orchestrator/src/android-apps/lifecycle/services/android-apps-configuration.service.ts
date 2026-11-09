@@ -1,10 +1,12 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { resolveContainerImage } from '../../../common/container-image-reference';
+import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 import {
   APK_CATALOG,
   type ApkCatalogPort,
+  type UploadedApkReference,
 } from '../../../apk/contracts/apk-catalog.port';
 import { SettingsService } from '../../../settings/settings.service';
 import { AndroidApplication } from '../../android-application.entity';
@@ -28,6 +30,12 @@ import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
+import {
+  assertApplicationImageAccess,
+  type ApplicationImageAccess,
+} from '../utils/application-image-access';
+
+type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
 
 const unavailableApk = () =>
   new ConflictException({
@@ -55,9 +63,14 @@ export class AndroidAppsConfigurationService {
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly writer: AndroidAppsStateWriter,
     private readonly features: FeatureFlagsService,
+    private readonly redroidConfig: RedroidRuntimeConfigService,
   ) {}
 
-  async create(dto: CreateAndroidApplicationDto, maxOpenApps?: number) {
+  async create(
+    dto: CreateAndroidApplicationDto,
+    maxOpenApps?: number,
+    imageAccess: ApplicationImageAccess = 'admin',
+  ) {
     if (dto.networkPolicyEnabled !== false) {
       this.features.assertEnabled('feature.firewall');
     }
@@ -80,9 +93,35 @@ export class AndroidAppsConfigurationService {
       dto.containerImage ?? settings.defaultContainerImage,
       settings.dockerImageRegistry,
     );
+    assertApplicationImageAccess(
+      containerImage,
+      imageAccess,
+      this.redroidConfig.privileged,
+    );
+    return this.provision(
+      dto,
+      settings,
+      containerImage,
+      uploadedApk,
+      maxOpenApps,
+    );
+  }
+
+  private async provision(
+    dto: CreateAndroidApplicationDto,
+    settings: ApplicationSettings,
+    containerImage: string,
+    uploadedApk: UploadedApkReference | null,
+    maxOpenApps?: number,
+  ) {
     const runtimeKind = await this.runtimeImages.resolveKind(containerImage);
     const app = this.applications.create(
-      this.applicationFactory.initialFields(dto, settings, runtimeKind),
+      this.applicationFactory.initialFields(
+        dto,
+        settings,
+        containerImage,
+        runtimeKind,
+      ),
     );
 
     app.id = randomUUID();
@@ -109,24 +148,39 @@ export class AndroidAppsConfigurationService {
     id: string,
     dto: CloneAndroidApplicationDto,
     maxOpenApps?: number,
+    imageAccess: ApplicationImageAccess = 'admin',
   ) {
-    const source = await this.reconciler.reconcileById(id);
+    this.features.assertEnabled('feature.firewall');
+    const [source, settings] = await Promise.all([
+      this.reconciler.reconcileById(id),
+      this.settings.getSettings(),
+    ]);
+    const containerImage = resolveContainerImage(
+      source.containerImage,
+      settings.dockerImageRegistry,
+    );
+    assertApplicationImageAccess(
+      containerImage,
+      imageAccess,
+      this.redroidConfig.privileged,
+    );
     const ownerUserId = dto.ownerUserId?.trim() || null;
     const uploadedApk = source.uploadedApkId
       ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
       : null;
 
-    return this.create(
+    return this.provision(
       {
         name: dto.name?.trim() || source.name,
         ownerUserId: ownerUserId ?? undefined,
-        containerImage: source.containerImage,
         inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
         memoryLimitMb: source.memoryLimitMb ?? undefined,
         cpuLimitCpus: source.cpuLimitCpus ?? undefined,
         containerArgs: source.containerArgs ?? undefined,
-        uploadedApkId: uploadedApk?.id,
       },
+      settings,
+      containerImage,
+      uploadedApk,
       maxOpenApps,
     );
   }

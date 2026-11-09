@@ -9,7 +9,6 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
-import { resolveContainerImage } from '../../../common/container-image-reference';
 import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
@@ -26,13 +25,9 @@ export class AndroidApplicationFactory {
   initialFields(
     dto: CreateAndroidApplicationDto,
     settings: ApplicationSettings,
+    containerImage: string,
     runtimeKind: RuntimeImageKind,
   ): Partial<AndroidApplication> {
-    const containerImage = resolveContainerImage(
-      dto.containerImage ?? settings.defaultContainerImage,
-      settings.dockerImageRegistry,
-    );
-
     return {
       name: dto.name,
       ownerUserId: dto.ownerUserId ?? null,

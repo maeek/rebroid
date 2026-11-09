@@ -954,6 +954,22 @@
         "operationId": "AndroidAppsController_create",
         "parameters": [
           {
+            "name": "x-rebroid-image-access",
+            "in": "header",
+            "description": "Image permissions supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "none",
+                "redroid",
+                "custom",
+                "all",
+                "admin"
+              ]
+            }
+          },
+          {
             "name": "x-rebroid-max-open-apps",
             "in": "header",
             "description": "Open application limit supplied by the trusted web service.",
@@ -1168,6 +1184,22 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-image-access",
+            "in": "header",
+            "description": "Image permissions supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "none",
+                "redroid",
+                "custom",
+                "all",
+                "admin"
+              ]
             }
           },
           {

@@ -112,4 +112,20 @@ describe('orchestrator OpenAPI domain contract', () => {
       }),
     );
   });
+
+  it.each(['/api/v1/apps', '/api/v1/apps/{id}/clone'])(
+    'documents the trusted image grants for %s',
+    (path) => {
+      expect(document.paths[path]?.post?.parameters).toContainEqual(
+        expect.objectContaining({
+          name: 'x-rebroid-image-access',
+          in: 'header',
+          schema: {
+            type: 'string',
+            enum: ['none', 'redroid', 'custom', 'all', 'admin'],
+          },
+        }),
+      );
+    },
+  );
 });

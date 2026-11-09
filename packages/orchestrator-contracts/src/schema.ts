@@ -4335,6 +4335,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description Image permissions supplied by the trusted web service. */
+                "x-rebroid-image-access"?: "none" | "redroid" | "custom" | "all" | "admin";
                 /** @description Open application limit supplied by the trusted web service. */
                 "x-rebroid-max-open-apps"?: number;
             };
@@ -4427,6 +4429,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                /** @description Image permissions supplied by the trusted web service. */
+                "x-rebroid-image-access"?: "none" | "redroid" | "custom" | "all" | "admin";
                 /** @description Open application limit supplied by the trusted web service. */
                 "x-rebroid-max-open-apps"?: number;
             };
