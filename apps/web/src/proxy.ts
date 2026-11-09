@@ -86,6 +86,7 @@ export const proxy = (request: NextRequest) => {
 
 export const config = {
   matcher: [
+    '/api/:path*',
     {
       source: '/((?!_next/static|_next/image|favicon.ico).*)',
       missing: [

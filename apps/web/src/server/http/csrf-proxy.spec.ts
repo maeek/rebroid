@@ -1,6 +1,7 @@
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server'
 import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
-import { csrfRequestIsAllowed, proxy } from '../../proxy'
+import { config, csrfRequestIsAllowed, proxy } from '../../proxy'
 
 const request = (path: string, headers: Record<string, string> = {}, serverOrigin = 'https://rebroid.example') =>
   new NextRequest(`${serverOrigin}${path}`, { method: 'POST', headers })
@@ -22,6 +23,14 @@ describe('API CSRF boundary', () => {
     ).toBe(false)
     expect(csrfRequestIsAllowed(request('/api/bff/preferences/ui-settings', { cookie: 'session=value' }))).toBe(false)
   })
+
+  it.each([{ 'next-router-prefetch': '1' }, { purpose: 'prefetch' }])(
+    'runs the API proxy even with prefetch headers %j',
+    headers => {
+      expect(unstable_doesMiddlewareMatch({ config, url: '/api/bff/preferences/ui-settings', headers })).toBe(true)
+      expect(unstable_doesMiddlewareMatch({ config, url: '/apps', headers })).toBe(false)
+    }
+  )
 
   it('accepts the public origin forwarded to the standalone server', () => {
     expect(
