@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  defaultGroups,
-  findGroups,
-  normalizeGroups,
-  normalizeUser,
-  toPublicUser,
-  validateAvatarDataUrl
-} from './user-model'
+import { resolveUserGroups } from '@/shared/permissions/effective-access'
+import { defaultGroups, normalizeGroups, normalizeUser, toPublicUser, validateAvatarDataUrl } from './user-model'
 import type { StoredUser, UsersFile } from './user-model'
 
 const storedUser = (overrides: Partial<StoredUser> = {}): StoredUser => ({
@@ -39,7 +33,7 @@ describe('user model', () => {
   it('falls back to the role group when selected groups are missing', () => {
     const file = usersFile(storedUser({ groupIds: ['missing'] }))
 
-    expect(findGroups(file, ['missing'], 'user').map(group => group.id)).toEqual(['users'])
+    expect(resolveUserGroups(file.groups, ['missing'], 'user').map(group => group.id)).toEqual(['users'])
   })
 
   it('derives public users with effective permissions and quotas', () => {

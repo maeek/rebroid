@@ -1,14 +1,14 @@
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
+import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import {
   defaultUserPermissions,
   defaultUserQuota,
   fullPermissions,
-  mergePermissions,
   mergeQuotas,
   unlimitedQuota
 } from '@/shared/permissions/permissions'
-import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 export type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas' | 'mfaEnabled'> & {
   passwordHash: string
@@ -66,27 +66,11 @@ export const defaultGroups = (): UserGroup[] => {
   ]
 }
 
-export const findGroups = (file: UsersFile, groupIds: string[] | undefined, role: UserRole) => {
-  const selectedGroups = groupIds
-    ?.map(groupId => file.groups.find(group => group.id === groupId))
-    .filter((group): group is UserGroup => Boolean(group))
-
-  if (selectedGroups && selectedGroups.length > 0) {
-    return selectedGroups
-  }
-
-  const fallbackGroup =
-    file.groups.find(group => group.role === role) ?? file.groups.find(group => group.id === 'users') ?? file.groups[0]
-
-  return fallbackGroup ? [fallbackGroup] : []
-}
-
 export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
-  const groups = findGroups(file, user.groupIds, user.role)
-  const effectivePermissions =
-    user.role === 'admin'
-      ? fullPermissions
-      : mergePermissions(...groups.map(group => group.permissions), user.permissionOverrides)
+  const { groups, decisions } = resolveEffectiveAccess(file.groups, user.groupIds, user.role, user.permissionOverrides)
+  const effectivePermissions = Object.fromEntries(
+    Object.entries(decisions).map(([id, decision]) => [id, decision.allowed])
+  )
   const effectiveQuotas =
     user.role === 'admin' ? unlimitedQuota : mergeQuotas(...groups.map(group => group.quotas), user.quotas)
 

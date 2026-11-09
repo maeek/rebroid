@@ -244,21 +244,6 @@ export const unlimitedQuota: ResourceQuota = {
   maxCpuCpus: null
 }
 
-export const mergePermissions = (...maps: Array<PermissionMap | null | undefined>): PermissionMap =>
-  maps.reduce<PermissionMap>((merged, map) => {
-    if (!map) {
-      return merged
-    }
-
-    for (const id of allPermissionIds) {
-      if (map[id] !== undefined) {
-        merged[id] = map[id]
-      }
-    }
-
-    return merged
-  }, {})
-
 export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | undefined>): ResourceQuota =>
   quotas.reduce<ResourceQuota>(
     (merged, quota) => ({

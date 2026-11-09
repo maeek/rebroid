@@ -2,10 +2,11 @@ import { randomUUID } from 'node:crypto'
 import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
+import { resolveUserGroups } from '@/shared/permissions/effective-access'
 import { hashPassword } from './password-hashing'
 import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
 import { assertCanRemoveOrDisableUser, assertCanUpdateUser } from './user-admin-guard'
-import { findGroups, nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
+import { nowIso, toPublicUser, validateAvatarDataUrl } from './user-model'
 import { mutateUsersFile } from './user-store'
 import type { StoredUser } from './user-model'
 import type { UserEditorInput } from '@/shared/contracts/auth-user'
@@ -39,7 +40,7 @@ const createUser = async ({
       throw new PublicActionError('Username already exists.', { code: 'conflict', status: 409 })
     }
 
-    const groups = findGroups(file, groupIds, role)
+    const groups = resolveUserGroups(file.groups, groupIds, role)
     const now = nowIso()
     const user: StoredUser = {
       id: randomUUID(),
@@ -90,7 +91,8 @@ const updateUser = async (id: string, input: UserEditorInput) =>
     }
     if (input.name !== undefined) user.name = input.name.trim() || user.username
     if (input.role !== undefined) user.role = input.role
-    if (input.groupIds !== undefined) user.groupIds = findGroups(file, input.groupIds, user.role).map(group => group.id)
+    if (input.groupIds !== undefined)
+      user.groupIds = resolveUserGroups(file.groups, input.groupIds, user.role).map(group => group.id)
     if (input.disabled !== undefined && input.disabled !== user.disabled) {
       user.disabled = input.disabled
       user.sessionVersion += 1
