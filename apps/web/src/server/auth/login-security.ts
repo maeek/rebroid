@@ -17,9 +17,9 @@ export const loginSourceFromHeaderRecord = (headers?: Record<string, string | st
 export const consumeLoginAttempt = (username: string, source: string) => {
   const accountKey = rateLimitKey('account', username)
   const sourceKey = rateLimitKey('source', source)
-  const accountAllowed = consumePersistentRateLimit(accountKey, 10, 15 * 60 * 1000)
   const sourceAllowed = consumePersistentRateLimit(sourceKey, 50, 15 * 60 * 1000)
-  return { allowed: accountAllowed && sourceAllowed, keys: [accountKey, sourceKey] }
+  const allowed = sourceAllowed && consumePersistentRateLimit(accountKey, 10, 15 * 60 * 1000)
+  return { allowed, accountKey }
 }
 
-export const clearLoginAttempts = (keys: string[]) => clearPersistentRateLimits(keys)
+export const clearLoginAccountAttempts = (accountKey: string) => clearPersistentRateLimits([accountKey])

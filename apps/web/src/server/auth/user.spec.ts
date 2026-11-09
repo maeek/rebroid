@@ -1,9 +1,11 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDatabaseForTests } from '@/server/persistence/database'
+import { encryptMfaSecret } from './mfa-crypto'
 import { userService } from './user'
+import { mutateUsersFile } from './user-store'
 
 describe('userService.changeOwnPassword', () => {
   let tempDirectory: string
@@ -137,6 +139,27 @@ describe('userService.changeOwnPassword', () => {
     await expect(userService.verifyPrimaryCredentials('user', 'original-password')).resolves.toMatchObject({
       mfaRequired: false
     })
+  })
+
+  it('consumes a valid TOTP code once even across concurrent sign-ins', async () => {
+    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    vi.stubEnv('MFA_ENCRYPTION_KEY', 'mfa-encryption-key-for-test-only-32-characters')
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(59_000)
+    try {
+      await mutateUsersFile(file => {
+        const stored = file.users.find(entry => entry.id === user.id)!
+        stored.mfaSecretEncrypted = encryptMfaSecret('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ')
+      })
+      const results = await Promise.all([
+        userService.authenticate('user', 'original-password', '287082'),
+        userService.authenticate('user', 'original-password', '287 082')
+      ])
+      expect(results.filter(result => result?.id === user.id)).toHaveLength(1)
+      expect(results.filter(result => result === null)).toHaveLength(1)
+    } finally {
+      clock.mockRestore()
+      vi.unstubAllEnvs()
+    }
   })
 
   it('updates and authenticates the stored accent color', async () => {

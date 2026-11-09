@@ -11,8 +11,10 @@ be reported through the [security policy](../SECURITY.md).
   invalidates the old session and requires a fresh login.
 - New password hashes use Argon2id. Existing bcrypt hashes upgrade after successful login.
 - Login throttling persists in SQLite and applies to both account and source-address keys.
+  Successful sign-in clears the account limit. The source budget lasts through its window.
 - TOTP secrets use AES-256-GCM with `MFA_ENCRYPTION_KEY`; recovery codes are shown once and stored
-  as hashes. MFA changes invalidate sessions.
+  as hashes. A TOTP code can only complete one sign-in during its acceptance window. MFA changes
+  invalidate sessions.
 
 ## Authorization
 

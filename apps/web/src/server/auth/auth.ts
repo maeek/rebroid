@@ -4,8 +4,8 @@ import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
 import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
-import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
-import { clearLoginAttempts, consumeLoginAttempt, loginSourceFromHeaderRecord } from './login-security'
+import { isAccentColor } from '@/shared/model/theme/accent-color'
+import { clearLoginAccountAttempts, consumeLoginAttempt, loginSourceFromHeaderRecord } from './login-security'
 import { userService } from './user'
 
 const credentialsSchema = z.object({
@@ -47,16 +47,23 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token, user: _user }) {
       const currentUser = token.userId ? await userService.getUserById(token.userId).catch(() => null) : null
+      if (
+        !currentUser ||
+        currentUser.disabled ||
+        currentUser.sessionVersion !== token.sessionVersion ||
+        token.authEpoch !== getAuthEpoch()
+      ) {
+        return { expires: session.expires }
+      }
 
-      session.user.id = token.userId
-      session.user.name = currentUser?.name ?? session.user.name
-      session.user.role = currentUser?.role ?? token.role
+      session.user.id = currentUser.id
+      session.user.name = currentUser.name
+      session.user.role = currentUser.role
       session.user.sessionVersion = token.sessionVersion
       session.user.authEpoch = token.authEpoch
-      session.user.passwordChangeRequired = currentUser?.passwordChangeRequired ?? token.passwordChangeRequired
-      session.user.image = currentUser?.avatarDataUrl ?? (typeof token.picture === 'string' ? token.picture : null)
-      session.user.accentColor =
-        currentUser?.accentColor ?? (isAccentColor(token.accentColor) ? token.accentColor : defaultAccentColor)
+      session.user.passwordChangeRequired = currentUser.passwordChangeRequired
+      session.user.image = currentUser.avatarDataUrl
+      session.user.accentColor = currentUser.accentColor
       return session
     }
   },
@@ -90,7 +97,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await userService.authenticate(username, password, mfaCode)
-        if (user) clearLoginAttempts(attempt.keys)
+        if (user) clearLoginAccountAttempts(attempt.accountKey)
         recordAuditEvent({
           actorUserId: user?.id,
           actorLabel: user?.name || username,

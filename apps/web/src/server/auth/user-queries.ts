@@ -1,5 +1,6 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import 'server-only'
+import { consumePersistentRateLimit } from '@/server/persistence/auth-security-repository'
 import { decryptMfaSecret, hashRecoveryCode, verifyTotp } from './mfa-crypto'
 import { hashPassword, passwordHashNeedsUpgrade, verifyPassword } from './password-hashing'
 import { toPublicUser } from './user-model'
@@ -48,7 +49,12 @@ export const authenticate = async (username: string, password: string, mfaCode?:
     const recoveryHash = hashRecoveryCode(user.id, code)
     const recoveryIndex = user.mfaRecoveryCodeHashes.indexOf(recoveryHash)
     if (!totpValid && recoveryIndex < 0) return null
-    if (recoveryIndex >= 0) {
+    if (totpValid) {
+      const replayKey = createHash('sha256')
+        .update(`totp:${user.id}:${user.mfaSecretEncrypted}:${code.replaceAll(/\s/g, '')}`)
+        .digest('hex')
+      if (!consumePersistentRateLimit(replayKey, 1, 90_000)) return null
+    } else {
       const consumed = await mutateUsersFile(current => {
         const currentUser = current.users.find(item => item.id === user.id)
         const currentIndex = currentUser?.mfaRecoveryCodeHashes.indexOf(recoveryHash) ?? -1
