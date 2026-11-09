@@ -87,7 +87,6 @@ const getBulkDialog = (action: BulkAction | null, appNames: string[], removeData
   return {
     title: `${copy.verb} ${count} selected ${pluralizeApps(count)}?`,
     description: copy.description[dataKey],
-    summaryTitle: `${count} ${pluralizeApps(count)} selected`,
     summaryDescription: appNames.join(', '),
     details: copy.details[dataKey],
     tone: copy.tone,
@@ -104,7 +103,6 @@ const getPendingDialog = (pendingAction: PendingAppAction | null, removeDataOnDe
   return {
     title: `${copy.verb} ${appName}?`,
     description: copy.description,
-    summaryTitle: appName,
     summaryDescription: copy.summaryDescription[dataKey],
     tone: copy.tone,
     buttonLabel: actionLabels[activeAction].singular
@@ -137,7 +135,7 @@ export const AppsListBulkDialog = () => {
         open={bulkAction !== null}
         title={bulkDialog.title}
         description={bulkDialog.description}
-        summary={`${bulkDialog.summaryTitle}: ${bulkDialog.summaryDescription}`}
+        summary={bulkDialog.summaryDescription}
         consequence={bulkDialog.details.join(' ')}
         tone={bulkDialog.tone}
         confirmLabel={bulkDialog.buttonLabel}
@@ -154,7 +152,6 @@ export const AppsListBulkDialog = () => {
         open={pendingAppAction !== null}
         title={pendingDialog.title}
         description={pendingDialog.description}
-        summary={pendingDialog.summaryTitle}
         consequence={pendingDialog.summaryDescription}
         tone={pendingDialog.tone}
         confirmLabel={pendingDialog.buttonLabel}

@@ -66,14 +66,13 @@ export const AppViewerDeleteAction = ({
         title={isProvisioning ? `Cancel provisioning for ${app?.name}?` : `Delete ${app?.name}?`}
         description={
           isProvisioning
-            ? 'This cancels setup and removes the partially created app.'
-            : 'This permanently removes the app from Rebroid.'
+            ? 'Setup will stop and the partially created app will be removed.'
+            : 'The app and its runtime resources will be permanently removed from Rebroid.'
         }
-        summary={app?.name}
         consequence={
           settings.removeDataOnDelete
-            ? 'Saved profile data, the app record, and runtime resources will be deleted.'
-            : 'The app record and runtime resources will be deleted. Saved profile data is preserved when possible.'
+            ? 'Saved profile data will also be deleted.'
+            : 'Saved profile data is preserved when possible.'
         }
         confirmLabel={isProvisioning ? 'Cancel and delete' : 'Delete app'}
         pendingLabel={isProvisioning ? 'Cancelling…' : 'Deleting…'}

@@ -10,6 +10,7 @@ export const ActivityPurgeDialog = () => {
       title='Purge all activity logs?'
       description='Permanently delete every existing audit event. This includes events outside the current filters.'
       consequence='This cannot be undone. A new purge event will be recorded after deletion.'
+      confirmationText='PURGE'
       confirmLabel='Purge all logs'
       pendingLabel='Purging…'
       pending={controller.isPurging}

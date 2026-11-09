@@ -60,16 +60,16 @@ test('trigger inputs align and closing retains the complete form until unmount',
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await page.getByRole('button', { name: 'New trigger', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'New trigger', exact: true })
+    const name = dialog.getByRole('textbox', { name: /^Name/ })
+    const tags = dialog.locator('[data-slot="multi-select-combobox"]').filter({
+      has: page.getByRole('combobox', { name: 'Tags' })
+    })
     await expect
-      .poll(() =>
-        dialog.evaluate(node => {
-          const name = node.querySelector('input')!.getBoundingClientRect()
-          const tags = node
-            .querySelector('input[placeholder="Add tag and press Enter"]')!
-            .parentElement!.getBoundingClientRect()
-          return Math.max(Math.abs(name.height - tags.height), Math.abs(name.y - tags.y))
-        })
-      )
+      .poll(async () => {
+        const [nameBounds, tagsBounds] = await Promise.all([name.boundingBox(), tags.boundingBox()])
+        if (!nameBounds || !tagsBounds) return Infinity
+        return Math.max(Math.abs(nameBounds.x - tagsBounds.x), Math.abs(nameBounds.width - tagsBounds.width))
+      })
       .toBeLessThanOrEqual(1)
     await dialog.evaluate(node => {
       const popup = node as HTMLElement & { incompleteFrames?: number; completed?: boolean }
@@ -96,4 +96,26 @@ test('trigger inputs align and closing retains the complete form until unmount',
     ).toBe(0)
     await expect(page.getByRole('button', { name: 'New trigger', exact: true })).toBeFocused()
   }
+})
+
+test('confirmation keeps the safe action focused and the footer reachable in a short viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 245 })
+  await page.goto('/skeleton-contract-test?editor=users-list')
+  const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: /Ada Lovelace/ }) })
+  const trigger = row.getByRole('button', { name: 'Open row actions' })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'Disable user…', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Disable Ada Lovelace?' })
+  const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+  const confirm = dialog.getByRole('button', { name: 'Disable user', exact: true })
+  await expect(cancel).toBeFocused()
+  await expect(dialog).toHaveAccessibleDescription(/signs users out and prevents new sign-ins/)
+  for (const action of [cancel, confirm]) {
+    await expect(action).toBeInViewport({ ratio: 1 })
+  }
+  await page.mouse.click(2, 2)
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(trigger).toBeFocused()
 })
