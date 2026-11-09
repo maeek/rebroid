@@ -78,6 +78,22 @@ describe('apk resource table utilities', () => {
     });
   });
 
+  it('shares aliased strings and bounds decoding of overlapping strings', () => {
+    const buffer = Buffer.alloc(46);
+    buffer.writeUInt16LE(1, 0);
+    buffer.writeUInt16LE(28, 2);
+    buffer.writeUInt32LE(buffer.length, 4);
+    buffer.writeUInt32LE(2, 8);
+    buffer.writeUInt32LE(0x00000100, 16);
+    buffer.writeUInt32LE(36, 20);
+    buffer.set([8, 8, 6, 6, 65, 65, 65, 65, 65, 65], 36);
+
+    expect(readBinaryXmlStringPool(buffer, 0).strings).toHaveLength(2);
+
+    buffer.writeUInt32LE(2, 32);
+    expect(readBinaryXmlStringPool(buffer, 0)).toEqual({ strings: [] });
+  });
+
   it('bounds malformed chunks, attributes, and string offsets', () => {
     const oversizedChunk = Buffer.alloc(12);
     oversizedChunk.writeUInt16LE(8, 2);

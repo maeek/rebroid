@@ -239,21 +239,31 @@ export const readBinaryXmlStringPool = (
   const strings: string[] = [];
 
   const availableOffsets = Math.floor((chunkSize - headerSize) / 4);
-  const boundedStringCount = Math.min(stringCount, availableOffsets);
-  for (let index = 0; index < boundedStringCount; index += 1) {
+  if (
+    stringCount > availableOffsets ||
+    stringCount > 1_000_000 ||
+    stringsStart < offset + headerSize + stringCount * 4 ||
+    stringsStart > chunkEnd
+  ) {
+    return { strings: [] };
+  }
+  const decodedByOffset = new Map<number, string>();
+  let remainingCharacters = Math.min(chunkEnd - stringsStart, 8 * 1024 * 1024);
+  for (let index = 0; index < stringCount; index += 1) {
     const stringOffsetPosition = offset + headerSize + index * 4;
-    if (stringOffsetPosition + 4 > offset + chunkSize) {
-      break;
-    }
-
     const stringOffset =
       stringsStart + buffer.readUInt32LE(stringOffsetPosition);
-    if (stringOffset >= chunkEnd) break;
-    strings.push(
-      isUtf8
+    if (stringOffset >= chunkEnd) return { strings: [] };
+    let decoded = decodedByOffset.get(stringOffset);
+    if (decoded === undefined) {
+      decoded = isUtf8
         ? readUtf8String(buffer, stringOffset, chunkEnd)
-        : readUtf16String(buffer, stringOffset, chunkEnd),
-    );
+        : readUtf16String(buffer, stringOffset, chunkEnd);
+      remainingCharacters -= decoded.length;
+      if (remainingCharacters < 0) return { strings: [] };
+      decodedByOffset.set(stringOffset, decoded);
+    }
+    strings.push(decoded);
   }
 
   return { strings };
