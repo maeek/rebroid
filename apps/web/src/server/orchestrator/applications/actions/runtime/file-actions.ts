@@ -2,6 +2,8 @@
 
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
+import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppRuntimeClient } from '../../runtime-client'
 import { assertCanManageApplicationFiles, assertCanTransferApplicationFiles } from '../../runtime-file-access'
 
@@ -9,7 +11,12 @@ export const downloadApplicationRuntimeFileAction = async (id: string, path: str
   runSafeAction(
     async () => {
       const { app, user } = await assertCanTransferApplicationFiles(id)
-      const result = await orchestratorAppRuntimeClient.downloadRuntimeFile(id, path)
+      const result = await orchestratorAppRuntimeClient.downloadRuntimeFile(id, path).catch((error: unknown) => {
+        if (error instanceof OrchestratorRequestError && error.status === 413) {
+          throw new PublicActionError('File downloads are limited to 25 MiB.', { code: 'validation', status: 413 })
+        }
+        throw error
+      })
       recordAuditEvent({
         actorUserId: user.ownerUserId,
         actorLabel: user.ownerUserId,

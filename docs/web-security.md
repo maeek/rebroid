@@ -74,6 +74,7 @@ to a running app fails, the orchestrator stops that runtime.
 Server Actions default to a 4 MB body limit (`NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT`).
 Streaming upload routes retain their separate 512 MB proxy ceiling
 (`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`) and enforce their own authenticated file limits.
+Runtime file downloads use buffered responses and have a 25 MiB per-file limit.
 
 Viewer control messages are validated at dispatch for allowed types, bounded text, finite coordinates,
 and correctly typed modifiers. Public HTTP controls fix their action type on the server; clients cannot

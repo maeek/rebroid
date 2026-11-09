@@ -309,4 +309,25 @@ describe('RuntimeDataFilesService', () => {
       service.previewFile('app-1', '/data/large.png'),
     ).rejects.toBeInstanceOf(PayloadTooLargeException);
   });
+
+  it('rejects an oversized runtime download before base64 encoding', async () => {
+    const path = '/data/large.bin';
+    const maximumBytes = 25 * 1024 * 1024;
+    exec.execInContainerWithOutput.mockResolvedValue({
+      stdout: path,
+      stderr: '',
+      exitCode: 0,
+    });
+    archive.readFileFromContainer.mockRejectedValue(
+      new DockerContainerArchiveReadLimitError(maximumBytes),
+    );
+    await expect(
+      service.downloadRuntimeFile('app-1', path),
+    ).rejects.toBeInstanceOf(PayloadTooLargeException);
+    expect(archive.readFileFromContainer).toHaveBeenCalledWith(
+      'container-1',
+      path,
+      { maximumBytes },
+    );
+  });
 });

@@ -23,6 +23,7 @@ import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { parseDownloadFiles } from '../utils/android-apps-runtime-file.utils';
+import { readRuntimeDownload } from '../utils/runtime-download-limit';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
@@ -108,7 +109,8 @@ export class RuntimeDownloadFilesService {
       return this.downloadResult(safeFileName, content);
     }
 
-    const content = await this.archive.readFileFromContainer(
+    const content = await readRuntimeDownload(
+      this.archive,
       app.containerId!,
       `${this.paths.downloadDirectory}/${safeFileName}`,
     );

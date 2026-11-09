@@ -31,6 +31,7 @@ import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
+import { readRuntimeDownload } from '../utils/runtime-download-limit';
 
 const maximumPreviewSourceBytes = 25 * 1024 * 1024;
 const maximumPreviewCacheEntries = 64;
@@ -286,7 +287,8 @@ export class RuntimeDataFilesService {
         'printf "%s" "$source"',
       ])
     ).trim();
-    const content = await this.archive.readFileFromContainer(
+    const content = await readRuntimeDownload(
+      this.archive,
       app.containerId!,
       resolvedPath,
     );

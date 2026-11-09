@@ -1,9 +1,9 @@
 import { Inject, ConflictException, Injectable } from '@nestjs/common';
-import { createWriteStream } from 'node:fs';
+import { constants, createWriteStream } from 'node:fs';
 import {
   mkdir,
   readdir,
-  readFile,
+  open,
   stat,
   unlink,
   writeFile,
@@ -22,6 +22,10 @@ import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-file
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { mapWithConcurrency } from '../../../common/map-with-concurrency';
+import {
+  maximumRuntimeDownloadBytes,
+  runtimeDownloadTooLarge,
+} from '../utils/runtime-download-limit';
 
 const persistentDownloadRequiredMessage =
   'Temporary profiles can only transfer files while the app is running.';
@@ -129,7 +133,31 @@ export class RuntimeDownloadVolumeService {
   ) {
     const directory = await this.getRequiredDirectory(app, query);
 
-    return readFile(join(directory, fileName));
+    const file = await open(
+      join(directory, fileName),
+      constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+    );
+    try {
+      const info = await file.stat();
+      if (!info.isFile())
+        throw new ConflictException('Download must be a regular file.');
+      if (info.size > maximumRuntimeDownloadBytes)
+        throw runtimeDownloadTooLarge();
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of file.createReadStream({
+        autoClose: false,
+        end: maximumRuntimeDownloadBytes,
+      })) {
+        const bytes = chunk as Buffer;
+        size += bytes.length;
+        if (size > maximumRuntimeDownloadBytes) throw runtimeDownloadTooLarge();
+        chunks.push(bytes);
+      }
+      return Buffer.concat(chunks, size);
+    } finally {
+      await file.close();
+    }
   }
 
   uploadResult(fileName: string, sizeBytes: number) {
