@@ -8,6 +8,20 @@
 - Manage dependency updates from the root pnpm workspace and shared catalog. Keep Node types on the deployed Node 24 major; compiler, ESLint, and ESM-only dependency major upgrades need explicit compatibility verification. See `CONTRIBUTING.md#dependency-updates`.
 - For narrower verification, use the owning workspace script first, for example `pnpm --filter rebroid-web test`, `pnpm --filter rebroid-orchestrator typecheck`, or the package-specific `build`, `test`, and `typecheck` scripts.
 
+## Agent skills
+
+### Issue tracker
+
+Read `docs/agents/issue-tracker.md` when reading, filing, or updating issues in GitHub Issues for `maeek/rebroid`.
+
+### Triage labels
+
+Read `docs/agents/triage-labels.md` when mapping a triage role to a GitHub label.
+
+### Domain docs
+
+Read `docs/agents/domain.md` before exploring domain terminology or architecture. Rebroid uses a single context.
+
 ## High-Level Structure
 
 This is a pnpm/Turbo monorepo. Runtime applications live in `apps/*`; reusable contracts and domain libraries live in `packages/*`.
@@ -47,7 +61,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Keep managed GApps patching in `container-images`: one queued patch job at a time, a non-root worker without the Docker socket or secrets, revision-addressed verified package caches, bounded safe extraction, payload APK/XML validation through the public APK inspection port, and final image-label validation. Interrupted running jobs fail instead of resuming.
 - Port contracts must be independently declared, capability-focused interfaces. Do not define a port as `Pick<ConcreteService, keyof ConcreteService>` or import a concrete adapter into a `.port.ts` file. Concrete adapters implement the port and remain wired to symbol tokens through `useExisting`.
 - Code outside `apps/orchestrator/src/docker` must consume Docker behavior through the tokenized ports in `docker/contracts` and import `DockerModule` for provider wiring. Do not inject concrete Docker implementation services across module boundaries.
+- Resolve the orchestrator's local hostname through the container engine and use the full container ID for app-network attachment. A missing self lookup is nonfatal. Surface failures attaching an identified orchestrator.
 - Normal Android application list/get operations read stored state and must not contact Docker. Use the explicit runtime-state reconciliation services or API endpoints when fresh Docker state is required.
+- Recreate is a last-resort lifecycle command for stopped or errored apps. Reserve the app before cleanup, replace only its runtime container and managed network, and preserve all profile volumes. Mark interrupted recreation as failed.
 - Automations consume Android runtime behavior through the `ANDROID_APPS_AUTOMATION` token and types under `android-apps/contracts`; do not inject `AndroidAppsFacadeService` or import Android lifecycle, viewer, network, state, or persistence implementations directly.
 - In `apps/orchestrator/src/docker/sidecar`, keep sidecar orchestration, repair, network, and ADB coordination in `DockerSidecarService`; keep display sidecar image existence/build work in `DockerSidecarImageService`; keep pure parsing helpers in `utils`.
 - In `apps/orchestrator/src/android-apps/lifecycle`, keep `AndroidAppsLifecycleService` as the thin request-facing facade, definition/profile/APK commands in `AndroidAppsConfigurationService`, start/stop commands in `AndroidAppsPowerService`, persisted-job startup recovery in `AndroidAppsLifecycleRecoveryService`, and bounded removal retries/cleanup in the removal services. Provision and start share `AndroidAppsRuntimeActivationService`; application/job transitions go through `AndroidAppsLifecycleTransitionService`, with one active job per application and guarded progress/completion.
@@ -65,6 +81,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Browser UI must not call the orchestrator directly. It should go through the Next.js backend-for-frontend in `apps/web/src/server/orchestrator`.
 - Web client modules must not import server-owned types. Browser/server DTOs belong in `apps/web/src/shared/contracts`; the only allowed runtime import from `apps/web/src/server` is a module whose first directive is `'use server'`, used to invoke a Server Action.
 - Cross-cutting web reads should use validated `/api/bff/*` handlers backed by focused server query services. Feature-owned mutations may use Server Actions, but both transports must return the shared operation result with a request ID and stable error code.
+- Create app preserves the draft on failure and only navigates after receiving a valid app ID. Use the orchestrator's structured validation fields for inline corrections and stable service error codes for form-level notices with the request ID. Keep raw upstream error details server-side. Incompatible Server Action responses need a new action name so already-open pages cannot interpret them using the old contract.
 - Web persistence has no migration or legacy compatibility path. Schema changes assume a clean deployment and use `pnpm reset:all-state -- --execute`; preserve external environment files and bind-mounted secrets.
 - The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
 - `deploy/edge` nginx owns public HTTPS ingress. Keep Next.js internal and route
@@ -74,6 +91,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - The orchestrator `feature-flags` module owns the typed registry, persisted runtime intent, revision, and immutable hot-path snapshot. Sidecars receive only their owned effective subset through authenticated synchronization and never persist platform feature values. Gate coarse use-case boundaries; feature flags do not replace permissions, health, or authentication.
 - `feature.ocr`, `feature.firewall`, and `feature.image-builder` are enforced locally by the orchestrator. `feature.display-virtual` is synchronized to the display sidecar and must fail closed for new virtual surfaces when state is absent, stale, or disabled.
 - Firewall feature checks must allow saving and applying disabled app policies and creating unrestricted apps. Gate restricted operations on the resulting policy state before persisting; preserve ownership and unrestricted-internet permissions. Disabling the feature leaves existing host rules unchanged.
+- Restricted runtime activation requires an acknowledged forwarding guard on the managed IPv4 subnet before Docker starts the container. Keep the guard through policy installation and do not clear it if stopping an unverified runtime fails.
+- Enforce owner open-app quotas inside the lifecycle reservation transaction for Create, Clone, Start, and Recreate, including automation-triggered starts. Take the limit from the trusted web service.
+- Runtime reconciliation clears a missing container with a guarded state update, then removes only the firewall policy that still targets that container.
 - OCR uses one deployment language through `OCR_LANGUAGE` and one request/response `language` value. Keep image validation, the quality-gated preprocessing cascade, and Paddle runtime ownership separated under `apps/ocr-sidecar/ocr_sidecar`.
 - Display recording has been removed. Do not reintroduce recording routes, state, generated contracts, or viewer controls without a new bounded-storage and lifecycle design.
 - Treat display sidecar scrcpy/server/socket startup ordering as a protected invariant. Do not reorder awaited ADB commands, socket listener registration, socket reads, process launch, retry, or cleanup without a dedicated manual Redroid verification pass. Refactoring without that pass is limited to pure SPS parsing, compatibility-probe parsing, retry classification, and stream-option selection.
@@ -148,6 +168,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   controls inert and hidden from assistive technology; selecting rows must not move the table.
 - Grid selection uses softly rounded background emphasis without accent stripes. Bulk toolbars swap immediately, with ghost actions and `danger-ghost` for destructive actions. Sheet transitions use Base UI starting/ending states and keep the backdrop transparent through unmount.
 - Query-selected nested service loaders must retain the Docker/Orchestrator detail layout; profile route and inner Suspense loaders must both retain the profile list and device pane. Feature loaders may show stable shell-manifest metadata, but must mask availability and enabled values.
+- Display sessions reads sidecar logs through its administrator-only log endpoint. Keep logs out of health responses and caches, decode Docker log frames before rendering, and bound both Docker reads and returned tails.
 - Keep the protected route loading matrix at 36 renderable routes with thin feature-owned loaders; the legacy
   display-sessions redirect is the only loader-free exclusion. Explicit Suspense boundaries reuse the same feature
   loading component as the route loader.
@@ -186,8 +207,9 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Use compact Select or SingleSelectCombobox choices, FileUploadField uploads, and exact numeric inputs; reserve sliders for streaming settings. Keep section headings inside panels and remove row dividers. Collapse optional advanced groups through unboxed Section expanders, retaining drafts and revealing validation errors.
 - Keep editable runtime defaults separate from read-only deployment details and immediate maintenance actions. Preserve drafts during maintenance refreshes, and explain the scope of cleanup and restore operations before running them.
 - FormField places descriptions directly beneath labels, before controls; use its shared spacing rather than per-feature label margins. Validation errors remain associated with their controls.
-- Reuse feature-owned editor geometry in loading states and keep dialog actions in their footer.
+- Reuse feature-owned editor geometry in loading states and keep dialog actions in their footer. Use ConfirmMutationDialog for action confirmations. State the target and impact clearly, and reserve typed confirmation for broad irreversible operations.
 - Empty/error feedback uses scope-sized `StateView`; grids use `DataGridEmptyState` outside table scrolling. Distinguish no data, filtered results, unavailable data, and not-applicable role rules; recovery never removes fixed authorization or app scope.
+- Page failures use shared, theme-aware local illustrations; section/grid failures stay compact. Overview hides metric/operation cards and sampling hints when initial reads fail, but retains real snapshots with stale-data notices after refresh failures. Outage recovery links to Overview rather than assuming another runtime-backed page can load.
 - Small administrative policies and operation limits use a saved-value summary with an explicit Edit action and a focused single-column dialog. Save applies the draft; Cancel discards it. Keep failed drafts and restore trigger focus on close.
 - User/group editors use retained-draft tabs through `AccessEditorLayout`. Membership and permission catalogs use
   shared paginated DataGridWorkspace/DataGrid; membership dialogs use MultiSelectCombobox with a bounded chip area.
@@ -213,9 +235,12 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Services owns the Connections and Features views. Keep disabled services discoverable, preserve requested versus effective feature state, and keep feature toggles immediate while connection edits require Save. Feature management remains at `/platform/features`, nested under Services in navigation and breadcrumbs.
 
 - Runtime Maintenance and overview Infrastructure diagnostics remain visible as regular sections, without collapse controls.
+- Infrastructure service pages suppress Docker limits/metrics sections and requests when orchestrator health is missing or offline, using one service warning; unknown health uses warning tone. Keep orchestrator-owned diagnostics available for Docker-only failures. Runtime defaults checks dependencies before reading settings/images, uses the shared illustrated page failure on initial outages, and retains mounted drafts with disabled mutations on refresh failures.
+- Runtime-backed server pages use `OrchestratorPageBoundary` before dependent loaders and feature checks. Render one shared page failure for unavailable dependencies; never substitute empty datasets, editable defaults, or not-found responses for service failures. Preserve independent host/sidecar diagnostics during partial outages and retain mounted connection drafts with unavailable mutations disabled.
 
 - App resource URLs open the overview; retain the viewer at `/viewer/apps/[id]` and resource destinations at `/app/[id]?view=<section>` (including configuration, AI agent, and workflows). Use the feature-owned resource layout in ready and loading states.
-- Keep the Android device visible across app resource views through AppDeviceLayout, sized to available viewport height. App Configuration shows Runtime settings as a visible section panel; technical Details and Logs belong only in Diagnostics. Use one resource navigation row for overview, configuration, activity, diagnostics, and permitted runtime tools. Streaming settings live beside the viewer. Breadcrumbs use the same section labels as URLs; old manage/workspace URLs redirect. Local management destinations use links with aria-current. Preserve permission and foreign-owner checks for diagnostics and runtime interaction.
+- The Viewer layout menu moves the same mounted device pane above the full-width resource content while keeping breadcrumbs first. Apply the browser preference on the first render and expose it in Preferences → General. Redirect old Viewer tab URLs to Overview and retain the separate viewer window route. Preserve vertical scroll when switching app resource tabs.
+- Keep the Android device visible across app resource views through AppDeviceLayout, sized to available viewport height. App Configuration shows Runtime settings as a visible section panel; technical Details and Logs belong only in Diagnostics. Use one resource navigation row for overview, configuration, activity, diagnostics, and permitted runtime tools. Size the display from observed stream dimensions within the available width and height. Keep streaming settings in the display chrome and device controls on its outer right edge. Breadcrumbs use the same section labels as URLs; old manage/workspace URLs redirect. Local management destinations use links with aria-current. Preserve permission and foreign-owner checks for diagnostics and runtime interaction.
 - App diagnostics infrastructure references link to container/image/network pages only when the viewer has administrator access; backend-detail permission alone must not enable infrastructure links. Destination server authorization remains authoritative.
 - Use shared `ResourceLink` for navigable resource names/references in grid cells and details; show accent color at rest, hover/focus underline, and visible keyboard focus. Keep descriptive metadata muted. Application references use `ApplicationReference` with resolved names above IDs; resolve names in authorized server reads through one application-summary lookup per dataset.
 - Runtime container, image, and network actions belong in the resource page header, including loading geometry; Overview sections hold information. Preserve mutation confirmation and disabled states.

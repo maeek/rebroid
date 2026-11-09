@@ -38,6 +38,13 @@ are white on a soft gray panel; dark controls sit one restrained step above thei
 Dialogs use `surface-dialog`: a soft gray surface in light mode and a darker neutral surface in dark
 and OLED modes so controls remain distinct. Menus retain `surface-elevated`. Combobox empty-state
 live regions stay mounted; put spacing on the message content so populated menus have no blank row.
+
+Confirmation dialogs put the action and target in the title, state the immediate impact in the first
+sentence, and keep supplemental consequences and resource lists flat. Use a quiet Cancel action and
+a specific primary action. Reserve the danger button for destructive operations and typed
+confirmation for broad irreversible operations such as purging the audit log. Focus Cancel for
+ordinary confirmations, restore trigger focus on dismissal, and keep the footer available when the
+body scrolls. While an operation is pending, keep its label visible and block dismissal.
 Ubuntu supports weights 300, 400, 500, and 700; do not synthesize semibold or black. Supporting
 UI text is at least `text-xs`.
 
@@ -74,11 +81,23 @@ Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic ton
 
 Empty and error states use `StateView` at the scope of the missing content. Section states stay
 compact and left-aligned; page states use bounded spacing; only immersive viewer states fill their
-parent. Use a small neutral icon and concise title, reason, and relevant next step. Avoid decorative
+parent. Page-level unavailable, missing-resource, and unexpected-error states use the shared local
+`StateIllustration` artwork: a disconnected server, a searched-for resource, and an interrupted page.
+Keep illustrations static, decorative, and neutral across light, dark, and OLED themes. Section and
+grid feedback keeps a small icon. Use a concise title, reason, and relevant next step. Avoid decorative
 circles, nested cards, viewport-height placeholders inside sections, and raw internal error text.
 Unavailable/error states use an alert and preserve request references; empty and not-applicable
-states are informational. Administrator quotas show Unlimited quotas and explain the role rule,
+states are informational. Preserve the page title and use a level-two feedback heading beneath it.
+Service-outage recovery offers retry and Overview rather than implying another runtime-backed list
+will be available. Administrator quotas show Unlimited quotas and explain the role rule,
 without disabled inputs or misleading save instructions.
+
+Check the owning service before loading dependent page sections. A known orchestrator outage uses
+one shared page failure and skips dependent reads, editors, and empty datasets. Failures encountered
+after the health check use the same screen; preserve request references and keep authorization and
+missing-resource outcomes distinct. Unknown health uses warning tone. On refresh failure, retain
+loaded data and drafts with one notice and disable unavailable mutations. Independent host statistics
+and reachable service diagnostics remain available during partial outages.
 
 Grid empty states use `DataGridEmptyState`, outside the horizontally scrolling table so the message
 and recovery actions remain visible on mobile. Keep headers and search/filter controls available.
@@ -194,6 +213,16 @@ Standard sections use the rounded, opaque semantic surface-editor panel (soft ne
 slightly raised charcoal in dark, and near-black in OLED) with the heading inside,
 24px outer padding (16px on mobile), and no row dividers. Keep 24px between sections and
 16px between fields. FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
+
+Create app keeps the draft on submission failure and focuses a persistent notice above the form.
+The notice explains the next step and shows the request ID for server failures. Use structured
+validation fields to show corrections at their controls and expand any collapsed group containing an error.
+Service outages belong in the notice. An unconfirmed create request stays on the form and directs
+the user to All apps before retrying. Only a confirmed app ID opens the resource page.
+
+App resource errors use an illustrated page state with a short explanation and a path back to All apps.
+Explain invalid links separately from missing or inaccessible apps. A load failure offers a retry and
+a request reference.
 Text inputs, text areas, Select, and SingleSelectCombobox fill their assigned field column. Width belongs
 to the form layout, not the control type: do not put a hidden maximum width on searchable pickers or
 individual text fields. Related fields may share equal responsive columns. Keep numeric inputs capped
@@ -218,6 +247,7 @@ Page titles and breadcrumb names wrap at narrow widths, including unbroken resou
 actions available instead of truncating the resource identity. The standard shell provides a keyboard skip link
 and a sidebar constrained between the application bar and viewport bottom so every destination remains reachable.
 Pagination controls wrap within the page on mobile rather than widening the document.
+Changing the page size returns to the first page in the same update.
 
 Advanced groups use collapsible Section with optional summary, controlled open/onOpenChange,
 and retained mounted draft controls. Collapsed controls are inert; validation errors reveal
@@ -283,7 +313,11 @@ show their fields in a rounded panel when opened. Dialogs opt in through data-ed
 retain footer actions, and provide the containing surface themselves: sections inside stay flat,
 without another panel background or outer padding. Ready and loading states share these primitives.
 
-App resource views keep the device in AppDeviceLayout alongside the active content, including configuration and profiles. The sticky device pane uses the available viewport height and preserves the display aspect ratio; narrow screens stack content and device. Log source choices size to their labels.
+App resource views share one device pane in AppDeviceLayout, including configuration and profiles. Fit the live display to the available width and height using the stream's observed dimensions. Put streaming settings in the display chrome and device controls in a rail just outside the right edge. The streaming settings sheet uses the dialog surface so controls remain distinct in each theme.
+
+The Viewer layout menu beside the breadcrumbs switches between the default right-hand pane and a stacked layout. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
+
+The embedded Files view uses a single folder grid with ancestor breadcrumbs, a Locations menu, current-folder search and column sorting. Upload and New folder act on the current folder. File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
 App Configuration keeps Runtime settings visible as an ordinary section container. Technical Details and Logs belong only in Diagnostics.
 
@@ -318,7 +352,9 @@ Resources pages use `DetailFields` for host and managed-container metadata, matc
 
 Runtime Maintenance and the platform overview’s Infrastructure diagnostics are always-visible sections, with ordinary headings. Do not put these operational destinations behind expanders. Runtime loading reuses the maintenance section with disabled actions.
 
-Overview Operations uses compact grouped counts with at most five preview rows per group, explicit shown/total text, and accent-colored directory/resource links. Use restrained text for failure descriptions and link to full diagnostics; avoid one full-width error banner per app. Fetch failures remain notices and must not appear as zero failures.
+Overview Operations uses compact grouped counts with at most five preview rows per group, explicit shown/total text, and accent-colored directory/resource links. Use restrained text for failure descriptions and link to full diagnostics; avoid one full-width error banner per app. Fetch failures remain notices and must not appear as zero failures. When no snapshot exists, hide
+the operation groups, capacity cards, and their sampling hints. On refresh failure, retain real
+values with an explicit stale-data notice. Do not repeat unavailable values beneath an error notice.
 
 Scheduler uses the shared QuickGlanceCard summary surfaces and flat DataGridWorkspace. Task names open their editor; built-in/custom provenance stays secondary. Combine the last result and timestamp, keep availability on the switch, and avoid repeated name/action labels or enabled badges. Loading reuses the complete scheduler page and column definitions with disabled controls.
 
@@ -337,6 +373,14 @@ engine reachability with runtime suitability. Orchestrator and Docker have resou
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.
+When orchestrator health is missing or offline, the Docker view shows one warning and does not mount
+limits or metrics sections or issue their requests. Unknown health uses warning styling, including
+inventory badges. Docker-only failures retain these orchestrator-owned diagnostics for investigation.
+Refreshing rechecks health and restores dependent sections when the orchestrator responds.
+Runtime defaults checks health before reading settings and images. Initial failures use the shared
+illustrated page state; retry reloads real saved settings rather than editable fallback defaults.
+If a later refresh fails, retain the mounted draft with one warning and disable settings/maintenance
+mutations until recovery.
 Small administrative policies and limits use a read-only summary with an explicit Edit action and
 a focused shared dialog, matching Password policy. Keep labels and descriptions above compact
 controls in one column; Save applies the draft and Cancel discards it. Retain failed drafts, show

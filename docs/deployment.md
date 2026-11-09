@@ -140,6 +140,14 @@ On a supported image, compatibility retries may disable audio capture or use ADB
 Requested resolution, frame rate, and bitrate are not silently reduced. If the viewer reconnects
 repeatedly, check its compatibility diagnostics and the display-sidecar logs.
 
+**Display sidecar restarts.** In Services → Display sessions, check the container state,
+start and finish times, exit code, and whether the process was killed for running out of memory.
+Administrators can open **Recent logs** for a bounded tail or select **Show more logs** for more output.
+If a log tail exceeds the read limit, use the container engine logs on the deployment host. A running container
+with an unreachable API can also indicate a listener, DNS, or connectivity problem. To investigate
+the restart itself, correlate the finish time with container engine events and timestamped logs on
+the deployment host.
+
 ## Updates and image transfer
 
 Pre-release state is not migrated automatically. Read the
@@ -149,3 +157,10 @@ To build and move the complete image set, including the Google Play patch worker
 [`save-docker-images.sh`](../deploy/save-docker-images.sh) and
 [`load-docker-images.sh`](../deploy/load-docker-images.sh). Both accept an optional archive
 directory and support `CONTAINER_ENGINE_BIN` to select the engine.
+
+The save script targets `linux/amd64` by default. On Apple Silicon, check
+`podman machine inspect --format '{{.Rosetta}}'` if the web image build aborts
+with `free(): invalid size` or `SIGABRT` during Next.js compilation. With QEMU
+translating x86-64 binaries, retry the same script on a native x86-64 Linux
+builder, or use an `applehv` Podman machine with Rosetta enabled. Keep the build
+target `linux/amd64` for an x86-64 deployment.
