@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +10,10 @@ import type Dockerode from 'dockerode';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ServiceHealth, ViewerTargetStatus } from '../../docker.types';
+import {
+  displaySidecarLogLimits,
+  displaySidecarLogTail,
+} from '../utils/display-sidecar-log-tail';
 import { DockerSidecarAdbService } from './docker-sidecar-adb.service';
 import { DockerSidecarApiService } from './docker-sidecar-api.service';
 import { DockerSidecarImageService } from './docker-sidecar-image.service';
@@ -209,26 +214,29 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         () => sidecar.inspect(),
         'Inspect display sidecar health',
       );
-      const running = Boolean(inspect.State?.Running);
-      const recentLogs = await this.getRecentSidecarLogs(sidecar.id);
+      const state = inspect.State;
 
       return {
         ok: false,
         status: 'unhealthy',
-        message: running
-          ? `Display sidecar container is running, but its API is not reachable: ${apiError}`
-          : `Display sidecar is ${inspect.State?.Status ?? 'not running'}; exit code ${inspect.State?.ExitCode ?? 'unknown'}${inspect.State?.Error ? `; Docker error: ${inspect.State.Error}` : ''}.`,
+        message: state?.Running
+          ? `Display sidecar is running, but its API is unreachable. ${apiError}`
+          : `Display sidecar is ${state?.Status ?? 'not running'}. Exit code ${state?.ExitCode ?? 'unknown'}.${state?.Error ? ` Docker reported ${state.Error}` : ''}`,
         details: {
           containerId: inspect.Id.slice(0, 12),
           containerName: this.displaySidecarContainerName,
           image: this.displaySidecarImage,
           port: this.displaySidecarPort,
           publishedHostPort: this.displaySidecarPublishedHostPort || null,
-          exitCode: inspect.State?.ExitCode ?? null,
-          error: inspect.State?.Error || null,
-          finishedAt: inspect.State?.FinishedAt || null,
+          containerStatus: state?.Status ?? null,
+          exitCode: state?.ExitCode ?? null,
+          oomKilled: state?.OOMKilled ?? null,
+          error: state?.Error || null,
+          startedAt: state?.StartedAt || null,
+          finishedAt: state?.FinishedAt?.startsWith('0001-01-01')
+            ? null
+            : state?.FinishedAt || null,
           restartCount: inspect.RestartCount ?? null,
-          recentLogs,
         },
       };
     } catch (error) {
@@ -259,8 +267,27 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return {
       ok: false,
       status: 'offline',
-      message: `Display sidecar API is not reachable: ${apiError}`,
+      message: `Display sidecar API is unreachable. ${apiError}`,
     };
+  }
+
+  async getLogs(expanded: boolean) {
+    const sidecar = await this.findSidecar();
+    if (!sidecar) {
+      throw new NotFoundException(
+        'Display sidecar container is not available.',
+      );
+    }
+
+    const limits = expanded
+      ? displaySidecarLogLimits.expanded
+      : displaySidecarLogLimits.preview;
+    const output = await this.lifecycle.getBoundedContainerLogs(
+      sidecar.id,
+      limits.lines + 1,
+      limits.readBytes,
+    );
+    return displaySidecarLogTail(output, limits);
   }
 
   async listDisplaySessions() {
@@ -423,14 +450,6 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       () => undefined,
     );
     return queued;
-  }
-
-  private async getRecentSidecarLogs(containerId: string) {
-    try {
-      return (await this.lifecycle.getContainerLogs(containerId, 120)).trim();
-    } catch (error) {
-      return `Could not read display sidecar logs: ${this.engine.errorMessage(error)}`;
-    }
   }
 
   private async findSidecar() {

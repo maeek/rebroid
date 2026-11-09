@@ -48,6 +48,27 @@ describe('orchestrator OpenAPI domain contract', () => {
     expect(document.paths['/api/v1/docker/sidecar/health']).toBeUndefined();
   });
 
+  it('exposes an optional expansion flag and a typed sidecar log tail', () => {
+    const logs = document.paths['/api/v1/platform/display-sidecar/logs']?.get;
+    expect(logs?.parameters).toEqual([
+      {
+        name: 'expanded',
+        in: 'query',
+        required: false,
+        schema: { type: 'boolean' },
+      },
+    ]);
+    expect(logs?.responses).toMatchObject({
+      200: {
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/DockerSidecarLogTailDto' },
+          },
+        },
+      },
+    });
+  });
+
   it('does not document request bodies for bodyless mutations', () => {
     expectNoRequestBody('/api/v1/apps/{id}/lifecycle/stop', 'post');
     expectNoRequestBody('/api/v1/apps/{id}/runtime/screenshot', 'post');

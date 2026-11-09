@@ -58,6 +58,40 @@
         ]
       }
     },
+    "/api/v1/platform/display-sidecar/logs": {
+      "get": {
+        "operationId": "DockerSidecarController_logs",
+        "parameters": [
+          {
+            "name": "expanded",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerSidecarLogTailDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The container log tail exceeds the read limit."
+          }
+        },
+        "summary": "Read a bounded tail of the display sidecar container logs.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
     "/api/v1/platform/display-sidecar/repair": {
       "post": {
         "operationId": "DockerSidecarController_repair",
@@ -5774,6 +5808,25 @@
           "ok",
           "status",
           "message"
+        ]
+      },
+      "DockerSidecarLogTailDto": {
+        "type": "object",
+        "properties": {
+          "output": {
+            "type": "string"
+          },
+          "lineLimit": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "output",
+          "lineLimit",
+          "truncated"
         ]
       },
       "DockerSidecarAdminSessionDto": {

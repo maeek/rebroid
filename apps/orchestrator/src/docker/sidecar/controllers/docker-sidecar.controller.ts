@@ -1,7 +1,25 @@
-import { Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Controller,
+  DefaultValuePipe,
+  Delete,
+  Get,
+  Param,
+  ParseBoolPipe,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiPayloadTooLargeResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ServiceHealthDto } from '../../../health/dto/health-response.dto';
-import { DockerSidecarAdminSessionDto } from '../dto/docker-sidecar-response.dto';
+import {
+  DockerSidecarAdminSessionDto,
+  DockerSidecarLogTailDto,
+} from '../dto/docker-sidecar-response.dto';
 import { DockerSidecarService } from '../services/docker-sidecar.service';
 
 @ApiTags('platform-display-sidecar')
@@ -14,6 +32,22 @@ export class DockerSidecarController {
   @ApiOkResponse({ type: ServiceHealthDto })
   health() {
     return this.sidecar.health();
+  }
+
+  @Get('logs')
+  @ApiOperation({
+    summary: 'Read a bounded tail of the display sidecar container logs.',
+  })
+  @ApiQuery({ name: 'expanded', type: Boolean, required: false })
+  @ApiOkResponse({ type: DockerSidecarLogTailDto })
+  @ApiPayloadTooLargeResponse({
+    description: 'The container log tail exceeds the read limit.',
+  })
+  logs(
+    @Query('expanded', new DefaultValuePipe(false), ParseBoolPipe)
+    expanded: unknown,
+  ) {
+    return this.sidecar.getLogs(expanded === true);
   }
 
   @Post('repair')

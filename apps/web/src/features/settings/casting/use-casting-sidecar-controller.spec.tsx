@@ -100,4 +100,19 @@ describe('useCastingSidecarController', () => {
     )
     expect(result.current.sessions[0]?.id).toBe('initial')
   })
+
+  it('retains previous sessions without querying or mutating an offline display service', async () => {
+    vi.mocked(getOrchestratorHealthAction).mockResolvedValue({
+      services: { display: { ok: false, status: 'offline', message: 'Display unavailable' } }
+    } as never)
+    const { result, rerender } = renderController()
+    act(() => result.current.setPendingEndSessions([session('initial')]))
+    rerender({ key: 1 })
+    await waitFor(() => expect(result.current.health.ok).toBe(false))
+    expect(result.current.sessions[0]?.id).toBe('initial')
+    expect(listDisplaySidecarSessionsAction).not.toHaveBeenCalled()
+    await act(() => result.current.endSessions())
+    expect(releaseDisplaySidecarSessionAction).not.toHaveBeenCalled()
+    expect(getOrchestratorHealthAction).toHaveBeenCalledOnce()
+  })
 })

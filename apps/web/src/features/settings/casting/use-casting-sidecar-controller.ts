@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import {
   getOrchestratorHealthAction,
@@ -27,7 +27,9 @@ export const useCastingSidecarController = ({
   onRefreshComplete?: () => void
 }) => {
   const [health, setHealth] = useState(initialHealth)
+  const lastRefreshKey = useRef(0)
   const [sessions, setSessions] = useState(initialSessions)
+  const [logRevision, setLogRevision] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
@@ -75,7 +77,8 @@ export const useCastingSidecarController = ({
     try {
       const nextHealth = await getOrchestratorHealthAction()
       setHealth(nextHealth.services.display)
-      setSessions(nextHealth.services.display.ok ? await listDisplaySidecarSessionsAction() : [])
+      setLogRevision(current => current + 1)
+      if (nextHealth.services.display.ok) setSessions(await listDisplaySidecarSessionsAction())
     } catch (error) {
       toast({
         title: 'Could not load casting sessions',
@@ -89,7 +92,10 @@ export const useCastingSidecarController = ({
   }, [onRefreshComplete])
 
   useEffect(() => {
-    if (refreshKey > 0) void refresh()
+    if (refreshKey > 0 && refreshKey !== lastRefreshKey.current) {
+      lastRefreshKey.current = refreshKey
+      void refresh()
+    }
   }, [refresh, refreshKey])
 
   const restartSidecar = async () => {
@@ -110,6 +116,7 @@ export const useCastingSidecarController = ({
   }
 
   const endSessions = async () => {
+    if (!health.ok) return
     const targets = pendingEndSessions
     if (targets.length === 0) return
     setBusy(targets.length === 1 ? targets[0].id : 'bulk')
@@ -140,6 +147,7 @@ export const useCastingSidecarController = ({
 
   return {
     health,
+    logRevision,
     busy,
     restartSidecar,
     sessions,

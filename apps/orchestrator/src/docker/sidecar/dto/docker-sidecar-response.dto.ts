@@ -25,3 +25,14 @@ export class DockerSidecarAdminSessionDto {
   @ApiProperty({ type: [String] })
   capabilities!: string[];
 }
+
+export class DockerSidecarLogTailDto {
+  @ApiProperty()
+  output!: string;
+
+  @ApiProperty()
+  lineLimit!: number;
+
+  @ApiProperty()
+  truncated!: boolean;
+}

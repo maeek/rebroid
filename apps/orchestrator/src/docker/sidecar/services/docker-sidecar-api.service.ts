@@ -11,6 +11,30 @@ import { DockerEngineService } from '../../docker-engine.service';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import type { SidecarFeatureSyncPort } from '../../contracts/sidecar-feature-sync.port';
 
+const describeHealthProbeFailure = (error: unknown) => {
+  if (!(error instanceof Error)) return 'Health check failed.';
+  if (error.name === 'TimeoutError') return 'Health check timed out.';
+  const cause = error.cause;
+  const failures = cause instanceof AggregateError ? cause.errors : [cause];
+  const codes = failures.flatMap((failure: unknown) =>
+    failure instanceof Error && 'code' in failure ? [failure.code] : [],
+  );
+  if (codes.includes('ENOTFOUND') || codes.includes('EAI_AGAIN')) {
+    return 'Sidecar hostname could not be resolved.';
+  }
+  if (codes.includes('ECONNREFUSED')) return 'Connection was refused.';
+  if (
+    codes.includes('ETIMEDOUT') ||
+    codes.includes('UND_ERR_CONNECT_TIMEOUT')
+  ) {
+    return 'Health check timed out.';
+  }
+  if (codes.includes('ECONNRESET') || codes.includes('UND_ERR_SOCKET')) {
+    return 'Connection closed during the health check.';
+  }
+  return 'Health check could not connect.';
+};
+
 type DisplaySidecarSession = DisplaySidecarApiSchemas['DisplaySessionDto'];
 type DisplaySidecarSessionListResponse =
   DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
@@ -133,11 +157,12 @@ export class DockerSidecarApiService
       const response = await fetch(`${this.baseUrl()}/rebroid/display/health`, {
         signal: AbortSignal.timeout(2_000),
       });
+      void response.body?.cancel().catch(() => undefined);
       return response.ok
         ? null
         : `Display sidecar API returned ${response.status}.`;
     } catch (error) {
-      return this.engine.errorMessage(error);
+      return describeHealthProbeFailure(error);
     }
   }
 

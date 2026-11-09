@@ -1,7 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, PayloadTooLargeException } from '@nestjs/common';
+import { addAbortSignal, Readable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ContainerRuntimeState } from '../../docker.types';
+import { decodeDockerLogStream } from '../utils/docker-log-stream';
 import type { DockerContainerLifecyclePort } from '../../contracts/docker-container-lifecycle.port';
 
 @Injectable()
@@ -78,7 +80,50 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
       `Read logs for container ${containerId}`,
     );
 
-    return Buffer.isBuffer(stream) ? stream.toString('utf-8') : String(stream);
+    return Buffer.isBuffer(stream)
+      ? decodeDockerLogStream(stream)
+      : String(stream);
+  }
+
+  getBoundedContainerLogs(containerId: string, tail: number, maxBytes: number) {
+    return this.engine.read(async () => {
+      const signal = AbortSignal.timeout(5_000);
+      const stream = await new Promise<Readable>((resolve, reject) => {
+        // Dockerode buffers the entire response for non-following logs.
+        this.engine.docker.modem.dial(
+          {
+            path: `/containers/${encodeURIComponent(containerId)}/logs?`,
+            method: 'GET',
+            options: { stdout: true, stderr: true, timestamps: true, tail },
+            isStream: true,
+            abortSignal: signal,
+            statusCodes: {
+              200: true,
+              404: 'no such container',
+              500: 'server error',
+            },
+          },
+          (error, response) => {
+            if (error) reject(error);
+            else if (response instanceof Readable)
+              resolve(addAbortSignal(signal, response));
+            else reject(new Error('Expected a Docker log stream.'));
+          },
+        );
+      });
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        size += chunk.length;
+        if (size > maxBytes) {
+          throw new PayloadTooLargeException(
+            'The container log tail exceeds the read limit.',
+          );
+        }
+        chunks.push(chunk);
+      }
+      return decodeDockerLogStream(Buffer.concat(chunks, size));
+    }, `Read bounded logs for container ${containerId}`);
   }
 
   async startContainer(containerId: string) {

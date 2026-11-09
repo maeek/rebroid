@@ -66,7 +66,7 @@ export const CastingSessionsSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
-          disabled={loading}
+          disabled={loading || !controller.health.ok}
           search={search}
           searchPlaceholder='Search sessions'
           onSearchChange={setSearch}
@@ -194,7 +194,7 @@ export const CastingSessionsSection = ({
             <Button
               type='button'
               variant='ghost'
-              disabled={busy !== null || selectedSessions.length === 0}
+              disabled={busy !== null || !controller.health.ok || selectedSessions.length === 0}
               onClick={() => setPendingEndSessions(selectedSessions)}
             >
               End {selectedSessions.length || ''} session{selectedSessions.length === 1 ? '' : 's'}
@@ -228,7 +228,7 @@ export const CastingSessionsSection = ({
                 <>
                   {hasBulkSelection ? (
                     <ContextMenuItem
-                      disabled={busy !== null}
+                      disabled={busy !== null || !controller.health.ok}
                       onSelect={() => setPendingEndSessions(selectedSessions)}
                     >
                       <IconTrash className='mr-2 size-4' />
@@ -236,7 +236,7 @@ export const CastingSessionsSection = ({
                     </ContextMenuItem>
                   ) : null}
                   <ContextMenuItem
-                    disabled={busy !== null || !activeStatuses.has(row.original.status)}
+                    disabled={busy !== null || !controller.health.ok || !activeStatuses.has(row.original.status)}
                     onSelect={() => setPendingEndSessions([row.original])}
                   >
                     <IconTrash className='mr-2 size-4' />
@@ -252,7 +252,10 @@ export const CastingSessionsSection = ({
             pageIndex={pageIndex}
             pageSize={pageSize}
             onPageIndexChange={setPageIndex}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={size => {
+              setPageSize(size)
+              setPageIndex(0)
+            }}
           />
         </DataGridWorkspace>
       </Section>
@@ -269,6 +272,7 @@ export const CastingSessionsSection = ({
         confirmLabel={pendingEndSessions.length === 1 ? 'End session' : 'End sessions'}
         pendingLabel='Ending…'
         pending={busy !== null}
+        confirmDisabled={!controller.health.ok}
         onOpenChange={open => {
           if (!open) setPendingEndSessions([])
         }}

@@ -11,7 +11,8 @@ export const castingErrorMessage = (error: unknown) =>
 export const formatHealthDetail = (value: unknown) => {
   if (value === null) return 'none'
   if (typeof value === 'string') return value
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'number') return String(value)
   return JSON.stringify(value)
 }
 
@@ -27,7 +28,9 @@ export const castingDetailLabels: Record<string, string> = {
   image: 'Image',
   port: 'Port',
   publishedHostPort: 'Published host port',
-  recentLogs: 'Recent logs',
+  containerStatus: 'Container status',
+  oomKilled: 'Killed for running out of memory',
+  startedAt: 'Started at',
   restartCount: 'Restart count'
 }
 

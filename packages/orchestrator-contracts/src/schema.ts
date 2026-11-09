@@ -53,6 +53,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/display-sidecar/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a bounded tail of the display sidecar container logs. */
+        get: operations["DockerSidecarController_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/display-sidecar/repair": {
         parameters: {
             query?: never;
@@ -1965,6 +1982,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        DockerSidecarLogTailDto: {
+            output: string;
+            lineLimit: number;
+            truncated: boolean;
+        };
         DockerSidecarAdminSessionDto: {
             id: string;
             applicationId: string | null;
@@ -3666,6 +3688,34 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ServiceHealthDto"];
                 };
+            };
+        };
+    };
+    DockerSidecarController_logs: {
+        parameters: {
+            query?: {
+                expanded?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarLogTailDto"];
+                };
+            };
+            /** @description The container log tail exceeds the read limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -1,6 +1,7 @@
 'use client'
 
 import { CastingSessionsSection } from './casting-sessions-section'
+import { CastingSidecarLogs } from './casting-sidecar-logs'
 import { CastingSidecarServiceSection } from './casting-sidecar-service-section'
 import { useCastingSidecarController } from './use-casting-sidecar-controller'
 import type { AndroidApplication } from '@/shared/contracts/application'
@@ -39,12 +40,20 @@ export const CastingSidecarSettings = ({
         busy={controller.busy}
         onRestart={() => void controller.restartSidecar()}
       />
-      <CastingSessionsSection
-        loading={loading}
-        controller={controller}
-        applications={applications}
-        owners={owners}
-      />
+      {loading || controller.health.ok || typeof controller.health.details?.containerId === 'string' ? (
+        <CastingSidecarLogs
+          loading={loading}
+          revision={controller.logRevision}
+        />
+      ) : null}
+      {loading || controller.health.ok || controller.sessions.length > 0 ? (
+        <CastingSessionsSection
+          loading={loading}
+          controller={controller}
+          applications={applications}
+          owners={owners}
+        />
+      ) : null}
     </>
   )
 }
