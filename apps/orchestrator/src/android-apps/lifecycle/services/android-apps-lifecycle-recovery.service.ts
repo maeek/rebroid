@@ -61,6 +61,17 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
         await this.failInconsistentJob(app, job);
         continue;
       }
+      if (job.kind === AndroidAppLifecycleJobKind.Recreate) {
+        const message =
+          'Runtime recreation was interrupted. Start the app or run Recreate again.';
+        await this.transitions.completeJob(app.id, job.kind, {
+          status: AndroidApplicationStatus.Error,
+          lifecycleStage: AndroidApplicationLifecycleStage.Error,
+          statusMessage: message,
+          lastError: message,
+        });
+        continue;
+      }
       this.resume(app, job);
     }
 

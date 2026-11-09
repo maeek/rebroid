@@ -1,7 +1,10 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AutomationDefinition } from '@rebroid/automation-core/definition';
-import type { AutomationRunTargetOptions } from './automation-runner-options';
+import {
+  AutomationRunStartPolicy,
+  type AutomationRunTargetOptions,
+} from './automation-runner-options';
 
 @Injectable()
 export class AutomationRunAuthorizationService {
@@ -37,5 +40,19 @@ export class AutomationRunAuthorizationService {
     );
     if (!response.ok)
       throw new ForbiddenException('Automation authorization failed.');
+    if (options.startPolicy !== AutomationRunStartPolicy.StartIfNeeded)
+      return undefined;
+    const quota = response.headers.get('x-rebroid-max-open-apps');
+    if (quota === 'unlimited') return undefined;
+    if (
+      quota === null ||
+      !/^\d+$/.test(quota) ||
+      !Number.isSafeInteger(Number(quota))
+    ) {
+      throw new ForbiddenException(
+        'Automation authorization did not provide a valid open application limit.',
+      );
+    }
+    return Number(quota);
   }
 }

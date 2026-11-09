@@ -3,11 +3,13 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { customDisplayFields } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
 
 type CreateAppDisplaySectionProps = {
   values: CreateAppFormValues
   onChange: (patch: Partial<CreateAppFormValues>) => void
+  fieldErrors?: Record<string, string[]>
 }
 
 const displayLabel = (id: string) => {
@@ -16,7 +18,7 @@ const displayLabel = (id: string) => {
   return `${profile.label} · ${profile.description}`
 }
 
-export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySectionProps) => (
+export const CreateAppDisplaySection = ({ values, onChange, fieldErrors }: CreateAppDisplaySectionProps) => (
   <Section
     surface='plain'
     contentClassName='gap-4'
@@ -59,16 +61,11 @@ export const CreateAppDisplaySection = ({ values, onChange }: CreateAppDisplaySe
     </FormField>
     {values.redroidDisplayProfileId === 'custom' ? (
       <div className='grid'>
-        {(
-          [
-            ['Width', 'redroidCustomDisplayWidth'],
-            ['Height', 'redroidCustomDisplayHeight'],
-            ['DPI', 'redroidCustomDisplayDpi']
-          ] as const
-        ).map(([label, key]) => (
+        {customDisplayFields.map(([label, key]) => (
           <FormField
             key={key}
             label={label}
+            error={fieldErrors?.[key]?.join(' ')}
             layout='vertical'
           >
             <Input

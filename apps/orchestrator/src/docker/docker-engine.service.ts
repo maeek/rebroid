@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Dockerode from 'dockerode';
+import { hostname } from 'node:os';
 import { DockerEngineConfigService } from '../config/docker-engine-config.service';
 import { MetricsService } from '../metrics/metrics.service';
 import {
@@ -21,7 +22,7 @@ export class DockerEngineService implements DockerEnginePort {
   readonly docker: Dockerode;
   readonly streamDocker: Dockerode;
   readonly resourcePrefix: string;
-  readonly orchestratorContainerId?: string;
+  readonly orchestratorHostname = hostname();
   readonly transport: DockerConnection['transport'];
   private operationLimits: DockerOperationLimits;
   private readonly remoteRequestTimeoutMs: number;
@@ -50,7 +51,6 @@ export class DockerEngineService implements DockerEnginePort {
     this.streamDocker = connection.streamDocker;
     this.transport = connection.transport;
     this.resourcePrefix = this.engineConfig.resourcePrefix;
-    this.orchestratorContainerId = this.engineConfig.orchestratorContainerId;
     const maxConcurrentReads = this.engineConfig.maxConcurrentReads;
     const maxConcurrentLongOperations =
       this.engineConfig.maxConcurrentLongOperations;

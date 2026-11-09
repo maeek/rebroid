@@ -1,4 +1,5 @@
 import { emptyRequest, jsonRequest } from '../request'
+import { openAppQuotaHeaders, throwOpenAppQuotaError } from './open-app-quota'
 import type {
   AndroidApplication,
   AndroidApplicationSummary,
@@ -11,8 +12,10 @@ import type {
 } from '@/shared/contracts/application'
 
 export const orchestratorAppCatalogClient = {
-  createApplication(input: CreateAndroidApplicationInput) {
-    return jsonRequest<ApplicationCommandResult>('/apps', 'POST', input)
+  createApplication(input: CreateAndroidApplicationInput, requestId: string, maxOpenApps: number | null) {
+    return jsonRequest<ApplicationCommandResult>('/apps', 'POST', input, {
+      headers: { ...openAppQuotaHeaders(maxOpenApps), 'x-request-id': requestId }
+    }).catch(throwOpenAppQuotaError)
   },
 
   listApplications(ownerUserId?: string) {
@@ -45,8 +48,10 @@ export const orchestratorAppCatalogClient = {
     return emptyRequest<AndroidApplication>(`/apps/${id}`)
   },
 
-  cloneApplication(id: string, input: CloneApplicationInput) {
-    return jsonRequest<ApplicationCommandResult>(`/apps/${id}/clone`, 'POST', input)
+  cloneApplication(id: string, input: CloneApplicationInput, maxOpenApps: number | null) {
+    return jsonRequest<ApplicationCommandResult>(`/apps/${id}/clone`, 'POST', input, {
+      headers: openAppQuotaHeaders(maxOpenApps)
+    }).catch(throwOpenAppQuotaError)
   },
 
   updateApplication(id: string, input: UpdateAndroidApplicationInput) {

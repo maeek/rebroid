@@ -92,3 +92,52 @@ test("server reports invalid bodies and adapter failures distinctly", async () =
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("removing a stale runtime policy preserves the replacement policy", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
+  const store = new FirewallPolicyStore(join(directory, "policies.json"));
+  let removals = 0;
+  const server = createFirewallAgentServer({
+    secret: "secret",
+    adapter: {
+      ...adapter,
+      remove: () => {
+        removals += 1;
+      },
+    },
+    store,
+  });
+  try {
+    store.set({
+      applicationId: "app-1",
+      containerId: "new-runtime",
+      containerIp: "10.0.0.2",
+      enabled: true,
+      allowCidrs: [],
+      generation: 1,
+    });
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const { port } = server.address() as AddressInfo;
+    const remove = (containerId: string) =>
+      fetch(
+        `http://127.0.0.1:${port}/v1/policies/app-1?containerId=${containerId}`,
+        {
+          method: "DELETE",
+          headers: { "x-firewall-agent-secret": "secret" },
+        },
+      );
+
+    assert.equal((await remove("old-runtime")).status, 200);
+    assert.equal(store.get("app-1")?.containerId, "new-runtime");
+    assert.equal(removals, 0);
+
+    assert.equal((await remove("new-runtime")).status, 200);
+    assert.equal(store.get("app-1"), undefined);
+    assert.equal(removals, 1);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

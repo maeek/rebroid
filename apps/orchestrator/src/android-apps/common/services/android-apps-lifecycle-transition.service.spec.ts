@@ -1,4 +1,6 @@
 import { ConflictException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
+import { InitializeSqliteSchema1800000000000 } from '../../../database/migrations/1800000000000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -9,6 +11,88 @@ import {
   AndroidAppLifecycleJobKind,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLifecycleTransitionService } from './android-apps-lifecycle-transition.service';
+
+describe('open application admission', () => {
+  it('allows one concurrent Create, Start or Recreate at the owner limit', async () => {
+    const database = await new DataSource({
+      type: 'better-sqlite3',
+      database: ':memory:',
+      entities: [AndroidApplication, AndroidAppLifecycleJob],
+      migrations: [InitializeSqliteSchema1800000000000],
+      migrationsRun: true,
+    }).initialize();
+    try {
+      const apps = database.getRepository(AndroidApplication);
+      const job = new AndroidAppsLifecycleTransitionService(database, {
+        appendLifecycle: jest.fn(),
+      } as never);
+      const makeApp = (name: string, ownerUserId = 'owner') =>
+        apps.create({
+          name,
+          ownerUserId,
+          containerImage: 'fixture',
+          containerName: name,
+          networkName: name,
+          volumeName: name,
+          networkPolicyAllowCidrs: '[]',
+          savedProfilesJson: '[]',
+          status: AndroidApplicationStatus.Stopped,
+          lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+        });
+      const [start, recreate] = await apps.save([
+        makeApp('start'),
+        makeApp('recreate'),
+      ]);
+      const create = makeApp('create');
+      const patch = { status: AndroidApplicationStatus.Provisioning };
+      const outcomes = await Promise.allSettled([
+        job.beginJob(
+          start.id,
+          AndroidAppLifecycleJobKind.Start,
+          patch,
+          undefined,
+          true,
+          1,
+        ),
+        job.beginJob(
+          recreate.id,
+          AndroidAppLifecycleJobKind.Recreate,
+          patch,
+          undefined,
+          true,
+          1,
+        ),
+        job.createProvisionJob(Object.assign(create, patch), 1),
+      ]);
+      expect(outcomes).toEqual([
+        { status: 'fulfilled', value: undefined },
+        expect.objectContaining({
+          status: 'rejected',
+          reason: expect.any(ConflictException),
+        }),
+        expect.objectContaining({
+          status: 'rejected',
+          reason: expect.any(ConflictException),
+        }),
+      ]);
+      expect(await apps.countBy({ ownerUserId: 'owner', ...patch })).toBe(1);
+      expect(await apps.countBy({ ownerUserId: 'owner' })).toBe(2);
+      await expect(
+        job.createProvisionJob(
+          Object.assign(makeApp('other', 'other'), patch),
+          1,
+        ),
+      ).resolves.toBeUndefined();
+      await job.cancelActiveJob(start.id, {
+        status: AndroidApplicationStatus.Stopped,
+        lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      });
+      await expect(job.createProvisionJob(create, 1)).resolves.toBeUndefined();
+    } finally {
+      await database.destroy();
+    }
+  });
+});
 
 describe('AndroidAppsLifecycleTransitionService', () => {
   const createService = () => {
@@ -134,5 +218,34 @@ describe('AndroidAppsLifecycleTransitionService', () => {
         status: AndroidApplicationStatus.Running,
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('blocks conflicting commands while a runtime is being recreated', async () => {
+    const { jobs, service } = createService();
+    const kind = AndroidAppLifecycleJobKind.Recreate;
+    const patch = {
+      status: AndroidApplicationStatus.Provisioning,
+      lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+    };
+    await service.beginJob('app-1', kind, patch);
+
+    await expect(
+      service.beginJob('app-1', kind, patch, undefined, true),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.beginJob(
+        'app-1',
+        AndroidAppLifecycleJobKind.Start,
+        patch,
+        undefined,
+        true,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.cancelActiveJob('app-1', {
+        status: AndroidApplicationStatus.Stopped,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(jobs.get('app-1')?.kind).toBe(kind);
   });
 });

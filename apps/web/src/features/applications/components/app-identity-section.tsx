@@ -18,6 +18,8 @@ type AppIdentitySectionProps = {
   nameRequired?: boolean
   nameLabel?: string
   nameMinLength?: number
+  nameError?: string
+  apkError?: string
   surface?: 'plain' | 'band' | 'panel'
 }
 
@@ -33,6 +35,8 @@ export const AppIdentitySection = ({
   nameRequired = true,
   nameLabel = 'Name',
   nameMinLength = 2,
+  nameError,
+  apkError,
   surface = 'plain'
 }: AppIdentitySectionProps) => {
   const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +63,7 @@ export const AppIdentitySection = ({
             layout='vertical'
             className={verticalSettingClassName}
             required={nameRequired}
+            error={nameError}
           >
             <Input
               value={valuesName}
@@ -70,6 +75,7 @@ export const AppIdentitySection = ({
           </FormField>
           <FormField
             label='APK file'
+            error={apkError}
             description={apkDescription}
             layout='vertical'
             className={verticalSettingClassName}

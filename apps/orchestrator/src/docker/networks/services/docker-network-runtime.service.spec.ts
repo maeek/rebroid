@@ -10,6 +10,7 @@ const managedLabels = (applicationId: string) => ({
 
 const createEngine = () => {
   const docker = {
+    getContainer: jest.fn(),
     listNetworks: jest.fn(),
     getNetwork: jest.fn(),
     createNetwork: jest.fn(),
@@ -17,6 +18,10 @@ const createEngine = () => {
 
   return {
     docker,
+    orchestratorHostname: 'a1b2c3d4e5f6',
+    coalesceRead: jest.fn((_key: string, operation: () => Promise<unknown>) =>
+      operation(),
+    ),
     read: jest.fn((operation: () => Promise<unknown>) => operation()),
     mutate: jest.fn((operation: () => Promise<unknown>) => operation()),
     labels: jest.fn((applicationId: string, component: string) => ({
@@ -27,7 +32,10 @@ const createEngine = () => {
     })),
     isResourceAlreadyExists: jest.fn(() => false),
     isDockerConflict: jest.fn(() => false),
-    isDockerNotFound: jest.fn(() => false),
+    isDockerNotFound: jest.fn(
+      (error: unknown) =>
+        (error as { statusCode?: number })?.statusCode === 404,
+    ),
     isContainerAlreadyConnectedToNetwork: jest.fn(() => false),
     isContainerAlreadyDisconnectedFromNetwork: jest.fn(() => false),
     isTransientDockerTransportError: jest.fn(() => false),
@@ -35,6 +43,109 @@ const createEngine = () => {
 };
 
 describe('DockerNetworkRuntimeService', () => {
+  const notFound = Object.assign(new Error('Network or container not found'), {
+    statusCode: 404,
+  });
+
+  it('does not attempt attachment when the orchestrator is missing from the engine', async () => {
+    const engine = createEngine();
+    engine.docker.getContainer.mockReturnValue({
+      inspect: jest.fn().mockRejectedValue(notFound),
+    });
+
+    await expect(
+      new DockerNetworkRuntimeService(engine).connectOrchestratorToNetwork(
+        'app-network',
+      ),
+    ).resolves.toBeUndefined();
+    expect(engine.docker.getNetwork).not.toHaveBeenCalled();
+  });
+
+  it('uses the full ID resolved from the local hostname for network attachment', async () => {
+    const engine = createEngine();
+    const connect = jest.fn().mockResolvedValue(undefined);
+    const id = engine.orchestratorHostname.padEnd(64, 'a');
+    engine.docker.getContainer.mockReturnValue({
+      inspect: jest
+        .fn()
+        .mockResolvedValue({ Id: id, Name: '/custom-compose-name' }),
+    });
+    engine.docker.getNetwork.mockReturnValue({ connect });
+
+    await new DockerNetworkRuntimeService(engine).connectOrchestratorToNetwork(
+      'app-network',
+    );
+
+    expect(engine.docker.getContainer).toHaveBeenCalledWith(
+      engine.orchestratorHostname,
+    );
+    expect(connect).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledWith({ Container: id });
+  });
+
+  it('does not attach a container that merely has the same name as the local hostname', async () => {
+    const engine = createEngine();
+    engine.docker.getContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue({
+        Id: 'unrelated-container-id',
+        Config: { Hostname: 'unrelated-hostname' },
+      }),
+    });
+
+    await new DockerNetworkRuntimeService(engine).connectOrchestratorToNetwork(
+      'app-network',
+    );
+
+    expect(engine.docker.getNetwork).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a missing app network when the orchestrator exists', async () => {
+    const engine = createEngine();
+    const connect = jest.fn().mockRejectedValue(notFound);
+    const id = engine.orchestratorHostname.padEnd(64, 'a');
+    engine.docker.getNetwork.mockReturnValue({ connect });
+    engine.docker.getContainer.mockReturnValue({
+      inspect: jest.fn().mockResolvedValue({ Id: id }),
+    });
+
+    await expect(
+      new DockerNetworkRuntimeService(engine).connectOrchestratorToNetwork(
+        'app-network',
+      ),
+    ).rejects.toBe(notFound);
+  });
+
+  it('only removes an app network when its labels match the requested owner', async () => {
+    const engine = createEngine();
+    const remove = jest.fn();
+    const disconnect = jest.fn();
+    const inspect = jest.fn().mockResolvedValue({
+      Id: 'network-id',
+      Labels: managedLabels('another-app'),
+      Containers: { 'container-id': {} },
+    });
+    engine.docker.getNetwork.mockReturnValue({ inspect, remove, disconnect });
+    const service = new DockerNetworkRuntimeService(engine);
+    await expect(service.removeNetwork('app-network', 'app-1')).rejects.toThrow(
+      'not managed',
+    );
+    expect(remove).not.toHaveBeenCalled();
+    expect(disconnect).not.toHaveBeenCalled();
+
+    inspect.mockResolvedValue({
+      Id: 'network-id',
+      Labels: managedLabels('app-1'),
+      Containers: { 'container-id': {} },
+    });
+    await service.removeNetwork('app-network', 'app-1');
+    expect(disconnect).toHaveBeenCalledWith({
+      Container: 'container-id',
+      Force: true,
+    });
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(engine.docker.getNetwork).toHaveBeenLastCalledWith('network-id');
+  });
+
   it('creates app networks with normal Docker egress', async () => {
     const engine = createEngine();
     const service = new DockerNetworkRuntimeService(engine);

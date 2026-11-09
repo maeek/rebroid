@@ -16,13 +16,19 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
     );
   }
 
-  async findContainerByName(name: string) {
+  async findContainerByName(name: string, applicationId?: string) {
     const containers = await this.engine.read(
       () => this.engine.docker.listContainers({ all: true }),
       `List containers while finding ${name}`,
     );
     const dockerName = `/${name}`;
-    return containers.find((container) => container.Names.includes(dockerName));
+    const container = containers.find((item) =>
+      item.Names.includes(dockerName),
+    );
+    if (container && applicationId) {
+      this.assertManagedRuntime(container.Labels, applicationId, name);
+    }
+    return container;
   }
 
   async getContainerRuntimeState(
@@ -113,8 +119,23 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
       removeVolumes?: boolean;
       maxAttempts?: number;
       retryDelayMs?: number;
+      applicationId?: string;
     },
   ) {
+    if (options?.applicationId) {
+      try {
+        const inspect = await this.inspectContainer(containerId);
+        this.assertManagedRuntime(
+          inspect.Config?.Labels,
+          options.applicationId,
+          containerId,
+        );
+        containerId = inspect.Id;
+      } catch (error) {
+        if (this.engine.isDockerNotFound(error)) return;
+        throw error;
+      }
+    }
     const container = this.engine.docker.getContainer(containerId);
     const force = options?.force ?? true;
     const removeVolumes = options?.removeVolumes ?? false;
@@ -147,12 +168,31 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
     }
   }
 
-  async removeContainerByName(containerName: string) {
-    const existing = await this.findContainerByName(containerName);
+  async removeContainerByName(containerName: string, applicationId?: string) {
+    const existing = await this.findContainerByName(
+      containerName,
+      applicationId,
+    );
     if (!existing) {
       return;
     }
 
     await this.removeContainer(existing.Id);
+  }
+
+  private assertManagedRuntime(
+    labels: Record<string, string> | undefined,
+    applicationId: string,
+    container: string,
+  ) {
+    if (
+      labels?.['com.rebroid.managed'] !== 'true' ||
+      labels['com.rebroid.application-id'] !== applicationId ||
+      labels['com.rebroid.component'] !== 'runtime'
+    ) {
+      throw new Error(
+        `Docker container ${container} is not managed by this application.`,
+      );
+    }
   }
 }

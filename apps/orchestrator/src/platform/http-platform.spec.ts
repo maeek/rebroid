@@ -1,9 +1,10 @@
-import { Controller, Get, Module, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Module, Post, Req } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { FastifyRequest } from 'fastify';
+import { CreateAndroidApplicationDto } from '../android-apps/common/dto/create-android-application.dto';
 import { MetricsController } from '../metrics/metrics.controller';
 import { MetricsService } from '../metrics/metrics.service';
 import { SecurityModule } from '../security/security.module';
@@ -32,6 +33,11 @@ class SmokeController {
         typeof (request.body as { pipe?: unknown } | undefined)?.pipe ===
         'function',
     };
+  }
+
+  @Post('validate-app')
+  validateApp(@Body() dto: CreateAndroidApplicationDto) {
+    return dto;
   }
 }
 
@@ -127,6 +133,25 @@ describe('Fastify HTTP platform', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['x-request-id']).toBe('request-1');
     expect(response.headers['cache-control']).toBe('no-store');
+  });
+
+  it('identifies invalid create-app fields while retaining the validation messages', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/validate-app',
+      headers: { 'x-orchestrator-secret': 'test-secret' },
+      payload: { name: 'A', memoryLimitMb: 32 },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      statusCode: 400,
+      fields: ['name', 'memoryLimitMb'],
+      message: expect.arrayContaining([
+        expect.stringContaining('name'),
+        expect.stringContaining('memoryLimitMb'),
+      ]),
+    });
   });
 
   it('returns Prometheus metrics with the registry content type', async () => {

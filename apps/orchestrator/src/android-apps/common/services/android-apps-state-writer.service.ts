@@ -13,6 +13,8 @@ export type AndroidApplicationLifecyclePatch = Partial<
     | 'provisioningStartedAt'
     | 'provisioningCompletedAt'
     | 'removeDataOnRemoval'
+    | 'containerId'
+    | 'recreateContainerOnNextStart'
   >
 >;
 
@@ -32,6 +34,17 @@ export class AndroidAppsStateWriter {
     return this.status.decorateApplication(saved);
   }
 
+  async saveReconciledRuntime(
+    previous: AndroidApplication,
+    next: AndroidApplication,
+  ) {
+    const result = await this.applications.updateReconciledRuntime(
+      previous,
+      next,
+    );
+    return result.affected === 1;
+  }
+
   async setLifecycle(
     applicationId: string,
     patch: AndroidApplicationLifecyclePatch,
@@ -41,18 +54,6 @@ export class AndroidAppsStateWriter {
 
   async setApkPackageName(applicationId: string, apkPackageName: string) {
     await this.applications.updateApkPackageName(applicationId, apkPackageName);
-  }
-
-  async setContainerReference(
-    applicationId: string,
-    containerId: string,
-    recreateContainerOnNextStart: boolean,
-  ) {
-    await this.applications.updateContainerReference(
-      applicationId,
-      containerId,
-      recreateContainerOnNextStart,
-    );
   }
 
   async setNetworkPolicyState(

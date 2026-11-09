@@ -71,10 +71,7 @@ export interface AndroidAutomationAdbPort {
   rotateDisplay(
     app: AndroidAutomationApplication,
     orientation:
-      | 'portrait'
-      | 'landscape'
-      | 'reverse-portrait'
-      | 'reverse-landscape',
+      'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
   ): Promise<{ executed: boolean }>;
   shell(
     app: AndroidAutomationApplication,
@@ -187,6 +184,7 @@ export interface AndroidAppsAutomationPort {
   start(
     id: string,
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
+    maxOpenApps?: number,
   ): Promise<AndroidAutomationApplication>;
   automationAdapters(): AndroidAutomationAdapters;
 }

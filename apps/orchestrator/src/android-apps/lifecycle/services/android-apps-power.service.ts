@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
   type DockerContainerLifecyclePort,
@@ -45,14 +50,27 @@ export class AndroidAppsPowerService {
     private readonly features: FeatureFlagsService,
   ) {}
 
-  async start(id: string, dto: StartAndroidApplicationDto = {}) {
-    const app = await this.reconciler.reconcileById(id);
+  async start(
+    id: string,
+    dto: StartAndroidApplicationDto = {},
+    maxOpenApps?: number,
+  ) {
+    const { application: app, outcome } =
+      await this.reconciler.reconcileResultById(id);
+    if (outcome === 'unavailable') {
+      throw new ServiceUnavailableException(
+        'Could not verify the current app container with Docker. Check the Docker connection and try again.',
+      );
+    }
     this.assertRunnable(app);
     if (app.networkPolicyEnabled) {
       this.features.assertEnabled('feature.firewall');
     }
 
     if (app.status === AndroidApplicationStatus.Provisioning) {
+      if (await this.transitions.hasRecreateJob(id)) {
+        return this.queries.decorate(app);
+      }
       const recovered =
         await this.runtimePreparation.recoverStaleProvisioningForStart(app);
       if (!recovered) return this.queries.decorate(app);
@@ -61,9 +79,12 @@ export class AndroidAppsPowerService {
       if (app.apkFilePath) await this.apkProvisioning.launchInstalledApk(app);
       return this.queries.decorate(app);
     }
-    if (app.status === AndroidApplicationStatus.Removing) {
+    if (
+      app.status === AndroidApplicationStatus.Removing ||
+      app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping
+    ) {
       throw new ConflictException(
-        'Application is being removed and cannot be started.',
+        'Wait for the current stop or removal to finish before starting the app.',
       );
     }
 
@@ -71,7 +92,6 @@ export class AndroidAppsPowerService {
       await this.runtimePreparation.prepareRuntimeProfile(app, dto);
     }
     await this.runtimePreparation.prepareRuntimeDefaults(app);
-    await this.reconciler.clearMissingContainerReference(app);
     await this.runtimePreparation.prepareFailedContainerForRestart(app);
     await this.runtimePreparation.prepareContainerForRuntimeHostConfig(app);
     await this.runtimePreparation.prepareContainerForRecreationOnStart(app);
@@ -84,14 +104,15 @@ export class AndroidAppsPowerService {
       provisioningStartedAt: new Date(),
       provisioningCompletedAt: null,
     };
-    this.tracker.reset(id);
     await this.transitions.beginJob(
       id,
       AndroidAppLifecycleJobKind.Start,
       patch,
       undefined,
       true,
+      maxOpenApps,
     );
+    this.tracker.reset(id);
     Object.assign(app, patch);
     await this.logs.append(id, 'Start requested', {
       profileMode: app.profileMode,
@@ -105,15 +126,46 @@ export class AndroidAppsPowerService {
     return this.queries.decorate(app);
   }
 
+  async recreate(id: string, maxOpenApps?: number) {
+    const app = await this.reconciler.reconcileById(id);
+    if (app.networkPolicyEnabled) {
+      this.features.assertEnabled('feature.firewall');
+    }
+
+    await this.transitions.beginJob(
+      id,
+      AndroidAppLifecycleJobKind.Recreate,
+      {
+        status: AndroidApplicationStatus.Provisioning,
+        lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+        statusMessage: 'Recreating the application container and network.',
+        lastError: null,
+        provisioningStartedAt: new Date(),
+        provisioningCompletedAt: null,
+      },
+      undefined,
+      true,
+      maxOpenApps,
+    );
+    this.tracker.reset(id);
+    this.backgroundJobs.schedule(`recreate:${id}`, () =>
+      this.startLifecycle.startInBackground(
+        id,
+        AndroidAppLifecycleJobKind.Recreate,
+      ),
+    );
+    return this.queries.getStored(id);
+  }
+
   async stop(id: string, options: StopOptions = {}) {
     const app = await this.reconciler.reconcileById(id);
-    this.tracker.cancel(id);
     const stoppingPatch = {
       status: AndroidApplicationStatus.Stopped,
       lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
       statusMessage: 'Stopping application container.',
     };
     await this.transitions.cancelActiveJob(id, stoppingPatch);
+    this.tracker.cancel(id);
     Object.assign(app, stoppingPatch);
     await this.logs.append(id, 'Stop requested', {
       containerId: app.containerId,

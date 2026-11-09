@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
@@ -53,15 +53,27 @@ export class AndroidApplicationsRepository
     return this.applications.update(applicationId, { apkPackageName });
   }
 
-  updateContainerReference(
-    applicationId: string,
-    containerId: string,
-    recreateContainerOnNextStart: boolean,
+  updateReconciledRuntime(
+    previous: AndroidApplication,
+    next: AndroidApplication,
   ) {
-    return this.applications.update(applicationId, {
-      containerId,
-      recreateContainerOnNextStart,
-    });
+    return this.applications.update(
+      {
+        id: previous.id,
+        status: previous.status,
+        lifecycleStage: previous.lifecycleStage,
+        containerId: previous.containerId ?? IsNull(),
+      },
+      {
+        status: next.status,
+        lifecycleStage: next.lifecycleStage,
+        statusMessage: next.statusMessage,
+        lastError: next.lastError,
+        containerId: next.containerId,
+        lastStartedAt: next.lastStartedAt,
+        lastStoppedAt: next.lastStoppedAt,
+      },
+    );
   }
 
   updateNetworkPolicyState(

@@ -75,7 +75,7 @@ export const toActionError = (
 }
 
 export const runSafeAction = async <T>(
-  operation: () => Promise<T> | T,
+  operation: (requestId: string) => Promise<T> | T,
   {
     fallbackMessage = defaultActionFailureMessage,
     logLabel = 'Server action failed'
@@ -86,7 +86,7 @@ export const runSafeAction = async <T>(
 ): Promise<ActionResult<T>> => {
   const requestId = await getRequestId()
   try {
-    return actionOk(await operation(), requestId)
+    return actionOk(await operation(requestId), requestId)
   } catch (error) {
     unstable_rethrow(error)
     const safeError = toActionError(error, requestId, fallbackMessage)

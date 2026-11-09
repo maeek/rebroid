@@ -10,6 +10,7 @@ import {
 export enum AndroidAppLifecycleJobKind {
   Provision = 'provision',
   Start = 'start',
+  Recreate = 'recreate',
   InstallApk = 'install_apk',
   Remove = 'remove',
 }

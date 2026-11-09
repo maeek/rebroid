@@ -31,9 +31,13 @@ export const cloneApplicationForCurrentUserAction = async (id: string) => {
   enforceResourceQuotas(source.runtime.resources, user.quotas)
   enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, user.quotas)
   await assertCanOpenApplicationSlot(user)
-  const command = await orchestratorAppCatalogClient.cloneApplication(id, {
-    ownerUserId: user.ownerUserId
-  })
+  const command = await orchestratorAppCatalogClient.cloneApplication(
+    id,
+    {
+      ownerUserId: user.ownerUserId
+    },
+    user.quotas.maxOpenApps
+  )
   await cloneStoredAppIcon(id, command.id)
   recordAuditEvent({
     actorUserId: user.ownerUserId,

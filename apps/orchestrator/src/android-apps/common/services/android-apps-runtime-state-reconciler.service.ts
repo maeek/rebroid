@@ -15,7 +15,6 @@ import {
 } from '../../contracts/android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
-import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from './android-apps-query.service';
 import { AndroidAppsStateWriter } from './android-apps-state-writer.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
@@ -23,9 +22,7 @@ import { AndroidAppsStatusService } from './android-apps-status.service';
 const MAX_RECONCILIATION_CONCURRENCY = 4;
 
 export type AndroidAppRuntimeReconciliationOutcome =
-  | 'updated'
-  | 'unchanged'
-  | 'unavailable';
+  'updated' | 'unchanged' | 'unavailable';
 
 export type AndroidAppRuntimeReconciliationResult = {
   application: AndroidApplication;
@@ -42,7 +39,6 @@ export class AndroidAppsRuntimeStateReconciler {
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly lifecycle: DockerContainerLifecyclePort,
     private readonly networkPolicy: NetworkPolicyService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly status: AndroidAppsStatusService,
     private readonly queries: AndroidAppsQueryService,
     private readonly writer: AndroidAppsStateWriter,
@@ -70,29 +66,6 @@ export class AndroidAppsRuntimeStateReconciler {
     );
   }
 
-  async clearMissingContainerReference(app: AndroidApplication) {
-    if (!app.containerId) {
-      return app;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.exists) {
-      return app;
-    }
-
-    await this.networkPolicy.remove(app);
-    app.containerId = null;
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage =
-      'Managed container was removed. A new container will be created on start.';
-    app.lastStoppedAt = new Date();
-    await this.writer.save(app);
-    return app;
-  }
-
   async reconcileOne(app: AndroidApplication) {
     return (await this.reconcileOneWithResult(app)).application;
   }
@@ -100,6 +73,16 @@ export class AndroidAppsRuntimeStateReconciler {
   async reconcileOneWithResult(
     app: AndroidApplication,
   ): Promise<AndroidAppRuntimeReconciliationResult> {
+    const previous = { ...app };
+    if (
+      !app.containerId &&
+      (app.status === AndroidApplicationStatus.Running ||
+        (app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping &&
+          this.isStoppingStateStale(app)))
+    ) {
+      this.clearMissingRuntime(app);
+      return this.persistReconciledRuntime(previous, app);
+    }
     if (!shouldReconcileContainerState(app) || !app.containerId) {
       return {
         application: this.status.decorateApplication(app),
@@ -122,38 +105,69 @@ export class AndroidAppsRuntimeStateReconciler {
       };
     }
 
-    const before = this.reconciliationFingerprint(app);
-    const application = await this.reconcileRuntimeState(app, runtimeState);
-    const outcome =
-      before === this.reconciliationFingerprint(application)
-        ? 'unchanged'
-        : 'updated';
-    return { application, outcome };
+    this.reconcileRuntimeState(app, runtimeState);
+    return this.persistReconciledRuntime(previous, app);
+  }
+
+  private async persistReconciledRuntime(
+    previous: AndroidApplication,
+    app: AndroidApplication,
+  ): Promise<AndroidAppRuntimeReconciliationResult> {
+    if (
+      this.reconciliationFingerprint(previous) ===
+      this.reconciliationFingerprint(app)
+    ) {
+      return {
+        application: this.status.decorateApplication(app),
+        outcome: 'unchanged',
+      };
+    }
+    if (!(await this.writer.saveReconciledRuntime(previous, app))) {
+      return {
+        application: await this.queries.getStored(app.id),
+        outcome: 'unchanged',
+      };
+    }
+    if (previous.containerId && !app.containerId) {
+      await this.networkPolicy.remove(app, previous.containerId);
+    }
+    return {
+      application: this.status.decorateApplication(app),
+      outcome: 'updated',
+    };
   }
 
   private reconcileRuntimeState(
     app: AndroidApplication,
     runtimeState: ContainerRuntimeState,
   ) {
-    if (
-      app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping &&
-      this.isStoppingStateStale(app)
-    ) {
-      return this.recoverStaleStoppingState(app, runtimeState);
+    if (app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping) {
+      if (this.isStoppingStateStale(app)) {
+        this.recoverStaleStoppingState(app, runtimeState);
+      }
+      return;
     }
 
     if (runtimeState.exists && runtimeState.running) {
       return this.reconcileRunningContainer(app);
     }
 
-    if (
-      app.status === AndroidApplicationStatus.Provisioning &&
-      this.isContainerStartOwnedByProvisioning(app)
-    ) {
-      return this.status.decorateApplication(app);
+    if (!runtimeState.exists) {
+      return this.clearMissingRuntime(app);
     }
-
     return this.reconcileStoppedContainer(app, runtimeState);
+  }
+
+  private clearMissingRuntime(app: AndroidApplication) {
+    app.containerId = null;
+    if (app.status !== AndroidApplicationStatus.Error) {
+      app.status = AndroidApplicationStatus.Stopped;
+      app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
+      app.statusMessage =
+        'Managed container was removed. A new container will be created on start.';
+      app.lastError = null;
+      app.lastStoppedAt = new Date();
+    }
   }
 
   private reconcileRunningContainer(app: AndroidApplication) {
@@ -161,7 +175,7 @@ export class AndroidAppsRuntimeStateReconciler {
       app.status !== AndroidApplicationStatus.Stopped &&
       app.status !== AndroidApplicationStatus.Error
     ) {
-      return this.status.decorateApplication(app);
+      return;
     }
 
     app.status = AndroidApplicationStatus.Running;
@@ -170,66 +184,31 @@ export class AndroidAppsRuntimeStateReconciler {
       'Runtime container is running. State recovered from Docker.';
     app.lastError = null;
     app.lastStartedAt = app.lastStartedAt ?? new Date();
-    return this.writer.saveAndDecorate(app);
   }
 
-  private async reconcileStoppedContainer(
+  private reconcileStoppedContainer(
     app: AndroidApplication,
     runtimeState: ContainerRuntimeState,
   ) {
-    const message = runtimeState.exists
-      ? this.status.containerExitedMessage(app, runtimeState)
-      : 'Managed container no longer exists.';
-    if (
-      app.status === AndroidApplicationStatus.Provisioning ||
-      app.status === AndroidApplicationStatus.Running
-    ) {
-      this.logger.warn(
-        `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
-      );
+    if (app.status !== AndroidApplicationStatus.Running) {
+      return;
     }
-
-    if (app.status === AndroidApplicationStatus.Provisioning) {
-      return this.reconcileStoppedProvisioning(app, runtimeState, message);
-    }
-    if (app.status === AndroidApplicationStatus.Running) {
-      return this.reconcileStoppedRunningApp(app, runtimeState, message);
-    }
-    return this.status.decorateApplication(app);
-  }
-
-  private async reconcileStoppedProvisioning(
-    app: AndroidApplication,
-    runtimeState: ContainerRuntimeState,
-    message: string,
-  ) {
-    if (runtimeState.exists && runtimeState.exitCode === 0) {
-      this.markStopped(app, runtimeState, message);
-      this.tracker.cancel(app.id);
-      return this.writer.saveAndDecorate(app);
-    }
-
-    await this.markRuntimeError(app, runtimeState, message);
-    this.tracker.cancel(app.id);
-    return this.writer.saveAndDecorate(app);
-  }
-
-  private async reconcileStoppedRunningApp(
-    app: AndroidApplication,
-    runtimeState: ContainerRuntimeState,
-    message: string,
-  ) {
-    if (runtimeState.exists && runtimeState.exitCode === 0) {
+    this.logger.warn(
+      `Managed container stopped for ${app.id}: ${JSON.stringify(runtimeState)}`,
+    );
+    if (runtimeState.exitCode === 0) {
       this.markStopped(
         app,
         runtimeState,
         this.status.stoppedStatusMessage(app),
       );
-      return this.writer.saveAndDecorate(app);
+      return;
     }
 
-    await this.markRuntimeError(app, runtimeState, message);
-    return this.writer.saveAndDecorate(app);
+    this.markRuntimeError(
+      app,
+      this.status.containerExitedMessage(app, runtimeState),
+    );
   }
 
   private markStopped(
@@ -246,15 +225,7 @@ export class AndroidAppsRuntimeStateReconciler {
       : new Date();
   }
 
-  private async markRuntimeError(
-    app: AndroidApplication,
-    runtimeState: ContainerRuntimeState,
-    message: string,
-  ) {
-    if (!runtimeState.exists) {
-      await this.networkPolicy.remove(app);
-      app.containerId = null;
-    }
+  private markRuntimeError(app: AndroidApplication, message: string) {
     app.status = AndroidApplicationStatus.Error;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Error;
     app.statusMessage = message;
@@ -262,7 +233,7 @@ export class AndroidAppsRuntimeStateReconciler {
     app.lastStoppedAt = new Date();
   }
 
-  private async recoverStaleStoppingState(
+  private recoverStaleStoppingState(
     app: AndroidApplication,
     runtimeState: ContainerRuntimeState,
   ) {
@@ -276,15 +247,13 @@ export class AndroidAppsRuntimeStateReconciler {
       app.statusMessage =
         'Stop did not complete. Runtime container is still running.';
       app.lastError = null;
-      return this.writer.saveAndDecorate(app);
+      return;
     }
 
     if (!runtimeState.exists) {
-      await this.networkPolicy.remove(app);
       app.containerId = null;
     }
     this.markStopped(app, runtimeState, this.status.stoppedStatusMessage(app));
-    return this.writer.saveAndDecorate(app);
   }
 
   private isStoppingStateStale(app: AndroidApplication) {
@@ -292,19 +261,6 @@ export class AndroidAppsRuntimeStateReconciler {
       this.config.getOrThrow<number>('app.docker.stoppingStaleTimeoutSeconds') *
       1000;
     return Date.now() - app.updatedAt.getTime() >= timeoutMs;
-  }
-
-  private isContainerStartOwnedByProvisioning(app: AndroidApplication) {
-    return [
-      AndroidApplicationLifecycleStage.Queued,
-      AndroidApplicationLifecycleStage.ImageChecking,
-      AndroidApplicationLifecycleStage.ImagePulling,
-      AndroidApplicationLifecycleStage.VolumeCreating,
-      AndroidApplicationLifecycleStage.NetworkCreating,
-      AndroidApplicationLifecycleStage.OrchestratorNetworkConnecting,
-      AndroidApplicationLifecycleStage.ContainerCreating,
-      AndroidApplicationLifecycleStage.ContainerStarting,
-    ].includes(app.lifecycleStage);
   }
 
   private reconciliationFingerprint(app: AndroidApplication) {

@@ -37,7 +37,7 @@ describe('execution authorization', () => {
     ] as never)
   })
   it('allows permitted steps against an owned running target', async () => {
-    await expect(authorizeAutomationExecution(input)).resolves.toBeUndefined()
+    await expect(authorizeAutomationExecution(input)).resolves.toBe(1)
   })
   it.each([null, { ...account, disabled: true }, { ...account, passwordChangeRequired: true }])(
     'denies missing or disabled accounts and required password changes',

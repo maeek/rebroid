@@ -34,8 +34,6 @@ export const buildAppConfigSections = (
 const dockerSection = (env: Environment, resourcePrefix: string) => ({
   socketPath: env.DOCKER_SOCKET_PATH ?? '/var/run/docker.sock',
   resourcePrefix,
-  orchestratorContainerId:
-    env.ORCHESTRATOR_CONTAINER_ID || env.HOSTNAME || undefined,
   stoppingStaleTimeoutSeconds: environmentNumber(
     env.DOCKER_STOPPING_STALE_TIMEOUT_SECONDS,
     60,

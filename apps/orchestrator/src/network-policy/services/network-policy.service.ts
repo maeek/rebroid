@@ -112,9 +112,12 @@ export class NetworkPolicyService {
     await this.agent.reconcile(policies);
   }
 
-  async remove(app: Pick<NetworkPolicyTarget, 'id'>) {
+  async remove(
+    app: Pick<NetworkPolicyTarget, 'id'>,
+    expectedContainerId?: string,
+  ) {
     if (!this.features.isEnabled('feature.firewall')) return;
-    await this.agent.remove(app.id).catch((error) => {
+    await this.agent.remove(app.id, expectedContainerId).catch((error) => {
       this.logger.warn(
         `Could not remove firewall policy for ${app.id}: ${
           error instanceof Error

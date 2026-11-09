@@ -8,12 +8,16 @@ type CreateAppNetworkAccessSectionProps = {
   values: CreateAppFormValues
   canUseInternet: boolean
   onChange: (patch: Partial<CreateAppFormValues>) => void
+  modeError?: string
+  allowlistError?: string
 }
 
 export const CreateAppNetworkAccessSection = ({
   values,
   canUseInternet,
-  onChange
+  onChange,
+  modeError,
+  allowlistError
 }: CreateAppNetworkAccessSectionProps) => {
   const handleAddCidr = (cidr: string) => {
     const nextCidrs = values.networkPolicyAllowCidrs.includes(cidr)
@@ -51,6 +55,8 @@ export const CreateAppNetworkAccessSection = ({
       modeDescription='Restrict outbound traffic to the API and allowed IPv4 ranges.'
       unrestrictedLabel='Unrestricted outbound access'
       modeValue={values.networkPolicyEnabled}
+      modeError={modeError}
+      allowlistError={allowlistError}
       onModeChange={value => onChange({ networkPolicyEnabled: value })}
       canEnableUnrestricted={canUseInternet}
       allowCidrs={values.networkPolicyAllowCidrs}

@@ -26,6 +26,6 @@ export interface DockerNetworkRuntimePort {
     containerId: string,
     networkName: string,
   ): Promise<void>;
-  removeNetwork(networkName: string): Promise<void>;
+  removeNetwork(networkName: string, applicationId?: string): Promise<void>;
   listNetworkContainerIds(networkName: string): Promise<string[]>;
 }

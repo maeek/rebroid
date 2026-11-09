@@ -4,7 +4,7 @@ import { requireFeature } from '../../../features'
 import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
-import { createApplicationAction } from './create-update-actions'
+import { submitCreateApplicationAction } from './create-update-actions'
 import {
   applyNetworkPolicyAction,
   reconcileNetworkPoliciesAction,
@@ -129,23 +129,87 @@ describe('network policy actions', () => {
   })
 
   it('allows creating an unrestricted app while firewall is disabled', async () => {
+    const appId = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
     vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
-      id: 'app-1',
+      id: appId,
       name: 'Test app'
     } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
-    await createApplicationAction({ name: 'Test app', networkPolicyEnabled: false, networkPolicyAllowCidrs: [] })
+    const result = await submitCreateApplicationAction({
+      name: 'Test app',
+      networkPolicyEnabled: false,
+      networkPolicyAllowCidrs: []
+    })
+    expect(result).toMatchObject({ ok: true, data: { id: appId } })
     expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
-      expect.objectContaining({ networkPolicyEnabled: false })
+      expect.objectContaining({ networkPolicyEnabled: false }),
+      result.requestId,
+      null
     )
+    expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
     expect(requireFeature).not.toHaveBeenCalled()
+  })
+
+  it('treats an acknowledgement with no app ID as unconfirmed', async () => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
+      name: 'Test app'
+    } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
+    const result = await submitCreateApplicationAction({ name: 'Test app' })
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'upstream_error', requestId: result.requestId }
+    })
+    expect(!result.ok && result.error.message).toContain('Check All apps before trying again')
   })
 
   it.each([true, undefined])('keeps restricted creation gated (%s)', async networkPolicyEnabled => {
     vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
-    await expect(createApplicationAction({ name: 'Test app', networkPolicyEnabled })).rejects.toThrow(
-      'feature.firewall is disabled.'
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
+      new OrchestratorRequestError('feature.firewall is disabled.', 409, 'request-1', { code: 'feature_disabled' })
     )
-    expect(orchestratorAppCatalogClient.createApplication).not.toHaveBeenCalled()
+    const result = await submitCreateApplicationAction({ name: 'Test app', networkPolicyEnabled })
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'conflict' }
+    })
+    expect(!result.ok && result.error.message).toContain('Restricted network access requires Firewall')
+  })
+
+  it('returns a safe outage message with the same request reference sent upstream', async () => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
+      new OrchestratorRequestError('connect ENOENT /private/container-engine.sock', 503, 'request-1', {
+        code: 'container_engine_unavailable'
+      })
+    )
+    const result = await submitCreateApplicationAction({ name: 'Test app', networkPolicyEnabled: false })
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: 'upstream_unavailable' }
+    })
+    expect(!result.ok && result.error.message).toContain('Docker or Podman connection')
+    expect(JSON.stringify(result)).not.toContain('/private/')
+    expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
+      expect.anything(),
+      result.requestId,
+      null
+    )
+  })
+
+  it('maps validation field names without forwarding upstream details', async () => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
+      new OrchestratorRequestError('private backend details', 400, 'request-1', {
+        fields: ['memoryLimitMb', 'ownerUserId']
+      })
+    )
+    await expect(submitCreateApplicationAction({ name: 'Test app' })).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'validation',
+        fieldErrors: { memoryLimitMb: ['Enter a whole number from 128 to 262,144 MB.'] }
+      }
+    })
   })
 })

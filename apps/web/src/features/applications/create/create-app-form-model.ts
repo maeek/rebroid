@@ -45,27 +45,40 @@ export const getCustomDisplayConfig = (values: CreateAppFormValues) => {
   return width && height && dpi ? { width, height, dpi } : null
 }
 
-export const isCreateAppSubmitDisabled = ({
-  canChangeContainerArgs,
-  customDisplayConfig,
-  isCreating,
-  isRedroidRuntime,
-  isUploadingApk,
-  trimmedName,
-  values
-}: {
-  canChangeContainerArgs: boolean
-  customDisplayConfig: ReturnType<typeof getCustomDisplayConfig> | undefined
-  isCreating: boolean
-  isRedroidRuntime: boolean
-  isUploadingApk: boolean
-  trimmedName: string
-  values: CreateAppFormValues
-}) =>
-  isCreating ||
-  isUploadingApk ||
-  trimmedName.length < 2 ||
-  (isRedroidRuntime && canChangeContainerArgs && values.redroidDisplayProfileId === 'custom' && !customDisplayConfig)
+export const customDisplayFields = [
+  ['Width', 'redroidCustomDisplayWidth'],
+  ['Height', 'redroidCustomDisplayHeight'],
+  ['DPI', 'redroidCustomDisplayDpi']
+] as const
+
+export const validateCreateAppDraft = (values: CreateAppFormValues, usesRedroidDisplay: boolean) => {
+  const errors: Record<string, string[]> = {}
+  if (values.name.trim().length < 2) errors.name = ['Enter a name with at least 2 characters.']
+  if (usesRedroidDisplay && values.redroidDisplayProfileId === 'custom') {
+    for (const [, field] of customDisplayFields) {
+      if (parseCustomDisplayValue(values[field]) === null) {
+        errors[field] = ['Enter a whole number greater than zero.']
+      }
+    }
+  }
+  return errors
+}
+
+export const validateCreateAppNumericFields = (form: HTMLFormElement) => {
+  const errors: Record<string, string[]> = {}
+
+  for (const field of ['memoryLimitMb', 'cpuLimitCpus', 'inactivityTimeoutSeconds']) {
+    const input = form.elements.namedItem(field)
+    if (!(input instanceof HTMLInputElement) || !input.willValidate || input.validity.valid) continue
+
+    if (input.validity.rangeOverflow) errors[field] = [`Enter a value of ${input.max} or less.`]
+    else if (input.validity.rangeUnderflow) errors[field] = [`Enter a value of ${input.min} or more.`]
+    else if (input.validity.stepMismatch) errors[field] = [`Enter a value in increments of ${input.step || '1'}.`]
+    else errors[field] = [input.validationMessage]
+  }
+
+  return errors
+}
 
 export const buildCreateApplicationInput = ({
   canChangeBaseImage,
@@ -96,7 +109,7 @@ export const buildCreateApplicationInput = ({
 }): CreateApplicationActionInput => ({
   name: trimmedName,
   containerImage: canChangeBaseImage ? values.containerImage.trim() || undefined : undefined,
-  inactivityTimeoutSeconds: canChangeSessionLimit ? values.inactivityTimeoutSeconds || undefined : undefined,
+  inactivityTimeoutSeconds: canChangeSessionLimit ? values.inactivityTimeoutSeconds : undefined,
   memoryLimitMb: canChangeResources && values.memoryLimitMb ? Number(values.memoryLimitMb) : undefined,
   cpuLimitCpus: canChangeResources && values.cpuLimitCpus ? Number(values.cpuLimitCpus) : undefined,
   containerArgs: canChangeContainerArgs

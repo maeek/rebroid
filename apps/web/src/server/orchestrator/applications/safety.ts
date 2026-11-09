@@ -124,9 +124,10 @@ export const sanitizeApplicationLogForUser = (log: ApplicationLog, context: AppS
   }
 }
 
-const assertQuota = (label: string, value: number | null | undefined, max: number | null) => {
+const assertQuota = (field: string, label: string, value: number | null | undefined, max: number | null) => {
   if (value !== undefined && max !== null && (value === null || value < 0 || value > max)) {
-    throw new PublicActionError(`${label} exceeds your quota of ${max}.`, { code: 'validation', status: 422 })
+    const message = `${label} exceeds your quota of ${max}.`
+    throw new PublicActionError(message, { code: 'validation', status: 422, fieldErrors: { [field]: [message] } })
   }
 }
 
@@ -134,15 +135,15 @@ export const enforceResourceQuotas = (
   input: Pick<CreateApplicationActionInput | UpdateAndroidApplicationInput, 'memoryLimitMb' | 'cpuLimitCpus'>,
   quotas: ResourceQuota
 ) => {
-  assertQuota('Memory limit', input.memoryLimitMb, quotas.maxMemoryMb)
-  assertQuota('CPU limit', input.cpuLimitCpus, quotas.maxCpuCpus)
+  assertQuota('memoryLimitMb', 'Memory limit', input.memoryLimitMb, quotas.maxMemoryMb)
+  assertQuota('cpuLimitCpus', 'CPU limit', input.cpuLimitCpus, quotas.maxCpuCpus)
 }
 
 export const enforceSessionQuota = (
   input: Pick<CreateApplicationActionInput | UpdateAndroidApplicationInput, 'inactivityTimeoutSeconds'>,
   quotas: ResourceQuota
 ) => {
-  assertQuota('Session timeout', input.inactivityTimeoutSeconds, quotas.maxSessionSeconds)
+  assertQuota('inactivityTimeoutSeconds', 'Session timeout', input.inactivityTimeoutSeconds, quotas.maxSessionSeconds)
 }
 
 export const applyCreateResourceQuotas = (

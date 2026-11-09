@@ -4,7 +4,7 @@ import {
   buildCreateApplicationInput,
   getCustomDisplayConfig,
   getInitialCreateAppFormValues,
-  isCreateAppSubmitDisabled
+  validateCreateAppDraft
 } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
@@ -49,31 +49,13 @@ describe('create app form model', () => {
     expect(getCustomDisplayConfig(values({ redroidCustomDisplayDpi: '440.5' }))).toBeNull()
   })
 
-  it('disables submit for busy, short-name, and invalid custom display states', () => {
-    const base = values({ name: 'App', redroidDisplayProfileId: 'custom' })
-
-    expect(
-      isCreateAppSubmitDisabled({
-        canChangeContainerArgs: true,
-        customDisplayConfig: null,
-        isCreating: false,
-        isRedroidRuntime: true,
-        isUploadingApk: false,
-        trimmedName: 'App',
-        values: base
-      })
-    ).toBe(true)
-    expect(
-      isCreateAppSubmitDisabled({
-        canChangeContainerArgs: true,
-        customDisplayConfig: getCustomDisplayConfig(base),
-        isCreating: false,
-        isRedroidRuntime: true,
-        isUploadingApk: false,
-        trimmedName: 'A',
-        values: base
-      })
-    ).toBe(true)
+  it('identifies each invalid name and custom display field', () => {
+    const draft = values({ name: ' A ', redroidDisplayProfileId: 'custom', redroidCustomDisplayWidth: '0' })
+    expect(validateCreateAppDraft(draft, true)).toEqual({
+      name: ['Enter a name with at least 2 characters.'],
+      redroidCustomDisplayWidth: ['Enter a whole number greater than zero.']
+    })
+    expect(validateCreateAppDraft({ ...draft, name: 'App' }, false)).toEqual({})
   })
 
   it('builds create input according to permission gates', () => {
@@ -92,6 +74,7 @@ describe('create app form model', () => {
         containerImage: ' custom/image ',
         customContainerArgs: ' --foo bar ',
         cpuLimitCpus: '2',
+        inactivityTimeoutSeconds: 0,
         memoryLimitMb: '512',
         networkPolicyEnabled: false,
         networkPolicyAllowCidrs: ['0.0.0.0/0']
@@ -103,6 +86,7 @@ describe('create app form model', () => {
       containerImage: 'custom/image',
       containerArgs: '--foo bar',
       cpuLimitCpus: 2,
+      inactivityTimeoutSeconds: 0,
       memoryLimitMb: 512,
       networkPolicyEnabled: true,
       networkPolicyAllowCidrs: ['0.0.0.0/0'],

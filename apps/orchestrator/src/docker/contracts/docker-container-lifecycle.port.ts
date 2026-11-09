@@ -9,6 +9,7 @@ export interface DockerContainerLifecyclePort {
   ): Promise<Dockerode.ContainerInspectInfo>;
   findContainerByName(
     name: string,
+    applicationId?: string,
   ): Promise<Dockerode.ContainerInfo | undefined>;
   getContainerRuntimeState(containerId: string): Promise<ContainerRuntimeState>;
   getContainerLogs(containerId: string, tail?: number): Promise<string>;
@@ -21,7 +22,11 @@ export interface DockerContainerLifecyclePort {
       removeVolumes?: boolean;
       maxAttempts?: number;
       retryDelayMs?: number;
+      applicationId?: string;
     },
   ): Promise<void>;
-  removeContainerByName(containerName: string): Promise<void>;
+  removeContainerByName(
+    containerName: string,
+    applicationId?: string,
+  ): Promise<void>;
 }

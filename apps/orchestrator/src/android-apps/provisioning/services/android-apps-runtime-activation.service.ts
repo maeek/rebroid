@@ -21,7 +21,6 @@ import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidApplicationLifecycleStage } from '../../contracts/android-application-status';
 import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
@@ -51,7 +50,6 @@ export class AndroidAppsRuntimeActivationService {
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
-    private readonly writer: AndroidAppsStateWriter,
   ) {}
 
   async activate(
@@ -61,6 +59,43 @@ export class AndroidAppsRuntimeActivationService {
   ) {
     this.logEngineSummary(app.id);
     await this.ensureImageAvailable(app, kind);
+    try {
+      await this.activateContainer(app, kind, source);
+    } catch (error) {
+      this.tracker.ensureActive(app.id);
+      const containerId = app.containerId;
+      if (
+        !containerId ||
+        (await this.lifecycle.getContainerRuntimeState(containerId)).exists
+      ) {
+        throw error;
+      }
+
+      const updated = await this.transitions.updateProgress(app.id, kind, {
+        containerId: null,
+        statusMessage:
+          'The runtime container disappeared. Creating a replacement.',
+      });
+      if (!updated) throw error;
+
+      app.containerId = null;
+      await this.logs.append(
+        app.id,
+        'Retrying after runtime container disappeared',
+        {
+          containerId,
+        },
+      );
+      await this.activateContainer(app, kind, source);
+    }
+  }
+
+  private async activateContainer(
+    app: AndroidApplication,
+    kind: AndroidAppLifecycleJobKind,
+    source: ActivationSource,
+  ) {
+    this.tracker.ensureActive(app.id);
     await this.prepareContainer(app, kind, source);
     await this.startContainer(app, kind);
     await this.prepareAndroid(app, kind);
@@ -160,7 +195,10 @@ export class AndroidAppsRuntimeActivationService {
     });
     app.containerId = container.id;
     app.recreateContainerOnNextStart = false;
-    await this.writer.setContainerReference(app.id, container.id, false);
+    await this.transitions.updateProgress(app.id, kind, {
+      containerId: container.id,
+      recreateContainerOnNextStart: false,
+    });
     await this.logs.append(
       app.id,
       source === 'provision'

@@ -17,6 +17,8 @@ type AppNetworkPolicyEditorSectionProps = {
   isBusy?: boolean
   canEnableUnrestricted?: boolean
   modeDescription?: string
+  modeError?: string
+  allowlistError?: string
   allowlistTitle?: string
   allowlistDescription?: string
   sectionDescription?: ReactNode
@@ -39,6 +41,8 @@ export const AppNetworkPolicyEditorSection = ({
   isBusy,
   canEnableUnrestricted = true,
   modeDescription = 'Limit Android traffic to the API and explicit CIDR ranges.',
+  modeError,
+  allowlistError,
   allowlistTitle = 'Allowlist',
   allowlistDescription = 'Add app-specific IPv4 ranges when needed.',
   sectionDescription,
@@ -60,6 +64,7 @@ export const AppNetworkPolicyEditorSection = ({
       <Visible when={topSection}>{topSection}</Visible>
       <FormField
         label='Mode'
+        error={modeError}
         description={modeDescription}
         className={verticalSettingClassName}
         layout='vertical'
@@ -85,6 +90,7 @@ export const AppNetworkPolicyEditorSection = ({
       </FormField>
       <FormField
         label={allowlistTitle}
+        error={allowlistError}
         description={allowlistDescription}
         layout='vertical'
       >

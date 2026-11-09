@@ -10,6 +10,7 @@ const clamp = (value: number, min: number, max: number) => Math.min(Math.max(val
 
 type NumberFieldBaseProps = {
   id?: string
+  name?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
   value: string
@@ -40,6 +41,7 @@ type NumberSliderFieldProps = NumberFieldBaseProps &
 
 export const NumberSliderField = ({
   id,
+  name,
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   value,
@@ -64,7 +66,7 @@ export const NumberSliderField = ({
     Number.isFinite(numericValue) && sliderMax !== undefined ? clamp(numericValue, min, sliderMax) : min
 
   const normalizeOnBlur = () => {
-    if (value.trim() === '') {
+    if (ariaInvalid || value.trim() === '') {
       return
     }
 
@@ -86,6 +88,7 @@ export const NumberSliderField = ({
         ) : (
           <Input
             id={id}
+            name={name}
             aria-describedby={ariaDescribedBy}
             aria-invalid={ariaInvalid}
             className='min-w-0 max-w-48'

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { applyRedroidDisplayContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconChevronRight } from '@tabler/icons-react'
 import { EditorFormContext } from '@/components/ui/editor-form-context'
@@ -22,6 +22,8 @@ type CreateAppDeviceSectionProps = {
   canChangeBaseImage: boolean
   canChangeContainerArgs: boolean
   isRedroidRuntime: boolean
+  imageError?: string
+  argumentsError?: string
 }
 
 export const CreateAppDeviceSection = ({
@@ -31,8 +33,15 @@ export const CreateAppDeviceSection = ({
   onChange,
   canChangeBaseImage,
   canChangeContainerArgs,
-  isRedroidRuntime
+  isRedroidRuntime,
+  imageError,
+  argumentsError
 }: CreateAppDeviceSectionProps) => {
+  const argumentsSection = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    if (argumentsError && argumentsSection.current) argumentsSection.current.open = true
+  }, [argumentsError])
+
   const customDisplayConfig =
     values.redroidDisplayProfileId === 'custom' ? (getCustomDisplayConfig(values) ?? undefined) : undefined
   const redroidDefaultArgs =
@@ -54,6 +63,7 @@ export const CreateAppDeviceSection = ({
       <Visible when={canChangeBaseImage}>
         <FormField
           label='Runtime image'
+          error={imageError}
           description='Container image used to boot the managed Android runtime.'
           layout='vertical'
           className={verticalSettingClassName}
@@ -68,7 +78,10 @@ export const CreateAppDeviceSection = ({
 
       {displaySlot}
       <Visible when={canChangeContainerArgs}>
-        <details className='group'>
+        <details
+          ref={argumentsSection}
+          className='group'
+        >
           <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground'>
             <IconChevronRight className='size-4 transition-transform group-open:rotate-90' />
             Runtime arguments
@@ -90,6 +103,7 @@ export const CreateAppDeviceSection = ({
               </Visible>
               <FormField
                 label={isRedroidRuntime ? 'Additional ReDroid arguments' : 'Container arguments'}
+                error={argumentsError}
                 description={
                   isRedroidRuntime
                     ? 'Optional androidboot or property overrides, such as FPS or proxy settings.'

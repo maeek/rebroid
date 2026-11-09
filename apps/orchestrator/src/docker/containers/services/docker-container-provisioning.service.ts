@@ -38,6 +38,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
 
     const existing = await this.lifecycle.findContainerByName(
       spec.containerName,
+      spec.applicationId,
     );
     if (existing) {
       return this.engine.docker.getContainer(existing.Id);
@@ -111,6 +112,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
 
       const duplicate = await this.lifecycle.findContainerByName(
         spec.containerName,
+        spec.applicationId,
       );
       if (duplicate) {
         return this.engine.docker.getContainer(duplicate.Id);

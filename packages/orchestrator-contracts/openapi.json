@@ -918,7 +918,18 @@
     "/api/v1/apps": {
       "post": {
         "operationId": "AndroidAppsController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "x-rebroid-max-open-apps",
+            "in": "header",
+            "description": "Open application limit supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -976,6 +987,103 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "The request contains invalid fields.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "statusCode",
+                    "message",
+                    "fields"
+                  ],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 400
+                    },
+                    "message": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "fields": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "name"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The open-app limit is reached or the uploaded APK or required Firewall feature is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "statusCode",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 409
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "apk_unavailable",
+                        "feature_disabled",
+                        "feature_unsupported",
+                        "open_app_quota_exceeded"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The container engine could not be reached during image inspection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "statusCode",
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer",
+                      "example": 503
+                    },
+                    "code": {
+                      "type": "string",
+                      "example": "container_engine_unavailable"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "summary": "Provision an isolated application container.",
@@ -1026,6 +1134,16 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-max-open-apps",
+            "in": "header",
+            "description": "Open application limit supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
             }
           }
         ],
@@ -1675,6 +1793,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-rebroid-max-open-apps",
+            "in": "header",
+            "description": "Open application limit supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         ],
         "requestBody": {
@@ -1730,6 +1858,50 @@
             }
           }
         },
+        "tags": [
+          "app-lifecycle"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/lifecycle/recreate": {
+      "post": {
+        "operationId": "AndroidAppsLifecycleController_recreate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-max-open-apps",
+            "in": "header",
+            "description": "Open application limit supplied by the trusted web service.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationCommandResultDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The app has active lifecycle work, is still running, or requires the Firewall feature."
+          }
+        },
+        "summary": "Replace a stopped or errored application runtime and start it with its active profile.",
         "tags": [
           "app-lifecycle"
         ]

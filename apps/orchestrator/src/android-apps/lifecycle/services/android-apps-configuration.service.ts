@@ -1,4 +1,5 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { resolveContainerImage } from '../../../common/container-image-reference';
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 import {
@@ -21,13 +22,19 @@ import { AndroidApplicationsRepository } from '../../persistence/android-applica
 import { AndroidAppsApkInstallLifecycleService } from '../../provisioning/services/android-apps-apk-install-lifecycle.service';
 import { AndroidAppsProvisioningService } from '../../provisioning/services/android-apps-provisioning.service';
 import { AndroidApplicationFactory } from './android-application.factory';
-import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import { AndroidRuntimeImageResolverService } from './android-runtime-image-resolver.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
+
+const unavailableApk = () =>
+  new ConflictException({
+    statusCode: 409,
+    code: 'apk_unavailable',
+    message: 'The uploaded APK is unavailable for this app.',
+  });
 
 @Injectable()
 export class AndroidAppsConfigurationService {
@@ -50,23 +57,24 @@ export class AndroidAppsConfigurationService {
     private readonly features: FeatureFlagsService,
   ) {}
 
-  async create(dto: CreateAndroidApplicationDto) {
+  async create(dto: CreateAndroidApplicationDto, maxOpenApps?: number) {
     if (dto.networkPolicyEnabled !== false) {
       this.features.assertEnabled('feature.firewall');
     }
     const [settings, uploadedApk] = await Promise.all([
       this.settings.getSettings(),
       dto.uploadedApkId
-        ? this.apks.get(dto.uploadedApkId)
+        ? this.apks.get(dto.uploadedApkId).catch((error: unknown) => {
+            if (!(error instanceof ConflictException)) throw error;
+            throw unavailableApk();
+          })
         : Promise.resolve(null),
     ]);
     if (
       uploadedApk &&
       uploadedApk.ownerUserId !== (dto.ownerUserId?.trim() || null)
     ) {
-      throw new ConflictException(
-        'Uploaded APK does not belong to this application owner.',
-      );
+      throw unavailableApk();
     }
     const containerImage = resolveContainerImage(
       dto.containerImage ?? settings.defaultContainerImage,
@@ -77,12 +85,16 @@ export class AndroidAppsConfigurationService {
       this.applicationFactory.initialFields(dto, settings, runtimeKind),
     );
 
-    await this.writer.save(app);
+    app.id = randomUUID();
     this.applicationFactory.assignGeneratedNames(app);
     if (uploadedApk) {
       this.applicationFactory.applyUploadedApk(app, uploadedApk);
     }
-    await this.writer.save(app);
+    await this.transitions.createProvisionJob(app, maxOpenApps);
+    this.tracker.reset(app.id);
+    this.backgroundJobs.schedule(`provision:${app.id}`, () =>
+      this.provisioning.provision(app.id),
+    );
     await this.logs.append(app.id, 'Application record created', {
       name: app.name,
       ownerUserId: app.ownerUserId,
@@ -90,39 +102,38 @@ export class AndroidAppsConfigurationService {
       hasApk: Boolean(uploadedApk),
     });
 
-    this.tracker.reset(app.id);
-    await this.transitions.beginJob(
-      app.id,
-      AndroidAppLifecycleJobKind.Provision,
-      {},
-    );
-    this.backgroundJobs.schedule(`provision:${app.id}`, () =>
-      this.provisioning.provision(app.id),
-    );
     return this.queries.decorate(app);
   }
 
-  async clone(id: string, dto: CloneAndroidApplicationDto) {
+  async clone(
+    id: string,
+    dto: CloneAndroidApplicationDto,
+    maxOpenApps?: number,
+  ) {
     const source = await this.reconciler.reconcileById(id);
     const ownerUserId = dto.ownerUserId?.trim() || null;
     const uploadedApk = source.uploadedApkId
       ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
       : null;
 
-    return this.create({
-      name: dto.name?.trim() || source.name,
-      ownerUserId: ownerUserId ?? undefined,
-      containerImage: source.containerImage,
-      inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
-      memoryLimitMb: source.memoryLimitMb ?? undefined,
-      cpuLimitCpus: source.cpuLimitCpus ?? undefined,
-      containerArgs: source.containerArgs ?? undefined,
-      uploadedApkId: uploadedApk?.id,
-    });
+    return this.create(
+      {
+        name: dto.name?.trim() || source.name,
+        ownerUserId: ownerUserId ?? undefined,
+        containerImage: source.containerImage,
+        inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
+        memoryLimitMb: source.memoryLimitMb ?? undefined,
+        cpuLimitCpus: source.cpuLimitCpus ?? undefined,
+        containerArgs: source.containerArgs ?? undefined,
+        uploadedApkId: uploadedApk?.id,
+      },
+      maxOpenApps,
+    );
   }
 
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.reconciler.reconcileById(id);
+    await this.assertRuntimeNotRecreating(app);
     const recreate = this.runtimePreparation.shouldRecreateContainerOnUpdate(
       app,
       dto,
@@ -150,12 +161,14 @@ export class AndroidAppsConfigurationService {
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
+    await this.assertRuntimeNotRecreating(app);
     await this.runtimePreparation.switchProfile(app, dto);
     return this.writer.saveAndDecorate(app);
   }
 
   async deleteSavedProfile(id: string, profileName: string) {
     const app = await this.reconciler.reconcileById(id);
+    await this.assertRuntimeNotRecreating(app);
     await this.runtimePreparation.deleteSavedPersistentProfile(
       app,
       profileName,
@@ -166,6 +179,7 @@ export class AndroidAppsConfigurationService {
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
+    await this.assertRuntimeNotRecreating(app);
     const uploadedApk = await this.apks.get(dto.uploadedApkId);
     if (uploadedApk.ownerUserId !== app.ownerUserId) {
       throw new ConflictException(
@@ -184,6 +198,15 @@ export class AndroidAppsConfigurationService {
       'Installing updated APK. Viewer is available while installation finishes.',
     );
     return this.queries.getStored(id);
+  }
+
+  private async assertRuntimeNotRecreating(app: AndroidApplication) {
+    if (
+      app.status === AndroidApplicationStatus.Provisioning &&
+      (await this.transitions.hasRecreateJob(app.id))
+    ) {
+      throw new ConflictException('Application runtime is being recreated.');
+    }
   }
 
   private assertMutable(app: AndroidApplication) {

@@ -1,17 +1,21 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useId, useState } from 'react'
+import { ChangeEvent, FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
+import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
-import { createApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
-import { unwrapActionResult } from '@/shared/actions/action-result'
+import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
+import { unconfirmedAppCreationMessage } from '@/shared/contracts/application'
+import { isApplicationId } from '@/shared/model/application-id'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { runtimeKindForImageReference } from '@/shared/model/runtime-image/runtime-image-metadata'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -27,7 +31,8 @@ import {
   buildCreateApplicationInput,
   getCustomDisplayConfig,
   getInitialCreateAppFormValues,
-  isCreateAppSubmitDisabled
+  validateCreateAppDraft,
+  validateCreateAppNumericFields
 } from './create-app-form-model'
 import { AppFormGeneralSection } from './create-app-general-section'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
@@ -74,6 +79,11 @@ export const CreateAppForm = ({
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
   const [autoExtractIcon, setAutoExtractIcon] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
+  const [failure, setFailure] = useState<{ message: string; requestId?: string; hasFieldErrors?: boolean } | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
+  const submitting = useRef(false)
+  const form = useRef<HTMLFormElement>(null)
+  const failureSummary = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const extractedIcon = uploadedApk?.extractedIconDataUrl ?? null
   const iconPreview = manualIconPreview ?? (autoExtractIcon ? extractedIcon : null)
@@ -104,20 +114,41 @@ export const CreateAppForm = ({
     }))
   }, [initialContainerImage, settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
 
+  useEffect(() => {
+    if (failure) failureSummary.current?.focus()
+  }, [failure])
+
+  const clearFieldErrors = (...fields: string[]) => {
+    setFieldErrors(current => Object.fromEntries(Object.entries(current).filter(([field]) => !fields.includes(field))))
+  }
+
   const updateFormValues = (patch: Partial<CreateAppFormValues>) => {
     setFormValues(current => ({ ...current, ...patch }))
+    const keys = Object.keys(patch)
+    if (
+      (patch.redroidDisplayProfileId && patch.redroidDisplayProfileId !== 'custom') ||
+      patch.containerImage !== undefined
+    ) {
+      keys.push('redroidCustomDisplayWidth', 'redroidCustomDisplayHeight', 'redroidCustomDisplayDpi')
+    }
+    if (
+      patch.redroidDisplayProfileId !== undefined ||
+      patch.redroidExtraArgs !== undefined ||
+      patch.redroidCustomDisplayWidth !== undefined ||
+      patch.redroidCustomDisplayHeight !== undefined ||
+      patch.redroidCustomDisplayDpi !== undefined ||
+      patch.customContainerArgs !== undefined ||
+      patch.containerImage !== undefined
+    ) {
+      keys.push('containerArgs')
+    }
+    clearFieldErrors(...keys)
   }
 
   const trimmedName = formValues.name.trim()
-  const isSubmitDisabled = isCreateAppSubmitDisabled({
-    canChangeContainerArgs,
-    customDisplayConfig,
-    isCreating,
-    isRedroidRuntime,
-    isUploadingApk,
-    trimmedName,
-    values: formValues
-  })
+  const isSubmitDisabled = isCreating || isUploadingApk
+  const fieldError = (field: string) => fieldErrors[field]?.join(' ')
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
 
   const handleIconChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null
@@ -149,6 +180,7 @@ export const CreateAppForm = ({
 
   const handleApkSelect = async (file: File | null) => {
     setUploadedApk(null)
+    clearFieldErrors('uploadedApkId')
 
     if (!file) {
       return
@@ -187,16 +219,26 @@ export const CreateAppForm = ({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (isSubmitDisabled) {
+    if (isSubmitDisabled || submitting.current || loading) return
+
+    const draftErrors = {
+      ...validateCreateAppDraft(formValues, isRedroidRuntime && canChangeContainerArgs),
+      ...validateCreateAppNumericFields(event.currentTarget)
+    }
+    setFieldErrors(draftErrors)
+    if (Object.keys(draftErrors).length > 0) {
+      setFailure({ message: 'Review the highlighted fields and try again.', hasFieldErrors: true })
       return
     }
 
+    setFailure(null)
+    submitting.current = true
     setIsCreating(true)
     topLoader.start()
     topLoader.setProgress(0.1)
 
     try {
-      const createdApp = await createApplicationAction(
+      const result = await submitCreateApplicationAction(
         buildCreateApplicationInput({
           canChangeBaseImage,
           canChangeContainerArgs,
@@ -213,6 +255,20 @@ export const CreateAppForm = ({
         })
       )
 
+      if (!isActionResult(result)) throw new Error('Invalid create-app action result')
+      if (!result.ok) {
+        topLoader.done(true)
+        const errors = result.error.fieldErrors ?? {}
+        setFailure({ ...result.error, hasFieldErrors: Object.keys(errors).length > 0 })
+        setFieldErrors(errors)
+        return
+      }
+      const createdApp = result.data
+      if (!isApplicationId(createdApp?.id)) {
+        topLoader.done(true)
+        setFailure({ message: unconfirmedAppCreationMessage, requestId: result.requestId })
+        return
+      }
       topLoader.setProgress(iconPreview ? 0.65 : 0.9)
 
       if (iconPreview) {
@@ -228,16 +284,17 @@ export const CreateAppForm = ({
       }
 
       topLoader.setProgress(1)
-      toast({ title: 'App created', description: 'Provisioning has started.', variant: 'success' })
-      router.push(`/app/${createdApp.id}`)
-    } catch (error) {
-      topLoader.done(true)
       toast({
-        title: 'Could not create app',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
+        title: 'App creation started',
+        description: 'Track provisioning on the app page.',
+        variant: 'success'
       })
+      router.push(`/app/${createdApp.id}`)
+    } catch {
+      topLoader.done(true)
+      setFailure({ message: unconfirmedAppCreationMessage })
     } finally {
+      submitting.current = false
       setIsCreating(false)
     }
   }
@@ -268,17 +325,59 @@ export const CreateAppForm = ({
       </Visible>
       <PageContent>
         <form
+          ref={form}
           id={createFormId}
           className='w-full'
+          noValidate
           onSubmit={event => void handleSubmit(event)}
         >
           <CreateAppLayout>
+            {failure ? (
+              <div
+                ref={failureSummary}
+                tabIndex={-1}
+              >
+                <Notice
+                  tone='danger'
+                  title='Could not create app'
+                  description={
+                    failure.hasFieldErrors && !hasFieldErrors
+                      ? 'Try creating the app again with your updated settings.'
+                      : failure.message
+                  }
+                  actions={
+                    hasFieldErrors ? (
+                      <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => {
+                          const controls = form.current?.querySelectorAll<HTMLElement>('[aria-invalid="true"]')
+                          const first = Array.from(controls ?? []).find(
+                            control => !control.closest('[hidden], [inert], [aria-hidden="true"], :disabled')
+                          )
+                          first?.focus()
+                        }}
+                      >
+                        Go to first error
+                      </Button>
+                    ) : null
+                  }
+                >
+                  {failure.requestId ? (
+                    <p className='text-xs text-foreground-muted'>Request ID {failure.requestId}</p>
+                  ) : null}
+                </Notice>
+              </div>
+            ) : null}
             <div>
               <AppFormGeneralSection
                 values={formValues}
                 onChange={updateFormValues}
                 uploadedApk={uploadedApk}
                 isUploadingApk={isUploadingApk}
+                nameError={fieldError('name')}
+                apkError={fieldError('uploadedApkId')}
                 onApkSelect={file => void handleApkSelect(file)}
                 iconSlot={
                   <AppFormIconSection
@@ -306,11 +405,14 @@ export const CreateAppForm = ({
                     canChangeBaseImage={canChangeBaseImage}
                     canChangeContainerArgs={canChangeContainerArgs}
                     isRedroidRuntime={isRedroidRuntime}
+                    imageError={fieldError('containerImage')}
+                    argumentsError={fieldError('containerArgs')}
                     displaySlot={
                       isRedroidRuntime && canChangeContainerArgs ? (
                         <CreateAppDisplaySection
                           values={formValues}
                           onChange={updateFormValues}
+                          fieldErrors={fieldErrors}
                         />
                       ) : null
                     }
@@ -337,6 +439,8 @@ export const CreateAppForm = ({
                   values={formValues}
                   canUseInternet={canUseInternet}
                   onChange={updateFormValues}
+                  modeError={fieldError('networkPolicyEnabled')}
+                  allowlistError={fieldError('networkPolicyAllowCidrs')}
                 />
               </div>
             </Visible>
@@ -357,6 +461,7 @@ export const CreateAppForm = ({
                   <AppFormSessionSection
                     values={formValues}
                     onChange={updateFormValues}
+                    timeoutError={fieldError('inactivityTimeoutSeconds')}
                   />
                 </Visible>
                 <Visible when={showResourcesSection}>
@@ -365,6 +470,8 @@ export const CreateAppForm = ({
                       values={formValues}
                       resourceLimits={resourceLimits}
                       onChange={updateFormValues}
+                      memoryError={fieldError('memoryLimitMb')}
+                      cpuError={fieldError('cpuLimitCpus')}
                     />
                   </div>
                 </Visible>

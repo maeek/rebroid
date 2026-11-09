@@ -45,17 +45,16 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
    * Without this, control-plane access must come from another route.
    */
   async connectOrchestratorToNetwork(networkName: string) {
-    if (!this.engine.orchestratorContainerId) {
+    const orchestrator = await this.inspectOrchestratorContainer();
+    if (!orchestrator) {
       this.logger.warn(
-        `ORCHESTRATOR_CONTAINER_ID is not set; scrcpy proxying requires another path to reach ${networkName}.`,
+        `The orchestrator is not identifiable on this container engine. Continuing without attaching it to ${networkName}.`,
       );
       return;
     }
 
-    await this.connectContainerToNetwork(
-      this.engine.orchestratorContainerId,
-      networkName,
-    );
+    // Network attachment APIs can require the full ID even if inspect accepts a short ID.
+    await this.connectContainerToNetwork(orchestrator.Id, networkName);
   }
 
   async getContainerIpOnNetwork(containerId: string, networkName: string) {
@@ -95,21 +94,32 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
    * Missing orchestrator metadata is treated as unavailable instead of an error.
    */
   async getOrchestratorIp(networkName: string) {
-    if (!this.engine.orchestratorContainerId) {
-      return null;
-    }
-
     try {
-      const inspect = await this.engine.read(
-        () =>
-          this.engine.docker
-            .getContainer(this.engine.orchestratorContainerId!)
-            .inspect(),
-        `Inspect orchestrator container on network ${networkName}`,
+      const orchestrator = await this.inspectOrchestratorContainer();
+      return (
+        orchestrator?.NetworkSettings?.Networks?.[networkName]?.IPAddress ||
+        null
       );
-      return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
     } catch {
       return null;
+    }
+  }
+
+  private async inspectOrchestratorContainer() {
+    const hostname = this.engine.orchestratorHostname;
+    try {
+      const inspect = await this.engine.coalesceRead(
+        'orchestrator-container-inspect',
+        () => this.engine.docker.getContainer(hostname).inspect(),
+        'Inspect orchestrator container by hostname',
+      );
+      return inspect.Id.startsWith(hostname) ||
+        inspect.Config?.Hostname === hostname
+        ? inspect
+        : null;
+    } catch (error) {
+      if (this.engine.isDockerNotFound(error)) return null;
+      throw error;
     }
   }
 
@@ -175,19 +185,27 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
     }
   }
 
-  async removeNetwork(networkName: string) {
-    const attachedContainerIds =
-      await this.listNetworkContainerIds(networkName);
+  async removeNetwork(networkName: string, applicationId?: string) {
+    const inspect = await this.inspectNetworkIfPresent(networkName);
+    if (!inspect) return;
+    if (
+      applicationId &&
+      !this.isManagedAppNetwork(inspect.Labels, applicationId)
+    ) {
+      throw new Error(
+        `Docker network ${networkName} is not managed by this application.`,
+      );
+    }
 
     await Promise.all(
-      attachedContainerIds.map((containerId) =>
-        this.disconnectContainerFromNetwork(containerId, networkName),
+      Object.keys(inspect.Containers ?? {}).map((containerId) =>
+        this.disconnectContainerFromNetwork(containerId, inspect.Id),
       ),
     );
 
     try {
       await this.engine.mutate(
-        () => this.engine.docker.getNetwork(networkName).remove(),
+        () => this.engine.docker.getNetwork(inspect.Id).remove(),
         `Remove network ${networkName}`,
       );
     } catch (error) {
@@ -198,15 +216,19 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
   }
 
   async listNetworkContainerIds(networkName: string) {
+    const inspect = await this.inspectNetworkIfPresent(networkName);
+    return Object.keys(inspect?.Containers ?? {});
+  }
+
+  private async inspectNetworkIfPresent(networkName: string) {
     try {
-      const inspect = await this.engine.read(
+      return await this.engine.read(
         () => this.engine.docker.getNetwork(networkName).inspect(),
         `Inspect network ${networkName}`,
       );
-      return Object.keys(inspect.Containers ?? {});
     } catch (error) {
       if (this.engine.isDockerNotFound(error)) {
-        return [];
+        return null;
       }
 
       throw error;
@@ -251,12 +273,7 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
       return network;
     }
 
-    const labels = inspect.Labels ?? {};
-    const isManagedNetwork =
-      labels['com.rebroid.managed'] === 'true' &&
-      labels['com.rebroid.application-id'] === applicationId &&
-      labels['com.rebroid.component'] === 'network';
-    if (!isManagedNetwork) {
+    if (!this.isManagedAppNetwork(inspect.Labels, applicationId)) {
       throw new Error(
         `Docker network ${networkName} is internal and is not managed by this application. Remove or rename it before provisioning so containers can use normal Docker egress.`,
       );
@@ -277,5 +294,16 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
       `Remove stale network ${networkName}`,
     );
     return this.createNetwork(applicationId, networkName);
+  }
+
+  private isManagedAppNetwork(
+    labels: Record<string, string> | undefined,
+    applicationId: string,
+  ) {
+    return (
+      labels?.['com.rebroid.managed'] === 'true' &&
+      labels['com.rebroid.application-id'] === applicationId &&
+      labels['com.rebroid.component'] === 'network'
+    );
   }
 }

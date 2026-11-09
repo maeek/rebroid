@@ -1,4 +1,5 @@
-import { ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import type { ValidationError } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
 import {
   FastifyAdapter,
@@ -15,6 +16,19 @@ const redactedLogPaths = [
   'req.headers["x-rebroid-sidecar-secret"]',
   'res.headers["set-cookie"]',
 ];
+
+class HttpValidationPipe extends ValidationPipe {
+  override createExceptionFactory() {
+    const defaultFactory = super.createExceptionFactory();
+    return (errors: ValidationError[] = []) => {
+      const exception = defaultFactory(errors) as BadRequestException;
+      return new BadRequestException({
+        ...(exception.getResponse() as object),
+        fields: errors.map(({ property }) => property),
+      });
+    };
+  }
+}
 
 export const shouldDisableResponseCache = (url: string) => {
   const path = url.split('?')[0] ?? url;
@@ -78,7 +92,7 @@ export const configureFastifyPlatform = async (app: NestFastifyApplication) => {
   }
 
   app.useGlobalPipes(
-    new ValidationPipe({
+    new HttpValidationPipe({
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,

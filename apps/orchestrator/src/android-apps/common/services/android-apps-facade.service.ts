@@ -107,8 +107,9 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
   start(
     id: string,
     dto: StartAndroidApplicationDto = {},
+    maxOpenApps?: number,
   ): Promise<AndroidApplication> {
-    return this.lifecycle.start(id, dto);
+    return this.lifecycle.start(id, dto, maxOpenApps);
   }
 
   /** Stops an app container. */

@@ -114,24 +114,12 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
   }
 
   private async assertNotOrchestratorContainer(containerId: string) {
-    if (!this.engine.orchestratorContainerId) {
-      return;
-    }
-
     const inspect = await this.lifecycle.inspectContainer(containerId);
-    const configuredIdOrName = this.engine.orchestratorContainerId.replace(
-      /^\//,
-      '',
-    );
-    const names = (inspect.Name ? [inspect.Name] : [])
-      .map((name) => name.replace(/^\//, ''))
-      .filter(Boolean);
-    const matchesConfigured =
-      inspect.Id === configuredIdOrName ||
-      inspect.Id.startsWith(configuredIdOrName) ||
-      names.includes(configuredIdOrName);
-
-    if (matchesConfigured) {
+    const hostname = this.engine.orchestratorHostname;
+    if (
+      inspect.Id.startsWith(hostname) ||
+      inspect.Config?.Hostname === hostname
+    ) {
       throw new ConflictException(
         'The orchestrator container cannot stop or remove itself.',
       );

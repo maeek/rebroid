@@ -8,7 +8,7 @@ describe('android apps state utilities', () => {
         containerId: 'container-1',
         status: AndroidApplicationStatus.Provisioning,
       } as never),
-    ).toBe(true);
+    ).toBe(false);
 
     expect(
       shouldReconcileContainerState({

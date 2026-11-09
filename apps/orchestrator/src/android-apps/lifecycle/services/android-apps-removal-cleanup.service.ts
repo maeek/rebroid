@@ -37,13 +37,12 @@ export class AndroidAppsRemovalCleanupService {
   ) {}
 
   async cleanup(app: AndroidApplication, removeData: boolean) {
-    await this.networkPolicy.remove(app);
-
     if (app.containerId) {
       await this.lifecycle.removeContainer(app.containerId);
       app.containerId = null;
     }
     await this.lifecycle.removeContainerByName(app.containerName);
+    await this.networkPolicy.remove(app);
     this.releaseDisplaySessionsInBackground(app.id, 'removing');
     await this.runtimeNetwork.releaseRuntimeSupport(app);
     await this.networks.removeNetwork(app.networkName);
@@ -67,8 +66,24 @@ export class AndroidAppsRemovalCleanupService {
     );
   }
 
+  async removeRuntimeForRecreation(app: AndroidApplication) {
+    await this.releaseDisplaySessions(app.id, 'recreating');
+    await this.lifecycle.removeContainerByName(app.containerName, app.id);
+    if (app.containerId) {
+      await this.lifecycle.removeContainer(app.containerId, {
+        applicationId: app.id,
+      });
+    }
+    await this.networkPolicy.remove(app);
+    await this.networks.removeNetwork(app.networkName, app.id);
+  }
+
   releaseDisplaySessionsInBackground(applicationId: string, operation: string) {
-    void this.displaySidecar
+    void this.releaseDisplaySessions(applicationId, operation);
+  }
+
+  private releaseDisplaySessions(applicationId: string, operation: string) {
+    return this.displaySidecar
       .releaseSessionsForApp(applicationId)
       .catch((error) => {
         this.logger.warn(

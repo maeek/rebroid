@@ -1,7 +1,9 @@
 'use server'
 
+import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
@@ -27,7 +29,7 @@ export const startApplicationAction = async (id: string, input?: SwitchApplicati
   enforceResourceQuotas(currentApp.runtime.resources, user.quotas)
   enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, user.quotas)
   await assertCanOpenApplicationSlot(user, id)
-  const command = await orchestratorAppLifecycleClient.startApplication(id, input)
+  const command = await orchestratorAppLifecycleClient.startApplication(id, input, user.quotas.maxOpenApps)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
     actorLabel: user.ownerUserId,
@@ -64,6 +66,42 @@ export const stopApplicationAction = async (id: string) => {
   const app = await orchestratorAppCatalogClient.getApplication(id)
   return sanitizeAndroidApplicationForUser(app, user)
 }
+
+export const recreateApplicationAction = async (id: string) =>
+  runSafeAction(
+    async () => {
+      if (!isApplicationId(id)) {
+        throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
+      }
+      const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
+      if (
+        user.role !== 'admin' &&
+        (!hasPermission(user.permissions, 'applications:start') ||
+          !hasPermission(user.permissions, 'applications:stop'))
+      ) {
+        throw new PublicActionError('Recreating an app requires permission to start and stop it.', {
+          code: 'forbidden',
+          status: 403
+        })
+      }
+      enforceResourceQuotas(app.runtime.resources, user.quotas)
+      enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, user.quotas)
+      await assertCanOpenApplicationSlot(user, id)
+      const command = await orchestratorAppLifecycleClient.recreateApplication(id, user.quotas.maxOpenApps)
+      recordAuditEvent({
+        actorUserId: user.ownerUserId,
+        actorLabel: user.ownerUserId,
+        category: 'application',
+        action: 'application.recreate',
+        resourceType: 'application',
+        resourceId: id,
+        resourceLabel: command.name
+      })
+      revalidateApplicationList()
+      revalidateApplicationDetail(id)
+    },
+    { fallbackMessage: 'Make sure the app is stopped and try again.' }
+  )
 
 export const deleteApplicationProfileAction = async (id: string, profileName: string) => {
   await assertCanAccessApplication(id)

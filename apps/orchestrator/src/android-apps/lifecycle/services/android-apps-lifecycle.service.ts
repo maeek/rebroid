@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { CloneAndroidApplicationDto } from '../../common/dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-application.dto';
@@ -12,48 +12,74 @@ import { AndroidAppsRemovalService } from './android-apps-removal.service';
 
 @Injectable()
 export class AndroidAppsLifecycleService {
+  private readonly pendingCommands = new Set<string>();
+
   constructor(
     private readonly configuration: AndroidAppsConfigurationService,
     private readonly power: AndroidAppsPowerService,
     private readonly removal: AndroidAppsRemovalService,
   ) {}
 
-  create(dto: CreateAndroidApplicationDto) {
-    return this.configuration.create(dto);
+  create(dto: CreateAndroidApplicationDto, maxOpenApps?: number) {
+    return this.configuration.create(dto, maxOpenApps);
   }
 
-  clone(id: string, dto: CloneAndroidApplicationDto) {
-    return this.configuration.clone(id, dto);
+  clone(id: string, dto: CloneAndroidApplicationDto, maxOpenApps?: number) {
+    return this.configuration.clone(id, dto, maxOpenApps);
   }
 
   update(id: string, dto: UpdateAndroidApplicationDto) {
-    return this.configuration.update(id, dto);
+    return this.runCommand(id, () => this.configuration.update(id, dto));
   }
 
   switchProfile(id: string, dto: SwitchApplicationProfileDto) {
-    return this.configuration.switchProfile(id, dto);
+    return this.runCommand(id, () => this.configuration.switchProfile(id, dto));
   }
 
   deleteSavedProfile(id: string, profileName: string) {
-    return this.configuration.deleteSavedProfile(id, profileName);
+    return this.runCommand(id, () =>
+      this.configuration.deleteSavedProfile(id, profileName),
+    );
   }
 
-  start(id: string, dto: StartAndroidApplicationDto = {}) {
-    return this.power.start(id, dto);
+  start(
+    id: string,
+    dto: StartAndroidApplicationDto = {},
+    maxOpenApps?: number,
+  ) {
+    return this.runCommand(id, () => this.power.start(id, dto, maxOpenApps));
+  }
+
+  recreate(id: string, maxOpenApps?: number) {
+    return this.runCommand(id, () => this.power.recreate(id, maxOpenApps));
   }
 
   stop(
     id: string,
     options: { reason?: string; details?: Record<string, unknown> } = {},
   ) {
-    return this.power.stop(id, options);
+    return this.runCommand(id, () => this.power.stop(id, options));
   }
 
   updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
-    return this.configuration.updateApk(id, dto);
+    return this.runCommand(id, () => this.configuration.updateApk(id, dto));
   }
 
   remove(id: string, query: RemoveAndroidApplicationDto) {
-    return this.removal.request(id, query);
+    return this.runCommand(id, () => this.removal.request(id, query));
+  }
+
+  private async runCommand<T>(id: string, operation: () => Promise<T>) {
+    if (this.pendingCommands.has(id)) {
+      throw new ConflictException(
+        'Another application command is being processed.',
+      );
+    }
+    this.pendingCommands.add(id);
+    try {
+      return await operation();
+    } finally {
+      this.pendingCommands.delete(id);
+    }
   }
 }

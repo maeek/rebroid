@@ -54,4 +54,5 @@ export const authorizeAutomationExecution = async (input: {
         throw new PublicActionError('Open application quota exceeded.', { code: 'forbidden', status: 403 })
     }
   }
+  return user.quotas.maxOpenApps
 }

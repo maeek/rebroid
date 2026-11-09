@@ -63,7 +63,7 @@ export class AutomationRunExecutionService {
         return;
       }
 
-      await this.authorization.assertAllowed(
+      const maxOpenApps = await this.authorization.assertAllowed(
         queuedRun.ownerUserId,
         runnable.definition,
         queuedRun.targetApplicationId,
@@ -72,6 +72,7 @@ export class AutomationRunExecutionService {
       const target = await this.targets.prepareTarget(
         queuedRun.targetApplicationId,
         input.targetOptions,
+        maxOpenApps,
       );
       const prepared = await this.runs.transition(
         queuedRun.id,

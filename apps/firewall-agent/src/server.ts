@@ -113,15 +113,31 @@ export const createFirewallAgentServer = ({
         });
         return;
       }
-      const match = request.url?.match(/^\/v1\/policies\/([^/?]+)$/);
+      const [path, query] = (request.url ?? "").split("?", 2);
+      const match = path.match(/^\/v1\/policies\/([^/]+)$/);
       if (!match) {
         json(response, 404, { message: "Not found." });
         return;
       }
       const applicationId = decodeURIComponent(match[1]);
       if (request.method === "DELETE") {
-        const policies = store.delete(applicationId);
+        if (query !== undefined) {
+          const params = [...new URLSearchParams(query)];
+          const [[key, containerId] = []] = params;
+          if (params.length !== 1 || key !== "containerId" || !containerId) {
+            json(response, 400, { message: "Invalid policy removal query." });
+            return;
+          }
+          // A replacement runtime may already have installed its own policy.
+          if (store.get(applicationId)?.containerId !== containerId) {
+            json(response, 200, { status: "unchanged" });
+            return;
+          }
+        }
+        const policies = store.snapshot();
+        policies.delete(applicationId);
         adapter.remove(applicationId, policies);
+        store.delete(applicationId);
         json(response, 200, {
           status: "applied",
           message: "Firewall policy removed.",

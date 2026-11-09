@@ -1,7 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { DataSource, type EntityManager } from 'typeorm';
+import pLimit from 'p-limit';
+import { DataSource, In, IsNull, type EntityManager } from 'typeorm';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../../contracts/android-application-status';
 import {
   AndroidAppLifecycleJob,
   AndroidAppLifecycleJobKind,
@@ -50,12 +54,42 @@ const allowedStatusTransitions: Record<
 
 type JobPayload = Record<string, unknown> | undefined;
 
+const openStatuses = [
+  AndroidApplicationStatus.Provisioning,
+  AndroidApplicationStatus.Running,
+];
+
 @Injectable()
 export class AndroidAppsLifecycleTransitionService {
+  private readonly serializeTransition = pLimit(1);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly logs: AndroidAppsLogService,
   ) {}
+
+  hasRecreateJob(applicationId: string) {
+    return this.dataSource.getRepository(AndroidAppLifecycleJob).existsBy({
+      applicationId,
+      kind: AndroidAppLifecycleJobKind.Recreate,
+    });
+  }
+
+  async createProvisionJob(app: AndroidApplication, maxOpenApps?: number) {
+    await this.transaction(async (manager) => {
+      await this.assertOpenAppSlot(manager, app.ownerUserId, maxOpenApps);
+      await manager.getRepository(AndroidApplication).save(app);
+      const jobs = manager.getRepository(AndroidAppLifecycleJob);
+      await jobs.save(
+        jobs.create({
+          applicationId: app.id,
+          kind: AndroidAppLifecycleJobKind.Provision,
+          status: AndroidAppLifecycleJobStatus.Pending,
+          attempts: 0,
+        }),
+      );
+    });
+  }
 
   async beginJob(
     applicationId: string,
@@ -63,18 +97,37 @@ export class AndroidAppsLifecycleTransitionService {
     patch: AndroidApplicationLifecyclePatch,
     payload?: JobPayload,
     replaceExisting = false,
+    maxOpenApps?: number,
   ) {
-    await this.dataSource.transaction(async (manager) => {
+    await this.transaction(async (manager) => {
       const app = await this.getApplication(manager, applicationId);
-      this.applyPatch(app, patch);
 
       const repository = manager.getRepository(AndroidAppLifecycleJob);
       const existing = await repository.findOneBy({ applicationId });
+      this.assertRecreateNotActive(existing);
+      if (
+        kind === AndroidAppLifecycleJobKind.Recreate &&
+        ((app.status !== AndroidApplicationStatus.Stopped &&
+          app.status !== AndroidApplicationStatus.Error) ||
+          app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping ||
+          (existing && !existing.lastError))
+      ) {
+        throw new ConflictException(
+          'Stop the app and wait for any lifecycle operation to finish before recreating it.',
+        );
+      }
       if (existing && existing.kind !== kind && !replaceExisting) {
         throw new ConflictException(
           `Application "${applicationId}" is reserved by a ${existing.kind} lifecycle job.`,
         );
       }
+      if (
+        patch.status === AndroidApplicationStatus.Provisioning &&
+        !openStatuses.includes(app.status)
+      ) {
+        await this.assertOpenAppSlot(manager, app.ownerUserId, maxOpenApps);
+      }
+      this.applyPatch(app, patch);
 
       const job =
         existing ??
@@ -99,7 +152,7 @@ export class AndroidAppsLifecycleTransitionService {
     patch: AndroidApplicationLifecyclePatch,
     payload?: JobPayload,
   ) {
-    const changed = await this.dataSource.transaction(async (manager) => {
+    const changed = await this.transaction(async (manager) => {
       const job = await manager
         .getRepository(AndroidAppLifecycleJob)
         .findOneBy({ applicationId });
@@ -128,7 +181,7 @@ export class AndroidAppsLifecycleTransitionService {
     kind: AndroidAppLifecycleJobKind,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    const changed = await this.dataSource.transaction(async (manager) => {
+    const changed = await this.transaction(async (manager) => {
       const repository = manager.getRepository(AndroidAppLifecycleJob);
       const job = await repository.findOneBy({ applicationId });
       if (!job || job.kind !== kind) {
@@ -153,7 +206,7 @@ export class AndroidAppsLifecycleTransitionService {
     error: string,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    const changed = await this.dataSource.transaction(async (manager) => {
+    const changed = await this.transaction(async (manager) => {
       const repository = manager.getRepository(AndroidAppLifecycleJob);
       const job = await repository.findOneBy({ applicationId });
       if (!job || job.kind !== kind) {
@@ -179,7 +232,7 @@ export class AndroidAppsLifecycleTransitionService {
     kind: AndroidAppLifecycleJobKind,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    const changed = await this.dataSource.transaction(async (manager) => {
+    const changed = await this.transaction(async (manager) => {
       const job = await manager
         .getRepository(AndroidAppLifecycleJob)
         .findOneBy({ applicationId });
@@ -209,22 +262,28 @@ export class AndroidAppsLifecycleTransitionService {
     applicationId: string,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    await this.dataSource.transaction(async (manager) => {
+    await this.transaction(async (manager) => {
+      const jobs = manager.getRepository(AndroidAppLifecycleJob);
+      this.assertRecreateNotActive(await jobs.findOneBy({ applicationId }));
       const app = await this.getApplication(manager, applicationId);
       this.applyPatch(app, patch);
       await manager.getRepository(AndroidApplication).save(app);
-      await manager
-        .getRepository(AndroidAppLifecycleJob)
-        .delete({ applicationId });
+      await jobs.delete({ applicationId });
     });
     await this.logs.appendLifecycle(applicationId, patch);
+  }
+
+  private assertRecreateNotActive(job: AndroidAppLifecycleJob | null) {
+    if (job?.kind === AndroidAppLifecycleJobKind.Recreate) {
+      throw new ConflictException('Application runtime is being recreated.');
+    }
   }
 
   async markState(
     applicationId: string,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    await this.dataSource.transaction(async (manager) => {
+    await this.transaction(async (manager) => {
       const app = await this.getApplication(manager, applicationId);
       this.applyPatch(app, patch);
       await manager.getRepository(AndroidApplication).save(app);
@@ -242,6 +301,35 @@ export class AndroidAppsLifecycleTransitionService {
       );
     }
     return app;
+  }
+
+  private transaction<T>(operation: (manager: EntityManager) => Promise<T>) {
+    return this.serializeTransition(() =>
+      this.dataSource.transaction(operation),
+    );
+  }
+
+  private async assertOpenAppSlot(
+    manager: EntityManager,
+    ownerUserId: string | null,
+    maxOpenApps?: number,
+  ) {
+    if (maxOpenApps === undefined) return;
+
+    const openApps = await manager.getRepository(AndroidApplication).countBy([
+      { ownerUserId: ownerUserId ?? IsNull(), status: In(openStatuses) },
+      {
+        ownerUserId: ownerUserId ?? IsNull(),
+        lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
+      },
+    ]);
+    if (openApps >= maxOpenApps) {
+      throw new ConflictException({
+        statusCode: 409,
+        code: 'open_app_quota_exceeded',
+        message: `Open app limit reached (${openApps}/${maxOpenApps}). Stop an app before starting another.`,
+      });
+    }
   }
 
   private applyPatch(

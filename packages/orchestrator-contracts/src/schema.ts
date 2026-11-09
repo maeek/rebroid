@@ -695,6 +695,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/lifecycle/recreate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace a stopped or errored application runtime and start it with its active profile. */
+        post: operations["AndroidAppsLifecycleController_recreate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apps/{id}/lifecycle/apk": {
         parameters: {
             query?: never;
@@ -4267,7 +4284,10 @@ export interface operations {
     AndroidAppsController_create: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Open application limit supplied by the trusted web service. */
+                "x-rebroid-max-open-apps"?: number;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4302,12 +4322,64 @@ export interface operations {
                     "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
             };
+            /** @description The request contains invalid fields. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 400 */
+                        statusCode: number;
+                        message: string[];
+                        /**
+                         * @example [
+                         *       "name"
+                         *     ]
+                         */
+                        fields: string[];
+                    };
+                };
+            };
+            /** @description The open-app limit is reached or the uploaded APK or required Firewall feature is unavailable. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 409 */
+                        statusCode: number;
+                        /** @enum {string} */
+                        code: "apk_unavailable" | "feature_disabled" | "feature_unsupported" | "open_app_quota_exceeded";
+                        message: string;
+                    };
+                };
+            };
+            /** @description The container engine could not be reached during image inspection. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 503 */
+                        statusCode: number;
+                        /** @example container_engine_unavailable */
+                        code: string;
+                        message: string;
+                    };
+                };
+            };
         };
     };
     AndroidAppsController_clone: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Open application limit supplied by the trusted web service. */
+                "x-rebroid-max-open-apps"?: number;
+            };
             path: {
                 id: string;
             };
@@ -4699,7 +4771,10 @@ export interface operations {
     AndroidAppsLifecycleController_start: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Open application limit supplied by the trusted web service. */
+                "x-rebroid-max-open-apps"?: number;
+            };
             path: {
                 id: string;
             };
@@ -4739,6 +4814,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApplicationCommandResultDto"];
                 };
+            };
+        };
+    };
+    AndroidAppsLifecycleController_recreate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Open application limit supplied by the trusted web service. */
+                "x-rebroid-max-open-apps"?: number;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationCommandResultDto"];
+                };
+            };
+            /** @description The app has active lifecycle work, is still running, or requires the Firewall feature. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

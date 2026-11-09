@@ -17,10 +17,6 @@ export class DockerEngineConfigService {
     return this.config.getOrThrow<string>('app.docker.resourcePrefix');
   }
 
-  get orchestratorContainerId() {
-    return this.config.get<string>('app.docker.orchestratorContainerId');
-  }
-
   get maxConcurrentReads() {
     return this.config.getOrThrow<number>('app.docker.maxConcurrentReads');
   }

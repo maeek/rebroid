@@ -35,10 +35,13 @@ export class FirewallAgentClientService {
     );
   }
 
-  remove(applicationId: string) {
+  remove(applicationId: string, expectedContainerId?: string) {
+    const query = expectedContainerId
+      ? `?${new URLSearchParams({ containerId: expectedContainerId })}`
+      : '';
     return this.send(
       'DELETE',
-      `/v1/policies/${encodeURIComponent(applicationId)}`,
+      `/v1/policies/${encodeURIComponent(applicationId)}${query}`,
     );
   }
 

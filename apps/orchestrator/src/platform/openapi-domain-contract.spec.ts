@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 type OpenApiOperation = {
   requestBody?: unknown;
+  parameters?: unknown;
+  responses?: unknown;
 };
 
 type OpenApiDocument = {
@@ -56,6 +58,37 @@ describe('orchestrator OpenAPI domain contract', () => {
     expectNoRequestBody(
       '/api/v1/platform/display-sidecar/sessions/{id}',
       'delete',
+    );
+  });
+
+  it('exposes a bodyless runtime recreation command with a conflict response', () => {
+    const path = '/api/v1/apps/{id}/lifecycle/recreate';
+    expectNoRequestBody(path, 'post');
+    expect(document.paths[path]?.post?.responses).toMatchObject({
+      200: {
+        content: {
+          'application/json': {
+            schema: {
+              $ref: '#/components/schemas/ApplicationCommandResultDto',
+            },
+          },
+        },
+      },
+      409: { description: expect.any(String) },
+    });
+  });
+
+  it.each([
+    '/api/v1/apps',
+    '/api/v1/apps/{id}/clone',
+    '/api/v1/apps/{id}/lifecycle/start',
+    '/api/v1/apps/{id}/lifecycle/recreate',
+  ])('documents the trusted owner quota for %s', (path) => {
+    expect(document.paths[path]?.post?.parameters).toContainEqual(
+      expect.objectContaining({
+        name: 'x-rebroid-max-open-apps',
+        in: 'header',
+      }),
     );
   });
 });

@@ -2,11 +2,17 @@
 
 import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
+import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import {
+  unconfirmedAppCreationMessage,
+  type CreateApplicationActionInput,
+  type UpdateAndroidApplicationInput
+} from '@/shared/contracts/application'
+import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
-import { requireFeature } from '../../../features'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { isTrustedRedroidImage } from '../../image-access'
@@ -18,7 +24,7 @@ import {
   sanitizeAndroidApplicationForUser
 } from '../../safety'
 import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
-import type { CreateApplicationActionInput, UpdateAndroidApplicationInput } from '@/shared/contracts/application'
+import { toCreateApplicationError } from './create-application-error'
 
 const assertCanChangeResources = (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,
@@ -149,47 +155,63 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
   return sanitizeAndroidApplicationForUser(app, user)
 }
 
-export const createApplicationAction = async (input: CreateApplicationActionInput) => {
-  const user = await getCurrentUserContext()
-  if (input.networkPolicyEnabled !== false) {
-    await requireFeature('feature.firewall')
-  }
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
-    throw new PublicActionError('You do not have permission to create applications.', {
-      code: 'forbidden',
-      status: 403
-    })
-  }
-  assertCanUseContainerImage(user, input)
-  assertCanChangeResources(user, input)
-  assertCanChangeSessionLimit(user, input)
-  assertCanChangeContainerArgs(user, input)
-  assertCanConfigureCreateNetworkPolicy(user, input)
-  enforceResourceQuotas(input, user.quotas)
-  enforceSessionQuota(input, user.quotas)
-  await assertCanOpenApplicationSlot(user)
-  const ownerUserId = await getCurrentOwnerUserId()
-  const containerImage = input.containerImage?.trim()
-  const command = await orchestratorAppCatalogClient.createApplication({
-    ...applyCreateResourceQuotas(input, user.quotas),
-    ownerUserId,
-    containerArgs: containerImage
-      ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
-      : input.containerArgs
-  })
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.create',
-    resourceType: 'application',
-    resourceId: command.id,
-    resourceLabel: command.name
-  })
-  revalidateApplicationList()
-  const app = await orchestratorAppCatalogClient.getApplication(command.id)
-  return sanitizeAndroidApplicationForUser(app, user)
-}
+// The former action returned a bare app. Use a distinct action name for the operation result.
+export const submitCreateApplicationAction = async (input: CreateApplicationActionInput) =>
+  runSafeAction(
+    async requestId => {
+      const user = await getCurrentUserContext()
+      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
+        throw new PublicActionError('You do not have permission to create applications.', {
+          code: 'forbidden',
+          status: 403
+        })
+      }
+      assertCanUseContainerImage(user, input)
+      assertCanChangeResources(user, input)
+      assertCanChangeSessionLimit(user, input)
+      assertCanChangeContainerArgs(user, input)
+      assertCanConfigureCreateNetworkPolicy(user, input)
+      enforceResourceQuotas(input, user.quotas)
+      enforceSessionQuota(input, user.quotas)
+      await assertCanOpenApplicationSlot(user)
+      const ownerUserId = await getCurrentOwnerUserId()
+      const containerImage = input.containerImage?.trim()
+      const command = await orchestratorAppCatalogClient
+        .createApplication(
+          {
+            ...applyCreateResourceQuotas(input, user.quotas),
+            ownerUserId,
+            containerArgs: containerImage
+              ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined
+              : input.containerArgs
+          },
+          requestId,
+          user.quotas.maxOpenApps
+        )
+        .catch((error: unknown) => {
+          throw toCreateApplicationError(error)
+        })
+      if (!isApplicationId(command?.id)) {
+        throw new PublicActionError(unconfirmedAppCreationMessage, { code: 'upstream_error', status: 502 })
+      }
+      recordAuditEvent({
+        actorUserId: user.ownerUserId,
+        actorLabel: user.ownerUserId,
+        category: 'application',
+        action: 'application.create',
+        resourceType: 'application',
+        resourceId: command.id,
+        resourceLabel: command.name
+      })
+      revalidateApplicationList()
+      return { id: command.id }
+    },
+    {
+      fallbackMessage:
+        'Check All apps before retrying. If the app is missing and this keeps happening, share the request ID with a platform administrator.',
+      logLabel: 'submitCreateApplicationAction failed'
+    }
+  )
 
 export const updateApkAction = async (id: string, uploadedApkId: string) => {
   await assertCanAccessApplication(id)

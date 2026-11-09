@@ -9,10 +9,13 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBody,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../dto/application-command-result.dto';
@@ -31,6 +34,7 @@ import { UpdateAndroidApplicationDto } from '../dto/update-android-application.d
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
 import { AndroidAppsQueryService } from '../services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../services/android-apps-runtime-state-reconciler.service';
+import { ApiOpenAppQuota, OpenAppQuota } from './open-app-quota-header';
 
 @ApiTags('apps')
 @Controller('apps')
@@ -42,10 +46,57 @@ export class AndroidAppsController {
   ) {}
 
   @Post()
+  @ApiOpenAppQuota()
   @ApiOperation({
     summary: 'Provision an isolated application container.',
   })
   @ApiCreatedResponse({ type: ApplicationCommandResultDto })
+  @ApiBadRequestResponse({
+    description: 'The request contains invalid fields.',
+    schema: {
+      type: 'object',
+      required: ['statusCode', 'message', 'fields'],
+      properties: {
+        statusCode: { type: 'integer', example: 400 },
+        message: { type: 'array', items: { type: 'string' } },
+        fields: { type: 'array', items: { type: 'string' }, example: ['name'] },
+      },
+    },
+  })
+  @ApiServiceUnavailableResponse({
+    description:
+      'The container engine could not be reached during image inspection.',
+    schema: {
+      type: 'object',
+      required: ['statusCode', 'code', 'message'],
+      properties: {
+        statusCode: { type: 'integer', example: 503 },
+        code: { type: 'string', example: 'container_engine_unavailable' },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description:
+      'The open-app limit is reached or the uploaded APK or required Firewall feature is unavailable.',
+    schema: {
+      type: 'object',
+      required: ['statusCode', 'code', 'message'],
+      properties: {
+        statusCode: { type: 'integer', example: 409 },
+        code: {
+          type: 'string',
+          enum: [
+            'apk_unavailable',
+            'feature_disabled',
+            'feature_unsupported',
+            'open_app_quota_exceeded',
+          ],
+        },
+        message: { type: 'string' },
+      },
+    },
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -71,13 +122,17 @@ export class AndroidAppsController {
       },
     },
   })
-  async create(@Body() dto: CreateAndroidApplicationDto) {
+  async create(
+    @Body() dto: CreateAndroidApplicationDto,
+    @OpenAppQuota() maxOpenApps?: number,
+  ) {
     return ApplicationCommandResultDto.fromEntity(
-      await this.lifecycle.create(dto),
+      await this.lifecycle.create(dto, maxOpenApps),
     );
   }
 
   @Post(':id/clone')
+  @ApiOpenAppQuota()
   @ApiOperation({
     summary:
       'Create a separate owner-scoped application from an existing app definition.',
@@ -86,9 +141,10 @@ export class AndroidAppsController {
   async clone(
     @Param('id') id: string,
     @Body() dto: CloneAndroidApplicationDto,
+    @OpenAppQuota() maxOpenApps?: number,
   ) {
     return ApplicationCommandResultDto.fromEntity(
-      await this.lifecycle.clone(id, dto),
+      await this.lifecycle.clone(id, dto, maxOpenApps),
     );
   }
 

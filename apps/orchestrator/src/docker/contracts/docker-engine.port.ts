@@ -19,7 +19,6 @@ export interface DockerEnginePort {
   readonly docker: Dockerode;
   readonly streamDocker: Dockerode;
   readonly resourcePrefix: string;
-  readonly orchestratorContainerId?: string;
   readonly transport: string;
   readonly hasPendingMutations: boolean;
   readonly hasPendingDockerWork: boolean;

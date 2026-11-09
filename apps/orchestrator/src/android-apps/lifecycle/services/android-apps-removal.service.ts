@@ -38,7 +38,6 @@ export class AndroidAppsRemovalService {
   async request(id: string, query: RemoveAndroidApplicationDto) {
     const app = await this.reconciler.reconcileById(id);
     const removeData = query.removeData ?? true;
-    this.tracker.cancel(id);
     await this.transitions.beginJob(
       id,
       AndroidAppLifecycleJobKind.Remove,
@@ -51,6 +50,7 @@ export class AndroidAppsRemovalService {
       { removeData },
       true,
     );
+    this.tracker.cancel(id);
     await this.logs.append(id, 'Remove requested', {
       removeData,
       containerId: app.containerId,

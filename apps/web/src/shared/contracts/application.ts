@@ -62,6 +62,8 @@ export interface CreateAndroidApplicationInput {
 }
 
 export type CreateApplicationActionInput = Omit<CreateAndroidApplicationInput, 'ownerUserId'>
+export const unconfirmedAppCreationMessage =
+  'We could not confirm that the app was created. Check All apps before trying again.'
 export type CloneApplicationInput = OrchestratorApiSchemas['CloneAndroidApplicationDto']
 export type UpdateAndroidApplicationInput = OrchestratorApiSchemas['UpdateAndroidApplicationDto']
 export type UpdateNetworkPolicyInput = OrchestratorApiSchemas['UpdateNetworkPolicyDto']

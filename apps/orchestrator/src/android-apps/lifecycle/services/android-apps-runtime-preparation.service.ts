@@ -236,10 +236,19 @@ export class AndroidAppsRuntimePreparationService {
       return;
     }
 
-    const inspect = await this.lifecycle.inspectContainer(app.containerId);
+    let inspect;
+    try {
+      inspect = await this.lifecycle.inspectContainer(app.containerId);
+    } catch (error) {
+      if (
+        !(await this.lifecycle.getContainerRuntimeState(app.containerId)).exists
+      ) {
+        return;
+      }
+      throw error;
+    }
     const hostConfig = inspect.HostConfig as
-      | (Record<string, unknown> & { CgroupnsMode?: unknown })
-      | undefined;
+      (Record<string, unknown> & { CgroupnsMode?: unknown }) | undefined;
     const currentCgroupnsMode =
       typeof hostConfig?.CgroupnsMode === 'string'
         ? this.normalizedHostConfigValue(hostConfig.CgroupnsMode)

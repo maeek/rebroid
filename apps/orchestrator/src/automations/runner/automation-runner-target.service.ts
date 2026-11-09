@@ -20,6 +20,7 @@ export class AutomationRunnerTargetService {
   async prepareTarget(
     targetApplicationId: string,
     options: AutomationRunTargetOptions,
+    maxOpenApps?: number,
   ) {
     const startPolicy =
       options.startPolicy ?? AutomationRunStartPolicy.RequireRunning;
@@ -50,10 +51,14 @@ export class AutomationRunnerTargetService {
       );
     }
 
-    await this.apps.start(targetApplicationId, {
-      profileMode: requestedProfileMode as ApplicationProfileMode,
-      profileName: requestedProfileName,
-    });
+    await this.apps.start(
+      targetApplicationId,
+      {
+        profileMode: requestedProfileMode as ApplicationProfileMode,
+        profileName: requestedProfileName,
+      },
+      maxOpenApps,
+    );
     app = await this.waitForRunningTarget(targetApplicationId);
 
     return {

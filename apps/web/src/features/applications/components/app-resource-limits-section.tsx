@@ -14,6 +14,8 @@ type AppResourceLimitsSectionProps = {
   title?: string
   descriptionForMemory?: string
   descriptionForCpu?: string
+  memoryError?: string
+  cpuError?: string
   contentClassName?: string
 }
 
@@ -24,6 +26,8 @@ export const AppResourceLimitsSection = ({
   title = 'Resources',
   descriptionForMemory = 'Optional memory limit in MB for the app container. Leave empty to use the runtime default.',
   descriptionForCpu = 'Optional CPU quota in cores. Fractional values like 0.5 are allowed.',
+  memoryError,
+  cpuError,
   contentClassName = 'gap-4'
 }: AppResourceLimitsSectionProps) => {
   return (
@@ -35,11 +39,13 @@ export const AppResourceLimitsSection = ({
     >
       <FormField
         label='RAM limit'
+        error={memoryError}
         description={descriptionForMemory}
         layout='vertical'
         className={verticalSettingClassName}
       >
         <NumberSliderField
+          name='memoryLimitMb'
           showSlider={false}
           value={values.memoryLimitMb}
           min={128}
@@ -52,11 +58,13 @@ export const AppResourceLimitsSection = ({
       </FormField>
       <FormField
         label='CPU limit'
+        error={cpuError}
         description={descriptionForCpu}
         layout='vertical'
         className={verticalSettingClassName}
       >
         <NumberSliderField
+          name='cpuLimitCpus'
           showSlider={false}
           value={values.cpuLimitCpus}
           min={0.1}
