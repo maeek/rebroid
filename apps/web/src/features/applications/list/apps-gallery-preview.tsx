@@ -10,6 +10,7 @@ export const AppsGalleryPreview = () => (
   <StandardPage>
     <AppsList
       canCreate
+      canFilterByOwner
       yourApps={galleryPreviewApplications.map(app => ({
         ...mapAndroidApplicationToAppDefinition(app),
         ownerDisplayName: app.ownerUserId === 'another-owner' ? 'Operations team' : 'You'

@@ -2,6 +2,7 @@ import { isAppBusy } from '../components/apps-list.utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 export type AppsGalleryStatus = 'all' | 'running' | 'stopped' | 'error' | 'working'
+export type AppsGalleryOwnership = 'all' | 'mine' | 'others'
 
 export const filterGalleryApps = (apps: AppDefinition[], search: string, status: AppsGalleryStatus) => {
   const query = search.trim().toLocaleLowerCase()

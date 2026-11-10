@@ -40,6 +40,7 @@ export const getAppsListPageData = async () => {
   return {
     apps,
     canCreate: user.role === 'admin' || hasPermission(user.permissions, 'applications:create'),
+    canFilterByOwner: user.role === 'admin',
     currentOwnerUserId: user.ownerUserId,
     initialSettings,
     orchestratorError

@@ -26,7 +26,7 @@ export type AppsListContextValue = {
   selectionCount: number
   setSortMode: (sortMode: AppsListSortMode) => void
   startApp: (app: AppDefinition) => Promise<void>
-  startManaging: () => void
+  startManaging: (initialId?: string) => void
   stopApp: (app: AppDefinition) => Promise<void>
   sortMode: AppsListSortMode
   stoppableSelectedCount: number

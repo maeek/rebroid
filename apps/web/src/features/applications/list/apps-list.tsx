@@ -17,25 +17,34 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchest
 
 export const AppsList = ({
   canCreate,
+  canFilterByOwner,
   yourApps,
   currentOwnerUserId,
   initialSettings,
   orchestratorError
 }: {
   canCreate: boolean
+  canFilterByOwner: boolean
   yourApps: AppDefinition[]
   currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
   orchestratorError?: string | null
 }) => {
-  const { availableApps, search, setSearch, statusFilter, setStatusFilter, contextValue, hasApps } =
-    useAppsListController({
-      currentOwnerUserId,
-      initialSettings,
-      yourApps
-    })
-  const currentUserApps = availableApps.filter(app => app.ownerUserId === currentOwnerUserId)
-  const otherUserApps = availableApps.filter(app => app.ownerUserId !== currentOwnerUserId)
+  const {
+    availableApps,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    ownershipFilter,
+    setOwnershipFilter,
+    contextValue,
+    hasApps
+  } = useAppsListController({
+    currentOwnerUserId,
+    initialSettings,
+    yourApps
+  })
 
   if (orchestratorError) {
     return (
@@ -68,34 +77,25 @@ export const AppsList = ({
           search={search}
           onSearchChange={setSearch}
           status={statusFilter}
-          onStatusChange={value => {
-            if (
-              value === 'all' ||
-              value === 'running' ||
-              value === 'stopped' ||
-              value === 'error' ||
-              value === 'working'
-            )
-              setStatusFilter(value)
-          }}
+          onStatusChange={setStatusFilter}
+          ownership={canFilterByOwner ? ownershipFilter : undefined}
+          onOwnershipChange={setOwnershipFilter}
         >
           {availableApps.length ? (
-            <div className='grid gap-6'>
-              <AppsGridSection
-                title='My apps'
-                apps={currentUserApps}
-              />
-              <AppsGridSection
-                title='Other users’ apps'
-                apps={otherUserApps}
-                showOwner
-              />
-            </div>
+            <AppsGridLayout>
+              {availableApps.map(app => (
+                <AppsListItem
+                  key={app.id}
+                  app={app}
+                  showOwner={app.ownerUserId !== currentOwnerUserId}
+                />
+              ))}
+            </AppsGridLayout>
           ) : (
             <Section
               surface='panel'
               title='No matching apps'
-              description='Try a different name or status.'
+              description='Try a different search or clear the filters.'
             >
               <Button
                 variant='ghost'
@@ -103,6 +103,7 @@ export const AppsList = ({
                 onClick={() => {
                   setSearch('')
                   setStatusFilter('all')
+                  setOwnershipFilter('all')
                 }}
               >
                 Clear search and filters
@@ -112,34 +113,5 @@ export const AppsList = ({
         </AppsGalleryToolbar>
       </PageContent>
     </AppsListProvider>
-  )
-}
-
-const AppsGridSection = ({
-  title,
-  apps,
-  showOwner = false
-}: {
-  title: string
-  apps: AppDefinition[]
-  showOwner?: boolean
-}) => {
-  if (apps.length === 0) {
-    return null
-  }
-
-  return (
-    <AppsGridLayout
-      title={title}
-      count={apps.length}
-    >
-      {apps.map(app => (
-        <AppsListItem
-          key={app.id}
-          app={app}
-          showOwner={showOwner}
-        />
-      ))}
-    </AppsGridLayout>
   )
 }

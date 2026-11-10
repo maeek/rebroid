@@ -1,6 +1,9 @@
+import { IconDotsVertical } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { panelSurfaceClassName } from '@/components/ui/surface'
+import { cn } from '@/lib/utils'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { AppGalleryTile } from './components/app-gallery-tile'
+import { AppGalleryTile, appGalleryActionPosition } from './components/app-gallery-tile'
 import { AppsGalleryWorkspace } from './components/apps-gallery-toolbar'
 import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListHeader } from './components/apps-list-header'
@@ -11,23 +14,23 @@ export const AppsPageSkeleton = ({ withLayout = true }: { withLayout?: boolean }
       <AppsListHeader loading />
       <PageContent>
         <AppsGalleryWorkspace loading>
-          <AppsGridLayout title='My apps'>
+          <AppsGridLayout>
             {Array.from({ length: 12 }, (_, index) => (
-              <div
+              <li
                 key={index}
-                className='relative min-w-0 rounded-panel text-foreground'
+                className={cn(panelSurfaceClassName, 'relative min-w-0')}
               >
-                <AppGalleryTile loading />
+                <AppGalleryTile />
                 <Button
                   variant='ghost'
                   size='icon-sm'
                   disabled
                   aria-label='Loading app actions'
-                  className='absolute right-1.5 top-1.5'
+                  className={appGalleryActionPosition}
                 >
-                  …
+                  <IconDotsVertical className='size-4' />
                 </Button>
-              </div>
+              </li>
             ))}
           </AppsGridLayout>
         </AppsGalleryWorkspace>

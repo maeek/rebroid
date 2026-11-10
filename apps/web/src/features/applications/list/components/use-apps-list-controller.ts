@@ -32,7 +32,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app-sort'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { filterGalleryApps, type AppsGalleryStatus } from '../model/apps-gallery-filter'
+import { filterGalleryApps, type AppsGalleryOwnership, type AppsGalleryStatus } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication } from '@/shared/contracts/application'
@@ -62,6 +62,7 @@ export const useAppsListController = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<AppsGalleryStatus>('all')
+  const [ownershipFilter, setOwnershipFilter] = useState<AppsGalleryOwnership>('all')
   const [sortMode, setSortMode] = useState<AppsListSortMode>('name-asc')
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
@@ -204,10 +205,13 @@ export const useAppsListController = ({
   }
 
   const sortedApps = useMemo(() => sortApps(apps, sortMode), [apps, sortMode])
-  const visibleApps = useMemo(
-    () => filterGalleryApps(sortedApps, search, statusFilter),
-    [sortedApps, search, statusFilter]
-  )
+  const visibleApps = useMemo(() => {
+    const scopedApps =
+      ownershipFilter === 'all'
+        ? sortedApps
+        : sortedApps.filter(app => (app.ownerUserId === currentOwnerUserId) === (ownershipFilter === 'mine'))
+    return filterGalleryApps(scopedApps, search, statusFilter)
+  }, [currentOwnerUserId, sortedApps, search, statusFilter, ownershipFilter])
   const visibleSelectedIds = retainVisibleSelectedIds(visibleApps, selectedIds)
   const { activeBulkApps, allSelected, deletableSelectedApps, stoppableSelectedApps } = deriveAppsListSelection({
     apps: visibleApps,
@@ -337,7 +341,10 @@ export const useAppsListController = ({
     selectionCount: visibleSelectedIds.size,
     setSortMode,
     startApp,
-    startManaging: () => setIsManaging(true),
+    startManaging: initialId => {
+      setSelectedIds(initialId ? new Set([initialId]) : new Set())
+      setIsManaging(true)
+    },
     stopApp,
     sortMode,
     stoppableSelectedCount: stoppableSelectedApps.length,
@@ -351,6 +358,8 @@ export const useAppsListController = ({
     setSearch,
     statusFilter,
     setStatusFilter,
+    ownershipFilter,
+    setOwnershipFilter,
     contextValue,
     hasApps: apps.length > 0
   }
