@@ -4,10 +4,14 @@ import { useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import { AppManage } from '@/features/applications/manage/app-manage'
+import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
+import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
+import { ViewerClipboard } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-clipboard'
 import { viewerSettingsFromDefaults } from '@/features/applications/viewer/settings/viewer-settings'
 import { AiAgentPreview } from '@/features/applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-preview'
 import { DownloadsToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/files/downloads-tools-section'
 import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { AppDeviceLayout } from './app-device-layout'
@@ -19,6 +23,26 @@ import { AppWorkspaceLayout } from './app-workspace-content'
 import { ApplicationViewerContext } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
+
+const previewDisplay = {
+  applicationId: previewApp.id,
+  canCaptureScreenshot: false,
+  canControl: false,
+  controlsEnabled: false,
+  initialKeyboardCaptureEnabled: false,
+  surfaces: [
+    {
+      id: 'preview-display',
+      surfaceId: 'preview-display',
+      sessionId: 'preview-session',
+      kind: 'main' as const,
+      name: 'Main display',
+      src: '/preview-display-frame',
+      popoutUrl: '/preview-display-frame',
+      displaySize: { width: 1280, height: 720 }
+    }
+  ]
+}
 
 /** Static context keeps the gated visual fixture free of authenticated background requests. */
 export const AppResourcePreview = ({ activity, agent = false }: { activity?: ReactNode; agent?: boolean }) => {
@@ -40,7 +64,9 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
   const [viewerStreamMetrics, setViewerStreamMetrics] = useState<
     Record<string, DisplayViewerStreamMetrics | undefined>
   >({})
-  const selected = useSearchParams().get('view')
+  const search = useSearchParams()
+  const selected = search.get('view')
+  const previewLiveViewer = search.get('viewer') === 'preview'
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
   const breadcrumbView = showAgent ? 'ai-agent' : selected === 'configuration' || selected === 'files' ? selected : view
@@ -65,7 +91,12 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
           setViewerStreamMetrics
         }}
       >
-        <main className={agent ? 'min-h-screen bg-background pt-16 lg:pl-72' : 'min-h-screen bg-background pt-16'}>
+        <main
+          tabIndex={-1}
+          className={
+            agent ? 'main-layout min-h-screen bg-background pt-16 lg:pl-72' : 'min-h-screen bg-background pt-16'
+          }
+        >
           <AppDeviceLayout
             breadcrumbs={
               <AppResourceBreadcrumbs
@@ -74,7 +105,21 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
                 view={breadcrumbView}
               />
             }
-            viewer={<AppViewerPane placement='top' />}
+            viewer={
+              previewLiveViewer ? (
+                <FeatureFlagsProvider manifest={{ revision: 1, features: [] }}>
+                  <DisplayViewerProvider value={previewDisplay}>
+                    <DisplayViewerShell
+                      className='h-[var(--app-viewer-height)]'
+                      clipboard={<ViewerClipboard appId={previewApp.id} />}
+                      miniPlayerEnabled
+                    />
+                  </DisplayViewerProvider>
+                </FeatureFlagsProvider>
+              ) : (
+                <AppViewerPane placement='top' />
+              )
+            }
             contained={showAgent}
           >
             {showAgent ? (

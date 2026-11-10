@@ -71,7 +71,7 @@ export const AiAgentTranscript = ({
       // This scroll region must be reachable for keyboard scrolling.
       // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
       tabIndex={0}
-      className='scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-control py-4 focus-visible:outline-2 focus-visible:outline-ring'
+      className='scrollbar-thin flex min-h-0 flex-1 flex-col overflow-y-auto rounded-control py-4 focus-visible:outline-2 focus-visible:outline-ring'
       onScroll={onTranscriptScroll}
     >
       <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-1'>

@@ -13,9 +13,7 @@ import { AiAgentConversationLayout, AiAgentConversationToolbar } from './ai-agen
 import { AiAgentTranscript } from './ai-agent/ai-agent-transcript'
 import { DownloadsToolsLoading } from './files/downloads-tools-section'
 import { RuntimeToolContent } from './runtime-tool-content'
-import { runtimeInlineSectionClassName } from './runtime-tool-definitions'
 import { getRuntimeTools, runtimeToolPanelClassName, type RuntimeToolId } from './runtime-tool-definitions'
-import { ToolSection } from './tool-section'
 import type { AutomationRun } from '@/shared/contracts/automation'
 
 export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
@@ -104,25 +102,6 @@ export const RuntimeToolsPanelLoading = ({ toolId }: { toolId: RuntimeToolId }) 
       />
     )
   if (toolId === 'files') content = <DownloadsToolsLoading />
-  if (toolId === 'clipboard')
-    content = (
-      <ToolSection
-        title='Clipboard'
-        hideHeader
-        className={runtimeInlineSectionClassName}
-        actions={
-          <Button
-            size='sm'
-            variant='ghost'
-            disabled
-          >
-            Read from device
-          </Button>
-        }
-      >
-        <Skeleton className='h-24 w-full' />
-      </ToolSection>
-    )
   if (toolId === 'workflows')
     content = (
       <section className='grid min-h-0 gap-4'>

@@ -241,7 +241,7 @@ const AppRouteSkeleton = ({ activity }: { activity?: React.ReactNode }) => {
   if (view === 'activity')
     return <LoadingAppLayout view='activity'>{activity ?? <Skeleton className='h-80 w-full' />}</LoadingAppLayout>
   const tool = view === 'workspace' ? 'ai-agent' : view
-  if (tool === 'ai-agent' || tool === 'workflows' || tool === 'clipboard' || tool === 'files')
+  if (tool === 'ai-agent' || tool === 'workflows' || tool === 'files')
     return (
       <LoadingAppLayout view={tool}>
         <RuntimeToolsPanelLoading toolId={tool} />

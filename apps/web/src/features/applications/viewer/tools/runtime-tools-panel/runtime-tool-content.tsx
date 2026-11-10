@@ -3,7 +3,6 @@ import { draftWorkflowFromAdHocRunAction } from '@/server/orchestrator/automatio
 import { suggestAdHocAiPromptsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AiAgentToolsSection } from './ai-agent/ai-agent-tools-section'
-import { ClipboardToolsSection } from './clipboard/clipboard-tools-section'
 import { DownloadsToolsSection } from './files/downloads-tools-section'
 import { runtimeInlineSectionClassName, type RuntimeToolId } from './runtime-tool-definitions'
 import { AutomationStatusToolsSection } from './workflows/automation-status-tools-section'
@@ -30,17 +29,6 @@ export const RuntimeToolContent = ({
   toolId: RuntimeToolId
 }) => {
   const sectionClassName = runtimeInlineSectionClassName
-
-  if (toolId === 'clipboard') {
-    return (
-      <ClipboardToolsSection
-        app={app}
-        permissions={permissions}
-        className={cn(sectionClassName, 'px-0')}
-        hideHeader
-      />
-    )
-  }
 
   if (toolId === 'files') {
     return (

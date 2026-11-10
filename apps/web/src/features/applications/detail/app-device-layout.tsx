@@ -55,7 +55,7 @@ export const AppDeviceLayout = ({
           'app-device-pane flex min-w-0 items-start justify-center px-4',
           stacked
             ? 'col-start-1 row-start-2'
-            : 'row-start-3 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:pr-6'
+            : 'row-start-3 lg:sticky lg:top-20 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-4 lg:pr-6'
         )}
         data-viewer-placement={stacked ? 'top' : undefined}
       >

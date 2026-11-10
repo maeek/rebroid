@@ -125,7 +125,8 @@ export const DisplayViewerEmbed = ({
   canCaptureScreenshot,
   onViewerSettingsChange,
   onStreamMetrics,
-  streamingSettings
+  streamingSettings,
+  clipboard
 }: {
   app: AppDefinition
   viewerSettings: ViewerSettings
@@ -133,6 +134,7 @@ export const DisplayViewerEmbed = ({
   canCaptureScreenshot: boolean
   onViewerSettingsChange?: (settings: ViewerSettings) => void
   streamingSettings?: ReactNode
+  clipboard?: ReactNode
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
 }) => {
   const baseUrl = useBrowserBaseUrl()
@@ -257,6 +259,8 @@ export const DisplayViewerEmbed = ({
         <DisplayViewerShell
           className='h-full w-full !bg-transparent'
           streamingSettings={streamingSettings}
+          clipboard={clipboard}
+          miniPlayerEnabled
         />
       </DisplayViewerProvider>
     </div>

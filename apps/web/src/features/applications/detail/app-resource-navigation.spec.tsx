@@ -41,7 +41,6 @@ describe('app resource navigation', () => {
       'AI agent',
       'Workflows',
       'Files',
-      'Clipboard',
       'Activity',
       'Diagnostics',
       'Configuration'
@@ -51,6 +50,7 @@ describe('app resource navigation', () => {
     expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute('href', '/app/app-1?view=configuration')
     expect(screen.queryByRole('link', { name: 'Workspace' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Streaming' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Clipboard' })).toBeNull()
   })
   it('does not offer runtime tools or private logs on a foreign app', () => {
     render(

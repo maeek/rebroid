@@ -1,9 +1,9 @@
 import type { ComponentType } from 'react'
-import { IconClipboard, IconFolder, IconRobot } from '@tabler/icons-react'
+import { IconFolder, IconRobot } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 
-export type RuntimeToolId = 'clipboard' | 'files' | 'ai-agent' | 'workflows'
+export type RuntimeToolId = 'files' | 'ai-agent' | 'workflows'
 export interface RuntimeToolDefinition {
   id: RuntimeToolId
   title: string
@@ -21,9 +21,6 @@ export const getRuntimeTools = ({ permissions }: { permissions: PermissionMap })
   }
   if (hasPermission(permissions, 'automations:run')) {
     tools.push({ id: 'workflows', title: 'Workflows', description: 'Run workflows for this app', Icon: IconRobot })
-  }
-  if (hasPermission(permissions, 'applications:sync-clipboard')) {
-    tools.push({ id: 'clipboard', title: 'Clipboard', description: 'Sync device clipboard', Icon: IconClipboard })
   }
   if (hasPermission(permissions, 'applications:transfer-files')) {
     tools.push({ id: 'files', title: 'Files', description: 'Manage device files', Icon: IconFolder })

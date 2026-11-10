@@ -1,9 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { IconX } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
+import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
 import { cn } from '@/lib/utils'
@@ -12,11 +14,13 @@ import type { DisplayViewerSurface } from '@/features/applications/viewer/displa
 export const SurfacePanel = ({
   surface,
   showName,
-  chromeActions
+  chromeActions,
+  onDockMiniPlayer
 }: {
   surface: DisplayViewerSurface
   showName: boolean
   chromeActions?: ReactNode
+  onDockMiniPlayer?: () => void
 }) => {
   const {
     canControl,
@@ -38,6 +42,9 @@ export const SurfacePanel = ({
     viewportSize,
     workspaceHeight
   } = useDisplayViewerSurface(surface)
+  const miniPlayer = !fullscreenSurface && onDockMiniPlayer
+  const aspectRatio = viewportSize.width / Math.max(viewportSize.height, 1)
+  const frameStyle = mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined
 
   return (
     <section
@@ -71,18 +78,46 @@ export const SurfacePanel = ({
           )}
           style={fullscreenSurface ? undefined : { height: viewportSize.height }}
         >
+          {/* Keep the frame in place in the DOM so floating it retains the live stream. */}
           <div
-            className={fullscreenSurface ? 'shrink-0 overflow-hidden bg-black' : 'h-full w-full'}
-            style={mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined}
+            className={cn(
+              fullscreenSurface ? 'shrink-0 overflow-hidden bg-black' : 'h-full w-full',
+              miniPlayer &&
+                'fixed right-6 bottom-6 z-30 overflow-hidden rounded-panel border border-surface-border bg-black shadow-floating'
+            )}
+            style={
+              miniPlayer
+                ? {
+                    width: `min(20rem, calc(40dvh * ${aspectRatio}))`,
+                    height: 'auto',
+                    aspectRatio: `${Math.max(viewportSize.width, 1)} / ${Math.max(viewportSize.height, 1)}`
+                  }
+                : frameStyle
+            }
           >
-            <DisplayViewerFrame
-              src={surface.src}
-              keyboardCaptureEnabled={canControl && keyboardCaptureEnabled}
-              isActive={isActive}
-              onStreamMetrics={onStreamMetrics}
-              onStreamStatus={onStreamStatus}
-              surfaceId={surface.id}
-            />
+            <div
+              className={miniPlayer ? 'absolute inset-0' : 'h-full w-full'}
+              inert={Boolean(miniPlayer)}
+            >
+              <DisplayViewerFrame
+                src={surface.src}
+                keyboardCaptureEnabled={!miniPlayer && canControl && keyboardCaptureEnabled}
+                isActive={!miniPlayer && isActive}
+                onStreamMetrics={onStreamMetrics}
+                onStreamStatus={onStreamStatus}
+                surfaceId={surface.id}
+              />
+            </div>
+            {miniPlayer ? (
+              <div className='absolute top-2 right-2'>
+                <IconActionButton
+                  label='Close mini player'
+                  onClick={miniPlayer}
+                >
+                  <IconX className='size-4' />
+                </IconActionButton>
+              </div>
+            ) : null}
           </div>
           <Visible when={controlsEnabled && fullscreenSurface}>
             <ViewerControlBar

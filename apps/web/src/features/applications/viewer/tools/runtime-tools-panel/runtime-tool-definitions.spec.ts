@@ -7,7 +7,6 @@ describe('resource runtime destinations', () => {
     expect(getRuntimeTools({ permissions: fullPermissions }).map(tool => tool.id)).toEqual([
       'ai-agent',
       'workflows',
-      'clipboard',
       'files'
     ])
   })

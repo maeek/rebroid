@@ -2,7 +2,6 @@
 
 import {
   IconActivity,
-  IconClipboard,
   IconFolder,
   IconLayoutDashboard,
   IconRobot,
@@ -20,7 +19,6 @@ const appTabs = [
   { view: 'ai-agent', Icon: GradientSparklesIcon },
   { view: 'workflows', Icon: IconRobot },
   { view: 'files', Icon: IconFolder },
-  { view: 'clipboard', Icon: IconClipboard },
   { view: 'activity', Icon: IconActivity },
   { view: 'diagnostics', Icon: IconStethoscope },
   { view: 'configuration', Icon: IconSettings }

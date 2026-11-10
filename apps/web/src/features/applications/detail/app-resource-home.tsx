@@ -1,8 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { editorSectionClassName } from '@/components/ui/surface'
@@ -14,7 +12,6 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AppResourceLayout, AppResourceOverviewLayout } from './app-resource-layout'
-import { appResourceHref } from './app-resource-links'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { AppViewerStatusSection } from './app-viewer-status-section'
 import { useApplicationViewerApp } from './application-viewer-context'
@@ -31,7 +28,6 @@ export const AppResourceHome = ({
   const canViewLogs = !isForeignOwnedApp && hasPermission(permissions, 'applications:view-logs')
   const canViewDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canDiagnose = canViewLogs || canViewDetails
-  const base = `/app/${encodeURIComponent(app.id)}`
 
   return (
     <AppResourceLayout

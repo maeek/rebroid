@@ -130,7 +130,6 @@ const AppResourceBody = ({
       )
     case 'ai-agent':
     case 'workflows':
-    case 'clipboard':
     case 'files':
       return <AppWorkspaceContent toolId={view} />
     default:

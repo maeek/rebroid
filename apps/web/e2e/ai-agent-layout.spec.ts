@@ -101,6 +101,60 @@ test('long conversations scroll independently and can return to latest', async (
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('agent-history.png') })
 })
 
+test('stacked viewer floats without reconnecting and the chat passes wheel scrolling to the page', async ({
+  page,
+  baseURL
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.context().addCookies([{ name: 'rebroid-viewer-placement', value: 'top', url: baseURL }])
+  await page.route('**/preview-display-frame', route =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><body data-preview-display></body>' })
+  )
+  await page.goto('/skeleton-contract-test?editor=agent&viewer=preview')
+  const frame = page.locator('iframe[title="display viewer"]')
+  const transcript = page.getByRole('region', { name: 'AI agent transcript' })
+  const closePreview = page.getByRole('button', { name: 'Close mini player' })
+  await expect(frame).toBeInViewport()
+  await expect(frame.contentFrame().locator('[data-preview-display]')).toBeAttached()
+  const clipboard = page.getByRole('button', { name: 'Device clipboard' })
+  await clipboard.click()
+  const clipboardDialog = page.getByRole('dialog', { name: 'Device clipboard' })
+  await expect(clipboardDialog.getByRole('textbox', { name: 'Clipboard text' })).toBeEditable()
+  await page.keyboard.press('Escape')
+  await expect(clipboard).toBeFocused()
+  await frame.evaluate(element => {
+    const iframe = element as HTMLIFrameElement
+    iframe.contentDocument!.body.dataset.retained = 'true'
+  })
+
+  await page.evaluate(() => window.scrollBy(0, 650))
+  await expect(closePreview).toBeInViewport()
+  await expect(frame.locator('..')).toHaveAttribute('inert', '')
+  await expect(transcript).toBeInViewport()
+  await transcript.hover()
+  const scrolledDown = await page.evaluate(() => scrollY)
+  await page.mouse.wheel(0, -350)
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(scrolledDown)
+
+  await page.evaluate(() => window.scrollBy(0, 650))
+  await expect(closePreview).toBeInViewport()
+  const beforeClose = await page.evaluate(() => scrollY)
+  await closePreview.click()
+  await expect(closePreview).toHaveCount(0)
+  expect(await page.evaluate(() => scrollY)).toBe(beforeClose)
+  await expect(frame.locator('..')).not.toHaveAttribute('inert')
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await expect(frame).toBeInViewport()
+  expect(await frame.evaluate(element => (element as HTMLIFrameElement).contentDocument!.body.dataset.retained)).toBe(
+    'true'
+  )
+  await page.evaluate(() => window.scrollBy(0, 650))
+  await expect(closePreview).toBeInViewport()
+  expect(errors).toEqual([])
+})
+
 test('stopped devices retain drafts and model settings fit short screens', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 650 })
   await page.goto('/skeleton-contract-test?editor=agent&conversation=stopped')

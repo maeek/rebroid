@@ -6,12 +6,14 @@ import { IconShieldLock } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { applyApplicationPowerAcknowledgement } from '@/features/applications/domain/app-mapper'
 import { DisplayViewerEmbed } from '@/features/applications/viewer/display/display-viewer-embed'
+import { ViewerClipboard } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-clipboard'
 import { AppViewer } from '@/features/applications/viewer/player/android-viewer'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { requestApplicationStartAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { StateView } from '@/shared/ui/state-view'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
@@ -24,6 +26,8 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
     canCaptureScreenshot,
     canControlViewer,
     canStartCurrentApp,
+    isForeignOwnedApp,
+    permissions,
     setApp,
     setViewerStreamMetrics,
     setViewerSettings,
@@ -76,6 +80,11 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             app={app}
             viewerSettings={viewerSettings}
             streamingSettings={<AppViewerStreamingSettings />}
+            clipboard={
+              !isForeignOwnedApp && hasPermission(permissions, 'applications:sync-clipboard') ? (
+                <ViewerClipboard appId={app.id} />
+              ) : null
+            }
             canControlViewer={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
             onViewerSettingsChange={setViewerSettings}

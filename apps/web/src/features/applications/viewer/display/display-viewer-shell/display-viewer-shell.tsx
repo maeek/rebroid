@@ -6,13 +6,18 @@ import { SurfacePanel } from '@/features/applications/viewer/display/display-vie
 import { SurfaceTabs } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-tabs'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { DisplayViewerLayout } from './display-viewer-layout'
+import { useViewerMiniPlayer } from './hooks/use-viewer-mini-player'
 
 export const DisplayViewerShell = ({
   className,
-  streamingSettings
+  streamingSettings,
+  clipboard,
+  miniPlayerEnabled = false
 }: {
   className?: string
   streamingSettings?: ReactNode
+  clipboard?: ReactNode
+  miniPlayerEnabled?: boolean
 }) => {
   const { isFeatureEnabled } = useFeatureFlags()
   const virtualDisplaysEnabled = isFeatureEnabled('feature.display-virtual')
@@ -25,6 +30,7 @@ export const DisplayViewerShell = ({
     setActiveSurfaceId,
     viewerActions
   } = useDisplayViewerContext()
+  const { anchorRef, floating, dockPlayer } = useViewerMiniPlayer(miniPlayerEnabled)
 
   return (
     <DisplayViewerLayout
@@ -32,14 +38,23 @@ export const DisplayViewerShell = ({
       scrollRef={scrollContainerRef}
       onScroll={handleWorkspaceScroll}
       tabs={
-        <SurfaceTabs
-          activeSurface={activeSurface}
-          isAddingDisplay={viewerActions.isAddingDisplay}
-          surfaces={orderedSurfaces}
-          onAddDisplay={viewerActions.addDisplay}
-          onSelectSurface={setActiveSurfaceId}
-          onScrollSurfaceIntoView={scrollSurfaceIntoView}
-        />
+        <>
+          {miniPlayerEnabled ? (
+            <div
+              ref={anchorRef}
+              aria-hidden='true'
+              className='pointer-events-none absolute top-0 size-px'
+            />
+          ) : null}
+          <SurfaceTabs
+            activeSurface={activeSurface}
+            isAddingDisplay={viewerActions.isAddingDisplay}
+            surfaces={orderedSurfaces}
+            onAddDisplay={viewerActions.addDisplay}
+            onSelectSurface={setActiveSurfaceId}
+            onScrollSurfaceIntoView={scrollSurfaceIntoView}
+          />
+        </>
       }
     >
       {orderedSurfaces.map(surface => (
@@ -47,7 +62,13 @@ export const DisplayViewerShell = ({
           key={surface.id}
           surface={surface}
           showName={surface.kind === 'virtual' || virtualDisplaysEnabled}
-          chromeActions={surface.kind === 'main' ? streamingSettings : null}
+          chromeActions={
+            <>
+              {surface.id === activeSurface?.id ? clipboard : null}
+              {surface.kind === 'main' ? streamingSettings : null}
+            </>
+          }
+          onDockMiniPlayer={floating && surface.id === activeSurface?.id ? dockPlayer : undefined}
         />
       ))}
     </DisplayViewerLayout>

@@ -5,7 +5,6 @@ export const appResourceLabels = {
   diagnostics: 'Diagnostics',
   'ai-agent': 'AI agent',
   workflows: 'Workflows',
-  clipboard: 'Clipboard',
   files: 'Files',
   profiles: 'Profiles'
 } as const
