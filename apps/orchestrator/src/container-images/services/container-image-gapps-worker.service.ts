@@ -11,19 +11,14 @@ import {
   DOCKER_ENGINE,
   type DockerEnginePort,
 } from '../../docker/contracts/docker-engine.port';
+import {
+  DOCKER_IMAGE_RUNTIME,
+  type DockerImageRuntimePort,
+} from '../../docker/contracts/docker-image-runtime.port';
 import type { GappsBuildPresetDto } from '../dto/gapps-build.dto';
 import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
 import { ContainerImageGappsCacheService } from './container-image-gapps-cache.service';
-
-type DockerProgressEvent = {
-  stream?: string;
-  status?: string;
-  progress?: string;
-  id?: string;
-  error?: string;
-  errorDetail?: { message?: string };
-};
 
 type ActiveWorker = {
   cancelled: boolean;
@@ -44,6 +39,8 @@ export class ContainerImageGappsWorkerService {
   constructor(
     private readonly config: ConfigService,
     @Inject(DOCKER_ENGINE) private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_IMAGE_RUNTIME)
+    private readonly images: DockerImageRuntimePort,
     private readonly archive: ContainerImageBuildArchiveService,
     private readonly jobs: ContainerImageBuildJobService,
     private readonly cache: ContainerImageGappsCacheService,
@@ -176,27 +173,14 @@ export class ContainerImageGappsWorkerService {
     const context = this.archive.createFilesystemTar(
       this.config.getOrThrow<string>('app.gappsPatcher.buildContext'),
     );
-    await this.engine.longOperation(
-      'container_image_gapps_worker_image',
-      'Build isolated GApps patch worker image',
-      async (docker, signal) => {
-        const stream = (await docker.buildImage(context, {
-          t: image,
-          abortSignal: signal,
-        })) as unknown as Readable;
-        await new Promise<void>((resolve, reject) => {
-          docker.modem.followProgress(
-            stream,
-            (error) => (error ? reject(error) : resolve()),
-            (event: DockerProgressEvent) => {
-              const message = this.progressMessage(event);
-              if (message) this.logger.debug(message);
-            },
-          );
-        });
-      },
-      15 * 60 * 1000,
-    );
+    await this.images.buildImage({
+      context,
+      targetImage: image,
+      operationName: 'container_image_gapps_worker_image',
+      description: 'Build isolated GApps patch worker image',
+      timeoutMs: 15 * 60 * 1000,
+      onProgress: (message) => this.logger.debug(message),
+    });
   }
 
   private extractPackageFromDockerArchive(
@@ -241,14 +225,5 @@ export class ContainerImageGappsWorkerService {
       });
       source.pipe(extract);
     });
-  }
-
-  private progressMessage(event: DockerProgressEvent) {
-    return (
-      event.errorDetail?.message ??
-      event.error ??
-      event.stream?.trim() ??
-      [event.id, event.status, event.progress].filter(Boolean).join(' ')
-    );
   }
 }

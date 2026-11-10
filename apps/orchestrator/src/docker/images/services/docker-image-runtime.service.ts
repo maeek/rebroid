@@ -2,7 +2,19 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import type { Readable } from 'node:stream';
 import { DockerEngineService } from '../../docker-engine.service';
 import { managedImageTag } from '../../docker.utils';
-import type { DockerImageRuntimePort } from '../../contracts/docker-image-runtime.port';
+import type {
+  DockerImageBuildRequest,
+  DockerImageRuntimePort,
+} from '../../contracts/docker-image-runtime.port';
+
+type DockerBuildProgress = {
+  stream?: string;
+  status?: string;
+  progress?: string;
+  id?: string;
+  error?: string;
+  errorDetail?: { message?: string };
+};
 
 @Injectable()
 export class DockerImageRuntimeService implements DockerImageRuntimePort {
@@ -81,6 +93,73 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
       },
     );
     await this.markPulledImageAsManaged(image);
+  }
+
+  async buildImage(request: DockerImageBuildRequest): Promise<void> {
+    try {
+      request.signal?.throwIfAborted();
+      await this.engine.longOperation(
+        request.operationName,
+        request.description,
+        async (docker, operationSignal) => {
+          const signal = request.signal
+            ? AbortSignal.any([operationSignal, request.signal])
+            : operationSignal;
+          signal.throwIfAborted();
+          const stream = (await docker.buildImage(request.context, {
+            t: request.targetImage,
+            abortSignal: signal,
+          })) as unknown as Readable;
+
+          let abort: (() => void) | undefined;
+          try {
+            await new Promise<void>((resolve, reject) => {
+              abort = () => {
+                reject(signal.reason);
+                stream.destroy();
+              };
+              if (signal.aborted) {
+                abort();
+                return;
+              }
+              signal.addEventListener('abort', abort, { once: true });
+
+              let buildError: Error | undefined;
+              docker.modem.followProgress(
+                stream,
+                (error) => {
+                  const failure = error ?? buildError;
+                  if (failure) reject(failure);
+                  else resolve();
+                },
+                (event: DockerBuildProgress) => {
+                  const failure = event.errorDetail?.message || event.error;
+                  if (failure) {
+                    buildError ??= new Error(failure);
+                    request.onProgress?.(failure, 'error');
+                    return;
+                  }
+                  const output = event.stream?.trim();
+                  if (output) {
+                    request.onProgress?.(output, 'output');
+                    return;
+                  }
+                  const status = [event.id, event.status, event.progress]
+                    .filter(Boolean)
+                    .join(' ');
+                  if (status) request.onProgress?.(status, 'status');
+                },
+              );
+            });
+          } finally {
+            if (abort) signal.removeEventListener('abort', abort);
+          }
+        },
+        request.timeoutMs,
+      );
+    } finally {
+      request.context.destroy();
+    }
   }
 
   private async markPulledImageAsManaged(image: string) {

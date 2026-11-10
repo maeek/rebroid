@@ -5,13 +5,8 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import type { Readable } from 'node:stream';
 import type Dockerode from 'dockerode';
 import { getErrorMessage } from '../../common/error-message';
-import {
-  DOCKER_ENGINE,
-  type DockerEnginePort,
-} from '../../docker/contracts/docker-engine.port';
 import {
   DOCKER_IMAGE_RUNTIME_METADATA,
   type DockerImageRuntimeMetadataPort,
@@ -39,20 +34,6 @@ import { ContainerImageGappsPresetService } from './container-image-gapps-preset
 import { ContainerImageGappsSourceService } from './container-image-gapps-source.service';
 import { ContainerImageGappsWorkerService } from './container-image-gapps-worker.service';
 
-type DockerProgressEvent = {
-  stream?: string;
-  status?: string;
-  progress?: string;
-  id?: string;
-  error?: string;
-  errorDetail?: { message?: string };
-};
-
-type ActiveGappsBuild = {
-  cancelled: boolean;
-  stream?: Readable;
-};
-
 const entrypoint = Buffer.from(`#!/system/bin/sh
 (
   until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 2; done
@@ -64,7 +45,7 @@ exec "$@"
 @Injectable()
 export class ContainerImageGappsBuilderService implements OnModuleInit {
   private readonly logger = new Logger(ContainerImageGappsBuilderService.name);
-  private readonly active = new Map<string, ActiveGappsBuild>();
+  private readonly active = new Map<string, AbortController>();
   private draining = false;
 
   constructor(
@@ -75,7 +56,6 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     private readonly worker: ContainerImageGappsWorkerService,
     private readonly packages: ContainerImageGappsPackageService,
     private readonly archive: ContainerImageBuildArchiveService,
-    @Inject(DOCKER_ENGINE) private readonly engine: DockerEnginePort,
     @Inject(DOCKER_IMAGE_RUNTIME)
     private readonly images: DockerImageRuntimePort,
     @Inject(DOCKER_IMAGE_RUNTIME_METADATA)
@@ -126,8 +106,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     if (this.jobs.isTerminal(job.status)) return job;
     const active = this.active.get(id);
     if (active) {
-      active.cancelled = true;
-      active.stream?.destroy(new Error('GApps image build cancelled.'));
+      active.abort(new Error('GApps image build cancelled.'));
       await this.worker.cancel(id);
     }
     const cancelled = await this.jobs.markCancelled(job);
@@ -175,7 +154,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
   private async runBuild(id: string) {
     const job = await this.jobs.getJob(id);
     if (job.status !== 'queued') return;
-    const active: ActiveGappsBuild = { cancelled: false };
+    const active = new AbortController();
     this.active.set(id, active);
     let workDirectory: string | null = null;
     let temporaryPackage: string | null = null;
@@ -217,6 +196,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
           phase: 'building_gapps',
           cacheState: 'miss',
         });
+        active.signal.throwIfAborted();
         temporaryPackage = await this.worker.buildPackage(id, preset, revision);
         const packageSha256 =
           await this.cache.calculateSha256(temporaryPackage);
@@ -226,7 +206,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         packagePath = temporaryPackage;
       }
 
-      this.throwIfCancelled(active);
+      active.signal.throwIfAborted();
       await this.jobs.updateGappsDetails(job, { phase: 'validating_payload' });
       workDirectory = await this.packages.extract(packagePath, id);
       const payloadValidation = await this.packages.validate(workDirectory);
@@ -246,17 +226,17 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         validationResults: { payload: payloadValidation },
       });
 
-      this.throwIfCancelled(active);
+      active.signal.throwIfAborted();
       await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
       await this.buildImage(
         job.id,
         job.targetImage,
         pinnedDockerfile,
         workDirectory,
-        active,
+        active.signal,
       );
 
-      this.throwIfCancelled(active);
+      active.signal.throwIfAborted();
       await this.jobs.updateGappsDetails(job, { phase: 'validating_image' });
       const inspect = await this.images.inspectImage(job.targetImage);
       const imageValidation = this.validateImage(
@@ -286,12 +266,12 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         );
       });
       const finalJob = await this.jobs.getJob(id);
-      if (finalJob.status !== 'cancelled' && !active.cancelled) {
+      if (finalJob.status !== 'cancelled' && !active.signal.aborted) {
         await this.jobs.markSucceeded(finalJob, inspect.Id);
       }
     } catch (error) {
       const current = await this.jobs.getJob(id);
-      if (current.status === 'cancelled' || active.cancelled) {
+      if (current.status === 'cancelled' || active.signal.aborted) {
         if (current.status !== 'cancelled')
           await this.jobs.markCancelled(current);
       } else {
@@ -309,7 +289,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     targetImage: string,
     dockerfile: string,
     workDirectory: string,
-    active: ActiveGappsBuild,
+    signal: AbortSignal,
   ) {
     const context = this.archive.createDirectoryTar(dockerfile, workDirectory, {
       'rebroid-gapps-entrypoint': {
@@ -317,42 +297,17 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         mode: 0o755,
       },
     });
-    await this.engine.longOperation(
-      'container_image_gapps_patch',
-      `Build GApps image ${targetImage}`,
-      async (docker, signal) => {
-        const stream = (await docker.buildImage(context, {
-          t: targetImage,
-          abortSignal: signal,
-        })) as unknown as Readable;
-        active.stream = stream;
-        const abort = () =>
-          stream.destroy(new Error('GApps image build aborted.'));
-        signal.addEventListener('abort', abort, { once: true });
-        await new Promise<void>((resolve, reject) => {
-          let streamedError: Error | null = null;
-          docker.modem.followProgress(
-            stream,
-            (error) => {
-              signal.removeEventListener('abort', abort);
-              if (error) reject(error);
-              else if (streamedError) reject(streamedError);
-              else resolve();
-            },
-            (event: DockerProgressEvent) => {
-              const message = this.progressMessage(event);
-              if (message) void this.jobs.appendLog(jobId, message);
-              const errorMessage =
-                event.errorDetail?.message ?? event.error ?? null;
-              if (errorMessage && !streamedError) {
-                streamedError = new Error(errorMessage);
-              }
-            },
-          );
-        });
+    await this.images.buildImage({
+      context,
+      targetImage,
+      operationName: 'container_image_gapps_patch',
+      description: `Build GApps image ${targetImage}`,
+      timeoutMs: 60 * 60 * 1000,
+      signal,
+      onProgress: (message) => {
+        void this.jobs.appendLog(jobId, message);
       },
-      60 * 60 * 1000,
-    );
+    });
   }
 
   private validateImage(
@@ -399,19 +354,6 @@ COPY rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint
 ENTRYPOINT ["/usr/local/bin/rebroid-gapps-entrypoint"]
 CMD ["/init"]`,
       requiredRuntimeImageLabels(metadata),
-    );
-  }
-
-  private throwIfCancelled(active: ActiveGappsBuild) {
-    if (active.cancelled) throw new Error('GApps image build cancelled.');
-  }
-
-  private progressMessage(event: DockerProgressEvent) {
-    return (
-      event.errorDetail?.message ??
-      event.error ??
-      event.stream?.trim() ??
-      [event.id, event.status, event.progress].filter(Boolean).join(' ')
     );
   }
 }

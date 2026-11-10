@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import type { DockerImageBuildRequest } from '../../docker/contracts/docker-image-runtime.port';
 import { ContainerImageGappsBuilderService } from './container-image-gapps-builder.service';
 
 type BuildImageInvoker = {
@@ -7,50 +8,25 @@ type BuildImageInvoker = {
     targetImage: string,
     dockerfile: string,
     workDirectory: string,
-    active: { cancelled: boolean; stream?: Readable },
+    signal: AbortSignal,
   ): Promise<void>;
   dockerfile(baseImage: string, androidVersion: string): string;
 };
 
 describe('ContainerImageGappsBuilderService', () => {
-  it('fails with a streamed Docker build error instead of inspecting a missing image', async () => {
-    const buildError = 'the --chmod option requires BuildKit';
-    const stream = Readable.from([]);
-    const docker = {
-      buildImage: jest.fn().mockResolvedValue(stream),
-      modem: {
-        followProgress: jest.fn(
-          (
-            _stream: Readable,
-            onFinished: (error: Error | null) => void,
-            onProgress: (event: {
-              errorDetail?: { message?: string };
-              error?: string;
-            }) => void,
-          ) => {
-            onProgress({ errorDetail: { message: buildError } });
-            onFinished(null);
-          },
-        ),
-      },
-    };
+  it('forwards the validated image context, cancellation, and progress to Docker', async () => {
+    const signal = new AbortController().signal;
+    const context = Readable.from([]);
     const jobs = {
       appendLog: jest.fn().mockResolvedValue(undefined),
     };
     const archive = {
-      createDirectoryTar: jest.fn().mockReturnValue(Readable.from([])),
+      createDirectoryTar: jest.fn().mockReturnValue(context),
     };
-    const engine = {
-      longOperation: jest.fn(
-        async (
-          _kind: string,
-          _label: string,
-          operation: (
-            dockerClient: typeof docker,
-            signal: AbortSignal,
-          ) => Promise<void>,
-        ) => operation(docker, new AbortController().signal),
-      ),
+    const images = {
+      buildImage: jest.fn(async (request: DockerImageBuildRequest) => {
+        request.onProgress?.('Installing payload', 'output');
+      }),
     };
     const service = new ContainerImageGappsBuilderService(
       jobs as never,
@@ -60,21 +36,18 @@ describe('ContainerImageGappsBuilderService', () => {
       {} as never,
       {} as never,
       archive as never,
-      engine as never,
-      {} as never,
+      images as never,
       {} as never,
       {} as never,
     );
 
-    await expect(
-      (service as unknown as BuildImageInvoker).buildImage(
-        'job-id',
-        'localhost/redroid-gapps:14',
-        'FROM scratch',
-        '/tmp/work',
-        { cancelled: false },
-      ),
-    ).rejects.toThrow(buildError);
+    await (service as unknown as BuildImageInvoker).buildImage(
+      'job-id',
+      'localhost/redroid-gapps:14',
+      'FROM scratch',
+      '/tmp/work',
+      signal,
+    );
     expect(archive.createDirectoryTar).toHaveBeenCalledWith(
       'FROM scratch',
       '/tmp/work',
@@ -85,11 +58,20 @@ describe('ContainerImageGappsBuilderService', () => {
         },
       },
     );
+    expect(images.buildImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        context,
+        targetImage: 'localhost/redroid-gapps:14',
+        operationName: 'container_image_gapps_patch',
+        timeoutMs: 60 * 60 * 1000,
+        signal,
+      }),
+    );
+    expect(jobs.appendLog).toHaveBeenCalledWith('job-id', 'Installing payload');
   });
 
   it('generates a Dockerfile compatible with the legacy builder', () => {
     const service = new ContainerImageGappsBuilderService(
-      {} as never,
       {} as never,
       {} as never,
       {} as never,

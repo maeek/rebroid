@@ -1,10 +1,5 @@
 import { Inject, ConflictException, Injectable, Logger } from '@nestjs/common';
-import type { Readable } from 'node:stream';
 import { getErrorMessage } from '../../common/error-message';
-import {
-  DOCKER_ENGINE,
-  type DockerEnginePort,
-} from '../../docker/contracts/docker-engine.port';
 import {
   DOCKER_IMAGE_RUNTIME_METADATA,
   type DockerImageRuntimeMetadataPort,
@@ -24,20 +19,6 @@ import {
 import { validateContainerImageBuildReference } from '../utils/container-image-reference';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
-type DockerProgressEvent = {
-  stream?: string;
-  status?: string;
-  progress?: string;
-  id?: string;
-  error?: string;
-  errorDetail?: { message?: string };
-};
-
-type ActiveBuild = {
-  cancelled: boolean;
-  stream?: Readable;
-};
-
 const cleanNullable = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -46,12 +27,10 @@ const cleanNullable = (value: string | null | undefined) => {
 @Injectable()
 export class ContainerImageBuilderService {
   private readonly logger = new Logger(ContainerImageBuilderService.name);
-  private readonly activeBuilds = new Map<string, ActiveBuild>();
+  private readonly activeBuilds = new Map<string, AbortController>();
 
   constructor(
     private readonly jobs: ContainerImageBuildJobService,
-    @Inject(DOCKER_ENGINE)
-    private readonly engine: DockerEnginePort,
     @Inject(DOCKER_IMAGE_RUNTIME)
     private readonly images: DockerImageRuntimePort,
     @Inject(DOCKER_IMAGE_RUNTIME_METADATA)
@@ -121,11 +100,9 @@ export class ContainerImageBuilderService {
       return job;
     }
 
-    const active = this.activeBuilds.get(id);
-    if (active) {
-      active.cancelled = true;
-      active.stream?.destroy(new Error('Container image build cancelled.'));
-    }
+    this.activeBuilds
+      .get(id)
+      ?.abort(new Error('Container image build cancelled.'));
 
     return this.jobs.markCancelled(job);
   }
@@ -136,7 +113,7 @@ export class ContainerImageBuilderService {
       return;
     }
 
-    const active: ActiveBuild = { cancelled: false };
+    const active = new AbortController();
     this.activeBuilds.set(id, active);
     const runningJob = await this.jobs.markRunning(job);
     if (runningJob.status !== 'running') {
@@ -161,45 +138,19 @@ export class ContainerImageBuilderService {
         job.dockerfile,
         contextFiles,
       );
-      await this.engine.longOperation(
-        'container_image_build',
-        `Build container image ${job.targetImage}`,
-        async (docker, signal) => {
-          const stream = (await docker.buildImage(buildContext, {
-            t: job.targetImage,
-            abortSignal: signal,
-          })) as unknown as Readable;
-          active.stream = stream;
-          const abort = () =>
-            stream.destroy(
-              new Error(`Build image ${job.targetImage} aborted.`),
-            );
-          signal.addEventListener('abort', abort, { once: true });
-          await new Promise<void>((resolve, reject) => {
-            docker.modem.followProgress(
-              stream,
-              (error) => {
-                signal.removeEventListener('abort', abort);
-                if (error) {
-                  reject(error);
-                  return;
-                }
-
-                resolve();
-              },
-              (event: DockerProgressEvent) => {
-                const message = this.progressMessage(event);
-                if (message) {
-                  void this.jobs.appendLog(id, message);
-                }
-              },
-            );
-          });
+      await this.images.buildImage({
+        context: buildContext,
+        targetImage: job.targetImage,
+        operationName: 'container_image_build',
+        description: `Build container image ${job.targetImage}`,
+        signal: active.signal,
+        onProgress: (message) => {
+          void this.jobs.appendLog(id, message);
         },
-      );
+      });
 
       const current = await this.getJob(id);
-      if (current.status === 'cancelled' || active.cancelled) {
+      if (current.status === 'cancelled' || active.signal.aborted) {
         return;
       }
 
@@ -216,7 +167,7 @@ export class ContainerImageBuilderService {
       await this.jobs.markSucceeded(current, inspect.Id);
     } catch (error) {
       const current = await this.getJob(id);
-      if (current.status === 'cancelled' || active.cancelled) {
+      if (current.status === 'cancelled' || active.signal.aborted) {
         await this.jobs.markCancelled(current);
         return;
       }
@@ -226,19 +177,5 @@ export class ContainerImageBuilderService {
     } finally {
       this.activeBuilds.delete(id);
     }
-  }
-
-  private progressMessage(event: DockerProgressEvent) {
-    if (event.errorDetail?.message) {
-      return event.errorDetail.message;
-    }
-    if (event.error) {
-      return event.error;
-    }
-    if (event.stream?.trim()) {
-      return event.stream.trim();
-    }
-
-    return [event.id, event.status, event.progress].filter(Boolean).join(' ');
   }
 }
