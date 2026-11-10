@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { IconDatabase, IconDeviceFloppy, IconPlayerPlay, IconRobot, IconTrash } from '@tabler/icons-react'
+import { IconDeviceFloppy, IconPlayerPlay } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
@@ -11,6 +11,7 @@ import { AppIdentitySection } from '@/features/applications/components/app-ident
 import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { getInitialCreateAppFormValues } from '@/features/applications/create/create-app-form-model'
 import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
+import { AppConfigurationMenu } from '@/features/applications/manage/app-configuration-menu'
 import { AppProfilesSection } from '@/features/applications/manage/app-manage-profiles'
 import { AppManageRuntimeSettings } from '@/features/applications/manage/app-manage-runtime-settings'
 import { AppManageTechnicalDetails } from '@/features/applications/manage/app-manage-technical-details'
@@ -34,15 +35,15 @@ const noop = () => undefined
 const DeviceSkeleton = () => (
   <AppViewerPaneLayout placement='top'>
     <div className='flex h-[var(--app-viewer-height)] w-full items-start justify-center gap-2 overflow-hidden p-2'>
-      <div className='w-full max-w-[calc((var(--app-viewer-height)-3rem)*0.47)] overflow-hidden rounded-panel'>
-        <Skeleton className='h-8 w-full rounded-none' />
+      <div className='w-full max-w-[calc((var(--app-viewer-height)-var(--viewer-chrome-height)-1rem)*0.47)] overflow-hidden rounded-panel'>
+        <Skeleton className='h-[var(--viewer-chrome-height)] w-full rounded-none' />
         <Skeleton className='aspect-[0.47] w-full rounded-none' />
       </div>
       <div className='grid shrink-0 gap-1.5'>
         {Array.from({ length: 10 }, (_, index) => (
           <Skeleton
             key={index}
-            className='size-8'
+            className='size-[var(--viewer-rail-width)]'
           />
         ))}
       </div>
@@ -67,44 +68,20 @@ const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceV
               loading
               showStatusBadge
             >
-              <div className='flex flex-wrap gap-2'>
-                {configuration ? (
-                  <>
-                    <Button
-                      variant='secondary'
-                      disabled
-                    >
-                      <IconDatabase className='size-4' />
-                      Profiles
-                    </Button>
-                    <Button
-                      variant='danger'
-                      disabled
-                    >
-                      <IconTrash className='size-4' />
-                      Delete app
-                    </Button>
-                    <Button disabled>
-                      <IconDeviceFloppy className='size-4' />
-                      Save
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button disabled>
-                      <IconPlayerPlay className='size-4' />
-                      Start
-                    </Button>
-                    <Button
-                      variant='secondary'
-                      disabled
-                    >
-                      <IconRobot className='size-4' />
-                      Run workflow
-                    </Button>
-                  </>
-                )}
-              </div>
+              {configuration ? (
+                <>
+                  <AppConfigurationMenu />
+                  <Button disabled>
+                    <IconDeviceFloppy className='size-4' />
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button disabled>
+                  <IconPlayerPlay className='size-4' />
+                  Start
+                </Button>
+              )}
             </AppViewerHeading>
           }
           navigation={

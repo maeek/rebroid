@@ -88,7 +88,7 @@ export const SurfacePanel = ({
             style={
               miniPlayer
                 ? {
-                    width: `min(20rem, calc(40dvh * ${aspectRatio}))`,
+                    width: `min(20rem, calc(40svh * ${aspectRatio}))`,
                     height: 'auto',
                     aspectRatio: `${Math.max(viewportSize.width, 1)} / ${Math.max(viewportSize.height, 1)}`
                   }
@@ -129,7 +129,7 @@ export const SurfacePanel = ({
       </div>
       {controlsEnabled ? (
         <div
-          className='w-8 shrink-0 overflow-y-auto scrollbar-none'
+          className='w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto scrollbar-none'
           style={{ maxHeight: Math.max(32, workspaceHeight - 16) }}
         >
           {isActive ? <ViewerControlBar surfaceId={surface.id} /> : null}

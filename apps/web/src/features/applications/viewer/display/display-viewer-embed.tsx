@@ -95,7 +95,7 @@ const EmbeddedViewerFallback = ({
         {actions ? (
           <div
             className={cn(
-              'flex h-8 items-center justify-end bg-surface-band px-1.5',
+              'viewer-chrome flex h-[var(--viewer-chrome-height)] items-center justify-end bg-surface-band px-1.5',
               children ? 'rounded-t-panel' : 'absolute inset-x-0 top-0 z-20'
             )}
           >
@@ -251,7 +251,7 @@ export const DisplayViewerEmbed = ({
   }
 
   return (
-    <div className='relative h-[var(--app-viewer-height,calc(100dvh-6rem))] min-h-0 w-full overflow-hidden'>
+    <div className='relative h-[var(--app-viewer-height)] min-h-0 w-full overflow-hidden'>
       <ViewerActivityKeepalive applicationId={session.applicationId} />
       <Visible when={!session.viewerTargetConnected}>
         <div className='pointer-events-none absolute left-3 right-3 top-10 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>

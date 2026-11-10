@@ -83,7 +83,7 @@ export const NetworkAccessInput = ({
     <div className='w-full space-y-2'>
       <div
         className={cn(
-          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-control px-3 py-2',
+          'flex min-h-11 w-full flex-wrap items-center gap-2 rounded-control px-3 py-2 touch:py-0',
           chipInputSurfaceClassName,
           {
             'cursor-not-allowed opacity-60': disabled || isBusy
@@ -100,7 +100,7 @@ export const NetworkAccessInput = ({
             <button
               type='button'
               aria-label={`Remove ${cidr}`}
-              className='cursor-pointer rounded-control text-foreground-muted transition hover:text-foreground'
+              className='touch-control inline-flex cursor-pointer items-center justify-center rounded-control text-foreground-muted transition hover:text-foreground'
               disabled={disabled || isBusy}
               onClick={() => onRemoveCidr(cidr)}
             >
@@ -114,14 +114,14 @@ export const NetworkAccessInput = ({
           aria-invalid={ariaInvalid}
           value={draft}
           disabled={disabled || isBusy}
-          className='h-7 min-w-34 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted'
+          className='touch-control h-7 min-w-0 flex-1 basis-34 bg-transparent text-sm text-foreground outline-none placeholder:text-foreground-muted touch:text-base/6'
           placeholder={isBusy ? 'Updating access list...' : 'Add CIDR and press Enter'}
           onBlur={commitDraft}
           onChange={event => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>
-      <p className='text-xs leading-relaxed text-foreground-muted'>
+      <p className='text-xs leading-relaxed text-foreground-muted touch:text-sm/5'>
         Enter app-specific IPv4 CIDRs like 10.20.0.0/16. Plain IPv4 addresses are stored as /32 entries. API/default
         destinations are applied automatically.
       </p>

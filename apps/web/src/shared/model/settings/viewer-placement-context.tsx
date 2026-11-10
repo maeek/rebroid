@@ -3,11 +3,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { isViewerPlacement, viewerPlacementCookie, type ViewerPlacement } from './viewer-placement'
 
+const defaultViewerPlacement: ViewerPlacement = 'top'
+
 const ViewerPlacementContext = createContext<{
   placement: ViewerPlacement
   setPlacement: (placement: ViewerPlacement) => void
 }>({
-  placement: 'right',
+  placement: defaultViewerPlacement,
   setPlacement: () => {}
 })
 
@@ -23,7 +25,7 @@ export const ViewerPlacementProvider = ({
   initialPlacement?: ViewerPlacement
   children: ReactNode
 }) => {
-  const [placement, setPlacement] = useState<ViewerPlacement>(initialPlacement ?? 'right')
+  const [placement, setPlacement] = useState<ViewerPlacement>(initialPlacement ?? defaultViewerPlacement)
 
   useEffect(() => {
     if (initialPlacement) return

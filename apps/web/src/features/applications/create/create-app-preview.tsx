@@ -5,7 +5,7 @@ import { CreateAppForm } from './create-app-form'
 
 /** Uses the real form on the gated layout-contract route; no production entrypoint. */
 export const CreateAppPreview = () => (
-  <main className='min-h-screen bg-background pt-16'>
+  <main className='min-h-screen bg-background pt-(--console-top-inset)'>
     <EditorPage
       width='full'
       className='gap-2'

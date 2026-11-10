@@ -96,7 +96,7 @@ const AppViewerPageContent = ({
   }
 
   return (
-    <StandardPageSplit className='h-auto min-h-[calc(100vh-4rem)] items-start'>
+    <StandardPageSplit className='h-auto items-start'>
       <PageBackdrop
         imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
         opacity={0.08}

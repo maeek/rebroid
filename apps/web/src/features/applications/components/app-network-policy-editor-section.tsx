@@ -104,7 +104,7 @@ export const AppNetworkPolicyEditorSection = ({
         />
       </FormField>
       <Visible when={sectionActions}>
-        <div className='flex gap-2'>{sectionActions}</div>
+        <div className='flex flex-wrap gap-2'>{sectionActions}</div>
       </Visible>
     </Section>
   )

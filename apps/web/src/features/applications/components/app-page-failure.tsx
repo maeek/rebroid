@@ -123,7 +123,7 @@ export const AppPageFailure = ({ failure = { kind: 'not-found' } }: { failure?: 
   return (
     <StateView
       scope='immersive'
-      className='min-h-[calc(100dvh-4rem)]'
+      className='min-h-(--console-content-height)'
       kind={kind === 'unavailable' ? 'unavailable' : 'not-found'}
       title={title}
       description={description}

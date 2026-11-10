@@ -77,8 +77,8 @@ export const SurfaceChrome = ({
 }) => (
   <div
     className={cn(
-      'flex h-8 shrink-0 items-center justify-between gap-2 rounded-t-panel border border-b-0 border-surface-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-panel backdrop-blur-md',
-      'w-full min-w-0',
+      'viewer-chrome flex h-[var(--viewer-chrome-height)] shrink-0 items-center justify-between gap-2 rounded-t-panel border border-b-0 border-surface-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-panel backdrop-blur-md',
+      'w-full min-w-0 overflow-x-auto scrollbar-none',
       isActive && 'bg-surface-band/80'
     )}
   >

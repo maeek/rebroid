@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { IconDatabase, IconDeviceFloppy } from '@tabler/icons-react'
-import Link from 'next/link'
+import { IconDeviceFloppy, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Visible } from '@/components/ui/visible'
 import { appResourceHref } from '@/features/applications/detail/app-resource-links'
@@ -22,6 +21,7 @@ import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-lim
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
@@ -47,6 +47,7 @@ export const AppManage = () => {
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canViewLogs = hasPermission(permissions, 'applications:view-logs')
   const canDelete = hasPermission(permissions, 'applications:delete')
+  const profilesHref = appResourceHref(currentApp.id, 'profiles')
   const showRuntimeSection =
     canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
   const resourceLimits = useResourceLimitBounds(canChangeResources)
@@ -82,38 +83,40 @@ export const AppManage = () => {
   return (
     <EditorPage>
       <PageContent>
-        <div className=''>
-          <AppViewerHeading
-            app={displayApp}
-            showStatusBadge
+        <AppViewerHeading
+          app={displayApp}
+          showStatusBadge
+        >
+          {canDelete ? (
+            <AppViewerDeleteAction
+              app={displayApp}
+              initialSettings={initialSettings}
+              renderTrigger={({ disabled, label, onClick }) => (
+                <AppConfigurationMenu profilesHref={profilesHref}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={disabled}
+                    onSelect={onClick}
+                    className='text-danger'
+                  >
+                    <IconTrash className='size-4' />
+                    {label}
+                  </DropdownMenuItem>
+                </AppConfigurationMenu>
+              )}
+            />
+          ) : (
+            <AppConfigurationMenu profilesHref={profilesHref} />
+          )}
+          <MutationButton
+            pending={isSaving}
+            pendingLabel='Saving…'
+            onClick={() => void handleSave()}
           >
-            <div className='flex gap-2'>
-              <Button
-                asChild
-                variant='secondary'
-              >
-                <Link href={appResourceHref(currentApp.id, 'profiles')}>
-                  <IconDatabase className='size-4' />
-                  Profiles
-                </Link>
-              </Button>
-              <Visible when={canDelete}>
-                <AppViewerDeleteAction
-                  app={displayApp}
-                  initialSettings={initialSettings}
-                />
-              </Visible>
-              <MutationButton
-                pending={isSaving}
-                pendingLabel='Saving…'
-                onClick={() => void handleSave()}
-              >
-                <IconDeviceFloppy className='size-4' />
-                Save
-              </MutationButton>
-            </div>
-          </AppViewerHeading>
-        </div>
+            <IconDeviceFloppy className='size-4' />
+            Save
+          </MutationButton>
+        </AppViewerHeading>
         <AppResourceNavigation
           appId={currentApp.id}
           active='configuration'

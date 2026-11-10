@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { IconTrash, IconX } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -16,16 +16,23 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchest
 
 export const AppViewerDeleteAction = ({
   app,
-  initialSettings
+  initialSettings,
+  renderTrigger
 }: {
   app?: AppDefinition
   initialSettings: OrchestratorUiSettings
+  renderTrigger?: (trigger: { disabled: boolean; label: string; onClick: () => void }) => ReactNode
 }) => {
   const [open, setOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const isProvisioning = app?.status === 'provisioning'
+  const trigger = {
+    disabled: !app || app.status === 'removing' || isDeleting,
+    label: isProvisioning ? 'Cancel provisioning' : 'Delete app',
+    onClick: () => setOpen(true)
+  }
 
   const handleDelete = async () => {
     if (!app) {
@@ -50,14 +57,18 @@ export const AppViewerDeleteAction = ({
 
   return (
     <>
-      <Button
-        variant='danger'
-        disabled={!app || app.status === 'removing' || isDeleting}
-        onClick={() => setOpen(true)}
-      >
-        {isProvisioning ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
-        {isProvisioning ? 'Cancel provisioning' : 'Delete app'}
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(trigger)
+      ) : (
+        <Button
+          variant='danger'
+          disabled={trigger.disabled}
+          onClick={trigger.onClick}
+        >
+          {isProvisioning ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
+          {trigger.label}
+        </Button>
+      )}
       <ConfirmMutationDialog
         open={open}
         title={isProvisioning ? `Cancel provisioning for ${app?.name}?` : `Delete ${app?.name}?`}

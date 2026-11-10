@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, type ReactNode } from 'react'
+import { useMemo } from 'react'
 import { IconActivityHeartbeat, IconGauge, IconNetwork } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { getViewerPlayerCapabilities } from '@/features/applications/viewer/player/viewer-player-capabilities'
@@ -16,13 +17,6 @@ import { ToolSection } from '../tool-section'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
 
-const StreamingSetting = ({ label, children }: { label: string; children: ReactNode }) => (
-  <label className='flex flex-col gap-1.5 min-w-0'>
-    <span className='text-xs font-medium text-foreground-muted'>{label}</span>
-    {children}
-  </label>
-)
-
 const metricIsFresh = (metrics: DisplayViewerStreamMetrics | null | undefined) =>
   Boolean(metrics && Date.now() - metrics.collectedAt < 5_000)
 
@@ -30,36 +24,35 @@ const metricValue = (value: number | undefined, digits = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--'
 
 const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
-  const fresh = metricIsFresh(metrics)
+  if (!metrics || !metricIsFresh(metrics)) return null
+
+  const isWebRtc = metrics.transport === 'webrtc'
+  const networkDelay = isWebRtc ? metrics.roundTripTimeMs : metrics.relayQueueDepthMs
 
   return (
-    <div className='grid gap-2 sm:grid-cols-2'>
+    <div className='grid grid-cols-2 gap-2'>
       <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconActivityHeartbeat className='size-4 text-primary' />
         <span className='text-foreground-muted'>Source FPS</span>
-        <span className='ml-auto font-medium text-foreground'>{fresh ? metricValue(metrics?.sourceFps) : '--'}</span>
+        <span className='ml-auto font-medium text-foreground'>{metricValue(metrics.sourceFps)}</span>
       </div>
       <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconActivityHeartbeat className='size-4 text-primary' />
         <span className='text-foreground-muted'>Presented FPS</span>
-        <span className='ml-auto font-medium text-foreground'>{fresh ? metricValue(metrics?.presentedFps) : '--'}</span>
+        <span className='ml-auto font-medium text-foreground'>{metricValue(metrics.presentedFps)}</span>
       </div>
       <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconGauge className='size-4 text-primary' />
         <span className='text-foreground-muted'>Bitrate</span>
         <span className='ml-auto font-medium text-foreground'>
-          {fresh ? `${metricValue(metrics?.wireBitrateMbps, 1)} Mbps` : '--'}
+          {typeof metrics.wireBitrateMbps === 'number' ? `${metricValue(metrics.wireBitrateMbps, 1)} Mbps` : '--'}
         </span>
       </div>
       <div className='flex items-center gap-2 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 text-xs'>
         <IconNetwork className='size-4 text-primary' />
-        <span className='text-foreground-muted'>{metrics?.transport === 'webrtc' ? 'RTT' : 'Queue'}</span>
+        <span className='text-foreground-muted'>{isWebRtc ? 'RTT' : 'Queue'}</span>
         <span className='ml-auto font-medium text-foreground'>
-          {fresh && metrics?.transport === 'webrtc' && typeof metrics.roundTripTimeMs === 'number'
-            ? `${metricValue(metrics.roundTripTimeMs)} ms`
-            : fresh && typeof metrics?.relayQueueDepthMs === 'number'
-              ? `${metricValue(metrics.relayQueueDepthMs)} ms`
-              : '--'}
+          {typeof networkDelay === 'number' ? `${metricValue(networkDelay)} ms` : '--'}
         </span>
       </div>
     </div>
@@ -213,7 +206,10 @@ export const StreamingToolsSection = ({
       hideHeader={hideHeader}
     >
       <div className='flex flex-col gap-4'>
-        <StreamingSetting label='Transport'>
+        <FormField
+          layout='vertical'
+          label='Transport'
+        >
           <Select
             value={viewerSettings.transport}
             onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
@@ -226,22 +222,25 @@ export const StreamingToolsSection = ({
               <SelectItem value='websocket'>WebSocket</SelectItem>
             </SelectContent>
           </Select>
-        </StreamingSetting>
+        </FormField>
 
-        <StreamingSetting label='Sound capture'>
-          <div className='flex min-w-0 items-center gap-3'>
-            <Switch
-              checked={viewerSettings.soundEnabled}
-              onCheckedChange={enabled => updateSettings({ soundEnabled: Boolean(enabled) })}
-              aria-label='Enable Android sound capture'
-            />
-            <span className='text-xs text-foreground-muted'>
-              {viewerSettings.soundEnabled ? 'Request Android audio for this stream.' : 'Video-only stream.'}
-            </span>
-          </div>
-        </StreamingSetting>
+        <FormField
+          label='Sound capture'
+          description={viewerSettings.soundEnabled ? 'Request Android audio for this stream.' : 'Video-only stream.'}
+          layout='horizontal'
+        >
+          <Switch
+            className='relative touch:after:absolute touch:after:-inset-x-1 touch:after:-inset-y-3'
+            checked={viewerSettings.soundEnabled}
+            onCheckedChange={enabled => updateSettings({ soundEnabled: Boolean(enabled) })}
+            aria-label='Enable Android sound capture'
+          />
+        </FormField>
 
-        <StreamingSetting label='Preset'>
+        <FormField
+          layout='vertical'
+          label='Preset'
+        >
           <Select
             value={presetIsCustom ? 'custom' : viewerSettings.preset}
             onValueChange={value => {
@@ -264,28 +263,21 @@ export const StreamingToolsSection = ({
               <SelectItem value='bandwidth-saver'>Bandwidth saver</SelectItem>
             </SelectContent>
           </Select>
-        </StreamingSetting>
+        </FormField>
 
         <StreamingMetricBadges metrics={streamMetrics} />
         <StreamingDiagnostics metrics={streamMetrics} />
 
-        <p className='text-xs text-foreground-muted'>
+        <p className='text-xs text-foreground-muted touch:text-sm/5'>
           Encoder target {viewerSettings.bitrateMbps} Mbps is an upper quality target. Wire bitrate reflects current
           encoded traffic and is naturally lower on static screens. Interactive streaming always requests native
           resolution at 60 fps.
         </p>
 
-        <div className='flex flex-col gap-2'>
-          <div className='grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out grid-rows-[1fr] opacity-100'>
-            <div className='min-h-0 flex flex-col gap-4'>
-              <ViewerStreamingSliderFields
-                values={viewerSettings}
-                onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
-                SettingComponent={StreamingSetting}
-              />
-            </div>
-          </div>
-        </div>
+        <ViewerStreamingSliderFields
+          values={viewerSettings}
+          onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
+        />
       </div>
     </ToolSection>
   )

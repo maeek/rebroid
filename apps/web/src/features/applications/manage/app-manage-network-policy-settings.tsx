@@ -145,7 +145,7 @@ export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetw
             </Visible>
           </div>
           <Visible when={getPolicyMessage(app)}>
-            <p className='text-sm text-foreground-muted'>{getPolicyMessage(app)}</p>
+            <p className='text-sm text-foreground-muted touch:text-base/6'>{getPolicyMessage(app)}</p>
           </Visible>
         </div>
       }

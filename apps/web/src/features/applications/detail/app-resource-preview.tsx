@@ -94,7 +94,9 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
         <main
           tabIndex={-1}
           className={
-            agent ? 'main-layout min-h-screen bg-background pt-16 lg:pl-72' : 'min-h-screen bg-background pt-16'
+            agent
+              ? 'main-layout min-h-screen bg-background pt-(--console-top-inset) lg:pl-72'
+              : 'min-h-screen bg-background pt-(--console-top-inset)'
           }
         >
           <AppDeviceLayout

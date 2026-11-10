@@ -10,7 +10,6 @@ import { useApplicationViewerContext } from '@/features/applications/detail/appl
 import { AppLogsDialog } from '@/features/applications/viewer/logs/app-logs-dialog'
 import { cn } from '@/lib/utils'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { AppAutomationRunAction } from './app-automation-run-action'
 import { AppViewerDeleteAction } from './app-viewer-delete-action'
 import { AppViewerOpenAsMeAction } from './app-viewer-open-as-me-action'
 import { AppViewerPowerAction } from './app-viewer-power-action/app-viewer-power-action'
@@ -29,7 +28,6 @@ export const AppViewerActions = ({
   const canStop = hasPermission(permissions, 'applications:stop')
   const canViewLogs = canUseRuntime && hasPermission(permissions, 'applications:view-logs')
   const canDelete = mode === 'details' && hasPermission(permissions, 'applications:delete')
-  const canRunAutomations = mode !== 'workspace' && canUseRuntime && hasPermission(permissions, 'automations:run')
   const showSettingsAction = Boolean(app?.id) && (mode === 'workspace' || mode === 'details')
   const showLogsAction = canViewLogs && mode === 'details'
 
@@ -48,9 +46,6 @@ export const AppViewerActions = ({
       </Visible>
       <Visible when={canUseRuntime && (canStart || canStop)}>
         <AppViewerPowerAction />
-      </Visible>
-      <Visible when={canRunAutomations}>
-        <AppAutomationRunAction />
       </Visible>
       <Visible when={canDelete}>
         <AppViewerDeleteAction

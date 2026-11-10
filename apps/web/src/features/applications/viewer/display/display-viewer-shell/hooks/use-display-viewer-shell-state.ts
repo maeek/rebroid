@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { DisplaySessionRecovery } from '@/features/applications/viewer/display/display-session-recovery'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
+import { viewerControlRailWidth } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
   DisplayViewerStreamMetrics,
   DisplayViewerStreamStatus
@@ -43,7 +44,11 @@ export const useDisplayViewerShellState = ({
   const streamStatusTimersRef = useRef<Record<string, number | undefined>>({})
   const [streamSizes, setStreamSizes] = useState<Record<string, { width: number; height: number }>>({})
   const [streamStatuses, setStreamStatuses] = useState<Record<string, DisplayViewerStreamStatus | undefined>>({})
-  const [workspaceSize, setWorkspaceSize] = useState({ width: 0, height: 0 })
+  const [workspaceSize, setWorkspaceSize] = useState({
+    width: 0,
+    height: 0,
+    railWidth: viewerControlRailWidth
+  })
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [fullscreenSurfaceId, setFullscreenSurfaceId] = useState<string | null>(null)
   const { fullscreen, fullscreenElement, toggleFullscreen } = useFullscreenState()
@@ -119,7 +124,12 @@ export const useDisplayViewerShellState = ({
     }
 
     const updateSize = () => {
-      setWorkspaceSize({ width: container.clientWidth, height: container.clientHeight })
+      const style = getComputedStyle(container)
+      setWorkspaceSize({
+        width: container.clientWidth,
+        height: container.clientHeight,
+        railWidth: Number.parseFloat(style.getPropertyValue('--viewer-rail-width')) || viewerControlRailWidth
+      })
     }
     const observer = new ResizeObserver(updateSize)
     observer.observe(container)

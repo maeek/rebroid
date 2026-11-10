@@ -80,7 +80,7 @@ export const AppViewer = ({
       style={getViewerFrameStyle(layout, fullscreen)}
     >
       {chrome ? (
-        <div className='absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-end bg-surface-band px-1.5'>
+        <div className='viewer-chrome absolute inset-x-0 top-0 z-10 flex h-[var(--viewer-chrome-height)] items-center justify-end bg-surface-band px-1.5'>
           {chrome}
         </div>
       ) : null}

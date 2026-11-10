@@ -14,7 +14,7 @@ export const DisplayViewerLayout = ({
   scrollRef?: Ref<HTMLDivElement>
   onScroll?: UIEventHandler<HTMLDivElement>
 }) => (
-  <div className={cn('relative flex h-dvh w-full flex-col overflow-hidden bg-background', className)}>
+  <div className={cn('relative flex h-svh w-full flex-col overflow-hidden bg-background', className)}>
     {tabs}
     <div
       ref={scrollRef}

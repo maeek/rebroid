@@ -11,6 +11,7 @@ export const AppResourceBreadcrumbs = ({
   view: AppResourceView
 }) => (
   <PageBreadcrumbs
+    className='pt-0'
     items={[
       { label: 'Apps', href: '/apps' },
       { label: appName, href: appId ? appResourceHref(appId) : undefined },

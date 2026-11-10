@@ -5,6 +5,7 @@ import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import { AppIconSkeleton } from '@/shared/ui/app-icon/app-icon-skeleton'
+import { PageHeadingRow } from '@/shared/ui/page/page-heading-row'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 const appStatusBadgeTone = (status?: AppDefinition['status']): StatusBadgeTone => {
@@ -37,13 +38,11 @@ export const AppViewerHeading = ({
   loading?: boolean
 }) => {
   return (
-    <div
-      className={cn(
-        'text-3xl max-sm:text-lg font-medium shrink-0 flex gap-4 justify-between items-center w-full py-4 max-sm:pb-0 flex-wrap',
-        className
-      )}
+    <PageHeadingRow
+      actions={children}
+      className={cn('w-full shrink-0 py-4 max-sm:pb-0', className)}
     >
-      <div className='flex gap-4 items-center overflow-hidden'>
+      <div className='flex min-w-0 items-center gap-2.5 sm:gap-4'>
         {loading ? <AppIconSkeleton className='size-10 shrink-0' /> : null}
         {app && !loading ? (
           <AppIcon
@@ -53,10 +52,10 @@ export const AppViewerHeading = ({
             className='shrink-0 size-10'
           />
         ) : null}
-        <h1 className='text-ellipsis text-nowrap overflow-hidden max-w-[calc(100%-3rem)]'>
+        <h1 className='min-w-0 text-3xl font-medium [overflow-wrap:anywhere] max-sm:text-2xl'>
           {loading ? <Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' /> : app?.name || '<App Name>'}
         </h1>
-        {loading && showStatusBadge ? <Skeleton className='h-5 w-16' /> : null}
+        {loading && showStatusBadge ? <Skeleton className='h-5 w-16 shrink-0' /> : null}
         <Visible when={showStatusBadge && app && !loading}>
           <StatusBadge
             tone={appStatusBadgeTone(app?.status)}
@@ -66,7 +65,6 @@ export const AppViewerHeading = ({
           </StatusBadge>
         </Visible>
       </div>
-      <div className='shrink-0'>{children}</div>
-    </div>
+    </PageHeadingRow>
   )
 }

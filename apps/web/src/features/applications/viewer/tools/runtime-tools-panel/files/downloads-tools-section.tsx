@@ -193,7 +193,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
         onOpenChange={setDetailsOpen}
       >
         <SheetContent
-          className='w-[min(28rem,100vw)] overflow-y-auto bg-surface-dialog sm:max-w-none'
+          className='w-[min(28rem,100vw)] overflow-y-auto sm:max-w-none'
           finalFocus={fileTriggerRef}
         >
           <SheetHeader className='sr-only'>

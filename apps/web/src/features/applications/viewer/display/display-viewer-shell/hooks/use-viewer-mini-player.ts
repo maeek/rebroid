@@ -12,15 +12,12 @@ export const useViewerMiniPlayer = (enabled: boolean) => {
     if (!enabled || !anchor || typeof IntersectionObserver === 'undefined') return
 
     const desktop = window.matchMedia('(min-width: 1024px)')
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.rootBounds) return
-        const aboveHeader = entry.boundingClientRect.bottom <= entry.rootBounds.top
-        if (entry.isIntersecting) dismissed.current = false
-        setFloating(desktop.matches && aboveHeader && !dismissed.current)
-      },
-      { rootMargin: '-64px 0px 0px' }
-    )
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.rootBounds) return
+      const aboveViewport = entry.boundingClientRect.bottom <= entry.rootBounds.top
+      if (entry.isIntersecting) dismissed.current = false
+      setFloating(desktop.matches && aboveViewport && !dismissed.current)
+    })
     const observe = () => {
       observer.disconnect()
       if (desktop.matches) observer.observe(anchor)

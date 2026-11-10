@@ -36,13 +36,13 @@ export const AppViewerStreamingSettings = () => {
             }
             aria-label='Streaming settings'
           >
-            <IconAdjustments className='size-3.5' />
+            <IconAdjustments className='size-4' />
           </SheetTrigger>
         </TooltipTrigger>
         <TooltipContent>Streaming settings</TooltipContent>
       </Tooltip>
-      <SheetContent className='w-[min(32rem,100vw)] overflow-y-auto bg-surface-dialog sm:max-w-none'>
-        <SheetHeader className='mb-6 pr-6'>
+      <SheetContent className='w-[min(32rem,100vw)] overflow-y-auto max-sm:p-4 sm:max-w-none'>
+        <SheetHeader className='mb-5 pr-12 text-left'>
           <SheetTitle>Streaming settings</SheetTitle>
           <SheetDescription>Viewer quality, transport, and audio. Changes apply immediately.</SheetDescription>
         </SheetHeader>

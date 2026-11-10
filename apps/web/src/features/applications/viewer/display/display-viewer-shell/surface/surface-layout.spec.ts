@@ -36,4 +36,14 @@ describe('display viewer surface layout', () => {
       })
     ).toEqual({ width: 313, height: 176 })
   })
+
+  it('reserves space for the wider touch control rail', () => {
+    expect(
+      getDisplayViewportSize({
+        ratio: 16 / 9,
+        workspaceSize: { width: 384, height: 600, railWidth: 44 },
+        controlsEnabled: true
+      })
+    ).toEqual({ width: 316, height: 178 })
+  })
 })
