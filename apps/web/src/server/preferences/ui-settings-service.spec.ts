@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { recordAuditEvent } from '@/server/audit/events'
 import { requireAdmin } from '@/server/auth/authorization'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
@@ -7,13 +8,13 @@ import {
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse
 } from '@/shared/model/settings/orchestrator-ui-settings'
-import { saveRuntimeUiSettings } from './ui-settings-service'
+import { resetRuntimeUiSettings, saveRuntimeUiSettings } from './ui-settings-service'
 
 vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn(), getCurrentUser: vi.fn() }))
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/server/orchestrator/config', () => ({ getOrchestratorBaseUrl: () => 'http://orchestrator:4100' }))
 vi.mock('@/server/orchestrator/settings/client', () => ({
-  orchestratorSettingsClient: { getSettings: vi.fn(), updateSettings: vi.fn() }
+  orchestratorSettingsClient: { getSettings: vi.fn(), updateSettings: vi.fn(), resetSettings: vi.fn() }
 }))
 vi.mock('@/server/web-settings/store', () => ({ getWebSettings: vi.fn(), saveWebSettings: vi.fn() }))
 
@@ -23,6 +24,9 @@ beforeEach(() => {
   >)
   vi.mocked(getWebSettings).mockResolvedValue(defaultWebSettingsResponse)
   vi.mocked(orchestratorSettingsClient.getSettings).mockResolvedValue(defaultRuntimeSettingsResponse)
+  vi.mocked(orchestratorSettingsClient.updateSettings).mockResolvedValue(defaultRuntimeSettingsResponse)
+  vi.mocked(orchestratorSettingsClient.resetSettings).mockResolvedValue(defaultRuntimeSettingsResponse)
+  vi.mocked(saveWebSettings).mockResolvedValue({ ...defaultWebSettingsResponse, removeDataOnDelete: false })
 })
 
 describe('Runtime settings patch scope', () => {
@@ -53,6 +57,72 @@ describe('Runtime settings patch scope', () => {
     await expect(saveRuntimeUiSettings({ maxApkUploadSizeMb: 256, removeDataOnDelete: false })).rejects.toThrow(
       'offline'
     )
+    expect(saveWebSettings).not.toHaveBeenCalled()
+  })
+
+  it('returns authoritative settings from both writes without reading them back', async () => {
+    vi.mocked(orchestratorSettingsClient.updateSettings).mockResolvedValueOnce({
+      ...defaultRuntimeSettingsResponse,
+      maxApkUploadSizeMb: 256
+    })
+    vi.mocked(orchestratorSettingsClient.getSettings).mockRejectedValue(new Error('Runtime settings unavailable'))
+    vi.mocked(getWebSettings)
+      .mockResolvedValueOnce(defaultWebSettingsResponse)
+      .mockRejectedValue(new Error('Web settings unavailable'))
+
+    await expect(saveRuntimeUiSettings({ maxApkUploadSizeMb: 256, removeDataOnDelete: false })).resolves.toMatchObject({
+      maxApkUploadSizeMb: 256,
+      removeDataOnDelete: false
+    })
+    expect(orchestratorSettingsClient.getSettings).not.toHaveBeenCalled()
+    expect(getWebSettings).toHaveBeenCalledOnce()
+  })
+
+  it('reports which settings were saved when the deletion policy write fails', async () => {
+    vi.mocked(saveWebSettings).mockRejectedValueOnce(new Error('Private database detail'))
+
+    await expect(saveRuntimeUiSettings({ maxApkUploadSizeMb: 256, removeDataOnDelete: false })).rejects.toMatchObject({
+      message: 'Runtime settings were saved. The app data deletion policy could not be saved. Try saving again.',
+      code: 'internal',
+      status: 500
+    })
+    expect(orchestratorSettingsClient.updateSettings).toHaveBeenCalledExactlyOnceWith({ maxApkUploadSizeMb: 256 })
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'settings.runtime.update',
+        outcome: 'failure',
+        details: { runtimeSettingsSaved: true, deletionPolicySaved: false }
+      })
+    )
+  })
+
+  it('does not reset runtime settings if the unchanged web settings cannot be read', async () => {
+    vi.mocked(getWebSettings).mockRejectedValueOnce(new Error('Web settings unavailable'))
+
+    await expect(resetRuntimeUiSettings()).rejects.toThrow('Web settings unavailable')
+    expect(orchestratorSettingsClient.resetSettings).not.toHaveBeenCalled()
+  })
+
+  it('returns config-backed restored values and the unchanged deletion policy', async () => {
+    vi.mocked(getWebSettings).mockResolvedValueOnce({ ...defaultWebSettingsResponse, removeDataOnDelete: false })
+    vi.mocked(orchestratorSettingsClient.resetSettings).mockResolvedValueOnce({
+      ...defaultRuntimeSettingsResponse,
+      defaultContainerImage: 'local/runtime:latest',
+      maxApkUploadSizeMb: 128,
+      services: {
+        ...defaultRuntimeSettingsResponse.services,
+        firewall: { endpoint: null, timeoutMs: 5000 }
+      }
+    })
+    vi.mocked(orchestratorSettingsClient.getSettings).mockRejectedValue(new Error('Runtime settings unavailable'))
+
+    await expect(resetRuntimeUiSettings()).resolves.toMatchObject({
+      defaultContainerImage: 'local/runtime:latest',
+      maxApkUploadSizeMb: 128,
+      removeDataOnDelete: false,
+      services: { firewall: { endpoint: null } }
+    })
+    expect(orchestratorSettingsClient.getSettings).not.toHaveBeenCalled()
     expect(saveWebSettings).not.toHaveBeenCalled()
   })
 

@@ -8,6 +8,7 @@ import { Notice } from '@/components/ui/notice'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
@@ -67,7 +68,7 @@ export const PlatformRuntimeForm = ({
     } catch (error) {
       toast({
         title: 'Could not save settings',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -87,7 +88,7 @@ export const PlatformRuntimeForm = ({
     } catch (error) {
       toast({
         title: 'Could not restore defaults',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {

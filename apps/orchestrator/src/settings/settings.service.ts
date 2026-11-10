@@ -59,15 +59,15 @@ export class SettingsService {
     return this.store.toPublicSettings(updated);
   }
 
-  /**
-   * Restores settings to config-backed defaults and overwrites the stored file.
-   */
   async resetSettings() {
     const defaults = this.store.defaults();
     const updated = await this.store.updateSettings((current) => ({
-      ...defaults,
-      featureFlags: current.featureFlags,
-      dockerOperationLimits: current.dockerOperationLimits,
+      ...current,
+      defaultContainerImage: defaults.defaultContainerImage,
+      dockerImageRegistry: defaults.dockerImageRegistry,
+      defaultInactivityTimeoutSeconds: defaults.defaultInactivityTimeoutSeconds,
+      maxApkUploadSizeMb: defaults.maxApkUploadSizeMb,
+      services: defaults.services,
     }));
     return this.store.toPublicSettings(updated);
   }

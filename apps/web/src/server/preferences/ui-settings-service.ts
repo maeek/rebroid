@@ -1,6 +1,7 @@
 import 'server-only'
 import { recordAuditEvent } from '@/server/audit/events'
 import { requireAdmin, getCurrentUser } from '@/server/auth/authorization'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
 import { getWebSettings, resetWebSettings, saveWebSettings } from '@/server/web-settings/store'
@@ -9,25 +10,28 @@ import {
   defaultWebSettingsResponse,
   normalizeOrchestratorUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { OrchestratorSettingsResponse, WebSettingsResponse } from '@/shared/contracts/ui-settings'
 import type {
   AiUiSettings,
   GeneralUiSettings,
-  OrchestratorUiSettings,
   RuntimeUiSettingsPatch
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const adminLabel = (admin: Awaited<ReturnType<typeof requireAdmin>>) => admin.name || admin.username || admin.id
 
-const combinedSettings = async (): Promise<OrchestratorUiSettings> => {
-  const [web, orchestrator] = await Promise.all([
-    getWebSettings().catch(() => defaultWebSettingsResponse),
-    orchestratorSettingsClient.getSettings().catch(() => defaultRuntimeSettingsResponse)
-  ])
-  return normalizeOrchestratorUiSettings(web, orchestrator, getOrchestratorBaseUrl())
-}
+const readOptionalRuntimeSettings = () =>
+  orchestratorSettingsClient.getSettings().catch(() => defaultRuntimeSettingsResponse)
+
+const combineSettings = (web: WebSettingsResponse, orchestrator: OrchestratorSettingsResponse) =>
+  normalizeOrchestratorUiSettings(web, orchestrator, getOrchestratorBaseUrl())
 
 export const readUiSettings = async () => {
-  const [user, settings] = await Promise.all([getCurrentUser(), combinedSettings()])
+  const [user, web, orchestrator] = await Promise.all([
+    getCurrentUser(),
+    getWebSettings().catch(() => defaultWebSettingsResponse),
+    readOptionalRuntimeSettings()
+  ])
+  const settings = combineSettings(web, orchestrator)
   if (user.role === 'admin') return settings
 
   return {
@@ -43,50 +47,69 @@ export const readUiSettings = async () => {
   }
 }
 
-const recordUpdate = (admin: Awaited<ReturnType<typeof requireAdmin>>, scope: string) =>
+const recordUpdate = (
+  admin: Awaited<ReturnType<typeof requireAdmin>>,
+  scope: string,
+  failureDetails?: Record<string, unknown>
+) =>
   recordAuditEvent({
     actorUserId: admin.id,
     actorLabel: adminLabel(admin),
     category: 'settings',
     action: `settings.${scope}.update`,
-    resourceType: 'ui_settings'
+    resourceType: 'ui_settings',
+    ...(failureDetails ? { outcome: 'failure', details: failureDetails } : {})
   })
 
 export const saveGeneralUiSettings = async (settings: GeneralUiSettings) => {
   const admin = await requireAdmin()
-  await saveWebSettings(settings)
+  const web = await saveWebSettings(settings)
   recordUpdate(admin, 'general')
-  return combinedSettings()
+  return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const resetGeneralUiSettings = async () => {
   const admin = await requireAdmin()
-  await resetWebSettings()
+  const web = await resetWebSettings()
   recordUpdate(admin, 'general_reset')
-  return combinedSettings()
+  return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const saveAiUiSettings = async (settings: AiUiSettings) => {
   const admin = await requireAdmin()
-  await saveWebSettings(settings)
+  const web = await saveWebSettings(settings)
   recordUpdate(admin, 'ai')
-  return combinedSettings()
+  return combineSettings(web, await readOptionalRuntimeSettings())
 }
 
 export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) => {
   const admin = await requireAdmin()
   const { removeDataOnDelete, ...runtimeSettings } = settings
-  if (Object.keys(runtimeSettings).length > 0) {
-    await orchestratorSettingsClient.updateSettings(runtimeSettings)
+  const changesRuntime = Object.keys(runtimeSettings).length > 0
+  let web = await getWebSettings()
+  const orchestrator = changesRuntime
+    ? await orchestratorSettingsClient.updateSettings(runtimeSettings)
+    : await orchestratorSettingsClient.getSettings()
+  if (removeDataOnDelete !== undefined) {
+    try {
+      web = await saveWebSettings({ removeDataOnDelete })
+    } catch (error) {
+      if (!changesRuntime) throw error
+      recordUpdate(admin, 'runtime', { runtimeSettingsSaved: true, deletionPolicySaved: false })
+      throw new PublicActionError(
+        'Runtime settings were saved. The app data deletion policy could not be saved. Try saving again.',
+        { code: 'internal', status: 500 }
+      )
+    }
   }
-  if (removeDataOnDelete !== undefined) await saveWebSettings({ removeDataOnDelete })
   recordUpdate(admin, 'runtime')
-  return combinedSettings()
+  return combineSettings(web, orchestrator)
 }
 
 export const resetRuntimeUiSettings = async () => {
   const admin = await requireAdmin()
-  await orchestratorSettingsClient.resetSettings()
+  const web = await getWebSettings()
+  const orchestrator = await orchestratorSettingsClient.resetSettings()
   recordUpdate(admin, 'runtime_reset')
-  return combinedSettings()
+  return combineSettings(web, orchestrator)
 }

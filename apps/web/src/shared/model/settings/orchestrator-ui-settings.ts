@@ -144,7 +144,8 @@ const normalizeServices = (value: Partial<OrchestratorSettingsResponse['services
       language: ocr?.language?.trim() || defaults.ocr.language
     },
     firewall: {
-      endpoint: normalizeEndpoint(firewall?.endpoint) ?? defaults.firewall.endpoint,
+      endpoint:
+        firewall?.endpoint === null ? null : (normalizeEndpoint(firewall?.endpoint) ?? defaults.firewall.endpoint),
       timeoutMs: Number(firewall?.timeoutMs) || defaults.firewall.timeoutMs
     }
   }
