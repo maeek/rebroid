@@ -26,6 +26,7 @@ const MOTION_EVENT_ACTION_DOWN = 0;
 const MOTION_EVENT_ACTION_UP = 1;
 const MOTION_EVENT_ACTION_MOVE = 2;
 const POINTER_ID_GENERIC_FINGER = -2n;
+export const SCRCPY_TOUCH_EVENT_BYTES = 32;
 
 const ANDROID_META_SHIFT_ON = 0x1;
 const ANDROID_META_ALT_ON = 0x2;
@@ -308,7 +309,7 @@ export class ScrcpyControlCodec {
     videoHeight: number,
     pressure: number,
   ) {
-    const payload = Buffer.alloc(32);
+    const payload = Buffer.alloc(SCRCPY_TOUCH_EVENT_BYTES);
     payload.writeUInt8(CONTROL_MESSAGE.INJECT_TOUCH_EVENT, 0);
     payload.writeUInt8(action, 1);
     payload.writeBigInt64BE(POINTER_ID_GENERIC_FINGER, 2);

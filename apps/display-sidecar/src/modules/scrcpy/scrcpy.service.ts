@@ -10,9 +10,16 @@ import type { AdbChildProcess } from "../adb/adb.service";
 import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
-import { ScrcpyControlCodec } from "./scrcpy-control-codec";
+import {
+  SCRCPY_TOUCH_EVENT_BYTES,
+  ScrcpyControlCodec,
+} from "./scrcpy-control-codec";
 import { ScrcpyControlDispatchError } from "./scrcpy-control-dispatch-error";
-import { ScrcpyControlQueue } from "./scrcpy-control-queue";
+import {
+  confirmScrcpyControlWrite,
+  SCRCPY_CONTROL_DISPATCH_TIMEOUT_MS,
+  ScrcpyControlQueue,
+} from "./scrcpy-control-queue";
 import {
   compatibilityStateChanged,
   compatibilityProbeServices,
@@ -78,6 +85,7 @@ interface ActiveControlSocket {
   socket: ScrcpySocket;
   udid: string;
   stopAttempt: () => Promise<void>;
+  resetDispatchPending: boolean;
 }
 
 interface ScrcpyServerLaunch {
@@ -343,7 +351,11 @@ export class ScrcpyService implements OnModuleDestroy {
     if (!source || !source.stream.isOpen()) {
       return false;
     }
-    if (source.resetWatchdog.pending) return true;
+    if (
+      source.resetWatchdog.pending ||
+      this.controlSockets.get(sessionId)?.resetDispatchPending
+    )
+      return true;
     source.resetPending = true;
     source.resetReason = reason.slice(0, 120);
     this.scheduleVideoReset(sessionId, source);
@@ -687,6 +699,7 @@ export class ScrcpyService implements OnModuleDestroy {
           socket: controlSocket,
           udid: options.udid,
           stopAttempt: cleanup,
+          resetDispatchPending: false,
         });
         this.flushQueuedControlMessages(options.sessionId);
         if (source) {
@@ -913,6 +926,7 @@ export class ScrcpyService implements OnModuleDestroy {
             return;
           }
           this.controlSockets.delete(options.sessionId);
+          source?.resetWatchdog.clear();
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
@@ -924,6 +938,7 @@ export class ScrcpyService implements OnModuleDestroy {
             return;
           }
           this.controlSockets.delete(options.sessionId);
+          source?.resetWatchdog.clear();
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
@@ -991,6 +1006,8 @@ export class ScrcpyService implements OnModuleDestroy {
           sessionId,
           payloads,
           event.action !== "pointer",
+          event.action === "pointer" &&
+            (event.eventType === "up" || event.eventType === "cancel"),
         )
       : false;
   }
@@ -1805,10 +1822,16 @@ export class ScrcpyService implements OnModuleDestroy {
     sessionId: string,
     payloads: Buffer[],
     queueOnReconnect = true,
+    isPointerRelease = false,
   ) {
     const active = this.controlSockets.get(sessionId);
     if (active && !active.socket.destroyed && active.socket.writable) {
-      return this.writeControlPayloads(active, payloads);
+      return this.writeControlPayloads(
+        active,
+        payloads,
+        undefined,
+        isPointerRelease,
+      );
     }
     if (queueOnReconnect && this.shouldWaitForStreamControl(sessionId)) {
       return this.queuedControlMessages.enqueue(sessionId, payloads);
@@ -1816,24 +1839,62 @@ export class ScrcpyService implements OnModuleDestroy {
     return false;
   }
 
-  private writeControlPayloads(active: ActiveControlSocket, payloads: Buffer[]) {
-    return Promise.all(
-      payloads.map((payload) => new Promise<void>((resolve, reject) => {
-        active.socket.write(payload, (error) => {
-          if (error) reject(error);
-          else resolve();
-        });
-      })),
-    ).then(
-      (): true => true,
-      () => {
-        // A command with multiple messages can have partially reached scrcpy.
-        throw new ScrcpyControlDispatchError(
-          "control_outcome_unknown",
-          "Live control disconnected during dispatch. The outcome is unknown.",
+  private writeControlPayloads(
+    { socket }: ActiveControlSocket,
+    payloads: Buffer[],
+    expiresAt = Date.now() + SCRCPY_CONTROL_DISPATCH_TIMEOUT_MS,
+    isPointerRelease = false,
+  ): Promise<true> {
+    // Keep a multi-message command together at admission so expiry cannot
+    // drop the up phase of a tap after its down phase was submitted.
+    const payload =
+      payloads.length === 1 ? payloads[0]! : Buffer.concat(payloads);
+    return new Promise<true>((resolve, reject) => {
+      const complete = (error?: Error | null) => {
+        if (!error) {
+          resolve(true);
+        } else {
+          reject(
+            error instanceof ScrcpyControlDispatchError
+              ? error
+              : new ScrcpyControlDispatchError(
+                  "control_outcome_unknown",
+                  "Live control disconnected during dispatch. The outcome is unknown.",
+                ),
+          );
+        }
+      };
+      if (socket.writeControlBefore) {
+        socket.writeControlBefore(
+          payload,
+          expiresAt,
+          !isPointerRelease,
+          complete,
         );
-      },
-    );
+      } else if (
+        expiresAt <= Date.now() ||
+        socket.destroyed ||
+        !socket.writable ||
+        (socket instanceof Socket &&
+          socket.writableNeedDrain &&
+          (!isPointerRelease ||
+            socket.writableLength >=
+              socket.writableHighWaterMark + SCRCPY_TOUCH_EVENT_BYTES))
+      ) {
+        reject(
+          new ScrcpyControlDispatchError(
+            "control_not_dispatched",
+            "Live control socket is unavailable or backed up.",
+          ),
+        );
+      } else {
+        confirmScrcpyControlWrite(
+          expiresAt,
+          (written) => socket.write(payload, written),
+          complete,
+        );
+      }
+    });
   }
 
   private forwardDeviceControlMessages(
@@ -1891,8 +1952,10 @@ export class ScrcpyService implements OnModuleDestroy {
       return;
     }
 
-    const submitted = this.queuedControlMessages.flush(sessionId, (payloads) =>
-      this.writeControlPayloads(active, payloads),
+    const submitted = this.queuedControlMessages.flush(
+      sessionId,
+      (payloads, expiresAt) =>
+        this.writeControlPayloads(active, payloads, expiresAt),
     );
     if (submitted > 0) {
       this.logger.debug(
@@ -1976,7 +2039,12 @@ export class ScrcpyService implements OnModuleDestroy {
       return;
     }
     const active = this.controlSockets.get(sessionId);
-    if (!active || active.socket.destroyed || !active.socket.writable) {
+    if (
+      !active ||
+      active.resetDispatchPending ||
+      active.socket.destroyed ||
+      !active.socket.writable
+    ) {
       return;
     }
     const waitMs = Math.max(
@@ -1992,21 +2060,41 @@ export class ScrcpyService implements OnModuleDestroy {
       return;
     }
 
-    try {
-      active.socket.write(Buffer.from([SCRCPY_CONTROL_RESET_VIDEO]));
-    } catch (error) {
-      this.logger.debug(
-        `[scrcpy:${active.udid}:${sessionId}] video reset write failed: ${this.errorMessage(error)}`,
-      );
-      return;
-    }
-
     source.resetPending = false;
+    active.resetDispatchPending = true;
+    const reason = source.resetReason;
+    void this.writeControlPayloads(active, [
+      Buffer.from([SCRCPY_CONTROL_RESET_VIDEO]),
+    ]).then(
+      () => {
+        active.resetDispatchPending = false;
+        if (
+          this.sources.get(sessionId) === source &&
+          this.controlSockets.get(sessionId) === active &&
+          !active.socket.destroyed
+        ) {
+          this.watchVideoReset(sessionId, source, active, reason);
+        }
+      },
+      (error) => {
+        active.resetDispatchPending = false;
+        this.logger.debug(
+          `[scrcpy:${active.udid}:${sessionId}] video reset write failed: ${this.errorMessage(error)}`,
+        );
+      },
+    );
+  }
+
+  private watchVideoReset(
+    sessionId: string,
+    source: ActiveScrcpySource,
+    active: ActiveControlSocket,
+    reason: string,
+  ): void {
     source.lastResetAt = Date.now();
     source.resetCount += 1;
     source.resetGeneration += 1;
     const generation = source.resetGeneration;
-    const reason = source.resetReason;
     this.logger.debug(
       `[scrcpy:${active.udid}:${sessionId}] requested encoder reset generation=${generation} reason=${reason}`,
     );
@@ -2017,7 +2105,11 @@ export class ScrcpyService implements OnModuleDestroy {
       count: source.resetCount,
     });
     source.resetWatchdog.start(() => {
-      if (this.sources.get(sessionId) !== source) {
+      if (
+        this.sources.get(sessionId) !== source ||
+        this.controlSockets.get(sessionId) !== active ||
+        active.socket.destroyed
+      ) {
         return;
       }
       this.logger.warn(

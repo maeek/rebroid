@@ -115,6 +115,12 @@ export interface ScrcpySocket {
     payload: Buffer | Uint8Array | string,
     callback?: (error?: Error | null) => void,
   ) => boolean;
+  writeControlBefore?: (
+    payload: Buffer,
+    expiresAt: number,
+    reserveReleaseSlot: boolean,
+    callback: (error?: Error | null) => void,
+  ) => boolean;
 }
 
 export interface ForwardedVideoSocket {

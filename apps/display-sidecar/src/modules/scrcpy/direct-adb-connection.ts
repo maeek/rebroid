@@ -1,6 +1,22 @@
 import { EventEmitter } from "node:events";
 import { Socket } from "node:net";
 import { ScrcpySocket } from "./scrcpy.types";
+import { SCRCPY_TOUCH_EVENT_BYTES } from "./scrcpy-control-codec";
+import { ScrcpyControlDispatchError } from "./scrcpy-control-dispatch-error";
+import {
+  confirmScrcpyControlWrite,
+  SCRCPY_CONTROL_DISPATCH_TIMEOUT_MS,
+} from "./scrcpy-control-queue";
+
+const MAX_PENDING_CONTROL_WRITES = 128;
+const MAX_PENDING_CONTROL_BYTES = 512 * 1024;
+
+interface PendingWrite {
+  payload: Buffer;
+  expiresAt: number;
+  callback?: (error?: Error | null) => void;
+  timer: NodeJS.Timeout;
+}
 
 const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
 
@@ -287,10 +303,8 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
   private closed = false;
   private readonly readQueue: DirectAdbReadMessage[] = [];
   private readonly pendingReadAcks: number[] = [];
-  private readonly writeQueue: Array<{
-    payload: Buffer;
-    callback?: (error?: Error | null) => void;
-  }> = [];
+  private readonly writeQueue = new Set<PendingWrite>();
+  private queuedWriteBytes = 0;
   private openResolve: ((socket: DirectAdbSocket) => void) | null = null;
   private openReject: ((error: Error) => void) | null = null;
 
@@ -361,7 +375,7 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
   handleRemoteClose() {
     if (this.opened || this.label !== "video") {
       this.debug(
-        `direct ${this.label} socket closed by device; opened=${this.opened}; localId=${this.localId}; remoteId=${this.remoteId}; queuedReads=${this.readQueue.length}; pendingReadAcks=${this.pendingReadAcks.length}; queuedWrites=${this.writeQueue.length}; pendingWrite=${this.pendingWriteOk}`,
+        `direct ${this.label} socket closed by device; opened=${this.opened}; localId=${this.localId}; remoteId=${this.remoteId}; queuedReads=${this.readQueue.length}; pendingReadAcks=${this.pendingReadAcks.length}; queuedWrites=${this.writeQueue.size}; pendingWrite=${this.pendingWriteOk}`,
       );
     }
     this.failOpen(
@@ -398,14 +412,62 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
     payload: Buffer | Uint8Array | string,
     callback?: (error?: Error | null) => void,
   ) {
-    if (this.destroyed) {
-      callback?.(new Error("Direct ADB socket closed before writing"));
-      return false;
-    }
     const buffer =
       typeof payload === "string" ? Buffer.from(payload) : Buffer.from(payload);
-    this.writeQueue.push({ payload: buffer, callback });
-    this.flushWrites();
+    return this.writeControlBefore(
+      buffer,
+      Date.now() + SCRCPY_CONTROL_DISPATCH_TIMEOUT_MS,
+      true,
+      callback,
+    );
+  }
+
+  writeControlBefore(
+    payload: Buffer,
+    expiresAt: number,
+    reserveReleaseSlot: boolean,
+    callback?: (error?: Error | null) => void,
+  ): boolean {
+    if (!this.writable) {
+      callback?.(this.notDispatched("Direct ADB socket closed before writing"));
+      return false;
+    }
+    const remaining = expiresAt - Date.now();
+    if (remaining <= 0) {
+      callback?.(
+        this.notDispatched("Direct ADB control expired before writing"),
+      );
+      return false;
+    }
+    if (!this.pendingWriteOk && this.writeQueue.size === 0) {
+      this.sendWrite(payload, expiresAt, callback);
+      return true;
+    }
+    const maxWrites = MAX_PENDING_CONTROL_WRITES - Number(reserveReleaseSlot);
+    const maxBytes =
+      MAX_PENDING_CONTROL_BYTES -
+      (reserveReleaseSlot ? SCRCPY_TOUCH_EVENT_BYTES : 0);
+    if (
+      this.writeQueue.size >= maxWrites ||
+      this.queuedWriteBytes + payload.length > maxBytes
+    ) {
+      callback?.(this.notDispatched("Direct ADB control queue is full"));
+      return false;
+    }
+    const entry: PendingWrite = {
+      payload,
+      expiresAt,
+      callback,
+      timer: setTimeout(() => {
+        this.removeWrite(entry);
+        callback?.(
+          this.notDispatched("Direct ADB control expired before writing"),
+        );
+      }, remaining),
+    };
+    entry.timer.unref();
+    this.writeQueue.add(entry);
+    this.queuedWriteBytes += payload.length;
     return true;
   }
 
@@ -434,24 +496,47 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
   }
 
   private flushWrites() {
-    if (
-      !this.opened ||
-      this.pendingWriteOk ||
-      !this.writeQueue.length ||
-      this.destroyed
-    ) {
+    if (!this.opened || this.pendingWriteOk || this.destroyed) {
       return;
     }
 
-    const { payload, callback } = this.writeQueue.shift()!;
+    for (const entry of this.writeQueue) {
+      this.removeWrite(entry);
+      if (entry.expiresAt <= Date.now()) {
+        entry.callback?.(
+          this.notDispatched("Direct ADB control expired before writing"),
+        );
+        continue;
+      }
+      this.sendWrite(entry.payload, entry.expiresAt, entry.callback);
+      return;
+    }
+  }
+
+  private sendWrite(
+    payload: Buffer,
+    expiresAt: number,
+    callback?: (error?: Error | null) => void,
+  ) {
     this.pendingWriteOk = true;
-    this.connection.sendPacket(
-      ADB_COMMAND.WRTE,
-      this.localId,
-      this.remoteId,
-      payload,
-      callback,
+    confirmScrcpyControlWrite(
+      expiresAt,
+      (complete) =>
+        this.connection.sendPacket(
+          ADB_COMMAND.WRTE,
+          this.localId,
+          this.remoteId,
+          payload,
+          complete,
+        ),
+      (error) => callback?.(error),
     );
+  }
+
+  private removeWrite(entry: PendingWrite): void {
+    clearTimeout(entry.timer);
+    this.writeQueue.delete(entry);
+    this.queuedWriteBytes -= entry.payload.length;
   }
 
   private flushReadable() {
@@ -495,8 +580,15 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
   }
 
   private failQueuedWrites(): void {
-    const error = new Error("Direct ADB socket closed before writing");
-    for (const { callback } of this.writeQueue.splice(0)) callback?.(error);
+    const error = this.notDispatched("Direct ADB socket closed before writing");
+    for (const entry of this.writeQueue) {
+      this.removeWrite(entry);
+      entry.callback?.(error);
+    }
+  }
+
+  private notDispatched(message: string) {
+    return new ScrcpyControlDispatchError("control_not_dispatched", message);
   }
 
   private close(error?: Error) {
