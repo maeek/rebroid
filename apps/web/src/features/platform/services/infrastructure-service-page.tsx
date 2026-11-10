@@ -14,11 +14,13 @@ import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 export const InfrastructureServicePage = ({
   serviceId,
   initialHealth,
-  apiUrl
+  apiUrl,
+  requestId
 }: {
   serviceId: 'orchestrator' | 'docker'
   initialHealth: OrchestratorHealth | null
   apiUrl: string
+  requestId?: string
 }) => {
   const router = useRouter()
   const [refreshKey, setRefreshKey] = useState(0)
@@ -51,7 +53,9 @@ export const InfrastructureServicePage = ({
               ? 'The orchestrator could not be reached, so Docker health, operation limits, and diagnostics are unavailable. Refresh to check again.'
               : state.description
           }
-        />
+        >
+          {requestId ? <p className='text-xs text-foreground-muted'>Reference: {requestId}</p> : null}
+        </Notice>
       }
       limits={isDocker && canReadDiagnostics ? <DockerOperationLimitsSection onSaved={refresh} /> : undefined}
       diagnostics={isDocker && canReadDiagnostics ? <DockerMetricsDashboard refreshKey={refreshKey} /> : undefined}

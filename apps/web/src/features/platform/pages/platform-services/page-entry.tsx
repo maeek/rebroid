@@ -14,6 +14,7 @@ const PlatformServicesContent = async ({ searchParams }: { searchParams?: Promis
       <InfrastructureServicePage
         serviceId={data.requestedServiceId}
         initialHealth={data.initialHealth}
+        requestId={data.requestId}
         apiUrl={data.initialSettings.orchestratorApiUrl}
       />
     )

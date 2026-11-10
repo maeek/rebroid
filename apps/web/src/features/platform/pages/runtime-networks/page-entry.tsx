@@ -1,15 +1,18 @@
 import { Suspense } from 'react'
+import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { RuntimeNetworksPageClient, RuntimeNetworksPageLoading } from '../../components/runtime-networks-page-client'
 import { loadRuntimeNetworksPageData, type NetworksSearchParams } from './page-data.server'
 
 const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Promise<NetworksSearchParams> }) => {
-  const { gridQuery, networksPage, orchestratorError } = await loadRuntimeNetworksPageData((await searchParams) ?? {})
+  const query = (await searchParams) ?? {}
+  const result = await readOrchestratorPage(() => loadRuntimeNetworksPageData(query))
 
-  if (orchestratorError) {
+  if (!result.ok) {
     return (
       <PlatformRouteUnavailable
         title='Networks'
+        requestId={result.failure.requestId}
         description='Docker networks visible to the platform, including application isolation networks.'
         section={{ label: 'Runtime' }}
       />
@@ -18,8 +21,8 @@ const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Pro
 
   return (
     <RuntimeNetworksPageClient
-      networksPage={networksPage}
-      gridQuery={gridQuery}
+      networksPage={result.data.networksPage}
+      gridQuery={result.data.gridQuery}
     />
   )
 }

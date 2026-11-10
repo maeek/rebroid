@@ -1,3 +1,4 @@
+import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeContainerDetail } from '../../details/runtime-container-detail/runtime-container-detail'
@@ -14,8 +15,9 @@ export async function RuntimeContainerDetailPageEntry({
   const [{ id }, search] = await Promise.all([params, searchParams])
   const view = search.view === 'logs' ? 'logs' : 'overview'
 
-  try {
-    const { details, logs } = await loadRuntimeContainerDetailPageData(id, view)
+  const result = await readOrchestratorPage(() => loadRuntimeContainerDetailPageData(id, view), { allowMissing: true })
+  if (result.ok) {
+    const { details, logs } = result.data
 
     return (
       <StandardPage className='gap-2'>
@@ -26,24 +28,24 @@ export async function RuntimeContainerDetailPageEntry({
         />
       </StandardPage>
     )
-  } catch (error) {
-    return (
-      <StandardPage className='gap-2'>
-        <PageHeader
-          section={{ label: 'Runtime' }}
-          trail={[{ label: 'Containers', href: '/runtime/containers' }]}
-          title='Container'
-          description='Container details could not be loaded.'
-        />
-        <PageContent>
-          <RuntimeDetailUnavailable
-            error={error}
-            resource='Container'
-            href='/runtime/containers'
-            backLabel='Back to containers'
-          />
-        </PageContent>
-      </StandardPage>
-    )
   }
+
+  return (
+    <StandardPage className='gap-2'>
+      <PageHeader
+        section={{ label: 'Runtime' }}
+        trail={[{ label: 'Containers', href: '/runtime/containers' }]}
+        title='Container'
+        description='Container details could not be loaded.'
+      />
+      <PageContent>
+        <RuntimeDetailUnavailable
+          failure={result.failure}
+          resource='Container'
+          href='/runtime/containers'
+          backLabel='Back to containers'
+        />
+      </PageContent>
+    </StandardPage>
+  )
 }

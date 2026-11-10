@@ -26,11 +26,13 @@ import type {
 export const PlatformServicesPage = ({
   initialHealth,
   initialSettings,
-  requestedServiceId
+  requestedServiceId,
+  requestId
 }: {
   initialHealth: OrchestratorHealth | null
   initialSettings: OrchestratorUiSettings
   requestedServiceId?: string | null
+  requestId?: string
 }) => {
   const router = useRouter()
   const [refreshing, startRefresh] = useTransition()
@@ -196,6 +198,7 @@ export const PlatformServicesPage = ({
       <ServicesPageLayout>
         <PageLoadFailure
           title='Services unavailable'
+          requestId={requestId}
           description='Service connections and health could not be loaded from the orchestrator.'
           backAction={{ label: 'Go to overview', href: '/platform' }}
         />
@@ -227,7 +230,9 @@ export const PlatformServicesPage = ({
           tone='warning'
           title='Services could not be refreshed'
           description='Your connection draft is kept. Refresh to reconnect before making changes.'
-        />
+        >
+          {requestId ? <p className='text-xs text-foreground-muted'>Reference: {requestId}</p> : null}
+        </Notice>
       ) : null}
       <ServicesGrid
         disabled={pendingAction !== null || unavailable}

@@ -22,9 +22,12 @@ describe('Services page data availability', () => {
 
   it('does not expose editable defaults if settings fail after a healthy probe', async () => {
     vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue(health(true))
-    vi.mocked(getRequiredServerOrchestratorUiSettings).mockRejectedValue(new OrchestratorRequestError('offline', 503))
+    vi.mocked(getRequiredServerOrchestratorUiSettings).mockRejectedValue(
+      new OrchestratorRequestError('offline', 503, 'settings-ref')
+    )
     const result = await loadPlatformServicesPageData()
     expect(result.initialHealth).toBeNull()
+    expect(result.requestId).toBe('settings-ref')
   })
 
   it('keeps infrastructure diagnostics independent from connection settings', async () => {

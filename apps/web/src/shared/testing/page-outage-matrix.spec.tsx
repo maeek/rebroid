@@ -5,12 +5,16 @@ import { CreateAppPageEntry } from '@/features/applications/pages/create-app/pag
 import { AutomationTracesPageEntry } from '@/features/automations/pages/automation-traces/page-entry'
 import PlatformFeaturesPageEntry from '@/features/platform/pages/platform-features/page-entry'
 import { PlatformOverviewPageEntry } from '@/features/platform/pages/platform-overview/page-entry'
+import { loadRuntimeContainersPageData } from '@/features/platform/pages/runtime-containers/page-data.server'
+import { RuntimeContainersPageEntry } from '@/features/platform/pages/runtime-containers/page-entry'
 import { CustomRuntimeImageBuilderPageEntry } from '@/features/platform/pages/runtime-image-builder/custom-page-entry'
 import { RuntimeImageBuilderPageEntry } from '@/features/platform/pages/runtime-image-builder/page-entry'
 import { PlatformDisplaySessionsPageEntry } from '@/features/settings/casting/pages/platform-display-sessions/page-entry'
 import AiProviderDetailPageEntry from '@/features/settings/orchestrator/pages/ai-provider-detail/page-entry'
 import { SecurityNetworkPoliciesPageEntry } from '@/features/settings/orchestrator/pages/security-network-policies/page-entry'
 import { OrchestratorPageBoundary } from '@/server/orchestrator/orchestrator-page-boundary'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 
 const { health, load } = vi.hoisted(() => ({
   health: vi.fn(() => Promise.resolve({ services: { orchestrator: { ok: false } } })),
@@ -23,6 +27,9 @@ vi.mock('@/features/automations/pages/automation-traces/page-data.server', () =>
   loadAutomationTracesPageData: load
 }))
 vi.mock('@/features/platform/pages/platform-features/page-data.server', () => ({ loadPlatformFeatures: load }))
+vi.mock('@/features/platform/pages/runtime-containers/page-data.server', () => ({
+  loadRuntimeContainersPageData: vi.fn()
+}))
 vi.mock('@/features/platform/pages/runtime-image-builder/page-data.server', () => ({
   loadRuntimeImageBuilderPageData: load
 }))
@@ -43,6 +50,7 @@ const resolveBoundary = async (entry: ReactNode | Promise<ReactNode>) => {
   let node: ReactNode = await entry
   for (let depth = 0; depth < 5; depth += 1) {
     if (!isValidElement<{ children?: ReactNode }>(node)) throw new Error('Expected a server page element')
+    if (node.type === PlatformRouteUnavailable) return node
     if (node.type === OrchestratorPageBoundary) {
       return OrchestratorPageBoundary(node.props as unknown as Parameters<typeof OrchestratorPageBoundary>[0])
     }
@@ -75,5 +83,22 @@ describe('runtime page outage matrix', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
     expect(screen.queryByRole('table')).toBeNull()
     expect(load).not.toHaveBeenCalled()
+  })
+
+  it('preserves a runtime inventory request reference without rendering an empty grid', async () => {
+    vi.mocked(loadRuntimeContainersPageData).mockRejectedValueOnce(
+      new OrchestratorRequestError('private endpoint', 503, 'inventory-ref')
+    )
+    render(await resolveBoundary(RuntimeContainersPageEntry({ searchParams: Promise.resolve({ page: '2' }) })))
+    expect(screen.getByRole('heading', { level: 1, name: 'Containers' })).toBeVisible()
+    expect(screen.getByText('Reference: inventory-ref')).toBeVisible()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(loadRuntimeContainersPageData).toHaveBeenCalledWith({ page: '2' })
+  })
+
+  it('propagates a runtime inventory permission failure', async () => {
+    const denied = new OrchestratorRequestError('denied', 403)
+    vi.mocked(loadRuntimeContainersPageData).mockRejectedValueOnce(denied)
+    await expect(resolveBoundary(RuntimeContainersPageEntry({}))).rejects.toBe(denied)
   })
 })

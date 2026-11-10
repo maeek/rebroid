@@ -1,8 +1,6 @@
-import { unstable_rethrow } from 'next/navigation'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
-import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
-import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { getOrchestratorPageHealth, readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { firstSearchParamValue } from '@/shared/model/search-params'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -12,29 +10,25 @@ export type ServicesSearchParams = {
 
 export const loadPlatformServicesPageData = async (searchParams?: Promise<ServicesSearchParams>) => {
   const [health, params] = await Promise.all([
-    getOrchestratorHealthSummaryAction().catch(error => {
-      unstable_rethrow(error)
-      if (error instanceof OrchestratorRequestError && error.status >= 500) return null
-      throw error
-    }),
-    searchParams?.then(value => value ?? {}) ?? Promise.resolve<ServicesSearchParams>({})
+    readOrchestratorPage(getOrchestratorPageHealth),
+    searchParams ?? Promise.resolve<ServicesSearchParams>({})
   ])
   const requestedServiceId = firstSearchParamValue(params.service)
   const fallbackSettings = { ...defaultOrchestratorUiSettings, orchestratorApiUrl: getOrchestratorBaseUrl() }
   let initialSettings = fallbackSettings
-  let initialHealth = health
-  if (health?.services.orchestrator.ok && requestedServiceId !== 'docker' && requestedServiceId !== 'orchestrator') {
-    try {
-      initialSettings = await getRequiredServerOrchestratorUiSettings()
-    } catch (error) {
-      unstable_rethrow(error)
-      if (!(error instanceof OrchestratorRequestError && error.status >= 500)) throw error
+  let initialHealth = health.ok ? health.data : null
+  let requestId = health.ok ? undefined : health.failure.requestId
+  if (
+    initialHealth?.services.orchestrator.ok &&
+    requestedServiceId !== 'docker' &&
+    requestedServiceId !== 'orchestrator'
+  ) {
+    const settings = await readOrchestratorPage(getRequiredServerOrchestratorUiSettings)
+    if (settings.ok) initialSettings = settings.data
+    else {
       initialHealth = null
+      requestId = settings.failure.requestId
     }
   }
-  return {
-    initialSettings,
-    initialHealth,
-    requestedServiceId
-  }
+  return { initialSettings, initialHealth, requestedServiceId, requestId }
 }
