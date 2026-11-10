@@ -118,17 +118,22 @@ const observation = (snapshotId: string, image = snapshotId) => ({
 const createHarness = ({
   chatResponses,
   observations = [observation('screen-1')],
+  commandUses = ['android.listPackages'],
 }: {
   chatResponses: Array<
     ReturnType<typeof decisionResponse> | ReturnType<typeof planResponse>
   >;
-  observations?: Array<ReturnType<typeof observation>>;
+  observations?: Array<ReturnType<typeof observation> | Error>;
+  commandUses?: string[];
 }) => {
   const events: AutomationRunEventInput[] = [];
   const chat = jest.fn();
   for (const response of chatResponses) chat.mockResolvedValueOnce(response);
   const perception = jest.fn();
-  for (const value of observations) perception.mockResolvedValueOnce(value);
+  for (const value of observations) {
+    if (value instanceof Error) perception.mockRejectedValueOnce(value);
+    else perception.mockResolvedValueOnce(value);
+  }
   const eventBus = {
     emit: jest.fn(async (event: AutomationRunEventInput) => {
       events.push(event);
@@ -150,15 +155,15 @@ const createHarness = ({
   const service = new AutomationAiHarnessService(
     { getProvider: jest.fn().mockResolvedValue({ provider, model }) } as never,
     {
-      listCommands: jest.fn().mockReturnValue([
-        {
-          uses: 'android.listPackages',
-          label: 'List packages',
-          description: 'List installed packages.',
+      listCommands: jest.fn().mockReturnValue(
+        commandUses.map((uses) => ({
+          uses,
+          label: uses,
+          description: uses,
           requiredPermissions: ['automations:run'],
           inputSchema: { type: 'object', properties: {} },
-        },
-      ]),
+        })),
+      ),
     } as never,
     eventBus as never,
     decisions,
@@ -311,6 +316,118 @@ describe('AutomationAiHarnessService', () => {
           event.message?.includes('Stale snapshot'),
       ),
     ).toBe(true);
+  });
+
+  it.each([
+    ['android.tap', { x: 216, y: 585 }],
+    ['android.tapText', { text: 'Settings' }],
+  ])('keeps %s out of AI capability routing', async (uses, toolInput) => {
+    const { service, events, chat } = createHarness({
+      commandUses: [uses],
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Tap Settings',
+          expectedOutcome: 'Settings opens',
+          action: { type: 'invoke_capability', uses, input: toolInput },
+        }),
+      ],
+    });
+    const toolExecutor = jest.fn();
+
+    await service.run(
+      { ...input, capabilities: [uses], maxActions: 1 },
+      context(toolExecutor),
+    );
+
+    expect(JSON.stringify(chat.mock.calls[0]?.[0])).not.toContain(`${uses}:`);
+    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.guardrail.triggered',
+        message: `Capability ${uses} was not routed into this run.`,
+      }),
+    );
+  });
+
+  it('observes after a routed screen mutation even when dispatch rejects', async () => {
+    const uses = 'android.rotateDisplay';
+    const { service, chat, perception } = createHarness({
+      commandUses: [uses],
+      observations: [observation('screen-1'), observation('screen-2')],
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Rotate the display',
+          expectedOutcome: 'The screen is in landscape',
+          action: {
+            type: 'invoke_capability',
+            uses,
+            input: { orientation: 'landscape' },
+          },
+        }),
+        decisionResponse({
+          kind: 'finish',
+          status: 'blocked',
+          finalText: 'The rotation result was unavailable.',
+          evidenceIds: ['action:1'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const toolExecutor = jest
+      .fn()
+      .mockRejectedValue(new Error('Lost response'));
+
+    await service.run(
+      { ...input, capabilities: [uses] },
+      context(toolExecutor),
+    );
+
+    expect(toolExecutor).toHaveBeenCalledWith(
+      expect.objectContaining({ name: uses }),
+    );
+    expect(perception).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: `after:${uses}` }),
+    );
+    expect(JSON.stringify(chat.mock.calls[1]?.[0])).toContain(
+      'snapshotId=screen-2',
+    );
+  });
+
+  it('blocks further actions when a dispatched tap cannot be observed', async () => {
+    const tap = decisionResponse({
+      kind: 'act',
+      snapshotId: 'screen-1',
+      intent: 'Open Settings',
+      expectedOutcome: 'Settings screen is visible',
+      action: { type: 'tap', candidateId: 'candidate-1' },
+    });
+    const { service, chat, events } = createHarness({
+      observations: [observation('screen-1'), new Error('Capture failed')],
+      chatResponses: [tap, tap],
+    });
+    const toolExecutor = jest
+      .fn()
+      .mockResolvedValue({ summary: 'Tapped Settings.' });
+
+    const result = await service.run(input, context(toolExecutor));
+
+    expect(result.data).toMatchObject({
+      status: 'blocked',
+      blockedReason: 'A fresh screen observation is unavailable.',
+      toolCalls: 1,
+    });
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(toolExecutor).toHaveBeenCalledTimes(1);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.tool.failed',
+        message: 'Capture failed',
+      }),
+    );
   });
 
   it('keeps raw ADB shell hidden when escalation is not enabled', async () => {

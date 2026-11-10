@@ -169,7 +169,7 @@ export class AutomationAiHarnessService {
         continue;
       }
 
-      await this.actions.executeAction({
+      const actionResult = await this.actions.executeAction({
         decision,
         input,
         context,
@@ -178,6 +178,15 @@ export class AutomationAiHarnessService {
         capabilities,
       });
       state.actions += 1;
+      if (actionResult === 'observation-unavailable') {
+        this.assertNotCanceled(context.abortSignal);
+        return this.finish(context, input, state, {
+          status: 'blocked',
+          finalText:
+            'The device agent could not observe the screen after the last action.',
+          blockedReason: 'A fresh screen observation is unavailable.',
+        });
+      }
       if (
         state.consecutiveFailures >= 2 &&
         state.planAttempts < MAX_PLAN_ATTEMPTS &&

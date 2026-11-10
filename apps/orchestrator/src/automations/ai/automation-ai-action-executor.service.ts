@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import type { DeviceAgentDecision } from './core/device-decision';
-import { SCREEN_MUTATING_TOOLS } from './automation-ai-observation.utils';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationPerceptionService } from '../vision/automation-perception.service';
@@ -30,6 +29,7 @@ type ResolvedAction = ReturnType<typeof resolveActionTool>;
 type ToolResult = Awaited<
   ReturnType<AutomationAiHarnessContext['toolExecutor']>
 >;
+type ActionDispatch = { result: ToolResult } | { error: unknown };
 
 type ExecuteActionArgs = ActionContext & {
   decision: ActDecision;
@@ -45,7 +45,7 @@ export class AutomationAiActionExecutor {
   ) {}
 
   async executeAction(args: ExecuteActionArgs) {
-    const { context, decision, state } = args;
+    const { context, decision, input, state } = args;
     const resolved = await this.resolvePermittedAction(args);
     if (!resolved) return;
 
@@ -68,6 +68,7 @@ export class AutomationAiActionExecutor {
       decision.expectedOutcome,
       { uses: resolved.uses, input: resolved.input },
     );
+    let dispatch: ActionDispatch;
     try {
       const result = await context.toolExecutor({
         name: resolved.uses,
@@ -77,10 +78,44 @@ export class AutomationAiActionExecutor {
         envelopeValid: true,
         toolCallId: `action-${state.actions + 1}`,
       });
-      await this.recordActionResult(args, resolved, result, beforeFingerprint);
+      dispatch = { result };
     } catch (error) {
-      await this.recordActionFailure(context, state, resolved.uses, error);
+      dispatch = { error };
     }
+
+    // A dispatch can reach the device even if its response fails.
+    if (resolved.screenMutating) {
+      try {
+        const observed = await this.observe({
+          input,
+          context,
+          deadline: args.deadline,
+          reason: `after:${resolved.uses}`,
+          uses: resolved.uses,
+        });
+        state.observation = observed.observation;
+        state.plannerText = observed.plannerText;
+      } catch (error) {
+        await this.recordActionFailure(context, state, resolved.uses, error);
+        return 'observation-unavailable' as const;
+      }
+    }
+
+    if ('error' in dispatch) {
+      await this.recordActionFailure(
+        context,
+        state,
+        resolved.uses,
+        dispatch.error,
+      );
+      return;
+    }
+    await this.recordActionResult(
+      args,
+      resolved,
+      dispatch.result,
+      beforeFingerprint,
+    );
   }
 
   private async resolvePermittedAction(args: ExecuteActionArgs) {
@@ -129,33 +164,22 @@ export class AutomationAiActionExecutor {
     result: ToolResult,
     beforeFingerprint: string,
   ) {
-    const { context, decision, input, state } = args;
+    const { context, decision, state } = args;
     const structuredFailure = resultIndicatesFailure(result.data ?? {});
-    const shouldObserve =
-      resolved.screenMutating || SCREEN_MUTATING_TOOLS.has(resolved.uses);
-    if (shouldObserve) {
-      const observed = await this.observe({
-        input,
-        context,
-        deadline: args.deadline,
-        reason: `after:${resolved.uses}`,
-        uses: resolved.uses,
-      });
-      state.observation = observed.observation;
-      state.plannerText = observed.plannerText;
-    }
     const unchanged =
-      shouldObserve &&
+      resolved.screenMutating &&
       decision.action.type !== 'wait' &&
       beforeFingerprint === screenFingerprint(state.observation);
     const failed = structuredFailure || unchanged;
     const evidence: DeviceAgentEvidence = {
       id: `action:${state.actions + 1}`,
-      kind: shouldObserve ? 'action' : 'typed-result',
+      kind: resolved.screenMutating ? 'action' : 'typed-result',
       summary: unchanged
         ? `${result.summary} Screen did not change.`
         : result.summary,
-      ...(shouldObserve ? { snapshotId: state.observation.snapshotId } : {}),
+      ...(resolved.screenMutating
+        ? { snapshotId: state.observation.snapshotId }
+        : {}),
       ...(result.data ? { data: result.data } : {}),
     };
     state.evidence.push(evidence);

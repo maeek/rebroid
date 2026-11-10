@@ -4,6 +4,7 @@ import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider'
 import type { AutomationCommandDto } from '../dto/automation-command.dto';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';
+import { SCREEN_MUTATING_TOOLS } from './automation-ai-observation.utils';
 
 export interface DeviceAgentSubgoal {
   id: string;
@@ -74,6 +75,15 @@ const safeDefaultTools = new Set([
   ...safeDefaultCapabilities,
 ]);
 
+const unroutedCapabilityUses = new Set([
+  ...fixedActionUses,
+  'ai.run',
+  'android.adbShell',
+  // AI taps must resolve through the typed action and its current observation.
+  'android.tap',
+  'android.tapText',
+]);
+
 export const createTargetSession = (
   context: AutomationAiHarnessContext,
 ): DeviceTargetSession => {
@@ -129,9 +139,7 @@ export const routeCapabilities = ({
       .filter((term) => term.length >= 3),
   );
   return commands
-    .filter((command) => command.uses !== 'ai.run')
-    .filter((command) => command.uses !== 'android.adbShell')
-    .filter((command) => !fixedActionUses.has(command.uses))
+    .filter((command) => !unroutedCapabilityUses.has(command.uses))
     .filter((command) => allowed.has(command.uses))
     .map((command) => ({
       ...command,
@@ -257,7 +265,7 @@ export const resolveActionTool = ({
   return {
     uses: action.uses,
     input: action.input,
-    screenMutating: false,
+    screenMutating: SCREEN_MUTATING_TOOLS.has(action.uses),
   };
 };
 
