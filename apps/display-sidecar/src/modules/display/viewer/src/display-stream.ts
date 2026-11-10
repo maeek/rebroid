@@ -35,8 +35,10 @@ type MediaWorkerMessage =
   | { type: "resolution"; width: number; height: number }
   | { type: "status"; payload: Record<string, unknown> }
   | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
+  | { type: "mse-reset"; epoch: number }
   | {
       type: "mse-init";
+      epoch: number;
       codec: string;
       width: number;
       height: number;
@@ -183,12 +185,16 @@ export function createDisplayStream({
       const nativeMetrics = msePlayer.snapshot(
         (message.metrics.sourceFps ?? 0) > 0,
       );
-      worker?.postMessage({
-        type: "watermark",
-        decodedSequence: nativeMetrics.highestDecodedSequence,
-        presentedSequence: nativeMetrics.highestPresentedSequence,
-        presentedTimestampUs: nativeMetrics.highestPresentedTimestampUs,
-      });
+      const epoch = msePlayer.activeEpoch();
+      if (epoch !== null) {
+        worker?.postMessage({
+          type: "watermark",
+          epoch,
+          decodedSequence: nativeMetrics.highestDecodedSequence,
+          presentedSequence: nativeMetrics.highestPresentedSequence,
+          presentedTimestampUs: nativeMetrics.highestPresentedTimestampUs,
+        });
+      }
       emitViewerStreamMetrics({
         ...message.metrics,
         ...nativeMetrics,
@@ -204,6 +210,10 @@ export function createDisplayStream({
       });
       return;
     }
+    if (message.type === "mse-reset") {
+      msePlayer?.discardBefore(message.epoch);
+      return;
+    }
     if (message.type === "mse-init") {
       try {
         if (hasVisibleFrame && mseVideo) {
@@ -213,6 +223,7 @@ export function createDisplayStream({
           message.codec,
           message.segment,
           message.sourcePtsOriginUs,
+          message.epoch,
         );
       } catch (error) {
         msePlayer?.close();
@@ -320,13 +331,13 @@ export function createDisplayStream({
       ui.preserveVideoFrame(video);
       msePlayer = new MseVideoPlayer(
         video,
-        () => {
+        (epoch) => {
           hasVisibleFrame = true;
           ui.showVideo();
-          worker?.postMessage({ type: "mse-presented" });
+          worker?.postMessage({ type: "mse-presented", epoch });
         },
-        (reason) => {
-          worker?.postMessage({ type: "mse-resync", reason });
+        (reason, epoch) => {
+          worker?.postMessage({ type: "mse-resync", reason, epoch });
         },
       );
     }

@@ -11,6 +11,7 @@ type VideoWithFrameCallback = HTMLVideoElement & {
 };
 
 export interface MseMediaSegment {
+  epoch: number;
   segment: ArrayBuffer;
   durationMs: number;
   sourcePtsOriginUs: number;
@@ -63,6 +64,8 @@ function percentile(
 }
 
 export class MseVideoPlayer {
+  private epoch = -1;
+  private minimumEpoch = 0;
   private mediaSource: MediaSource | null = null;
   private sourceBuffer: SourceBuffer | null = null;
   private objectUrl: string | null = null;
@@ -94,8 +97,8 @@ export class MseVideoPlayer {
 
   constructor(
     private readonly video: HTMLVideoElement,
-    private readonly onFirstFrame: () => void,
-    private readonly onResync: (reason: string) => void,
+    private readonly onFirstFrame: (epoch: number) => void,
+    private readonly onResync: (reason: string, epoch: number) => void,
   ) {}
 
   static supports(codec: string): boolean {
@@ -109,12 +112,15 @@ export class MseVideoPlayer {
     codec: string,
     initializationSegment: ArrayBuffer,
     sourcePtsOriginUs: number,
+    epoch: number,
   ): void {
+    if (epoch < this.minimumEpoch || epoch <= this.epoch) return;
     if (!MseVideoPlayer.supports(codec)) {
       throw new Error(`Firefox MediaSource does not support ${codec}.`);
     }
     this.stopFrameCallbacks();
     this.resetMediaSource();
+    this.epoch = epoch;
     this.sourcePtsOriginUs = sourcePtsOriginUs;
     this.markers = [];
     this.highestDecodedSequence = undefined;
@@ -137,7 +143,7 @@ export class MseVideoPlayer {
     mediaSource.addEventListener(
       "sourceopen",
       () => {
-        if (this.mediaSource !== mediaSource) {
+        if (this.mediaSource !== mediaSource || epoch < this.minimumEpoch) {
           return;
         }
         try {
@@ -148,7 +154,8 @@ export class MseVideoPlayer {
           sourceBuffer.addEventListener("updateend", () => {
             if (
               this.mediaSource !== mediaSource ||
-              this.sourceBuffer !== sourceBuffer
+              this.sourceBuffer !== sourceBuffer ||
+              epoch < this.minimumEpoch
             ) {
               return;
             }
@@ -160,7 +167,7 @@ export class MseVideoPlayer {
               this.mediaSource === mediaSource &&
               this.sourceBuffer === sourceBuffer
             ) {
-              this.onResync(
+              this.requestResync(
                 `mse-source-buffer-error:${this.video.error?.code ?? "unknown"}`,
               );
             }
@@ -169,7 +176,7 @@ export class MseVideoPlayer {
           this.appendNext();
           void this.video.play().catch(() => undefined);
         } catch (error) {
-          this.onResync(
+          this.requestResync(
             error instanceof Error ? error.message : "mse-initialization",
           );
         }
@@ -180,9 +187,12 @@ export class MseVideoPlayer {
   }
 
   appendMedia(segment: MseMediaSegment): void {
-    if (!this.mediaSource) {
+    if (
+      !this.mediaSource ||
+      segment.epoch !== this.epoch ||
+      segment.epoch < this.minimumEpoch
+    )
       return;
-    }
     this.sourcePtsOriginUs = segment.sourcePtsOriginUs;
     const queueCostMs = Math.min(
       segment.durationMs,
@@ -195,10 +205,7 @@ export class MseVideoPlayer {
       this.queuedMediaBytes > maximumAppendQueueBytes
     ) {
       const overflowMs = Math.round(this.queuedMediaMs);
-      this.queue.length = 0;
-      this.queuedMediaMs = 0;
-      this.queuedMediaBytes = 0;
-      this.onResync(`mse-append-queue-overflow:${overflowMs}ms`);
+      this.requestResync(`mse-append-queue-overflow:${overflowMs}ms`);
       return;
     }
     this.markers.push(
@@ -219,6 +226,27 @@ export class MseVideoPlayer {
       media: true,
     });
     this.appendNext();
+  }
+
+  discardBefore(epoch: number): void {
+    if (epoch <= this.minimumEpoch) return;
+    this.minimumEpoch = epoch;
+    if (this.epoch >= epoch) return;
+    this.queue.length = 0;
+    this.queuedMediaMs = 0;
+    this.queuedMediaBytes = 0;
+    this.stopFrameCallbacks();
+  }
+
+  private requestResync(reason: string): void {
+    if (this.epoch < this.minimumEpoch) return;
+    const epoch = this.epoch;
+    this.discardBefore(epoch + 1);
+    this.onResync(reason, epoch);
+  }
+
+  activeEpoch(): number | null {
+    return this.epoch >= this.minimumEpoch ? this.epoch : null;
   }
 
   snapshot(sourceActive: boolean): MseMetricsSnapshot {
@@ -345,7 +373,7 @@ export class MseVideoPlayer {
         void this.video.play().catch(() => undefined);
       }
     } catch {
-      this.onResync("mse-append-failed");
+      this.requestResync("mse-append-failed");
     }
   }
 
@@ -404,9 +432,11 @@ export class MseVideoPlayer {
     ) {
       return;
     }
+    const epoch = this.epoch;
     const next = () => {
       this.frameCallbackHandle = callbackApi.requestVideoFrameCallback!(
         (now, metadata) => {
+          if (epoch !== this.epoch || epoch < this.minimumEpoch) return;
           const mediaTime = metadata.mediaTime ?? this.video.currentTime;
           this.presentedFrames += 1;
           if (this.lastPresentedAt !== null) {
@@ -425,7 +455,7 @@ export class MseVideoPlayer {
           }
           if (!this.firstFramePresented) {
             this.firstFramePresented = true;
-            this.onFirstFrame();
+            this.onFirstFrame(epoch);
           }
           next();
         },

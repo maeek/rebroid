@@ -134,13 +134,14 @@ test("Firefox MSE batches VFR fragments without treating PTS gaps as append back
       (reason) => resyncs.push(reason),
     );
 
-    player.initialize("avc1.42C029", new ArrayBuffer(16), 1_000_000);
+    player.initialize("avc1.42C029", new ArrayBuffer(16), 1_000_000, 1);
     const mediaSource = FakeMediaSource.instances.at(-1);
     mediaSource.open();
     assert.equal(mediaSource.sourceBuffer.appended.length, 1);
 
     for (let index = 0; index < 10; index += 1) {
       player.appendMedia({
+        epoch: 1,
         segment: new ArrayBuffer(32),
         durationMs: 1_000,
         sourcePtsOriginUs: 1_000_000,
@@ -161,9 +162,37 @@ test("Firefox MSE batches VFR fragments without treating PTS gaps as append back
     video.frameCallback(performance.now(), { mediaTime: 0 });
     assert.equal(firstFrames, 1);
 
-    player.initialize("avc1.42C029", new ArrayBuffer(16), 2_000_000);
+    player.initialize("avc1.42C029", new ArrayBuffer(16), 2_000_000, 2);
     video.frameCallback(performance.now(), { mediaTime: 0 });
     assert.equal(firstFrames, 2);
+
+    const fragment = {
+      epoch: 2,
+      segment: new ArrayBuffer(16 * 1024 * 1024 + 1),
+      durationMs: 16,
+      sourcePtsOriginUs: 2_000_000,
+      samples: [{ sequence: 11, timestampUs: 2_000_000 }],
+    };
+    const abandoned = FakeMediaSource.instances.at(-1);
+    player.appendMedia(fragment);
+    assert.match(resyncs[0], /mse-append-queue-overflow/);
+    player.appendMedia({ ...fragment, segment: new ArrayBuffer(16) });
+    abandoned.open();
+    assert.equal(abandoned.sourceBuffer.appended.length, 0);
+
+    player.initialize("avc1.42C029", new ArrayBuffer(16), 3_000_000, 3);
+    const replacement = FakeMediaSource.instances.at(-1);
+    replacement.open();
+    player.appendMedia({ ...fragment, segment: new ArrayBuffer(16) });
+    replacement.sourceBuffer.completeAppend();
+    assert.equal(replacement.sourceBuffer.appended.length, 1);
+    player.appendMedia({
+      ...fragment,
+      epoch: 3,
+      segment: new ArrayBuffer(16),
+      sourcePtsOriginUs: 3_000_000,
+    });
+    assert.equal(replacement.sourceBuffer.appended.length, 2);
     player.close();
   } finally {
     globalThis.MediaSource = originalMediaSource;

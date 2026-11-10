@@ -32,12 +32,13 @@ type WorkerInput =
   | { type: "reconnect"; cause: ReconnectCause }
   | {
       type: "watermark";
+      epoch: number;
       decodedSequence?: number;
       presentedSequence?: number;
       presentedTimestampUs?: number;
     }
-  | { type: "mse-presented" }
-  | { type: "mse-resync"; reason: string }
+  | { type: "mse-presented"; epoch: number }
+  | { type: "mse-resync"; reason: string; epoch: number }
   | { type: "use-webcodecs-fallback" }
   | { type: "close" };
 
@@ -46,8 +47,10 @@ type WorkerOutput =
   | { type: "resolution"; width: number; height: number }
   | { type: "status"; payload: Record<string, unknown> }
   | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
+  | { type: "mse-reset"; epoch: number }
   | {
       type: "mse-init";
+      epoch: number;
       codec: string;
       width: number;
       height: number;
@@ -56,6 +59,7 @@ type WorkerOutput =
     }
   | {
       type: "mse-segment";
+      epoch: number;
       durationMs: number;
       sourcePtsOriginUs: number;
       samples: Array<{ sequence: number; timestampUs: number }>;
@@ -92,6 +96,7 @@ let websocketUrl = "";
 let effectiveProfile: ViewerEffectiveProfile | null = null;
 let ws: WebSocket | null = null;
 let generation = 0;
+let videoEpoch = 0;
 let reconnectAttempt = 0;
 let reconnectTimer = 0;
 let firstFrameTimer = 0;
@@ -105,6 +110,7 @@ let hasFrameInGeneration = false;
 let width = 0;
 let height = 0;
 let decoder: VideoDecoder | null = null;
+let decoderCodec: string | null = null;
 let audioDecoder: AudioDecoder | null = null;
 let codecName: string | null = null;
 let cachedConfiguration: Uint8Array<ArrayBufferLike> | null = null;
@@ -208,6 +214,7 @@ function closeVideoDecoder(): void {
     // WebCodecs may already have closed the decoder after an async failure.
   }
   decoder = null;
+  decoderCodec = null;
   decodeStartedAt.clear();
   decodeSequences.clear();
 }
@@ -228,7 +235,8 @@ async function configureVideo(
   if (generation !== expectedGeneration) {
     return false;
   }
-  if (decoder?.state === "configured" && codecName === codec) {
+  const epoch = videoEpoch;
+  if (decoder?.state === "configured" && decoderCodec === codec) {
     return true;
   }
   closeVideoDecoder();
@@ -239,14 +247,18 @@ async function configureVideo(
       decoderPreference === "hardware" ? "prefer-hardware" : "prefer-software",
   };
   const support = await VideoDecoder.isConfigSupported(config);
-  if (generation !== expectedGeneration || closing) {
+  if (generation !== expectedGeneration || videoEpoch !== epoch || closing) {
     return false;
   }
   if (!support.supported) {
     throw new Error(`Unsupported display decoder ${codec}.`);
   }
-  decoder = new VideoDecoder({
+  const configuredDecoder = new VideoDecoder({
     output(frame) {
+      if (decoder !== configuredDecoder || videoEpoch !== epoch || closing) {
+        frame.close();
+        return;
+      }
       const decodedAt = performance.now();
       const startedAt = decodeStartedAt.get(frame.timestamp);
       const sequence = decodeSequences.get(frame.timestamp);
@@ -283,11 +295,14 @@ async function configureVideo(
       scheduleRender();
     },
     error(error) {
-      localVideoRecovery(`decode-error:${error.message}`);
+      if (decoder === configuredDecoder && videoEpoch === epoch && !closing) {
+        localVideoRecovery(`decode-error:${error.message}`);
+      }
     },
   });
-  decoder.configure(config);
-  codecName = codec;
+  decoder = configuredDecoder;
+  decoderCodec = codec;
+  configuredDecoder.configure(config);
   return true;
 }
 
@@ -321,6 +336,7 @@ function postMp4Initialization(sourcePtsOriginUs: number): void {
   scope.postMessage(
     {
       type: "mse-init",
+      epoch: videoEpoch,
       codec: initialization.codec,
       width: initialization.width,
       height: initialization.height,
@@ -345,6 +361,7 @@ function flushMp4Samples(nextTimestampUs?: number): void {
   scope.postMessage(
     {
       type: "mse-segment",
+      epoch: videoEpoch,
       durationMs: fragment.durationMs,
       sourcePtsOriginUs: fragment.sourcePtsOriginUs,
       samples: fragment.samples,
@@ -371,10 +388,6 @@ function enqueueMp4Sample(
   frame: ReturnType<typeof parseViewerMediaFrame>,
 ): void {
   if (needsKeyFrame) {
-    if (!frame.keyFrame) {
-      decodeDroppedFrames += 1;
-      return;
-    }
     pendingMp4Samples = [];
     postMp4Initialization(frame.timestampUs);
     needsKeyFrame = false;
@@ -402,6 +415,7 @@ async function decodeVideo(
       throw new Error("H.264 configuration is missing SPS or PPS.");
     }
     cachedConfiguration = frame.data.slice();
+    needsKeyFrame = true;
     codecName = next.codec;
     if (next.width && next.height) {
       mp4Configuration = {
@@ -424,9 +438,7 @@ async function decodeVideo(
           : undefined;
     }
     if (rendererMode === "mse") {
-      needsKeyFrame = true;
-      pendingMp4Samples = [];
-      clearMp4FlushTimer();
+      resetVideoAdmission();
       return;
     }
     await configureVideo(next.codec, expectedGeneration);
@@ -449,10 +461,6 @@ async function decodeVideo(
   if (frame.discontinuity) {
     localVideoRecovery("rbd1-discontinuity");
   }
-  if (rendererMode === "mse") {
-    enqueueMp4Sample(frame);
-    return;
-  }
   if (decoder && decoder.decodeQueueSize >= maxDecodeQueue) {
     decodeDroppedFrames += decoder.decodeQueueSize + 1;
     if (decoderPreference === "hardware" && !softwareDecoderFallbackUsed) {
@@ -461,10 +469,15 @@ async function decodeVideo(
     }
     localVideoRecovery("decode-queue-overflow");
   }
-  if (needsKeyFrame && !frame.keyFrame) {
+  if (!cachedConfiguration || (needsKeyFrame && !frame.keyFrame)) {
     decodeDroppedFrames += 1;
     return;
   }
+  if (rendererMode === "mse") {
+    enqueueMp4Sample(frame);
+    return;
+  }
+  const epoch = videoEpoch;
   if (!decoder || decoder.state !== "configured") {
     if (!codecName || !cachedConfiguration) {
       decodeDroppedFrames += 1;
@@ -474,7 +487,7 @@ async function decodeVideo(
       return;
     }
   }
-  if (generation !== expectedGeneration || closing) {
+  if (generation !== expectedGeneration || videoEpoch !== epoch || closing) {
     return;
   }
   const data =
@@ -571,11 +584,18 @@ function requestVideoResync(reason: string): void {
   }
 }
 
-function localVideoRecovery(reason: string): void {
-  closeVideoDecoder();
+function resetVideoAdmission(): void {
+  videoEpoch += 1;
+  needsKeyFrame = true;
   clearMp4FlushTimer();
   pendingMp4Samples = [];
-  needsKeyFrame = true;
+  if (rendererMode === "mse")
+    scope.postMessage({ type: "mse-reset", epoch: videoEpoch });
+}
+
+function localVideoRecovery(reason: string): void {
+  resetVideoAdmission();
+  closeVideoDecoder();
   if (pendingFrame) {
     pendingFrame.frame.close();
     pendingFrame = null;
@@ -857,9 +877,7 @@ function resetConsumerState(): void {
   clearHeartbeatTimer();
   closeVideoDecoder();
   closeAudioDecoder();
-  needsKeyFrame = true;
-  clearMp4FlushTimer();
-  pendingMp4Samples = [];
+  resetVideoAdmission();
   hasFrameInGeneration = false;
   lastSequences = new Map();
   highestReceivedSequence = undefined;
@@ -1123,6 +1141,7 @@ scope.onmessage = (event) => {
     return;
   }
   if (message.type === "watermark") {
+    if (message.epoch !== videoEpoch || rendererMode !== "mse") return;
     highestDecodedSequence = message.decodedSequence ?? highestDecodedSequence;
     highestPresentedSequence =
       message.presentedSequence ?? highestPresentedSequence;
@@ -1140,11 +1159,11 @@ scope.onmessage = (event) => {
     return;
   }
   if (message.type === "mse-presented") {
-    markMsePresented();
+    if (message.epoch === videoEpoch) markMsePresented();
     return;
   }
   if (message.type === "mse-resync") {
-    handleMseResync(message.reason);
+    if (message.epoch === videoEpoch) handleMseResync(message.reason);
     return;
   }
   if (message.type === "use-webcodecs-fallback") {

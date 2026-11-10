@@ -153,9 +153,31 @@ test("Firefox worker emits native fMP4 segments without constructing VideoDecode
     [1, 2],
   );
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  assert.equal(media.epoch, initialization.epoch);
+  globalThis.onmessage({
+    data: {
+      type: "mse-resync",
+      reason: "source-buffer-test-error",
+      epoch: initialization.epoch,
+    },
+  });
+  const reset = posted.findLast((message) => message.type === "mse-reset");
+  assert.ok(reset.epoch > initialization.epoch);
+  const count = posted.length;
+  globalThis.onmessage({
+    data: {
+      type: "mse-resync",
+      reason: "stale-source-buffer",
+      epoch: initialization.epoch,
+    },
+  });
+  assert.equal(posted.length, count);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const epoch = posted.findLast(
+      (message) => message.type === "mse-reset",
+    ).epoch;
     globalThis.onmessage({
-      data: { type: "mse-resync", reason: "source-buffer-test-error" },
+      data: { type: "mse-resync", reason: "source-buffer-test-error", epoch },
     });
   }
   assert.equal(socket.closeCalls.length, 0);
