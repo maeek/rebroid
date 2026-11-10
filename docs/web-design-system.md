@@ -11,7 +11,7 @@ Palette variables are private to `apps/web/src/app/globals.css`. Feature code us
 | Intent          | Tokens                                                                            |
 | --------------- | --------------------------------------------------------------------------------- |
 | Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
-| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-border`. |
+| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-border`, `surface-navigation`. |
 | Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
 | Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                   |
 | Feedback        | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.              |
@@ -28,15 +28,17 @@ chart series, and user-supplied tags. Use semantic radii and shadows:
 | Branded/immersive surfaces    | `rounded-feature` — 1.25rem.   |
 | Avatars, dots, genuine pills  | `rounded-full`.                |
 
-Controls use solid surfaces and subtle resting borders. Regular panels, editor sections, and summary cards share the semantic `surface-editor` fill, panel radius, and no visible perimeter border, decorative shadow, or backdrop blur. Reserve `shadow-floating` for menus and dialogs. Hover strengthens the control boundary; keyboard focus retains a visible ring. Sheets have straight edges and a dimmed, unblurred backdrop. OLED mode removes
+Controls use solid surfaces and subtle resting borders, with fainter outlines in dark and OLED themes. Regular panels, editor sections, and summary cards share the semantic `surface-editor` fill, panel radius, and no visible perimeter border, decorative shadow, or backdrop blur. Reserve `shadow-floating` for menus and dialogs. Hover strengthens the control boundary; keyboard focus retains a visible ring. Sheets have straight edges and a dimmed, unblurred backdrop. OLED mode removes
 decorative elevation. Glass effects belong to shared elevated panels and overlays.
 Canvas, panels, controls, secondary actions, and floating layers use one low-saturation neutral
 family. These surfaces stay stable when the accent changes; use accent color for primary actions,
 links, focus, and selection. The default page backdrop is transparent, with no global accent wash.
 Editor panels are opaque so image backdrops do not tint their fields inconsistently. Light controls
 are white on a soft gray panel; dark controls sit one restrained step above their panel.
-Dialogs use `surface-dialog`: a soft gray surface in light mode and a darker neutral surface in dark
-and OLED modes so controls remain distinct. Menus retain `surface-elevated`. Combobox empty-state
+Dialogs, sheets, and drawers use `surface-dialog`: a soft gray surface in light mode and a darker neutral surface in dark
+and OLED modes so controls remain distinct. Menus and popovers use `surface-elevated` with a
+muted `surface-border` outline. Use a checkmark and a quiet accent tint for the selected option, and a separate
+highlight for keyboard navigation or hover. Combobox empty-state
 live regions stay mounted; put spacing on the message content so populated menus have no blank row.
 
 Confirmation dialogs put the action and target in the title, state the immediate impact in the first
@@ -58,7 +60,20 @@ UI text is at least `text-xs`.
 
 The protected layout owns sidebar offset, `main`, width, and outer gutters. Standard rhythm uses
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
-Use one `h1`, `h2` for primary sections, and `h3` for nested sections.
+The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
+Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
+brand, service health dot, and collapse control above the scrollable links. Keep the account and notifications
+at the bottom. The health dot opens service details on hover, click, or tap. Animate the desktop sidebar width
+and content inset together, respecting reduced motion. The collapsed sidebar is a 64 px icon rail. Footer popups open beside the rail and align
+with the bottom edge of their trigger. In the expanded sidebar they open upward. The account Theme submenu uses
+the same floating surface and opens toward the center of the viewport from the mobile account menu.
+On mobile, the top bar contains the brand with its health dot, navigation drawer trigger, account, and notifications.
+Direct links keep their accessible names
+and show labels on hover and keyboard focus. Administration groups open labeled flyouts with
+their destinations and available shortcuts. Use the circled add icon for sidebar create shortcuts.
+Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subheadings that
+repeat the page title or active tab. Put page-wide context in `PageHeader.description` and
+keep useful section-specific copy in `Section.description` without adding a heading.
 
 `PageHeader` owns breadcrumbs and the single page title, with one action slot. The top-level Overview
 omits `section` to render without breadcrumbs or an empty breadcrumb gap. Keep `PageContent`
@@ -136,8 +151,8 @@ meaningful facets; embedded or small fixed datasets use search-only mode.
 Grids are flat data surfaces. Keep the toolbar unboxed, the table body transparent,
 and the header on a quiet semantic editor surface with the shared control radius at all four corners.
 Keep that radius consistent with inputs and buttons rather than introducing square header bands.
-Use only subtle horizontal separators, with
-no perimeter frame, vertical rules, or shadow. Shared cells use compact vertical spacing, including
+Keep the rounded header free of rules. Use subtle separators between body rows
+and above pagination, with no perimeter frame, vertical rules, or shadow. Shared cells use compact vertical spacing, including
 loading placeholders; hover and selection supply row emphasis. Keep pagination unboxed and table
 utilities as ghost actions. Apply this composition to both page-level and embedded grids rather than
 adding feature-specific wrappers.
@@ -198,10 +213,47 @@ pages must not overflow the document. Preserve visible focus, keyboard/pointer e
 focus trapping/restoration, appropriate live regions, and reduced-motion behavior. Color cannot
 be the only status signal. Public error states show a safe message and request reference only.
 
+Page titles and actions share a row when they fit. Move the action group together when
+space is tight and align it with the leading gutter on phones. Wrap within the group only
+if needed. Use the same heading row and controls in ready and loading states. Keep Apps search
+in one row with the shared Filters drawer and a gear menu for sort order. Use a single grid of
+cards sized to match the Recently opened cards on Overview, with the icon beside the name and status. Offer ownership in Filters for admins
+and show removable chips for active filters. Keep the desktop Select shortcut off touch and narrow layouts.
+Touch users can long-press an app tile and choose Select app. The tile’s visible actions menu
+offers the same command for keyboard and pointer users. Selection replaces search controls
+with the count, bulk actions, and Done without shifting the tiles. Keep the Apps selection
+bar unboxed so its count aligns with the gallery.
+
+Keep the viewport at its natural scale. Shared buttons, tabs, text and selection fields, menu
+options, and the viewer control rail use a 44 CSS px minimum touch target for coarse primary pointers. Icons retain
+their compact artwork, and editable text fields use 16 CSS px on touch. The [W3C AA minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)
+is 24 CSS px with exceptions. The 44 px web target balances density with the touch guidance
+from [Apple](https://developer.apple.com/design/human-interface-guidelines/buttons) and
+[Android](https://developer.android.com/guide/topics/ui/accessibility/views/apps-views).
+Inline and standalone viewer layouts use the small viewport height so browser toolbar movement
+does not resize the device. The viewer toolbar is 32 CSS px tall, with wider controls on touch
+so the toolbar uses less space above the display.
+
+On phones use 24/32 for page titles. For touch layouts use 18/24 for section titles, 16/24
+for form labels, values, and primary reading text, and 14/20 for help, errors, buttons, and tabs.
+Reserve 12/16 for compact status and metadata. Use weight and color to distinguish roles at the
+same size. The [Material 3 type scale](https://developer.android.com/develop/ui/compose/designsystems/material3#typography)
+informs this reduced set.
+
 When changing a design-system API, migrate every consumer and remove deprecated variants and aliases
 in the same change. Do not add feature-local substitutes.
 
 Account status in user grids is read-only. Put explicit “Disable user…” and “Enable user” actions in the row menu; disabling opens the shared confirmation dialog explaining sign-out and blocked sign-in. Bulk disable uses the same confirmation and skips accounts already disabled. Keep the existing server authorization and last-active-admin protection.
+
+## Keyboard shortcuts
+
+Keep the visible control available to pointer and keyboard users. Show its shortcut in the
+shared tooltip with keycaps, and expose it through `aria-keyshortcuts` when enabled.
+App pages default to the viewer above the content. At 1024 px and wider, the layout menu and
+Alt+Shift+L (Option+Shift+L on Apple keyboards) switch between top and right. Narrow screens
+always place the viewer above the content and keep the saved desktop preference.
+The shortcut yields to text editing, open menus and dialogs, fullscreen, and Android keyboard
+capture. Preserve focus and the mounted viewer when changing its layout.
 
 ## Standard editors
 
@@ -233,6 +285,17 @@ for searchable catalogs, Select for fixed choices, and MultiSelectCombobox for r
 Use FileUploadField for uploads and exact numeric inputs for quantities; sliders remain reserved
 for streaming adjustments. Inline compound controls may explicitly opt out of editor field layout.
 
+### Personal preferences
+
+The avatar menu offers an Account overview and a direct link to Preferences.
+The overview is a two-column dialog on desktop and stacks on narrow screens.
+It shows the signed-in identity and security status, with links to the Profile
+and Security sections of General preferences. Keep account edits on that page.
+
+Theme, accent, and viewer placement apply immediately. Profile photo and sign-in
+changes have their own action buttons. Only administrators see Console defaults,
+where Save defaults and Restore defaults apply to the shared app-list and viewer defaults.
+
 Schedule editors use labeled Frequency, Time, interval, and day controls. Keep hidden frequency-specific
 draft values when switching schedules. Trigger editors use the same searchable Workflow and Target app
 choices as other catalogs; call the user-facing resource a workflow rather than alternating with automation.
@@ -246,7 +309,7 @@ Pending saves disable draft controls and prevent dismissal; failures retain the 
 
 Page titles and breadcrumb names wrap at narrow widths, including unbroken resource identifiers. Keep header
 actions available instead of truncating the resource identity. The standard shell provides a keyboard skip link
-and a sidebar constrained between the application bar and viewport bottom so every destination remains reachable.
+and a scrollable sidebar so every navigation destination remains reachable.
 Pagination controls wrap within the page on mobile rather than widening the document.
 Changing the page size returns to the first page in the same update.
 
@@ -316,9 +379,9 @@ without another panel background or outer padding. Ready and loading states shar
 
 App resource views share one device pane in AppDeviceLayout, including configuration and profiles. Fit the live display to the available width and height using the stream's observed dimensions. Put streaming settings in the display chrome and device controls in a rail just outside the right edge. The streaming settings sheet uses the dialog surface so controls remain distinct in each theme.
 
-The Viewer layout menu beside the breadcrumbs switches between the default right-hand pane and a stacked layout. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
+The Viewer layout menu beside the breadcrumbs switches between the default stacked layout and a right-hand pane. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
-The desktop mini player keeps the same live display mounted when the viewer scrolls under the top bar.
+The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.
 Disable input while the preview floats. Closing docks the player, preserves the page scroll position,
 and keeps the preview dismissed until the inline viewer returns.
 The authorized clipboard dialog belongs in the display toolbar, with explicit read, copy, and send actions.
