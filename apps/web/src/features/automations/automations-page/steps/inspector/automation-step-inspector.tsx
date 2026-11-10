@@ -125,7 +125,7 @@ function AutomationStepInspectorContent({
   const yamlMode = step.kind === 'action' && yamlStepKey === step.clientKey
 
   return (
-    <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden'>
+    <div className='grid max-h-[calc(100dvh-7rem)] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden xl:max-h-[calc(var(--console-content-height)-3rem)]'>
       <AutomationStepInspectorHeader
         step={step}
         command={command}

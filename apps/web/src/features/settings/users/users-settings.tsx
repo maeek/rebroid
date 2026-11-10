@@ -2,7 +2,6 @@
 
 import { useRef, useState } from 'react'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
-import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { deleteUserAction } from '@/server/users/actions/delete-user-action'
@@ -145,30 +144,24 @@ export const UsersSettings = ({
         }
       />
       <section
+        aria-label='User list'
         className='flex w-full flex-col gap-6 px-6 pb-16 max-sm:px-4'
         onFocusCapture={event => {
           if (event.currentTarget.contains(event.target)) lastUserActionRef.current = event.target
         }}
       >
-        <Section
-          surface='plain'
-          title='Existing Users'
-          headingSpacing='default'
-          contentClassName='gap-3'
-        >
-          <UsersGrid
-            loading={loading}
-            users={users}
-            groups={groups}
-            busyUserId={busyUserId}
-            onDisable={user => requestDisableUsers([user])}
-            onEnable={user => void setUsersDisabled([user], false)}
-            onDelete={setPendingDeleteUser}
-            onDeleteSelected={setPendingDeleteUsers}
-            onDisableSelected={requestDisableUsers}
-            onEnableSelected={targets => void setUsersDisabled(targets, false)}
-          />
-        </Section>
+        <UsersGrid
+          loading={loading}
+          users={users}
+          groups={groups}
+          busyUserId={busyUserId}
+          onDisable={user => requestDisableUsers([user])}
+          onEnable={user => void setUsersDisabled([user], false)}
+          onDelete={setPendingDeleteUser}
+          onDeleteSelected={setPendingDeleteUsers}
+          onDisableSelected={requestDisableUsers}
+          onEnableSelected={targets => void setUsersDisabled(targets, false)}
+        />
       </section>
       <ConfirmMutationDialog
         open={pendingDisableUsers.length > 0}

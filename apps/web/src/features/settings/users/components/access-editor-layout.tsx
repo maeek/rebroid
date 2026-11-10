@@ -75,7 +75,7 @@ export const AccessEditorLayout = ({
       ) : null}
       <TabsPanel value='permissions'>
         <Section
-          title='Permissions'
+          aria-label='Permissions'
           description={
             access
               ? 'Review effective access and its source. Use an override only when this user needs an exception.'
@@ -88,7 +88,7 @@ export const AccessEditorLayout = ({
       </TabsPanel>
       <TabsPanel value='quotas'>
         <Section
-          title='Quotas'
+          aria-label='Quotas'
           description={quotasDescription}
           surface='plain'
         >

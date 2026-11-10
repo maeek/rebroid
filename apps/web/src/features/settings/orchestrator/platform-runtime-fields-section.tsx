@@ -39,7 +39,7 @@ export const PlatformRuntimeFieldsSection = ({
           layout='vertical'
         >
           {loading ? (
-            <Skeleton className='h-9 w-full' />
+            <Skeleton className='touch-control h-9 w-full' />
           ) : (
             <RuntimeImagePicker
               images={images}
@@ -56,7 +56,7 @@ export const PlatformRuntimeFieldsSection = ({
           layout='vertical'
         >
           {loading ? (
-            <Skeleton className='h-9 w-full' />
+            <Skeleton className='touch-control h-9 w-full' />
           ) : (
             <Input
               className='w-full'
@@ -83,7 +83,7 @@ export const PlatformRuntimeFieldsSection = ({
             layout='vertical'
           >
             {loading ? (
-              <Skeleton className='h-9 w-full max-w-48' />
+              <Skeleton className='touch-control h-9 w-full max-w-48' />
             ) : (
               <NumericUnitInput
                 unit='seconds'
@@ -110,7 +110,7 @@ export const PlatformRuntimeFieldsSection = ({
             layout='vertical'
           >
             {loading ? (
-              <Skeleton className='h-9 w-full max-w-48' />
+              <Skeleton className='touch-control h-9 w-full max-w-48' />
             ) : (
               <NumericUnitInput
                 unit='MB'

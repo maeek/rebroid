@@ -112,10 +112,7 @@ export const GroupsSection = ({
     <>
       <Section
         surface='plain'
-        title='Groups'
-        description='Groups provide default permissions and quotas. User-level settings can override them when needed.'
-        headingSpacing='default'
-        contentClassName='gap-3'
+        aria-label='Group list'
       >
         <DataGridWorkspace
           disabled={loading}

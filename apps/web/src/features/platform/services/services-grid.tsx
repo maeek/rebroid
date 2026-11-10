@@ -37,7 +37,7 @@ export const ServicesGrid = ({
         cell: ({ row: { original: service } }) => (
           <div
             id={service.id}
-            className='flex min-w-0 scroll-mt-24 items-center gap-3'
+            className='flex min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)] items-center gap-3'
           >
             <div
               aria-hidden='true'

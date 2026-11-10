@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { IconArrowUpRight } from '@tabler/icons-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Section } from '@/components/ui/section'
 import { panelSurfaceClassName } from '@/components/ui/surface'
@@ -48,9 +49,13 @@ export const PlatformRecentAppsContent = ({
     actions={
       <ResourceLink
         href='/apps'
-        className='text-sm'
+        className='inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium'
       >
-        All apps →
+        All apps{' '}
+        <IconArrowUpRight
+          className='size-4'
+          aria-hidden='true'
+        />
       </ResourceLink>
     }
   >

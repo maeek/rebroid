@@ -10,7 +10,7 @@ import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 export const FeatureIdentity = ({ feature, loading = false }: { feature?: FeatureFlagState; loading?: boolean }) => (
   <div
     id={feature?.key}
-    className='flex min-w-0 scroll-mt-24 items-center gap-3'
+    className='flex min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)] items-center gap-3'
   >
     <div
       aria-hidden='true'

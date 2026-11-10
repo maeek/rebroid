@@ -61,8 +61,7 @@ export const CastingSessionsSection = ({
     <>
       <Section
         surface='plain'
-        title='Sessions'
-        headingSpacing='compact'
+        aria-label='Sessions'
         contentClassName='gap-4'
       >
         <DataGridWorkspace

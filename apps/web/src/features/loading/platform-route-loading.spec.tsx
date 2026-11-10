@@ -39,7 +39,7 @@ describe('platform destination loading states', () => {
     ['features', FeaturesPageLoading, 'Services', 'OCR perception'],
     ['connections', PlatformServicesPageSkeleton, 'Services', 'Connection'],
     ['providers', AiProvidersPageSkeleton, 'AI', 'Providers'],
-    ['display sessions', PlatformDisplaySessionsPageSkeleton, 'Display sessions', 'Sessions']
+    ['display sessions', PlatformDisplaySessionsPageSkeleton, 'Display sessions', 'Recent logs']
   ] as const)('renders the %s page chrome instead of overview content', (_, Component, title, content) => {
     renderLoading(<Component />)
 

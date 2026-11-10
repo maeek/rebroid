@@ -27,7 +27,6 @@ export function AutomationTracesPage({
         ]}
         title={loading ? <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' /> : `${automation?.name} run history`}
         breadcrumbLabel='Run history'
-        description='Execution history for this workflow.'
       />
       <PageContent className='grid gap-6 pt-2'>
         <WorkflowResourceNavigation

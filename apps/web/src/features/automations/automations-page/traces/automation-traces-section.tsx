@@ -210,7 +210,7 @@ export function AutomationTracesSection({
   return (
     <Section
       surface='plain'
-      title='Executions'
+      aria-label='Workflow executions'
       description='Select a run to inspect its steps, errors, and recorded events.'
     >
       {!loading && searchParams.get('run') && !selectedRun ? (

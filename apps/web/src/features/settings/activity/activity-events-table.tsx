@@ -24,8 +24,8 @@ const ActivityEventsContent = () => {
       <ActivitySummary />
       <Section
         surface='plain'
-        title={application ? 'App activity' : undefined}
-        description={application ? `Audit events for ${application.name}.` : undefined}
+        aria-label={application ? 'App activity' : undefined}
+        description={application ? 'Audit events for this app.' : undefined}
         headingSpacing='default'
         contentClassName='gap-4'
       >

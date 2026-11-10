@@ -45,12 +45,23 @@ const groups: UserGroup[] = [
 ]
 
 describe('GroupsSettings', () => {
-  it('renders the group grid and creation action', () => {
-    render(<GroupsSettings initialGroups={groups} />)
+  it.each([false, true])('renders one Groups heading and keeps its description when loading is %s', loading => {
+    render(
+      <GroupsSettings
+        initialGroups={groups}
+        loading={loading}
+      />
+    )
+
+    expect(screen.getAllByRole('heading', { name: /^Groups$/ })).toHaveLength(1)
+    expect(screen.getByText(/Groups provide default permissions and quotas/)).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Group list' })).toBeVisible()
 
     expect(screen.getByRole('heading', { name: 'Groups', level: 1 })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New group' })).toBeInTheDocument()
-    expect(screen.getByText('Administrators')).toBeInTheDocument()
-    expect(screen.getByText('Users')).toBeInTheDocument()
+    if (!loading) {
+      expect(screen.getByText('Administrators')).toBeInTheDocument()
+      expect(screen.getByText('Users')).toBeInTheDocument()
+    }
   })
 })

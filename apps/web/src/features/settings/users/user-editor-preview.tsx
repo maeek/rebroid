@@ -52,7 +52,7 @@ const user: PublicUser = {
 }
 
 export const UserEditorPreview = ({ kind }: { kind: 'user' | 'group' }) => (
-  <main className='min-h-screen bg-background pt-16'>
+  <main className='min-h-screen bg-background pt-(--console-top-inset)'>
     {kind === 'user' ? (
       <UserEditPage
         user={user}

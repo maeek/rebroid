@@ -58,7 +58,7 @@ const RuntimeImagesPageFrame = ({
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         actions={
-          <div className='flex items-center gap-2'>
+          <>
             {isFeatureEnabled('feature.image-builder') && (
               <Button asChild>
                 <Link href='/runtime/images/build'>
@@ -72,7 +72,7 @@ const RuntimeImagesPageFrame = ({
               isRefreshing={isRefreshing}
               onRefresh={onRefresh}
             />
-          </div>
+          </>
         }
       />
       <PageContent>{children}</PageContent>
