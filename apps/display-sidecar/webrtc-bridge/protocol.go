@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 
@@ -31,12 +30,14 @@ type stdinMessage struct {
 }
 
 type stdoutMessage struct {
-	Type    string             `json:"type"`
-	SDP     string             `json:"sdp,omitempty"`
-	State   string             `json:"state,omitempty"`
-	Message string             `json:"message,omitempty"`
-	Payload json.RawMessage    `json:"payload,omitempty"`
-	Metrics map[string]float64 `json:"metrics,omitempty"`
+	Type       string             `json:"type"`
+	SDP        string             `json:"sdp,omitempty"`
+	State      string             `json:"state,omitempty"`
+	Message    string             `json:"message,omitempty"`
+	Payload    json.RawMessage    `json:"payload,omitempty"`
+	Metrics    map[string]float64 `json:"metrics,omitempty"`
+	replaceKey string
+	discardKey string
 }
 
 const (
@@ -94,17 +95,28 @@ func readMediaFrame(reader io.Reader, expectedKind uint8) (mediaFrame, error) {
 	}, nil
 }
 
-func readCommands(reader *bufio.Reader, send func([]byte)) {
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			return
-		}
+func readCommands(reader *bufio.Scanner, send func([]byte) error) error {
+	for reader.Scan() {
 		var message stdinMessage
-		if json.Unmarshal([]byte(line), &message) == nil && message.Type == "datachannel" {
-			send(message.Payload)
+		if json.Unmarshal(reader.Bytes(), &message) == nil && message.Type == "datachannel" && len(message.Payload) > 0 {
+			if err := send(message.Payload); err != nil {
+				return err
+			}
 		}
 	}
+	return reader.Err()
+}
+
+func pointerEvent(payload []byte) string {
+	var message struct {
+		Type      string
+		Action    string
+		EventType string
+	}
+	if json.Unmarshal(payload, &message) != nil || message.Type != "touch" || message.Action != "pointer" {
+		return ""
+	}
+	return message.EventType
 }
 
 func parsePortRange(value string) (int, int, bool) {
@@ -123,11 +135,4 @@ func iceServers(urls []string) []webrtc.ICEServer {
 		return nil
 	}
 	return []webrtc.ICEServer{{URLs: urls}}
-}
-
-func write(message stdoutMessage) {
-	data, err := json.Marshal(message)
-	if err == nil {
-		_, _ = os.Stdout.Write(append(data, '\n'))
-	}
 }

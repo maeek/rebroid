@@ -16,6 +16,7 @@ func streamOpus(
 	track *webrtc.TrackLocalStaticRTP,
 	metrics *bridgeMetrics,
 	timeline *sourceTimeline,
+	emit func(stdoutMessage),
 ) error {
 	packetizer := rtp.NewPacketizer(
 		videoRTPMTU,
@@ -58,7 +59,7 @@ func streamOpus(
 		metrics.audioFrames.Add(1)
 		if !wroteFrame {
 			wroteFrame = true
-			write(stdoutMessage{Type: "log", Message: "first timestamped audio packet written"})
+			emit(stdoutMessage{Type: "log", Message: "first timestamped audio packet written"})
 		}
 	}
 }

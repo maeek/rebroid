@@ -244,3 +244,86 @@ input.once("line", (line) => {
   assert.equal(answer.profileLevelId, "42c01f");
   assert.equal(source.consumerCount(), 1);
 });
+
+test("losing the bridge audio pipe leaves the video consumer attached", async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), "rebroid-webrtc-audio-"));
+  const executable = join(directory, "bridge");
+  const disabled = join(directory, "audio-disabled");
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  const service = setup(
+    {
+      assertTargetSupported: () => Promise.resolve(),
+      attachStream: ({ sink }: ScrcpyStreamOptions) => source.attach(sink),
+    },
+    { webrtcBridgePath: executable },
+  );
+  t.after(async () => {
+    service.stopSession(offer.sessionId);
+    source.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+  await writeFile(
+    executable,
+    `#!${process.execPath}
+const fs = require("node:fs");
+const input = require("node:readline").createInterface({ input: process.stdin });
+input.on("line", (line) => {
+  const message = JSON.parse(line);
+  if (message.type === "offer") {
+    fs.closeSync(4);
+    console.log(JSON.stringify({ type: "answer", sdp: "fixture answer" }));
+  }
+  if (message.payload?.type === "audio-disabled") {
+    fs.writeFileSync(${JSON.stringify(disabled)}, "");
+  }
+});
+`,
+    { mode: 0o700 },
+  );
+  source.writeVideo({
+    config: true,
+    keyFrame: false,
+    timestampUs: 10n,
+    data: Buffer.from(
+      "000000016742c01fda0280b7fe5c050505020000000168ce06e2",
+      "hex",
+    ),
+  });
+  source.writeVideo({
+    config: false,
+    keyFrame: true,
+    timestampUs: 11n,
+    data: Buffer.from("00000001658884", "hex"),
+  });
+  await service.createAnswer({
+    ...offer,
+    audio: true,
+    sdp: [
+      "m=video 9 UDP/TLS/RTP/SAVPF 96",
+      "a=rtpmap:96 H264/90000",
+      "a=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+    ].join("\r\n"),
+  });
+
+  source.writeAudio({
+    data: Buffer.from([1]),
+    config: false,
+    timestampUs: 11n,
+  });
+  const deadline = Date.now() + 3_000;
+  while (true) {
+    try {
+      await access(disabled);
+      break;
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      await delay(10);
+    }
+  }
+  assert.equal(source.consumerCount(), 1);
+  assert.equal(source.isOpen(), true);
+});

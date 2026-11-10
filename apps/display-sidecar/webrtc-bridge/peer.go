@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"strings"
 	"sync"
 
@@ -13,22 +13,60 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
-func run() error {
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
-	if err != nil {
-		return err
+func run(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage)) error {
+	return runPeer(parent, commands, video, audio, emit, webrtc.SettingEngine{})
+}
+
+func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
+	ctx, stop := context.WithCancelCause(parent)
+	closeAudio := sync.OnceFunc(func() {
+		if audio != nil {
+			_ = audio.Close()
+		}
+	})
+	closeInputs := sync.OnceFunc(func() {
+		_ = commands.Close()
+		if video != nil {
+			_ = video.Close()
+		}
+		closeAudio()
+	})
+	stopInputs := context.AfterFunc(ctx, closeInputs)
+	var workers sync.WaitGroup
+	startWorker := func(work func()) {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			work()
+		}()
+	}
+	defer func() {
+		stop(nil)
+		stopInputs()
+		closeInputs()
+		workers.Wait()
+	}()
+
+	reader := bufio.NewScanner(commands)
+	reader.Buffer(make([]byte, 4096), 1<<20)
+	if !reader.Scan() {
+		if ctx.Err() != nil {
+			return attemptError(ctx)
+		}
+		if err := reader.Err(); err != nil {
+			return err
+		}
+		return errors.New("missing WebRTC offer")
 	}
 
 	var cfg configMessage
-	if err := json.Unmarshal([]byte(line), &cfg); err != nil {
+	if err := json.Unmarshal(reader.Bytes(), &cfg); err != nil {
 		return err
 	}
 	if cfg.Type != "offer" || strings.TrimSpace(cfg.SDP) == "" {
 		return errors.New("missing WebRTC offer")
 	}
 
-	setting := webrtc.SettingEngine{}
 	if cfg.ICEHost != "" {
 		setting.SetNAT1To1IPs([]string{cfg.ICEHost}, webrtc.ICECandidateTypeHost)
 	}
@@ -58,14 +96,14 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	defer peer.Close()
+	defer func() {
+		stop(nil)
+		_ = peer.Close()
+	}()
 
 	metrics := &bridgeMetrics{}
 	recovery := &videoRecovery{}
 	timeline := &sourceTimeline{}
-	metricsStop := make(chan struct{})
-	defer close(metricsStop)
-	go reportBridgeMetrics(metrics, peer, metricsStop)
 
 	videoTrack, err := webrtc.NewTrackLocalStaticRTP(
 		webrtc.RTPCodecCapability{
@@ -84,7 +122,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	go drainRTCP(videoSender, metrics, recovery)
+	startWorker(func() { drainRTCP(videoSender, metrics, recovery, emit) })
 
 	var audioTrack *webrtc.TrackLocalStaticRTP
 	if cfg.Audio {
@@ -100,36 +138,23 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		go drainRTCP(audioSender, metrics, nil)
-		write(stdoutMessage{Type: "log", Message: "audio track negotiated"})
+		startWorker(func() { drainRTCP(audioSender, metrics, nil, emit) })
+		emit(stdoutMessage{Type: "log", Message: "audio track negotiated"})
 	}
 
-	var dataChannel *webrtc.DataChannel
-	var dataMu sync.Mutex
-	var pendingDataMessages [][]byte
-	peer.OnDataChannel(func(channel *webrtc.DataChannel) {
-		if channel.Label() == "rebroid-control" {
-			dataMu.Lock()
-			dataChannel = channel
-			dataMu.Unlock()
-			channel.OnOpen(func() {
-				dataMu.Lock()
-				pending := pendingDataMessages
-				pendingDataMessages = nil
-				dataMu.Unlock()
-				for _, payload := range pending {
-					_ = channel.Send(payload)
-				}
-			})
+	control := bindControlRelay(peer, emit)
+	startWorker(func() {
+		if err := relayDataChannel(ctx, control.opened, control.closed, control.messages); err != nil {
+			stop(err)
 		}
-		channel.OnMessage(func(message webrtc.DataChannelMessage) {
-			write(stdoutMessage{Type: "control", Payload: json.RawMessage(message.Data)})
-		})
 	})
 	peer.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		write(stdoutMessage{Type: "state", State: state.String()})
-		if state == webrtc.PeerConnectionStateFailed || state == webrtc.PeerConnectionStateClosed {
-			os.Exit(0)
+		emit(stdoutMessage{Type: "state", State: state.String()})
+		switch state {
+		case webrtc.PeerConnectionStateFailed:
+			stop(errors.New("WebRTC peer failed"))
+		case webrtc.PeerConnectionStateClosed:
+			stop(nil)
 		}
 	})
 
@@ -144,44 +169,73 @@ func run() error {
 	if err := peer.SetLocalDescription(answer); err != nil {
 		return err
 	}
-	<-gatherComplete
-	write(stdoutMessage{Type: "answer", SDP: peer.LocalDescription().SDP})
-
-	go readCommands(reader, func(payload []byte) {
-		dataMu.Lock()
-		channel := dataChannel
-		if channel != nil && channel.ReadyState() == webrtc.DataChannelStateOpen {
-			dataMu.Unlock()
-			_ = channel.Send(payload)
-			return
-		}
-		if len(pendingDataMessages) >= 32 {
-			pendingDataMessages = pendingDataMessages[1:]
-		}
-		pendingDataMessages = append(pendingDataMessages, append([]byte(nil), payload...))
-		dataMu.Unlock()
+	startWorker(func() {
+		stop(readCommands(reader, func(payload []byte) error {
+			return control.messages.put(payload, dataChannelReplaceKey(payload))
+		}))
 	})
 
-	video := os.NewFile(uintptr(3), "video")
+	select {
+	case <-ctx.Done():
+		return attemptError(ctx)
+	case <-gatherComplete:
+	}
+	if ctx.Err() != nil {
+		return attemptError(ctx)
+	}
+	emit(stdoutMessage{Type: "answer", SDP: peer.LocalDescription().SDP})
+
+	metricsDone := make(chan struct{})
+	go func() {
+		defer close(metricsDone)
+		reportBridgeMetrics(metrics, peer, ctx.Done(), emit)
+	}()
+	defer func() {
+		// Pion's GetStats reads peer state that Close modifies.
+		stop(nil)
+		<-metricsDone
+	}()
+
 	if video == nil {
 		return errors.New("missing video fd")
 	}
-	defer video.Close()
-
-	if audioTrack != nil {
-		audio := os.NewFile(uintptr(4), "audio")
-		if audio == nil {
-			return errors.New("missing audio fd")
-		}
-		defer audio.Close()
-		go func() {
-			if err := streamOpus(audio, audioTrack, metrics, timeline); err != nil && !errors.Is(err, io.EOF) {
-				write(stdoutMessage{Type: "log", Message: "audio disabled: " + err.Error()})
+	if audioTrack == nil {
+		closeAudio()
+	} else if audio == nil {
+		emit(stdoutMessage{Type: "audio-disabled", Message: "Audio input is unavailable."})
+	} else {
+		startWorker(func() {
+			defer closeAudio()
+			err := streamOpus(audio, audioTrack, metrics, timeline, emit)
+			if ctx.Err() != nil {
+				return
 			}
-		}()
+			if errors.Is(err, errSourceTimestampRegressed) {
+				stop(err)
+				return
+			}
+			message := "Audio input ended."
+			if err != nil {
+				message = "Audio relay stopped: " + err.Error()
+			}
+			emit(stdoutMessage{Type: "audio-disabled", Message: message})
+		})
 	}
 
-	return streamH264(video, videoTrack, metrics, recovery, timeline)
+	startWorker(func() {
+		err := streamH264(video, videoTrack, metrics, recovery, timeline, emit)
+		stop(err)
+	})
+	<-ctx.Done()
+	return attemptError(ctx)
+}
+
+func attemptError(ctx context.Context) error {
+	err := context.Cause(ctx)
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+	return err
 }
 
 func h264RTCPFeedback() []webrtc.RTCPFeedback {

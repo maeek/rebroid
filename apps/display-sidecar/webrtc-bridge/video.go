@@ -22,6 +22,7 @@ func streamH264(
 	metrics *bridgeMetrics,
 	recovery *videoRecovery,
 	timeline *sourceTimeline,
+	emit func(stdoutMessage),
 ) error {
 	packetizer := rtp.NewPacketizer(
 		videoRTPMTU,
@@ -104,7 +105,7 @@ func streamH264(
 		recoveryStartPTS = 0
 		if !wroteFrame {
 			wroteFrame = true
-			write(stdoutMessage{Type: "log", Message: "first timestamped video access unit written"})
+			emit(stdoutMessage{Type: "log", Message: "first timestamped video access unit written"})
 		}
 	}
 }

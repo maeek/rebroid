@@ -84,19 +84,19 @@ func (recovery *videoRecovery) snapshot() (uint64, time.Time) {
 	return generation, time.Unix(0, requestedAt)
 }
 
-func drainRTCP(sender *webrtc.RTPSender, metrics *bridgeMetrics, recovery *videoRecovery) {
+func drainRTCP(sender *webrtc.RTPSender, metrics *bridgeMetrics, recovery *videoRecovery, emit func(stdoutMessage)) {
 	for {
 		packets, _, err := sender.ReadRTCP()
 		if err != nil {
 			return
 		}
 		for _, packet := range packets {
-			handleRTCPPacket(packet, metrics, recovery)
+			handleRTCPPacket(packet, metrics, recovery, emit)
 		}
 	}
 }
 
-func handleRTCPPacket(packet rtcp.Packet, metrics *bridgeMetrics, recovery *videoRecovery) {
+func handleRTCPPacket(packet rtcp.Packet, metrics *bridgeMetrics, recovery *videoRecovery, emit func(stdoutMessage)) {
 	switch value := packet.(type) {
 	case *rtcp.TransportLayerNack:
 		var requested uint64
@@ -107,11 +107,11 @@ func handleRTCPPacket(packet rtcp.Packet, metrics *bridgeMetrics, recovery *vide
 	case *rtcp.PictureLossIndication:
 		metrics.plis.Add(1)
 		if recovery != nil && recovery.request() {
-			write(stdoutMessage{Type: "video-resync-request", Message: "pli"})
+			emit(stdoutMessage{Type: "video-resync-request", Message: "pli"})
 		}
 	case *rtcp.FullIntraRequest:
 		if recovery != nil && recovery.request() {
-			write(stdoutMessage{Type: "video-resync-request", Message: "fir"})
+			emit(stdoutMessage{Type: "video-resync-request", Message: "fir"})
 		}
 	case *rtcp.ReceiverReport:
 		for _, report := range value.Reports {
@@ -162,7 +162,7 @@ func metricSnapshot(metrics *bridgeMetrics, peer *webrtc.PeerConnection) map[str
 	return snapshot
 }
 
-func reportBridgeMetrics(metrics *bridgeMetrics, peer *webrtc.PeerConnection, stop <-chan struct{}) {
+func reportBridgeMetrics(metrics *bridgeMetrics, peer *webrtc.PeerConnection, stop <-chan struct{}, emit func(stdoutMessage)) {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	previous := map[string]float64{}
@@ -183,7 +183,7 @@ func reportBridgeMetrics(metrics *bridgeMetrics, peer *webrtc.PeerConnection, st
 				snapshot["rtpSendDelayMs"] =
 					(snapshot["rtpSendDelayTotalMs"] - previous["rtpSendDelayTotalMs"]) / packetDelta
 			}
-			write(stdoutMessage{
+			emit(stdoutMessage{
 				Type:    "metrics",
 				Metrics: snapshot,
 			})

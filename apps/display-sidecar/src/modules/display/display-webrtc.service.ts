@@ -21,6 +21,8 @@ import type { DisplayControlRequest } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { displayControlError } from "./display-control-response";
 import { resolveDisplayStreamProfile } from "./display-stream-profile";
+
+const BRIDGE_SHUTDOWN_GRACE_MS = 1_000;
 import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 type WebrtcOfferOptions = {
@@ -38,10 +40,12 @@ type WebrtcOfferOptions = {
 type BridgeMessage =
   | { type: "answer"; sdp: string }
   | { type: "control"; payload: unknown }
+  | { type: "pointer-move"; payload: unknown }
   | { type: "state"; state: string }
   | { type: "log"; message: string }
   | { type: "metrics"; metrics: Record<string, number> }
   | { type: "video-resync-request"; message?: string }
+  | { type: "audio-disabled"; message?: string }
   | { type: "error"; message: string };
 
 type BridgeAttempt = {
@@ -49,6 +53,7 @@ type BridgeAttempt = {
   signal: AbortSignal;
   sessionId: string;
   requestVideoReset: (reason: string) => void;
+  disableAudio: (message?: string) => void;
 };
 
 @Injectable()
@@ -156,6 +161,13 @@ export class DisplayWebrtcService {
     });
     const videoInput = bridge.stdio[3] as Writable;
     const audioInput = bridge.stdio[4] as Writable;
+    let audioDisabled = !options.audio;
+    const disableAudio = (message = "Audio relay stopped.") => {
+      if (audioDisabled || signal.aborted) return;
+      audioDisabled = true;
+      audioInput.destroy();
+      sink.sendStatus({ type: "audio-disabled", message });
+    };
     const sink = new QueuedScrcpyMediaSink({
       isOpen: () => bridge.exitCode === null && !bridge.killed,
       onClose: (listener) => {
@@ -169,11 +181,26 @@ export class DisplayWebrtcService {
         );
       },
       writeVideo: (payload) => this.writeBridgeInput(videoInput, payload),
-      writeAudio: (payload) => this.writeBridgeInput(audioInput, payload),
+      writeAudio: async (payload) => {
+        if (audioDisabled) return;
+        try {
+          await this.writeBridgeInput(audioInput, payload);
+        } catch {
+          disableAudio();
+        }
+      },
       close: () => {
         videoInput.end();
         audioInput.end();
-        bridge.kill("SIGTERM");
+        if (bridge.exitCode !== null || bridge.signalCode !== null) return;
+        if (!bridge.kill("SIGTERM")) return;
+        const deadline = setTimeout(() => {
+          if (bridge.exitCode === null && bridge.signalCode === null) {
+            bridge.kill("SIGKILL");
+          }
+        }, BRIDGE_SHUTDOWN_GRACE_MS);
+        deadline.unref();
+        bridge.once("exit", () => clearTimeout(deadline));
       },
     });
     let attachment: ScrcpyStreamAttachment | null = null;
@@ -219,8 +246,15 @@ export class DisplayWebrtcService {
       sink.close();
     };
     signal.addEventListener("abort", close, { once: true });
-    for (const input of [bridge.stdin, videoInput, audioInput]) {
-      input?.on("error", () => this.finishAttempt(options.sessionId, attempt));
+    audioInput.on("error", () => disableAudio());
+    for (const input of [bridge.stdin, videoInput]) {
+      input?.on("error", () =>
+        this.finishAttempt(
+          options.sessionId,
+          attempt,
+          new ServiceUnavailableException("WebRTC bridge input closed."),
+        ),
+      );
     }
 
     bridge.stderr.setEncoding("utf8");
@@ -231,7 +265,11 @@ export class DisplayWebrtcService {
       }
     });
     bridge.once("close", (code, closeSignal) => {
-      this.finishAttempt(options.sessionId, attempt);
+      this.finishAttempt(
+        options.sessionId,
+        attempt,
+        new ServiceUnavailableException("WebRTC bridge exited."),
+      );
       this.logger.debug(
         `[webrtc:${options.sessionId}] bridge closed code=${code ?? 0}${closeSignal ? ` signal=${closeSignal}` : ""}`,
       );
@@ -241,6 +279,7 @@ export class DisplayWebrtcService {
       bridge,
       signal,
       requestVideoReset: (reason) => attachment?.requestVideoReset(reason),
+      disableAudio,
       sessionId: options.sessionId,
     };
     const answer = await this.configureBridge(bridgeAttempt, {
@@ -398,7 +437,13 @@ export class DisplayWebrtcService {
   }
 
   private handleBridgeLine(
-    { bridge, sessionId, signal, requestVideoReset }: BridgeAttempt,
+    {
+      bridge,
+      sessionId,
+      signal,
+      requestVideoReset,
+      disableAudio,
+    }: BridgeAttempt,
     line: string,
     onAnswer?: (sdp: string) => void,
   ) {
@@ -425,6 +470,17 @@ export class DisplayWebrtcService {
       );
       return;
     }
+    if (message.type === "pointer-move") {
+      const pointer = this.parseControlMessage(message.payload);
+      if (
+        pointer?.type === "touch" &&
+        pointer.action === "pointer" &&
+        pointer.eventType === "move"
+      ) {
+        void this.controls.execute(sessionId, pointer).catch(() => undefined);
+      }
+      return;
+    }
     if (message.type === "error") {
       this.logger.warn(`[webrtc:${sessionId}] ${message.message}`);
       return;
@@ -438,6 +494,10 @@ export class DisplayWebrtcService {
     }
     if (message.type === "video-resync-request") {
       requestVideoReset(`webrtc:${message.message?.slice(0, 80) || "pli"}`);
+      return;
+    }
+    if (message.type === "audio-disabled") {
+      disableAudio(message.message);
       return;
     }
     if (message.type === "log" || message.type === "state") {
@@ -490,9 +550,13 @@ export class DisplayWebrtcService {
     if (attempt) this.finishAttempt(sessionId, attempt);
   }
 
-  private finishAttempt(sessionId: string, attempt: AbortController) {
+  private finishAttempt(
+    sessionId: string,
+    attempt: AbortController,
+    reason: Error = new ConflictException("WebRTC offer was cancelled."),
+  ) {
     if (this.active.get(sessionId) === attempt) this.active.delete(sessionId);
-    attempt.abort(new ConflictException("WebRTC offer was cancelled."));
+    attempt.abort(reason);
   }
 
   private resolveIceHost(requestHost: string | null) {

@@ -57,15 +57,18 @@ func TestReadMediaFrameRejectsKindAndLength(t *testing.T) {
 }
 
 func TestReadCommandsForwardsOnlyValidDataChannelMessages(t *testing.T) {
-	reader := bufio.NewReader(strings.NewReader(
+	reader := bufio.NewScanner(strings.NewReader(
 		"not-json\n" +
 			`{"type":"ignored","payload":{"type":"action"}}` + "\n" +
 			`{"type":"datachannel","payload":{"type":"action"}}` + "\n",
 	))
 	var messages [][]byte
-	readCommands(reader, func(payload []byte) {
+	if err := readCommands(reader, func(payload []byte) error {
 		messages = append(messages, append([]byte(nil), payload...))
-	})
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 	if len(messages) != 1 || string(messages[0]) != `{"type":"action"}` {
 		t.Fatalf("expected one bounded data-channel payload, got %q", messages)
 	}
@@ -160,14 +163,14 @@ func TestRTCPFeedbackRequestsGOPRecoveryAndCountsLoss(t *testing.T) {
 	recovery := &videoRecovery{}
 	handleRTCPPacket(&rtcp.TransportLayerNack{
 		Nacks: rtcp.NackPairsFromSequenceNumbers([]uint16{10, 11, 14}),
-	}, metrics, recovery)
-	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery)
-	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery)
-	handleRTCPPacket(&rtcp.FullIntraRequest{}, metrics, recovery)
+	}, metrics, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.FullIntraRequest{}, metrics, recovery, func(stdoutMessage) {})
 	handleRTCPPacket(&rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{{
 		TotalLost: 7,
 		Jitter:    90,
-	}}}, metrics, recovery)
+	}}}, metrics, recovery, func(stdoutMessage) {})
 
 	generation, requestedAt := recovery.snapshot()
 	if metrics.nacks.Load() != 3 || metrics.plis.Load() != 2 {
