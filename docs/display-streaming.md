@@ -59,18 +59,20 @@ Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers va
 - Video overflow discards the queued group of pictures (GOP), suppresses delta frames, and resumes
   with cached codec configuration plus an IDR keyframe. Never drop an arbitrary delta and continue.
 - Resynchronization discards audio older than the resumed keyframe. Reattachment caches are bounded
-  to two seconds and 16 MiB.
+  to two seconds and 16 MiB. Replay a cached GOP only if it fits the consumer's live-edge queue.
 - WebRTC negotiates from a configuration and IDR from the same source generation. If the source
-  changes generation during signaling, the offer fails with a retryable response. If configuration
-  changes after attachment, only the negotiated consumer detaches. The bridge derives RTP timing
-  from source timestamps and continuously drains sender RTCP.
+  changes generation during signaling, the offer fails with a retryable response. Media attaches
+  after the peer connects and checks that generation again before sending the first frame.
+  A later configuration change detaches only the negotiated consumer. The bridge derives RTP
+  timing from source timestamps and continuously drains sender RTCP.
 - The Go bridge owns shutdown of its peer and media workers. A track-local audio error closes
   that input and leaves video active. A shared timestamp regression ends the peer attempt.
 - Repeated RTCP feedback leaves an outstanding consumer recovery deadline in place. The deadline
   advances with source PTS while waiting for configuration and an IDR.
 - Consumer attachment, PLI, and decoder recovery use scrcpy v4 reset-video message `17` over the
   existing control socket, coalesced to at most once per second. An outstanding reset keeps its
-  original three-second deadline and completes when configuration is followed by an IDR.
+  original three-second deadline after the control write completes. A configuration followed by an
+  IDR completes recovery. Losing the control socket cancels its watchdog.
 - Static screens are healthy. Recovery must compare advancing source frames with delivery and
   presentation, rather than treating an idle source as a freeze.
 - Retries never silently lower requested resolution, FPS, bitrate, or switch transport.
@@ -85,10 +87,11 @@ work from an abandoned append queue. PCM is delivered to an AudioWorklet with a 
 All transports share validated device-control semantics. Parent-window keyboard capture follows the
 active surface. Discrete controls use reliable delivery and report correlated dispatch outcomes.
 Commands waiting for a reconnect are acknowledged after the transport write completes. They fail if
-the queue is full, the session ends, or three seconds elapse before dispatch. A write failure can
-leave the outcome unknown. Live pointer phases are never queued for replay after a reconnect. Each
-admitted pointer-down reserves room for its release in the browser. Virtual surfaces require stream
-control because the ADB fallback targets the device's default display.
+the queue is full, the session ends, or three seconds elapse before dispatch, including time spent
+waiting for a Direct ADB acknowledgment of the preceding write. If a submitted write fails or
+its completion misses the deadline, the outcome is unknown. Live pointer phases are never queued for replay after a reconnect. The browser
+and Direct ADB queues reserve room for a pointer release. Virtual surfaces require stream control
+because the ADB fallback targets the device's default display.
 The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
 outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
 The Go relay sends correlated replies in order and coalesces replaceable telemetry under pressure.
@@ -98,6 +101,9 @@ The Go relay sends correlated replies in order and coalesces replaceable telemet
 ADB commands, listener registration, video → audio → control socket acquisition, process launch,
 retry, and cleanup are order-sensitive. Do not reorder or merge these operations for style or
 file size. A transport closing must not destroy the source's ADB connection or scrcpy process.
+The forward video socket holds bytes after the dummy handshake until the parser takes ownership.
+The reverse listener stops accepting connections without waiting for the handed-off sockets.
+Attempt cleanup waits for the listener to drain after destroying those sockets.
 
 Without a dedicated Redroid verification pass, refactoring is limited to pure SPS parsing,
 compatibility-probe parsing, retry classification, and stream-option selection. Changes to
@@ -113,9 +119,11 @@ on one FPS value:
 - Frame gaps, jitter, decode time, live-edge age, queue depth, drops, freezes, RTT, and packet loss.
 - PLI/NACK, resync/reset/restart counts, event-loop utilization, and GC pauses.
 
-A freeze requires source progress with no presentation for over 100 ms. Static screens do not
-increment it. The encoder bitrate target is an upper quality target, so lower wire bitrate on
-static content is expected.
+WebRTC reports presentation gaps separately from freezes. It records a freeze after consecutive
+samples show advancing input and no new presented frames. When a browser has no presentation
+counter, decoded-frame progress can still distinguish an upstream stall from an idle source.
+The encoder bitrate target is an upper quality target, so lower wire bitrate on static content
+is expected.
 
 ## Reverse proxies
 
@@ -137,7 +145,7 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 | Transport       | WebRTC and WebSocket; Chromium and Firefox.                               |
 | Media           | Video with audio enabled and disabled.                                    |
 | Controls        | Touch, keyboard, actions, clipboard, and ADB fallback.                    |
-| Connections     | Direct and forward tunnels, fallback, repeated create/release.            |
+| Connections     | Direct, forward, and reverse tunnels, fallback, repeated create/release.   |
 | Recovery        | Disconnect, retry, reconnect, expiry, shutdown, and final cleanup.        |
 | Virtual display | Rejection while disabled; creation/release after synchronized enablement. |
 
