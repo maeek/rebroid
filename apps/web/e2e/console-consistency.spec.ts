@@ -106,6 +106,86 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
       expect(link!.y + link!.height).toBeLessThanOrEqual(480)
       const sidebar = await page.locator('aside').boundingBox()
       expect(sidebar!.y + sidebar!.height).toBe(480)
+      await expect(page.getByRole('link', { name: 'Create user', exact: true })).toHaveAttribute(
+        'href',
+        '/security/users?create=1'
+      )
+      await expect(page.getByRole('link', { name: 'Create group', exact: true })).toHaveAttribute(
+        'href',
+        '/security/groups?create=1'
+      )
+      await expect(page.getByRole('link', { name: 'Build image', exact: true })).toHaveCount(0)
     }
+  }
+})
+
+test('desktop sidebar collapse gives its space back to the page and persists', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=console-shell')
+  const heading = page.getByRole('heading', { level: 1 })
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  const start = (await heading.boundingBox())!
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(sidebar).toBeHidden()
+  expect((await heading.boundingBox())!.x).toBeLessThan(start.x)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
+  await page.getByRole('button', { name: 'Expand sidebar' }).click()
+  await expect(sidebar).toBeVisible()
+})
+
+test('the user creation shortcut opens and clears the existing dialog', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=users-list&create=1')
+  const dialog = page.getByRole('dialog', { name: 'Create User' })
+  await expect(dialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(/\?editor=users-list$/)
+  await page.getByRole('button', { name: 'New user' }).click()
+  await expect(dialog).toBeVisible()
+})
+
+test('Files opens Downloads and keeps folder navigation available on narrow and wide layouts', async ({
+  page
+}, testInfo) => {
+  const downloads = '/data/media/0/Download'
+  await page.route('**/api/bff/applications/*/runtime/files?*', route => {
+    const path = new URL(route.request().url()).searchParams.get('path')
+    const data =
+      path === downloads
+        ? [
+            {
+              name: 'Reports',
+              path: `${downloads}/Reports`,
+              type: 'directory',
+              sizeBytes: null,
+              itemCount: null,
+              modifiedAt: null
+            },
+            {
+              name: 'summary.csv',
+              path: `${downloads}/summary.csv`,
+              type: 'file',
+              sizeBytes: 2148,
+              itemCount: null,
+              modifiedAt: '2026-11-01T10:22:00Z'
+            }
+          ]
+        : []
+    return route.fulfill({ json: { ok: true, data, requestId: 'preview' } })
+  })
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/skeleton-contract-test?editor=app-resource&view=files')
+    const path = page.getByRole('navigation', { name: 'Current folder' })
+    await expect(path.locator('[aria-current]')).toHaveText('Downloads')
+    await expect(page.getByRole('button', { name: 'summary.csv' })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: testInfo.outputPath(`files-${width}.png`) })
+    await page.getByRole('button', { name: 'Reports', exact: true }).click()
+    await expect(path.locator('[aria-current]')).toHaveText('Reports')
+    await expect(page.getByRole('heading', { name: 'This folder is empty' })).toBeVisible()
+    await path.getByRole('button', { name: 'Downloads', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'summary.csv' })).toBeVisible()
   }
 })
