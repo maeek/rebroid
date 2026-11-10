@@ -111,7 +111,10 @@ export interface ScrcpySocket {
   pause: () => ScrcpySocket;
   resume: () => ScrcpySocket;
   setNoDelay: (noDelay?: boolean) => ScrcpySocket;
-  write: (payload: Buffer | Uint8Array | string) => boolean;
+  write: (
+    payload: Buffer | Uint8Array | string,
+    callback?: (error?: Error | null) => void,
+  ) => boolean;
 }
 
 export interface ForwardedVideoSocket {

@@ -11,6 +11,8 @@ import { type ViewerCommand } from "@rebroid/android-application-core/viewer-con
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
 import { ScrcpyControlCodec } from "./scrcpy-control-codec";
+import { ScrcpyControlDispatchError } from "./scrcpy-control-dispatch-error";
+import { ScrcpyControlQueue } from "./scrcpy-control-queue";
 import {
   compatibilityStateChanged,
   compatibilityProbeServices,
@@ -54,8 +56,6 @@ const STREAM_HEARTBEAT_INTERVAL_MS = 5_000;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
 const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 5_000;
 const AUXILIARY_SOCKET_CONNECT_TIMEOUT_MS = 2_000;
-const MAX_QUEUED_CONTROL_MESSAGES = 128;
-const MAX_QUEUED_CONTROL_AGE_MS = 10_000;
 const SCRCPY_LOGCAT_INTERVAL_MS = 10_000;
 const DEVICE_MESSAGE_CLIPBOARD = 0;
 const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
@@ -78,11 +78,6 @@ interface ActiveControlSocket {
   socket: ScrcpySocket;
   udid: string;
   stopAttempt: () => Promise<void>;
-}
-
-interface QueuedControlMessage {
-  payloads: Buffer[];
-  queuedAt: number;
 }
 
 interface ScrcpyServerLaunch {
@@ -116,10 +111,7 @@ export class ScrcpyService implements OnModuleDestroy {
   private readonly controlCodec = new ScrcpyControlCodec();
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
   private readonly controlUnavailableSessions = new Set<string>();
-  private readonly queuedControlMessages = new Map<
-    string,
-    QueuedControlMessage[]
-  >();
+  private readonly queuedControlMessages = new ScrcpyControlQueue();
   private readonly lastLogcatDiagnosticsAt = new Map<string, number>();
   private readonly scrcpyServerPushes = new Set<string>();
   private readonly streamSessions = new ScrcpyStreamSessionRegistry();
@@ -663,11 +655,11 @@ export class ScrcpyService implements OnModuleDestroy {
           controlSocket.on("data", () => undefined);
         } else if (ownsSource()) {
           this.controlUnavailableSessions.add(options.sessionId);
-          this.queuedControlMessages.delete(options.sessionId);
+          this.queuedControlMessages.discard(options.sessionId);
         }
       } else if (this.config.scrcpyControlChannel && ownsSource()) {
         this.controlUnavailableSessions.add(options.sessionId);
-        this.queuedControlMessages.delete(options.sessionId);
+        this.queuedControlMessages.discard(options.sessionId);
       }
 
       if (forwardActive) {
@@ -927,7 +919,7 @@ export class ScrcpyService implements OnModuleDestroy {
           }
           this.controlSockets.delete(options.sessionId);
           this.controlUnavailableSessions.add(options.sessionId);
-          this.queuedControlMessages.delete(options.sessionId);
+          this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
             `[${logPrefix}] display control socket closed; continuing video with ADB control fallback`,
           );
@@ -938,7 +930,7 @@ export class ScrcpyService implements OnModuleDestroy {
           }
           this.controlSockets.delete(options.sessionId);
           this.controlUnavailableSessions.add(options.sessionId);
-          this.queuedControlMessages.delete(options.sessionId);
+          this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
             `[${logPrefix}] display control socket failed: ${error.message}; continuing video with ADB control fallback`,
           );
@@ -999,7 +991,13 @@ export class ScrcpyService implements OnModuleDestroy {
 
   sendTouchEvent(sessionId: string, event: TouchControlPayload) {
     const payloads = this.controlCodec.touchEventPayloads(event);
-    return payloads ? this.writeControlMessages(sessionId, payloads) : false;
+    return payloads
+      ? this.writeControlMessages(
+          sessionId,
+          payloads,
+          event.action !== "pointer",
+        )
+      : false;
   }
 
   sendClipboard(sessionId: string, text: string) {
@@ -1787,35 +1785,39 @@ export class ScrcpyService implements OnModuleDestroy {
     );
   }
 
-  private writeControlMessages(sessionId: string, payloads: Buffer[]) {
+  private writeControlMessages(
+    sessionId: string,
+    payloads: Buffer[],
+    queueOnReconnect = true,
+  ) {
     const active = this.controlSockets.get(sessionId);
     if (active && !active.socket.destroyed && active.socket.writable) {
-      try {
-        for (const payload of payloads) {
-          active.socket.write(payload);
-        }
-        return true;
-      } catch (error) {
-        this.logger.debug(
-          `[scrcpy:${active.udid}:${sessionId}] could not write control message: ${this.errorMessage(error)}`,
+      return this.writeControlPayloads(active, payloads);
+    }
+    if (queueOnReconnect && this.shouldWaitForStreamControl(sessionId)) {
+      return this.queuedControlMessages.enqueue(sessionId, payloads);
+    }
+    return false;
+  }
+
+  private writeControlPayloads(active: ActiveControlSocket, payloads: Buffer[]) {
+    return Promise.all(
+      payloads.map((payload) => new Promise<void>((resolve, reject) => {
+        active.socket.write(payload, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      })),
+    ).then(
+      (): true => true,
+      () => {
+        // A command with multiple messages can have partially reached scrcpy.
+        throw new ScrcpyControlDispatchError(
+          "control_outcome_unknown",
+          "Live control disconnected during dispatch. The outcome is unknown.",
         );
-      }
-    }
-
-    if (!this.config.scrcpyControlChannel) {
-      return false;
-    }
-
-    if (!this.sources.has(sessionId)) {
-      return false;
-    }
-
-    if (this.controlUnavailableSessions.has(sessionId)) {
-      return false;
-    }
-
-    this.enqueueControlMessages(sessionId, payloads);
-    return true;
+      },
+    );
   }
 
   private forwardDeviceControlMessages(
@@ -1867,46 +1869,18 @@ export class ScrcpyService implements OnModuleDestroy {
     return buffer;
   }
 
-  private enqueueControlMessages(sessionId: string, payloads: Buffer[]) {
-    const now = Date.now();
-    const queue = (this.queuedControlMessages.get(sessionId) ?? []).filter(
-      (message) => now - message.queuedAt <= MAX_QUEUED_CONTROL_AGE_MS,
-    );
-    queue.push({ payloads, queuedAt: now });
-    while (queue.length > MAX_QUEUED_CONTROL_MESSAGES) {
-      queue.shift();
-    }
-    this.queuedControlMessages.set(sessionId, queue);
-  }
-
   private flushQueuedControlMessages(sessionId: string) {
-    const queued = this.queuedControlMessages.get(sessionId);
-    if (!queued?.length) {
-      return;
-    }
-
     const active = this.controlSockets.get(sessionId);
     if (!active || active.socket.destroyed || !active.socket.writable) {
       return;
     }
 
-    this.queuedControlMessages.delete(sessionId);
-    const now = Date.now();
-    let flushed = 0;
-    for (const message of queued) {
-      if (now - message.queuedAt > MAX_QUEUED_CONTROL_AGE_MS) {
-        continue;
-      }
-
-      for (const payload of message.payloads) {
-        active.socket.write(payload);
-      }
-      flushed += 1;
-    }
-
-    if (flushed > 0) {
+    const submitted = this.queuedControlMessages.flush(sessionId, (payloads) =>
+      this.writeControlPayloads(active, payloads),
+    );
+    if (submitted > 0) {
       this.logger.debug(
-        `[scrcpy:${active.udid}:${sessionId}] flushed ${flushed} queued control messages`,
+        `[scrcpy:${active.udid}:${sessionId}] dispatching ${submitted} queued control messages`,
       );
     }
   }
@@ -1960,7 +1934,7 @@ export class ScrcpyService implements OnModuleDestroy {
     this.sources.delete(sessionId);
     this.controlSockets.delete(sessionId);
     this.controlUnavailableSessions.delete(sessionId);
-    this.queuedControlMessages.delete(sessionId);
+    this.queuedControlMessages.discard(sessionId);
     if (source.idleTimer) {
       clearTimeout(source.idleTimer);
     }

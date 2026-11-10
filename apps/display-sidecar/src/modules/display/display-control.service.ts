@@ -8,6 +8,7 @@ import type { ViewerCommand } from "@rebroid/android-application-core/viewer-con
 import { AdbService } from "../adb/adb.service";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
+import { ScrcpyControlDispatchError } from "../scrcpy/scrcpy-control-dispatch-error";
 import { DisplaySessionService } from "./display-session.service";
 import { validateDisplayControl } from "./display-control-validation";
 import type { DisplayControlRequest, DisplaySession } from "./display.types";
@@ -33,6 +34,13 @@ export class DisplayControlService {
       this.sessions.touch(sessionId);
       return result;
     } catch (error) {
+      if (error instanceof ScrcpyControlDispatchError) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: error.code,
+          message: error.message,
+        });
+      }
       if (
         error instanceof BadRequestException ||
         error instanceof ConflictException
@@ -103,11 +111,11 @@ export class DisplayControlService {
 
   private async withFallback(
     session: DisplaySession,
-    handledByStream: boolean,
+    handledByStream: boolean | Promise<boolean>,
     executeAdb: () => Promise<unknown>,
     command?: ViewerCommand,
   ) {
-    if (handledByStream) {
+    if (await handledByStream) {
       return { command, executed: true, transport: "stream-control" as const };
     }
     if (

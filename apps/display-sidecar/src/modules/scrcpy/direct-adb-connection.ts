@@ -146,8 +146,10 @@ export class DirectAdbConnection {
     arg0: number,
     arg1: number,
     payload: Uint8Array = Buffer.alloc(0),
+    callback?: (error?: Error | null) => void,
   ) {
     if (this.transport.destroyed) {
+      callback?.(new Error("Direct ADB transport closed before writing"));
       return;
     }
 
@@ -161,6 +163,7 @@ export class DirectAdbConnection {
     header.writeUInt32LE((command ^ 0xffffffff) >>> 0, 20);
     this.transport.write(
       data.byteLength ? Buffer.concat([header, data]) : header,
+      callback,
     );
   }
 
@@ -284,7 +287,10 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
   private closed = false;
   private readonly readQueue: DirectAdbReadMessage[] = [];
   private readonly pendingReadAcks: number[] = [];
-  private readonly writeQueue: Buffer[] = [];
+  private readonly writeQueue: Array<{
+    payload: Buffer;
+    callback?: (error?: Error | null) => void;
+  }> = [];
   private openResolve: ((socket: DirectAdbSocket) => void) | null = null;
   private openReject: ((error: Error) => void) | null = null;
 
@@ -388,10 +394,17 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
     return this;
   }
 
-  write(payload: Buffer | Uint8Array | string) {
+  write(
+    payload: Buffer | Uint8Array | string,
+    callback?: (error?: Error | null) => void,
+  ) {
+    if (this.destroyed) {
+      callback?.(new Error("Direct ADB socket closed before writing"));
+      return false;
+    }
     const buffer =
       typeof payload === "string" ? Buffer.from(payload) : Buffer.from(payload);
-    this.writeQueue.push(buffer);
+    this.writeQueue.push({ payload: buffer, callback });
     this.flushWrites();
     return true;
   }
@@ -401,6 +414,7 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
       return this;
     }
     this.closed = true;
+    this.failQueuedWrites();
     if (error) {
       this.debug(`destroying direct ${this.label} socket: ${error.message}`);
     }
@@ -429,13 +443,14 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
       return;
     }
 
-    const payload = this.writeQueue.shift()!;
+    const { payload, callback } = this.writeQueue.shift()!;
     this.pendingWriteOk = true;
     this.connection.sendPacket(
       ADB_COMMAND.WRTE,
       this.localId,
       this.remoteId,
       payload,
+      callback,
     );
   }
 
@@ -479,12 +494,18 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
     this.openReject = null;
   }
 
+  private failQueuedWrites(): void {
+    const error = new Error("Direct ADB socket closed before writing");
+    for (const { callback } of this.writeQueue.splice(0)) callback?.(error);
+  }
+
   private close(error?: Error) {
     if (this.closed) {
       return;
     }
 
     this.closed = true;
+    this.failQueuedWrites();
     this.connection.closeStream(this);
     if (error && this.listenerCount("error") > 0) {
       this.emit("error", error);

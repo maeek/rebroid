@@ -102,6 +102,19 @@ test("a discrete command waits for its own reply and never retries a sent comman
   assert.equal(socket.messages.length, 2);
   assert.equal(fetchCalls.length, 0);
 
+  const uncertain = assert.rejects(
+    channel.send({ type: "action", command: "home" }, "actions"),
+    /may have received the command/,
+  );
+  await Promise.resolve();
+  socket.reply({
+    id: socket.messages[2].id,
+    ok: false,
+    code: "control_outcome_unknown",
+  });
+  await uncertain;
+  assert.equal(fetchCalls.length, 0);
+
   socket.close();
   const unavailable = assert.rejects(
     channel.send({ type: "action", command: "home" }, "actions"),

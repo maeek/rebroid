@@ -5,6 +5,7 @@ import type { AdbService } from "../adb/adb.service";
 import type { ScrcpyService } from "../scrcpy/scrcpy.service";
 import type { DisplaySessionService } from "./display-session.service";
 import type { DisplayControlRequest } from "./display.types";
+import { setImmediate } from "node:timers/promises";
 
 const requests: DisplayControlRequest[] = [
   { type: "action", command: "home" },
@@ -14,7 +15,7 @@ const requests: DisplayControlRequest[] = [
 ];
 
 const service = (
-  handledByStream: boolean,
+  handledByStream: boolean | Promise<boolean>,
   reconnecting = false,
   surfaceKind = "main",
 ) => {
@@ -50,6 +51,26 @@ test("all control kinds share stream and ADB fallback semantics", async () => {
       "adb",
     );
   }
+});
+
+test("control waits for stream dispatch and preserves an unknown outcome", async () => {
+  let rejectDispatch!: (error: Error) => void;
+  const dispatch = new Promise<boolean>((_resolve, reject) => {
+    rejectDispatch = reject;
+  });
+  void dispatch.catch(() => undefined);
+  let settled = false;
+  const result = service(dispatch).execute("session", requests[0]);
+  void result
+    .finally(() => {
+      settled = true;
+    })
+    .catch(() => undefined);
+  await setImmediate();
+  assert.equal(settled, false);
+
+  rejectDispatch(new Error("socket write interrupted"));
+  await assert.rejects(result, /could not be executed/);
 });
 
 test("virtual surfaces use stream control and reject device-wide ADB fallback", async () => {

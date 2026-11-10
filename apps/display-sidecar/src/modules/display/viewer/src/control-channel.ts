@@ -289,8 +289,15 @@ export function createControlChannel({
 }
 
 function controlFailure(reply: unknown): Error {
-  if (isRecord(reply) && reply.code === "control_reconnecting") {
-    return new Error("Live controls are reconnecting. Try again in a moment.");
+  if (isRecord(reply)) {
+    switch (reply.code) {
+      case "control_reconnecting":
+        return new Error("Live controls are reconnecting. Try again in a moment.");
+      case "control_not_dispatched":
+        return new Error("The command was not sent to the display.");
+      case "control_outcome_unknown":
+        return new Error("The display may have received the command. Check before retrying.");
+    }
   }
   return new Error("The display did not execute the command.");
 }
