@@ -4,11 +4,12 @@ import { requireAdmin, getCurrentUser } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
-import { getWebSettings, resetWebSettings, saveWebSettings } from '@/server/web-settings/store'
+import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
 import {
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse,
-  normalizeOrchestratorUiSettings
+  normalizeOrchestratorUiSettings,
+  pickGeneralUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { OrchestratorSettingsResponse, WebSettingsResponse } from '@/shared/contracts/ui-settings'
 import type {
@@ -70,7 +71,7 @@ export const saveGeneralUiSettings = async (settings: GeneralUiSettings) => {
 
 export const resetGeneralUiSettings = async () => {
   const admin = await requireAdmin()
-  const web = await resetWebSettings()
+  const web = await saveWebSettings(pickGeneralUiSettings(defaultWebSettingsResponse))
   recordUpdate(admin, 'general_reset')
   return combineSettings(web, await readOptionalRuntimeSettings())
 }

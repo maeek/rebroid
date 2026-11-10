@@ -52,6 +52,17 @@ export type GeneralUiSettings = Pick<
   | 'defaultViewerSoundEnabled'
 >
 
+export const pickGeneralUiSettings = (settings: GeneralUiSettings): GeneralUiSettings => ({
+  appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
+  defaultViewerPreset: settings.defaultViewerPreset,
+  defaultViewerBitrateMbps: settings.defaultViewerBitrateMbps,
+  defaultViewerMaxFps: settings.defaultViewerMaxFps,
+  defaultViewerMaxSize: settings.defaultViewerMaxSize,
+  defaultViewerIFrameInterval: settings.defaultViewerIFrameInterval,
+  defaultViewerKeyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
+  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
+})
+
 export type RuntimeUiSettings = Pick<
   OrchestratorUiSettings,
   | 'defaultContainerImage'

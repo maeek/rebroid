@@ -85,8 +85,3 @@ export const saveWebSettings = async (settings: Partial<WebSettings>) => {
     return [{ ...normalized }, normalized]
   })
 }
-
-export const resetWebSettings = () => {
-  writeSettingsDocument(defaultWebSettings)
-  return Promise.resolve({ ...defaultWebSettings })
-}

@@ -2,17 +2,21 @@ import { useState } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
-import { GeneralSettingsFields } from './general-settings-fields'
+import { AppearanceSettings, ConsoleDefaultsFields } from './general-settings-fields'
 
 const Settings = () => {
   const [settings, setSettings] = useState(defaultOrchestratorUiSettings)
   return (
-    <GeneralSettingsFields
-      settings={settings}
-      onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
-      accentColor='blue'
-      onAccentColorChange={() => {}}
-    />
+    <>
+      <AppearanceSettings
+        accentColor='blue'
+        onAccentColorChange={() => {}}
+      />
+      <ConsoleDefaultsFields
+        settings={settings}
+        onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
+      />
+    </>
   )
 }
 
@@ -34,13 +38,18 @@ describe('General settings fields', () => {
   it('keeps known field descriptions and section headings visible during loading without enabling edits', () => {
     const onChange = vi.fn()
     render(
-      <GeneralSettingsFields
-        settings={defaultOrchestratorUiSettings}
-        onSettingsChange={onChange}
-        accentColor='blue'
-        onAccentColorChange={onChange}
-        loading
-      />
+      <>
+        <AppearanceSettings
+          accentColor='blue'
+          onAccentColorChange={onChange}
+          loading
+        />
+        <ConsoleDefaultsFields
+          settings={defaultOrchestratorUiSettings}
+          onSettingsChange={onChange}
+          loading
+        />
+      </>
     )
     expect(screen.getByRole('region', { name: 'Frontend defaults' })).toBeVisible()
     expect(screen.getByText('Controls how often app lists refresh automatically across the frontend.')).toBeVisible()

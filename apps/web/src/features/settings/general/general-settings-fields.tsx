@@ -1,44 +1,60 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
+import { useTheme } from 'next-themes'
 import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { appThemeOptions } from '@/components/ui/theme-toggle'
 import { viewerPlacementOptions } from '@/shared/model/settings/viewer-placement'
 import { useViewerPlacement } from '@/shared/model/settings/viewer-placement-context'
 import { AccentColorPicker } from '@/shared/ui/settings/accent-color-picker'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { AccentColor } from '@/shared/model/theme/accent-color'
 
-export const GeneralSettingsFields = ({
-  settings,
+export const AppearanceSettings = ({
   accentColor,
-  onSettingsChange,
   onAccentColorChange,
   loading = false
 }: {
-  settings: OrchestratorUiSettings
   accentColor: AccentColor
-  onSettingsChange: (patch: Partial<OrchestratorUiSettings>) => void
   onAccentColorChange: (color: AccentColor) => void
   loading?: boolean
 }) => (
-  <>
+  <div
+    id='appearance'
+    className='scroll-mt-[calc(var(--console-top-inset)+1rem)]'
+  >
     <Section
       surface='plain'
-      orientation='vertical'
       title='Appearance'
-      headingSpacing='default'
     >
+      <div className='grid gap-4 sm:grid-cols-2'>
+        <ThemeField loading={loading} />
+        <ViewerPlacementField loading={loading} />
+      </div>
       <AccentColorPicker
         value={accentColor}
         loading={loading}
         onChange={onAccentColorChange}
       />
-      <ViewerPlacementField loading={loading} />
     </Section>
+  </div>
+)
+
+export const ConsoleDefaultsFields = ({
+  settings,
+  onSettingsChange,
+  loading = false
+}: {
+  settings: GeneralUiSettings
+  onSettingsChange: (patch: Partial<GeneralUiSettings>) => void
+  loading?: boolean
+}) => (
+  <>
     <Section
       surface='plain'
       orientation='vertical'
@@ -149,12 +165,48 @@ export const GeneralSettingsFields = ({
   </>
 )
 
+const subscribeToHydration = () => () => {}
+const clientSnapshot = () => true
+const serverSnapshot = () => false
+
+const ThemeField = ({ loading }: { loading: boolean }) => {
+  const { theme, setTheme } = useTheme()
+  const hydrated = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot)
+  return (
+    <FormField
+      label='Theme'
+      description='Applies immediately in this browser.'
+      layout='vertical'
+    >
+      <Select
+        value={hydrated ? (theme ?? '') : ''}
+        onValueChange={setTheme}
+        disabled={loading || !hydrated}
+      >
+        <SelectTrigger className='w-full'>
+          <SelectValue placeholder='Select theme' />
+        </SelectTrigger>
+        <SelectContent>
+          {appThemeOptions.map(({ value, label }) => (
+            <SelectItem
+              key={value}
+              value={value}
+            >
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FormField>
+  )
+}
+
 const ViewerPlacementField = ({ loading }: { loading: boolean }) => {
   const { placement, setPlacement } = useViewerPlacement()
   return (
     <FormField
       label='Viewer layout'
-      description='Choose where the Viewer appears on app pages. Applies immediately in this browser.'
+      description='Choose where the viewer appears on wide screens. On narrow screens it sits above the page content.'
       layout='vertical'
     >
       <Select

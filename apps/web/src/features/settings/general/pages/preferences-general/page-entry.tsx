@@ -4,11 +4,11 @@ import { getPreferencesGeneralPageData } from './page-data.server'
 import { PreferencesGeneralPageSkeleton } from './preferences-general-page-skeleton'
 
 const PreferencesGeneralContent = async () => {
-  const { currentUser, initialSettings } = await getPreferencesGeneralPageData()
+  const { user, initialSettings } = await getPreferencesGeneralPageData()
 
   return (
     <GeneralSettingsForm
-      initialAccentColor={currentUser.accentColor}
+      user={user}
       initialSettings={initialSettings}
     />
   )

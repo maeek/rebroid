@@ -1,17 +1,15 @@
 'use client'
 
-import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
-import { GeneralSettingsFields } from '../../general-settings-fields'
-import { GeneralSettingsLayout } from '../../general-settings-layout'
+import { defaultOrchestratorUiSettings, pickGeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { GeneralSettingsContent } from '../../general-settings-form'
 
-export const PreferencesGeneralPageSkeleton = () => (
-  <GeneralSettingsLayout loading>
-    <GeneralSettingsFields
-      settings={defaultOrchestratorUiSettings}
-      accentColor='blue'
-      onSettingsChange={() => {}}
-      onAccentColorChange={() => {}}
-      loading
-    />
-  </GeneralSettingsLayout>
+export const PreferencesGeneralPageSkeleton = ({ showDefaults = false }: { showDefaults?: boolean }) => (
+  <GeneralSettingsContent
+    user={{ name: '', avatarDataUrl: null, mfaEnabled: false }}
+    accentColor='blue'
+    onAccentColorChange={() => {}}
+    onAvatarSaved={() => {}}
+    initialSettings={showDefaults ? pickGeneralUiSettings(defaultOrchestratorUiSettings) : undefined}
+    loading
+  />
 )

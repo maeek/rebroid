@@ -1,8 +1,11 @@
 import { getCurrentUser } from '@/server/auth/authorization'
-import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
+import { getWebSettings } from '@/server/web-settings/store'
+import { defaultWebSettingsResponse, pickGeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const getPreferencesGeneralPageData = async () => {
-  const [currentUser, initialSettings] = await Promise.all([getCurrentUser(), getServerOrchestratorUiSettings()])
+  const { name, avatarDataUrl, mfaEnabled, accentColor, role } = await getCurrentUser()
+  const initialSettings =
+    role === 'admin' ? pickGeneralUiSettings(await getWebSettings().catch(() => defaultWebSettingsResponse)) : undefined
 
-  return { currentUser, initialSettings }
+  return { user: { name, avatarDataUrl, mfaEnabled, accentColor }, initialSettings }
 }

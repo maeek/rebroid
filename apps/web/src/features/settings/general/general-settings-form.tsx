@@ -1,57 +1,42 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateCurrentAccentColorAction } from '@/server/users/actions/update-current-accent-color-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useAccentColorPreference } from '@/shared/model/theme/use-accent-color'
-import { GeneralSettingsFields } from './general-settings-fields'
+import { AccountMfaSettings } from './account-mfa-settings'
+import { AccountPasswordSettings } from './account-password-settings'
+import { ConsoleDefaultsForm } from './console-defaults-form'
+import { AppearanceSettings } from './general-settings-fields'
 import { GeneralSettingsLayout } from './general-settings-layout'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { ProfilePhotoSettings } from './profile-photo-settings'
+import type { GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { AccentColor } from '@/shared/model/theme/accent-color'
 
-type SaveGeneralUiSettingsInput = Pick<
-  OrchestratorUiSettings,
-  | 'appListRefreshIntervalSeconds'
-  | 'defaultViewerPreset'
-  | 'defaultViewerBitrateMbps'
-  | 'defaultViewerMaxFps'
-  | 'defaultViewerMaxSize'
-  | 'defaultViewerIFrameInterval'
-  | 'defaultViewerKeyboardCaptureEnabled'
-  | 'defaultViewerSoundEnabled'
->
-
-const persistGeneralUiSettings = saveGeneralUiSettings
-const restoreGeneralUiSettings = resetGeneralUiSettings
-
-const toGeneralUiSettings = (settings: OrchestratorUiSettings): SaveGeneralUiSettingsInput => ({
-  appListRefreshIntervalSeconds: settings.appListRefreshIntervalSeconds,
-  defaultViewerPreset: settings.defaultViewerPreset,
-  defaultViewerBitrateMbps: settings.defaultViewerBitrateMbps,
-  defaultViewerMaxFps: settings.defaultViewerMaxFps,
-  defaultViewerMaxSize: settings.defaultViewerMaxSize,
-  defaultViewerIFrameInterval: settings.defaultViewerIFrameInterval,
-  defaultViewerKeyboardCaptureEnabled: settings.defaultViewerKeyboardCaptureEnabled,
-  defaultViewerSoundEnabled: settings.defaultViewerSoundEnabled
-})
+type PersonalSettings = {
+  name: string
+  avatarDataUrl: string | null
+  mfaEnabled: boolean
+  accentColor: AccentColor
+}
 
 export const GeneralSettingsForm = ({
-  initialAccentColor,
+  user,
   initialSettings
 }: {
-  initialAccentColor: AccentColor
-  initialSettings: OrchestratorUiSettings
+  user: PersonalSettings
+  initialSettings?: GeneralUiSettings
 }) => {
-  const [settings, setSettings] = useState(initialSettings)
-  const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter()
   const saveAccentColor = useCallback(async (nextAccentColor: AccentColor) => {
     unwrapActionResult(await updateCurrentAccentColorAction(nextAccentColor))
   }, [])
   const { accentColor, setAccentColor } = useAccentColorPreference({
-    initialAccentColor,
+    initialAccentColor: user.accentColor,
     saveAccentColor,
     onSaveError: error =>
       toast({
@@ -61,61 +46,71 @@ export const GeneralSettingsForm = ({
       })
   })
 
-  useEffect(() => {
-    setSettings(initialSettings)
-  }, [initialSettings])
-
-  const updateSettings = (patch: Partial<OrchestratorUiSettings>) => {
-    setSettings(current => ({ ...current, ...patch }))
-  }
-
-  const saveSettings = async () => {
-    setIsSaving(true)
-    try {
-      const generalSettings: SaveGeneralUiSettingsInput = toGeneralUiSettings(settings)
-      const saved: OrchestratorUiSettings = await persistGeneralUiSettings(generalSettings)
-      setSettings(saved)
-      toast({ title: 'Settings saved', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not save settings',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const resetSettings = async () => {
-    setIsSaving(true)
-    try {
-      const saved: OrchestratorUiSettings = await restoreGeneralUiSettings()
-      setSettings(saved)
-      toast({ title: 'Settings reset', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not reset settings',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   return (
-    <GeneralSettingsLayout
-      pending={isSaving}
-      onReset={() => void resetSettings()}
-      onSave={() => void saveSettings()}
-    >
-      <GeneralSettingsFields
-        settings={settings}
-        accentColor={accentColor}
-        onSettingsChange={updateSettings}
-        onAccentColorChange={setAccentColor}
-      />
-    </GeneralSettingsLayout>
+    <GeneralSettingsContent
+      user={user}
+      accentColor={accentColor}
+      onAccentColorChange={setAccentColor}
+      onAvatarSaved={() => router.refresh()}
+      initialSettings={initialSettings}
+    />
   )
 }
+
+export const GeneralSettingsContent = ({
+  user,
+  accentColor,
+  onAccentColorChange,
+  onAvatarSaved,
+  initialSettings,
+  loading = false
+}: {
+  user: Omit<PersonalSettings, 'accentColor'>
+  accentColor: AccentColor
+  onAccentColorChange: (accentColor: AccentColor) => void
+  onAvatarSaved: () => void
+  initialSettings?: GeneralUiSettings
+  loading?: boolean
+}) => (
+  <GeneralSettingsLayout showDefaults={initialSettings !== undefined}>
+    <AppearanceSettings
+      accentColor={accentColor}
+      onAccentColorChange={onAccentColorChange}
+      loading={loading}
+    />
+    <div
+      id='profile'
+      className='scroll-mt-[calc(var(--console-top-inset)+1rem)]'
+    >
+      <ProfilePhotoSettings
+        name={user.name}
+        avatar={user.avatarDataUrl}
+        onSaved={onAvatarSaved}
+        loading={loading}
+      />
+    </div>
+    <div
+      id='security'
+      className='scroll-mt-[calc(var(--console-top-inset)+1rem)]'
+    >
+      <Section
+        surface='plain'
+        title='Security'
+      >
+        <div className='grid min-w-0 gap-6 lg:grid-cols-2'>
+          <AccountMfaSettings
+            initialEnabled={user.mfaEnabled}
+            loading={loading}
+          />
+          <AccountPasswordSettings loading={loading} />
+        </div>
+      </Section>
+    </div>
+    {initialSettings ? (
+      <ConsoleDefaultsForm
+        initialSettings={initialSettings}
+        loading={loading}
+      />
+    ) : null}
+  </GeneralSettingsLayout>
+)

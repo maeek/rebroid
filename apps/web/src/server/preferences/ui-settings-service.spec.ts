@@ -8,7 +8,7 @@ import {
   defaultRuntimeSettingsResponse,
   defaultWebSettingsResponse
 } from '@/shared/model/settings/orchestrator-ui-settings'
-import { resetRuntimeUiSettings, saveRuntimeUiSettings } from './ui-settings-service'
+import { resetGeneralUiSettings, resetRuntimeUiSettings, saveRuntimeUiSettings } from './ui-settings-service'
 
 vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn(), getCurrentUser: vi.fn() }))
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
@@ -132,6 +132,32 @@ describe('Runtime settings patch scope', () => {
       'forbidden'
     )
     expect(orchestratorSettingsClient.updateSettings).not.toHaveBeenCalled()
+    expect(saveWebSettings).not.toHaveBeenCalled()
+  })
+})
+
+describe('Console defaults reset scope', () => {
+  it('restores only the console defaults shown in General preferences', async () => {
+    await resetGeneralUiSettings()
+
+    expect(requireAdmin).toHaveBeenCalledOnce()
+    expect(saveWebSettings).toHaveBeenCalledExactlyOnceWith({
+      appListRefreshIntervalSeconds: defaultWebSettingsResponse.appListRefreshIntervalSeconds,
+      defaultViewerPreset: defaultWebSettingsResponse.defaultViewerPreset,
+      defaultViewerBitrateMbps: defaultWebSettingsResponse.defaultViewerBitrateMbps,
+      defaultViewerMaxFps: defaultWebSettingsResponse.defaultViewerMaxFps,
+      defaultViewerMaxSize: defaultWebSettingsResponse.defaultViewerMaxSize,
+      defaultViewerIFrameInterval: defaultWebSettingsResponse.defaultViewerIFrameInterval,
+      defaultViewerKeyboardCaptureEnabled: defaultWebSettingsResponse.defaultViewerKeyboardCaptureEnabled,
+      defaultViewerSoundEnabled: defaultWebSettingsResponse.defaultViewerSoundEnabled
+    })
+    expect(orchestratorSettingsClient.resetSettings).not.toHaveBeenCalled()
+  })
+
+  it('requires an administrator before restoring defaults', async () => {
+    vi.mocked(requireAdmin).mockRejectedValueOnce(new Error('forbidden'))
+
+    await expect(resetGeneralUiSettings()).rejects.toThrow('forbidden')
     expect(saveWebSettings).not.toHaveBeenCalled()
   })
 })
