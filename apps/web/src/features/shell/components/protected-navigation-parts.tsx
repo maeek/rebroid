@@ -1,4 +1,5 @@
-import { IconChevronDown, IconCirclePlus } from '@tabler/icons-react'
+import { useId } from 'react'
+import { IconChevronRight, IconCirclePlus, IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
@@ -65,7 +66,6 @@ export const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: Na
 }
 
 export const NestedNavigationMenu = ({
-  href,
   label,
   variant,
   items,
@@ -75,17 +75,18 @@ export const NestedNavigationMenu = ({
   onNavigate,
   onToggle
 }: {
-  href: string
   label: string
   variant: NavigationVariant
   items: NavigationItem[]
   isOpen: boolean
   Icon: NavigationItem['Icon']
-  isActivePath: (href: string, exact?: boolean) => boolean
+  isActivePath: (href: string) => boolean
   onNavigate?: () => void
   onToggle: () => void
 }) => {
   const styles = variantStyles[variant]
+  const listId = useId()
+  const containsActive = items.some(item => isActivePath(item.href))
 
   return (
     <li>
@@ -94,29 +95,54 @@ export const NestedNavigationMenu = ({
         onClick={onToggle}
         aria-label={isOpen ? `Collapse ${label} menu` : `Expand ${label} menu`}
         aria-expanded={isOpen}
-        className={cn(styles.item, 'w-full min-w-0 text-left bg-transparent')}
+        aria-controls={isOpen ? listId : undefined}
+        className={cn(styles.item, 'w-full min-w-0 text-left', containsActive && !isOpen && styles.activeItem)}
       >
         <div className={styles.iconWrap}>
           <ParentIcon className={styles.icon} />
         </div>
         <span className={cn(styles.label, 'min-w-0 flex-1 truncate')}>{label}</span>
-        <IconChevronDown className={cn('mr-1 size-4 shrink-0 transition-transform', isOpen && 'rotate-180')} />
+        <IconChevronRight
+          className={cn('mr-1 size-3.5 shrink-0 text-foreground-muted transition-transform', isOpen && 'rotate-90')}
+        />
       </button>
       <Visible when={isOpen}>
-        <ul className={styles.nestedList}>
-          {items.map(({ name, Icon, href: itemHref }) => (
-            <li key={itemHref}>
+        <ul
+          id={listId}
+          className={styles.nestedList}
+        >
+          {items.map(({ name, Icon, href: itemHref, shortcut }) => (
+            <li
+              key={itemHref}
+              className='relative flex items-center'
+            >
               <Link
                 href={itemHref}
-                className={cn(styles.nestedItem, isActivePath(itemHref, itemHref === href) && styles.nestedActiveItem)}
+                className={cn(
+                  styles.nestedItem,
+                  'flex-1',
+                  shortcut && 'pr-9',
+                  isActivePath(itemHref) && styles.nestedActiveItem
+                )}
                 onClick={onNavigate}
-                aria-current={isActivePath(itemHref, itemHref === href) ? 'page' : undefined}
+                aria-current={isActivePath(itemHref) ? 'page' : undefined}
               >
                 <div className={styles.nestedIconWrap}>
                   <Icon className={styles.nestedIcon} />
                 </div>
                 <span className='truncate'>{name}</span>
               </Link>
+              {shortcut ? (
+                <Link
+                  href={shortcut.href}
+                  className={cn(styles.sectionAction, 'absolute right-2 size-6')}
+                  aria-label={shortcut.label}
+                  title={shortcut.label}
+                  onClick={onNavigate}
+                >
+                  <IconPlus className='size-4' />
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>

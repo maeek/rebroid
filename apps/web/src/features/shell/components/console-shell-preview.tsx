@@ -5,23 +5,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { PageHeader } from '@/shared/ui/page/page-header'
-import Sidebar from './sidebar'
+import { ProtectedShell } from './protected-shell'
 
 export const ConsoleShellPreview = () => {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { enabled: false } } }))
   return (
     <QueryClientProvider client={client}>
       <FeatureFlagsProvider manifest={{ revision: 1, features: [] }}>
-        <Sidebar
-          initialUser={{
+        <ProtectedShell
+          topBarActions={null}
+          user={{
             name: 'Preview operator',
             role: 'admin',
             accentColor: 'blue',
             avatarDataUrl: null,
             mfaEnabled: false
           }}
-        />
-        <div className='pt-16 lg:pl-72'>
+        >
           <PageHeader
             section={{ label: 'Runtime' }}
             trail={[{ label: 'Containers', href: '/runtime/containers' }]}
@@ -33,7 +33,7 @@ export const ConsoleShellPreview = () => {
               </>
             }
           />
-        </div>
+        </ProtectedShell>
       </FeatureFlagsProvider>
     </QueryClientProvider>
   )

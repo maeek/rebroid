@@ -22,6 +22,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { GroupMembershipPicker } from './group-membership-picker'
+import { useCreateDialog } from './use-create-dialog'
 import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 
 export const CreateUserDialog = ({
@@ -33,7 +34,7 @@ export const CreateUserDialog = ({
   groups: UserGroup[]
   onCreated: (user: PublicUser) => void
 }) => {
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useCreateDialog(disabled)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('user')

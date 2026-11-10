@@ -31,6 +31,7 @@ import {
 } from '@/shared/permissions/permissions'
 import { PermissionEditor } from './permission-editor'
 import { QuotaFields } from './quota-fields'
+import { useCreateDialog } from './use-create-dialog'
 import type { CreateUserGroupInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
@@ -73,7 +74,7 @@ export const CreateGroupDialog = ({
   onCreated: (group: UserGroup) => void
   disabled?: boolean
 }) => {
-  const [open, setOpen] = useState(false)
+  const { open, setOpen } = useCreateDialog(disabled)
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<CreateGroupDraft>(createInitialGroupDraft)
   const [isSaving, setIsSaving] = useState(false)

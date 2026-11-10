@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { IconMenu2, IconX } from '@tabler/icons-react'
+import { useState, type ReactNode } from 'react'
+import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand, IconMenu2, IconX } from '@tabler/icons-react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
@@ -12,10 +13,22 @@ import { TopBarNotifications } from './notifications'
 import { OrchestratorStatus } from './orchestrator-status'
 import type { ShellUser } from '../shell-user'
 
-export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => {
+export const TopBarProtected = ({
+  initialUser,
+  sidebarCollapsed,
+  onToggleSidebar,
+  actions
+}: {
+  initialUser: ShellUser
+  sidebarCollapsed: boolean
+  onToggleSidebar: () => void
+  actions?: ReactNode
+}) => {
   const sectionClasses = 'flex min-w-0 items-center h-full px-4 gap-x-4 max-sm:px-2 lg:w-[33%]'
 
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const sidebarAction = sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'
+  const SidebarIcon = sidebarCollapsed ? IconLayoutSidebarLeftExpand : IconLayoutSidebarLeftCollapse
 
   return (
     <div className='fixed top-0 z-50 flex h-16 w-full max-w-full shrink-0 justify-between overflow-hidden bg-transparent max-sm:px-1'>
@@ -24,6 +37,19 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
         className='pointer-events-none absolute inset-x-0 bottom-0 backdrop-blur-xl h-full'
       />
       <div className={cn(sectionClasses, 'relative z-10 justify-start items-center')}>
+        <Button
+          type='button'
+          variant='ghost'
+          size='icon-md'
+          className='hidden shrink-0 lg:inline-flex'
+          aria-label={sidebarAction}
+          aria-controls='desktop-navigation'
+          aria-expanded={!sidebarCollapsed}
+          title={sidebarAction}
+          onClick={onToggleSidebar}
+        >
+          <SidebarIcon className='size-5' />
+        </Button>
         <Drawer
           open={drawerOpen}
           onOpenChange={setDrawerOpen}
@@ -64,9 +90,15 @@ export const TopBarProtected = ({ initialUser }: { initialUser: ShellUser }) => 
         </Link>
       </div>
       <div className={cn(sectionClasses, 'relative z-10 justify-end')}>
-        <OrchestratorStatus />
-        <TopBarNotifications />
-        <TopBarAccount initialUser={initialUser} />
+        {actions === undefined ? (
+          <>
+            <OrchestratorStatus />
+            <TopBarNotifications />
+            <TopBarAccount initialUser={initialUser} />
+          </>
+        ) : (
+          actions
+        )}
       </div>
     </div>
   )

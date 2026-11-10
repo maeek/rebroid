@@ -169,7 +169,12 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
             { label: 'Infrastructure', items: [...runtimeSections, ...systemSections] },
             { label: 'Access and policies', items: securitySections }
           ].map(group => {
-            const items = group.items.filter(item => !item.feature || isFeatureEnabled(item.feature))
+            const items = group.items
+              .filter(item => !item.feature || isFeatureEnabled(item.feature))
+              .map(item => ({
+                ...item,
+                shortcut: item.shortcut?.feature && !isFeatureEnabled(item.shortcut.feature) ? undefined : item.shortcut
+              }))
             const first = items[0]
             if (!first) return null
             const active = items.some(item => itemIsActive(item.href))
@@ -177,13 +182,12 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
             return (
               <NestedNavigationMenu
                 key={group.label}
-                href={first.href}
                 label={group.label}
                 Icon={first.Icon}
                 items={items}
                 variant={variant}
                 isOpen={isOpen}
-                isActivePath={isActivePath}
+                isActivePath={itemIsActive}
                 onNavigate={onNavigate}
                 onToggle={() => setExpanded(current => ({ ...current, [group.label]: !isOpen }))}
               />

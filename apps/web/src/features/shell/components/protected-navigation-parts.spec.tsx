@@ -9,7 +9,6 @@ describe('administration navigation group', () => {
     render(
       <ul>
         <NestedNavigationMenu
-          href='/platform/runtime'
           label='Platform settings'
           variant='sidebar'
           Icon={IconSettings}
