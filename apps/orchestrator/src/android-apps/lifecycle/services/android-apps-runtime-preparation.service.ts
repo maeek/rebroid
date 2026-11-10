@@ -24,7 +24,6 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import {
   forgetSavedProfile,
@@ -53,7 +52,6 @@ export class AndroidAppsRuntimePreparationService {
     private readonly networkIsolation: NetworkIsolationService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly writer: AndroidAppsStateWriter,
   ) {}
 
@@ -377,11 +375,9 @@ export class AndroidAppsRuntimePreparationService {
       lifecycleStage: app.lifecycleStage,
       staleAfterSeconds: staleTimeoutMs / 1000,
     });
-    this.tracker.cancel(app.id);
     if (app.containerId) {
       await this.removeManagedContainer(app);
     }
-    this.tracker.reset(app.id);
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
     app.statusMessage =

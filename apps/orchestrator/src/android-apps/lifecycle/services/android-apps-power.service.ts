@@ -11,10 +11,8 @@ import {
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
-import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import {
   AndroidApplicationLifecycleStage,
@@ -23,7 +21,7 @@ import {
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
-import { AndroidAppsRemovalService } from './android-apps-removal.service';
+import { AndroidAppsRemovalCleanupService } from './android-apps-removal-cleanup.service';
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import { AndroidAppsStartLifecycleService } from './android-apps-start-lifecycle.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
@@ -41,12 +39,10 @@ export class AndroidAppsPowerService {
     private readonly logs: AndroidAppsLogService,
     private readonly queries: AndroidAppsQueryService,
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
-    private readonly removal: AndroidAppsRemovalService,
+    private readonly cleanup: AndroidAppsRemovalCleanupService,
     private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
     private readonly startLifecycle: AndroidAppsStartLifecycleService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
-    private readonly writer: AndroidAppsStateWriter,
     private readonly features: FeatureFlagsService,
   ) {}
 
@@ -67,18 +63,6 @@ export class AndroidAppsPowerService {
       this.features.assertEnabled('feature.firewall');
     }
 
-    if (app.status === AndroidApplicationStatus.Provisioning) {
-      if (await this.transitions.hasRecreateJob(id)) {
-        return this.queries.decorate(app);
-      }
-      const recovered =
-        await this.runtimePreparation.recoverStaleProvisioningForStart(app);
-      if (!recovered) return this.queries.decorate(app);
-    }
-    if (app.status === AndroidApplicationStatus.Running) {
-      if (app.apkFilePath) await this.apkProvisioning.launchInstalledApk(app);
-      return this.queries.decorate(app);
-    }
     if (
       app.status === AndroidApplicationStatus.Removing ||
       app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping
@@ -86,6 +70,21 @@ export class AndroidAppsPowerService {
       throw new ConflictException(
         'Wait for the current stop or removal to finish before starting the app.',
       );
+    }
+    if (
+      this.backgroundJobs.hasWork(id) ||
+      (await this.transitions.hasRecreateJob(id))
+    ) {
+      return this.queries.decorate(app);
+    }
+    if (app.status === AndroidApplicationStatus.Provisioning) {
+      const recovered =
+        await this.runtimePreparation.recoverStaleProvisioningForStart(app);
+      if (!recovered) return this.queries.decorate(app);
+    }
+    if (app.status === AndroidApplicationStatus.Running) {
+      if (app.apkFilePath) await this.apkProvisioning.launchInstalledApk(app);
+      return this.queries.decorate(app);
     }
 
     if (dto.profileMode !== undefined || dto.profileName !== undefined) {
@@ -104,7 +103,7 @@ export class AndroidAppsPowerService {
       provisioningStartedAt: new Date(),
       provisioningCompletedAt: null,
     };
-    await this.transitions.beginJob(
+    const reservation = await this.transitions.beginJob(
       id,
       AndroidAppLifecycleJobKind.Start,
       patch,
@@ -112,7 +111,6 @@ export class AndroidAppsPowerService {
       true,
       maxOpenApps,
     );
-    this.tracker.reset(id);
     Object.assign(app, patch);
     await this.logs.append(id, 'Start requested', {
       profileMode: app.profileMode,
@@ -120,19 +118,24 @@ export class AndroidAppsPowerService {
       existingContainerId: app.containerId,
       image: app.containerImage,
     });
-    this.backgroundJobs.schedule(`start:${id}`, () =>
-      this.startLifecycle.startInBackground(id),
+    this.backgroundJobs.schedule(reservation, () =>
+      this.startLifecycle.startInBackground(reservation),
     );
     return this.queries.decorate(app);
   }
 
   async recreate(id: string, maxOpenApps?: number) {
     const app = await this.reconciler.reconcileById(id);
+    if (this.backgroundJobs.hasWork(id)) {
+      throw new ConflictException(
+        'Wait for the active application job to finish before recreating the runtime.',
+      );
+    }
     if (app.networkPolicyEnabled) {
       this.features.assertEnabled('feature.firewall');
     }
 
-    await this.transitions.beginJob(
+    const reservation = await this.transitions.beginJob(
       id,
       AndroidAppLifecycleJobKind.Recreate,
       {
@@ -147,26 +150,51 @@ export class AndroidAppsPowerService {
       true,
       maxOpenApps,
     );
-    this.tracker.reset(id);
-    this.backgroundJobs.schedule(`recreate:${id}`, () =>
-      this.startLifecycle.startInBackground(
-        id,
-        AndroidAppLifecycleJobKind.Recreate,
-      ),
+    this.backgroundJobs.schedule(reservation, () =>
+      this.startLifecycle.startInBackground(reservation),
     );
     return this.queries.getStored(id);
   }
 
   async stop(id: string, options: StopOptions = {}) {
-    const app = await this.reconciler.reconcileById(id);
+    const app = await this.queries.getStored(id);
+    if (
+      app.status === AndroidApplicationStatus.Removing ||
+      app.status === AndroidApplicationStatus.Removed
+    ) {
+      throw new ConflictException('Cannot stop an application being removed.');
+    }
+    await this.transitions.assertNoRecreation(id);
+    return this.backgroundJobs.interrupt(id, () =>
+      this.stopRuntime(id, options),
+    );
+  }
+
+  private async stopRuntime(id: string, options: StopOptions) {
+    const app = await this.reconciler.reconcileBeforeStop(id);
+    const needsDiscovery =
+      !app.containerId &&
+      (app.status === AndroidApplicationStatus.Provisioning ||
+        app.status === AndroidApplicationStatus.Error ||
+        app.lifecycleStage === AndroidApplicationLifecycleStage.Stopping);
     const stoppingPatch = {
       status: AndroidApplicationStatus.Stopped,
       lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
       statusMessage: 'Stopping application container.',
+      containerId: app.containerId,
     };
     await this.transitions.cancelActiveJob(id, stoppingPatch);
-    this.tracker.cancel(id);
     Object.assign(app, stoppingPatch);
+    if (needsDiscovery) {
+      const container = await this.lifecycle.findContainerByName(
+        app.containerName,
+        id,
+      );
+      if (container) {
+        app.containerId = container.Id;
+        await this.transitions.markState(id, { containerId: container.Id });
+      }
+    }
     await this.logs.append(id, 'Stop requested', {
       containerId: app.containerId,
       reason: options.reason ?? 'user_request',
@@ -184,21 +212,25 @@ export class AndroidAppsPowerService {
         }
       }
     }
-    this.removal.releaseDisplaySessionsInBackground(id, 'stopping');
+    await this.cleanup.releaseDisplaySessions(id, 'stopping');
     if (app.recreateContainerOnNextStart && app.containerId) {
       await this.runtimePreparation.removeManagedContainer(app);
       app.recreateContainerOnNextStart = false;
     }
 
-    app.status = AndroidApplicationStatus.Stopped;
-    app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
-    app.statusMessage = stoppedStatusMessage(app);
-    app.lastStoppedAt = new Date();
+    await this.transitions.markState(id, {
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      statusMessage: stoppedStatusMessage(app),
+      lastStoppedAt: new Date(),
+      containerId: app.containerId,
+      recreateContainerOnNextStart: app.recreateContainerOnNextStart,
+    });
     await this.logs.append(id, 'Application stopped', {
       containerId: app.containerId,
       recreateContainerOnNextStart: app.recreateContainerOnNextStart,
     });
-    return this.writer.saveAndDecorate(app);
+    return this.queries.decorate(await this.queries.getStored(id));
   }
 
   private assertRunnable(app: AndroidApplication) {

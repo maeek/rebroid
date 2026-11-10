@@ -20,7 +20,6 @@ const makeService = () => {
     networkIsolation as never,
     {} as never,
     {} as never,
-    {} as never,
     state as never,
   );
 

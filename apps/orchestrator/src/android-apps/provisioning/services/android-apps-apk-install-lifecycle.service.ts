@@ -9,8 +9,10 @@ import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
-import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
-import { AndroidAppLifecycleJobsService } from '../../lifecycle/services/android-app-lifecycle-jobs.service';
+import {
+  AndroidAppLifecycleJobKind,
+  type AndroidAppLifecycleReservation,
+} from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { LifecycleBackgroundJobRunner } from '../../lifecycle/services/lifecycle-background-job-runner.service';
 import { AndroidAppsProvisioningApkService } from './android-apps-provisioning-apk.service';
 
@@ -21,7 +23,6 @@ export class AndroidAppsApkInstallLifecycleService {
   );
 
   constructor(
-    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
@@ -33,7 +34,7 @@ export class AndroidAppsApkInstallLifecycleService {
   async begin(
     app: AndroidApplication,
     statusMessage: string,
-    currentJobKind?: AndroidAppLifecycleJobKind,
+    current?: AndroidAppLifecycleReservation,
   ) {
     this.tracker.ensureActive(app.id);
     const patch = {
@@ -42,67 +43,55 @@ export class AndroidAppsApkInstallLifecycleService {
       statusMessage,
       lastError: null,
     };
-    let started = true;
-    if (currentJobKind) {
-      started = await this.transitions.handoffJob(
-        app.id,
-        currentJobKind,
-        AndroidAppLifecycleJobKind.InstallApk,
-        patch,
-      );
-    } else {
-      await this.transitions.beginJob(
-        app.id,
-        AndroidAppLifecycleJobKind.InstallApk,
-        patch,
-      );
+    if (current?.kind === AndroidAppLifecycleJobKind.Recreate) {
+      // Keep Recreate reserved and recoverable as a Recreate until APK preparation finishes.
+      if (!(await this.transitions.updateProgress(current, patch))) {
+        throw new ConflictException(
+          `Application "${app.id}" no longer owns the Recreate reservation.`,
+        );
+      }
+      Object.assign(app, patch);
+      await this.installAndComplete(app, current);
+      return;
     }
-    if (!started) {
+
+    const reservation = current
+      ? await this.transitions.handoffJob(
+          current,
+          AndroidAppLifecycleJobKind.InstallApk,
+          patch,
+        )
+      : await this.transitions.beginJob(
+          app.id,
+          AndroidAppLifecycleJobKind.InstallApk,
+          patch,
+        );
+    if (!reservation) {
       throw new ConflictException(
         `Application "${app.id}" no longer owns the expected lifecycle job.`,
       );
     }
 
     Object.assign(app, patch);
-    this.resume(app.id);
+    this.resume(reservation);
   }
 
-  resume(applicationId: string) {
-    this.backgroundJobs.schedule(`install-apk:${applicationId}`, () =>
-      this.completeInBackground(applicationId),
+  resume(reservation: AndroidAppLifecycleReservation) {
+    this.backgroundJobs.schedule(reservation, () =>
+      this.completeInBackground(reservation),
     );
   }
 
-  private async completeInBackground(applicationId: string) {
+  private async completeInBackground(
+    reservation: AndroidAppLifecycleReservation,
+  ) {
+    const { applicationId } = reservation;
+    if (!(await this.transitions.claimJob(reservation))) return;
     try {
-      await this.jobs.markRunning(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-      );
       const app = await this.queries.getStored(applicationId);
-      this.tracker.ensureActive(applicationId);
-      await this.apkProvisioning.installApk(app);
-      await this.logs.append(app.id, 'Background APK install finished', {
-        apkPackageName: app.apkPackageName,
-      });
-      this.tracker.ensureActive(applicationId);
-      await this.apkProvisioning.launchInstalledApk(app);
-      await this.logs.append(app.id, 'Application marked running', {
-        containerId: app.containerId,
-      });
-      await this.transitions.completeJob(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-        {
-          status: AndroidApplicationStatus.Running,
-          lifecycleStage: AndroidApplicationLifecycleStage.Ready,
-          statusMessage: 'Application is running.',
-          lastError: null,
-          provisioningCompletedAt: new Date(),
-        },
-      );
+      await this.installAndComplete(app, reservation);
     } catch (error) {
-      if (this.tracker.isCancellationError(error)) {
+      if (this.tracker.isCancelled(applicationId)) {
         this.logger.log(
           `Background APK install cancelled for ${applicationId}.`,
         );
@@ -113,20 +102,39 @@ export class AndroidAppsApkInstallLifecycleService {
       this.logger.error(
         `Background APK install failed for ${applicationId}: ${message}`,
       );
-      await this.transitions.failJob(
-        applicationId,
-        AndroidAppLifecycleJobKind.InstallApk,
-        message,
-        {
-          status: AndroidApplicationStatus.Running,
-          lifecycleStage: AndroidApplicationLifecycleStage.Error,
-          statusMessage: `APK install failed: ${message}`,
-          lastError: message,
-        },
-      );
+      await this.transitions.failJob(reservation, message, {
+        status: AndroidApplicationStatus.Running,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: `APK install failed: ${message}`,
+        lastError: message,
+      });
       await this.logs.append(applicationId, 'Background APK install failed', {
         error: message,
       });
     }
+  }
+
+  private async installAndComplete(
+    app: AndroidApplication,
+    reservation: AndroidAppLifecycleReservation,
+  ) {
+    this.tracker.ensureActive(app.id);
+    await this.apkProvisioning.installApk(app);
+    await this.logs.append(app.id, 'Background APK install finished', {
+      apkPackageName: app.apkPackageName,
+    });
+    this.tracker.ensureActive(app.id);
+    await this.apkProvisioning.launchInstalledApk(app);
+    this.tracker.ensureActive(app.id);
+    await this.logs.append(app.id, 'Application marked running', {
+      containerId: app.containerId,
+    });
+    await this.transitions.completeJob(reservation, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      statusMessage: 'Application is running.',
+      lastError: null,
+      provisioningCompletedAt: new Date(),
+    });
   }
 }

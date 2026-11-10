@@ -23,7 +23,10 @@ import { AndroidAppsLogService } from '../../common/services/android-apps-log.se
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidApplicationLifecycleStage } from '../../contracts/android-application-status';
-import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
+import {
+  AndroidAppLifecycleJobKind,
+  type AndroidAppLifecycleReservation,
+} from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningAndroidService } from './android-apps-provisioning-android.service';
 
@@ -54,13 +57,13 @@ export class AndroidAppsRuntimeActivationService {
 
   async activate(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
   ) {
     this.logEngineSummary(app.id);
-    await this.ensureImageAvailable(app, kind);
+    await this.ensureImageAvailable(app, reservation);
     try {
-      await this.activateContainer(app, kind, source);
+      await this.activateContainer(app, reservation, source);
     } catch (error) {
       this.tracker.ensureActive(app.id);
       const containerId = app.containerId;
@@ -71,7 +74,7 @@ export class AndroidAppsRuntimeActivationService {
         throw error;
       }
 
-      const updated = await this.transitions.updateProgress(app.id, kind, {
+      const updated = await this.transitions.updateProgress(reservation, {
         containerId: null,
         statusMessage:
           'The runtime container disappeared. Creating a replacement.',
@@ -86,19 +89,19 @@ export class AndroidAppsRuntimeActivationService {
           containerId,
         },
       );
-      await this.activateContainer(app, kind, source);
+      await this.activateContainer(app, reservation, source);
     }
   }
 
   private async activateContainer(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
   ) {
     this.tracker.ensureActive(app.id);
-    await this.prepareContainer(app, kind, source);
-    await this.startContainer(app, kind);
-    await this.prepareAndroid(app, kind);
+    await this.prepareContainer(app, reservation, source);
+    await this.startContainer(app, reservation);
+    await this.prepareAndroid(app, reservation);
   }
 
   private logEngineSummary(applicationId: string) {
@@ -116,47 +119,50 @@ export class AndroidAppsRuntimeActivationService {
 
   private async ensureImageAvailable(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
   ) {
     if (await this.images.imageExists(app.containerImage)) {
       return;
     }
 
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ImagePulling,
       statusMessage: `Docker image "${app.containerImage}" is not available locally. Pulling it now.`,
     });
-    await this.images.pullImage(app.containerImage, (message) => {
-      const statusMessage = message || `Pulling ${app.containerImage}.`;
-      void this.transitions
-        .updateProgress(app.id, kind, { statusMessage })
-        .catch((error) => {
-          this.logger.warn(
-            `Could not persist image pull progress for ${app.id}: ${getErrorMessage(error)}`,
-          );
-        });
-      void this.logs
-        .append(app.id, 'Image pull progress', {
-          image: app.containerImage,
-          message: statusMessage,
-        })
-        .catch((error) => {
-          this.logger.warn(
-            `Could not write image pull log for ${app.id}: ${getErrorMessage(error)}`,
-          );
-        });
-    });
+    await this.tracker.waitForImage(app.id, (signal) =>
+      this.images.pullImage(app.containerImage, (message) => {
+        if (signal.aborted) return;
+        const statusMessage = message || `Pulling ${app.containerImage}.`;
+        void this.transitions
+          .updateProgress(reservation, { statusMessage })
+          .catch((error) => {
+            this.logger.warn(
+              `Could not persist image pull progress for ${app.id}: ${getErrorMessage(error)}`,
+            );
+          });
+        void this.logs
+          .append(app.id, 'Image pull progress', {
+            image: app.containerImage,
+            message: statusMessage,
+          })
+          .catch((error) => {
+            this.logger.warn(
+              `Could not write image pull log for ${app.id}: ${getErrorMessage(error)}`,
+            );
+          });
+      }),
+    );
     this.tracker.ensureActive(app.id);
   }
 
   private async prepareContainer(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
   ) {
     if (app.containerId) {
-      await this.transitions.updateProgress(app.id, kind, {
+      await this.transitions.updateProgress(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
         statusMessage: 'Starting application container.',
       });
@@ -164,13 +170,13 @@ export class AndroidAppsRuntimeActivationService {
       return;
     }
 
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.VolumeCreating,
       statusMessage: 'Preparing application storage and network boundary.',
     });
     await this.network.createRuntimeBoundary(app);
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerCreating,
       statusMessage: `Creating application container ${app.containerName}.`,
     });
@@ -195,7 +201,7 @@ export class AndroidAppsRuntimeActivationService {
     });
     app.containerId = container.id;
     app.recreateContainerOnNextStart = false;
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       containerId: container.id,
       recreateContainerOnNextStart: false,
     });
@@ -214,13 +220,13 @@ export class AndroidAppsRuntimeActivationService {
 
   private async startContainer(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
   ) {
     this.tracker.ensureActive(app.id);
     if (!app.containerId) {
       throw new Error('Runtime container was not created.');
     }
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
       statusMessage: 'Starting application container.',
     });
@@ -232,7 +238,7 @@ export class AndroidAppsRuntimeActivationService {
         return this.lifecycle.startContainer(containerId);
       },
       {
-        log: kind === AndroidAppLifecycleJobKind.Provision,
+        log: reservation.kind === AndroidAppLifecycleJobKind.Provision,
         recordLastStartedAt: true,
         retryAttempts: 10,
       },
@@ -245,7 +251,7 @@ export class AndroidAppsRuntimeActivationService {
 
   private async prepareAndroid(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
   ) {
     if (!this.android.shouldPrepareRemoteAccess(app)) {
       await this.logs.append(app.id, 'Runtime readiness skipped', {
@@ -255,13 +261,13 @@ export class AndroidAppsRuntimeActivationService {
       return;
     }
 
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Waiting for Android to finish booting.',
     });
     await this.android.waitForAndroidBoot(app);
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(app.id, kind, {
+    await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Preparing Android remote access.',
     });

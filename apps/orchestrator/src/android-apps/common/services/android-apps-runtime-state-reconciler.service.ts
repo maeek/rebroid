@@ -15,6 +15,7 @@ import {
 } from '../../contracts/android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
+import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from './android-apps-query.service';
 import { AndroidAppsStateWriter } from './android-apps-state-writer.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
@@ -42,10 +43,17 @@ export class AndroidAppsRuntimeStateReconciler {
     private readonly status: AndroidAppsStatusService,
     private readonly queries: AndroidAppsQueryService,
     private readonly writer: AndroidAppsStateWriter,
+    private readonly tracker: AndroidAppsProvisioningTrackerService,
   ) {}
 
   async reconcileById(id: string) {
     return this.reconcileOne(await this.queries.getStored(id));
+  }
+
+  async reconcileBeforeStop(id: string) {
+    const app = await this.queries.getStored(id);
+    const result = await this.reconcileOneWithResult(app, { afterDrain: true });
+    return result.application;
   }
 
   async reconcileResultById(id: string) {
@@ -72,7 +80,14 @@ export class AndroidAppsRuntimeStateReconciler {
 
   async reconcileOneWithResult(
     app: AndroidApplication,
+    { afterDrain = false } = {},
   ): Promise<AndroidAppRuntimeReconciliationResult> {
+    if (!afterDrain && this.tracker.isCancelled(app.id)) {
+      return {
+        application: this.status.decorateApplication(app),
+        outcome: 'unchanged',
+      };
+    }
     const previous = { ...app };
     if (
       !app.containerId &&
@@ -81,9 +96,12 @@ export class AndroidAppsRuntimeStateReconciler {
           this.isStoppingStateStale(app)))
     ) {
       this.clearMissingRuntime(app);
-      return this.persistReconciledRuntime(previous, app);
+      return this.persistReconciledRuntime(previous, app, afterDrain);
     }
-    if (!shouldReconcileContainerState(app) || !app.containerId) {
+    if (
+      !app.containerId ||
+      (!afterDrain && !shouldReconcileContainerState(app))
+    ) {
       return {
         application: this.status.decorateApplication(app),
         outcome: 'unchanged',
@@ -106,12 +124,13 @@ export class AndroidAppsRuntimeStateReconciler {
     }
 
     this.reconcileRuntimeState(app, runtimeState);
-    return this.persistReconciledRuntime(previous, app);
+    return this.persistReconciledRuntime(previous, app, afterDrain);
   }
 
   private async persistReconciledRuntime(
     previous: AndroidApplication,
     app: AndroidApplication,
+    afterDrain: boolean,
   ): Promise<AndroidAppRuntimeReconciliationResult> {
     if (
       this.reconciliationFingerprint(previous) ===
@@ -122,7 +141,10 @@ export class AndroidAppsRuntimeStateReconciler {
         outcome: 'unchanged',
       };
     }
-    if (!(await this.writer.saveReconciledRuntime(previous, app))) {
+    if (
+      (!afterDrain && this.tracker.isCancelled(app.id)) ||
+      !(await this.writer.saveReconciledRuntime(previous, app))
+    ) {
       return {
         application: await this.queries.getStored(app.id),
         outcome: 'unchanged',

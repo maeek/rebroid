@@ -9,6 +9,7 @@ import {
 import {
   AndroidAppLifecycleJob,
   AndroidAppLifecycleJobKind,
+  AndroidAppLifecycleJobStatus,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLifecycleTransitionService } from './android-apps-lifecycle-transition.service';
 
@@ -65,7 +66,12 @@ describe('open application admission', () => {
         job.createProvisionJob(Object.assign(create, patch), 1),
       ]);
       expect(outcomes).toEqual([
-        { status: 'fulfilled', value: undefined },
+        {
+          status: 'fulfilled',
+          value: expect.objectContaining({
+            kind: AndroidAppLifecycleJobKind.Start,
+          }),
+        },
         expect.objectContaining({
           status: 'rejected',
           reason: expect.any(ConflictException),
@@ -82,12 +88,14 @@ describe('open application admission', () => {
           Object.assign(makeApp('other', 'other'), patch),
           1,
         ),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ kind: AndroidAppLifecycleJobKind.Provision });
       await job.cancelActiveJob(start.id, {
         status: AndroidApplicationStatus.Stopped,
         lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
       });
-      await expect(job.createProvisionJob(create, 1)).resolves.toBeUndefined();
+      await expect(job.createProvisionJob(create, 1)).resolves.toMatchObject({
+        kind: AndroidAppLifecycleJobKind.Provision,
+      });
     } finally {
       await database.destroy();
     }
@@ -103,17 +111,36 @@ describe('AndroidAppsLifecycleTransitionService', () => {
       statusMessage: 'Stopped.',
     });
     const jobs = new Map<string, AndroidAppLifecycleJob>();
+    let nextId = 0;
     const applicationRepository = {
       findOneBy: jest.fn(async () => app),
       save: jest.fn(async (value) => value),
     };
     const jobRepository = {
       findOneBy: jest.fn(
-        async ({ applicationId }: { applicationId: string }) =>
-          jobs.get(applicationId) ?? null,
+        async ({
+          applicationId,
+          id,
+          kind,
+          status,
+        }: Partial<AndroidAppLifecycleJob>) => {
+          const job = applicationId ? jobs.get(applicationId) : undefined;
+          if (
+            !job ||
+            (id && id !== job.id) ||
+            (kind && kind !== job.kind) ||
+            (status && status !== job.status)
+          )
+            return null;
+          return job;
+        },
       ),
       create: jest.fn((value) =>
-        Object.assign(new AndroidAppLifecycleJob(), value),
+        Object.assign(
+          new AndroidAppLifecycleJob(),
+          { id: String(++nextId) },
+          value,
+        ),
       ),
       save: jest.fn(async (job: AndroidAppLifecycleJob) => {
         jobs.set(job.applicationId, job);
@@ -166,24 +193,22 @@ describe('AndroidAppsLifecycleTransitionService', () => {
 
   it('prevents stale work from completing after a handoff', async () => {
     const { app, jobs, service } = createService();
-    await service.beginJob('app-1', AndroidAppLifecycleJobKind.Provision, {
-      status: AndroidApplicationStatus.Provisioning,
-    });
-    await service.handoffJob(
+    const old = await service.beginJob(
       'app-1',
       AndroidAppLifecycleJobKind.Provision,
-      AndroidAppLifecycleJobKind.InstallApk,
       {
-        status: AndroidApplicationStatus.Running,
-        lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+        status: AndroidApplicationStatus.Provisioning,
       },
     );
+    old.status = AndroidAppLifecycleJobStatus.Running;
+    await service.handoffJob(old, AndroidAppLifecycleJobKind.InstallApk, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+    });
 
-    const staleCompletion = await service.completeJob(
-      'app-1',
-      AndroidAppLifecycleJobKind.Provision,
-      { status: AndroidApplicationStatus.Error },
-    );
+    const staleCompletion = await service.completeJob(old, {
+      status: AndroidApplicationStatus.Error,
+    });
     expect(staleCompletion).toBe(false);
     expect(app.status).toBe(AndroidApplicationStatus.Running);
     expect(jobs.get('app-1')?.kind).toBe(AndroidAppLifecycleJobKind.InstallApk);
@@ -191,9 +216,13 @@ describe('AndroidAppsLifecycleTransitionService', () => {
 
   it('cancels active work before recording a stop', async () => {
     const { app, jobs, service } = createService();
-    await service.beginJob('app-1', AndroidAppLifecycleJobKind.Start, {
-      status: AndroidApplicationStatus.Provisioning,
-    });
+    const old = await service.beginJob(
+      'app-1',
+      AndroidAppLifecycleJobKind.Start,
+      {
+        status: AndroidApplicationStatus.Provisioning,
+      },
+    );
     await service.cancelActiveJob('app-1', {
       status: AndroidApplicationStatus.Stopped,
       lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
@@ -202,7 +231,7 @@ describe('AndroidAppsLifecycleTransitionService', () => {
     expect(jobs.size).toBe(0);
     expect(app.status).toBe(AndroidApplicationStatus.Stopped);
     await expect(
-      service.updateProgress('app-1', AndroidAppLifecycleJobKind.Start, {
+      service.updateProgress(old, {
         status: AndroidApplicationStatus.Running,
       }),
     ).resolves.toBe(false);

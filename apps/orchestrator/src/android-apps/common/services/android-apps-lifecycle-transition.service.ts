@@ -10,6 +10,7 @@ import {
   AndroidAppLifecycleJob,
   AndroidAppLifecycleJobKind,
   AndroidAppLifecycleJobStatus,
+  type AndroidAppLifecycleReservation,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLogService } from './android-apps-log.service';
 import type { AndroidApplicationLifecyclePatch } from './android-apps-state-writer.service';
@@ -75,12 +76,18 @@ export class AndroidAppsLifecycleTransitionService {
     });
   }
 
+  async assertNoRecreation(applicationId: string) {
+    if (await this.hasRecreateJob(applicationId)) {
+      throw new ConflictException('Application runtime is being recreated.');
+    }
+  }
+
   async createProvisionJob(app: AndroidApplication, maxOpenApps?: number) {
-    await this.transaction(async (manager) => {
+    return this.transaction(async (manager) => {
       await this.assertOpenAppSlot(manager, app.ownerUserId, maxOpenApps);
       await manager.getRepository(AndroidApplication).save(app);
       const jobs = manager.getRepository(AndroidAppLifecycleJob);
-      await jobs.save(
+      return jobs.save(
         jobs.create({
           applicationId: app.id,
           kind: AndroidAppLifecycleJobKind.Provision,
@@ -99,7 +106,7 @@ export class AndroidAppsLifecycleTransitionService {
     replaceExisting = false,
     maxOpenApps?: number,
   ) {
-    await this.transaction(async (manager) => {
+    const reservation = await this.transaction(async (manager) => {
       const app = await this.getApplication(manager, applicationId);
 
       const repository = manager.getRepository(AndroidAppLifecycleJob);
@@ -129,62 +136,122 @@ export class AndroidAppsLifecycleTransitionService {
       }
       this.applyPatch(app, patch);
 
-      const job =
-        existing ??
+      if (existing) await repository.remove(existing);
+      await manager.getRepository(AndroidApplication).save(app);
+      return repository.save(
         repository.create({
           applicationId,
+          kind,
+          status: AndroidAppLifecycleJobStatus.Pending,
           attempts: 0,
-        });
-      job.kind = kind;
-      job.status = AndroidAppLifecycleJobStatus.Pending;
-      job.payloadJson = payload ? JSON.stringify(payload) : null;
-      job.lastError = null;
-      await manager.getRepository(AndroidApplication).save(app);
-      await repository.save(job);
+          payloadJson: payload ? JSON.stringify(payload) : null,
+        }),
+      );
     });
     await this.logs.appendLifecycle(applicationId, patch);
+    return reservation;
   }
 
   async handoffJob(
-    applicationId: string,
-    currentKind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     nextKind: AndroidAppLifecycleJobKind,
     patch: AndroidApplicationLifecyclePatch,
-    payload?: JobPayload,
   ) {
-    const changed = await this.transaction(async (manager) => {
-      const job = await manager
-        .getRepository(AndroidAppLifecycleJob)
-        .findOneBy({ applicationId });
-      if (!job || job.kind !== currentKind) {
-        return false;
-      }
+    const { applicationId } = reservation;
+    const next = await this.transaction(async (manager) => {
+      const jobs = manager.getRepository(AndroidAppLifecycleJob);
+      const current = await jobs.findOneBy({
+        ...reservationKey(reservation),
+        status: AndroidAppLifecycleJobStatus.Running,
+      });
+      if (!current) return null;
 
       const app = await this.getApplication(manager, applicationId);
       this.applyPatch(app, patch);
-      job.kind = nextKind;
-      job.status = AndroidAppLifecycleJobStatus.Pending;
-      job.payloadJson = payload ? JSON.stringify(payload) : null;
-      job.lastError = null;
       await manager.getRepository(AndroidApplication).save(app);
-      await manager.getRepository(AndroidAppLifecycleJob).save(job);
+      await jobs.remove(current);
+      return jobs.save(
+        jobs.create({
+          applicationId,
+          kind: nextKind,
+          status: AndroidAppLifecycleJobStatus.Pending,
+          attempts: 0,
+        }),
+      );
+    });
+    if (next) await this.logs.appendLifecycle(applicationId, patch);
+    return next;
+  }
+
+  async claimJob(reservation: AndroidAppLifecycleReservation) {
+    const claimed = await this.serializeTransition(() =>
+      this.dataSource.getRepository(AndroidAppLifecycleJob).update(
+        {
+          ...reservationKey(reservation),
+          status: AndroidAppLifecycleJobStatus.Pending,
+          lastError: IsNull(),
+        },
+        {
+          status: AndroidAppLifecycleJobStatus.Running,
+          attempts: () => 'attempts + 1',
+        },
+      ),
+    );
+    return claimed.affected === 1;
+  }
+
+  listJobs() {
+    return this.dataSource
+      .getRepository(AndroidAppLifecycleJob)
+      .find({ order: { updatedAt: 'ASC' } });
+  }
+
+  async requeueInterruptedJob(job: AndroidAppLifecycleJob) {
+    const result = await this.serializeTransition(() =>
+      this.dataSource
+        .getRepository(AndroidAppLifecycleJob)
+        .update(
+          { ...reservationKey(job), status: job.status },
+          { status: AndroidAppLifecycleJobStatus.Pending, lastError: null },
+        ),
+    );
+    return result.affected === 1;
+  }
+
+  discardJob(reservation: AndroidAppLifecycleReservation) {
+    return this.serializeTransition(() =>
+      this.dataSource
+        .getRepository(AndroidAppLifecycleJob)
+        .delete(reservationKey(reservation)),
+    );
+  }
+
+  async completeRemoval(reservation: AndroidAppLifecycleReservation) {
+    return this.transaction(async (manager) => {
+      const result = await manager
+        .getRepository(AndroidAppLifecycleJob)
+        .delete({
+          ...reservationKey(reservation),
+          kind: AndroidAppLifecycleJobKind.Remove,
+          status: AndroidAppLifecycleJobStatus.Running,
+        });
+      if (result.affected !== 1) return false;
+      await manager
+        .getRepository(AndroidApplication)
+        .delete(reservation.applicationId);
       return true;
     });
-    if (changed) {
-      await this.logs.appendLifecycle(applicationId, patch);
-    }
-    return changed;
   }
 
   async completeJob(
-    applicationId: string,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     patch: AndroidApplicationLifecyclePatch,
   ) {
+    const { applicationId } = reservation;
     const changed = await this.transaction(async (manager) => {
       const repository = manager.getRepository(AndroidAppLifecycleJob);
-      const job = await repository.findOneBy({ applicationId });
-      if (!job || job.kind !== kind) {
+      const job = await repository.findOneBy(reservationKey(reservation));
+      if (!job) {
         return false;
       }
 
@@ -201,15 +268,18 @@ export class AndroidAppsLifecycleTransitionService {
   }
 
   async failJob(
-    applicationId: string,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     error: string,
     patch: AndroidApplicationLifecyclePatch,
   ) {
+    const { applicationId } = reservation;
     const changed = await this.transaction(async (manager) => {
       const repository = manager.getRepository(AndroidAppLifecycleJob);
-      const job = await repository.findOneBy({ applicationId });
-      if (!job || job.kind !== kind) {
+      const job = await repository.findOneBy({
+        ...reservationKey(reservation),
+        status: AndroidAppLifecycleJobStatus.Running,
+      });
+      if (!job) {
         return false;
       }
 
@@ -228,15 +298,18 @@ export class AndroidAppsLifecycleTransitionService {
   }
 
   async updateProgress(
-    applicationId: string,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
     patch: AndroidApplicationLifecyclePatch,
   ) {
+    const { applicationId } = reservation;
     const changed = await this.transaction(async (manager) => {
       const job = await manager
         .getRepository(AndroidAppLifecycleJob)
-        .findOneBy({ applicationId });
-      if (!job || job.kind !== kind) {
+        .findOneBy({
+          ...reservationKey(reservation),
+          status: AndroidAppLifecycleJobStatus.Running,
+        });
+      if (!job) {
         return false;
       }
 
@@ -348,3 +421,9 @@ export class AndroidAppsLifecycleTransitionService {
     Object.assign(app, patch);
   }
 }
+
+const reservationKey = ({
+  id,
+  applicationId,
+  kind,
+}: AndroidAppLifecycleReservation) => ({ id, applicationId, kind });

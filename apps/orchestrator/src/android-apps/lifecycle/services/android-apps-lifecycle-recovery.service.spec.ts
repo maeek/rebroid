@@ -21,16 +21,13 @@ describe('AndroidAppsLifecycleRecoveryService', () => {
     };
     const apkInstall = { resume: jest.fn() };
     const backgroundJobs = { schedule: jest.fn() };
-    const jobs = {
-      listActive: jest.fn(async () => activeJobs),
-      removeForApplication: jest.fn().mockResolvedValue(undefined),
-      complete: jest.fn().mockResolvedValue(undefined),
-    };
     const provisioning = { provision: jest.fn() };
     const removal = { resume: jest.fn() };
     const startLifecycle = { startInBackground: jest.fn() };
-    const tracker = { cancel: jest.fn(), reset: jest.fn() };
     const transitions = {
+      listJobs: jest.fn(async () => activeJobs),
+      requeueInterruptedJob: jest.fn().mockResolvedValue(true),
+      discardJob: jest.fn(),
       completeJob: jest.fn().mockResolvedValue(true),
       markState: jest.fn().mockResolvedValue(undefined),
     };
@@ -38,20 +35,16 @@ describe('AndroidAppsLifecycleRecoveryService', () => {
       applications as never,
       apkInstall as never,
       backgroundJobs as never,
-      jobs as never,
       provisioning as never,
       removal as never,
       startLifecycle as never,
-      tracker as never,
       transitions as never,
     );
     return {
       apkInstall,
       backgroundJobs,
-      jobs,
       removal,
       service,
-      tracker,
       transitions,
     };
   };
@@ -68,13 +61,16 @@ describe('AndroidAppsLifecycleRecoveryService', () => {
       status: AndroidAppLifecycleJobStatus.Running,
       payloadJson: null,
     };
-    const { backgroundJobs, service, tracker } = createService([app], [job]);
+    const { backgroundJobs, service, transitions } = createService(
+      [app],
+      [job],
+    );
 
     await service.recover();
 
-    expect(tracker.reset).toHaveBeenCalledWith('app-1');
+    expect(transitions.requeueInterruptedJob).toHaveBeenCalledWith(job);
     expect(backgroundJobs.schedule).toHaveBeenCalledWith(
-      'start:app-1',
+      job,
       expect.any(Function),
     );
   });
@@ -113,9 +109,38 @@ describe('AndroidAppsLifecycleRecoveryService', () => {
     await service.recover();
 
     expect(transitions.completeJob).toHaveBeenCalledWith(
-      'app-1',
-      AndroidAppLifecycleJobKind.InstallApk,
+      job,
       expect.objectContaining({ status: AndroidApplicationStatus.Error }),
     );
+  });
+
+  it('fails interrupted Recreate even when it was installing an APK', async () => {
+    const app = {
+      id: 'app-1',
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.ApkInstalling,
+    };
+    const job = {
+      id: 'recreate-1',
+      applicationId: app.id,
+      kind: AndroidAppLifecycleJobKind.Recreate,
+      status: AndroidAppLifecycleJobStatus.Running,
+    };
+    const { service, transitions, backgroundJobs, apkInstall } = createService(
+      [app],
+      [job],
+    );
+
+    await service.recover();
+
+    expect(transitions.completeJob).toHaveBeenCalledWith(
+      job,
+      expect.objectContaining({
+        status: AndroidApplicationStatus.Error,
+        lastError: expect.stringContaining('recreation was interrupted'),
+      }),
+    );
+    expect(backgroundJobs.schedule).not.toHaveBeenCalled();
+    expect(apkInstall.resume).not.toHaveBeenCalled();
   });
 });

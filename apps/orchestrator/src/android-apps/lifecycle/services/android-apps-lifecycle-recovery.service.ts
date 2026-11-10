@@ -2,7 +2,6 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
@@ -14,7 +13,6 @@ import {
   AndroidAppLifecycleJob,
   AndroidAppLifecycleJobKind,
 } from '../entities/android-app-lifecycle-job.entity';
-import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
 import { AndroidAppsRemovalService } from './android-apps-removal.service';
 import { AndroidAppsStartLifecycleService } from './android-apps-start-lifecycle.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
@@ -29,16 +27,14 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
     private readonly applications: AndroidApplicationsRepository,
     private readonly apkInstall: AndroidAppsApkInstallLifecycleService,
     private readonly backgroundJobs: LifecycleBackgroundJobRunner,
-    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly provisioning: AndroidAppsProvisioningService,
     private readonly removal: AndroidAppsRemovalService,
     private readonly startLifecycle: AndroidAppsStartLifecycleService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
   ) {}
 
   onModuleInit() {
-    void this.recover().catch((error) => {
+    return this.recover().catch((error) => {
       this.logger.warn(
         `Could not recover interrupted application jobs: ${getErrorMessage(error)}`,
       );
@@ -46,25 +42,21 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
   }
 
   async recover() {
-    const activeJobs = await this.jobs.listActive();
+    const activeJobs = await this.transitions.listJobs();
     const reservedApplicationIds = new Set(
       activeJobs.map((job) => job.applicationId),
     );
 
     for (const job of activeJobs) {
       const app = await this.applications.findById(job.applicationId);
-      if (!app) {
-        await this.jobs.removeForApplication(job.applicationId);
-        continue;
-      }
-      if (!this.matchesPersistedState(app, job.kind)) {
-        await this.failInconsistentJob(app, job);
+      if (!app || app.status === AndroidApplicationStatus.Removed) {
+        await this.transitions.discardJob(job);
         continue;
       }
       if (job.kind === AndroidAppLifecycleJobKind.Recreate) {
         const message =
           'Runtime recreation was interrupted. Start the app or run Recreate again.';
-        await this.transitions.completeJob(app.id, job.kind, {
+        await this.transitions.completeJob(job, {
           status: AndroidApplicationStatus.Error,
           lifecycleStage: AndroidApplicationLifecycleStage.Error,
           statusMessage: message,
@@ -72,7 +64,11 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
         });
         continue;
       }
-      this.resume(app, job);
+      if (!this.matchesPersistedState(app, job.kind)) {
+        await this.failInconsistentJob(app, job);
+        continue;
+      }
+      if (await this.transitions.requeueInterruptedJob(job)) this.resume(job);
     }
 
     for (const app of await this.applications.findAll()) {
@@ -92,30 +88,26 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
     }
   }
 
-  private resume(app: AndroidApplication, job: AndroidAppLifecycleJob) {
+  private resume(job: AndroidAppLifecycleJob) {
     this.logger.warn(
-      `Resuming persisted ${job.kind} lifecycle job for ${app.id}.`,
+      `Resuming persisted ${job.kind} lifecycle job for ${job.applicationId}.`,
     );
     if (job.kind === AndroidAppLifecycleJobKind.Remove) {
-      this.tracker.cancel(app.id);
-      this.removal.resume(app);
+      this.removal.resume(job);
       return;
     }
 
-    this.tracker.reset(app.id);
     if (job.kind === AndroidAppLifecycleJobKind.Provision) {
-      this.backgroundJobs.schedule(`provision:${app.id}`, () =>
-        this.provisioning.provision(app.id),
-      );
+      this.backgroundJobs.schedule(job, () => this.provisioning.provision(job));
       return;
     }
     if (job.kind === AndroidAppLifecycleJobKind.Start) {
-      this.backgroundJobs.schedule(`start:${app.id}`, () =>
-        this.startLifecycle.startInBackground(app.id),
+      this.backgroundJobs.schedule(job, () =>
+        this.startLifecycle.startInBackground(job),
       );
       return;
     }
-    this.apkInstall.resume(app.id);
+    this.apkInstall.resume(job);
   }
 
   private matchesPersistedState(
@@ -149,11 +141,7 @@ export class AndroidAppsLifecycleRecoveryService implements OnModuleInit {
   ) {
     const message = `Persisted ${job.kind} job does not match application state ${app.status}/${app.lifecycleStage}.`;
     this.logger.warn(`${message} (${app.id})`);
-    if (app.status === AndroidApplicationStatus.Removed) {
-      await this.jobs.complete(app.id, job.kind);
-      return;
-    }
-    await this.transitions.completeJob(app.id, job.kind, {
+    await this.transitions.completeJob(job, {
       status: AndroidApplicationStatus.Error,
       lifecycleStage: AndroidApplicationLifecycleStage.Error,
       statusMessage: message,

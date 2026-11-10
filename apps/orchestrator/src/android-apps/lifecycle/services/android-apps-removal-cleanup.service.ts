@@ -41,9 +41,9 @@ export class AndroidAppsRemovalCleanupService {
       await this.lifecycle.removeContainer(app.containerId);
       app.containerId = null;
     }
-    await this.lifecycle.removeContainerByName(app.containerName);
+    await this.lifecycle.removeContainerByName(app.containerName, app.id);
     await this.networkPolicy.remove(app);
-    this.releaseDisplaySessionsInBackground(app.id, 'removing');
+    await this.releaseDisplaySessions(app.id, 'removing');
     await this.runtimeNetwork.releaseRuntimeSupport(app);
     await this.networks.removeNetwork(app.networkName);
     await this.networkPolicy.removeStartupGuard(app.id);
@@ -80,11 +80,7 @@ export class AndroidAppsRemovalCleanupService {
     await this.networkPolicy.removeStartupGuard(app.id);
   }
 
-  releaseDisplaySessionsInBackground(applicationId: string, operation: string) {
-    void this.releaseDisplaySessions(applicationId, operation);
-  }
-
-  private releaseDisplaySessions(applicationId: string, operation: string) {
+  releaseDisplaySessions(applicationId: string, operation: string) {
     return this.displaySidecar
       .releaseSessionsForApp(applicationId)
       .catch((error) => {

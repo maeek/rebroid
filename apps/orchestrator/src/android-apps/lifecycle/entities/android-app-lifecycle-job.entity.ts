@@ -52,3 +52,7 @@ export class AndroidAppLifecycleJob {
   @UpdateDateColumn()
   updatedAt!: Date;
 }
+
+export type AndroidAppLifecycleReservation = Readonly<
+  Pick<AndroidAppLifecycleJob, 'id' | 'applicationId' | 'kind'>
+>;

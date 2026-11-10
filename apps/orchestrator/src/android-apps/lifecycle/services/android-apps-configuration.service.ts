@@ -15,7 +15,6 @@ import { CreateAndroidApplicationDto } from '../../common/dto/create-android-app
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
@@ -59,7 +58,6 @@ export class AndroidAppsConfigurationService {
     private readonly runtimeImages: AndroidRuntimeImageResolverService,
     private readonly runtimePreparation: AndroidAppsRuntimePreparationService,
     private readonly settings: SettingsService,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly writer: AndroidAppsStateWriter,
     private readonly features: FeatureFlagsService,
@@ -129,10 +127,12 @@ export class AndroidAppsConfigurationService {
     if (uploadedApk) {
       this.applicationFactory.applyUploadedApk(app, uploadedApk);
     }
-    await this.transitions.createProvisionJob(app, maxOpenApps);
-    this.tracker.reset(app.id);
-    this.backgroundJobs.schedule(`provision:${app.id}`, () =>
-      this.provisioning.provision(app.id),
+    const reservation = await this.transitions.createProvisionJob(
+      app,
+      maxOpenApps,
+    );
+    this.backgroundJobs.schedule(reservation, () =>
+      this.provisioning.provision(reservation),
     );
     await this.logs.append(app.id, 'Application record created', {
       name: app.name,
@@ -233,11 +233,16 @@ export class AndroidAppsConfigurationService {
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
-    await this.assertRuntimeNotRecreating(app);
     const uploadedApk = await this.apks.get(dto.uploadedApkId);
     if (uploadedApk.ownerUserId !== app.ownerUserId) {
       throw new ConflictException(
         'Uploaded APK does not belong to this application owner.',
+      );
+    }
+    await this.assertRuntimeNotRecreating(app);
+    if (this.backgroundJobs.hasWork(id)) {
+      throw new ConflictException(
+        'Wait for the active application job before changing the attached APK.',
       );
     }
     this.applicationFactory.applyUploadedApk(app, uploadedApk);
@@ -254,13 +259,8 @@ export class AndroidAppsConfigurationService {
     return this.queries.getStored(id);
   }
 
-  private async assertRuntimeNotRecreating(app: AndroidApplication) {
-    if (
-      app.status === AndroidApplicationStatus.Provisioning &&
-      (await this.transitions.hasRecreateJob(app.id))
-    ) {
-      throw new ConflictException('Application runtime is being recreated.');
-    }
+  private assertRuntimeNotRecreating(app: AndroidApplication) {
+    return this.transitions.assertNoRecreation(app.id);
   }
 
   private assertMutable(app: AndroidApplication) {

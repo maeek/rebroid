@@ -12,6 +12,7 @@ export type AndroidApplicationLifecyclePatch = Partial<
     | 'lastError'
     | 'provisioningStartedAt'
     | 'provisioningCompletedAt'
+    | 'lastStoppedAt'
     | 'removeDataOnRemoval'
     | 'containerId'
     | 'recreateContainerOnNextStart'

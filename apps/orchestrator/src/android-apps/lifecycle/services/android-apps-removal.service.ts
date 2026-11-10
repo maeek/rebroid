@@ -1,19 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
-import { AndroidApplication } from '../../android-application.entity';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-application.dto';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
-import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
-import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
-import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
-import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
+import {
+  AndroidAppLifecycleJobKind,
+  type AndroidAppLifecycleReservation,
+} from '../entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRemovalCleanupService } from './android-apps-removal-cleanup.service';
 import { LifecycleBackgroundJobRunner } from './lifecycle-background-job-runner.service';
 
@@ -25,40 +24,50 @@ export class AndroidAppsRemovalService {
   private readonly logger = new Logger(AndroidAppsRemovalService.name);
 
   constructor(
-    private readonly applications: AndroidApplicationsRepository,
     private readonly backgroundJobs: LifecycleBackgroundJobRunner,
     private readonly cleanup: AndroidAppsRemovalCleanupService,
-    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly logs: AndroidAppsLogService,
-    private readonly reconciler: AndroidAppsRuntimeStateReconciler,
-    private readonly tracker: AndroidAppsProvisioningTrackerService,
+    private readonly queries: AndroidAppsQueryService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
   ) {}
 
   async request(id: string, query: RemoveAndroidApplicationDto) {
-    const app = await this.reconciler.reconcileById(id);
+    const app = await this.queries.getStored(id);
+    await this.transitions.assertNoRecreation(id);
     const removeData = query.removeData ?? true;
-    await this.transitions.beginJob(
-      id,
-      AndroidAppLifecycleJobKind.Remove,
-      {
-        status: AndroidApplicationStatus.Removing,
-        lifecycleStage: AndroidApplicationLifecycleStage.Removing,
-        statusMessage: 'Removing application container and network resources.',
-        removeDataOnRemoval: removeData,
-      },
-      { removeData },
-      true,
-    );
-    this.tracker.cancel(id);
-    await this.logs.append(id, 'Remove requested', {
-      removeData,
-      containerId: app.containerId,
-      networkName: app.networkName,
-      volumeName: app.volumeName,
-    });
-    app.removeDataOnRemoval = removeData;
-    this.resume(app);
+    if (
+      app.status === AndroidApplicationStatus.Removing &&
+      this.backgroundJobs.hasWork(id)
+    ) {
+      if (app.removeDataOnRemoval !== removeData) {
+        throw new ConflictException(
+          'Removal is already in progress with different data options.',
+        );
+      }
+    } else {
+      const reservation = await this.backgroundJobs.interrupt(id, () =>
+        this.transitions.beginJob(
+          id,
+          AndroidAppLifecycleJobKind.Remove,
+          {
+            status: AndroidApplicationStatus.Removing,
+            lifecycleStage: AndroidApplicationLifecycleStage.Removing,
+            statusMessage:
+              'Removing application container and network resources.',
+            removeDataOnRemoval: removeData,
+          },
+          { removeData },
+          true,
+        ),
+      );
+      this.resume(reservation);
+      await this.logs.append(id, 'Remove requested', {
+        removeData,
+        containerId: app.containerId,
+        networkName: app.networkName,
+        volumeName: app.volumeName,
+      });
+    }
 
     return {
       id,
@@ -68,24 +77,26 @@ export class AndroidAppsRemovalService {
     };
   }
 
-  resume(app: AndroidApplication) {
-    this.backgroundJobs.schedule(`remove:${app.id}`, () =>
-      this.removeInBackground(app),
+  resume(reservation: AndroidAppLifecycleReservation) {
+    this.backgroundJobs.schedule(reservation, () =>
+      this.removeInBackground(reservation),
     );
   }
 
-  releaseDisplaySessionsInBackground(applicationId: string, operation: string) {
-    this.cleanup.releaseDisplaySessionsInBackground(applicationId, operation);
-  }
-
-  private async removeInBackground(app: AndroidApplication) {
-    await this.jobs.markRunning(app.id, AndroidAppLifecycleJobKind.Remove);
+  private async removeInBackground(
+    reservation: AndroidAppLifecycleReservation,
+  ) {
+    if (!(await this.transitions.claimJob(reservation))) return;
+    const app = await this.queries.getStored(reservation.applicationId);
     for (let attempt = 1; attempt <= REMOVAL_ATTEMPTS; attempt += 1) {
       try {
         await this.cleanup.cleanup(app, app.removeDataOnRemoval);
-        await this.applications.remove(app);
-        await this.logs.remove(app.id);
-        await this.jobs.complete(app.id, AndroidAppLifecycleJobKind.Remove);
+        if (!(await this.transitions.completeRemoval(reservation))) return;
+        await this.logs.remove(app.id).catch((error: unknown) => {
+          this.logger.warn(
+            `Could not remove lifecycle logs for ${app.id}: ${getErrorMessage(error)}`,
+          );
+        });
         return;
       } catch (error) {
         const message = getErrorMessage(error);
@@ -93,17 +104,12 @@ export class AndroidAppsRemovalService {
           `Removal cleanup attempt ${attempt}/${REMOVAL_ATTEMPTS} failed for ${app.id}: ${message}`,
         );
         if (attempt === REMOVAL_ATTEMPTS) {
-          await this.transitions.failJob(
-            app.id,
-            AndroidAppLifecycleJobKind.Remove,
-            message,
-            {
-              status: AndroidApplicationStatus.Removing,
-              lifecycleStage: AndroidApplicationLifecycleStage.Removing,
-              statusMessage: `Removal cleanup paused: ${message}`,
-              lastError: message,
-            },
-          );
+          await this.transitions.failJob(reservation, message, {
+            status: AndroidApplicationStatus.Removing,
+            lifecycleStage: AndroidApplicationLifecycleStage.Removing,
+            statusMessage: `Removal cleanup paused: ${message}`,
+            lastError: message,
+          });
           return;
         }
         await delay(REMOVAL_RETRY_DELAY_MS);

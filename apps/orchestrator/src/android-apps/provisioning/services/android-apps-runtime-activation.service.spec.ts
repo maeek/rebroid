@@ -3,6 +3,12 @@ import { ApplicationProfileMode } from '../../contracts/application-profile-mode
 import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRuntimeActivationService } from './android-apps-runtime-activation.service';
 
+const reservation = {
+  id: 'start-job',
+  applicationId: 'app',
+  kind: AndroidAppLifecycleJobKind.Start,
+};
+
 describe('AndroidAppsRuntimeActivationService', () => {
   const setup = (exists: boolean) => {
     const error = new Error('Network or container not found');
@@ -64,12 +70,10 @@ describe('AndroidAppsRuntimeActivationService', () => {
       createRuntimeBoundary,
       updateProgress,
     } = setup(false);
-    const kind = AndroidAppLifecycleJobKind.Start;
-    await service.activate(app, kind, 'start');
+    await service.activate(app, reservation, 'start');
 
     expect(updateProgress).toHaveBeenCalledWith(
-      app.id,
-      kind,
+      reservation,
       expect.objectContaining({ containerId: null }),
     );
     expect(createRuntimeBoundary).toHaveBeenCalledTimes(1);
@@ -85,9 +89,9 @@ describe('AndroidAppsRuntimeActivationService', () => {
 
   it('preserves the start failure if the app container still exists', async () => {
     const { app, service, error, createApplicationContainer } = setup(true);
-    await expect(
-      service.activate(app, AndroidAppLifecycleJobKind.Start, 'start'),
-    ).rejects.toBe(error);
+    await expect(service.activate(app, reservation, 'start')).rejects.toBe(
+      error,
+    );
     expect(createApplicationContainer).not.toHaveBeenCalled();
   });
 });

@@ -9,8 +9,10 @@ import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
-import { AndroidAppLifecycleJobKind } from '../entities/android-app-lifecycle-job.entity';
-import { AndroidAppLifecycleJobsService } from './android-app-lifecycle-jobs.service';
+import {
+  AndroidAppLifecycleJobKind,
+  type AndroidAppLifecycleReservation,
+} from '../entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRemovalCleanupService } from './android-apps-removal-cleanup.service';
 import { AndroidAppsApkInstallLifecycleService } from '../../provisioning/services/android-apps-apk-install-lifecycle.service';
 import { AndroidAppsProvisioningApkService } from '../../provisioning/services/android-apps-provisioning-apk.service';
@@ -26,28 +28,23 @@ export class AndroidAppsStartLifecycleService {
     private readonly apkInstall: AndroidAppsApkInstallLifecycleService,
     private readonly apkProvisioning: AndroidAppsProvisioningApkService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
-    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
     private readonly queries: AndroidAppsQueryService,
   ) {}
 
-  async startInBackground(
-    applicationId: string,
-    kind:
-      | AndroidAppLifecycleJobKind.Start
-      | AndroidAppLifecycleJobKind.Recreate = AndroidAppLifecycleJobKind.Start,
-  ) {
+  async startInBackground(reservation: AndroidAppLifecycleReservation) {
+    const { applicationId, kind } = reservation;
     const recreating = kind === AndroidAppLifecycleJobKind.Recreate;
+    if (!(await this.transitions.claimJob(reservation))) return;
     try {
-      await this.jobs.markRunning(applicationId, kind);
       const app = await this.queries.getStored(applicationId);
       this.tracker.ensureActive(app.id);
       if (recreating) {
         await this.cleanup.removeRuntimeForRecreation(app);
         app.containerId = null;
         app.recreateContainerOnNextStart = false;
-        await this.transitions.updateProgress(app.id, kind, {
+        await this.transitions.updateProgress(reservation, {
           containerId: null,
           recreateContainerOnNextStart: false,
         });
@@ -58,14 +55,15 @@ export class AndroidAppsStartLifecycleService {
         existingContainerId: app.containerId,
         image: app.containerImage,
       });
-      await this.transitions.updateProgress(app.id, kind, {
+      await this.transitions.updateProgress(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
         statusMessage:
           'Checking whether the container image is available locally.',
       });
 
-      await this.activation.activate(app, kind, 'start');
-      if (await this.handoffMissingApk(app, kind)) {
+      await this.activation.activate(app, reservation, 'start');
+      this.tracker.ensureActive(app.id);
+      if (await this.handoffMissingApk(app, reservation)) {
         return;
       }
 
@@ -74,7 +72,7 @@ export class AndroidAppsStartLifecycleService {
       await this.logs.append(app.id, 'Application marked running', {
         containerId: app.containerId,
       });
-      await this.transitions.completeJob(app.id, kind, {
+      await this.transitions.completeJob(reservation, {
         status: AndroidApplicationStatus.Running,
         lifecycleStage: AndroidApplicationLifecycleStage.Ready,
         statusMessage: 'Application is running.',
@@ -82,7 +80,7 @@ export class AndroidAppsStartLifecycleService {
         provisioningCompletedAt: new Date(),
       });
     } catch (error) {
-      if (this.tracker.isCancellationError(error)) {
+      if (this.tracker.isCancelled(applicationId)) {
         this.logger.log(`Start cancelled for ${applicationId}.`);
         return;
       }
@@ -96,9 +94,9 @@ export class AndroidAppsStartLifecycleService {
         lastError: message,
       };
       if (recreating) {
-        await this.transitions.completeJob(applicationId, kind, patch);
+        await this.transitions.completeJob(reservation, patch);
       } else {
-        await this.transitions.failJob(applicationId, kind, message, patch);
+        await this.transitions.failJob(reservation, message, patch);
       }
       await this.logs.append(applicationId, 'Start failed', { error: message });
     }
@@ -106,7 +104,7 @@ export class AndroidAppsStartLifecycleService {
 
   private async handoffMissingApk(
     app: AndroidApplication,
-    kind: AndroidAppLifecycleJobKind,
+    reservation: AndroidAppLifecycleReservation,
   ) {
     await this.logs.append(app.id, 'APK startup check', {
       hasApk: Boolean(app.apkFilePath),
@@ -132,7 +130,7 @@ export class AndroidAppsStartLifecycleService {
     await this.apkInstall.begin(
       app,
       'Installing APK inside Android before launch. Viewer is available while installation finishes.',
-      kind,
+      reservation,
     );
     return true;
   }

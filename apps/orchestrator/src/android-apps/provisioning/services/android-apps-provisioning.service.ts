@@ -13,8 +13,7 @@ import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
-import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
-import { AndroidAppLifecycleJobsService } from '../../lifecycle/services/android-app-lifecycle-jobs.service';
+import type { AndroidAppLifecycleReservation } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsApkInstallLifecycleService } from './android-apps-apk-install-lifecycle.service';
 import { AndroidAppsRuntimeActivationService } from './android-apps-runtime-activation.service';
 
@@ -28,32 +27,25 @@ export class AndroidAppsProvisioningService {
     private readonly activation: AndroidAppsRuntimeActivationService,
     private readonly apkInstall: AndroidAppsApkInstallLifecycleService,
     private readonly transitions: AndroidAppsLifecycleTransitionService,
-    private readonly jobs: AndroidAppLifecycleJobsService,
     private readonly queries: AndroidAppsQueryService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
   ) {}
 
-  async provision(applicationId: string) {
+  async provision(reservation: AndroidAppLifecycleReservation) {
+    const { applicationId } = reservation;
+    if (!(await this.transitions.claimJob(reservation))) return;
     let app: AndroidApplication | null = null;
     try {
-      await this.jobs.markRunning(
-        applicationId,
-        AndroidAppLifecycleJobKind.Provision,
-      );
-      app = await this.beginProvisioning(applicationId);
-      await this.activation.activate(
-        app,
-        AndroidAppLifecycleJobKind.Provision,
-        'provision',
-      );
+      app = await this.beginProvisioning(reservation);
+      await this.activation.activate(app, reservation, 'provision');
 
-      if (await this.handoffInitialApk(app)) {
+      if (await this.handoffInitialApk(app, reservation)) {
         return;
       }
-      await this.finishProvisioning(applicationId);
+      await this.finishProvisioning(reservation);
     } catch (error) {
-      if (this.tracker.isCancellationError(error)) {
+      if (this.tracker.isCancelled(applicationId)) {
         this.logger.log(`Provisioning cancelled for ${applicationId}.`);
         await this.removeCancelledProvisioningContainer(app);
         return;
@@ -61,34 +53,26 @@ export class AndroidAppsProvisioningService {
 
       const message = getErrorMessage(error);
       this.logger.error(`Provisioning failed for ${applicationId}: ${message}`);
-      await this.transitions.failJob(
-        applicationId,
-        AndroidAppLifecycleJobKind.Provision,
-        message,
-        {
-          status: AndroidApplicationStatus.Error,
-          lifecycleStage: AndroidApplicationLifecycleStage.Error,
-          statusMessage: message,
-          lastError: message,
-        },
-      );
+      await this.transitions.failJob(reservation, message, {
+        status: AndroidApplicationStatus.Error,
+        lifecycleStage: AndroidApplicationLifecycleStage.Error,
+        statusMessage: message,
+        lastError: message,
+      });
     }
   }
 
-  private async beginProvisioning(applicationId: string) {
+  private async beginProvisioning(reservation: AndroidAppLifecycleReservation) {
+    const { applicationId } = reservation;
     this.tracker.ensureActive(applicationId);
-    await this.transitions.updateProgress(
-      applicationId,
-      AndroidAppLifecycleJobKind.Provision,
-      {
-        status: AndroidApplicationStatus.Provisioning,
-        lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
-        statusMessage:
-          'Checking whether the container image is available locally.',
-        provisioningStartedAt: new Date(),
-        lastError: null,
-      },
-    );
+    await this.transitions.updateProgress(reservation, {
+      status: AndroidApplicationStatus.Provisioning,
+      lifecycleStage: AndroidApplicationLifecycleStage.ImageChecking,
+      statusMessage:
+        'Checking whether the container image is available locally.',
+      provisioningStartedAt: new Date(),
+      lastError: null,
+    });
 
     const app = await this.queries.getStored(applicationId);
     await this.logs.append(applicationId, 'Provisioning started', {
@@ -101,7 +85,10 @@ export class AndroidAppsProvisioningService {
     return app;
   }
 
-  private async handoffInitialApk(app: AndroidApplication) {
+  private async handoffInitialApk(
+    app: AndroidApplication,
+    reservation: AndroidAppLifecycleReservation,
+  ) {
     await this.logs.append(app.id, 'Initial APK provisioning check', {
       hasApk: Boolean(app.apkFilePath),
       apkOriginalName: app.apkOriginalName,
@@ -119,24 +106,22 @@ export class AndroidAppsProvisioningService {
     await this.apkInstall.begin(
       app,
       'Installing APK inside Android. Viewer is available while installation finishes.',
-      AndroidAppLifecycleJobKind.Provision,
+      reservation,
     );
     return true;
   }
 
-  private async finishProvisioning(applicationId: string) {
-    this.tracker.ensureActive(applicationId);
-    await this.transitions.completeJob(
-      applicationId,
-      AndroidAppLifecycleJobKind.Provision,
-      {
-        status: AndroidApplicationStatus.Running,
-        lifecycleStage: AndroidApplicationLifecycleStage.Ready,
-        statusMessage: 'Application is running.',
-        provisioningCompletedAt: new Date(),
-        lastError: null,
-      },
-    );
+  private async finishProvisioning(
+    reservation: AndroidAppLifecycleReservation,
+  ) {
+    this.tracker.ensureActive(reservation.applicationId);
+    await this.transitions.completeJob(reservation, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      statusMessage: 'Application is running.',
+      provisioningCompletedAt: new Date(),
+      lastError: null,
+    });
   }
 
   private async removeCancelledProvisioningContainer(
@@ -146,7 +131,7 @@ export class AndroidAppsProvisioningService {
       return;
     }
     try {
-      await this.lifecycle.removeContainerByName(app.containerName);
+      await this.lifecycle.removeContainerByName(app.containerName, app.id);
     } catch (error) {
       this.logger.warn(
         `Could not remove cancelled provisioning container ${app.containerName}: ${getErrorMessage(error)}`,

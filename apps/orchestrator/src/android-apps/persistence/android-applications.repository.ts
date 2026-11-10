@@ -27,10 +27,6 @@ export class AndroidApplicationsRepository
     return this.applications.save(app);
   }
 
-  remove(app: AndroidApplication) {
-    return this.applications.remove(app);
-  }
-
   updateLifecycle(
     applicationId: string,
     patch: Partial<
