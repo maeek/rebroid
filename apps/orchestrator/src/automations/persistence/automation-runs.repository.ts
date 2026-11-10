@@ -58,18 +58,65 @@ export class AutomationRunsRepository {
   }
 
   listForAutomation(ownerUserId: string, automationId: string, limit = 50) {
-    return this.runs.find({
-      where: { ownerUserId, automationId },
-      order: { createdAt: 'DESC' },
-      take: Math.max(1, Math.min(Math.trunc(limit), 100)),
-    });
+    return this.runs
+      .createQueryBuilder('run')
+      .where({ ownerUserId, automationId })
+      .orderBy('run.createdAt', 'DESC')
+      .addOrderBy('run.rowid', 'DESC')
+      .limit(Math.max(1, Math.min(Math.trunc(limit), 100)))
+      .getMany();
   }
 
-  findLatestForAutomation(ownerUserId: string, automationId: string) {
-    return this.runs.findOne({
-      where: { ownerUserId, automationId },
-      order: { createdAt: 'DESC' },
-    });
+  async latestForAutomations(ownerUserId: string, id?: string) {
+    const runs = await this.latestFor(
+      'automations',
+      'automationId',
+      ownerUserId,
+      id,
+    );
+    return new Map(runs.map((run) => [run.automationId, run]));
+  }
+
+  async latestForTriggers(ownerUserId: string, id?: string) {
+    const runs = await this.latestFor(
+      'automation_triggers',
+      'automationTriggerId',
+      ownerUserId,
+      id,
+    );
+    return new Map(runs.map((run) => [run.automationTriggerId, run]));
+  }
+
+  private latestFor(
+    table: 'automations' | 'automation_triggers',
+    foreignKey: 'automationId' | 'automationTriggerId',
+    ownerUserId: string,
+    id?: string,
+  ) {
+    // SQLite assigns a rowid on insertion, which breaks ties for existing second-precision timestamps.
+    return this.runs
+      .createQueryBuilder('run')
+      .select([
+        'run.id',
+        'run.automationId',
+        'run.automationTriggerId',
+        'run.status',
+        'run.error',
+        'run.createdAt',
+        'run.startedAt',
+        'run.completedAt',
+      ])
+      .where(
+        `run.id IN (
+          SELECT (SELECT latest.id FROM automation_runs latest
+                  WHERE latest.ownerUserId = resource.ownerUserId AND latest.${foreignKey} = resource.id
+                  ORDER BY latest.createdAt DESC, latest.rowid DESC LIMIT 1)
+          FROM ${table} resource
+          WHERE resource.ownerUserId = :ownerUserId ${id === undefined ? '' : 'AND resource.id = :id'}
+        )`,
+        { ownerUserId, id },
+      )
+      .getMany();
   }
 
   listActive(ownerUserId: string) {

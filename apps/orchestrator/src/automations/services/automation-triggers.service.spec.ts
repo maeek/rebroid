@@ -7,6 +7,7 @@ import {
   AutomationTrigger,
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
+import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
 import { AutomationsRepository } from '../persistence/automations.repository';
 import { AutomationRunnerService } from '../runner/automation-runner.service';
@@ -56,6 +57,12 @@ describe('trigger descriptions', () => {
           useValue: { listByOwner: jest.fn().mockResolvedValue([]) },
         },
         { provide: AutomationRunnerService, useValue: {} },
+        {
+          provide: AutomationRunsRepository,
+          useValue: {
+            latestForTriggers: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
         { provide: AutomationDefinitionService, useValue: {} },
         {
           provide: AutomationTriggerSchedulerService,

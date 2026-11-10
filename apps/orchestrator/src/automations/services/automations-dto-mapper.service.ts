@@ -4,8 +4,14 @@ import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import { AutomationDto } from '../dto/automation.dto';
 import { AutomationRunDto } from '../dto/automation-run.dto';
 import { AutomationTriggerDto } from '../dto/automation-trigger.dto';
-import { Automation } from '../entities/automation.entity';
-import { AutomationRun } from '../entities/automation-run.entity';
+import {
+  Automation,
+  AutomationLastStatus,
+} from '../entities/automation.entity';
+import {
+  AutomationRun,
+  AutomationRunStatus,
+} from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';
 import { AutomationStepResult } from '../runner/automation-runner.types';
 import { parseAutomationTagsJson } from '../tags/automation-tags';
@@ -14,7 +20,7 @@ import { parseAutomationTagsJson } from '../tags/automation-tags';
 export class AutomationsDtoMapper {
   constructor(private readonly definitions: AutomationDefinitionService) {}
 
-  automation(automation: Automation): AutomationDto {
+  automation(automation: Automation, latestRun?: AutomationRun): AutomationDto {
     const definition = JSON.parse(
       automation.definitionJson,
     ) as AutomationDefinition;
@@ -26,9 +32,7 @@ export class AutomationsDtoMapper {
       tags: definition.metadata.tags ?? [],
       definition,
       yaml: this.definitions.toYaml(definition),
-      lastRunAt: toIso(automation.lastRunAt),
-      lastStatus: automation.lastStatus,
-      lastError: automation.lastError,
+      ...runSummary(automation, latestRun),
       createdAt: toIso(automation.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(automation.updatedAt) ?? new Date().toISOString(),
     };
@@ -54,7 +58,10 @@ export class AutomationsDtoMapper {
     };
   }
 
-  trigger(trigger: AutomationTrigger): AutomationTriggerDto {
+  trigger(
+    trigger: AutomationTrigger,
+    latestRun?: AutomationRun,
+  ): AutomationTriggerDto {
     return {
       id: trigger.id,
       ownerUserId: trigger.ownerUserId,
@@ -68,10 +75,8 @@ export class AutomationsDtoMapper {
       tags: parseAutomationTagsJson(trigger.tagsJson),
       triggerType: trigger.triggerType,
       triggerConfig: this.triggerConfig(trigger),
-      lastRunAt: toIso(trigger.lastRunAt),
+      ...runSummary(trigger, latestRun, trigger.lastEnqueueFailureAt),
       nextRunAt: toIso(trigger.nextRunAt),
-      lastStatus: trigger.lastStatus,
-      lastError: trigger.lastError,
       createdAt: toIso(trigger.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(trigger.updatedAt) ?? new Date().toISOString(),
     };
@@ -84,3 +89,38 @@ export class AutomationsDtoMapper {
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
+
+const runSummary = (
+  resource: Pick<Automation, 'lastStatus' | 'lastRunAt' | 'lastError'>,
+  run?: AutomationRun,
+  lastEnqueueFailureAt?: Date | null,
+) => {
+  if (!run)
+    return {
+      lastRunAt: toIso(resource.lastRunAt),
+      lastStatus: resource.lastStatus,
+      lastError: resource.lastError,
+    };
+
+  const lastRunAt = toIso(run.completedAt ?? run.startedAt ?? run.createdAt);
+  if (lastEnqueueFailureAt && lastEnqueueFailureAt > run.createdAt)
+    return {
+      lastRunAt,
+      lastStatus: AutomationLastStatus.Failed,
+      lastError: resource.lastError,
+    };
+  let lastStatus = AutomationLastStatus.Running;
+  if (run.status === AutomationRunStatus.Success)
+    lastStatus = AutomationLastStatus.Success;
+  if (
+    run.status === AutomationRunStatus.Failed ||
+    run.status === AutomationRunStatus.Canceled
+  ) {
+    lastStatus = AutomationLastStatus.Failed;
+  }
+  return {
+    lastRunAt,
+    lastStatus,
+    lastError: lastStatus === AutomationLastStatus.Failed ? run.error : null,
+  };
+};

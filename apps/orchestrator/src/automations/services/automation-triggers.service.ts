@@ -4,7 +4,6 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import {
   AutomationTriggersGridPageDto,
   CreateAutomationTriggerDto,
@@ -18,6 +17,7 @@ import {
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';
 import { AutomationsRepository } from '../persistence/automations.repository';
+import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
 import { AutomationRunnerService } from '../runner/automation-runner.service';
 import { toAutomationRunStartPolicy } from '../runner/automation-runner-policy';
@@ -47,6 +47,7 @@ export class AutomationTriggersService implements OnModuleInit {
     private readonly triggerScheduler: AutomationTriggerSchedulerService,
     private readonly queries: AutomationsQueryService,
     private readonly targetApplications: AutomationTargetApplicationService,
+    private readonly runs: AutomationRunsRepository,
   ) {}
 
   async onModuleInit() {
@@ -56,8 +57,12 @@ export class AutomationTriggersService implements OnModuleInit {
   }
 
   async list(ownerUserId: string) {
-    return (await this.triggers.listByOwner(ownerUserId)).map((trigger) =>
-      this.mapper.trigger(trigger),
+    const [triggers, latestRuns] = await Promise.all([
+      this.triggers.listByOwner(ownerUserId),
+      this.runs.latestForTriggers(ownerUserId),
+    ]);
+    return triggers.map((trigger) =>
+      this.mapper.trigger(trigger, latestRuns.get(trigger.id)),
     );
   }
 
@@ -70,14 +75,13 @@ export class AutomationTriggersService implements OnModuleInit {
       Math.max(Math.trunc(query.pageSize ?? 20), 1),
       100,
     );
-    const [triggers, automations] = await Promise.all([
-      this.triggers.listByOwner(ownerUserId),
+    const [triggerDtos, automations] = await Promise.all([
+      this.list(ownerUserId),
       this.automations.listByOwner(ownerUserId),
     ]);
     const automationNamesById = new Map(
       automations.map((automation) => [automation.id, automation.name]),
     );
-    const triggerDtos = triggers.map((trigger) => this.mapper.trigger(trigger));
     const facets = automationTriggerGridFacets(triggerDtos);
 
     const filtered = filterAutomationTriggerGridItems({
@@ -99,7 +103,11 @@ export class AutomationTriggersService implements OnModuleInit {
   }
 
   async get(ownerUserId: string, id: string) {
-    return this.mapper.trigger(await this.getEntity(ownerUserId, id));
+    const [trigger, latestRuns] = await Promise.all([
+      this.getEntity(ownerUserId, id),
+      this.runs.latestForTriggers(ownerUserId, id),
+    ]);
+    return this.mapper.trigger(trigger, latestRuns.get(id));
   }
 
   async create(dto: CreateAutomationTriggerDto) {
@@ -119,8 +127,8 @@ export class AutomationTriggersService implements OnModuleInit {
       description: dto.description?.trim() || null,
       automationId: dto.automationId,
       targetApplicationId: dto.targetApplicationId,
-      profileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
-      profileName: dto.profileName?.trim() || 'default',
+      profileMode: dto.profileMode ?? null,
+      profileName: dto.profileName?.trim() || null,
       enabled: dto.enabled !== false,
       tagsJson: stringifyTags(dto.tags),
       triggerType: dto.triggerType,
@@ -165,11 +173,10 @@ export class AutomationTriggersService implements OnModuleInit {
       trigger.targetApplicationId = dto.targetApplicationId;
     }
     if (dto.profileMode !== undefined) {
-      trigger.profileMode =
-        dto.profileMode ?? ApplicationProfileMode.Persistent;
+      trigger.profileMode = dto.profileMode;
     }
     if (dto.profileName !== undefined) {
-      trigger.profileName = dto.profileName?.trim() || 'default';
+      trigger.profileName = dto.profileName?.trim() || null;
     }
     if (dto.enabled !== undefined) {
       trigger.enabled = dto.enabled;
@@ -193,16 +200,21 @@ export class AutomationTriggersService implements OnModuleInit {
           this.mapper.triggerConfig(trigger),
         )
       : null;
-    const saved = await this.triggers.save(trigger);
+    await this.triggers.saveConfiguration(trigger);
+    const [saved, latestRuns] = await Promise.all([
+      this.getEntity(ownerUserId, id),
+      this.runs.latestForTriggers(ownerUserId, id),
+    ]);
     this.registerTrigger(saved);
-    return this.mapper.trigger(saved);
+    return this.mapper.trigger(saved, latestRuns.get(id));
   }
 
   async remove(ownerUserId: string, id: string) {
     const trigger = await this.getEntity(ownerUserId, id);
+    const latestRuns = await this.runs.latestForTriggers(ownerUserId, id);
     this.triggerScheduler.unregister(trigger.id);
     await this.triggers.remove(trigger);
-    return this.mapper.trigger(trigger);
+    return this.mapper.trigger(trigger, latestRuns.get(id));
   }
 
   async removeByAutomation(ownerUserId: string, automationId: string) {
@@ -235,26 +247,17 @@ export class AutomationTriggersService implements OnModuleInit {
       {
         automationTriggerId: trigger.id,
         targetApplicationId: trigger.targetApplicationId,
-        targetProfileMode:
-          trigger.profileMode ?? ApplicationProfileMode.Persistent,
-        targetProfileName: trigger.profileName ?? 'default',
+        targetProfileMode: trigger.profileMode,
+        targetProfileName: trigger.profileName,
         startPolicy: toAutomationRunStartPolicy(config.startPolicy),
       },
     );
-    const now = new Date();
-    automation.lastStatus = AutomationLastStatus.Running;
-    automation.lastRunAt = now;
-    automation.lastError = null;
-    trigger.lastStatus = AutomationLastStatus.Running;
-    trigger.lastRunAt = now;
-    trigger.lastError = null;
-    trigger.nextRunAt = trigger.enabled
-      ? this.triggerScheduler.nextRunForTrigger(trigger.triggerType, config)
-      : null;
-    await Promise.all([
-      this.automations.save(automation),
-      this.triggers.save(trigger),
-    ]);
+    await this.triggers.updateSchedule(
+      trigger,
+      trigger.enabled
+        ? this.triggerScheduler.nextRunForTrigger(trigger.triggerType, config)
+        : null,
+    );
     return run;
   }
 
@@ -288,17 +291,21 @@ export class AutomationTriggersService implements OnModuleInit {
     if (!automation) {
       return;
     }
+    const attemptedAt = new Date();
     try {
       await this.enqueueTriggerRun(trigger, automation);
     } catch (error) {
-      trigger.lastStatus = AutomationLastStatus.Failed;
-      trigger.lastError =
-        error instanceof Error ? error.message : String(error);
-      trigger.nextRunAt = this.triggerScheduler.nextRunForTrigger(
-        trigger.triggerType,
-        this.triggerScheduler.parseScheduleConfig(trigger),
+      await this.triggers.updateSchedule(
+        trigger,
+        this.triggerScheduler.nextRunForTrigger(
+          trigger.triggerType,
+          this.triggerScheduler.parseScheduleConfig(trigger),
+        ),
+        {
+          at: attemptedAt,
+          message: error instanceof Error ? error.message : String(error),
+        },
       );
-      await this.triggers.save(trigger);
     }
   }
 }

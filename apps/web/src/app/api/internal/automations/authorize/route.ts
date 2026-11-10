@@ -11,7 +11,7 @@ const inputSchema = z
     definition: z.custom<AutomationDefinition>(value => Boolean(value && typeof value === 'object' && 'spec' in value)),
     profileMode: z.string().nullable().optional(),
     profileName: z.string().nullable().optional(),
-    startPolicy: z.enum(['require-running', 'start-if-needed']).optional()
+    operation: z.enum(['attach', 'start'])
   })
   .strict()
 

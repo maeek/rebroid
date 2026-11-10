@@ -15,12 +15,9 @@ describe('automation authorization transport', () => {
       }),
     );
     await expect(
-      service.assertAllowed(
-        'owner',
-        { spec: { steps: [] } } as never,
-        'app',
-        {},
-      ),
+      service.assertAllowed('owner', { spec: { steps: [] } } as never, 'app', {
+        operation: 'attach',
+      }),
     ).rejects.toThrow('authorization');
     expect(fetch).toHaveBeenCalledWith(
       new URL('http://web:3101/api/internal/automations/authorize'),

@@ -5,6 +5,8 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-initialize-sqlite-schema';
 
+import { WorkflowRunSummaries1800000001000 } from './migrations/1800000001000-workflow-run-summaries';
+
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
@@ -23,7 +25,10 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
             connection.pragma('busy_timeout = 5000');
           },
           autoLoadEntities: true,
-          migrations: [InitializeSqliteSchema1800000000000],
+          migrations: [
+            InitializeSqliteSchema1800000000000,
+            WorkflowRunSummaries1800000001000,
+          ],
           migrationsRun: true,
           synchronize: false,
         };

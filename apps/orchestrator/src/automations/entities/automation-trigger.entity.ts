@@ -62,6 +62,9 @@ export class AutomationTrigger {
   @Column({ type: 'datetime', nullable: true })
   nextRunAt!: Date | null;
 
+  @Column({ type: 'datetime', nullable: true })
+  lastEnqueueFailureAt!: Date | null;
+
   @Column({ default: AutomationLastStatus.NeverRun })
   lastStatus!: AutomationLastStatus;
 

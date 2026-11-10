@@ -3,7 +3,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.factory';
 import { AutomationAiSuggestionsService } from '../ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';
@@ -103,17 +102,19 @@ export class AutomationsService {
       automation.definitionJson = JSON.stringify(definition);
     }
 
-    return this.mapper.automation(await this.automations.save(automation));
+    await this.automations.save(automation);
+    return this.queries.get(ownerUserId, id);
   }
 
   async remove(ownerUserId: string, id: string) {
     const automation = await this.queries.getEntity(ownerUserId, id);
+    const dto = await this.queries.get(ownerUserId, id);
     await this.automationTriggers.removeByAutomation(
       ownerUserId,
       automation.id,
     );
     await this.automations.remove(automation);
-    return this.mapper.automation(automation);
+    return dto;
   }
 
   validateYaml(yaml: string) {
@@ -152,8 +153,8 @@ export class AutomationsService {
       AutomationRunTrigger.Manual,
       {
         targetApplicationId: dto.targetApplicationId,
-        targetProfileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
-        targetProfileName: dto.profileName ?? 'default',
+        targetProfileMode: dto.profileMode,
+        targetProfileName: dto.profileName?.trim() || null,
         startPolicy: toAutomationRunStartPolicy(
           dto.startPolicy ?? AutomationStartPolicy.RequireRunning,
         ),
@@ -222,17 +223,13 @@ export class AutomationsService {
       AutomationRunTrigger.Manual,
       {
         targetApplicationId: dto.targetApplicationId,
-        targetProfileMode: dto.profileMode ?? ApplicationProfileMode.Persistent,
-        targetProfileName: dto.profileName ?? 'default',
+        targetProfileMode: dto.profileMode,
+        targetProfileName: dto.profileName?.trim() || null,
         startPolicy: toAutomationRunStartPolicy(
           dto.startPolicy ?? AutomationStartPolicy.RequireRunning,
         ),
       },
     );
-    automation.lastStatus = AutomationLastStatus.Running;
-    automation.lastRunAt = new Date();
-    automation.lastError = null;
-    await this.automations.save(automation);
     return this.mapper.run(run);
   }
 

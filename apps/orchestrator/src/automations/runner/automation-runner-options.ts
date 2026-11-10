@@ -10,3 +10,7 @@ export interface AutomationRunTargetOptions {
   automationTriggerId?: string | null;
   startPolicy?: AutomationRunStartPolicy;
 }
+
+export type AdmitAutomationTargetStart = (
+  start: () => Promise<unknown>,
+) => Promise<void>;

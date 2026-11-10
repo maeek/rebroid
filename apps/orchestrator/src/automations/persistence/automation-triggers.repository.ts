@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
+import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationTrigger,
   AutomationTriggerType,
@@ -19,6 +20,66 @@ export class AutomationTriggersRepository {
 
   save(trigger: AutomationTrigger) {
     return this.triggers.save(trigger);
+  }
+
+  async saveConfiguration(trigger: AutomationTrigger) {
+    const {
+      id,
+      ownerUserId,
+      name,
+      description,
+      automationId,
+      targetApplicationId,
+      profileMode,
+      profileName,
+      enabled,
+      tagsJson,
+      triggerType,
+      triggerConfigJson,
+      nextRunAt,
+    } = trigger;
+    await this.triggers.update(
+      { id, ownerUserId },
+      {
+        name,
+        description,
+        automationId,
+        targetApplicationId,
+        profileMode,
+        profileName,
+        enabled,
+        tagsJson,
+        triggerType,
+        triggerConfigJson,
+        nextRunAt,
+      },
+    );
+  }
+
+  updateSchedule(
+    trigger: AutomationTrigger,
+    nextRunAt: Date | null,
+    failure?: { at: Date; message: string },
+  ) {
+    const schedule = {
+      id: trigger.id,
+      ownerUserId: trigger.ownerUserId,
+      enabled: trigger.enabled,
+      triggerConfigJson: trigger.triggerConfigJson,
+    };
+    if (!failure) return this.triggers.update(schedule, { nextRunAt });
+    return this.triggers.update(
+      [
+        { ...schedule, lastEnqueueFailureAt: IsNull() },
+        { ...schedule, lastEnqueueFailureAt: LessThanOrEqual(failure.at) },
+      ],
+      {
+        nextRunAt,
+        lastEnqueueFailureAt: failure.at,
+        lastStatus: AutomationLastStatus.Failed,
+        lastError: failure.message,
+      },
+    );
   }
 
   remove(trigger: AutomationTrigger) {

@@ -8,7 +8,6 @@ import { AutomationDefinitionModule } from '../definition/automation-definition.
 import { AutomationEventsModule } from '../events/automation-events.module';
 import { AutomationsPersistenceModule } from '../persistence/automations-persistence.module';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
-import { AutomationRunFinalizerService } from './automation-run-finalizer.service';
 import { AutomationRunnableResolverService } from './automation-runnable-resolver.service';
 import { AutomationRunnerRecorderService } from './automation-runner-recorder.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
@@ -29,7 +28,6 @@ import { EphemeralAutomationRegistryService } from './ephemeral-automation-regis
   providers: [
     AutomationRunAuthorizationService,
     AutomationRunExecutionService,
-    AutomationRunFinalizerService,
     AutomationRunnableResolverService,
     AutomationRunnerRecorderService,
     AutomationRunnerTargetService,

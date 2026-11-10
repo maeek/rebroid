@@ -1,17 +1,11 @@
-import { AutomationRunAuthorizationService } from './automation-run-authorization.service';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
-import {
-  ANDROID_APPS_AUTOMATION,
-  type AndroidAppsAutomationPort,
-} from '../../android-apps/contracts/android-apps-automation.port';
 import {
   AutomationRun,
   AutomationRunStatus,
 } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
-import { AutomationRunFinalizerService } from './automation-run-finalizer.service';
 import { AutomationRunnableResolverService } from './automation-runnable-resolver.service';
 import { AutomationExecutionState } from './automation-runner-execution.types';
 import { AutomationStepExecutorService } from './automation-step-executor.service';
@@ -19,13 +13,17 @@ import { AutomationStepResult } from './automation-runner.types';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { MetricsService } from '../../metrics/metrics.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
-import type { AutomationRunTargetOptions } from './automation-runner-options';
+import type {
+  AdmitAutomationTargetStart,
+  AutomationRunTargetOptions,
+} from './automation-runner-options';
 
 interface AutomationRunExecutionInput {
   runId: string;
   automationId: string;
   abortSignal: AbortSignal;
   targetOptions: AutomationRunTargetOptions;
+  admitTargetStart: AdmitAutomationTargetStart;
 }
 
 @Injectable()
@@ -34,16 +32,12 @@ export class AutomationRunExecutionService {
 
   constructor(
     private readonly runs: AutomationRunsRepository,
-    @Inject(ANDROID_APPS_AUTOMATION)
-    private readonly apps: AndroidAppsAutomationPort,
     private readonly events: AutomationRunEventBus,
     private readonly runnableResolver: AutomationRunnableResolverService,
-    private readonly runFinalizer: AutomationRunFinalizerService,
     private readonly stepExecutor: AutomationStepExecutorService,
     private readonly targets: AutomationRunnerTargetService,
     private readonly ephemeralAutomations: EphemeralAutomationRegistryService,
     private readonly metrics: MetricsService,
-    private readonly authorization: AutomationRunAuthorizationService,
   ) {}
 
   async execute(input: AutomationRunExecutionInput) {
@@ -53,7 +47,11 @@ export class AutomationRunExecutionService {
     try {
       runnable = await this.runnableResolver.resolve(input.automationId);
       const queuedRun = await this.runs.findById(input.runId);
-      if (!queuedRun) return;
+      if (
+        queuedRun?.status !== AutomationRunStatus.Queued ||
+        input.abortSignal.aborted
+      )
+        return;
       if (!runnable) {
         await this.failActiveRun(
           queuedRun.id,
@@ -63,38 +61,33 @@ export class AutomationRunExecutionService {
         return;
       }
 
-      const maxOpenApps = await this.authorization.assertAllowed(
-        queuedRun.ownerUserId,
-        runnable.definition,
-        queuedRun.targetApplicationId,
-        input.targetOptions,
-      );
-      const target = await this.targets.prepareTarget(
-        queuedRun.targetApplicationId,
-        input.targetOptions,
-        maxOpenApps,
-      );
-      const prepared = await this.runs.transition(
+      const app = await this.targets.prepareTarget({
+        ownerUserId: queuedRun.ownerUserId,
+        targetApplicationId: queuedRun.targetApplicationId,
+        definition: runnable.definition,
+        options: input.targetOptions,
+        abortSignal: input.abortSignal,
+        admitTargetStart: input.admitTargetStart,
+      });
+      if (input.abortSignal.aborted) return;
+
+      const run = await this.runs.transition(
         queuedRun.id,
         [AutomationRunStatus.Queued],
         {
-          targetProfileMode: target.profileMode,
-          targetProfileName: target.profileName,
-        },
-      );
-      if (!prepared) return;
-
-      const run = await this.runs.transition(
-        prepared.id,
-        [AutomationRunStatus.Queued],
-        {
           status: AutomationRunStatus.Running,
+          targetProfileMode: app.profileMode,
+          targetProfileName: app.profileName || 'default',
           startedAt: new Date(),
           stepResultsJson: '[]',
           error: null,
         },
       );
-      if (!run) return;
+      if (
+        run?.status !== AutomationRunStatus.Running ||
+        input.abortSignal.aborted
+      )
+        return;
       this.metrics.automationRunStarted();
 
       await this.events.emit({
@@ -105,7 +98,7 @@ export class AutomationRunExecutionService {
         data: { automationId: runnable.entity.id },
       });
 
-      const app = await this.apps.get(run.targetApplicationId);
+      if (input.abortSignal.aborted) return;
       const results: AutomationStepResult[] = [];
       const state: AutomationExecutionState = {
         app,
@@ -150,14 +143,8 @@ export class AutomationRunExecutionService {
         completed.startedAt,
       );
       await this.emitTerminalEvent(completed);
-      if (!runnable.ephemeral) {
-        await this.runFinalizer.updatePersistedAutomationAfterRun(
-          runnable.entity,
-          completed,
-          failed || status === AutomationRunStatus.Canceled,
-        );
-      }
     } catch (error) {
+      if (input.abortSignal.aborted) return;
       const run = await this.runs.findById(input.runId);
       if (run) {
         const failed = await this.failActiveRun(

@@ -17,7 +17,7 @@ export const authorizeAutomationExecution = async (input: {
   targetApplicationId: string
   profileMode?: string | null
   profileName?: string | null
-  startPolicy?: 'require-running' | 'start-if-needed'
+  operation: 'attach' | 'start'
 }) => {
   const account = await userService.getUserById(input.ownerUserId)
   if (!account || account.disabled || account.passwordChangeRequired) {
@@ -35,7 +35,7 @@ export const authorizeAutomationExecution = async (input: {
   const app = await orchestratorAppCatalogClient.getApplication(input.targetApplicationId)
   if (app.ownerUserId !== account.id)
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
-  if (app.status.currentStatus !== 'running' && input.startPolicy === 'start-if-needed') {
+  if (input.operation === 'start') {
     assertAutomationPermission(user, 'applications:start')
     enforceResourceQuotas(app.runtime.resources, user.quotas)
     enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, user.quotas)

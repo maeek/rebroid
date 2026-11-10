@@ -1,10 +1,6 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AutomationDefinition } from '@rebroid/automation-core/definition';
-import {
-  AutomationRunStartPolicy,
-  type AutomationRunTargetOptions,
-} from './automation-runner-options';
 
 @Injectable()
 export class AutomationRunAuthorizationService {
@@ -14,10 +10,16 @@ export class AutomationRunAuthorizationService {
     ownerUserId: string,
     definition: AutomationDefinition,
     targetApplicationId: string,
-    options: AutomationRunTargetOptions,
+    target: {
+      operation: 'attach' | 'start';
+      profileMode?: string | null;
+      profileName?: string | null;
+    },
+    abortSignal?: AbortSignal,
   ) {
     const base = this.config.getOrThrow<string>('app.webInternalUrl');
     const secret = this.config.getOrThrow<string>('app.sharedSecret');
+    const timeout = AbortSignal.timeout(10_000);
     const response = await fetch(
       new URL('/api/internal/automations/authorize', base),
       {
@@ -31,17 +33,14 @@ export class AutomationRunAuthorizationService {
           ownerUserId,
           definition,
           targetApplicationId,
-          profileMode: options.targetProfileMode,
-          profileName: options.targetProfileName,
-          startPolicy: options.startPolicy,
+          ...target,
         }),
-        signal: AbortSignal.timeout(10_000),
+        signal: abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout,
       },
     );
     if (!response.ok)
       throw new ForbiddenException('Automation authorization failed.');
-    if (options.startPolicy !== AutomationRunStartPolicy.StartIfNeeded)
-      return undefined;
+    if (target.operation !== 'start') return undefined;
     const quota = response.headers.get('x-rebroid-max-open-apps');
     if (quota === 'unlimited') return undefined;
     if (

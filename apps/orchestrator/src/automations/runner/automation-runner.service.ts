@@ -13,7 +13,10 @@ import {
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
-import { AutomationRunTargetOptions } from './automation-runner-options';
+import type {
+  AdmitAutomationTargetStart,
+  AutomationRunTargetOptions,
+} from './automation-runner-options';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { RunnableAutomation } from './automation-runnable';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
@@ -25,13 +28,15 @@ const terminalStatuses = new Set<AutomationRunStatus>([
   AutomationRunStatus.Canceled,
 ]);
 
+type ActiveRun = {
+  abortController: AbortController;
+  pendingTargetStart?: Promise<void>;
+};
+
 @Injectable()
 export class AutomationRunnerService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AutomationRunnerService.name);
-  private readonly activeRunAbortControllers = new Map<
-    string,
-    AbortController
-  >();
+  private readonly activeRuns = new Map<string, ActiveRun>();
 
   constructor(
     private readonly runs: AutomationRunsRepository,
@@ -117,6 +122,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
           targetProfileName: options.targetProfileName ?? null,
           trigger,
           status: AutomationRunStatus.Queued,
+          createdAt: new Date(),
           startedAt: null,
           completedAt: null,
           stepResultsJson: '[]',
@@ -172,31 +178,44 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     }
     if (terminalStatuses.has(run.status)) return run;
 
-    this.activeRunAbortControllers.get(run.id)?.abort();
-    const canceled = await this.runs.transition(
-      run.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-      {
-        status: AutomationRunStatus.Canceled,
-        completedAt: new Date(),
-        error: 'Canceled by user.',
-      },
-    );
-    if (!canceled) {
-      return (await this.runs.findByOwnerAndId(ownerUserId, runId)) ?? run;
+    // A queued run can be canceled while enqueue is still publishing its event.
+    const alreadyTracked = this.activeRuns.has(run.id);
+    const active = this.getOrCreateActiveRun(run.id);
+    try {
+      active.abortController.abort();
+      if (active.pendingTargetStart) {
+        // Keep the run's reservation until Android has finished admitting the start.
+        await active.pendingTargetStart.catch(() => undefined);
+      }
+      const canceled = await this.runs.transition(
+        run.id,
+        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+        {
+          status: AutomationRunStatus.Canceled,
+          completedAt: new Date(),
+          error: 'Canceled by user.',
+        },
+      );
+      if (!canceled) {
+        return (await this.runs.findByOwnerAndId(ownerUserId, runId)) ?? run;
+      }
+      this.metrics.automationRunFinished(
+        canceled.trigger,
+        canceled.status,
+        canceled.startedAt,
+      );
+      await this.events.emit({
+        runId: canceled.id,
+        ownerUserId: canceled.ownerUserId,
+        type: 'run.canceled',
+        message: 'Automation canceled.',
+      });
+      return canceled;
+    } finally {
+      if (!alreadyTracked && this.activeRuns.get(run.id) === active) {
+        this.activeRuns.delete(run.id);
+      }
     }
-    this.metrics.automationRunFinished(
-      canceled.trigger,
-      canceled.status,
-      canceled.startedAt,
-    );
-    await this.events.emit({
-      runId: canceled.id,
-      ownerUserId: canceled.ownerUserId,
-      type: 'run.canceled',
-      message: 'Automation canceled.',
-    });
-    return canceled;
   }
 
   private dispatch(
@@ -204,21 +223,43 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     automationId: string,
     targetOptions: AutomationRunTargetOptions,
   ) {
-    const abortController = new AbortController();
-    this.activeRunAbortControllers.set(runId, abortController);
+    const active = this.getOrCreateActiveRun(runId);
+    const abortSignal = active.abortController.signal;
+    const admitTargetStart: AdmitAutomationTargetStart = async (start) => {
+      const pending = Promise.resolve().then(async () => {
+        abortSignal.throwIfAborted();
+        await start();
+      });
+      active.pendingTargetStart = pending;
+      try {
+        await pending;
+      } finally {
+        active.pendingTargetStart = undefined;
+      }
+    };
     void this.execution
       .execute({
         runId,
         automationId,
         targetOptions,
-        abortSignal: abortController.signal,
+        abortSignal,
+        admitTargetStart,
       })
       .catch((error: unknown) => {
         this.logger.error(
           `Automation execution dispatch failed for ${runId}: ${error instanceof Error ? error.message : String(error)}`,
         );
       })
-      .finally(() => this.activeRunAbortControllers.delete(runId));
+      .finally(() => this.activeRuns.delete(runId));
+  }
+
+  private getOrCreateActiveRun(runId: string) {
+    const current = this.activeRuns.get(runId);
+    if (current) return current;
+
+    const active: ActiveRun = { abortController: new AbortController() };
+    this.activeRuns.set(runId, active);
+    return active;
   }
 
   private isUniqueConstraint(error: unknown) {

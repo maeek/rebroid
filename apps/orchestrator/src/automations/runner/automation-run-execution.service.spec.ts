@@ -1,6 +1,10 @@
 import { MetricsService } from '../../metrics/metrics.service';
+import { AndroidApplicationStatus } from '../../android-apps/contracts/android-application-status';
+import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import { AutomationRunStatus } from '../entities/automation-run.entity';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
+import { AutomationRunnerTargetService } from './automation-runner-target.service';
+import { AutomationRunStartPolicy } from './automation-runner-options';
 
 const queuedRun = {
   id: 'run-1',
@@ -20,10 +24,40 @@ const runnable = {
   ephemeral: true,
 };
 
+const target = {
+  id: 'app-1',
+  status: AndroidApplicationStatus.Running,
+  profileMode: ApplicationProfileMode.Persistent,
+  profileName: 'default',
+};
+
+const stoppedTarget = { ...target, status: AndroidApplicationStatus.Stopped };
+
+const startIfNeeded = {
+  startPolicy: AutomationRunStartPolicy.StartIfNeeded,
+};
+
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((complete) => {
+    resolve = complete;
+  });
+  return { promise, resolve };
+};
+
+const runInput = () => ({
+  runId: queuedRun.id,
+  automationId: queuedRun.automationId,
+  abortSignal: new AbortController().signal,
+  targetOptions: {},
+  admitTargetStart: async (start: () => Promise<unknown>) => {
+    await start();
+  },
+});
+
 const createExecution = ({
-  prepareTarget = jest
-    .fn()
-    .mockResolvedValue({ profileMode: 'persistent', profileName: 'default' }),
+  getTarget = jest.fn().mockResolvedValue(target),
+  start = jest.fn().mockResolvedValue(stoppedTarget),
   executeSteps = jest.fn().mockResolvedValue({ failed: false }),
   assertAllowed = jest.fn().mockResolvedValue(undefined),
   resolve = jest.fn().mockResolvedValue(runnable),
@@ -34,50 +68,161 @@ const createExecution = ({
   };
   const events = { emit: jest.fn().mockResolvedValue(undefined) };
   const ephemeral = { delete: jest.fn() };
-  const finalizer = { updatePersistedAutomationAfterRun: jest.fn() };
   const service = new AutomationRunExecutionService(
     runs as never,
-    { get: jest.fn().mockResolvedValue({ id: 'app-1' }) } as never,
     events as never,
     { resolve } as never,
-    finalizer as never,
     { executeSteps } as never,
-    { prepareTarget } as never,
+    new AutomationRunnerTargetService(
+      { get: getTarget, start } as never,
+      { assertAllowed } as never,
+    ),
     ephemeral as never,
     new MetricsService(),
-    { assertAllowed } as never,
   );
   return {
     service,
     runs,
     events,
     ephemeral,
-    finalizer,
-    prepareTarget,
+    getTarget,
+    start,
     executeSteps,
     assertAllowed,
   };
 };
 
 describe('AutomationRunExecutionService', () => {
+  it('never starts a target that stopped after authorization to attach', async () => {
+    const getTarget = jest
+      .fn()
+      .mockResolvedValueOnce(target)
+      .mockResolvedValueOnce(stoppedTarget);
+    const { service, runs, start, executeSteps, assertAllowed } =
+      createExecution({ getTarget });
+
+    await service.execute({ ...runInput(), targetOptions: startIfNeeded });
+
+    expect(assertAllowed).toHaveBeenCalledWith(
+      queuedRun.ownerUserId,
+      runnable.definition,
+      target.id,
+      expect.objectContaining({ operation: 'attach' }),
+      expect.any(AbortSignal),
+    );
+    expect(start).not.toHaveBeenCalled();
+    expect(executeSteps).not.toHaveBeenCalled();
+    expect(runs.transition).toHaveBeenCalledWith(
+      queuedRun.id,
+      expect.any(Array),
+      expect.objectContaining({
+        status: AutomationRunStatus.Failed,
+        error: expect.stringContaining('must be running'),
+      }),
+    );
+  });
+
+  it('does not start a canceled target after deferred authorization resolves', async () => {
+    const authorization = deferred<number>();
+    const authorizationStarted = deferred<void>();
+    const assertAllowed = jest.fn(() => {
+      authorizationStarted.resolve();
+      return authorization.promise;
+    });
+    const { service, runs, start } = createExecution({
+      getTarget: jest.fn().mockResolvedValue(stoppedTarget),
+      assertAllowed,
+    });
+    const request = runInput();
+    const cancellation = new AbortController();
+    const execution = service.execute({
+      ...request,
+      abortSignal: cancellation.signal,
+      targetOptions: startIfNeeded,
+    });
+    await authorizationStarted.promise;
+    cancellation.abort();
+    authorization.resolve(1);
+    await execution;
+
+    expect(start).not.toHaveBeenCalled();
+    expect(runs.transition).not.toHaveBeenCalled();
+  });
+
+  it('starts an omitted default profile without a switch and rejects a different ready profile', async () => {
+    const getTarget = jest
+      .fn()
+      .mockResolvedValueOnce(stoppedTarget)
+      .mockResolvedValueOnce(stoppedTarget)
+      .mockResolvedValueOnce({ ...target, profileName: 'other' });
+    const { service, runs, start, executeSteps, assertAllowed } =
+      createExecution({
+        getTarget,
+        assertAllowed: jest.fn().mockResolvedValue(2),
+      });
+
+    await service.execute({ ...runInput(), targetOptions: startIfNeeded });
+
+    expect(assertAllowed).toHaveBeenCalledWith(
+      queuedRun.ownerUserId,
+      runnable.definition,
+      target.id,
+      { operation: 'start', profileMode: undefined, profileName: undefined },
+      expect.any(AbortSignal),
+    );
+    expect(start).toHaveBeenCalledWith(target.id, undefined, 2);
+    expect(executeSteps).not.toHaveBeenCalled();
+    expect(runs.transition).toHaveBeenCalledWith(
+      queuedRun.id,
+      expect.any(Array),
+      expect.objectContaining({
+        status: AutomationRunStatus.Failed,
+        error: expect.stringContaining('profile "other"'),
+      }),
+    );
+  });
+
+  it('asks for profile authorization when the default would change the stored profile', async () => {
+    const assertAllowed = jest
+      .fn()
+      .mockRejectedValue(new Error('Switch permission required'));
+    const { service, start } = createExecution({
+      getTarget: jest
+        .fn()
+        .mockResolvedValue({ ...stoppedTarget, profileName: 'other' }),
+      assertAllowed,
+    });
+
+    await service.execute({ ...runInput(), targetOptions: startIfNeeded });
+
+    expect(assertAllowed).toHaveBeenCalledWith(
+      queuedRun.ownerUserId,
+      runnable.definition,
+      target.id,
+      {
+        operation: 'start',
+        profileMode: ApplicationProfileMode.Persistent,
+        profileName: 'default',
+      },
+      expect.any(AbortSignal),
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
   it('fails closed before runtime preparation when current authorization is denied', async () => {
     const assertAllowed = jest
       .fn()
       .mockRejectedValue(new Error('Account disabled'));
-    const { service, runs, prepareTarget, executeSteps } = createExecution({
+    const { service, runs, start, executeSteps } = createExecution({
       assertAllowed,
+      getTarget: jest.fn().mockResolvedValue(stoppedTarget),
     });
     runs.transition.mockResolvedValue({
       ...queuedRun,
       status: AutomationRunStatus.Failed,
     });
-    await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
-      abortSignal: new AbortController().signal,
-      targetOptions: {},
-    });
-    expect(prepareTarget).not.toHaveBeenCalled();
+    await service.execute({ ...runInput(), targetOptions: startIfNeeded });
+    expect(start).not.toHaveBeenCalled();
     expect(executeSteps).not.toHaveBeenCalled();
     expect(runs.transition).toHaveBeenCalledWith(
       queuedRun.id,
@@ -87,11 +232,11 @@ describe('AutomationRunExecutionService', () => {
   });
 
   it('terminalizes preparation failures and cleans ephemeral definitions', async () => {
-    const prepareTarget = jest
+    const getTarget = jest
       .fn()
       .mockRejectedValue(new Error('target preparation failed'));
     const { service, runs, events, ephemeral } = createExecution({
-      prepareTarget,
+      getTarget,
     });
     runs.transition.mockResolvedValue({
       ...queuedRun,
@@ -99,12 +244,7 @@ describe('AutomationRunExecutionService', () => {
       error: 'target preparation failed',
     });
 
-    await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
-      abortSignal: new AbortController().signal,
-      targetOptions: { targetApplicationId: queuedRun.targetApplicationId },
-    });
+    await service.execute(runInput());
 
     expect(runs.transition).toHaveBeenCalledWith(
       queuedRun.id,
@@ -125,21 +265,9 @@ describe('AutomationRunExecutionService', () => {
       stepResultsJson: '[]',
     };
     const { service, runs, events, ephemeral } = createExecution();
-    runs.transition
-      .mockResolvedValueOnce({
-        ...queuedRun,
-        targetProfileMode: 'persistent',
-        targetProfileName: 'default',
-      })
-      .mockResolvedValueOnce(running)
-      .mockResolvedValueOnce(null);
+    runs.transition.mockResolvedValueOnce(running).mockResolvedValueOnce(null);
 
-    await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
-      abortSignal: new AbortController().signal,
-      targetOptions: { targetApplicationId: queuedRun.targetApplicationId },
-    });
+    await service.execute(runInput());
 
     expect(events.emit).toHaveBeenCalledTimes(1);
     expect(events.emit).toHaveBeenCalledWith(
@@ -163,20 +291,10 @@ describe('AutomationRunExecutionService', () => {
     };
     const { service, runs, events } = createExecution();
     runs.transition
-      .mockResolvedValueOnce({
-        ...queuedRun,
-        targetProfileMode: 'persistent',
-        targetProfileName: 'default',
-      })
       .mockResolvedValueOnce(running)
       .mockResolvedValueOnce(completed);
 
-    await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
-      abortSignal: new AbortController().signal,
-      targetOptions: { targetApplicationId: queuedRun.targetApplicationId },
-    });
+    await service.execute(runInput());
 
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'run.completed' }),
@@ -192,12 +310,7 @@ describe('AutomationRunExecutionService', () => {
       error: 'Automation definition is no longer available.',
     });
 
-    await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
-      abortSignal: new AbortController().signal,
-      targetOptions: { targetApplicationId: queuedRun.targetApplicationId },
-    });
+    await service.execute(runInput());
 
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'run.failed' }),
@@ -222,7 +335,6 @@ describe('AutomationRunExecutionService', () => {
     },
   ])('terminalizes a $label persisted run', async (scenario) => {
     const controller = new AbortController();
-    if (scenario.abort) controller.abort();
     const running = {
       ...queuedRun,
       status: AutomationRunStatus.Running,
@@ -241,33 +353,26 @@ describe('AutomationRunExecutionService', () => {
         _run: unknown,
         options: { isRunCanceled: () => boolean },
       ) => {
+        if (scenario.abort) controller.abort();
         expect(options.isRunCanceled()).toBe(scenario.abort);
         return { failed: scenario.stepFailed };
       },
     );
-    const { service, runs, events, finalizer } = createExecution({
+    const { service, runs, events } = createExecution({
       resolve,
       executeSteps,
     });
     runs.transition
-      .mockResolvedValueOnce(queuedRun)
       .mockResolvedValueOnce(running)
       .mockResolvedValueOnce(completed);
 
     await service.execute({
-      runId: queuedRun.id,
-      automationId: queuedRun.automationId,
+      ...runInput(),
       abortSignal: controller.signal,
-      targetOptions: { targetApplicationId: queuedRun.targetApplicationId },
     });
 
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: scenario.event }),
-    );
-    expect(finalizer.updatePersistedAutomationAfterRun).toHaveBeenCalledWith(
-      expect.anything(),
-      completed,
-      true,
     );
   });
 });

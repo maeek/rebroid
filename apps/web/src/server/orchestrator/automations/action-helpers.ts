@@ -103,10 +103,13 @@ export const assertTargetApplication = async (targetApplicationId?: string | nul
   }
 }
 
-export const assertRunProfilePermission = (user: CurrentAutomationUser, input: RunAutomationInput) => {
+export const assertRunProfilePermission = (
+  user: CurrentAutomationUser,
+  input: Pick<RunAutomationInput, 'profileMode' | 'profileName'>
+) => {
   if (
     user.role !== 'admin' &&
-    (input.profileMode || input.profileName) &&
+    (input.profileMode || input.profileName?.trim()) &&
     !hasPermission(user.permissions, 'applications:switch-profile')
   ) {
     throw new PublicActionError('You do not have permission to switch application profiles.', {
@@ -119,22 +122,6 @@ export const assertRunProfilePermission = (user: CurrentAutomationUser, input: R
 export const assertTriggerTarget = async (input: Partial<SaveAutomationTriggerInput>) => {
   if (input.targetApplicationId) {
     await assertTargetApplication(input.targetApplicationId)
-  }
-}
-
-export const assertTriggerProfilePermission = (
-  user: CurrentAutomationUser,
-  input: Partial<SaveAutomationTriggerInput>
-) => {
-  if (
-    user.role !== 'admin' &&
-    (input.profileMode || input.profileName) &&
-    !hasPermission(user.permissions, 'applications:switch-profile')
-  ) {
-    throw new PublicActionError('You do not have permission to switch application profiles.', {
-      code: 'forbidden',
-      status: 403
-    })
   }
 }
 

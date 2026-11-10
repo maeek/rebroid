@@ -14,6 +14,7 @@ vi.mock('@/server/orchestrator/automations/client', () => ({
 const input = {
   ownerUserId: 'user',
   targetApplicationId: 'app',
+  operation: 'attach',
   definition: { spec: { steps: [{ uses: 'android.wait', with: {} }] } }
 } as Parameters<typeof authorizeAutomationExecution>[0]
 const account = {
@@ -60,14 +61,14 @@ describe('execution authorization', () => {
     } as never)
     await expect(authorizeAutomationExecution(input)).rejects.toThrow()
   })
-  it('requires application start permission before automatic startup', async () => {
+  it('requires application start permission even if the catalog now shows a running target', async () => {
     vi.mocked(apps.getApplication).mockResolvedValue({
       id: 'app',
       ownerUserId: 'user',
-      status: { currentStatus: 'stopped' },
+      status: { currentStatus: 'running' },
       runtime: { resources: { memoryLimitMb: 128, cpuLimitCpus: 1 }, inactivityTimeoutSeconds: 60 }
     } as never)
-    await expect(authorizeAutomationExecution({ ...input, startPolicy: 'start-if-needed' })).rejects.toThrow()
+    await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).rejects.toThrow()
   })
   it('counts queued target reservations when enforcing startup quotas', async () => {
     vi.mocked(userService.getUserById).mockResolvedValue({
@@ -77,11 +78,14 @@ describe('execution authorization', () => {
     vi.mocked(apps.getApplication).mockResolvedValue({
       id: 'app',
       ownerUserId: 'user',
-      status: { currentStatus: 'stopped' },
+      status: { currentStatus: 'running' },
       runtime: { resources: { memoryLimitMb: 128, cpuLimitCpus: 1 }, inactivityTimeoutSeconds: 60 }
     } as never)
     vi.mocked(apps.listApplications).mockResolvedValue([])
     vi.mocked(workflows.listActiveRuns).mockResolvedValue([{ targetApplicationId: 'other' }] as never)
-    await expect(authorizeAutomationExecution({ ...input, startPolicy: 'start-if-needed' })).rejects.toThrow('quota')
+    await expect(authorizeAutomationExecution({ ...input, operation: 'start' })).rejects.toThrow('quota')
+  })
+  it('checks permission when the profile was explicitly selected', async () => {
+    await expect(authorizeAutomationExecution({ ...input, profileMode: 'persistent' })).rejects.toThrow('profiles')
   })
 })

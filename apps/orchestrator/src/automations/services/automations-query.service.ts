@@ -3,11 +3,6 @@ import {
   AutomationsGridPageDto,
   ListAutomationsGridQueryDto,
 } from '../dto/automation.dto';
-import {
-  Automation,
-  AutomationLastStatus,
-} from '../entities/automation.entity';
-import { AutomationRunStatus } from '../entities/automation-run.entity';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
 import { AutomationsRepository } from '../persistence/automations.repository';
@@ -28,13 +23,13 @@ export class AutomationsQueryService {
   ) {}
 
   async list(ownerUserId: string) {
-    const automations = await this.automations.listByOwner(ownerUserId);
-    await Promise.all(
-      automations.map((automation) =>
-        this.backfillAutomationLastRun(automation),
-      ),
+    const [automations, latestRuns] = await Promise.all([
+      this.automations.listByOwner(ownerUserId),
+      this.runs.latestForAutomations(ownerUserId),
+    ]);
+    return automations.map((automation) =>
+      this.mapper.automation(automation, latestRuns.get(automation.id)),
     );
-    return automations.map((automation) => this.mapper.automation(automation));
   }
 
   async listGrid(
@@ -46,15 +41,11 @@ export class AutomationsQueryService {
       Math.max(Math.trunc(query.pageSize ?? 20), 1),
       100,
     );
-    const [automations, triggers] = await Promise.all([
+    const [automations, triggers, latestRuns] = await Promise.all([
       this.automations.listByOwner(ownerUserId),
       this.triggers.listByOwner(ownerUserId),
+      this.runs.latestForAutomations(ownerUserId),
     ]);
-    await Promise.all(
-      automations.map((automation) =>
-        this.backfillAutomationLastRun(automation),
-      ),
-    );
 
     const targetApplicationIdsByAutomation = new Map<string, Set<string>>();
     for (const trigger of triggers) {
@@ -66,7 +57,7 @@ export class AutomationsQueryService {
     }
 
     const automationDtos = automations.map((automation) =>
-      this.mapper.automation(automation),
+      this.mapper.automation(automation, latestRuns.get(automation.id)),
     );
     const facets = automationGridFacets(
       automationDtos,
@@ -91,9 +82,11 @@ export class AutomationsQueryService {
   }
 
   async get(ownerUserId: string, id: string) {
-    const automation = await this.getEntity(ownerUserId, id);
-    await this.backfillAutomationLastRun(automation);
-    return this.mapper.automation(automation);
+    const [automation, latestRuns] = await Promise.all([
+      this.getEntity(ownerUserId, id),
+      this.runs.latestForAutomations(ownerUserId, id),
+    ]);
+    return this.mapper.automation(automation, latestRuns.get(id));
   }
 
   async getEntity(ownerUserId: string, id: string) {
@@ -102,30 +95,5 @@ export class AutomationsQueryService {
       throw new NotFoundException(`Automation "${id}" was not found.`);
     }
     return automation;
-  }
-
-  async backfillAutomationLastRun(automation: Automation) {
-    if (automation.lastRunAt) {
-      return;
-    }
-
-    const run = await this.runs.findLatestForAutomation(
-      automation.ownerUserId,
-      automation.id,
-    );
-    if (!run) {
-      return;
-    }
-
-    automation.lastRunAt = run.completedAt ?? run.startedAt ?? run.createdAt;
-    automation.lastStatus =
-      run.status === AutomationRunStatus.Success
-        ? AutomationLastStatus.Success
-        : run.status === AutomationRunStatus.Failed ||
-            run.status === AutomationRunStatus.Canceled
-          ? AutomationLastStatus.Failed
-          : AutomationLastStatus.Running;
-    automation.lastError = run.error;
-    await this.automations.save(automation);
   }
 }
