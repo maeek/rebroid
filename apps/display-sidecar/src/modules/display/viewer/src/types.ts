@@ -149,6 +149,7 @@ export type ViewerEffectiveProfile = {
 
 export type ViewerRelayMetrics = {
   sourceFps: number;
+  sourceVideoFrames?: number;
   droppedFrames: number;
   queueDepthMs: number;
   sourceBitrateMbps?: number;

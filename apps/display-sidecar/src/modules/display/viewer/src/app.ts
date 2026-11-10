@@ -56,6 +56,7 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
       };
       latestRelayMetrics = {
         sourceFps,
+        sourceVideoFrames: optionalNumber("sourceVideoFrames"),
         droppedFrames,
         queueDepthMs,
         sourceBitrateMbps: optionalNumber("sourceBitrateMbps"),

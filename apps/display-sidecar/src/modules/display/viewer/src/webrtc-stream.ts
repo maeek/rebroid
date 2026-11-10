@@ -274,91 +274,59 @@ function videoFrameCallbackApi(video: HTMLVideoElement) {
   return { request, cancel };
 }
 
-function watchVideoProgress(
-  peer: RTCPeerConnection,
-  video: HTMLVideoElement,
-  getRelayMetrics: () => ViewerRelayMetrics | null,
-  onStall: () => void,
-): () => void {
-  const frameCallback = videoFrameCallbackApi(video);
-  let stopped = false;
-  let frameCallbackHandle: number | null = null;
-  let presentedFrames = 0;
-  let lastReceivedFrames = 0;
-  let lastDecodedFrames = 0;
-  let lastPresentedFrames = 0;
-  let stalledSamples = 0;
-  let sampling = false;
+export class WebrtcPresentationProgress {
+  private sampled = false;
+  private source: ViewerRelayMetrics | null = null;
+  private presentedFrames: number | undefined;
+  private receivedFrames = 0;
+  private decodedFrames = 0;
+  private stalledSamples = 0;
 
-  const interval = window.setInterval(() => {
-    if (sampling || stopped) {
-      return;
+  sample(
+    source: ViewerRelayMetrics | null,
+    presentedFrames: number | undefined,
+    receivedFrames: number,
+    decodedFrames: number,
+    visible: boolean,
+  ) {
+    const previousSource = this.source;
+    const freshSource = source !== null && source !== previousSource;
+    const decodedAdvanced = decodedFrames > this.decodedFrames;
+    const inputAdvanced =
+      (freshSource &&
+        (source.sourceVideoFrames ?? 0) >
+          (previousSource?.sourceVideoFrames ?? 0)) ||
+      receivedFrames > this.receivedFrames ||
+      decodedAdvanced;
+    // Without presentation counters we can still detect an upstream stall.
+    const outputAdvanced =
+      presentedFrames === undefined
+        ? decodedAdvanced
+        : presentedFrames > (this.presentedFrames ?? 0);
+    this.source = source;
+    this.presentedFrames = presentedFrames;
+    this.receivedFrames = receivedFrames;
+    this.decodedFrames = decodedFrames;
+
+    if (!this.sampled) {
+      this.sampled = true;
+      return { freeze: false, stalled: false, idle: true };
     }
-    sampling = true;
-    void peer
-      .getStats()
-      .then((stats) => {
-        let receivedFrames = lastReceivedFrames;
-        let decodedFrames = lastDecodedFrames;
-        stats.forEach((report) => {
-          if (isVideoInboundReport(report)) {
-            receivedFrames =
-              metricReportNumber(report, "framesReceived") ?? receivedFrames;
-            decodedFrames =
-              metricReportNumber(report, "framesDecoded") ?? decodedFrames;
-          }
-        });
-        const sourceAdvanced = (getRelayMetrics()?.sourceFps ?? 0) > 0;
-        const mediaAdvanced =
-          receivedFrames > lastReceivedFrames ||
-          decodedFrames > lastDecodedFrames ||
-          presentedFrames > lastPresentedFrames;
-        stalledSamples =
-          sourceAdvanced && !mediaAdvanced ? stalledSamples + 1 : 0;
-        lastReceivedFrames = receivedFrames;
-        lastDecodedFrames = decodedFrames;
-        lastPresentedFrames = presentedFrames;
-        if (stalledSamples >= 3) {
-          onStall();
-        }
-      })
-      .finally(() => {
-        sampling = false;
-      });
-  }, 1_000);
-
-  const requestNextFrame = () => {
-    if (stopped || !frameCallback.request) {
-      return;
+    if (!visible || outputAdvanced || !inputAdvanced) {
+      this.stalledSamples = 0;
+      return {
+        freeze: false,
+        stalled: false,
+        idle: !visible || (!inputAdvanced && !outputAdvanced),
+      };
     }
-    frameCallbackHandle = frameCallback.request((_now, metadata) => {
-      if (stopped) {
-        return;
-      }
-      presentedFrames = Math.max(
-        presentedFrames + 1,
-        metadata.presentedFrames ?? 0,
-      );
-      requestNextFrame();
-    });
-  };
-  requestNextFrame();
-
-  const onEnded = () => onStall();
-  for (const track of videoTracks(video)) {
-    track.addEventListener("ended", onEnded);
+    this.stalledSamples += 1;
+    return {
+      freeze: presentedFrames !== undefined && this.stalledSamples === 2,
+      stalled: this.stalledSamples >= 3,
+      idle: false,
+    };
   }
-
-  return () => {
-    stopped = true;
-    window.clearInterval(interval);
-    if (frameCallbackHandle !== null && frameCallback.cancel) {
-      frameCallback.cancel(frameCallbackHandle);
-    }
-    for (const track of videoTracks(video)) {
-      track.removeEventListener("ended", onEnded);
-    }
-  };
 }
 
 function reportConnectionFailure(
@@ -558,6 +526,7 @@ function startWebrtcMetricsMonitor(
   getReconnectCount: () => number,
   jitterController: AdaptiveJitterBufferController,
   negotiatedProfileLevelId: string | undefined,
+  onStall: () => void,
 ): () => void {
   const frameCallback = videoFrameCallbackApi(video);
   let stopped = false;
@@ -566,7 +535,7 @@ function startWebrtcMetricsMonitor(
   let lastBytes = 0;
   let lastReceivedFrames = 0;
   let lastDecodedFrames = 0;
-  let lastPresentedFrames = 0;
+  let lastPresentedFrames: number | undefined;
   let lastJitterBufferDelay = 0;
   let lastJitterBufferEmitted = 0;
   let lastDroppedFrames = 0;
@@ -574,6 +543,11 @@ function startWebrtcMetricsMonitor(
   let lastPresentedAt: number | null = null;
   let frameGapsMs: number[] = [];
   let freezeCount = 0;
+  let sampling = false;
+  let sourceActive = false;
+  const progress = new WebrtcPresentationProgress();
+  const tracks = videoTracks(video);
+  for (const track of tracks) track.addEventListener("ended", onStall);
   let mainThreadLongTaskCount = 0;
   const longTaskObserver =
     "PerformanceObserver" in window
@@ -593,12 +567,8 @@ function startWebrtcMetricsMonitor(
     }
     frameCallbackHandle = frameCallback.request(() => {
       const now = performance.now();
-      if (lastPresentedAt !== null && (getRelayMetrics()?.sourceFps ?? 0) > 0) {
-        const gap = now - lastPresentedAt;
-        frameGapsMs.push(gap);
-        if (gap > 100) {
-          freezeCount += 1;
-        }
+      if (lastPresentedAt !== null && sourceActive && !document.hidden) {
+        frameGapsMs.push(now - lastPresentedAt);
       }
       lastPresentedAt = now;
       presentedFrames += 1;
@@ -609,9 +579,14 @@ function startWebrtcMetricsMonitor(
   requestNextFrame();
 
   const timer = window.setInterval(() => {
+    if (sampling || stopped) return;
+    sampling = true;
     const now = performance.now();
     const elapsedSeconds = Math.max((now - lastAt) / 1000, 0.001);
-    void peer.getStats().then((stats) => {
+    const statsRequest = peer.getStats().catch(() => null);
+    void statsRequest.then((stats) => {
+      sampling = false;
+      if (stopped || !stats) return;
       let bytes = lastBytes;
       let receivedFrames = lastReceivedFrames;
       let decodedFrames = lastDecodedFrames;
@@ -662,6 +637,31 @@ function startWebrtcMetricsMonitor(
           ? (jitterDelayDelta / jitterEmittedDelta) * 1_000
           : undefined;
       const relayMetrics = getRelayMetrics();
+      const quality = frameCallback.request
+        ? undefined
+        : video.getVideoPlaybackQuality?.();
+      let presentedFrameCount = frameCallback.request
+        ? presentedFrames
+        : undefined;
+      if (quality) {
+        presentedFrameCount =
+          quality.totalVideoFrames - quality.droppedVideoFrames;
+      }
+      const presentedFps =
+        presentedFrameCount === undefined || lastPresentedFrames === undefined
+          ? undefined
+          : (presentedFrameCount - lastPresentedFrames) / elapsedSeconds;
+      const presentation = progress.sample(
+        relayMetrics,
+        presentedFrameCount,
+        receivedFrames,
+        decodedFrames,
+        !document.hidden,
+      );
+      sourceActive = !presentation.idle;
+      if (presentation.idle) lastPresentedAt = null;
+      if (presentation.freeze) freezeCount += 1;
+
       const gaps = frameGapsMs;
       const frameGapP95Ms = percentile(gaps, 0.95);
       const currentDroppedFrames = droppedFrames ?? lastDroppedFrames;
@@ -679,8 +679,8 @@ function startWebrtcMetricsMonitor(
         rtpSentFps: relayMetrics?.rtpSentFps,
         receivedFps: (receivedFrames - lastReceivedFrames) / elapsedSeconds,
         decodedFps: (decodedFrames - lastDecodedFrames) / elapsedSeconds,
-        drawnFps: (presentedFrames - lastPresentedFrames) / elapsedSeconds,
-        presentedFps: (presentedFrames - lastPresentedFrames) / elapsedSeconds,
+        drawnFps: presentedFps,
+        presentedFps,
         wireBitrateMbps: ((bytes - lastBytes) * 8) / elapsedSeconds / 1_000_000,
         sourceBitrateMbps: relayMetrics?.sourceBitrateMbps,
         sourceFrameSizeP95Bytes: relayMetrics?.sourceFrameSizeP95Bytes,
@@ -746,12 +746,13 @@ function startWebrtcMetricsMonitor(
       lastBytes = bytes;
       lastReceivedFrames = receivedFrames;
       lastDecodedFrames = decodedFrames;
-      lastPresentedFrames = presentedFrames;
+      lastPresentedFrames = presentedFrameCount;
       lastJitterBufferDelay = jitterBufferDelay;
       lastJitterBufferEmitted = jitterBufferEmitted;
       lastDroppedFrames = currentDroppedFrames;
       lastAt = now;
       frameGapsMs = [];
+      if (presentation.stalled) onStall();
     });
   }, webrtcMetricsIntervalMs);
 
@@ -762,6 +763,7 @@ function startWebrtcMetricsMonitor(
       frameCallback.cancel(frameCallbackHandle);
     }
     longTaskObserver?.disconnect();
+    for (const track of tracks) track.removeEventListener("ended", onStall);
   };
 }
 
@@ -775,7 +777,6 @@ export function createWebrtcStream({
 }: WebrtcStreamOptions) {
   let peer: RTCPeerConnection | null = null;
   let terminalFailure = false;
-  let stopFrameProgressMonitor: (() => void) | null = null;
   let stopMetricsMonitor: (() => void) | null = null;
   let stopConnectionMonitor: (() => void) | null = null;
   let retryTimer = 0;
@@ -799,8 +800,6 @@ export function createWebrtcStream({
       return;
     }
     terminalFailure = true;
-    stopFrameProgressMonitor?.();
-    stopFrameProgressMonitor = null;
     stopMetricsMonitor?.();
     stopMetricsMonitor = null;
     stopConnectionMonitor?.();
@@ -823,8 +822,6 @@ export function createWebrtcStream({
   };
 
   lifecycle.onClose(() => {
-    stopFrameProgressMonitor?.();
-    stopFrameProgressMonitor = null;
     stopMetricsMonitor?.();
     stopMetricsMonitor = null;
     stopConnectionMonitor?.();
@@ -840,8 +837,6 @@ export function createWebrtcStream({
       return;
     }
     reconnectCount += 1;
-    stopFrameProgressMonitor?.();
-    stopFrameProgressMonitor = null;
     stopMetricsMonitor?.();
     stopMetricsMonitor = null;
     stopConnectionMonitor?.();
@@ -1046,15 +1041,6 @@ export function createWebrtcStream({
       if (peer !== connection || peerGeneration !== currentGeneration) return;
       emitViewerSessionReady("webrtc", config.sessionId);
       retriesUsed = 0;
-      stopFrameProgressMonitor?.();
-      stopFrameProgressMonitor = watchVideoProgress(
-        connection,
-        video,
-        getRelayMetrics,
-        () => {
-          retryOrFail("Source advanced while WebRTC media did not advance.");
-        },
-      );
       stopMetricsMonitor?.();
       stopMetricsMonitor = startWebrtcMetricsMonitor(
         connection,
@@ -1065,6 +1051,7 @@ export function createWebrtcStream({
         () => reconnectCount,
         jitterController,
         answer.profileLevelId,
+        () => retryOrFail("WebRTC video stopped presenting frames."),
       );
       stopConnectionMonitor?.();
       stopConnectionMonitor = monitorConnection(connection, currentGeneration);

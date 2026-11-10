@@ -218,6 +218,7 @@ export class DisplayWebrtcService {
       sink.sendStatus({
         type: "relay-metrics",
         metrics: {
+          sourceVideoFrames: snapshot.sourceVideoFrames,
           sourceFps:
             (snapshot.sourceVideoFrames - previousSourceFrames) /
             elapsedSeconds,
