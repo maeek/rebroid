@@ -215,10 +215,11 @@ export class AndroidAppsViewerNetworkService {
   /** Reapplies policy before opening viewer access. */
   private async reapplyNetworkPolicy(app: AndroidApplication) {
     const result = await this.networkPolicy.apply(app);
-    app.networkPolicyStatus = result.status;
-    app.networkPolicyMessage = result.message;
-    app.networkPolicyAppliedAt = new Date();
-    await this.writer.save(app);
+    if (!(await this.writer.recordViewerNetworkPolicy(app, result))) {
+      throw new Error(
+        'Application runtime or network policy changed during viewer preparation.',
+      );
+    }
     if (app.networkPolicyEnabled && result.status !== 'applied') {
       throw new Error(`Outbound policy enforcement failed: ${result.message}`);
     }

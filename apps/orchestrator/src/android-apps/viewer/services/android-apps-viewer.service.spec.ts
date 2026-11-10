@@ -81,7 +81,7 @@ describe('AndroidAppsViewerService', () => {
         getStored: jest.fn().mockResolvedValue(app),
       } as unknown as AndroidAppsQueryService,
       {
-        save: jest.fn().mockResolvedValue(app),
+        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
       } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
@@ -137,7 +137,7 @@ describe('AndroidAppsViewerService', () => {
         getStored: jest.fn().mockResolvedValue(app),
       } as unknown as AndroidAppsQueryService,
       {
-        save: jest.fn().mockResolvedValue(app),
+        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
       } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
@@ -196,7 +196,7 @@ describe('AndroidAppsViewerService', () => {
         getStored: jest.fn().mockResolvedValue(app),
       } as unknown as AndroidAppsQueryService,
       {
-        save: jest.fn().mockResolvedValue(app),
+        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
       } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
@@ -250,7 +250,7 @@ describe('AndroidAppsViewerService', () => {
         getStored: jest.fn().mockResolvedValue(app),
       } as unknown as AndroidAppsQueryService,
       {
-        save: jest.fn().mockResolvedValue(app),
+        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
       } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,
@@ -310,7 +310,7 @@ describe('AndroidAppsViewerService', () => {
           .mockResolvedValueOnce(secondApp),
       } as unknown as AndroidAppsQueryService,
       {
-        save: jest.fn().mockResolvedValue(firstApp),
+        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
       } as unknown as AndroidAppsStateWriter,
       {
         ensureNetworkPrepared,

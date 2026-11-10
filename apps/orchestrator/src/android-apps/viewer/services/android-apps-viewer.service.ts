@@ -79,8 +79,7 @@ export class AndroidAppsViewerService {
     } else {
       this.invalidatePreparedViewerTarget(app, 'display-session-unavailable');
     }
-    app.lastScrcpyActivityAt = new Date();
-    await this.writer.save(app);
+    await this.writer.recordViewerActivity(app);
 
     return {
       applicationId: app.id,
@@ -257,12 +256,11 @@ export class AndroidAppsViewerService {
   /** Saves the latest viewer activity time. */
   async recordViewerActivity(id: string) {
     const app = await this.getRunningRuntimeApp(id);
-    app.lastScrcpyActivityAt = new Date();
-    await this.writer.save(app);
+    const observedAt = await this.writer.recordViewerActivity(app);
 
     return {
       id: app.id,
-      lastScrcpyActivityAt: app.lastScrcpyActivityAt.toISOString(),
+      lastScrcpyActivityAt: observedAt.toISOString(),
     };
   }
 
@@ -270,7 +268,7 @@ export class AndroidAppsViewerService {
   async viewerControl(id: string, command: ApplicationViewerControlCommand) {
     const app = await this.getRunningRuntimeApp(id);
     await this.displaySidecar.viewerControl(app, command);
-    await this.recordViewerActivity(id);
+    await this.writer.recordViewerActivity(app);
 
     return {
       command,
@@ -302,7 +300,7 @@ export class AndroidAppsViewerService {
         ...(access.screenshot ? ['screenshot'] : []),
       ],
     });
-    await this.recordViewerActivity(id);
+    await this.writer.recordViewerActivity(app);
     return surface;
   }
 
@@ -313,7 +311,7 @@ export class AndroidAppsViewerService {
       app,
       surfaceId,
     );
-    await this.recordViewerActivity(id);
+    await this.writer.recordViewerActivity(app);
     return surface;
   }
 

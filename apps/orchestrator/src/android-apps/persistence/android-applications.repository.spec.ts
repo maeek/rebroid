@@ -1,5 +1,7 @@
-import type { Repository } from 'typeorm';
+import { DataSource, type Repository } from 'typeorm';
+import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
 import { AndroidApplication } from '../android-application.entity';
+import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import { AndroidApplicationsRepository } from './android-applications.repository';
 
 const createRepository = (overrides: Partial<Repository<AndroidApplication>>) =>
@@ -57,5 +59,92 @@ describe('AndroidApplicationsRepository capability ports', () => {
     await expect(
       repository.findReferencedUploadedApkIds(['apk-1', 'apk-2']),
     ).resolves.toEqual(new Set(['apk-1']));
+  });
+});
+
+describe('Android application runtime observations', () => {
+  let database: DataSource;
+  let apps: Repository<AndroidApplication>;
+  let repository: AndroidApplicationsRepository;
+
+  beforeEach(async () => {
+    database = await new DataSource({
+      type: 'better-sqlite3',
+      database: ':memory:',
+      entities: [AndroidApplication],
+      migrations: [InitializeSqliteSchema1800000000000],
+      migrationsRun: true,
+    }).initialize();
+    apps = database.getRepository(AndroidApplication);
+    repository = new AndroidApplicationsRepository(apps);
+  });
+
+  afterEach(async () => {
+    if (database?.isInitialized) await database.destroy();
+  });
+
+  const makeApp = () =>
+    apps.save(
+      apps.create({
+        name: 'Fixture',
+        containerImage: 'fixture',
+        containerName: 'runtime-fixture',
+        containerId: 'container-1',
+        networkName: 'runtime-fixture',
+        volumeName: 'runtime-fixture',
+        networkPolicyAllowCidrs: '[]',
+        savedProfilesJson: '[]',
+        status: AndroidApplicationStatus.Running,
+        lastStartedAt: new Date('2026-01-01T00:00:00Z'),
+      }),
+    );
+
+  it('updates activity without overwriting newer fields or reversing the timestamp', async () => {
+    const app = await makeApp();
+    const observedAt = new Date('2026-01-01T00:00:03Z');
+    await apps.update(app.id, { networkPolicyEnabled: true });
+
+    await expect(
+      repository.updateViewerActivity(app, observedAt),
+    ).resolves.toMatchObject({ affected: 1 });
+    await expect(
+      repository.updateViewerActivity(app, new Date(observedAt.getTime() - 1)),
+    ).resolves.toMatchObject({ affected: 0 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      networkPolicyEnabled: true,
+      lastScrcpyActivityAt: observedAt,
+    });
+
+    await apps.update(app.id, { status: AndroidApplicationStatus.Stopped });
+    await expect(
+      repository.updateViewerActivity(app, new Date(observedAt.getTime() + 1)),
+    ).resolves.toMatchObject({ affected: 0 });
+  });
+
+  it('discards a viewer policy result for replaced policy settings or runtime', async () => {
+    const app = await makeApp();
+    const patch = {
+      networkPolicyStatus: 'applied' as const,
+      networkPolicyMessage: 'Applied',
+      networkPolicyAppliedAt: new Date('2026-01-01T00:00:03Z'),
+    };
+    await expect(
+      repository.updateViewerNetworkPolicyState(app, patch),
+    ).resolves.toMatchObject({ affected: 1 });
+    await apps.update(app.id, { networkPolicyAllowCidrs: '["192.0.2.0/24"]' });
+    await expect(
+      repository.updateViewerNetworkPolicyState(app, patch),
+    ).resolves.toMatchObject({ affected: 0 });
+
+    await apps.update(app.id, {
+      networkPolicyAllowCidrs: '[]',
+      containerId: 'container-2',
+    });
+    await expect(
+      repository.updateViewerNetworkPolicyState(app, patch),
+    ).resolves.toMatchObject({ affected: 0 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      containerId: 'container-2',
+    });
   });
 });

@@ -66,6 +66,27 @@ export class AndroidAppsStateWriter {
     await this.applications.updateNetworkPolicyState(applicationId, patch);
   }
 
+  async recordViewerActivity(app: AndroidApplication) {
+    const observedAt = new Date();
+    await this.applications.updateViewerActivity(app, observedAt);
+    return observedAt;
+  }
+
+  async recordViewerNetworkPolicy(
+    app: AndroidApplication,
+    result: {
+      status: AndroidApplication['networkPolicyStatus'];
+      message: string;
+    },
+  ) {
+    const update = await this.applications.updateViewerNetworkPolicyState(app, {
+      networkPolicyStatus: result.status,
+      networkPolicyMessage: result.message,
+      networkPolicyAppliedAt: new Date(),
+    });
+    return update.affected === 1;
+  }
+
   async saveNetworkPolicyConfiguration(
     applicationId: string,
     patch: Parameters<

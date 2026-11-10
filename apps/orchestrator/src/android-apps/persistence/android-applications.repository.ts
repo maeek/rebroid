@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, LessThan, Not, Or, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
@@ -9,6 +9,15 @@ import type {
   AndroidAppsRuntimeInventoryPort,
   NetworkPolicyTarget,
 } from '../contracts/android-apps-runtime-inventory.port';
+
+type ViewerRuntime = Pick<
+  AndroidApplication,
+  'id' | 'containerId' | 'lastStartedAt'
+>;
+type NetworkPolicyState = Pick<
+  AndroidApplication,
+  'networkPolicyStatus' | 'networkPolicyMessage' | 'networkPolicyAppliedAt'
+>;
 
 @Injectable()
 export class AndroidApplicationsRepository
@@ -74,13 +83,47 @@ export class AndroidApplicationsRepository
 
   updateNetworkPolicyState(
     applicationId: string,
-    patch: Pick<
-      AndroidApplication,
-      'networkPolicyStatus' | 'networkPolicyMessage' | 'networkPolicyAppliedAt'
-    > &
+    patch: NetworkPolicyState &
       Partial<Pick<AndroidApplication, 'lastStartedAt'>>,
   ) {
     return this.applications.update(applicationId, patch);
+  }
+
+  updateViewerActivity(runtime: ViewerRuntime, observedAt: Date) {
+    return this.applications.update(
+      {
+        ...this.runningViewerRuntime(runtime),
+        lastScrcpyActivityAt: Or(IsNull(), LessThan(observedAt)),
+      },
+      { lastScrcpyActivityAt: observedAt },
+    );
+  }
+
+  updateViewerNetworkPolicyState(
+    runtime: ViewerRuntime &
+      Pick<
+        AndroidApplication,
+        'networkPolicyEnabled' | 'networkPolicyAllowCidrs'
+      >,
+    patch: NetworkPolicyState,
+  ) {
+    return this.applications.update(
+      {
+        ...this.runningViewerRuntime(runtime),
+        networkPolicyEnabled: runtime.networkPolicyEnabled,
+        networkPolicyAllowCidrs: runtime.networkPolicyAllowCidrs,
+      },
+      patch,
+    );
+  }
+
+  private runningViewerRuntime(runtime: ViewerRuntime) {
+    return {
+      id: runtime.id,
+      status: AndroidApplicationStatus.Running,
+      containerId: runtime.containerId ?? IsNull(),
+      lastStartedAt: runtime.lastStartedAt ?? IsNull(),
+    };
   }
 
   updateNetworkPolicyConfiguration(
