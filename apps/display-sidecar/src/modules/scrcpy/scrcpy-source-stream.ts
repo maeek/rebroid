@@ -15,6 +15,7 @@ const MAX_CACHED_GOP_BYTES = 16 * 1024 * 1024;
 interface Consumer {
   id: string;
   sink: ScrcpyMediaSink;
+  negotiatedConfig?: Buffer;
   resolveClosed: () => void;
   detached: boolean;
 }
@@ -44,6 +45,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
   private cachedConfig: ScrcpyPacket | null = null;
   private cachedGop: ScrcpyPacket[] = [];
   private cachedGopBytes = 0;
+  private codecGeneration = 0;
   private readonly cachedStatuses = new Map<string, unknown>();
   private readonly bootstrapWaiters = new Set<BootstrapWaiter>();
   private actualEncoder: string | undefined;
@@ -56,7 +58,10 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     private readonly requestReset: (reason: string) => boolean,
   ) {}
 
-  attach(sink: ScrcpyMediaSink): ScrcpyStreamAttachment {
+  attach(
+    sink: ScrcpyMediaSink,
+    negotiatedConfig?: Buffer,
+  ): ScrcpyStreamAttachment {
     if (this.closed) {
       throw new Error("scrcpy source is closed");
     }
@@ -68,6 +73,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     const consumer: Consumer = {
       id: consumerId,
       sink,
+      negotiatedConfig,
       resolveClosed,
       detached: false,
     };
@@ -116,6 +122,13 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     this.actualEncoder = actualEncoder;
   }
 
+  invalidateVideoBootstrap(): void {
+    this.codecGeneration += 1;
+    this.cachedConfig = null;
+    this.cachedGop = [];
+    this.cachedGopBytes = 0;
+  }
+
   writeVideo(packet: ScrcpyPacket, completion?: (error?: Error) => void): void {
     this.cacheVideoPacket(packet);
     this.resolveBootstrapWaiters();
@@ -123,6 +136,19 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
       this.sourceVideoFrames += 1;
     }
     for (const consumer of this.openConsumers()) {
+      if (consumer.negotiatedConfig) {
+        if (!this.cachedConfig) {
+          continue;
+        }
+        if (packet.config && !consumer.negotiatedConfig.equals(packet.data)) {
+          this.detachConsumer(
+            consumer.id,
+            true,
+            "Video codec configuration changed",
+          );
+          continue;
+        }
+      }
       consumer.sink.writeVideo(packet, (error) => {
         if (error) {
           this.detachConsumer(consumer.id, true, error.message);
@@ -241,11 +267,17 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
   }
 
   private cacheVideoPacket(packet: ScrcpyPacket): void {
-    const copy = { ...packet, data: Buffer.from(packet.data) };
     if (packet.config) {
-      this.cachedConfig = copy;
+      if (!this.cachedConfig?.data.equals(packet.data)) {
+        this.invalidateVideoBootstrap();
+      }
+      this.cachedConfig = { ...packet, data: Buffer.from(packet.data) };
       return;
     }
+    if (!this.cachedConfig) {
+      return;
+    }
+    const copy = { ...packet, data: Buffer.from(packet.data) };
     if (packet.keyFrame) {
       this.cachedGop = [copy];
       this.cachedGopBytes = copy.data.byteLength;
@@ -304,15 +336,25 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
   }
 
   private videoBootstrap(): ScrcpyVideoBootstrap | null {
+    const config = this.cachedConfig;
     const keyFrame = this.cachedGop[0];
-    if (!this.cachedConfig || !keyFrame?.keyFrame) {
+    if (!config || !keyFrame?.keyFrame) {
       return null;
     }
-    const inspected = inspectScrcpyH264Configuration(this.cachedConfig);
+    const generation = this.codecGeneration;
+    const inspected = inspectScrcpyH264Configuration(config);
     return {
-      configuration: Buffer.from(this.cachedConfig.data),
+      attachMedia: (sink) => {
+        if (this.closed || this.codecGeneration !== generation) {
+          return null;
+        }
+        const attachment = this.attach(sink, config.data);
+        this.requestReset("consumer-attached");
+        return attachment;
+      },
+      configuration: Buffer.from(config.data),
       keyFrame: Buffer.from(keyFrame.data),
-      configurationTimestampUs: this.cachedConfig.timestampUs,
+      configurationTimestampUs: config.timestampUs,
       keyFrameTimestampUs: keyFrame.timestampUs,
       actualEncoder: this.actualEncoder,
       ...inspected,

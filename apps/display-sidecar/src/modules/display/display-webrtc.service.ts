@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { ChildProcess, spawn } from "node:child_process";
 import { Writable } from "node:stream";
 import { ScrcpyBootstrapSink } from "../scrcpy/scrcpy-bootstrap-sink";
@@ -115,7 +120,6 @@ export class DisplayWebrtcService {
       }
       return await this.createBridgeAnswer({
         options,
-        sourceOptions,
         bootstrap,
         attempt,
         detachBootstrap,
@@ -133,7 +137,6 @@ export class DisplayWebrtcService {
 
   private async createBridgeAnswer({
     options,
-    sourceOptions,
     bootstrap,
     attempt,
     detachBootstrap,
@@ -141,7 +144,6 @@ export class DisplayWebrtcService {
     declaredLevelSupportsRequestedRate,
   }: {
     options: WebrtcOfferOptions;
-    sourceOptions: Omit<ScrcpyStreamOptions, "sink">;
     bootstrap: ScrcpyVideoBootstrap;
     attempt: AbortController;
     detachBootstrap: () => void;
@@ -253,10 +255,12 @@ export class DisplayWebrtcService {
     signal.throwIfAborted();
 
     try {
-      attachment = this.scrcpy.attachStream({
-        ...sourceOptions,
-        sink,
-      });
+      attachment = bootstrap.attachMedia(sink);
+      if (!attachment) {
+        throw new ServiceUnavailableException(
+          "The video codec generation changed during WebRTC negotiation.",
+        );
+      }
       detachBootstrap();
       sink.sendStatus({
         type: "webrtc-profile",

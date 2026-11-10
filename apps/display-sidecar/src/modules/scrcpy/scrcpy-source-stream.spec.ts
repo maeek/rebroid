@@ -145,3 +145,71 @@ test("video bootstrap waits for configuration plus IDR and reports the SPS profi
   assert.equal(bootstrap.actualEncoder, "c2.android.avc.encoder");
   assert.equal(bootstrap.keyFrameTimestampUs, 20n);
 });
+
+test("a new configuration waits for its own IDR and never replays the old GOP", async () => {
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  const config = (profileLevel: string) =>
+    Buffer.from(`0000000167${profileLevel}0000000168ce06e2`, "hex");
+  source.writeVideo(packet(10n, { config: true, data: config("42e01f") }));
+  source.writeVideo(packet(20n, { keyFrame: true }));
+  source.writeVideo(packet(30n, { config: true, data: config("42e020") }));
+  source.writeVideo(packet(40n));
+
+  const consumer = fakeSink();
+  const attachment = source.attach(consumer.sink);
+  assert.deepEqual(
+    consumer.video.map(({ timestampUs }) => timestampUs),
+    [30n],
+  );
+  let resolved = false;
+  const pending = attachment.awaitVideoBootstrap(500).then((bootstrap) => {
+    resolved = true;
+    return bootstrap;
+  });
+  await Promise.resolve();
+  assert.equal(resolved, false);
+  source.writeVideo(packet(50n, { keyFrame: true }));
+
+  const bootstrap = await pending;
+  assert.equal(bootstrap.profileLevelId, "42e020");
+  assert.equal(bootstrap.keyFrameTimestampUs, 50n);
+});
+
+test("a negotiated consumer stays attached across repeated configuration and detaches on a codec change", async () => {
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  const config = (level: string) =>
+    Buffer.from(`000000016742e0${level}0000000168ce06e2`, "hex");
+  const bootstrapConsumer = fakeSink();
+  const attachment = source.attach(bootstrapConsumer.sink);
+  source.writeVideo(packet(10n, { config: true, data: config("1f") }));
+  source.writeVideo(packet(20n, { keyFrame: true }));
+  const bootstrap = await attachment.awaitVideoBootstrap();
+
+  const peer = fakeSink();
+  const other = fakeSink();
+  source.attach(other.sink);
+  const media = bootstrap.attachMedia(peer.sink);
+  assert.ok(media);
+  assert.deepEqual(
+    peer.video.map(({ timestampUs }) => timestampUs),
+    [10n, 20n],
+  );
+
+  source.writeVideo(packet(30n, { config: true, data: config("1f") }));
+  source.writeVideo(packet(40n, { keyFrame: true }));
+  assert.equal(peer.sink.isOpen(), true);
+  source.writeVideo(packet(50n, { config: true, data: config("20") }));
+  assert.equal(peer.sink.isOpen(), false);
+  await media.closed;
+  assert.equal(peer.video.at(-1)?.timestampUs, 40n);
+  assert.equal(other.video.at(-1)?.timestampUs, 50n);
+  assert.equal(source.isOpen(), true);
+});

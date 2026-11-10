@@ -30,6 +30,7 @@ import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
 import { ScrcpyStreamSessionRegistry } from "./scrcpy-stream-session-registry";
 import { ScrcpySourceStream } from "./scrcpy-source-stream";
 import { ScrcpyVideoPacketForwarder } from "./scrcpy-video-packet-forwarder";
+import { ScrcpyVideoResetWatchdog } from "./scrcpy-video-reset-watchdog";
 import {
   ForwardedVideoSocket,
   ScrcpyAudioPacket,
@@ -63,7 +64,6 @@ const MAX_SUPPORTED_ANDROID_SDK = 34;
 const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
 const SOURCE_IDLE_GRACE_MS = 30_000;
 const VIDEO_RESET_MIN_INTERVAL_MS = 1_000;
-const VIDEO_RESET_WATCHDOG_MS = 3_000;
 const SCRCPY_CONTROL_RESET_VIDEO = 17;
 const COMPATIBILITY_PROBE_PROPERTIES = [
   "ro.build.version.release",
@@ -77,6 +77,7 @@ const COMPATIBILITY_PROBE_PROPERTIES = [
 interface ActiveControlSocket {
   socket: ScrcpySocket;
   udid: string;
+  stopAttempt: () => Promise<void>;
 }
 
 interface QueuedControlMessage {
@@ -100,15 +101,12 @@ interface ActiveScrcpySource {
   stream: ScrcpySourceStream;
   idleTimer: NodeJS.Timeout | null;
   resetTimer: NodeJS.Timeout | null;
-  resetWatchdog: NodeJS.Timeout | null;
+  resetWatchdog: ScrcpyVideoResetWatchdog;
   resetPending: boolean;
   resetReason: string;
   resetGeneration: number;
   resetCount: number;
-  resetSawConfig: boolean;
-  resetSawKeyFrame: boolean;
   lastResetAt: number;
-  restartAttempt: (() => Promise<void>) | null;
 }
 
 
@@ -117,7 +115,6 @@ export class ScrcpyService implements OnModuleDestroy {
   private readonly logger = new Logger(ScrcpyService.name);
   private readonly controlCodec = new ScrcpyControlCodec();
   private readonly controlSockets = new Map<string, ActiveControlSocket>();
-  private readonly streamingSessions = new Set<string>();
   private readonly controlUnavailableSessions = new Set<string>();
   private readonly queuedControlMessages = new Map<
     string,
@@ -157,15 +154,12 @@ export class ScrcpyService implements OnModuleDestroy {
         stream,
         idleTimer: null,
         resetTimer: null,
-        resetWatchdog: null,
+        resetWatchdog: new ScrcpyVideoResetWatchdog(),
         resetPending: false,
         resetReason: "",
         resetGeneration: 0,
         resetCount: 0,
-        resetSawConfig: false,
-        resetSawKeyFrame: false,
         lastResetAt: 0,
-        restartAttempt: null,
       };
       this.sources.set(options.sessionId, source);
       const sourceOptions: ScrcpyStreamOptions = {
@@ -177,7 +171,7 @@ export class ScrcpyService implements OnModuleDestroy {
           }
         },
       };
-      void this.runSource(sourceOptions, source)
+      void this.runSource(sourceOptions)
         .then(() => {
           if (this.sources.get(options.sessionId) === source) {
             this.closeSource(
@@ -207,10 +201,7 @@ export class ScrcpyService implements OnModuleDestroy {
     return attachment;
   }
 
-  private async runSource(
-    options: ScrcpyStreamOptions,
-    source: ActiveScrcpySource,
-  ) {
+  private async runSource(options: ScrcpyStreamOptions) {
     let clientClosed = false;
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
@@ -227,7 +218,6 @@ export class ScrcpyService implements OnModuleDestroy {
         control: options.control ?? true,
       },
     });
-    this.streamingSessions.add(options.sessionId);
     const compatibilityProbe = await this.collectCompatibilityProbe(
       options.udid,
       `scrcpy:${options.udid}:${options.sessionId}`,
@@ -248,118 +238,108 @@ export class ScrcpyService implements OnModuleDestroy {
       );
     });
 
-    try {
-      while (!clientClosed && options.sink.isOpen()) {
-        try {
-          const result = await this.streamRawVideoAttempt(
-            effectiveOptions,
-            (stop) => {
-              stopCurrentAttempt = stop;
-              source.restartAttempt = stop;
-            },
-          );
-          stopCurrentAttempt = null;
-          source.restartAttempt = null;
+    while (!clientClosed && options.sink.isOpen()) {
+      try {
+        const result = await this.streamRawVideoAttempt(
+          effectiveOptions,
+          (stop) => {
+            stopCurrentAttempt = stop;
+          },
+        );
+        stopCurrentAttempt = null;
 
-          if (clientClosed || !options.sink.isOpen()) {
-            return;
-          }
-
-          streamedOnce = true;
-          const audioWasEnabled = effectiveOptions.audio;
-          const previousOptions = effectiveOptions;
-          effectiveOptions = selectRestartStreamOptions(
-            effectiveOptions,
-            result,
-            this.streamSessions.isAudioDisabled(effectiveOptions.sessionId),
-          );
-          if (audioWasEnabled && !effectiveOptions.audio) {
-            this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
-          }
-          if (compatibilityStateChanged(previousOptions, effectiveOptions)) {
-            this.sendCompatibilityStatus(options.sink, effectiveOptions);
-          }
-          if (audioWasEnabled && !effectiveOptions.audio) {
-            this.logger.debug(
-              `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
-            );
-            this.sendJson(options.sink, { type: "audio-disabled" });
-          }
-          restartAttempt = result.durationMs > 30_000 ? 0 : restartAttempt + 1;
-          const delayMs = this.restartDelayMs(restartAttempt);
-          this.logger.debug(
-            `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after: ${result.reason}; delayMs=${delayMs}`,
-          );
-          this.sendJson(options.sink, {
-            type: "reconnecting",
-            message: "Reconnecting live display...",
-          });
-          await this.delay(delayMs);
-        } catch (error) {
-          stopCurrentAttempt = null;
-          source.restartAttempt = null;
-
-          if (!streamedOnce) {
-            const diagnostics = await this.collectCompatibilityProbe(
-              options.udid,
-              `scrcpy:${options.udid}:${options.sessionId}`,
-            ).catch(() => compatibilityProbe);
-            const nextOptions = selectInitialRetryStreamOptions(
-              effectiveOptions,
-              this.errorMessage(error),
-              diagnostics,
-            );
-            if (nextOptions !== effectiveOptions) {
-              const audioWasEnabled = effectiveOptions.audio;
-              const controlWasEnabled = effectiveOptions.control !== false;
-              effectiveOptions = nextOptions;
-              if (audioWasEnabled && !effectiveOptions.audio) {
-                this.streamSessions.markAudioDisabled(
-                  effectiveOptions.sessionId,
-                );
-              }
-              restartAttempt += 1;
-              const delayMs = this.restartDelayMs(restartAttempt);
-              this.logger.debug(
-                `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
-              );
-              if (audioWasEnabled && !effectiveOptions.audio) {
-                this.sendJson(options.sink, { type: "audio-disabled" });
-              }
-              this.sendCompatibilityStatus(options.sink, effectiveOptions, {
-                message: this.compatibilityProbeSummary(diagnostics),
-                diagnostic: this.firstDiagnosticLine(diagnostics),
-              });
-              this.sendJson(options.sink, {
-                type: "reconnecting",
-                message: this.reconnectMessage(effectiveOptions, error),
-                diagnostic: this.firstDiagnosticLine(diagnostics),
-              });
-              await this.delay(delayMs);
-              continue;
-            }
-            throw error;
-          }
-
-          if (clientClosed || !options.sink.isOpen()) {
-            return;
-          }
-
-          restartAttempt += 1;
-          const delayMs = this.restartDelayMs(restartAttempt);
-          this.logger.debug(
-            `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after setup failure: ${this.errorMessage(error)}; delayMs=${delayMs}`,
-          );
-          this.sendJson(options.sink, {
-            type: "reconnecting",
-            message: "Reconnecting live display...",
-          });
-          await this.delay(delayMs);
+        if (clientClosed || !options.sink.isOpen()) {
+          return;
         }
+
+        streamedOnce = true;
+        const audioWasEnabled = effectiveOptions.audio;
+        const previousOptions = effectiveOptions;
+        effectiveOptions = selectRestartStreamOptions(
+          effectiveOptions,
+          result,
+          this.streamSessions.isAudioDisabled(effectiveOptions.sessionId),
+        );
+        if (audioWasEnabled && !effectiveOptions.audio) {
+          this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
+        }
+        if (compatibilityStateChanged(previousOptions, effectiveOptions)) {
+          this.sendCompatibilityStatus(options.sink, effectiveOptions);
+        }
+        if (audioWasEnabled && !effectiveOptions.audio) {
+          this.logger.debug(
+            `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
+          );
+          this.sendJson(options.sink, { type: "audio-disabled" });
+        }
+        restartAttempt = result.durationMs > 30_000 ? 0 : restartAttempt + 1;
+        const delayMs = this.restartDelayMs(restartAttempt);
+        this.logger.debug(
+          `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after: ${result.reason}; delayMs=${delayMs}`,
+        );
+        this.sendJson(options.sink, {
+          type: "reconnecting",
+          message: "Reconnecting live display...",
+        });
+        await this.delay(delayMs);
+      } catch (error) {
+        stopCurrentAttempt = null;
+        if (clientClosed || !options.sink.isOpen()) return;
+
+        if (!streamedOnce) {
+          const diagnostics = await this.collectCompatibilityProbe(
+            options.udid,
+            `scrcpy:${options.udid}:${options.sessionId}`,
+          ).catch(() => compatibilityProbe);
+          if (clientClosed || !options.sink.isOpen()) return;
+          const nextOptions = selectInitialRetryStreamOptions(
+            effectiveOptions,
+            this.errorMessage(error),
+            diagnostics,
+          );
+          if (nextOptions !== effectiveOptions) {
+            const audioWasEnabled = effectiveOptions.audio;
+            const controlWasEnabled = effectiveOptions.control !== false;
+            effectiveOptions = nextOptions;
+            if (audioWasEnabled && !effectiveOptions.audio) {
+              this.streamSessions.markAudioDisabled(
+                effectiveOptions.sessionId,
+              );
+            }
+            restartAttempt += 1;
+            const delayMs = this.restartDelayMs(restartAttempt);
+            this.logger.debug(
+              `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
+            );
+            if (audioWasEnabled && !effectiveOptions.audio) {
+              this.sendJson(options.sink, { type: "audio-disabled" });
+            }
+            this.sendCompatibilityStatus(options.sink, effectiveOptions, {
+              message: this.compatibilityProbeSummary(diagnostics),
+              diagnostic: this.firstDiagnosticLine(diagnostics),
+            });
+            this.sendJson(options.sink, {
+              type: "reconnecting",
+              message: this.reconnectMessage(effectiveOptions, error),
+              diagnostic: this.firstDiagnosticLine(diagnostics),
+            });
+            await this.delay(delayMs);
+            continue;
+          }
+          throw error;
+        }
+
+        restartAttempt += 1;
+        const delayMs = this.restartDelayMs(restartAttempt);
+        this.logger.debug(
+          `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after setup failure: ${this.errorMessage(error)}; delayMs=${delayMs}`,
+        );
+        this.sendJson(options.sink, {
+          type: "reconnecting",
+          message: "Reconnecting live display...",
+        });
+        await this.delay(delayMs);
       }
-    } finally {
-      this.streamingSessions.delete(options.sessionId);
-      source.restartAttempt = null;
     }
   }
 
@@ -373,6 +353,7 @@ export class ScrcpyService implements OnModuleDestroy {
     if (!source || !source.stream.isOpen()) {
       return false;
     }
+    if (source.resetWatchdog.pending) return true;
     source.resetPending = true;
     source.resetReason = reason.slice(0, 120);
     this.scheduleVideoReset(sessionId, source);
@@ -470,15 +451,19 @@ export class ScrcpyService implements OnModuleDestroy {
     let launcherFailure: Error | null = null;
     let actualEncoder =
       this.config.scrcpyVideoEncoder ?? "scrcpy-android-mediacodec";
-    this.sources
-      .get(options.sessionId)
-      ?.stream.setActualEncoder(actualEncoder);
+    const activeSource = this.sources.get(options.sessionId);
+    const source =
+      activeSource?.stream === options.sink ? activeSource : undefined;
+    const ownsSource = () => source !== undefined && this.sources.get(options.sessionId) === source;
+    source?.stream.setActualEncoder(actualEncoder);
 
     const cleanup = async (reason = "display stream stopped") => {
       if (released) {
         return;
       }
       released = true;
+      source?.stream.invalidateVideoBootstrap();
+      source?.resetWatchdog.clear();
 
       const videoStats = videoPacketForwarder?.snapshot() ?? {
         mediaPackets: 0,
@@ -506,10 +491,9 @@ export class ScrcpyService implements OnModuleDestroy {
       liveness?.stop();
       liveness = null;
       directConnection?.destroy();
-      this.controlSockets.delete(options.sessionId);
-      this.controlUnavailableSessions.delete(options.sessionId);
-      if (!options.sink.isOpen()) {
-        this.queuedControlMessages.delete(options.sessionId);
+      if (ownsSource()) {
+        this.controlSockets.delete(options.sessionId);
+        this.controlUnavailableSessions.delete(options.sessionId);
       }
       serverLaunch?.process.kill("SIGTERM");
       if (serverLaunch?.detached) {
@@ -552,6 +536,7 @@ export class ScrcpyService implements OnModuleDestroy {
     };
 
     try {
+      if (!ownsSource()) throw new Error("Display source was replaced.");
       this.controlUnavailableSessions.delete(options.sessionId);
       await this.adb.ensureConnected(options.udid);
       await this.ensureScrcpyServerPushed(options.udid);
@@ -581,9 +566,7 @@ export class ScrcpyService implements OnModuleDestroy {
           return;
         }
         actualEncoder = match[1].trim().slice(0, 160);
-        this.sources
-          .get(options.sessionId)
-          ?.stream.setActualEncoder(actualEncoder);
+        source?.stream.setActualEncoder(actualEncoder);
         this.sendJson(options.sink, {
           type: "encoder",
           name: actualEncoder,
@@ -678,11 +661,11 @@ export class ScrcpyService implements OnModuleDestroy {
         if (controlSocket) {
           controlSocket.setNoDelay(true);
           controlSocket.on("data", () => undefined);
-        } else {
+        } else if (ownsSource()) {
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.delete(options.sessionId);
         }
-      } else if (this.config.scrcpyControlChannel) {
+      } else if (this.config.scrcpyControlChannel && ownsSource()) {
         this.controlUnavailableSessions.add(options.sessionId);
         this.queuedControlMessages.delete(options.sessionId);
       }
@@ -707,16 +690,17 @@ export class ScrcpyService implements OnModuleDestroy {
       }
       await reverseAcceptor?.close();
       reverseAcceptor = null;
+      if (!ownsSource()) throw new Error("Display source was replaced.");
 
       if (controlSocket) {
         this.controlSockets.set(options.sessionId, {
           socket: controlSocket,
           udid: options.udid,
+          stopAttempt: cleanup,
         });
         this.flushQueuedControlMessages(options.sessionId);
-        const activeSource = this.sources.get(options.sessionId);
-        if (activeSource) {
-          this.scheduleVideoReset(options.sessionId, activeSource);
+        if (source) {
+          this.scheduleVideoReset(options.sessionId, source);
         }
       }
       if (options.audio && !audioSocket) {
@@ -724,6 +708,7 @@ export class ScrcpyService implements OnModuleDestroy {
         this.sendJson(options.sink, { type: "audio-disabled" });
       }
       options.onActivity?.();
+      if (!ownsSource()) throw new Error("Display source was replaced.");
 
       this.sendJson(options.sink, {
         type: "ready",
@@ -782,9 +767,8 @@ export class ScrcpyService implements OnModuleDestroy {
           return;
         }
         const streamPacket = forwarded.packet;
-        const activeSource = this.sources.get(options.sessionId);
-        if (activeSource) {
-          this.observeVideoReset(activeSource, streamPacket);
+        if (source) {
+          this.observeVideoReset(source, streamPacket);
         }
         if (forwarded.firstMediaPacket) {
           this.logger.debug(
@@ -938,7 +922,7 @@ export class ScrcpyService implements OnModuleDestroy {
           );
         });
         controlSocket?.once("close", () => {
-          if (released) {
+          if (released || !ownsSource()) {
             return;
           }
           this.controlSockets.delete(options.sessionId);
@@ -949,7 +933,7 @@ export class ScrcpyService implements OnModuleDestroy {
           );
         });
         controlSocket?.once("error", (error) => {
-          if (released) {
+          if (released || !ownsSource()) {
             return;
           }
           this.controlSockets.delete(options.sessionId);
@@ -990,7 +974,7 @@ export class ScrcpyService implements OnModuleDestroy {
   shouldWaitForStreamControl(sessionId: string) {
     return (
       this.config.scrcpyControlChannel &&
-      this.streamingSessions.has(sessionId) &&
+      this.sources.has(sessionId) &&
       !this.controlUnavailableSessions.has(sessionId)
     );
   }
@@ -1000,7 +984,7 @@ export class ScrcpyService implements OnModuleDestroy {
   }
 
   isStreamingSession(sessionId: string) {
-    return this.streamingSessions.has(sessionId);
+    return this.sources.has(sessionId);
   }
 
   sendViewerAction(sessionId: string, command: ViewerCommand) {
@@ -1822,7 +1806,7 @@ export class ScrcpyService implements OnModuleDestroy {
       return false;
     }
 
-    if (!this.streamingSessions.has(sessionId)) {
+    if (!this.sources.has(sessionId)) {
       return false;
     }
 
@@ -1974,18 +1958,18 @@ export class ScrcpyService implements OnModuleDestroy {
       return;
     }
     this.sources.delete(sessionId);
+    this.controlSockets.delete(sessionId);
+    this.controlUnavailableSessions.delete(sessionId);
+    this.queuedControlMessages.delete(sessionId);
     if (source.idleTimer) {
       clearTimeout(source.idleTimer);
     }
     if (source.resetTimer) {
       clearTimeout(source.resetTimer);
     }
-    if (source.resetWatchdog) {
-      clearTimeout(source.resetWatchdog);
-    }
+    source.resetWatchdog.clear();
     source.idleTimer = null;
     source.resetTimer = null;
-    source.resetWatchdog = null;
     source.stream.close(code, reason);
   }
 
@@ -1996,6 +1980,7 @@ export class ScrcpyService implements OnModuleDestroy {
     if (
       !source.resetPending ||
       source.resetTimer ||
+      source.resetWatchdog.pending ||
       this.sources.get(sessionId) !== source
     ) {
       return;
@@ -2030,11 +2015,6 @@ export class ScrcpyService implements OnModuleDestroy {
     source.lastResetAt = Date.now();
     source.resetCount += 1;
     source.resetGeneration += 1;
-    source.resetSawConfig = false;
-    source.resetSawKeyFrame = false;
-    if (source.resetWatchdog) {
-      clearTimeout(source.resetWatchdog);
-    }
     const generation = source.resetGeneration;
     const reason = source.resetReason;
     this.logger.debug(
@@ -2046,44 +2026,25 @@ export class ScrcpyService implements OnModuleDestroy {
       reason,
       count: source.resetCount,
     });
-    source.resetWatchdog = setTimeout(() => {
-      source.resetWatchdog = null;
-      if (
-        this.sources.get(sessionId) !== source ||
-        source.resetGeneration !== generation ||
-        (source.resetSawConfig && source.resetSawKeyFrame)
-      ) {
+    source.resetWatchdog.start(() => {
+      if (this.sources.get(sessionId) !== source) {
         return;
       }
       this.logger.warn(
-        `[scrcpy:${active.udid}:${sessionId}] encoder reset generation=${generation} did not produce configuration and IDR within ${VIDEO_RESET_WATCHDOG_MS}ms; restarting scrcpy attempt`,
+        `[scrcpy:${active.udid}:${sessionId}] encoder reset generation=${generation} did not produce configuration followed by an IDR; restarting scrcpy attempt`,
       );
       this.runInBackground(
-        source.restartAttempt?.(),
+        active.stopAttempt(),
         `[scrcpy:${active.udid}:${sessionId}] encoder reset watchdog restart`,
       );
-    }, VIDEO_RESET_WATCHDOG_MS);
-    source.resetWatchdog.unref?.();
+    });
   }
 
   private observeVideoReset(
     source: ActiveScrcpySource,
     packet: ScrcpyPacket,
   ): void {
-    if (!source.resetWatchdog) {
-      return;
-    }
-    if (packet.config) {
-      source.resetSawConfig = true;
-    }
-    if (!packet.config && packet.keyFrame) {
-      source.resetSawKeyFrame = true;
-    }
-    if (!source.resetSawConfig || !source.resetSawKeyFrame) {
-      return;
-    }
-    clearTimeout(source.resetWatchdog);
-    source.resetWatchdog = null;
+    if (!source.resetWatchdog.observe(packet)) return;
     source.stream.sendStatus({
       type: "video-reset-complete",
       generation: source.resetGeneration,

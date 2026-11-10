@@ -86,6 +86,7 @@ export interface ScrcpyStreamAttachment {
 }
 
 export interface ScrcpyVideoBootstrap {
+  attachMedia: (sink: ScrcpyMediaSink) => ScrcpyStreamAttachment | null;
   configuration: Buffer;
   keyFrame: Buffer;
   configurationTimestampUs: bigint;
