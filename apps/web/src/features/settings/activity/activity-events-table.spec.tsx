@@ -48,7 +48,8 @@ describe('audit log workspace', () => {
         application={{ id: 'app-reports', name: 'Reports worker' }}
       />
     )
-    expect(screen.queryByRole('button', { name: /Retained for/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Retention', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Configure retention' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Activity actions' })).not.toBeInTheDocument()
     const exportUrl = new URL(
       screen.getByRole('link', { name: 'Export CSV' }).getAttribute('href')!,

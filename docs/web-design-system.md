@@ -504,8 +504,9 @@ dialog discards an unsaved preview. Loading renders the same field geometry.
 ## Audit activity
 
 Audit log and app activity share one time-first grid and event inspector. Keep the matching-event
-count, failure count, and latest timestamp in a compact summary, with retention as a secondary
-action on the global audit page. Do not repeat these as dashboard tiles or add a redundant grid
+count, failure count, and latest timestamp in a compact summary. On the global audit page, show
+the current retention period beside the latest timestamp and provide a separate Configure retention action.
+Do not repeat these as dashboard tiles or add a redundant grid
 introduction. Show readable operation names, actor names, target names/types, and outcomes in rows;
 keep raw actions, IDs, exact timestamps, request metadata, and structured data in the inspector.
 Operation labels describe attempts rather than claiming success. Preserve unknown action vocabulary.

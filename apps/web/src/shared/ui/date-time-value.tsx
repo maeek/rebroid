@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 const subscribe = () => () => undefined
 const clientSnapshot = () => true
@@ -9,11 +10,13 @@ const serverSnapshot = () => false
 
 export const DateTimeValue = ({
   value,
+  className,
   compact = false,
   showSeconds = false,
   emptyLabel = 'No timestamp recorded'
 }: {
   value: string | null
+  className?: string
   compact?: boolean
   showSeconds?: boolean
   emptyLabel?: string
@@ -23,7 +26,7 @@ export const DateTimeValue = ({
     return (
       <span
         aria-label={emptyLabel}
-        className='text-foreground-subtle'
+        className={cn('text-foreground-subtle', className)}
       >
         —
       </span>
@@ -43,7 +46,7 @@ export const DateTimeValue = ({
       dateTime={value}
       title={full}
       aria-label={full}
-      className={compact ? 'text-xs tabular-nums text-foreground-muted' : 'grid gap-1 tabular-nums'}
+      className={cn(compact ? 'text-xs tabular-nums text-foreground-muted' : 'grid gap-1 tabular-nums', className)}
     >
       {compact ? (
         `${day} · ${time}`
