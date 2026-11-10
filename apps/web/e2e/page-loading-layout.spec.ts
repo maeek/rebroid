@@ -118,7 +118,7 @@ test('platform subpage loaders retain their own destination and chrome', async (
     ['services-all-loading', 'Services', 'Connection'],
     ['features-loading', 'Services', 'OCR perception'],
     ['ai-list-loading', 'AI', 'Providers'],
-    ['display-sessions-loading', 'Display sessions', 'Sessions']
+    ['display-sessions-loading', 'Display sessions', 'Recent logs']
   ] as const
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))

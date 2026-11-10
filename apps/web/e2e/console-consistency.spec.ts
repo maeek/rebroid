@@ -2,6 +2,62 @@ import { expect, test } from '@playwright/test'
 
 const widths = [390, 768, 1440, 2048]
 
+test('phone headers keep actions together and form controls inside the viewport', async ({ page }) => {
+  for (const width of [320, 384, 430]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/skeleton-contract-test?editor=service-docker')
+    const title = (await page.getByRole('heading', { name: 'Docker', exact: true }).boundingBox())!
+    const refresh = (await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox())!
+    expect(refresh.x).toBeGreaterThan(title.x)
+    expect(refresh.y).toBeLessThan(title.y + title.height)
+    expect(refresh.y + refresh.height).toBeGreaterThan(title.y)
+
+    await page.goto('/skeleton-contract-test?editor=runtime')
+    const discard = (await page.getByRole('button', { name: 'Discard changes' }).boundingBox())!
+    const save = (await page.getByRole('button', { name: 'Save', exact: true }).boundingBox())!
+    expect(save.y).toBe(discard.y)
+    expect(save.x + save.width).toBeLessThanOrEqual(width - 16)
+    const registry = page.getByRole('textbox', { name: 'Image registry' })
+    const field = (await registry.boundingBox())!
+    expect(field.x + field.width).toBeLessThanOrEqual(width - 16)
+    if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+      expect(refresh.width).toBeGreaterThanOrEqual(44)
+      expect(refresh.height).toBeGreaterThanOrEqual(44)
+      expect(save.height).toBeGreaterThanOrEqual(44)
+      expect(field.height).toBeGreaterThanOrEqual(44)
+      await expect(registry).toHaveCSS('font-size', '16px')
+      await expect(page.locator('label[for="runtime-image-registry"]')).toHaveCSS('font-size', '16px')
+      await expect(page.getByText('Optional prefix for image names without a registry host.')).toHaveCSS(
+        'font-size',
+        '14px'
+      )
+    }
+  }
+})
+
+test('app headings leave workflow actions to the Workflows view', async ({ page }) => {
+  for (const editor of ['app-resource', 'app-resource-loading']) {
+    await page.goto(`/skeleton-contract-test?editor=${editor}`)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'App sections' }).getByText('Workflows', { exact: true })
+    ).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Run workflow', exact: true })).toHaveCount(0)
+  }
+})
+
+test('configuration keeps Save next to the secondary actions menu on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 720 })
+  await page.goto('/skeleton-contract-test?editor=app-resource&view=configuration')
+  const save = page.getByRole('button', { name: 'Save', exact: true })
+  const actions = page.getByRole('button', { name: 'More configuration actions' })
+  expect((await save.boundingBox())!.y).toBe((await actions.boundingBox())!.y)
+  await actions.click()
+  await expect(page.getByRole('menuitem', { name: 'Profiles' })).toHaveAttribute('href', /view=profiles/)
+  await page.getByRole('menuitem', { name: 'Delete app' }).click()
+  await expect(page.getByRole('dialog', { name: 'Delete Inventory worker?' })).toBeVisible()
+})
+
 test('trigger creation uses consistent, searchable and keyboard accessible fields', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -90,7 +146,7 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
   await page.route('**/api/bff/shell/recent-apps', route =>
     route.fulfill({ json: { ok: true, data: [], requestId: 'preview' } })
   )
-  for (const width of widths) {
+  for (const width of [390, 768, 1024, 1440, 2048]) {
     await page.setViewportSize({ width, height: 480 })
     await page.goto('/skeleton-contract-test?editor=console-shell')
     await expect(page.getByRole('heading', { level: 1 })).toContainText('inventory-worker-'.repeat(8))
@@ -100,12 +156,17 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
       for (const group of ['Platform settings', 'Infrastructure', 'Access and policies']) {
         await page.getByRole('button', { name: `Expand ${group} menu` }).click()
       }
+      const toggle = page.getByRole('button', { name: 'Collapse sidebar', exact: true })
+      const header = await toggle.boundingBox()
       const general = page.getByRole('link', { name: 'General', exact: true })
       await general.scrollIntoViewIfNeeded()
       const link = await general.boundingBox()
       expect(link!.y + link!.height).toBeLessThanOrEqual(480)
-      const sidebar = await page.locator('aside').boundingBox()
-      expect(sidebar!.y + sidebar!.height).toBe(480)
+      const sidebar = await page.getByRole('complementary', { name: 'Primary navigation' }).boundingBox()
+      expect(sidebar!.x).toBe(8)
+      expect(sidebar!.y).toBe(8)
+      expect(sidebar!.y + sidebar!.height).toBe(472)
+      expect(await toggle.boundingBox()).toEqual(header)
       await expect(page.getByRole('link', { name: 'Create user', exact: true })).toHaveAttribute(
         'href',
         '/security/users?create=1'
@@ -119,19 +180,279 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
   }
 })
 
-test('desktop sidebar collapse gives its space back to the page and persists', async ({ page }) => {
+test('sidebar footer popups clear the rail and open below the mobile header controls', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=console-shell')
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  const rail = (await sidebar.boundingBox())!
+  const popups = [
+    { trigger: 'Notifications', content: page.getByRole('dialog', { name: 'Notifications' }) },
+    { trigger: 'Account', content: page.getByRole('menu') }
+  ]
+
+  for (const { trigger, content } of popups) {
+    const button = sidebar.getByRole('button', { name: trigger })
+    await button.click()
+    await expect(content).toHaveAttribute('data-side', 'right')
+    await expect(content).toHaveAttribute('data-align', 'end')
+    const anchor = (await button.boundingBox())!
+    await expect
+      .poll(async () => {
+        const box = (await content.boundingBox())!
+        return box.x >= rail.x + rail.width + 7 && Math.abs(box.y + box.height - anchor.y - anchor.height) <= 1
+      })
+      .toBe(true)
+    await page.keyboard.press('Escape')
+    await expect(content).toBeHidden()
+    await expect(button).toBeFocused()
+  }
+
+  await page.setViewportSize({ width: 360, height: 740 })
+  const header = page.getByRole('banner')
+  for (const { trigger, content } of popups) {
+    await header.getByRole('button', { name: trigger }).click()
+    await expect(content).toHaveAttribute('data-side', 'bottom')
+    const box = (await content.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(361)
+    await page.keyboard.press('Escape')
+    await expect(content).toBeHidden()
+  }
+})
+
+test('the health dot opens service details beside the brand on desktop and mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=console-shell')
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  const status = sidebar.getByRole('button', { name: /^Service status:/ })
+  const brand = sidebar.getByRole('link', { name: 'Rebroid', exact: true })
+  const details = page.getByRole('dialog', { name: 'Service status' })
+  const brandBox = (await brand.boundingBox())!
+  const statusBox = (await status.boundingBox())!
+  expect(statusBox.x).toBeGreaterThanOrEqual(brandBox.x + brandBox.width - 1)
+  expect(Math.abs(statusBox.y + statusBox.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(1)
+  await expect(
+    sidebar.getByRole('group', { name: 'Navigation controls' }).getByRole('button', {
+      name: /^Service status:/
+    })
+  ).toHaveCount(0)
+
+  const finePointer = await page.evaluate(() => matchMedia('(pointer: fine)').matches)
+  if (finePointer) {
+    await status.hover()
+    await expect(details).toHaveAttribute('data-side', 'bottom')
+    await details.getByRole('link', { name: /^Orchestrator/ }).hover()
+    await expect(details).toBeVisible()
+    await page.mouse.move(650, 10)
+    await expect(details).toBeHidden()
+  }
+
+  await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  await status.press('Enter')
+  await expect(details).toHaveAttribute('data-side', 'right')
+  await expect(details.getByRole('link', { name: /^Docker/ })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(details).toBeHidden()
+  await expect(status).toBeFocused()
+
+  await page.setViewportSize({ width: 320, height: 640 })
+  const mobileStatus = page.getByRole('banner').getByRole('button', { name: /^Service status:/ })
+  if (finePointer) {
+    await mobileStatus.click()
+  } else {
+    await expect(mobileStatus).toHaveCSS('min-width', '44px')
+    await mobileStatus.tap()
+  }
+  await expect(details).toHaveAttribute('data-side', 'bottom')
+  await expect(details.getByRole('link', { name: /^Orchestrator/ })).toBeInViewport()
+})
+
+test('desktop sidebar collapses to a navigable icon rail and persists', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const heading = page.getByRole('heading', { level: 1 })
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
   const start = (await heading.boundingBox())!
-  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
-  await expect(sidebar).toBeHidden()
-  expect((await heading.boundingBox())!.x).toBeLessThan(start.x)
+  const main = page.getByRole('main')
+  const toggle = sidebar.getByRole('button', { name: 'Collapse sidebar' })
+  const brand = sidebar.getByRole('link', { name: 'Rebroid', exact: true })
+  await expect(brand).toHaveText('Rebroid')
+  await expect(page.getByRole('banner')).toHaveCount(0)
+  await expect(sidebar).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(sidebar).toHaveCSS('border-top-left-radius', '14px')
+  const expanded = (await sidebar.boundingBox())!
+  expect((await main.locator('header').boundingBox())!.y).toBe(8)
+  await expect(sidebar).toHaveCSS('border-top-width', '0px')
+  await expect(sidebar).toHaveCSS('box-shadow', 'none')
+  const controls = sidebar.getByRole('group', { name: 'Navigation controls', exact: true })
+  await expect(controls.getByRole('button', { name: 'Account' })).toBeVisible()
+  const footer = (await controls.boundingBox())!
+  expect(footer.y + footer.height).toBe(expanded.y + expanded.height)
+
+  expect((await toggle.boundingBox())!.x).toBeGreaterThan((await brand.boundingBox())!.x)
+  if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
+    await expect(toggle).not.toHaveAttribute('title', /.+/)
+    await toggle.hover()
+    const hint = page.getByText('Collapse sidebar', { exact: true })
+    await expect(hint).toBeVisible()
+    const toggleBox = (await toggle.boundingBox())!
+    await expect
+      .poll(async () => {
+        const box = (await hint.boundingBox())!
+        return Math.abs(box.x + box.width - toggleBox.x - toggleBox.width)
+      })
+      .toBeLessThanOrEqual(1)
+    expect((await hint.boundingBox())!.y).toBeGreaterThan(toggleBox.y + toggleBox.height)
+  }
+  await page.mouse.move(450, 20)
+  await page.screenshot({ path: test.info().outputPath('sidebar-expanded.png'), animations: 'disabled' })
+  await page.locator('[data-sidebar-motion]').evaluate(node => {
+    ;(node as HTMLElement).style.setProperty('--shell-sidebar-duration', '650ms')
+  })
+  await toggle.click()
+  await expect
+    .poll(async () =>
+      sidebar.evaluate(node => {
+        const width = node.getBoundingClientRect().width
+        const contentInset = Number.parseFloat(getComputedStyle(document.querySelector('main')!).paddingLeft)
+        return width > 64 && width < 288 && Math.abs(contentInset - width - 8) < 2
+      })
+    )
+    .toBe(true)
+  await expect(sidebar).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  const rail = (await sidebar.boundingBox())!
+  expect(rail.x).toBe(expanded.x)
+  expect(rail.y).toBe(expanded.y)
+  expect(rail.height).toBe(expanded.height)
+  await expect(main).toHaveCSS('padding-left', '72px')
+  expect(start.x - (await heading.boundingBox())!.x).toBe(224)
+  await expect(brand).toBeVisible()
+  await expect(brand.getByText('Rebroid')).toHaveCSS('opacity', '0')
+  await expect(sidebar.getByRole('button', { name: 'Expand sidebar' })).toBeFocused()
+  await page.mouse.move(450, 20)
+  await page.screenshot({ path: test.info().outputPath('sidebar-rail.png'), animations: 'disabled' })
+  const apps = sidebar.getByRole('link', { name: 'All apps', exact: true })
+  await expect(apps).toHaveAttribute('href', '/apps')
+  await expect(sidebar.getByRole('link', { name: 'Create app', exact: true })).toHaveAttribute('href', '/apps/create')
+  if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
+    const hint = page.locator('[data-slot="navigation-hint"]').filter({ hasText: 'All apps' })
+    await apps.hover()
+    await expect(hint).toBeVisible()
+    await page.mouse.move(400, 5)
+    await expect(hint).toBeHidden()
+    await apps.press('Shift+Tab')
+    await page.keyboard.press('Tab')
+    await expect(apps).toBeFocused()
+    await expect(hint).toBeVisible()
+  }
+  const access = sidebar.getByRole('button', { name: 'Access and policies', exact: true })
+  await access.press('Enter')
+  const group = page.getByRole('menu')
+  await expect(group).not.toHaveCSS(
+    'background-color',
+    await sidebar.evaluate(node => getComputedStyle(node).backgroundColor)
+  )
+  await expect(group).toHaveCSS('width', '224px')
+  await expect(group).toHaveCSS('border-top-width', '1px')
+  await expect.poll(async () => (await group.boundingBox())!.x - (rail.x + rail.width)).toBeGreaterThanOrEqual(7)
+  await expect(group.getByRole('menuitem', { name: 'Users', exact: true })).toHaveAttribute('href', '/security/users')
+  await expect(group.getByRole('menuitem', { name: 'Create user', exact: true })).toHaveAttribute(
+    'href',
+    '/security/users?create=1'
+  )
+  await page.keyboard.press('Escape')
+  await expect(group).toBeHidden()
+  await expect(access).toBeFocused()
+  if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
+    await access.hover()
+    await expect(group).toHaveAttribute('aria-label', 'Access and policies')
+    await expect(group).toHaveCSS('animation-name', 'none')
+    const flyout = (await group.elementHandle())!
+    await sidebar.getByRole('button', { name: 'Infrastructure', exact: true }).hover()
+    await expect(group).toHaveAttribute('aria-label', 'Infrastructure')
+    expect(await flyout.getAttribute('aria-label')).toBe('Infrastructure')
+    const containers = group.getByRole('menuitem', { name: 'Containers', exact: true })
+    const item = (await containers.boundingBox())!
+    await page.mouse.move(item.x + item.width / 2, item.y + item.height / 2, { steps: 12 })
+    await expect(containers).toBeVisible()
+    await page.mouse.move(450, 20)
+    await expect(group).toBeHidden()
+  } else {
+    await access.tap()
+    await expect(group).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(group).toBeHidden()
+  }
+  const collapsedResponse = await page.request.get(page.url())
+  expect(await collapsedResponse.text()).toContain('data-sidebar-collapsed="true"')
   await page.reload()
   await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.getByRole('button', { name: 'Expand sidebar' }).click()
-  await expect(sidebar).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '288px')
+  await expect(sidebar).toHaveCSS('transition-property', 'none')
+  await expect(main).toHaveCSS('transition-property', 'none')
+  const expandedResponse = await page.request.get(page.url())
+  expect(await expandedResponse.text()).toContain('data-sidebar-collapsed="false"')
+  await page.setViewportSize({ width: 390, height: 900 })
+  await expect(sidebar).toBeHidden()
+  const mobileHeader = page.getByRole('banner')
+  await expect(mobileHeader.getByRole('link', { name: 'Rebroid' })).toBeVisible()
+  await expect(mobileHeader.getByRole('button', { name: 'Account' })).toBeVisible()
+  await mobileHeader.getByRole('button', { name: 'Open navigation' }).click()
+  const drawer = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await expect(drawer.getByRole('link', { name: 'All apps' })).toBeVisible()
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await expect(drawer).toBeHidden()
+  await expect(sidebar.getByRole('button', { name: 'Account' })).toBeVisible()
+})
+
+test('an older collapsed sidebar preference is visible before hydration', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.addInitScript(() => localStorage.setItem('rebroid:sidebar-collapsed', 'true'))
+  const scriptChunks = '**/_next/static/**/*.js'
+  await page.route(scriptChunks, route => route.abort())
+  await page.goto('/skeleton-contract-test?editor=console-shell')
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  await expect(page.locator('[data-sidebar-pending]')).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  await expect(sidebar.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
+  await expect(page.getByRole('main')).toHaveCSS('padding-left', '72px')
+
+  await page.unroute(scriptChunks)
+  await page.reload()
+  await expect(page.locator('[data-sidebar-pending]')).toHaveCount(0)
+  await expect(page.locator('[data-sidebar-collapsed]')).toHaveAttribute('data-sidebar-collapsed', 'true')
+  const response = await page.request.get(page.url())
+  expect(await response.text()).toContain('data-sidebar-collapsed="true"')
+})
+
+test('console anchors only clear the top bar when it is visible', async ({ page }) => {
+  for (const { editor, anchors, mobileOffset, desktopOffset } of [
+    {
+      editor: 'general',
+      anchors: ['appearance', 'profile', 'security', 'console-defaults'],
+      mobileOffset: 80,
+      desktopOffset: 24
+    },
+    { editor: 'services-all', anchors: ['firewall'], mobileOffset: 96, desktopOffset: 40 },
+    { editor: 'features', anchors: ['feature.ocr'], mobileOffset: 96, desktopOffset: 40 }
+  ]) {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await page.goto(`/skeleton-contract-test?editor=${editor}`)
+    for (const id of anchors) {
+      await expect(page.locator(`[id="${id}"]`)).toHaveCSS('scroll-margin-top', `${mobileOffset}px`)
+    }
+    await page.setViewportSize({ width: 1440, height: 900 })
+    for (const id of anchors) {
+      await expect(page.locator(`[id="${id}"]`)).toHaveCSS('scroll-margin-top', `${desktopOffset}px`)
+    }
+  }
 })
 
 test('the user creation shortcut opens and clears the existing dialog', async ({ page }) => {

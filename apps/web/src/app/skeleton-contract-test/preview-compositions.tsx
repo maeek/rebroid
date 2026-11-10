@@ -9,7 +9,7 @@ import { PreferencesGeneralPageSkeleton } from '@/features/settings/general/page
 import { SystemResourceCharts } from '@/features/settings/system/system-resource-charts'
 import { previewUsers } from '@/features/settings/users/users-preview-data'
 import { UsersSettings } from '@/features/settings/users/users-settings'
-import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { defaultOrchestratorUiSettings, pickGeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const UsersListPreview = () => (
   <UsersSettings
@@ -19,13 +19,13 @@ export const UsersListPreview = () => (
   />
 )
 
-export const GeneralSettingsPreview = ({ loading = false }: { loading?: boolean }) =>
+export const GeneralSettingsPreview = ({ loading = false, member = false }: { loading?: boolean; member?: boolean }) =>
   loading ? (
-    <PreferencesGeneralPageSkeleton />
+    <PreferencesGeneralPageSkeleton showDefaults />
   ) : (
     <GeneralSettingsForm
-      initialAccentColor='blue'
-      initialSettings={defaultOrchestratorUiSettings}
+      user={{ name: 'Preview operator', avatarDataUrl: null, mfaEnabled: false, accentColor: 'blue' }}
+      initialSettings={member ? undefined : pickGeneralUiSettings(defaultOrchestratorUiSettings)}
     />
   )
 

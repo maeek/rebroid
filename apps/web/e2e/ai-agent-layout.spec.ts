@@ -1,4 +1,59 @@
 import { expect, test } from '@playwright/test'
+import { viewerPlacementCookie } from '../src/shared/model/settings/viewer-placement'
+
+test.beforeEach(async ({ page, baseURL }) => {
+  await page.context().addCookies([{ name: viewerPlacementCookie, value: 'right', url: baseURL }])
+})
+
+test('the viewer defaults to the top for a new preference', async ({ page }) => {
+  await page.context().clearCookies({ name: viewerPlacementCookie })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  const pane = page.getByRole('complementary', { name: 'Android device' })
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  const viewer = (await pane.boundingBox())!
+  const heading = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+  expect(viewer.y + viewer.height).toBeLessThanOrEqual(heading.y)
+})
+
+test('narrow screens keep the viewer on top and hide its layout menu', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  const pane = page.getByRole('complementary', { name: 'Android device' })
+  const layout = page.getByRole('button', { name: 'Viewer layout' })
+
+  for (const editor of ['app-resource-loading', 'app-resource']) {
+    await page.goto(`/skeleton-contract-test?editor=${editor}`)
+    await expect(layout).toBeHidden()
+    const viewer = (await pane.boundingBox())!
+    const heading = (await page.getByRole('heading', { level: 1 }).boundingBox())!
+    expect(viewer.y + viewer.height).toBeLessThanOrEqual(heading.y)
+  }
+
+  await page.keyboard.press('Alt+Shift+L')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await layout.click()
+  await expect(page.getByRole('menuitemradio', { name: 'Viewer on the right' })).toHaveAttribute('aria-checked', 'true')
+  await page.setViewportSize({ width: 390, height: 800 })
+  await expect(page.getByRole('menu')).toBeHidden()
+})
+
+test('the inline viewer fits the small viewport when mobile browser chrome is present', async ({ page }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, 'Uses Chromium mobile browser chrome emulation')
+  await page.setViewportSize({ width: 384, height: 600 })
+  await page.goto('/skeleton-contract-test?editor=app-resource')
+  const frame = page.getByRole('complementary', { name: 'Android device' }).locator('[data-viewer-frame]')
+  const initial = (await frame.boundingBox())!
+  const chrome = frame.locator('.viewer-chrome')
+  await expect(chrome).toHaveCSS('height', '32px')
+  await expect(chrome.getByRole('button', { name: 'Streaming settings' })).toHaveCSS('width', '44px')
+  expect(initial.height).toBeGreaterThan(300)
+  const viewportHeight = await page.evaluate(() => innerHeight)
+  const session = await page.context().newCDPSession(page)
+  await session.send('Emulation.setSmallViewportHeightDifferenceOverride', { difference: 64 })
+
+  await expect.poll(async () => (await frame.boundingBox())!.height).toBeLessThan(initial.height)
+  expect(await page.evaluate(() => innerHeight)).toBe(viewportHeight)
+})
 
 test('shared app chrome stays fixed when switching between diagnostics and AI agent', async ({ page }) => {
   for (const width of [1024, 1440, 2048]) {
@@ -61,6 +116,13 @@ test('agent chat fits the viewport and keeps its composer reachable', async ({ p
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
     if (width >= 1024) {
       expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1)
+      const dock = (await page.getByTestId('ai-agent-composer-dock').boundingBox())!
+      expect(900 - dock.y - dock.height).toBeCloseTo(16, 0)
+      if (width >= 1440) {
+        const frame = page.getByRole('complementary', { name: 'Android device' }).locator('[data-viewer-frame]')
+        const box = (await frame.boundingBox())!
+        expect(900 - box.y - box.height).toBeCloseTo(16, 0)
+      }
       const rect = await composer.boundingBox()
       expect(rect!.y + rect!.height).toBeLessThan(900)
       await page.mouse.move(rect!.x + 20, rect!.y + 20)
@@ -108,7 +170,7 @@ test('stacked viewer floats without reconnecting and the chat passes wheel scrol
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.context().addCookies([{ name: 'rebroid-viewer-placement', value: 'top', url: baseURL }])
+  await page.context().addCookies([{ name: viewerPlacementCookie, value: 'top', url: baseURL }])
   await page.route('**/preview-display-frame', route =>
     route.fulfill({ contentType: 'text/html', body: '<!doctype html><body data-preview-display></body>' })
   )
@@ -180,9 +242,20 @@ test('model selection is direct and restores focus without exposing advanced con
   const trigger = page.getByRole('button', { name: /^Agent settings:/ })
   await trigger.click()
   const picker = page.getByRole('dialog', { name: 'Choose AI model' })
+  await expect(picker).toHaveCSS('border-top-width', '1px')
+  const colors = await picker.evaluate(node => {
+    const probe = document.createElement('span')
+    probe.style.color = 'hsl(var(--surface-elevated))'
+    node.append(probe)
+    const expected = getComputedStyle(probe).color
+    probe.remove()
+    return { expected, actual: getComputedStyle(node).backgroundColor }
+  })
+  expect(colors.actual).toBe(colors.expected)
   await expect(picker.getByRole('combobox')).toHaveCount(0)
   await expect(picker.getByRole('spinbutton')).toHaveCount(0)
   const model = picker.getByRole('button', { name: 'Device agent', pressed: true })
+  await expect(model).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await model.focus()
   await page.keyboard.press('Enter')
   await expect(picker).toHaveCount(0)
@@ -233,6 +306,46 @@ test('app tabs keep the same device and tab position', async ({ page }) => {
   }
 })
 
+test('viewer layout shortcut is discoverable and yields to editors and menus', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.use.hasTouch === true, 'Checks desktop hover and keyboard behavior')
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=app-resource&view=configuration')
+  const layout = page.getByRole('button', { name: 'Viewer layout' })
+  const pane = page.getByRole('complementary', { name: 'Android device' })
+  const frame = pane.locator('[data-viewer-frame]')
+  await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
+
+  await expect(layout).toHaveAttribute('aria-keyshortcuts', 'Alt+Shift+L')
+  await expect(layout).not.toHaveAttribute('title', /.+/)
+  await layout.hover()
+  const hint = page.getByText('Switch viewer layout', { exact: true }).locator('..')
+  await expect(hint).toBeVisible()
+  await expect(hint.locator('kbd')).toHaveText([/Alt|Option/, 'Shift', 'L'])
+
+  await page.keyboard.press('Alt+Shift+L')
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+
+  const name = page.getByRole('textbox', { name: /^Name/ })
+  await name.focus()
+  await page.keyboard.press('Alt+Shift+L')
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  await expect(name).toBeFocused()
+
+  await layout.click()
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('Alt+Shift+L')
+  await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(layout).toBeFocused()
+
+  await page.keyboard.press('Alt+Shift+L')
+  await expect(pane).not.toHaveAttribute('data-viewer-placement', 'top')
+  await expect(layout).toBeFocused()
+  await expect(frame).toHaveAttribute('data-retained', 'true')
+})
+
 test('viewer layout keeps breadcrumbs above the device and preserves the mounted viewer', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=app-resource')
@@ -260,12 +373,13 @@ test('viewer layout keeps breadcrumbs above the device and preserves the mounted
 
   const stackedBreadcrumbs = (await breadcrumbs.boundingBox())!
   const stackedNavigation = (await navigation.boundingBox())!
+  const bottomSpace = await page.evaluate(() => (matchMedia('(pointer: coarse)').matches ? 8 : 16))
   await expect
     .poll(async () => {
       const box = (await pane.boundingBox())!
       return box.y + box.height
     })
-    .toBeLessThanOrEqual(900 - 16)
+    .toBeLessThanOrEqual(900 - bottomSpace)
   const stackedPane = (await pane.boundingBox())!
   expect(stackedBreadcrumbs.y).toBe(initialBreadcrumbs.y)
   expect(stackedPane.y).toBeGreaterThanOrEqual(stackedBreadcrumbs.y + stackedBreadcrumbs.height)

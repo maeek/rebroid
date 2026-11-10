@@ -147,9 +147,27 @@ test('filter backdrop fades out without flashing and restores focus', async ({ p
   await page.goto('/skeleton-contract-test')
   await page.getByRole('button', { name: 'Toggle state' }).click()
   const trigger = page.getByRole('button', { name: 'Filters', exact: true })
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (const theme of ['light', 'dark', 'oled']) {
+    await page.evaluate(value => {
+      document.documentElement.className = value
+    }, theme)
     await trigger.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    const { panel, input, expectedPanel } = await dialog.evaluate(node => {
+      const probe = document.createElement('span')
+      probe.style.color = 'hsl(var(--surface-dialog))'
+      node.append(probe)
+      const dialogSurface = getComputedStyle(probe).color
+      probe.remove()
+      return {
+        panel: getComputedStyle(node).backgroundColor,
+        input: getComputedStyle(node.querySelector('input')!).backgroundColor,
+        expectedPanel: dialogSurface
+      }
+    })
+    expect(panel).toBe(expectedPanel)
+    expect(input).not.toBe(panel)
     const backdrop = page.locator('[data-slot="sheet-overlay"]')
     await expect(backdrop).toHaveCSS('opacity', '1')
     await page.evaluate(() => {

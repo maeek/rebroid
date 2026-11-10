@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
+import { viewerPlacementCookie } from '../src/shared/model/settings/viewer-placement'
 
 test('users separate account status from explicit access actions', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/skeleton-contract-test?editor=users-list')
+    await expect(page.getByRole('heading', { name: 'Existing Users' })).toHaveCount(0)
     const row = page.getByRole('row').filter({ has: page.getByRole('link', { name: /Ada Lovelace/ }) })
     await expect(row.getByText('Active', { exact: true })).toBeVisible()
     await expect(row.getByRole('button', { name: 'Active', exact: true })).toHaveCount(0)
@@ -94,8 +96,9 @@ test('failed execution exposes step evidence, resource links, and keyboard dismi
 })
 
 for (const view of ['overview', 'activity', 'diagnostics']) {
-  test(`device fills the available height beside ${view}`, async ({ page }) => {
+  test(`device fills the available height beside ${view}`, async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 2048, height: 1184 })
+    await page.context().addCookies([{ name: viewerPlacementCookie, value: 'right', url: baseURL }])
     await page.goto(`/skeleton-contract-test?editor=app-resource&view=${view}`)
     const pane = page.getByRole('complementary', { name: 'Android device' })
     await expect(pane).toBeVisible()
@@ -119,7 +122,10 @@ test('log source fits its selected label', async ({ page }) => {
 test('app activity reuses the audit grid with scoped export and event inspection', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/skeleton-contract-test?editor=app-resource&view=activity')
-  await expect(page.getByRole('heading', { name: 'App activity', exact: true })).toBeVisible()
+  const activity = page.getByRole('region', { name: 'App activity', exact: true })
+  await expect(activity).toBeVisible()
+  await expect(activity.getByRole('heading', { name: 'App activity', exact: true })).toHaveCount(0)
+  await expect(activity.getByText('Audit events for this app.')).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /Event/ })).toBeVisible()
   const row = page.getByRole('row').filter({ hasText: 'Start application' })
   await expect(row).toContainText('Operator')
@@ -375,6 +381,8 @@ test('grid hover and selection keep the same rounded row shape', async ({ page }
   for (const editor of ['services', 'scheduler']) {
     await page.goto(`/skeleton-contract-test?editor=${editor}`)
     const row = page.locator('tbody tr').first()
+    await expect(page.locator('thead tr')).toHaveCSS('border-bottom-width', '0px')
+    await expect(row).toHaveCSS('border-bottom-width', '1px')
     const before = await row.boundingBox()
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
@@ -403,6 +411,10 @@ test('grid hover and selection keep the same rounded row shape', async ({ page }
       await row.focus()
       await expect(row).toBeFocused()
       expect(await row.evaluate(node => getComputedStyle(node).clipPath)).not.toBe('none')
+      await page.getByRole('searchbox', { name: 'Search services' }).fill('nonexistent service')
+      await expect(page.getByRole('heading', { name: 'No matching results' })).toBeVisible()
+      await expect(page.getByRole('table').locator('..')).toHaveCSS('border-bottom-width', '0px')
+      await expect(page.locator('thead tr')).toHaveCSS('border-bottom-width', '0px')
     }
   }
 })

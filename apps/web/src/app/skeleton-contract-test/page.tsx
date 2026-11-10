@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { CreateAppPageLoading } from '@/features/applications/create/create-app-page-loading'
 import { CreateAppPreview } from '@/features/applications/create/create-app-preview'
@@ -59,6 +60,7 @@ import {
   GroupEditPageSkeleton
 } from '@/features/settings/users/user-page-skeletons'
 import { ConsoleShellPreview } from '@/features/shell/components/console-shell-preview'
+import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
 import { FeedbackPreview } from '@/shared/testing/feedback-preview'
@@ -108,19 +110,19 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'feedback') return <FeedbackPreview />
   if (editor === 'app-loading')
     return (
-      <main className='min-h-screen bg-background pt-16'>
+      <main className='min-h-screen bg-background pt-(--console-top-inset)'>
         <CreateAppPageLoading />
       </main>
     )
   if (editor === 'app-resource-loading')
     return (
-      <main className='min-h-screen bg-background pt-16'>
+      <main className='min-h-screen bg-background pt-(--console-top-inset)'>
         <AppPageSkeleton activity={<AppActivityLoading />} />
       </main>
     )
   if (editor === 'app-profiles-loading')
     return (
-      <main className='min-h-screen bg-background pt-16'>
+      <main className='min-h-screen bg-background pt-(--console-top-inset)'>
         <AppProfilesPageSkeleton />
       </main>
     )
@@ -172,7 +174,14 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'group-loading') return <GroupEditPageSkeleton />
   if (editor === 'ai-connection-loading') return <AiProviderEditPageSkeleton />
 
-  if (editor === 'console-shell') return <ConsoleShellPreview />
+  if (editor === 'console-shell') {
+    const requestCookies = await cookies()
+    return (
+      <ConsoleShellPreview
+        initialSidebarCollapsed={parseSidebarCollapsed(requestCookies.get(sidebarCollapsedCookie)?.value)}
+      />
+    )
+  }
   if (editor === 'triggers') return <AutomationTriggersPreview />
   if (editor === 'policies-loading') return <SecurityNetworkPoliciesPageLoading />
   if (editor === 'policies')
@@ -202,8 +211,13 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'ai-list-loading') return <AiProvidersPageSkeleton />
   if (editor === 'ai-models-loading') return <AiProviderEditPageSkeleton />
   if (editor === 'users-list') return <UsersListPreview />
-  if (editor === 'general' || editor === 'general-loading')
-    return <GeneralSettingsPreview loading={editor === 'general-loading'} />
+  if (editor === 'general' || editor === 'general-loading' || editor === 'general-member')
+    return (
+      <GeneralSettingsPreview
+        loading={editor === 'general-loading'}
+        member={editor === 'general-member'}
+      />
+    )
   if (editor === 'user' || editor === 'group') return <UserEditorPreview kind={editor} />
   if (editor === 'scheduler') return <ScheduledTasksPreview />
   if (editor === 'scheduler-loading') return <ScheduledTasksPageSkeleton />

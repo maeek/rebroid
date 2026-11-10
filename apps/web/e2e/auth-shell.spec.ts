@@ -22,7 +22,8 @@ test('auth pixel backdrop is visible in dark mode and suppressed in OLED mode', 
   await expect(canvas).toBeVisible()
 
   await page.getByRole('button', { name: 'Choose theme' }).click()
-  await page.getByRole('menuitem', { name: 'OLED' }).click()
+  await expect(page.getByRole('menuitemradio', { name: 'Dark', checked: true })).toBeVisible()
+  await page.getByRole('menuitemradio', { name: 'OLED' }).click()
 
   await expect(page.locator('html')).toHaveClass(/oled/)
   await expect(canvas).toBeHidden()
