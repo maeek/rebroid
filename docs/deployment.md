@@ -12,6 +12,8 @@ see [Contributing](../CONTRIBUTING.md#local-development).
 
 Rootless engines, Docker Desktop, Podman machine, and CNI-era Podman networking are unsupported.
 The firewall agent must manage the same host network namespace as the application containers.
+On iptables deployments, the agent replaces its IPv4 forwarding rules in one `iptables-restore`
+commit and preserves unrelated host rules.
 
 ## Start the stack
 

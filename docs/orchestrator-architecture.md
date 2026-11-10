@@ -53,6 +53,17 @@ and guarded progress, handoff, and completion apply only while the reservation s
   The firewall agent persists removal ordering and the latest bulk snapshot timestamp so a stale refresh
   cannot reinstall a removed policy after restart.
   A container-scoped removal also fences stale first writes for that container.
+  The agent stages changes on disk and publishes the new state only after the host accepts the rules.
+- **Firewall recovery** inspects recorded restricted containers in Docker regardless of the application's
+  stored status. A complete inventory can replace the firewall snapshot. While runtime identity,
+  state, or policy is unresolved, recovery retries and refreshes verified live policies individually,
+  preserving existing rules for unresolved runtimes. If retries are exhausted, recovery rechecks
+  uncertain runtimes and attempts a stop only after confirming ownership, live state, and the same
+  saved policy revision.
+- **Viewer policy refresh** serializes with app policy changes and reads the latest saved policy
+  for the verified runtime. The agent accepts viewer refreshes only for the same enabled policy
+  revision and container. Configuration writes advance the revision, and the agent remembers it
+  after rule removal and restart.
 - **Recreate** replaces the stopped or errored app's container and managed network, then uses the
   same activation path. It keeps profile volumes and owns its reservation through APK installation.
   Interrupted recreation is reported as an error so the operator can retry.
