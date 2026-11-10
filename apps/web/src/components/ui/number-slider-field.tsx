@@ -84,7 +84,7 @@ export const NumberSliderField = ({
     <div className={cn('flex w-full flex-col gap-2', className)}>
       <div className='flex min-w-0 items-center gap-2'>
         {loading ? (
-          <Skeleton className='h-9 w-full max-w-48' />
+          <Skeleton className='touch-control h-9 w-full max-w-48' />
         ) : (
           <Input
             id={id}

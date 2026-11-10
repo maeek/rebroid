@@ -231,6 +231,14 @@ describe('theme contrast tokens', () => {
     }
   })
 
+  it.each(themeModes)('%s navigation sits between the page and editor surfaces', (_mode, tokens) => {
+    const page = relativeLuminance(hslToRgb(requireToken(tokens, 'background')))
+    const panel = relativeLuminance(hslToRgb(requireToken(tokens, 'surface-editor')))
+    const navigation = relativeLuminance(hslToRgb(requireToken(tokens, 'surface-navigation')))
+    expect(navigation).toBeGreaterThan(Math.min(page, panel))
+    expect(navigation).toBeLessThan(Math.max(page, panel))
+  })
+
   it.each(themeModes)('%s unchecked switches keep a visible thumb boundary', (_mode, tokens) => {
     expect(
       contrastRatio(requireToken(tokens, 'control-border-strong'), requireToken(tokens, 'control'))

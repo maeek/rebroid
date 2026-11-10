@@ -5,7 +5,7 @@ import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { EditorFormContext, EditorSectionContext } from '@/components/ui/editor-form-context'
-import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
+import { dialogSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +76,7 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
     <DialogPrimitive.Backdrop
       data-slot='dialog-overlay'
       className={cn(
-        'fixed inset-0 z-50 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0',
+        'fixed inset-0 z-50 opacity-100 transition-opacity duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none',
         overlayClassName,
         className
       )}
@@ -103,9 +103,8 @@ function DialogContent({
           data-slot='dialog-content'
           data-editor-dialog={editorDialog}
           className={cn(
-            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-panel p-6 shadow-emphasis shadow-black/45 duration-200 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 sm:max-w-lg',
-            floatingSurfaceClassName,
-            'bg-surface-dialog',
+            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-panel p-6 opacity-100 shadow-emphasis shadow-black/45 transition-[opacity,scale] duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none sm:max-w-lg',
+            dialogSurfaceClassName,
             className
           )}
           {...props}

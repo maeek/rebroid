@@ -65,7 +65,7 @@ export const DetailFields = ({
           key={field.label}
           className={cn('group/detail grid min-w-0 content-start gap-1', field.fullWidth && 'sm:col-span-2')}
         >
-          <dt className='flex min-h-6 items-center gap-1 text-xs font-medium text-foreground-muted'>
+          <dt className='flex min-h-6 items-center gap-1 text-xs font-medium text-foreground-muted touch:text-sm/5'>
             {loading ? <Skeleton className='h-3 w-24' /> : <span>{field.label}</span>}
             {!loading && field.copyValue ? (
               <CopyDiagnosticValue
@@ -76,7 +76,7 @@ export const DetailFields = ({
           </dt>
           <dd
             className={cn(
-              'min-w-0 whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere]',
+              'min-w-0 whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] touch:text-base/6',
               field.code && 'font-mono'
             )}
           >

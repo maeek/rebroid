@@ -55,13 +55,13 @@ export const AiModelMenu = ({
                 <Button
                   key={model.id}
                   variant='ghost'
-                  className='h-auto min-h-9 w-full justify-between gap-3 px-2 py-2 text-left font-normal'
+                  className='h-auto min-h-9 w-full justify-between gap-3 px-2 py-2 text-left font-normal aria-pressed:bg-primary/14 aria-pressed:hover:bg-primary/22'
                   aria-pressed={selected}
                   onClick={() => onSelect(provider.id, model.id)}
                 >
                   <span className='min-w-0 break-words [overflow-wrap:anywhere]'>{model.label || model.id}</span>
                   <span className='flex size-4 shrink-0 items-center justify-center'>
-                    {selected ? <IconCheck className='size-4' /> : null}
+                    {selected ? <IconCheck className='size-4 text-primary' /> : null}
                   </span>
                 </Button>
               )

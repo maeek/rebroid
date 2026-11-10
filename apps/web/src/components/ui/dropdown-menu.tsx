@@ -2,12 +2,13 @@
 
 import * as React from 'react'
 import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
-import { IconChevronRight } from '@tabler/icons-react'
+import { IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import {
   floatingLayerClassName,
-  floatingSurfaceClassName,
+  menuSurfaceClassName,
   interactiveItemClassName,
+  selectableItemClassName,
   triggerResetClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
@@ -71,16 +72,20 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubmenuTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> & WithInset & WithAsChild
->(({ className, inset, children, asChild, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> &
+    WithInset &
+    WithAsChild & { indicatorSide?: 'left' | 'right' }
+>(({ className, inset, children, asChild, indicatorSide = 'right', ...props }, ref) => {
   const view = getBaseRender(asChild, children)
+  const Chevron = indicatorSide === 'left' ? IconChevronLeft : IconChevronRight
 
   return (
     <DropdownMenuPrimitive.SubmenuTrigger
       ref={ref}
       render={view}
       className={cn(
-        'flex cursor-default select-none items-center rounded-control px-2 py-1.5 text-sm outline-none data-[highlighted]:bg-accent data-[open]:bg-accent',
+        'flex cursor-default select-none items-center px-2 py-1.5 text-sm data-[open]:bg-control-hover',
+        interactiveItemClassName,
         {
           'pl-8': inset
         },
@@ -89,7 +94,10 @@ const DropdownMenuSubTrigger = React.forwardRef<
       {...props}
     >
       {getBaseChildren(asChild, children)}
-      <IconChevronRight className='ml-auto size-4' />
+      <Chevron
+        aria-hidden='true'
+        className='ml-auto size-4'
+      />
     </DropdownMenuPrimitive.SubmenuTrigger>
   )
 })
@@ -97,19 +105,22 @@ DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger'
 
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Popup>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Popup> & PositionerProps
->(({ className, sideOffset = 4, align = 'start', side, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Popup> &
+    PositionerProps &
+    Pick<React.ComponentProps<typeof DropdownMenuPrimitive.Positioner>, 'collisionPadding'>
+>(({ className, sideOffset = 4, align = 'start', side, collisionPadding, ...props }, ref) => (
   <DropdownMenuPrimitive.Positioner
     align={align}
     className={floatingLayerClassName}
+    collisionPadding={collisionPadding}
     side={side}
     sideOffset={sideOffset}
   >
     <DropdownMenuPrimitive.Popup
       ref={ref}
       className={cn(
-        'z-50 min-w-32 overflow-hidden rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        floatingSurfaceClassName,
+        'scrollbar-thin z-50 max-h-(--available-height) min-w-32 overflow-x-hidden overflow-y-auto overscroll-contain p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--transform-origin)',
+        menuSurfaceClassName,
         className
       )}
       {...props}
@@ -133,7 +144,7 @@ const DropdownMenuContent = React.forwardRef<
         ref={ref}
         className={cn(
           'z-50 min-w-32 overflow-hidden rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-          floatingSurfaceClassName,
+          menuSurfaceClassName,
           className
         )}
         {...props}
@@ -161,6 +172,7 @@ const DropdownMenuItem = React.forwardRef<
       className={cn(
         'relative flex cursor-default select-none items-center px-2 py-1.5 text-sm',
         interactiveItemClassName,
+        selectableItemClassName,
         {
           'pl-8': inset
         },
@@ -174,6 +186,28 @@ const DropdownMenuItem = React.forwardRef<
   )
 })
 DropdownMenuItem.displayName = 'DropdownMenuItem'
+
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
+
+const DropdownMenuRadioItem = ({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) => (
+  <DropdownMenuPrimitive.RadioItem
+    closeOnClick
+    className={cn('flex cursor-default items-center gap-2 px-2 py-1.5 text-sm', selectableItemClassName, className)}
+    {...props}
+  >
+    {children}
+    <DropdownMenuPrimitive.RadioItemIndicator
+      keepMounted
+      className='ml-auto size-4 shrink-0 text-primary data-[unchecked]:invisible'
+    >
+      <IconCheck className='size-4' />
+    </DropdownMenuPrimitive.RadioItemIndicator>
+  </DropdownMenuPrimitive.RadioItem>
+)
 
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.GroupLabel>,
@@ -210,6 +244,8 @@ export {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuGroup,

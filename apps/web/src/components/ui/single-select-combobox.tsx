@@ -6,8 +6,8 @@ import { IconCheck, IconChevronDown } from '@tabler/icons-react'
 import {
   controlSurfaceClassName,
   floatingLayerClassName,
-  floatingSurfaceClassName,
-  interactiveItemClassName
+  menuSurfaceClassName,
+  selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
@@ -61,13 +61,13 @@ export const SingleSelectCombobox = ({
           onClick={() => setOpen(true)}
           placeholder={placeholder}
           className={cn(
-            'h-9 w-full min-w-0 rounded-control pl-3 pr-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'touch-control h-9 w-full min-w-0 rounded-control pl-3 pr-9 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring touch:pr-11 touch:text-base/6',
             controlSurfaceClassName
           )}
         />
         <Combobox.Trigger
           aria-label='Show options'
-          className='absolute inset-y-0 right-0 flex w-9 items-center justify-center text-foreground-muted'
+          className='touch-control absolute inset-y-0 right-0 flex w-9 items-center justify-center text-foreground-muted'
         >
           <IconChevronDown className='size-4' />
         </Combobox.Trigger>
@@ -79,7 +79,7 @@ export const SingleSelectCombobox = ({
           className={floatingLayerClassName}
         >
           <Combobox.Popup
-            className={cn('w-[var(--anchor-width)] max-w-[calc(100vw-2rem)] overflow-hidden', floatingSurfaceClassName)}
+            className={cn('w-[var(--anchor-width)] max-w-[calc(100vw-2rem)] overflow-hidden', menuSurfaceClassName)}
           >
             <Combobox.Empty className='text-sm text-foreground-muted'>
               <span className='block p-4'>No options found.</span>
@@ -91,10 +91,13 @@ export const SingleSelectCombobox = ({
                   <Combobox.Item
                     key={itemValue}
                     value={itemValue}
-                    className={cn('relative grid gap-0.5 px-3 py-2 pr-9 text-sm', interactiveItemClassName)}
+                    className={cn(
+                      'relative grid gap-0.5 px-3 py-2 pr-9 text-sm touch:text-base/6',
+                      selectableItemClassName
+                    )}
                   >
                     <span className='break-all'>{option?.label ?? itemValue}</span>
-                    <span className='text-xs text-foreground-muted'>{option?.description}</span>
+                    <span className='text-xs text-foreground-muted touch:text-sm/5'>{option?.description}</span>
                     <Combobox.ItemIndicator className='absolute right-3 top-3 text-primary'>
                       <IconCheck className='size-4' />
                     </Combobox.ItemIndicator>

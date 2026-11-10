@@ -73,7 +73,7 @@ export const SearchField = ({
         value={value}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        className='pr-9 pl-9 [&::-webkit-search-cancel-button]:hidden'
+        className={cn('pl-9 [&::-webkit-search-cancel-button]:hidden', value && 'pr-9 touch:pr-12')}
         disabled={disabled}
         onChange={event => onValueChange(event.target.value)}
         onKeyDown={event => {

@@ -10,6 +10,7 @@ export type SectionSurface = 'plain' | 'band' | 'panel'
 export type SectionHeadingSpacing = 'none' | 'compact' | 'default'
 
 interface SectionProps {
+  'aria-label'?: string
   actions?: ReactNode
   children?: ReactNode
   className?: string
@@ -29,6 +30,7 @@ interface SectionProps {
 }
 
 export const Section = ({
+  'aria-label': ariaLabel,
   className,
   children,
   title,
@@ -79,6 +81,7 @@ export const Section = ({
     onOpenChange?.(next)
   }
   const Heading = headingLevel === 2 ? 'h2' : 'h3'
+  const headingClassName = cn('font-medium', headingLevel === 2 && 'touch:text-lg/6')
   const panelCollapsible = effectiveSurface === 'panel' && Boolean(collapsible)
   const content = (
     <div
@@ -94,7 +97,7 @@ export const Section = ({
 
   return (
     <section
-      aria-label={typeof title === 'string' ? title : undefined}
+      aria-label={ariaLabel ?? (typeof title === 'string' ? title : undefined)}
       data-slot='section'
       data-surface={editorContainer ? 'editor' : effectiveSurface}
       className={cn(
@@ -108,22 +111,22 @@ export const Section = ({
         className
       )}
     >
-      <Visible when={title}>
+      <Visible when={title || (!collapsible && (description || actions))}>
         {collapsible ? (
           <button
             type='button'
             aria-expanded={isOpen}
             aria-controls={contentId}
             className={cn(
-              'flex w-full items-center justify-between text-left',
+              'touch-control flex w-full items-center justify-between text-left',
               { 'px-6 py-5 max-sm:px-4 max-sm:py-4': panelCollapsible },
               titleClassName
             )}
             onClick={() => setIsOpen(!isOpen)}
           >
             <span className='grid gap-1'>
-              <Heading className='font-medium'>{title}</Heading>
-              {summary ? <span className='text-xs text-foreground-muted'>{summary}</span> : null}
+              <Heading className={headingClassName}>{title}</Heading>
+              {summary ? <span className='text-xs text-foreground-muted touch:text-sm/5'>{summary}</span> : null}
               <Visible when={description}>
                 <span className='text-sm font-normal text-foreground-muted'>{description}</span>
               </Visible>
@@ -149,8 +152,8 @@ export const Section = ({
               titleClassName
             )}
           >
-            <div className='grid gap-1'>
-              <Heading className='font-medium'>{title}</Heading>
+            <div className='grid min-w-0 gap-1'>
+              {title ? <Heading className={headingClassName}>{title}</Heading> : null}
               <Visible when={description}>
                 <p className='text-sm text-foreground-muted'>{description}</p>
               </Visible>

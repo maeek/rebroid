@@ -18,7 +18,12 @@ export const chipInputSurfaceClassName =
 export const floatingLayerClassName = 'z-[70]'
 export const overlayClassName = 'bg-black/40'
 export const interactiveItemClassName =
-  'rounded-control outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+  'touch-control rounded-control outline-none transition-colors data-[highlighted]:bg-control-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+
+export const selectableItemClassName = cn(
+  interactiveItemClassName,
+  'aria-selected:bg-primary/14 aria-checked:bg-primary/14 aria-selected:data-[highlighted]:bg-primary/22 aria-checked:data-[highlighted]:bg-primary/22'
+)
 
 export const semanticToneClassNames = {
   neutral: '',
@@ -77,6 +82,8 @@ export const Surface = React.forwardRef<
 Surface.displayName = 'Surface'
 
 export const floatingSurfaceClassName = surfaceVariants({ level: 'floating' })
+export const dialogSurfaceClassName = cn(floatingSurfaceClassName, 'bg-surface-dialog')
+export const menuSurfaceClassName = cn(floatingSurfaceClassName, 'border-surface-border/80')
 export const panelSurfaceClassName = surfaceVariants({ level: 'panel' })
 export const bandSurfaceClassName = surfaceVariants({ level: 'band' })
 

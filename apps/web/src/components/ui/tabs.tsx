@@ -135,7 +135,7 @@ export const TabsTrigger = ({
               active && resourceNavigationActiveClassName
             )
           : cn(
-              'flex min-h-8 flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow] hover:bg-control/50 hover:text-foreground',
+              'flex min-h-8 flex-1 touch:min-h-[var(--touch-target-size)] items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium whitespace-nowrap text-foreground-muted transition-[color,background-color,border-color,box-shadow] hover:bg-control/50 hover:text-foreground',
               active && 'border-surface-border/65 bg-control text-foreground shadow-control'
             ),
         'disabled:pointer-events-none disabled:opacity-50',

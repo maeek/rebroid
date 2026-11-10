@@ -38,6 +38,22 @@ describe('Section', () => {
 
     expect(screen.getByTestId('section-heading')).toHaveClass(expectedClassName)
   })
+  it('renders helper copy in a named region without adding a heading', () => {
+    render(
+      <Section
+        surface='plain'
+        aria-label='Resource quotas'
+        description='Set limits for applications and sessions.'
+      >
+        Content
+      </Section>
+    )
+
+    const region = screen.getByRole('region', { name: 'Resource quotas' })
+    expect(region).toHaveTextContent('Set limits for applications and sessions.')
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
   it('retains draft values while collapsed and reveals validation errors', async () => {
     const { rerender } = render(
       <EditorFormContext.Provider value={true}>

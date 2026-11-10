@@ -93,19 +93,20 @@ export const DataGridTable = <TData,>({
   loading
 }: DataGridTableProps<TData>) => {
   const rows = table.getRowModel().rows
+  const isEmpty = !loading && rows.length === 0
 
   return (
     <>
       <Table
         className='table-fixed'
-        containerClassName='overflow-x-auto overflow-y-hidden border-b border-surface-border/40'
+        containerClassName={cn('overflow-x-auto overflow-y-hidden', !isEmpty && 'border-b border-surface-border/40')}
         containerRef={tableContainerRef}
         style={{
           width: renderedTableWidth,
           minWidth: minWidth ?? '100%'
         }}
       >
-        <TableHeader className='bg-surface-editor [clip-path:inset(0_round_var(--shape-control))]'>
+        <TableHeader className='bg-surface-editor [clip-path:inset(0_round_var(--shape-control))] [&_tr]:border-b-0'>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow
               key={headerGroup.id}
@@ -300,9 +301,7 @@ export const DataGridTable = <TData,>({
               })}
         </TableBody>
       </Table>
-      {!loading && rows.length === 0 ? (
-        <div className='border-b border-surface-border/40'>{emptyState ?? <DataGridEmptyState />}</div>
-      ) : null}
+      {isEmpty ? <div className='border-b border-surface-border/40'>{emptyState ?? <DataGridEmptyState />}</div> : null}
     </>
   )
 }

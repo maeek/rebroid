@@ -8,7 +8,7 @@ export const StandardPage = ({ children, className }: { children: ReactNode; cla
 export const StandardPageSplit = ({ children, className }: { children: ReactNode; className?: string }) => (
   <div
     className={cn(
-      'flex min-h-[calc(100dvh-4rem)] w-full justify-between gap-8 max-lg:flex-col max-lg:items-center',
+      'flex min-h-(--console-content-height) w-full justify-between gap-8 max-lg:flex-col max-lg:items-center',
       className
     )}
   >

@@ -6,8 +6,8 @@ import { IconCheck, IconSearch, IconX } from '@tabler/icons-react'
 import {
   chipInputSurfaceClassName,
   floatingLayerClassName,
-  floatingSurfaceClassName,
-  interactiveItemClassName
+  menuSurfaceClassName,
+  selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
@@ -105,7 +105,7 @@ export const MultiSelectCombobox = ({
       <Combobox.Chips
         data-slot='multi-select-combobox'
         className={cn(
-          'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-control px-3 py-1.5',
+          'flex min-h-10 w-full touch:min-h-[var(--touch-target-size)] flex-wrap items-center gap-1.5 rounded-control px-3 py-1.5',
           chipInputSurfaceClassName,
           disabled && 'cursor-not-allowed opacity-50',
           className
@@ -142,7 +142,7 @@ export const MultiSelectCombobox = ({
             placeholder={placeholder}
             onFocus={() => setOpen(true)}
             onClick={() => setOpen(true)}
-            className='min-w-20 flex-1 border-0 bg-transparent py-1 text-sm text-foreground outline-none placeholder:text-foreground-muted'
+            className='min-w-20 flex-1 border-0 bg-transparent py-1 text-sm touch:text-base/6 text-foreground outline-none placeholder:text-foreground-muted'
           />
         </span>
       </Combobox.Chips>
@@ -156,7 +156,7 @@ export const MultiSelectCombobox = ({
           <Combobox.Popup
             className={cn(
               'w-[var(--anchor-width)] min-w-64 max-w-[calc(100vw-2rem)] overflow-hidden data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95',
-              floatingSurfaceClassName
+              menuSurfaceClassName
             )}
           >
             <Combobox.Empty className='text-center text-sm text-foreground-muted'>
@@ -176,7 +176,7 @@ export const MultiSelectCombobox = ({
                     disabled={option.disabled}
                     className={cn(
                       'relative flex cursor-default items-start gap-3 px-3 py-2 pr-9',
-                      interactiveItemClassName
+                      selectableItemClassName
                     )}
                   >
                     <span className='grid min-w-0 flex-1 gap-0.5'>

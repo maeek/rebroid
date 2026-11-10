@@ -4,7 +4,7 @@ import * as React from 'react'
 import { Dialog as SheetPrimitive } from '@base-ui/react/dialog'
 import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { floatingSurfaceClassName, overlayClassName } from '@/components/ui/surface'
+import { dialogSurfaceClassName, overlayClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 const Sheet = SheetPrimitive.Root
@@ -57,10 +57,10 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Pop
       <SheetOverlay />
       <SheetPrimitive.Popup
         ref={ref}
-        className={cn(sheetVariants({ side }), floatingSurfaceClassName, 'rounded-none! border-0!', className)}
+        className={cn(sheetVariants({ side }), dialogSurfaceClassName, 'rounded-none! border-0!', className)}
         {...props}
       >
-        <SheetPrimitive.Close className='absolute right-4 top-4 rounded-control opacity-70 ring-offset-background transition-[background-color,opacity] hover:bg-surface-band/80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-surface-band'>
+        <SheetPrimitive.Close className='touch-control absolute right-4 top-4 inline-flex items-center justify-center rounded-control opacity-70 ring-offset-background transition-[background-color,opacity] hover:bg-surface-band/80 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[open]:bg-surface-band'>
           <IconX className='size-4' />
           <span className='sr-only'>Close</span>
         </SheetPrimitive.Close>

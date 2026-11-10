@@ -1,7 +1,7 @@
 export const resourceNavigationListClassName = 'flex min-w-0 gap-1 overflow-x-auto rounded-panel bg-surface-editor p-1'
 
 export const resourceNavigationItemClassName =
-  'relative shrink-0 rounded-control px-3 py-2.5 text-sm font-medium whitespace-nowrap text-foreground-muted'
+  'touch-control relative shrink-0 rounded-control px-3 py-2.5 text-sm font-medium whitespace-nowrap text-foreground-muted'
 
 export const resourceNavigationInteractiveClassName =
   'transition-colors hover:bg-control-hover/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'

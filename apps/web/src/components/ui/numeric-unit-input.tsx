@@ -8,6 +8,6 @@ export const NumericUnitInput = ({ unit, className, ...props }: ComponentProps<t
       {...props}
       className={cn('min-w-0 max-w-48', className)}
     />
-    <span className='shrink-0 text-sm text-foreground-muted'>{unit}</span>
+    <span className='shrink-0 text-sm text-foreground-muted touch:text-base/6'>{unit}</span>
   </div>
 )

@@ -8,9 +8,9 @@ import {
   controlHoverClassName,
   floatingLayerClassName,
   controlSurfaceClassName,
-  floatingSurfaceClassName,
+  menuSurfaceClassName,
   focusRingClassName,
-  interactiveItemClassName
+  selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
@@ -209,7 +209,7 @@ function SelectTrigger({
       data-size={size}
       render={view}
       className={cn(
-        "data-[placeholder]:text-foreground-muted [&_svg:not([class*='text-'])]:text-foreground aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger flex w-fit items-center justify-between gap-2 rounded-control px-4 py-3 text-sm whitespace-nowrap transition-[color,box-shadow,background-color,border-color] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[placeholder]:text-foreground-muted [&_svg:not([class*='text-'])]:text-foreground aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger touch-control flex w-fit max-w-full min-w-0 items-center justify-between gap-2 rounded-control px-4 py-3 text-sm touch:py-2 touch:text-base/6 whitespace-nowrap transition-[color,box-shadow,background-color,border-color] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:truncate *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         controlSurfaceClassName,
         controlHoverClassName,
         focusRingClassName,
@@ -258,7 +258,7 @@ function SelectContent({
             {
               'min-w-[var(--anchor-width)]': position === 'popper'
             },
-            floatingSurfaceClassName,
+            menuSurfaceClassName,
             className
           )}
           {...props}
@@ -291,7 +291,7 @@ function SelectItem({ className, children, value, ...props }: SelectItemProps) {
       data-slot='select-item'
       className={cn(
         "relative flex w-full cursor-default items-center gap-2 py-1.5 pr-8 pl-2 text-sm select-none [&_svg:not([class*='text-'])]:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
-        interactiveItemClassName,
+        selectableItemClassName,
         className
       )}
       value={value}
@@ -299,7 +299,7 @@ function SelectItem({ className, children, value, ...props }: SelectItemProps) {
     >
       <span className='absolute right-2 flex size-3.5 items-center justify-center'>
         <SelectPrimitive.ItemIndicator>
-          <IconCheck className='size-4' />
+          <IconCheck className='size-4 text-primary' />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

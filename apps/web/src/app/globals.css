@@ -7,6 +7,34 @@
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant oled (&:is(.oled *));
+@custom-variant touch (@media (pointer: coarse));
+
+:root {
+  --console-top-inset: 4rem;
+  --console-content-height: calc(100dvh - var(--console-top-inset));
+  --touch-target-size: 44px;
+  --app-viewer-height: calc(100svh - 6rem);
+  --viewer-chrome-height: 32px;
+  --viewer-rail-width: 32px;
+}
+
+@media (pointer: coarse) {
+  :root {
+    --viewer-rail-width: var(--touch-target-size);
+  }
+
+  .viewer-chrome [data-slot='button'] {
+    height: calc(var(--viewer-chrome-height) - 2px);
+    min-height: 0;
+  }
+}
+
+@utility touch-control {
+  @media (pointer: coarse) {
+    min-height: var(--touch-target-size);
+    min-width: var(--touch-target-size);
+  }
+}
 
 :root,
 .light {
@@ -36,6 +64,7 @@
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-0);
   --surface-dialog: var(--palette-neutral-100);
+  --surface-navigation: var(--palette-neutral-50);
   --surface-border: var(--palette-neutral-200);
   --primary: var(--palette-blue-35);
   --primary-foreground: var(--palette-neutral-0);
@@ -73,12 +102,12 @@
   --palette-neutral-0: 0 0% 98%;
   --palette-neutral-50: 220 10% 10%;
   --palette-neutral-75: 220 10% 9%;
+  --palette-neutral-90: 220 9% 12%;
   --palette-neutral-100: 220 9% 14%;
   --palette-neutral-125: 220 9% 18%;
   --palette-neutral-150: 220 9% 19%;
   --palette-neutral-200: 220 9% 23%;
   --palette-neutral-300: 220 8% 32%;
-  --palette-neutral-450: 220 8% 44%;
   --palette-neutral-560: 220 8% 56%;
   --palette-neutral-700: 220 8% 72%;
   --palette-blue-55: 206 100% 55%;
@@ -97,6 +126,7 @@
   --surface-band: var(--palette-neutral-125);
   --surface-elevated: var(--palette-neutral-125);
   --surface-dialog: var(--palette-neutral-50);
+  --surface-navigation: var(--palette-neutral-90);
   --surface-border: var(--palette-neutral-300);
   --primary: var(--palette-blue-55);
   --primary-foreground: var(--palette-navy-950);
@@ -112,7 +142,7 @@
   --warning-foreground: var(--palette-navy-950);
   --control: var(--palette-neutral-150);
   --control-hover: var(--palette-neutral-200);
-  --control-border: var(--palette-neutral-450);
+  --control-border: var(--palette-neutral-300);
   --control-border-strong: var(--palette-neutral-560);
   --ring: var(--palette-blue-55);
   --chart-1: 220 70% 60%;
@@ -139,7 +169,7 @@
   --palette-neutral-100: 220 7% 10%;
   --palette-neutral-125: 220 7% 13%;
   --palette-neutral-180: 220 6% 18%;
-  --palette-neutral-240: 220 5% 24%;
+  --palette-neutral-220: 220 5% 22%;
   --palette-neutral-360: 220 5% 36%;
   --palette-neutral-580: 220 6% 58%;
   --palette-neutral-740: 220 8% 74%;
@@ -159,6 +189,7 @@
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-100);
   --surface-dialog: var(--palette-neutral-50);
+  --surface-navigation: var(--palette-neutral-25);
   --surface-border: var(--palette-neutral-180);
   --primary: var(--palette-blue-60);
   --primary-foreground: var(--palette-navy-950);
@@ -174,7 +205,7 @@
   --warning-foreground: var(--palette-navy-950);
   --control: var(--palette-neutral-125);
   --control-hover: var(--palette-neutral-125);
-  --control-border: var(--palette-neutral-240);
+  --control-border: var(--palette-neutral-220);
   --control-border-strong: var(--palette-neutral-580);
   --ring: var(--palette-blue-60);
   --chart-1: 207 90% 64%;
@@ -353,6 +384,7 @@
   --color-surface-band: hsl(var(--surface-band));
   --color-surface-elevated: hsl(var(--surface-elevated));
   --color-surface-dialog: hsl(var(--surface-dialog));
+  --color-surface-navigation: hsl(var(--surface-navigation));
   --color-surface-border: hsl(var(--surface-border));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
@@ -462,14 +494,38 @@
   min-width: 0;
 }
 
-.app-device-layout {
-  --app-viewer-height: calc(100dvh - 6rem);
-}
 .app-device-pane[data-viewer-placement='top'] {
-  --app-viewer-height: calc(100dvh - 9rem);
+  --app-viewer-height: calc(100svh - 9rem);
 }
-@media (min-width: 1024px) {
+@media (min-width: 64rem) {
+  :root {
+    --console-top-inset: 0.5rem;
+  }
+
+  [data-legacy-sidebar-collapsed] [data-sidebar-pending] {
+    --shell-sidebar-width: 4rem;
+  }
+
+  [data-legacy-sidebar-collapsed] [data-sidebar-pending] [data-sidebar-current] {
+    display: none;
+  }
+
+  [data-legacy-sidebar-collapsed] [data-sidebar-pending] [data-sidebar-legacy-preview] {
+    display: contents;
+  }
+
+  .app-device-pane[data-viewer-placement='top'] {
+    --app-viewer-height: calc(100svh - var(--console-top-inset) - 4.5rem);
+  }
+
+  @media (pointer: coarse) {
+    .app-device-pane[data-viewer-placement='top'] {
+      --app-viewer-height: calc(100svh - var(--console-top-inset) - 5.5rem);
+    }
+  }
+
   .app-device-pane:not([data-viewer-placement='top']) {
+    --app-viewer-height: calc(100svh - var(--console-top-inset) - 2rem);
     height: var(--app-viewer-height);
   }
 }

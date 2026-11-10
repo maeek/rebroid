@@ -72,7 +72,7 @@ export const FormField = ({
       <div className={cn('grid min-w-0 gap-1', fieldLayout === 'horizontal' ? 'flex-1' : 'w-full')}>
         <Label
           htmlFor={id}
-          className='leading-5'
+          className='leading-5 touch:text-base/6'
         >
           {label}
           {required ? <span className='ml-1 text-xs font-medium text-foreground-muted'>*</span> : null}
@@ -80,7 +80,7 @@ export const FormField = ({
         {description ? (
           <p
             id={descriptionId}
-            className='text-xs leading-relaxed text-foreground-muted'
+            className='text-xs leading-relaxed text-foreground-muted touch:text-sm/5'
           >
             {description}
           </p>
@@ -88,7 +88,7 @@ export const FormField = ({
         {error && fieldLayout === 'horizontal' ? (
           <p
             id={errorId}
-            className='text-xs text-danger'
+            className='text-xs text-danger touch:text-sm/5'
             role='alert'
           >
             {error}
@@ -122,7 +122,7 @@ export const FormField = ({
         {fieldLayout === 'vertical' && error ? (
           <p
             id={errorId}
-            className='mt-1.5 text-xs text-danger'
+            className='mt-1.5 text-xs text-danger touch:text-sm/5'
             role='alert'
           >
             {error}

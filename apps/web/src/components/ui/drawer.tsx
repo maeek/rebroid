@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
+import { dialogSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type DrawerProps = React.ComponentProps<typeof DrawerPrimitive.Root> & {
@@ -62,7 +62,7 @@ const DrawerContent = React.forwardRef<
         ref={ref}
         className={cn(
           'scrollbar-thin pointer-events-auto inset-x-0 bottom-0 mt-24 flex max-h-dvh w-full flex-col overflow-x-hidden rounded-t-[10px] p-0 data-[closed]:animate-out data-[open]:animate-in data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom',
-          floatingSurfaceClassName,
+          dialogSurfaceClassName,
           className
         )}
         {...props}

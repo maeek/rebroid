@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { PageBreadcrumbs, type PageBreadcrumbItem } from '@/shared/ui/page/page-breadcrumbs'
+import { PageHeadingRow } from '@/shared/ui/page/page-heading-row'
 
 export const PageHeader = ({
   actions,
@@ -38,25 +39,20 @@ export const PageHeader = ({
 
   return (
     <header className={cn('shrink-0 px-6 py-4 max-sm:px-4', className)}>
-      <div className='grid gap-3'>
+      <div className='grid grid-cols-[minmax(0,1fr)] gap-3'>
         {showBreadcrumbs ? (
           <PageBreadcrumbs
             className='pt-0'
             items={breadcrumbs}
           />
         ) : null}
-        <div className={cn('grid gap-2', showBreadcrumbs && 'pt-4')}>
-          <div className='flex min-w-0 flex-wrap items-center justify-between gap-3 max-sm:items-start'>
-            <h1 className='flex min-w-0 flex-1 basis-64 items-center gap-2.5 text-3xl font-medium max-sm:text-xl'>
+        <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-2', showBreadcrumbs && 'pt-4')}>
+          <PageHeadingRow actions={actions}>
+            <h1 className='flex min-w-0 items-center gap-2.5 text-3xl font-medium max-sm:text-2xl'>
               {leading}
               <span className='min-w-0 [overflow-wrap:anywhere]'>{title}</span>
             </h1>
-            <Visible when={actions}>
-              <div className='flex shrink-0 flex-wrap items-center justify-end gap-2 max-sm:w-full max-sm:justify-start'>
-                {actions}
-              </div>
-            </Visible>
-          </div>
+          </PageHeadingRow>
           <Visible when={badges || meta}>
             <div className='flex min-w-0 flex-wrap items-center gap-2 text-xs text-foreground-muted'>
               {badges}
@@ -64,7 +60,7 @@ export const PageHeader = ({
             </div>
           </Visible>
           <Visible when={description}>
-            <p className='max-w-3xl text-sm text-foreground-muted'>{description}</p>
+            <p className='max-w-3xl text-sm text-foreground-muted touch:text-base/6'>{description}</p>
           </Visible>
         </div>
       </div>
