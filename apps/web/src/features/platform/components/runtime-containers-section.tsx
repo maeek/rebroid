@@ -37,6 +37,7 @@ export const RuntimeContainersSection = ({
   const {
     search,
     setSearch,
+    query,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedContainers,
@@ -159,13 +160,14 @@ export const RuntimeContainersSection = ({
 
         <DataGridWorkspace
           search={search}
+          appliedSearch={gridQuery.q ?? ''}
           searchPlaceholder='Search containers'
           onSearchChange={setSearch}
           onSearch={onSearch}
           filters={
             <RuntimeContainerFilters
               page={containersPage}
-              query={gridQuery}
+              query={query}
               onUpdate={pushGridParams}
             />
           }

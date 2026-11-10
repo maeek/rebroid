@@ -18,6 +18,7 @@ export type DataGridFilterEntry = {
 
 export type DataGridWorkspaceProps = {
   search: string
+  appliedSearch?: string
   searchPlaceholder: string
   onSearchChange: (value: string) => void
   onSearch: (value: string) => void
@@ -38,6 +39,7 @@ export type DataGridWorkspaceProps = {
 
 export const DataGridWorkspace = ({
   search,
+  appliedSearch = search,
   searchPlaceholder,
   onSearchChange,
   onSearch,
@@ -160,7 +162,7 @@ export const DataGridWorkspace = ({
 
         <DataGridEmptyContext.Provider
           value={{
-            hasSearch: Boolean(search.trim()),
+            hasSearch: Boolean(appliedSearch.trim()),
             hasFilters: activeFilters.length > 0,
             disabled,
             clearSearch: () => {

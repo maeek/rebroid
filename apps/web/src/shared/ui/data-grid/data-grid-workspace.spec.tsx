@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { DataGridEmptyState } from './data-grid-empty-state'
 import { DataGridWorkspace } from './data-grid-workspace'
 
 describe('DataGridWorkspace', () => {
@@ -18,6 +19,28 @@ describe('DataGridWorkspace', () => {
     expect(screen.queryByRole('button', { name: 'Filters' })).toBeNull()
     expect(screen.queryByRole('complementary')).toBeNull()
     expect(screen.getByText('Grid content')).toBeTruthy()
+  })
+
+  it('describes empty rows using the applied search instead of unsubmitted text', () => {
+    const onSearch = vi.fn()
+    const renderWorkspace = (appliedSearch: string) => (
+      <DataGridWorkspace
+        search='typing'
+        appliedSearch={appliedSearch}
+        searchPlaceholder='Search rows'
+        onSearchChange={() => undefined}
+        onSearch={onSearch}
+      >
+        <DataGridEmptyState title='No rows yet' />
+      </DataGridWorkspace>
+    )
+    const { rerender } = render(renderWorkspace(''))
+    expect(screen.getByRole('status')).toHaveTextContent('No rows yet')
+
+    rerender(renderWorkspace('typing'))
+    expect(screen.getByRole('status')).toHaveTextContent('No matching results')
+    fireEvent.click(within(screen.getByRole('status')).getByRole('button', { name: 'Clear search' }))
+    expect(onSearch).toHaveBeenLastCalledWith('')
   })
 
   it('opens filters without replacing the grid and restores focus on dismissal', async () => {

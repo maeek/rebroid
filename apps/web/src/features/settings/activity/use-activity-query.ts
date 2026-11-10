@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { serializeSortParam } from '@/shared/model/search-params'
+import { useRoutedGridQuery } from '@/shared/ui/data-grid/use-routed-grid-query'
 import { activityFilterEntries, compactActivityParams } from './activity-format'
 import type { ActivityEventsTableProps } from './activity-types'
 import type { AuditFilterValues } from '@/shared/contracts/audit'
 import type { SortingState } from '@tanstack/react-table'
 
 type QueryPatch = Partial<AuditFilterValues> & { page?: number; pageSize?: number; sort?: string }
+type ActivityQuery = QueryPatch & { page: number; pageSize: number }
+
+const defaultSort = 'createdAt:desc'
+const dateQueryValue = (value: string | undefined, boundary: string) =>
+  value?.endsWith(`T${boundary}`) ? value.slice(0, 10) : value
 
 export const useActivityQuery = ({
   filters,
@@ -17,61 +23,60 @@ export const useActivityQuery = ({
   loading
 }: ActivityEventsTableProps) => {
   const router = useRouter()
-  const [localFilters, setLocalFilters] = useState(filters)
-  const [isNavigating, startNavigation] = useTransition()
-  const query = useRef({ filters, sort: serializeSortParam(sorting), pageSize: result.pageSize })
-
-  useEffect(() => {
-    const submittedSearch = query.current.filters.search
-    query.current = { filters, sort: serializeSortParam(sorting), pageSize: result.pageSize }
-    setLocalFilters(current => ({
-      ...filters,
-      search: current.search === submittedSearch ? filters.search : current.search
-    }))
-  }, [filters, sorting, result.pageSize])
-
   const basePath = application ? `/app/${encodeURIComponent(application.id)}` : '/security/audit-log'
-  const scopeFilters = (values: AuditFilterValues): AuditFilterValues =>
-    application ? { ...values, resourceType: 'application', resourceId: application.id } : values
+  const appScope = application ? { resourceType: 'application', resourceId: application.id } : {}
 
-  const pushParams = (patch: QueryPatch) => {
-    if (loading) return
-    const { page = 1, pageSize = query.current.pageSize, sort, ...filterPatch } = patch
-    const next = {
-      filters: scopeFilters({ ...query.current.filters, ...filterPatch }),
-      sort: Object.hasOwn(patch, 'sort') ? sort : query.current.sort,
-      pageSize
-    }
-    query.current = next
-    setLocalFilters(current => ({
-      ...next.filters,
-      search: Object.hasOwn(filterPatch, 'search') ? next.filters.search : current.search
-    }))
-    const params = compactActivityParams({ ...next.filters, page, pageSize, sort: next.sort })
+  const hrefFor = (query: ActivityQuery) => {
+    const params = compactActivityParams({
+      ...query,
+      from: dateQueryValue(query.from, '00:00:00.000Z'),
+      to: dateQueryValue(query.to, '23:59:59.999Z'),
+      sort: query.sort === defaultSort ? undefined : query.sort
+    })
     if (application) {
       params.set('view', 'activity')
       params.delete('resourceType')
       params.delete('resourceId')
     }
-    startNavigation(() => router.push(`${basePath}?${params.toString()}`))
+    return `${basePath}?${params}`
+  }
+
+  const { query, searchDraft, setSearchDraft, isNavigating, submit } = useRoutedGridQuery<ActivityQuery>({
+    committedQuery: {
+      ...filters,
+      ...appScope,
+      sort: serializeSortParam(sorting),
+      page: result.page,
+      pageSize: result.pageSize
+    },
+    hrefFor,
+    searchFrom: next => next.search,
+    navigate: href => router.push(href)
+  })
+
+  const pushParams = (patch: QueryPatch) => {
+    if (loading) return
+    submit(current => ({ ...current, page: 1, ...patch, ...appScope }), {
+      search: Object.hasOwn(patch, 'search') ? (patch.search ?? '') : undefined
+    })
   }
 
   const resetFilters = () => {
     if (loading) return
-    const nextFilters = scopeFilters({})
-    query.current = { filters: nextFilters, pageSize: 20, sort: 'createdAt:desc' }
-    setLocalFilters(nextFilters)
-    startNavigation(() => router.push(application ? `${basePath}?view=activity` : basePath))
+    submit(() => ({ ...appScope, page: 1, pageSize: 20, sort: defaultSort }), {
+      href: application ? `${basePath}?view=activity` : basePath,
+      search: ''
+    })
   }
 
-  const exportParams = compactActivityParams({ ...scopeFilters(filters), sort: serializeSortParam(sorting) })
+  const exportParams = compactActivityParams({ ...filters, ...appScope, sort: serializeSortParam(sorting) })
   const activeFilters = useMemo(() => activityFilterEntries(filters, facets), [filters, facets])
 
   return {
     activeFilters,
     exportHref: `/api/activity/export${exportParams.size ? `?${exportParams.toString()}` : ''}`,
     isNavigating,
-    localFilters,
+    localFilters: { ...query, search: searchDraft },
     pushParams,
     resetFilters,
     removeFilter: (key: keyof AuditFilterValues) => {
@@ -79,7 +84,7 @@ export const useActivityQuery = ({
       pushParams({ [key]: undefined })
     },
     setFilterValue: (key: keyof AuditFilterValues, value: string | undefined) => pushParams({ [key]: value }),
-    setSearchDraft: (search: string) => setLocalFilters(current => ({ ...current, search })),
+    setSearchDraft,
     setSorting: (nextSorting: SortingState) => pushParams({ page: 1, sort: serializeSortParam(nextSorting) })
   }
 }

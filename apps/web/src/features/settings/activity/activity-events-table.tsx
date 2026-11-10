@@ -15,7 +15,7 @@ import type { ActivityEventsTableProps } from './activity-types'
 
 const ActivityEventsContent = () => {
   const controller = useActivityController()
-  const { application, loading } = useActivityData()
+  const { application, filters, loading } = useActivityData()
   const activeFilters = controller.activeFilters.filter(
     filter => filter.key !== 'search' && (!application || !['resourceType', 'resourceId'].includes(filter.key))
   )
@@ -32,6 +32,7 @@ const ActivityEventsContent = () => {
         <DataGridWorkspace
           disabled={loading}
           search={controller.localFilters.search ?? ''}
+          appliedSearch={filters.search ?? ''}
           searchPlaceholder='Search actor, action, resource, or details'
           onSearchChange={controller.setSearchDraft}
           onSearch={value => controller.setFilterValue('search', value.trim() || undefined)}

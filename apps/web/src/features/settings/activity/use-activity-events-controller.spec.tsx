@@ -78,6 +78,45 @@ describe('embedded application activity navigation', () => {
     expect(result.current.localFilters.search).toBe('start application')
   })
 
+  it('uses the current history entry after Back without replaying a pending filter', () => {
+    const { result, rerender } = renderHook((value: ActivityEventsTableProps) => useActivityEventsController(value), {
+      initialProps: props
+    })
+    act(() => result.current.setFilterValue('search', 'start'))
+    rerender({ ...props, filters: { ...props.filters, search: 'start' } })
+    act(() => result.current.setFilterValue('outcome', 'failure'))
+    act(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    rerender(props)
+
+    expect(result.current.localFilters.search).toBe('failed')
+    act(() => result.current.setFilterValue('actor', 'admin'))
+    const params = new URL(push.mock.lastCall![0], 'https://example.test').searchParams
+    expect(Object.fromEntries(params)).toMatchObject({ actor: 'admin', search: 'failed', view: 'activity' })
+    expect(params.has('outcome')).toBe(false)
+    expect(params.has('resourceId')).toBe(false)
+    expect(result.current.exportHref).toContain('resourceId=app-1')
+  })
+
+  it('keeps newer search text when the server clamps a requested page', () => {
+    const { result, rerender } = renderHook((value: ActivityEventsTableProps) => useActivityEventsController(value), {
+      initialProps: props
+    })
+    const originalUrl = window.location.href
+    try {
+      act(() => {
+        result.current.pushParams({ page: 10 })
+        result.current.setSearchDraft('start application')
+      })
+      window.history.replaceState(null, '', push.mock.lastCall![0])
+      rerender({ ...props, result: { ...props.result, page: 3 } })
+      expect(result.current.localFilters.search).toBe('start application')
+    } finally {
+      window.history.replaceState(null, '', originalUrl)
+    }
+  })
+
   it('resets scope and query intent before another filter change', () => {
     const { result } = renderHook(() => useActivityEventsController(props))
     act(() => {

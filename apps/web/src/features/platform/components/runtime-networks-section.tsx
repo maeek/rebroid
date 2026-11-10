@@ -36,6 +36,7 @@ export const RuntimeNetworksSection = ({
   const {
     search,
     setSearch,
+    query,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedNetworks,
@@ -122,13 +123,14 @@ export const RuntimeNetworksSection = ({
       >
         <DataGridWorkspace
           search={search}
+          appliedSearch={gridQuery.q ?? ''}
           searchPlaceholder='Search networks'
           onSearchChange={setSearch}
           onSearch={onSearch}
           filters={
             <RuntimeNetworkFilters
               page={networksPage}
-              query={gridQuery}
+              query={query}
               onUpdate={pushGridParams}
             />
           }

@@ -40,15 +40,13 @@ export const buildPlatformGridHref = <TQuery extends PlatformGridQuery>({
   pageSize,
   patch
 }: PlatformGridHrefInput<TQuery>) => {
-  const query = {
-    ...gridQuery,
-    ...patch,
-    ownership: patch.ownership ?? gridQuery.ownership ?? 'managed',
-    page: patch.page ?? gridQuery.page ?? 1,
-    pageSize: patch.pageSize ?? gridQuery.pageSize ?? pageSize
-  }
-
-  const params = compactPlatformGridParams(query)
+  const query = { ...gridQuery, ...patch }
+  const params = compactPlatformGridParams({
+    ...query,
+    ownership: query.ownership ?? 'managed',
+    page: query.page ?? 1,
+    pageSize: query.pageSize ?? pageSize
+  })
 
   return `${basePath}${params.size ? `?${params.toString()}` : ''}`
 }

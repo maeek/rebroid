@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { serializeSortParam } from '@/shared/model/search-params'
+import { useRoutedGridQuery } from '@/shared/ui/data-grid/use-routed-grid-query'
 import type { OnChangeFn, SortingState } from '@tanstack/react-table'
 
 interface RuntimeResourceGridQuery {
@@ -34,13 +35,14 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
   buildHref: (input: RuntimeResourceGridHrefInput<TQuery>) => string
 }) => {
   const router = useRouter()
-  const [search, setSearch] = useState(gridQuery.q ?? '')
+  const { query, searchDraft, setSearchDraft, submit } = useRoutedGridQuery({
+    committedQuery: gridQuery,
+    hrefFor: next => buildHref({ gridQuery: next, pageSize, patch: {} }),
+    searchFrom: next => next.q,
+    navigate: href => router.replace(href, { scroll: false })
+  })
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const sorting = useMemo(() => parseSort(gridQuery.sort), [gridQuery.sort, parseSort])
-
-  useEffect(() => {
-    setSearch(gridQuery.q ?? '')
-  }, [gridQuery.q])
 
   useEffect(() => {
     const visibleIds = new Set(items.map(getItemId))
@@ -51,23 +53,26 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
   }, [getItemId, items])
 
   const selectedItems = items.filter(item => selectedIds.has(getItemId(item)))
-  const pushGridParams = (patch: Partial<TQuery>) => {
-    router.replace(buildHref({ gridQuery, pageSize, patch }), { scroll: false })
-  }
+  const pushGridParams = (patch: Partial<TQuery>) => submit(current => ({ ...current, ...patch }))
   const onSortingChange: OnChangeFn<SortingState> = updater => {
-    const nextSorting = typeof updater === 'function' ? updater(sorting) : updater
-    pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 } as Partial<TQuery>)
+    submit(current => ({
+      ...current,
+      sort: serializeSortParam(typeof updater === 'function' ? updater(parseSort(current.sort)) : updater),
+      page: 1
+    }))
   }
 
   return {
-    search,
-    setSearch,
+    search: searchDraft,
+    setSearch: setSearchDraft,
+    query,
     selectedIds,
     setSelectedIds,
     selectedItems,
     sorting,
     pushGridParams,
-    onSearch: (value: string) => pushGridParams({ q: value.trim() || undefined, page: 1 } as Partial<TQuery>),
+    onSearch: (value: string) =>
+      submit(current => ({ ...current, q: value.trim() || undefined, page: 1 }), { search: value }),
     onSortingChange,
     onPageIndexChange: (pageIndex: number) => pushGridParams({ page: pageIndex + 1 } as Partial<TQuery>),
     onPageSizeChange: (nextPageSize: number) => pushGridParams({ page: 1, pageSize: nextPageSize } as Partial<TQuery>),

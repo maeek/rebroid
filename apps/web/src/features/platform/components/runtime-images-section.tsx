@@ -32,6 +32,7 @@ export const RuntimeImagesSection = ({
   const {
     search,
     setSearch,
+    query,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedImages,
@@ -128,13 +129,14 @@ export const RuntimeImagesSection = ({
       >
         <DataGridWorkspace
           search={search}
+          appliedSearch={gridQuery.q ?? ''}
           searchPlaceholder='Search images'
           onSearchChange={setSearch}
           onSearch={onSearch}
           filters={
             <RuntimeImageFilters
               page={imagesPage}
-              query={gridQuery}
+              query={query}
               onUpdate={pushGridParams}
             />
           }
