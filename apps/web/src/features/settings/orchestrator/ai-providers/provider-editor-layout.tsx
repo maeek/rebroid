@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconCube, IconPlugConnected } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -44,10 +45,17 @@ export const ProviderEditorLayout = ({
         <ResourceNavigation
           label='AI provider navigation'
           items={[
-            { id: 'models', label: 'Models', href: loading ? undefined : href, current: view === 'models' },
+            {
+              id: 'models',
+              label: 'Models',
+              icon: <IconCube className='size-3.5' />,
+              href: loading ? undefined : href,
+              current: view === 'models'
+            },
             {
               id: 'connection',
               label: 'Connection',
+              icon: <IconPlugConnected className='size-3.5' />,
               href: loading ? undefined : `${href}?view=connection`,
               current: view === 'connection'
             }

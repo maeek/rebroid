@@ -13,7 +13,7 @@ import {
 type ResourceNavigationItem = {
   id: string
   label: string
-  icon?: ReactNode
+  icon: ReactNode
   href?: string
   current?: boolean
 }
@@ -53,19 +53,17 @@ export const ResourceNavigation = ({
       {items.map(item => {
         const className = cn(
           resourceNavigationItemClassName,
-          item.icon && 'inline-flex items-center gap-1.5',
+          'inline-flex items-center gap-1.5',
           item.current && resourceNavigationActiveClassName
         )
         const content = (
           <>
-            {item.icon && (
-              <span
-                aria-hidden='true'
-                className='shrink-0'
-              >
-                {item.icon}
-              </span>
-            )}
+            <span
+              aria-hidden='true'
+              className='shrink-0'
+            >
+              {item.icon}
+            </span>
             {item.label}
           </>
         )

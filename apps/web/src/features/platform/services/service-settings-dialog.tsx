@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { IconPlugConnected, IconSettings } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -81,8 +82,18 @@ export const ServiceSettingsDialog = ({
             onValueChange={value => setTab(value as DialogTab)}
           >
             <TabsList ariaLabel='Service settings sections'>
-              <TabsTrigger value='connection'>Connection</TabsTrigger>
-              <TabsTrigger value='settings'>Settings</TabsTrigger>
+              <TabsTrigger
+                value='connection'
+                icon={<IconPlugConnected className='size-3.5' />}
+              >
+                Connection
+              </TabsTrigger>
+              <TabsTrigger
+                value='settings'
+                icon={<IconSettings className='size-3.5' />}
+              >
+                Settings
+              </TabsTrigger>
             </TabsList>
             <TabsPanel
               value='connection'

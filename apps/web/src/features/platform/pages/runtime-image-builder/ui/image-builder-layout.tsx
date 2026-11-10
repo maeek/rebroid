@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { IconBrandGooglePlay, IconHammer } from '@tabler/icons-react'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
@@ -28,8 +29,20 @@ export const ImageBuilderLayout = ({
       <ResourceNavigation
         label='Image builder'
         items={[
-          { id: 'gapps', label: 'Google Play builder', href: '/runtime/images/build', current: mode === 'gapps' },
-          { id: 'custom', label: 'Custom builder', href: '/runtime/images/build/custom', current: mode === 'custom' }
+          {
+            id: 'gapps',
+            label: 'Google Play builder',
+            icon: <IconBrandGooglePlay className='size-3.5' />,
+            href: '/runtime/images/build',
+            current: mode === 'gapps'
+          },
+          {
+            id: 'custom',
+            label: 'Custom builder',
+            icon: <IconHammer className='size-3.5' />,
+            href: '/runtime/images/build/custom',
+            current: mode === 'custom'
+          }
         ]}
       />
       {children}

@@ -103,11 +103,13 @@ export const TabsTrigger = ({
   children,
   className,
   disabled,
+  icon,
   value
 }: {
   children: ReactNode
   className?: string
   disabled?: boolean
+  icon: ReactNode
   value: string
 }) => {
   const context = useTabsContext()
@@ -129,6 +131,7 @@ export const TabsTrigger = ({
           ? cn(
               resourceNavigationItemClassName,
               resourceNavigationInteractiveClassName,
+              'inline-flex items-center gap-1.5',
               active && resourceNavigationActiveClassName
             )
           : cn(
@@ -146,6 +149,12 @@ export const TabsTrigger = ({
         else if (event.key === 'End') focusTab(event, 'last')
       }}
     >
+      <span
+        aria-hidden='true'
+        className='shrink-0'
+      >
+        {icon}
+      </span>
       {children}
     </button>
   )

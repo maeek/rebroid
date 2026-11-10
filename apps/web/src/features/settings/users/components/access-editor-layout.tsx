@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { IconGauge, IconInfoCircle, IconShieldCheck, IconUser, IconUsers } from '@tabler/icons-react'
 import { Section } from '@/components/ui/section'
 import { TabsRoot, TabsList, TabsTrigger, TabsPanel } from '@/components/ui/tabs'
 
@@ -20,6 +21,7 @@ export const AccessEditorLayout = ({
   loading?: boolean
 }) => {
   const [tab, setTab] = useState('account')
+  const IdentityIcon = access ? IconUser : IconInfoCircle
   return (
     <TabsRoot
       value={tab}
@@ -30,10 +32,32 @@ export const AccessEditorLayout = ({
         ariaLabel={access ? 'User settings' : 'Group settings'}
         variant='resource'
       >
-        <TabsTrigger value='account'>{access ? 'Account' : 'Details'}</TabsTrigger>
-        {access ? <TabsTrigger value='groups'>Groups</TabsTrigger> : null}
-        <TabsTrigger value='permissions'>Permissions</TabsTrigger>
-        <TabsTrigger value='quotas'>Quotas</TabsTrigger>
+        <TabsTrigger
+          value='account'
+          icon={<IdentityIcon className='size-3.5' />}
+        >
+          {access ? 'Account' : 'Details'}
+        </TabsTrigger>
+        {access ? (
+          <TabsTrigger
+            value='groups'
+            icon={<IconUsers className='size-3.5' />}
+          >
+            Groups
+          </TabsTrigger>
+        ) : null}
+        <TabsTrigger
+          value='permissions'
+          icon={<IconShieldCheck className='size-3.5' />}
+        >
+          Permissions
+        </TabsTrigger>
+        <TabsTrigger
+          value='quotas'
+          icon={<IconGauge className='size-3.5' />}
+        >
+          Quotas
+        </TabsTrigger>
       </TabsList>
       <TabsPanel value='account'>
         <div className='grid min-w-0 gap-6'>{identity}</div>

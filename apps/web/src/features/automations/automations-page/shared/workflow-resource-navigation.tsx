@@ -1,3 +1,4 @@
+import { IconHistory, IconPencil } from '@tabler/icons-react'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
 
 export const WorkflowResourceNavigation = ({
@@ -15,10 +16,17 @@ export const WorkflowResourceNavigation = ({
     <ResourceNavigation
       label='Workflow navigation'
       items={[
-        { id: 'editor', label: 'Editor', href, current: active === 'editor' },
+        {
+          id: 'editor',
+          label: 'Editor',
+          icon: <IconPencil className='size-3.5' />,
+          href,
+          current: active === 'editor'
+        },
         {
           id: 'history',
           label: 'Run history',
+          icon: <IconHistory className='size-3.5' />,
           href: href ? `${href}/traces` : undefined,
           current: active === 'history'
         }
