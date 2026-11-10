@@ -7,6 +7,10 @@ import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
+import {
+  getViewerStartupDeadline,
+  redroidViewerRefreshIntervalMs
+} from '@/features/applications/viewer/display/display-viewer-startup'
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import {
   getViewerFrameClassName,
@@ -24,8 +28,6 @@ import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
-
-const sessionRetryIntervalMs = 3_000
 
 const useBrowserBaseUrl = () => {
   const [baseUrl, setBaseUrl] = useState('http://localhost')
@@ -140,7 +142,10 @@ export const DisplayViewerEmbed = ({
   const baseUrl = useBrowserBaseUrl()
   const [session, setSession] = useState<ScrcpySession | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
-  const [reloadToken, setReloadToken] = useState(0)
+  const [reload, setReload] = useState({ runtime: '', count: 0 })
+  const startedAt = app.lastStartedAt?.getTime() ?? null
+  const runtime = `${app.id}:${startedAt}`
+  const reloadCount = reload.runtime === runtime ? reload.count : 0
 
   useEffect(() => {
     if (app.status !== 'running') {
@@ -151,6 +156,21 @@ export const DisplayViewerEmbed = ({
 
     let active = true
     let retryTimer: number | null = null
+    const deadline = getViewerStartupDeadline(startedAt)
+
+    const scheduleStartupRetry = () => {
+      if (reloadCount !== 0 || !deadline || Date.now() + redroidViewerRefreshIntervalMs >= deadline.getTime()) {
+        return false
+      }
+      retryTimer = window.setTimeout(() => {
+        if (Date.now() < deadline.getTime()) {
+          void loadSession()
+        } else {
+          setSessionError(current => current ?? 'The display service could not create a viewer session.')
+        }
+      }, redroidViewerRefreshIntervalMs)
+      return true
+    }
 
     const loadSession = async () => {
       try {
@@ -160,18 +180,18 @@ export const DisplayViewerEmbed = ({
         }
 
         setSession(nextSession)
-        setSessionError(null)
-
-        if (!nextSession.displaySession?.viewerPath) {
-          retryTimer = window.setTimeout(() => void loadSession(), sessionRetryIntervalMs)
-        }
+        setSessionError(
+          nextSession.displaySession?.viewerPath || scheduleStartupRetry()
+            ? null
+            : 'The display service could not create a viewer session.'
+        )
       } catch (error) {
         if (!active) {
           return
         }
 
         setSessionError(getToastErrorDescription(error))
-        retryTimer = window.setTimeout(() => void loadSession(), sessionRetryIntervalMs)
+        scheduleStartupRetry()
       }
     }
 
@@ -183,7 +203,7 @@ export const DisplayViewerEmbed = ({
         window.clearTimeout(retryTimer)
       }
     }
-  }, [app.id, app.status, reloadToken])
+  }, [app.id, app.status, startedAt, reloadCount])
 
   const mainDisplaySize = useMemo(() => getRedroidDisplayDimensionsFromArgs(app.containerArgs), [app.containerArgs])
   const surfaces = useMemo(
@@ -208,7 +228,7 @@ export const DisplayViewerEmbed = ({
         description: 'The live display service is not ready.',
         detail: 'Refresh the viewer or restart the app, then try again.'
       }
-    } else if (!session && sessionError) {
+    } else if (sessionError) {
       error = { description: 'The live display session could not be opened.', detail: sessionError }
     }
 
@@ -246,7 +266,8 @@ export const DisplayViewerEmbed = ({
           controlsEnabled: true,
           canControl: canControlViewer && session.displaySession.capabilities.includes('control'),
           canCaptureScreenshot: canCaptureScreenshot && session.displaySession.capabilities.includes('screenshot'),
-          onSurfacesChanged: () => setReloadToken(current => current + 1),
+          onSurfacesChanged: () =>
+            setReload(current => ({ runtime, count: current.runtime === runtime ? current.count + 1 : 1 })),
           onKeyboardCaptureChange: enabled => {
             onViewerSettingsChange?.({
               ...viewerSettings,

@@ -1,4 +1,4 @@
-import { Logger } from "@nestjs/common";
+import { Logger, NotFoundException } from "@nestjs/common";
 import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
 import { WebSocket } from "ws";
@@ -165,7 +165,10 @@ export class DisplayGateway implements OnGatewayConnection {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Display stream failed: ${message}`);
       if (client.readyState === WebSocket.OPEN) {
-        client.close(1011, message.slice(0, 120));
+        client.close(
+          error instanceof NotFoundException ? 4404 : 1011,
+          message.slice(0, 120),
+        );
       }
     }
   }

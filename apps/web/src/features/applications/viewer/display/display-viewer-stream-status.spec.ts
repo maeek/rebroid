@@ -43,6 +43,18 @@ describe('display viewer stream status messages', () => {
       })
     ).toBe(false)
   })
+
+  it('requires a session ID on a session-expiry signal', () => {
+    const status = {
+      type: viewerStreamStatusMessageType,
+      code: 'session-expired',
+      severity: 'error',
+      blocking: true,
+      message: 'The display session ended.'
+    }
+    expect(isDisplayViewerStreamStatus(status)).toBe(false)
+    expect(isDisplayViewerStreamStatus({ ...status, sessionId: 'fixture' })).toBe(true)
+  })
 })
 
 describe('display viewer stream metrics messages', () => {

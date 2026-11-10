@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { DisplaySessionRecovery } from '@/features/applications/viewer/display/display-session-recovery'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
 import type {
@@ -33,6 +34,7 @@ export const useDisplayViewerShellState = ({
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
+  const [sessionRecovery] = useState(() => new DisplaySessionRecovery())
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const surfaceElementsRef = useRef<Record<string, HTMLElement | null>>({})
   const surfaceViewportElementsRef = useRef<Record<string, HTMLDivElement | null>>({})
@@ -198,6 +200,16 @@ export const useDisplayViewerShellState = ({
   }
 
   const setSurfaceStreamStatus = (surfaceId: string, status: DisplayViewerStreamStatus) => {
+    if (status.code === 'session-expired' || status.code === 'session-ready') {
+      const surface = surfaces.find(item => item.id === surfaceId && item.sessionId === status.sessionId)
+      if (!surface) return
+      if (status.code === 'session-ready') {
+        sessionRecovery.presented(applicationId, surface)
+        return
+      }
+      if (sessionRecovery.request(applicationId, surface, surfaces)) viewerActions.refreshSurfaces()
+    }
+
     const existingTimer = streamStatusTimersRef.current[surfaceId]
     if (existingTimer !== undefined) {
       window.clearTimeout(existingTimer)

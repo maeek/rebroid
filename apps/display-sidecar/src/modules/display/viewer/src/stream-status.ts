@@ -59,6 +59,34 @@ export function emitViewerStreamStatus(status: ViewerStreamStatus): void {
   );
 }
 
+export function emitViewerSessionExpired(
+  transport: ViewerStreamStatus["transport"],
+  sessionId: string | null,
+): void {
+  emitViewerStreamStatus({
+    code: "session-expired",
+    severity: "error",
+    blocking: true,
+    message: "The display session ended. Open the viewer again to continue.",
+    sessionId,
+    transport,
+  });
+}
+
+export function emitViewerSessionReady(
+  transport: ViewerStreamStatus["transport"],
+  sessionId: string | null,
+): void {
+  emitViewerStreamStatus({
+    code: "session-ready",
+    severity: "info",
+    blocking: false,
+    message: "The display session is showing video.",
+    sessionId,
+    transport,
+  });
+}
+
 export function emitViewerStreamMetrics(metrics: ViewerStreamMetricsV4): void {
   window.parent.postMessage(
     {

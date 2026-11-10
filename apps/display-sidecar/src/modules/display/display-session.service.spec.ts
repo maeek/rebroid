@@ -56,6 +56,19 @@ test("released and expired sessions are purged", () => {
   assert.equal(service.list().length, 0);
 });
 
+test("activity can observe expiry without throwing out of the stream heartbeat", (t) => {
+  t.mock.timers.enable({ apis: ["Date"] });
+  const service = createService();
+  const session = service.create({ udid: "127.0.0.1:5555" });
+  const closed: string[] = [];
+  service.onClosed((id) => closed.push(id));
+
+  t.mock.timers.tick(900_001);
+  assert.doesNotThrow(() => service.touch(session.id));
+  assert.deepEqual(closed, [session.id]);
+  assert.throws(() => service.get(session.id), /Display session not found/);
+});
+
 test("display sessions reject new work at capacity", () => {
   const service = createService(1);
   service.create({ udid: "127.0.0.1:5555", appId: "first" });

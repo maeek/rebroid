@@ -115,6 +115,7 @@ export const useDisplayViewerActions = ({
     isCapturing,
     addDisplay,
     captureScreenshot,
-    closeDisplay
+    closeDisplay,
+    refreshSurfaces
   }
 }

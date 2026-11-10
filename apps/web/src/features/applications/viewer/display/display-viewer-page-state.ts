@@ -2,13 +2,15 @@ import {
   checkDisplaySidecarTarget,
   describeViewerIssue,
   getViewerError,
-  getViewerStartupDeadline,
   isLikelyRedroidImage,
-  redroidViewerRefreshIntervalMs,
   viewerSettingsFromSearchParams,
   viewerUnavailableDetail,
   type ViewerSearchParams
 } from '@/features/applications/viewer/display/display-viewer-page-utils'
+import {
+  getViewerStartupDeadline,
+  redroidViewerRefreshIntervalMs
+} from '@/features/applications/viewer/display/display-viewer-startup'
 import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
 import type { AndroidApplication, ScrcpySession } from '@/shared/contracts/application'

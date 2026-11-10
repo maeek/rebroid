@@ -1,5 +1,9 @@
 import { headers } from 'next/headers'
 import {
+  getViewerStartupDeadline,
+  redroidViewerRefreshIntervalMs
+} from '@/features/applications/viewer/display/display-viewer-startup'
+import {
   defaultViewerSettings,
   isViewerPlayer,
   normalizeViewerSettings
@@ -7,8 +11,6 @@ import {
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
 
-export const redroidViewerStartupGracePeriodMs = 45_000
-export const redroidViewerRefreshIntervalMs = 3_000
 export const viewerUnavailableDetail = 'Refresh the viewer or restart the app, then try again.'
 
 export type ViewerErrorDetails = {
@@ -110,15 +112,6 @@ export const getViewerError = (session: ScrcpySession): ViewerErrorDetails => {
 const isTransientViewerStartupIssue = (viewerError: ViewerErrorDetails) => {
   if (!viewerError) return true
   return viewerError.retryable
-}
-
-export const getViewerStartupDeadline = (lastStartedAt: string | null) => {
-  if (!lastStartedAt) return null
-
-  const startedAtMs = Date.parse(lastStartedAt)
-  if (Number.isNaN(startedAtMs)) return null
-
-  return new Date(startedAtMs + redroidViewerStartupGracePeriodMs)
 }
 
 export const describeViewerIssue = ({

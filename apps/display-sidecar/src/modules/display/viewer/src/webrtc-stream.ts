@@ -8,6 +8,8 @@ import type {
 } from "./types.js";
 import { configuredStreamProfile } from "./config.js";
 import {
+  emitViewerSessionExpired,
+  emitViewerSessionReady,
   emitViewerStreamMetrics,
   emitViewerStreamStatus,
 } from "./stream-status.js";
@@ -49,6 +51,7 @@ const maximumJitterBufferTargetMs = 40;
 const jitterBufferTargetStepMs = 10;
 
 class PermanentWebrtcError extends Error {}
+class WebrtcSessionExpiredError extends PermanentWebrtcError {}
 
 export class AdaptiveJitterBufferController {
   private readonly receivers = new Set<
@@ -791,7 +794,7 @@ export function createWebrtcStream({
     { passive: true },
   );
 
-  const failPermanently = (reason: string) => {
+  const failPermanently = (reason: string, sessionExpired = false) => {
     if (terminalFailure || lifecycle.isClosing()) {
       return;
     }
@@ -802,13 +805,17 @@ export function createWebrtcStream({
     stopMetricsMonitor = null;
     stopConnectionMonitor?.();
     stopConnectionMonitor = null;
-    emitViewerStreamStatus({
-      code: "stream-error",
-      severity: "error",
-      blocking: true,
-      message: reason,
-      transport: "webrtc",
-    });
+    if (sessionExpired) {
+      emitViewerSessionExpired("webrtc", config.sessionId);
+    } else {
+      emitViewerStreamStatus({
+        code: "stream-error",
+        severity: "error",
+        blocking: true,
+        message: reason,
+        transport: "webrtc",
+      });
+    }
     const activePeer = peer;
     peer = null;
     activePeer?.close();
@@ -992,6 +999,7 @@ export function createWebrtcStream({
       );
       if (!response.ok) {
         let detail = `WebRTC offer failed: ${response.status}`;
+        let code: unknown;
         try {
           const payload = (await response.json()) as {
             code?: unknown;
@@ -1001,10 +1009,14 @@ export function createWebrtcStream({
             detail = payload.message;
           }
           if (typeof payload.code === "string") {
+            code = payload.code;
             detail = `${payload.code}: ${detail}`;
           }
         } catch {
           // Keep the bounded HTTP status diagnostic.
+        }
+        if (response.status === 404 && code === "display_session_unavailable") {
+          throw new WebrtcSessionExpiredError(detail);
         }
         if (response.status >= 400 && response.status < 500) {
           throw new PermanentWebrtcError(detail);
@@ -1031,6 +1043,8 @@ export function createWebrtcStream({
         return;
       }
       await activateRecoveryVideo(playbackVideo, video, config.audio);
+      if (peer !== connection || peerGeneration !== currentGeneration) return;
+      emitViewerSessionReady("webrtc", config.sessionId);
       retriesUsed = 0;
       stopFrameProgressMonitor?.();
       stopFrameProgressMonitor = watchVideoProgress(
@@ -1060,7 +1074,7 @@ export function createWebrtcStream({
         const reason =
           error instanceof Error ? error.message : "WebRTC recovery failed.";
         if (error instanceof PermanentWebrtcError) {
-          failPermanently(reason);
+          failPermanently(reason, error instanceof WebrtcSessionExpiredError);
         } else {
           retryOrFail(reason);
         }

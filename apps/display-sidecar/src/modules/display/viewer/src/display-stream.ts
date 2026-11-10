@@ -4,6 +4,8 @@ import {
   type MseMediaSegment,
 } from "./mse-video-player.js";
 import {
+  emitViewerSessionExpired,
+  emitViewerSessionReady,
   emitViewerStreamMetrics,
   emitViewerStreamStatus,
   statusFromCompatibility,
@@ -48,6 +50,7 @@ type MediaWorkerMessage =
   | ({ type: "mse-segment" } & MseMediaSegment)
   | { type: "renderer-fallback"; reason: string }
   | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
+  | { type: "session-expired" }
   | { type: "fatal"; message: string };
 
 async function createAudioWorklet(): Promise<{
@@ -164,6 +167,7 @@ export function createDisplayStream({
   const handleWorkerMessage = (event: MessageEvent<MediaWorkerMessage>) => {
     const message = event.data;
     if (message.type === "first-frame") {
+      emitViewerSessionReady("websocket", config.sessionId);
       if (!hasVisibleFrame) {
         hasVisibleFrame = true;
         ui.showCanvas();
@@ -271,6 +275,13 @@ export function createDisplayStream({
       }
       return;
     }
+    if (message.type === "session-expired") {
+      emitViewerSessionExpired("websocket", config.sessionId);
+      ui.showFailure(
+        "The display session ended. Open the viewer again to continue.",
+      );
+      return;
+    }
     ui.showFailure(message.message);
   };
 
@@ -332,6 +343,7 @@ export function createDisplayStream({
       msePlayer = new MseVideoPlayer(
         video,
         (epoch) => {
+          emitViewerSessionReady("websocket", config.sessionId);
           hasVisibleFrame = true;
           ui.showVideo();
           worker?.postMessage({ type: "mse-presented", epoch });

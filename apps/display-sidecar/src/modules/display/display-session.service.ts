@@ -148,7 +148,11 @@ export class DisplaySessionService {
     this.purgeInactiveSessions();
     const session = this.sessions.get(id);
     if (!session) {
-      throw new NotFoundException("Display session not found.");
+      throw new NotFoundException({
+        statusCode: 404,
+        code: "display_session_unavailable",
+        message: "Display session not found.",
+      });
     }
     return session;
   }
@@ -158,9 +162,9 @@ export class DisplaySessionService {
   }
 
   touch(id: string) {
-    const session = this.get(id);
-    this.extend(session);
-    return session;
+    this.purgeInactiveSessions();
+    const session = this.sessions.get(id);
+    if (session) this.extend(session);
   }
 
   onClosed(listener: (sessionId: string) => void): () => void {

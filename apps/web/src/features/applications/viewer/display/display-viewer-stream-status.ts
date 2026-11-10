@@ -2,7 +2,13 @@ export const viewerStreamStatusMessageType = 'rebroid-viewer-stream-status'
 export const viewerStreamMetricsMessageType = 'rebroid-viewer-stream-metrics-v4'
 
 export type DisplayViewerStreamStatusCode =
-  'audio-disabled' | 'reconnecting' | 'first-frame-timeout' | 'video-stalled' | 'stream-error'
+  | 'audio-disabled'
+  | 'reconnecting'
+  | 'first-frame-timeout'
+  | 'video-stalled'
+  | 'session-expired'
+  | 'session-ready'
+  | 'stream-error'
 
 export type DisplayViewerStreamStatusSeverity = 'info' | 'warning' | 'error'
 
@@ -11,6 +17,7 @@ export type DisplayViewerStreamStatus = {
   severity: DisplayViewerStreamStatusSeverity
   blocking: boolean
   message: string
+  sessionId?: string
   transport?: 'webrtc' | 'websocket'
 }
 
@@ -108,6 +115,8 @@ const statusCodes = new Set<DisplayViewerStreamStatusCode>([
   'reconnecting',
   'first-frame-timeout',
   'video-stalled',
+  'session-expired',
+  'session-ready',
   'stream-error'
 ])
 
@@ -127,6 +136,8 @@ export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayVie
     statusSeverities.has(record.severity as DisplayViewerStreamStatusSeverity) &&
     typeof record.blocking === 'boolean' &&
     typeof record.message === 'string' &&
+    ((record.code !== 'session-expired' && record.code !== 'session-ready') ||
+      (typeof record.sessionId === 'string' && record.sessionId.length > 0)) &&
     (record.transport === undefined || record.transport === 'webrtc' || record.transport === 'websocket')
   )
 }

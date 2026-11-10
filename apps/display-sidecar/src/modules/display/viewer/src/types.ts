@@ -113,6 +113,8 @@ export type ViewerStreamStatusCode =
   | "reconnecting"
   | "first-frame-timeout"
   | "video-stalled"
+  | "session-expired"
+  | "session-ready"
   | "stream-error";
 
 export type ViewerStreamStatusSeverity = "info" | "warning" | "error";
@@ -122,6 +124,7 @@ export type ViewerStreamStatus = {
   severity: ViewerStreamStatusSeverity;
   blocking: boolean;
   message: string;
+  sessionId?: string | null;
   transport?: "webrtc" | "websocket";
 };
 

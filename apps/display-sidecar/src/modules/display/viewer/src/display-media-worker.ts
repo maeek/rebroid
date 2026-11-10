@@ -67,6 +67,7 @@ type WorkerOutput =
     }
   | { type: "renderer-fallback"; reason: string }
   | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
+  | { type: "session-expired" }
   | { type: "fatal"; message: string };
 
 type AudioWorkletMessage =
@@ -999,6 +1000,11 @@ function connect(): void {
   });
   socket.addEventListener("close", (event) => {
     if (generation !== currentGeneration || closing) {
+      return;
+    }
+    if (event.code === 4404) {
+      scope.postMessage({ type: "session-expired" });
+      shutdown();
       return;
     }
     reconnect({

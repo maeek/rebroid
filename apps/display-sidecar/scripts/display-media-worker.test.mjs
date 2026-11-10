@@ -213,3 +213,40 @@ test("media worker renders only the newest frame and recovers locally from backl
   await flush();
   assert.equal(socket.closeCalls.at(-1).code, 4000);
 });
+
+test("an expired WebSocket session stops retrying the stale grant", async (t) => {
+  const posted = [];
+  globalThis.WebSocket = FakeWebSocket;
+  globalThis.postMessage = (message) => posted.push(message);
+  globalThis.close = () => undefined;
+  await import(
+    new URL(
+      "../dist/modules/display/viewer/assets/display-media-worker.js?expired",
+      import.meta.url,
+    )
+  );
+  t.after(() => {
+    globalThis.onmessage({ data: { type: "close" } });
+  });
+
+  globalThis.onmessage({
+    data: {
+      type: "init",
+      url: "wss://example.test/rebroid/display/stream",
+      canvas: {},
+      audio: false,
+      renderer: "mse",
+    },
+  });
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  socket.emit("close", { code: 4404 });
+  assert.equal(
+    posted.some(({ type }) => type === "session-expired"),
+    true,
+  );
+  assert.equal(
+    posted.some(({ type }) => type === "reconnecting"),
+    false,
+  );
+});
