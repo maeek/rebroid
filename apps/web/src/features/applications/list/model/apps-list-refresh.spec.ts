@@ -10,6 +10,7 @@ const app = (id: string, overrides: Partial<AppDefinition> = {}): AppDefinition 
     ownerDisplayName: null,
     status: 'running',
     lifecycleStage: 'running',
+    updatedAt: new Date(0),
     ...overrides
   }) as AppDefinition
 
@@ -84,5 +85,30 @@ describe('apps list refresh model', () => {
 
     expect(result.expiredOverrideIds).toEqual([])
     expect(result.apps).toEqual([override])
+  })
+
+  it('ignores a stale pre-command snapshot after stop and accepts a newer refresh', () => {
+    const before = app('app-1', { updatedAt: new Date(1000) })
+    const stopped = app('app-1', { status: 'stopped', lifecycleStage: 'stopped' })
+    const options = {
+      currentApps: [stopped],
+      hiddenRemovingIds: new Set<string>(),
+      pendingOverrides: new Map([['app-1', { app: stopped, expiresAt: 5000, acknowledgedAfter: 1000 }]]),
+      nowMs: 3000
+    }
+    expect(mergeAppsListRefresh({ ...options, refreshedApps: [before] }).apps).toEqual([stopped])
+    const confirmed = { ...stopped, updatedAt: new Date(2000) }
+    expect(mergeAppsListRefresh({ ...options, refreshedApps: [confirmed] })).toEqual({
+      apps: [confirmed],
+      expiredOverrideIds: ['app-1']
+    })
+    expect(
+      mergeAppsListRefresh({
+        ...options,
+        currentApps: [confirmed],
+        refreshedApps: [before],
+        pendingOverrides: new Map()
+      }).apps
+    ).toEqual([confirmed])
   })
 })

@@ -5,9 +5,10 @@ import {
   rememberStartedProfile
 } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import {
-  startApplicationAction,
-  stopApplicationAction
+  requestApplicationStartAction,
+  requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   RuntimeActionRunner,
@@ -34,7 +35,10 @@ export const startAppRuntime = async ({
   }
 
   setActionPhase('starting')
-  const started = await runAction(() => startApplicationAction(app.id, options), 'Could not start app')
+  const started = await runAction(
+    async () => unwrapActionResult(await requestApplicationStartAction(app.id, options)),
+    'Could not start app'
+  )
   setActionPhase(null)
 
   const startedProfile = getStartedProfileOptions(started, options)
@@ -60,7 +64,10 @@ export const stopAppRuntime = async ({
   }
 
   setActionPhase('stopping')
-  const stopped = await runAction(() => stopApplicationAction(app.id), 'Could not stop app')
+  const stopped = await runAction(
+    async () => unwrapActionResult(await requestApplicationStopAction(app.id)),
+    'Could not stop app'
+  )
   setActionPhase(null)
   return stopped
 }
@@ -80,8 +87,8 @@ export const restartAppRuntime = async ({
 
   setActionPhase('restarting')
   const didSucceed = await runAction(async () => {
-    await stopApplicationAction(app.id)
-    await startApplicationAction(app.id)
+    unwrapActionResult(await requestApplicationStopAction(app.id))
+    unwrapActionResult(await requestApplicationStartAction(app.id))
   }, 'Could not restart app')
   setActionPhase(null)
   return didSucceed

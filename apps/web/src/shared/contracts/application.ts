@@ -8,6 +8,10 @@ export type AndroidApplication = Omit<OrchestratorApiSchemas['AndroidApplication
 }
 
 export type ApplicationCommandResult = OrchestratorApiSchemas['ApplicationCommandResultDto']
+export type ApplicationPowerAcknowledgement = Pick<
+  ApplicationCommandResult,
+  'status' | 'lifecycleStage' | 'message' | 'profile'
+>
 export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicationSummaryResponseDto']
 export type AndroidApplicationStatus = AndroidApplication['status']['currentStatus']
 export type AndroidApplicationLifecycleStage = AndroidApplication['status']['lifecycleStage']

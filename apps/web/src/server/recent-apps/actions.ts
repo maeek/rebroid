@@ -4,7 +4,7 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { listVisibleRecentApps } from './service'
-import { forgetStoredRecentApp, rememberStoredRecentApp } from './store'
+import { rememberStoredRecentApp } from './store'
 
 export const listRecentAppsAction = listVisibleRecentApps
 
@@ -16,11 +16,5 @@ export const rememberRecentAppAction = async (appId: string) => {
   }
 
   rememberStoredRecentApp(user.ownerUserId, appId)
-  return listVisibleRecentApps()
-}
-
-export const forgetRecentAppAction = async (appId: string) => {
-  const user = await getCurrentUserContext()
-  forgetStoredRecentApp(user.ownerUserId, appId)
   return listVisibleRecentApps()
 }

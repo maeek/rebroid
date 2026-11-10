@@ -4,9 +4,9 @@ import { IconCopy, IconLoader2 } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
-import { cloneApplicationForCurrentUserAction } from '@/server/orchestrator/applications/actions/lifecycle/clone-actions'
+import { requestApplicationCloneAction } from '@/server/orchestrator/applications/actions/lifecycle/clone-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
@@ -28,13 +28,12 @@ export const AppViewerOpenAsMeAction = ({ app }: AppViewerOpenAsMeActionProps) =
         }
 
         void runAction(async () => {
-          const cloned = await cloneApplicationForCurrentUserAction(app.id)
-          const mapped = mapAndroidApplicationToAppDefinition(cloned)
+          const cloned = unwrapActionResult(await requestApplicationCloneAction(app.id))
           toast({
             title: 'Opening your own copy',
             description: 'A separate app session is being prepared for your profile.'
           })
-          router.push(`/app/${mapped.id}`)
+          router.push(`/app/${cloned.id}`)
         }, 'Could not open app as your copy')
       }}
     >

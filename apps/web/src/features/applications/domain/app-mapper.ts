@@ -1,7 +1,24 @@
 import { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AndroidApplication, ApplicationPowerAcknowledgement } from '@/shared/contracts/application'
 
 const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
+
+export const applyApplicationPowerAcknowledgement = (
+  app: AppDefinition,
+  command: ApplicationPowerAcknowledgement
+): AppDefinition => ({
+  ...app,
+  running: command.status === 'running',
+  status: command.status,
+  lifecycleStage: command.lifecycleStage,
+  statusMessage: command.message,
+  statusDetail: app.lifecycleStage === command.lifecycleStage ? app.statusDetail : null,
+  ...(command.profile && {
+    profileMode: command.profile.mode,
+    profileName: command.profile.name,
+    container: { ...app.container, persistentStorage: command.profile.mode === 'persistent' }
+  })
+})
 
 export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): AppDefinition => ({
   id: app.id,

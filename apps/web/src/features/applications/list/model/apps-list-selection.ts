@@ -74,5 +74,5 @@ export const summarizeBulkDeleteAppsResult = (
     }
   }
 
-  return { title: 'Selected apps deleted' }
+  return { title: 'Removal requested for selected apps' }
 }

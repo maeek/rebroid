@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { requestApplicationStartAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
 import type { RecentApp } from '@/shared/contracts/recent-app'
@@ -35,7 +36,7 @@ export const RecentAppLink = ({
     router.push(`/app/${app.id}`)
     onNavigate?.()
     try {
-      await startApplicationAction(app.id)
+      unwrapActionResult(await requestApplicationStartAction(app.id))
       onStarted()
     } catch {
       // The destination page surfaces the runtime error state after navigation.

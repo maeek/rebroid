@@ -5,7 +5,7 @@ import { sanitizeAndroidApplicationForUser } from '../../safety'
 
 export type CurrentUserContext = Awaited<ReturnType<typeof getCurrentUserContext>>
 
-const getAccessibleApplication = async (id: string) => {
+export const getAccessibleApplication = async (id: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(id)
   if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {

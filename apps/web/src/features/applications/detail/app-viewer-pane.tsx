@@ -4,13 +4,14 @@ import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconShieldLock } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { applyApplicationPowerAcknowledgement } from '@/features/applications/domain/app-mapper'
 import { DisplayViewerEmbed } from '@/features/applications/viewer/display/display-viewer-embed'
 import { AppViewer } from '@/features/applications/viewer/player/android-viewer'
 import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
-import { startApplicationAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { requestApplicationStartAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { StateView } from '@/shared/ui/state-view'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
@@ -48,8 +49,11 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
 
     startTransition(async () => {
       try {
-        const nextApp = await startApplicationAction(app.id)
-        setApp(mapAndroidApplicationToAppDefinition(nextApp))
+        const command = unwrapActionResult(await requestApplicationStartAction(app.id))
+        setApp(current => {
+          if (current?.id !== app.id || current.updatedAt.getTime() > app.updatedAt.getTime()) return current
+          return applyApplicationPowerAcknowledgement(current, command)
+        })
       } catch (error) {
         toast({
           title: 'Could not start app',

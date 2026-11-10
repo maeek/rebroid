@@ -100,12 +100,14 @@ export const setStoredAppIcon = async (appId: string, icon: string) => {
 }
 
 export const removeStoredAppIcon = async (appId: string) => {
-  await Promise.all([
-    unlink(iconPath(appId)).catch(() => undefined),
-    unlink(iconFilePath(appId, 'png')).catch(() => undefined),
-    unlink(iconFilePath(appId, 'jpg')).catch(() => undefined),
-    unlink(iconFilePath(appId, 'webp')).catch(() => undefined)
-  ])
+  const paths = [iconPath(appId), ...['png', 'jpg', 'webp'].map(extension => iconFilePath(appId, extension))]
+  await Promise.all(
+    paths.map(path =>
+      unlink(path).catch((error: NodeJS.ErrnoException) => {
+        if (error.code !== 'ENOENT') throw error
+      })
+    )
+  )
 }
 
 export const cloneStoredAppIcon = async (sourceAppId: string, targetAppId: string) => {

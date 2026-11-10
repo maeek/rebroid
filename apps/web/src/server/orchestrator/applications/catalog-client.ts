@@ -65,8 +65,8 @@ export const orchestratorAppCatalogClient = {
     return emptyRequest<AndroidApplicationSummary[]>(`/apps/summaries${query}`)
   },
 
-  getApplication(id: string) {
-    return emptyRequest<AndroidApplication>(`/apps/${id}`)
+  getApplication(id: string, signal?: AbortSignal) {
+    return emptyRequest<AndroidApplication>(`/apps/${id}`, { signal })
   },
 
   cloneApplication(id: string, input: CloneApplicationInput, maxOpenApps: number | null, actor: ApplicationImageActor) {

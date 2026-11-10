@@ -1,51 +1,62 @@
 'use server'
 
+import { runSafeAction } from '@/server/actions/safe-action'
 import { cloneStoredAppIcon } from '@/server/app-icons/store'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { logger } from '@/server/observability/logger'
+import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
-import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
-import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
+import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
+import { assertCanOpenApplicationSlot, getAccessibleApplication } from '../common/action-helpers'
 
-export const cloneApplicationForCurrentUserAction = async (id: string) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
-    throw new PublicActionError('You do not have permission to create applications.', {
-      code: 'forbidden',
-      status: 403
-    })
-  }
+export const requestApplicationCloneAction = async (id: string) =>
+  runSafeAction(
+    async requestId => {
+      if (!isApplicationId(id)) {
+        throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
+      }
+      const { app: source, user } = await getAccessibleApplication(id)
+      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
+        throw new PublicActionError('You do not have permission to create applications.', {
+          code: 'forbidden',
+          status: 403
+        })
+      }
 
-  const source = await orchestratorAppCatalogClient.getApplication(id)
-  enforceResourceQuotas(source.runtime.resources, user.quotas)
-  enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, user.quotas)
-  await assertCanOpenApplicationSlot(user)
-  const command = await orchestratorAppCatalogClient.cloneApplication(
-    id,
-    {
-      ownerUserId: user.ownerUserId
+      enforceResourceQuotas(source.runtime.resources, user.quotas)
+      enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, user.quotas)
+      await assertCanOpenApplicationSlot(user)
+      const command = await orchestratorAppCatalogClient.cloneApplication(
+        id,
+        {
+          ownerUserId: user.ownerUserId
+        },
+        user.quotas.maxOpenApps,
+        user
+      )
+      if (!isApplicationId(command.id)) throw new Error('The orchestrator returned an invalid application ID.')
+      recordAuditEvent({
+        actorUserId: user.ownerUserId,
+        actorLabel: user.ownerUserId,
+        category: 'application',
+        action: 'application.clone',
+        resourceType: 'application',
+        resourceId: command.id,
+        resourceLabel: command.name,
+        details: { sourceApplicationId: id }
+      })
+      try {
+        await cloneStoredAppIcon(id, command.id)
+      } catch {
+        logger.warn('application.clone_icon_failed', { requestId, applicationId: command.id })
+      }
+      revalidateApplicationList()
+      revalidateApplicationDetail(id)
+      revalidateApplicationDetail(command.id)
+      return { id: command.id }
     },
-    user.quotas.maxOpenApps,
-    user
+    { fallbackMessage: 'Could not open app as your copy.' }
   )
-  await cloneStoredAppIcon(id, command.id)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.clone',
-    resourceType: 'application',
-    resourceId: command.id,
-    resourceLabel: command.name,
-    details: { sourceApplicationId: id }
-  })
-  revalidateApplicationList()
-  revalidateApplicationDetail(id)
-  const app = await orchestratorAppCatalogClient.getApplication(command.id)
-  revalidateApplicationDetail(app.id)
-  return sanitizeAndroidApplicationForUser(app, user)
-}

@@ -85,7 +85,7 @@ describe('apps list selection model', () => {
       variant: 'danger'
     })
     expect(summarizeBulkDeleteAppsResult(fulfilledResults, ['app-1'])).toEqual({
-      title: 'Selected apps deleted'
+      title: 'Removal requested for selected apps'
     })
     expect(summarizeBulkDeleteAppsResult(mixedResults, ['app-1'])).toEqual({
       title: 'Some apps could not be deleted',
