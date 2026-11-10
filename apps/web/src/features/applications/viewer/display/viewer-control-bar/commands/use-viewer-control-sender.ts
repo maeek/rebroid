@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { viewerControlCommandEventType } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 import { toast } from '@/hooks/use-toast'
 import { sendApplicationViewerControlAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
@@ -19,24 +19,19 @@ const controlErrorDescription = (error: unknown) => {
   return message
 }
 
-const clearLocalPendingTimer = (timerRef: { current: number | null }) => {
-  if (timerRef.current !== null) {
-    window.clearTimeout(timerRef.current)
-    timerRef.current = null
-  }
-}
-
 const dispatchLocalViewerCommand = (command: ApplicationViewerControlCommand, surfaceId?: string) => {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  return !window.dispatchEvent(
-    new CustomEvent<ViewerControlCommandEventDetail>(viewerControlCommandEventType, {
-      cancelable: true,
-      detail: { command, surfaceId }
-    })
-  )
+  let onResult: (error?: string) => void = () => undefined
+  const result = new Promise<void>((resolve, reject) => {
+    onResult = error => {
+      if (error) reject(new Error(error))
+      else resolve()
+    }
+  })
+  const event = new CustomEvent<ViewerControlCommandEventDetail>(viewerControlCommandEventType, {
+    cancelable: true,
+    detail: { command, surfaceId, onResult }
+  })
+  return window.dispatchEvent(event) ? undefined : result
 }
 
 export const useViewerControlSender = ({
@@ -50,12 +45,7 @@ export const useViewerControlSender = ({
 }) => {
   const [pendingCommand, setPendingCommand] = useState<ApplicationViewerControlCommand | null>(null)
   const [isPending, startTransition] = useTransition()
-  const localPendingTimer = useRef<number | null>(null)
   const controlsDisabled = baseControlsDisabled || isPending
-
-  useEffect(() => {
-    return () => clearLocalPendingTimer(localPendingTimer)
-  }, [])
 
   const sendControl = (command: ApplicationViewerControlCommand) => {
     if (controlsDisabled) {
@@ -64,15 +54,12 @@ export const useViewerControlSender = ({
 
     setPendingCommand(command)
 
-    if (dispatchLocalViewerCommand(command, surfaceId)) {
-      clearLocalPendingTimer(localPendingTimer)
-      localPendingTimer.current = window.setTimeout(() => setPendingCommand(null), 160)
-      return
-    }
-
     startTransition(async () => {
       try {
-        await sendApplicationViewerControlAction(appId, command)
+        const local = dispatchLocalViewerCommand(command, surfaceId)
+        if (local) await local
+        else if (!surfaceId || surfaceId === 'main') await sendApplicationViewerControlAction(appId, command)
+        else throw new Error('This display is not connected.')
       } catch (error) {
         toast({
           title: 'Viewer command failed',

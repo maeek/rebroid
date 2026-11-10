@@ -64,6 +64,7 @@ export function setupTouchInput({
 
   target.addEventListener("pointerdown", (event) => {
     if (
+      pointerStart ||
       target.classList.contains("hidden") ||
       (event.pointerType === "mouse" && event.button !== 0)
     ) {

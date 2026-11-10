@@ -13,9 +13,13 @@ const requests: DisplayControlRequest[] = [
   { type: "clipboard", text: "hello" },
 ];
 
-const service = (handledByStream: boolean, reconnecting = false) => {
+const service = (
+  handledByStream: boolean,
+  reconnecting = false,
+  surfaceKind = "main",
+) => {
   const sessions = {
-    get: () => ({ udid: "127.0.0.1:5555" }),
+    get: () => ({ id: "session", udid: "127.0.0.1:5555", surfaceKind }),
     assertCapability: () => undefined,
     touch: () => undefined,
   } as unknown as DisplaySessionService;
@@ -48,6 +52,22 @@ test("all control kinds share stream and ADB fallback semantics", async () => {
   }
 });
 
+test("virtual surfaces use stream control and reject device-wide ADB fallback", async () => {
+  for (const request of requests) {
+    assert.equal(
+      (await service(true, false, "virtual").execute("session", request))
+        .transport,
+      "stream-control",
+    );
+    await assert.rejects(
+      service(false, false, "virtual").execute("session", request),
+      {
+        message: "Live controls are reconnecting. Try again in a moment.",
+      },
+    );
+  }
+});
+
 test("controls expose stable invalid and reconnecting errors", async () => {
   await assert.rejects(
     service(true).execute("session", { type: "action", command: "invalid" }),
@@ -71,5 +91,21 @@ test("unknown control types cannot fall through to clipboard execution", async (
       type: "unknown",
       text: "secret",
     } as unknown as DisplayControlRequest),
+  );
+});
+
+test("does not acknowledge a live pointer phase as executed by ADB", async () => {
+  await assert.rejects(
+    service(false).execute("session", {
+      type: "touch",
+      action: "pointer",
+      eventType: "up",
+      x: 12,
+      y: 15,
+    }),
+    (error: unknown) =>
+      JSON.stringify(
+        (error as { getResponse: () => unknown }).getResponse(),
+      ).includes("control_reconnecting"),
   );
 });

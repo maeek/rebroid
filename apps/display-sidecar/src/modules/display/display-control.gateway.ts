@@ -54,16 +54,18 @@ export class DisplayControlGateway implements OnGatewayConnection {
       return;
     }
 
+    const id =
+      typeof message.id === "string" ? message.id.slice(0, 128) : undefined;
     try {
       const result = await this.controls.execute(sessionId, message);
-      this.send(client, { id: message.id, ok: true, ...result });
+      this.send(client, { id, ok: true, ...result });
     } catch (error) {
       const failure = displayControlError(error);
       this.logger.debug(
         `[display-control:${sessionId}] control message failed: ${failure.code}`,
       );
       this.send(client, {
-        id: message.id,
+        id,
         ...failure,
       });
     }

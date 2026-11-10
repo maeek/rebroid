@@ -19,6 +19,7 @@ export const SurfacePanel = ({
   chromeActions?: ReactNode
 }) => {
   const {
+    canControl,
     controlsEnabled,
     fullscreenSurface,
     isActive,
@@ -76,7 +77,8 @@ export const SurfacePanel = ({
           >
             <DisplayViewerFrame
               src={surface.src}
-              keyboardCaptureEnabled={keyboardCaptureEnabled}
+              keyboardCaptureEnabled={canControl && keyboardCaptureEnabled}
+              isActive={isActive}
               onStreamMetrics={onStreamMetrics}
               onStreamStatus={onStreamStatus}
               surfaceId={surface.id}
