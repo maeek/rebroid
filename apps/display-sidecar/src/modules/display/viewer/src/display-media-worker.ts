@@ -415,6 +415,7 @@ async function decodeVideo(
     if (!next.sps || !next.pps) {
       throw new Error("H.264 configuration is missing SPS or PPS.");
     }
+    if (frame.discontinuity) resetVideoDecoderAdmission();
     cachedConfiguration = frame.data.slice();
     needsKeyFrame = true;
     codecName = next.codec;
@@ -439,7 +440,7 @@ async function decodeVideo(
           : undefined;
     }
     if (rendererMode === "mse") {
-      resetVideoAdmission();
+      if (!frame.discontinuity) resetVideoAdmission();
       return;
     }
     await configureVideo(next.codec, expectedGeneration);
@@ -460,7 +461,9 @@ async function decodeVideo(
   lastReceivedPtsUs = frame.timestampUs;
 
   if (frame.discontinuity) {
-    localVideoRecovery("rbd1-discontinuity");
+    if (!frame.keyFrame || !cachedConfiguration)
+      localVideoRecovery("rbd1-discontinuity");
+    else if (!needsKeyFrame) resetVideoDecoderAdmission();
   }
   if (decoder && decoder.decodeQueueSize >= maxDecodeQueue) {
     decodeDroppedFrames += decoder.decodeQueueSize + 1;
@@ -594,7 +597,7 @@ function resetVideoAdmission(): void {
     scope.postMessage({ type: "mse-reset", epoch: videoEpoch });
 }
 
-function localVideoRecovery(reason: string): void {
+function resetVideoDecoderAdmission(): void {
   resetVideoAdmission();
   closeVideoDecoder();
   if (pendingFrame) {
@@ -602,6 +605,10 @@ function localVideoRecovery(reason: string): void {
     pendingFrame = null;
     presentationDroppedFrames += 1;
   }
+}
+
+function localVideoRecovery(reason: string): void {
+  resetVideoDecoderAdmission();
   requestVideoResync(reason);
 }
 

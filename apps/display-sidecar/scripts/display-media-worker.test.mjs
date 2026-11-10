@@ -10,12 +10,19 @@ const configuration = annexB(
 const keyFrame = annexB([0x65, 0x88, 0x84]);
 const deltaFrame = annexB([0x41, 0x9a, 0x20]);
 
-const rbd1 = ({ sequence, timestampUs, config = false, key = false, data }) => {
+const rbd1 = ({
+  sequence,
+  timestampUs,
+  config = false,
+  key = false,
+  discontinuity = false,
+  data,
+}) => {
   const buffer = new ArrayBuffer(24 + data.byteLength);
   const bytes = new Uint8Array(buffer);
   bytes.set([0x52, 0x42, 0x44, 0x31, 1, 1]);
   const view = new DataView(buffer);
-  view.setUint16(6, (config ? 1 : 0) | (key ? 2 : 0));
+  view.setUint16(6, (config ? 1 : 0) | (key ? 2 : 0) | (discontinuity ? 4 : 0));
   view.setUint32(8, sequence);
   view.setBigUint64(12, BigInt(timestampUs));
   view.setUint32(20, data.byteLength);
@@ -168,6 +175,7 @@ test("media worker renders only the newest frame and recovers locally from backl
       sequence: 0,
       timestampUs: 0,
       config: true,
+      discontinuity: true,
       data: configuration,
     }),
   });
@@ -177,6 +185,7 @@ test("media worker renders only the newest frame and recovers locally from backl
       sequence: 1,
       timestampUs: 1_000,
       key: true,
+      discontinuity: true,
       data: keyFrame,
     }),
   });
@@ -188,6 +197,8 @@ test("media worker renders only the newest frame and recovers locally from backl
   });
   await flush();
 
+  assert.equal(FakeVideoDecoder.instances.length, 1);
+  assert.deepEqual(socket.sent, []);
   assert.equal(animationFrames.length, 1);
   animationFrames.shift()(performance.now());
   assert.equal(draws.length, 1);
@@ -212,6 +223,43 @@ test("media worker renders only the newest frame and recovers locally from backl
   socket.emit("message", { data: new ArrayBuffer(3) });
   await flush();
   assert.equal(socket.closeCalls.at(-1).code, 4000);
+});
+
+test("a discontinuous IDR without configuration requests a resync", async (t) => {
+  globalThis.WebSocket = FakeWebSocket;
+  globalThis.postMessage = () => undefined;
+  globalThis.close = () => undefined;
+  await import(
+    new URL(
+      "../dist/modules/display/viewer/assets/display-media-worker.js?missing-config",
+      import.meta.url,
+    )
+  );
+  t.after(() => globalThis.onmessage({ data: { type: "close" } }));
+  globalThis.onmessage({
+    data: {
+      type: "init",
+      url: "wss://example.test/rebroid/display/stream",
+      canvas: {},
+      audio: false,
+      renderer: "mse",
+    },
+  });
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  socket.emit("message", {
+    data: rbd1({
+      sequence: 0,
+      timestampUs: 1_000,
+      key: true,
+      discontinuity: true,
+      data: keyFrame,
+    }),
+  });
+  await flush();
+  const [request] = socket.sent.map((message) => JSON.parse(message));
+  assert.equal(request?.type, "video-resync-request");
+  assert.equal(request?.reason, "rbd1-discontinuity");
 });
 
 test("an expired WebSocket session stops retrying the stale grant", async (t) => {
