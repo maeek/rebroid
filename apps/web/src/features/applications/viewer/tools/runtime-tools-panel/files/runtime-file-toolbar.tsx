@@ -1,8 +1,24 @@
 import type { Ref } from 'react'
-import { IconChevronDown, IconChevronRight, IconFolder, IconFolderPlus, IconUpload } from '@tabler/icons-react'
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconFolder,
+  IconFolderDown,
+  IconFolderPlus,
+  IconUpload
+} from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { runtimeFileLocations, runtimePathForPartIndex, runtimePathParts } from './downloads-tools-section-model'
+import {
+  runtimeDownloadsPath,
+  runtimeFileLocations,
+  runtimeInternalStoragePath,
+  runtimePathForPartIndex,
+  runtimePathParts
+} from './downloads-tools-section-model'
+
+const quickLocations = runtimeFileLocations.slice(0, 3)
+const otherLocations = runtimeFileLocations.slice(3)
 
 export const RuntimeFileToolbar = ({
   canManageFiles,
@@ -22,25 +38,52 @@ export const RuntimeFileToolbar = ({
   onUpload: () => void
 }) => {
   const pathParts = runtimePathParts(currentPath)
+  const breadcrumbs = pathParts.flatMap((part, index) => {
+    const path = runtimePathForPartIndex(pathParts, index)
+    if (currentPath.startsWith(`${runtimeInternalStoragePath}/`) || currentPath === runtimeInternalStoragePath) {
+      if (path.length < runtimeInternalStoragePath.length) return []
+    }
+    return [{ path, label: runtimeFileLocations.find(location => location.path === path)?.label ?? part }]
+  })
 
   return (
-    <div className='grid min-w-0 gap-3'>
-      <div className='flex min-w-0 flex-wrap items-center justify-between gap-2'>
+    <div className='grid min-w-0 gap-4'>
+      <nav
+        aria-label='File locations'
+        className='flex min-w-0 flex-wrap items-center gap-1'
+      >
+        {quickLocations.map(({ label, path }) => {
+          const selected = currentPath === path
+          const Icon = path === runtimeDownloadsPath ? IconFolderDown : IconFolder
+          return (
+            <Button
+              key={path}
+              type='button'
+              size='sm'
+              variant={selected ? 'secondary' : 'ghost'}
+              aria-current={selected ? 'location' : undefined}
+              disabled={disabled}
+              onClick={() => onPathChange(path)}
+            >
+              <Icon className='size-4' />
+              {label}
+            </Button>
+          )
+        })}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               type='button'
               size='sm'
-              variant='outline'
+              variant='ghost'
               disabled={disabled}
             >
-              <IconFolder className='size-4' />
-              Locations
+              More folders
               <IconChevronDown className='size-3.5' />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='start'>
-            {runtimeFileLocations.map(location => (
+            {otherLocations.map(location => (
               <DropdownMenuItem
                 key={location.path}
                 aria-current={currentPath === location.path ? 'location' : undefined}
@@ -51,6 +94,49 @@ export const RuntimeFileToolbar = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+      </nav>
+      <div className='flex min-w-0 flex-wrap items-center justify-between gap-3'>
+        <nav
+          aria-label='Current folder'
+          className='min-w-0'
+        >
+          <ol className='flex min-w-0 flex-wrap items-center gap-x-1 text-sm'>
+            {breadcrumbs.map(({ label, path }, index) => (
+              <li
+                key={path}
+                className='flex min-w-0 items-center gap-1'
+              >
+                {index > 0 ? (
+                  <IconChevronRight
+                    aria-hidden
+                    className='size-3 shrink-0 text-foreground-muted'
+                  />
+                ) : null}
+                {path === currentPath ? (
+                  <span
+                    ref={currentFolderRef}
+                    className='min-w-0 break-all px-1 font-medium'
+                    aria-current='location'
+                    tabIndex={-1}
+                  >
+                    {label}
+                  </span>
+                ) : (
+                  <Button
+                    type='button'
+                    size='sm'
+                    variant='ghost'
+                    className='h-auto min-w-0 whitespace-normal break-all px-1 text-left text-foreground-muted'
+                    disabled={disabled}
+                    onClick={() => onPathChange(path)}
+                  >
+                    {label}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ol>
+        </nav>
         <div className='flex flex-wrap gap-2'>
           {canManageFiles ? (
             <Button
@@ -75,50 +161,6 @@ export const RuntimeFileToolbar = ({
           </Button>
         </div>
       </div>
-      <nav
-        aria-label='Current folder'
-        className='min-w-0'
-      >
-        <ol className='flex min-w-0 flex-wrap items-center gap-x-1 text-sm'>
-          {pathParts.map((part, index) => {
-            const path = runtimePathForPartIndex(pathParts, index)
-            return (
-              <li
-                key={path}
-                className='flex min-w-0 items-center gap-1'
-              >
-                {index > 0 ? (
-                  <IconChevronRight
-                    aria-hidden
-                    className='size-3 shrink-0 text-foreground-muted'
-                  />
-                ) : null}
-                {path === currentPath ? (
-                  <span
-                    ref={currentFolderRef}
-                    className='min-w-0 break-all px-1 font-medium'
-                    aria-current='location'
-                    tabIndex={-1}
-                  >
-                    {part}
-                  </span>
-                ) : (
-                  <Button
-                    type='button'
-                    size='sm'
-                    variant='bare'
-                    className='h-auto min-w-0 whitespace-normal break-all px-1 text-left text-foreground-muted'
-                    disabled={disabled}
-                    onClick={() => onPathChange(path)}
-                  >
-                    {part}
-                  </Button>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
     </div>
   )
 }

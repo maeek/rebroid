@@ -66,7 +66,8 @@ export const RuntimeFileList = ({
   onRefresh,
   onRename,
   onSearchChange,
-  onSort
+  onSort,
+  onUpload
 }: {
   canManageFiles: boolean
   error: Error | null
@@ -84,14 +85,17 @@ export const RuntimeFileList = ({
   onRename: (entry: ApplicationRuntimeFile) => void
   onSearchChange: (value: string) => void
   onSort: (sort: RuntimeFileSort, direction: RuntimeFileSortDirection) => void
+  onUpload?: () => void
 }) => {
   const listRef = useRef<HTMLDivElement>(null)
-  const [compact, setCompact] = useState(false)
+  const [listWidth, setListWidth] = useState(0)
+  const compact = listWidth > 0 && listWidth < 560
+  const nameWidth = Math.min(720, Math.max(160, listWidth - (compact ? 56 : 356)))
   const [pageSize, setPageSize] = useState(defaultPageSize)
   useEffect(() => {
     const list = listRef.current
     if (!list || typeof ResizeObserver === 'undefined') return
-    const measure = () => setCompact(list.clientWidth < 500)
+    const measure = () => setListWidth(list.clientWidth)
     const observer = new ResizeObserver(measure)
     observer.observe(list)
     measure()
@@ -106,7 +110,7 @@ export const RuntimeFileList = ({
         id: 'name',
         accessorKey: 'name',
         header: 'Name',
-        size: 200,
+        size: nameWidth,
         sortDescFirst: false,
         enableHiding: false,
         enableSorting: !compact,
@@ -157,15 +161,15 @@ export const RuntimeFileList = ({
         id: 'modified',
         accessorKey: 'modifiedAt',
         header: 'Modified',
-        size: 150,
+        size: 192,
         cell: ({ row }) => (
-          <span className='text-foreground-muted'>
+          <span className='whitespace-nowrap text-foreground-muted'>
             {row.original.modifiedAt ? formatDateLocale(row.original.modifiedAt) : '—'}
           </span>
         )
       }
     ],
-    [compact, onOpen, onPrefetch]
+    [compact, nameWidth, onOpen, onPrefetch]
   )
   const changeSort = (nextSort: RuntimeFileSort, direction: RuntimeFileSortDirection) => {
     setPage(0)
@@ -286,7 +290,8 @@ export const RuntimeFileList = ({
             ) : (
               <DataGridEmptyState
                 title='This folder is empty'
-                description='Upload files to this folder or choose another location.'
+                description='Upload or drop files here, or choose another location.'
+                actions={onUpload ? [{ label: 'Upload files', onClick: onUpload }] : undefined}
               />
             )
           }

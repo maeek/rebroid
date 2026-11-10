@@ -14,7 +14,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { downloadDataUrl, runtimeActionErrorToast } from '../runtime-tools-panel.utils'
 import {
   filterAndSortRuntimeFiles,
-  runtimeFilesRootPath,
+  runtimeDownloadsPath,
   type RuntimeFileSort,
   type RuntimeFileSortDirection
 } from './downloads-tools-section-model'
@@ -37,14 +37,14 @@ export const useRuntimeFileBrowser = ({
   runtimeAvailable: boolean
 }) => {
   const queryClient = useQueryClient()
-  const [currentPath, setCurrentPath] = useState(runtimeFilesRootPath)
+  const [currentPath, setCurrentPath] = useState(runtimeDownloadsPath)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedFile, setSelectedFile] = useState<ApplicationRuntimeFile | null>(null)
   const [sort, setSort] = useState<RuntimeFileSort>('name')
   const [sortDirection, setSortDirection] = useState<RuntimeFileSortDirection>('asc')
 
   useEffect(() => {
-    setCurrentPath(runtimeFilesRootPath)
+    setCurrentPath(runtimeDownloadsPath)
     setSearchQuery('')
     setSelectedFile(null)
   }, [appId])

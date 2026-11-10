@@ -5,11 +5,13 @@ export type RuntimeFileSort = 'modified' | 'name' | 'size'
 export type RuntimeFileSortDirection = 'asc' | 'desc'
 
 export const runtimeFilesRootPath = '/data'
+export const runtimeInternalStoragePath = '/data/media/0'
+export const runtimeDownloadsPath = `${runtimeInternalStoragePath}/Download`
 
 export const runtimeFileLocations = [
-  { label: 'Data', path: '/data' },
-  { label: 'Internal storage', path: '/data/media/0' },
-  { label: 'Download', path: '/data/media/0/Download' },
+  { label: 'Downloads', path: runtimeDownloadsPath },
+  { label: 'Internal storage', path: runtimeInternalStoragePath },
+  { label: 'App data', path: runtimeFilesRootPath },
   { label: 'Pictures', path: '/data/media/0/Pictures' },
   { label: 'Movies', path: '/data/media/0/Movies' },
   { label: 'DCIM', path: '/data/media/0/DCIM' },

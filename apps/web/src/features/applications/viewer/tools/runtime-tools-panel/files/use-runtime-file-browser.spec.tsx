@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { runtimeDownloadsPath } from './downloads-tools-section-model'
 import { useRuntimeFileBrowser } from './use-runtime-file-browser'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
@@ -57,6 +58,8 @@ describe('useRuntimeFileBrowser', () => {
       { wrapper }
     )
     await waitFor(() => expect(mocks.getBff).toHaveBeenCalledTimes(1))
+    expect(result.current.currentPath).toBe(runtimeDownloadsPath)
+    expect(mocks.getBff.mock.calls[0][0]).toContain(encodeURIComponent(runtimeDownloadsPath))
 
     act(() => {
       result.current.setSearchQuery('photo')
@@ -92,7 +95,7 @@ describe('useRuntimeFileBrowser', () => {
 
     act(() => result.current.navigateTo('/data/Documents'))
     await waitFor(() => expect(result.current.files.map(entry => entry.name)).toEqual(['Reports']))
-    act(() => result.current.navigateTo('/data'))
+    act(() => result.current.navigateTo(runtimeDownloadsPath))
     expect(result.current.files.map(entry => entry.name)).toEqual(['Documents'])
 
     await act(async () => result.current.prefetchPath('/data/Pictures'))

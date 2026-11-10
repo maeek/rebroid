@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { StateView } from '@/shared/ui/state-view'
-import { runtimeFilesRootPath } from './downloads-tools-section-model'
+import { runtimeDownloadsPath } from './downloads-tools-section-model'
 import { RuntimeFileDialogs } from './runtime-file-dialogs'
 import { RuntimeFileInspector } from './runtime-file-inspector'
 import { RuntimeFileList } from './runtime-file-list'
@@ -146,6 +146,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
           </span>
           <RuntimeFileList
             key={browser.currentPath}
+            onUpload={() => fileInputRef.current?.click()}
             canManageFiles={canManageFiles}
             error={browser.error}
             files={browser.files}
@@ -233,7 +234,7 @@ export const DownloadsToolsLoading = () => (
   <div className='grid min-w-0 gap-4'>
     <RuntimeFileToolbar
       canManageFiles
-      currentPath={runtimeFilesRootPath}
+      currentPath={runtimeDownloadsPath}
       disabled
       onCreateFolder={noop}
       onPathChange={noop}
