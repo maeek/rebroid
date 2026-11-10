@@ -36,7 +36,8 @@ export const GappsBuilderContent = ({
           !resources.canBuild ||
           !controller.preset ||
           !controller.targetImage.trim() ||
-          controller.isClearing
+          controller.isClearing ||
+          controller.isCancelling
         }
         onClick={() => void controller.startBuild()}
       >

@@ -3,9 +3,8 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { terminalBuildStatuses } from '../model/context-selection'
 import { gappsBuildPhases } from '../model/gapps-build'
-import { useActiveBuildPolling } from './use-active-build-polling'
+import { useActiveImageBuild } from './use-active-image-build'
 import type {
   ContainerImageBuildJob,
   GappsBuildPreset,
@@ -50,18 +49,19 @@ export const useGappsBuildController = ({
     [androidVersion, presetResponse.presets]
   )
   const [targetImage, setTargetImage] = useState(preset?.defaultTargetImage ?? 'local/redroid-gapps:14')
-  const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(
-    () => jobs.find(job => job.buildKind === 'redroid_gapps_patch') ?? null
-  )
-  const startPending = useRef(false)
+  const {
+    activeJob,
+    isIdle,
+    isRunning,
+    isStarting,
+    isCancelling,
+    startBuild: startActiveBuild,
+    cancelBuild
+  } = useActiveImageBuild(jobs.find(job => job.buildKind === 'redroid_gapps_patch') ?? null)
   const [isSettingDefault, setIsSettingDefault] = useState(false)
-  const [isStarting, setIsStarting] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
-  const isRunning = activeJob ? !terminalBuildStatuses.includes(activeJob.status) : false
+  const clearing = useRef(false)
   const currentPhaseIndex = gappsBuildPhases.findIndex(phase => phase.id === (activeJob?.phase ?? 'queued'))
-
-  useActiveBuildPolling(activeJob, setActiveJob)
 
   const selectVersion = (version: SupportedGappsAndroidVersion) => {
     const nextPreset = presetResponse.presets.find(item => item.androidVersion === version)
@@ -70,52 +70,11 @@ export const useGappsBuildController = ({
   }
 
   const startBuild = async () => {
-    if (
-      startPending.current ||
-      isRunning ||
-      isClearing ||
-      !presetResponse.resources.canBuild ||
-      !preset ||
-      !targetImage.trim()
+    if (clearing.current || !presetResponse.resources.canBuild || !preset || !targetImage.trim()) return
+    await startActiveBuild(
+      () => sendBff<ContainerImageBuildJob>('/api/bff/platform/image-builds/gapps', { androidVersion, targetImage }),
+      'Google Play image queued'
     )
-      return
-    startPending.current = true
-    setIsStarting(true)
-    try {
-      const job = await sendBff<ContainerImageBuildJob>('/api/bff/platform/image-builds/gapps', {
-        androidVersion,
-        targetImage
-      })
-      setActiveJob(job)
-      toast({ title: 'Google Play image queued', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not start build',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      startPending.current = false
-      setIsStarting(false)
-    }
-  }
-
-  const cancelBuild = async () => {
-    if (!activeJob) return
-    setIsCancelling(true)
-    try {
-      setActiveJob(
-        await sendBff<ContainerImageBuildJob>(
-          `/api/bff/platform/image-builds/${encodeURIComponent(activeJob.id)}/cancel`,
-          {}
-        )
-      )
-      toast({ title: 'Build cancelled', variant: 'success' })
-    } catch (error) {
-      toast({ title: 'Could not cancel build', description: getDisplayErrorMessage(error), variant: 'danger' })
-    } finally {
-      setIsCancelling(false)
-    }
   }
 
   const setAsDefault = async () => {
@@ -136,7 +95,8 @@ export const useGappsBuildController = ({
   }
 
   const clearCache = async () => {
-    if (isClearing || isRunning || isStarting) return
+    if (clearing.current || !isIdle()) return
+    clearing.current = true
     setIsClearing(true)
     try {
       await sendBff<unknown>('/api/bff/platform/image-builds/gapps/cache', { androidVersion }, 'DELETE')
@@ -144,6 +104,7 @@ export const useGappsBuildController = ({
     } catch (error) {
       toast({ title: 'Could not clear cache', description: getDisplayErrorMessage(error), variant: 'danger' })
     } finally {
+      clearing.current = false
       setIsClearing(false)
     }
   }

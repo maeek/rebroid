@@ -21,6 +21,7 @@ type GappsConfigurationState = Pick<
   | 'setTargetImage'
   | 'isRunning'
   | 'isStarting'
+  | 'isCancelling'
   | 'isClearing'
   | 'clearCache'
 >
@@ -34,7 +35,8 @@ export const GappsBuildConfiguration = ({
   resources: GappsBuildPresetsResponse['resources']
   loading?: boolean
 }) => {
-  const disabled = loading || controller.isRunning || controller.isStarting || controller.isClearing
+  const disabled =
+    loading || controller.isRunning || controller.isStarting || controller.isCancelling || controller.isClearing
   return (
     <PlatformResourceSection
       surface='plain'

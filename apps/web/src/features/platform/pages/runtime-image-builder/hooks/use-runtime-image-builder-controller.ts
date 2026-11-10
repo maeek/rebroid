@@ -3,7 +3,6 @@
 import { useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { sendBff } from '@/lib/http/bff'
 import {
   createImageBuildRecipeAction,
   removeImageBuildContextFileAction,
@@ -25,12 +24,12 @@ import {
   templateDockerfile,
   type BuilderValues
 } from '../model/builder-values'
-import { maxSelectedContextFiles, mergeContextFiles, terminalBuildStatuses } from '../model/context-selection'
+import { maxSelectedContextFiles, mergeContextFiles } from '../model/context-selection'
 import { parseDockerfileContextReferences } from '../model/dockerfile-context-parser'
 import { resolveDockerfileContextReferences } from '../model/dockerfile-context-resolver'
 import { uploadResolvedContextReferences } from '../model/dockerfile-context-upload-planner'
 import { uploadRuntimeImageContextFile } from '../upload-runtime-image-context-file'
-import { useActiveBuildPolling } from './use-active-build-polling'
+import { useActiveImageBuild } from './use-active-image-build'
 import type { LocalBuildContextFile } from '../model/dockerfile-context-types'
 import type {
   ContainerImageBuildContextFile,
@@ -69,14 +68,16 @@ export const useRuntimeImageBuilderController = ({
     total: number
   } | null>(null)
   const [isSavingRecipe, setIsSavingRecipe] = useState(false)
-  const [activeJob, setActiveJob] = useState<ContainerImageBuildJob | null>(
-    () => jobs.find(job => job.buildKind === 'dockerfile_overlay') ?? null
-  )
-  const startPending = useRef(false)
+  const {
+    activeJob,
+    isRunning: isActiveJobRunning,
+    isStarting,
+    isCancelling,
+    startBuild: startActiveBuild,
+    cancelBuild
+  } = useActiveImageBuild(jobs.find(job => job.buildKind === 'dockerfile_overlay') ?? null)
   const [isSettingDefault, setIsSettingDefault] = useState(false)
   const [removingContextFileId, setRemovingContextFileId] = useState<string | null>(null)
-  const [isStarting, setIsStarting] = useState(false)
-  const [isCancelling, setIsCancelling] = useState(false)
   const dockerfileContextReferences = useMemo(
     () => parseDockerfileContextReferences(values.dockerfile),
     [values.dockerfile]
@@ -103,16 +104,14 @@ export const useRuntimeImageBuilderController = ({
     () => resolvedContextReferences.filter(reference => reference.status === 'uploadable').length,
     [resolvedContextReferences]
   )
-  const isActiveJobRunning = activeJob ? !terminalBuildStatuses.includes(activeJob.status) : false
   const canStart =
     validation.errors.length === 0 &&
     !isStarting &&
+    !isCancelling &&
     !isUploading &&
     !isUploadingDetectedContext &&
     !isActiveJobRunning &&
     !removingContextFileId
-
-  useActiveBuildPolling(activeJob, setActiveJob)
 
   const patchValues = (patch: Partial<BuilderValues>) => setValues(current => ({ ...current, ...patch }))
   const applyTemplate = (androidVersion: string) => {
@@ -290,13 +289,11 @@ export const useRuntimeImageBuilderController = ({
   }
 
   const startBuild = async () => {
-    if (!canStart || startPending.current) return
-    startPending.current = true
-    setIsStarting(true)
-    try {
+    if (!canStart) return
+    await startActiveBuild(async () => {
       const resolvedContextFileIds =
         detectedUploadableCount > 0 ? await uploadDetectedContext() : selectedContextFileIds
-      const job = unwrapActionResult(
+      return unwrapActionResult(
         await startImageBuildAction({
           ...values,
           androidVersion: values.androidVersion || null,
@@ -304,40 +301,7 @@ export const useRuntimeImageBuilderController = ({
           contextFileIds: [...resolvedContextFileIds]
         })
       )
-      setActiveJob(job)
-      toast({ title: 'Build started', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not start build',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      startPending.current = false
-      setIsStarting(false)
-    }
-  }
-
-  const cancelBuild = async () => {
-    if (!activeJob) return
-    setIsCancelling(true)
-    try {
-      setActiveJob(
-        await sendBff<ContainerImageBuildJob>(
-          `/api/bff/platform/image-builds/${encodeURIComponent(activeJob.id)}/cancel`,
-          {}
-        )
-      )
-      toast({ title: 'Build cancelled', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not cancel build',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsCancelling(false)
-    }
+    }, 'Build started')
   }
 
   const setAsDefault = async () => {

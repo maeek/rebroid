@@ -10,7 +10,7 @@ import { useRuntimeImageBuilderController } from './use-runtime-image-builder-co
 import type { ContainerImageBuildContextFile, ContainerImageBuildJob } from '@/shared/contracts/platform'
 
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
-vi.mock('@/lib/http/bff', () => ({ sendBff: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 vi.mock('@/server/orchestrator/platform/image-actions', () => ({
   createImageBuildRecipeAction: vi.fn(),
   removeImageBuildContextFileAction: vi.fn(),
@@ -19,7 +19,6 @@ vi.mock('@/server/orchestrator/platform/image-actions', () => ({
 vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
   saveOrchestratorUiSettings: vi.fn()
 }))
-vi.mock('./use-active-build-polling', () => ({ useActiveBuildPolling: vi.fn() }))
 
 const contextFiles = [
   { id: 'apk', contextPath: 'apks/GmsCore.apk' },
