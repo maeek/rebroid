@@ -25,6 +25,17 @@ export interface MediaQueueSnapshot {
 
 const maxVideoFrames = 3;
 const maxVideoSpanUs = 75_000n;
+
+export function canReplayVideoGop(packets: readonly ScrcpyPacket[]): boolean {
+  const first = packets[0];
+  const last = packets.at(-1);
+  return (
+    !first ||
+    !last ||
+    (packets.length <= maxVideoFrames &&
+      last.timestampUs - first.timestampUs <= maxVideoSpanUs)
+  );
+}
 const defaultKeyFrameRecoveryTimeoutMs = 1_500;
 const maxAudioSpanUs = 100_000n;
 const maxAudioFrames = 8;

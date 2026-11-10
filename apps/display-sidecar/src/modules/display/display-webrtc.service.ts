@@ -23,6 +23,7 @@ import { displayControlError } from "./display-control-response";
 import { resolveDisplayStreamProfile } from "./display-stream-profile";
 
 const BRIDGE_SHUTDOWN_GRACE_MS = 1_000;
+const BRIDGE_CONNECT_TIMEOUT_MS = 15_000;
 import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 type WebrtcOfferOptions = {
@@ -53,6 +54,7 @@ type BridgeAttempt = {
   signal: AbortSignal;
   sessionId: string;
   requestVideoReset: (reason: string) => void;
+  onConnected: () => void;
   disableAudio: (message?: string) => void;
 };
 
@@ -86,6 +88,7 @@ export class DisplayWebrtcService {
     const { signal } = attempt;
     let bootstrapAttachment: ScrcpyStreamAttachment | undefined;
     const detachBootstrap = () => {
+      signal.removeEventListener("abort", detachBootstrap);
       const attachment = bootstrapAttachment;
       bootstrapAttachment = undefined;
       attachment?.detach("WebRTC bootstrap finished");
@@ -131,9 +134,6 @@ export class DisplayWebrtcService {
     } catch (error) {
       this.finishAttempt(options.sessionId, attempt);
       throw error;
-    } finally {
-      signal.removeEventListener("abort", detachBootstrap);
-      detachBootstrap();
     }
   }
 
@@ -204,6 +204,7 @@ export class DisplayWebrtcService {
       },
     });
     let attachment: ScrcpyStreamAttachment | null = null;
+    let connectTimer: NodeJS.Timeout | undefined;
     let previousSourceFrames = 0;
     let previousSourceBytes = 0;
     let previousSnapshotAt = Date.now();
@@ -242,6 +243,7 @@ export class DisplayWebrtcService {
     queueMetricsTimer.unref?.();
     const close = () => {
       clearInterval(queueMetricsTimer);
+      clearTimeout(connectTimer);
       attachment?.detach("WebRTC consumer closed");
       sink.close();
     };
@@ -275,10 +277,50 @@ export class DisplayWebrtcService {
       );
     });
 
+    let answerReady = false;
+    let connected = false;
+    const attachMedia = () => {
+      if (!answerReady || !connected || signal.aborted || attachment) return;
+      clearTimeout(connectTimer);
+      try {
+        attachment = bootstrap.attachMedia(sink);
+        if (!attachment) {
+          throw new ServiceUnavailableException(
+            "The video codec generation changed before WebRTC connected.",
+          );
+        }
+        detachBootstrap();
+        sink.sendStatus({
+          type: "webrtc-profile",
+          profileLevelId: bootstrap.profileLevelId,
+          sdpFmtpLine: bootstrap.sdpFmtpLine,
+          width: bootstrap.width,
+          height: bootstrap.height,
+          actualEncoder: bootstrap.actualEncoder,
+          declaredLevelSupportsRequestedRate,
+        });
+        void attachment.closed.then(() =>
+          this.finishAttempt(options.sessionId, attempt),
+        );
+      } catch (error) {
+        this.logger.warn(
+          `[webrtc:${options.sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
+        );
+        this.finishAttempt(
+          options.sessionId,
+          attempt,
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
+    };
     const bridgeAttempt: BridgeAttempt = {
       bridge,
       signal,
       requestVideoReset: (reason) => attachment?.requestVideoReset(reason),
+      onConnected: () => {
+        connected = true;
+        attachMedia();
+      },
       disableAudio,
       sessionId: options.sessionId,
     };
@@ -292,32 +334,26 @@ export class DisplayWebrtcService {
     });
     signal.throwIfAborted();
 
-    try {
-      attachment = bootstrap.attachMedia(sink);
-      if (!attachment) {
-        throw new ServiceUnavailableException(
-          "The video codec generation changed during WebRTC negotiation.",
-        );
-      }
-      detachBootstrap();
-      sink.sendStatus({
-        type: "webrtc-profile",
-        profileLevelId: bootstrap.profileLevelId,
-        sdpFmtpLine: bootstrap.sdpFmtpLine,
-        width: bootstrap.width,
-        height: bootstrap.height,
-        actualEncoder: bootstrap.actualEncoder,
-        declaredLevelSupportsRequestedRate,
-      });
-      void attachment.closed.then(() =>
-        this.finishAttempt(options.sessionId, attempt),
+    if (!bootstrap.isCurrent()) {
+      throw new ServiceUnavailableException(
+        "The video codec generation changed during WebRTC negotiation.",
       );
-    } catch (error) {
-      this.logger.warn(
-        `[webrtc:${options.sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
-      );
-      throw error;
     }
+    // The answer must reach the browser before its SRTP transport can accept
+    // the cached GOP. Keep the bootstrap consumer alive across that gap.
+    answerReady = true;
+    connectTimer = setTimeout(
+      () =>
+        this.finishAttempt(
+          options.sessionId,
+          attempt,
+          new ServiceUnavailableException("WebRTC peer did not connect."),
+        ),
+      BRIDGE_CONNECT_TIMEOUT_MS,
+    );
+    connectTimer.unref();
+    attachMedia();
+    signal.throwIfAborted();
 
     return {
       transport: "webrtc" as const,
@@ -442,6 +478,7 @@ export class DisplayWebrtcService {
       sessionId,
       signal,
       requestVideoReset,
+      onConnected,
       disableAudio,
     }: BridgeAttempt,
     line: string,
@@ -504,6 +541,9 @@ export class DisplayWebrtcService {
       this.logger.debug(
         `[webrtc:${sessionId}] ${message.type === "state" ? message.state : message.message}`,
       );
+      if (message.type === "state" && message.state === "connected") {
+        onConnected();
+      }
     }
   }
 

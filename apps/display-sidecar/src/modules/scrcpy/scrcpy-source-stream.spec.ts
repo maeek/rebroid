@@ -3,6 +3,8 @@ import test from "node:test";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import { ScrcpySourceStream } from "./scrcpy-source-stream";
 import type { ScrcpyMediaSink } from "./scrcpy.types";
+import { QueuedScrcpyMediaSink } from "./scrcpy-media-sink";
+import { setImmediate } from "node:timers/promises";
 
 function fakeSink() {
   let open = true;
@@ -112,6 +114,43 @@ test("one failed consumer does not close another consumer", async () => {
   assert.equal(source.consumerCount(), 1);
   assert.equal(second.video.length, 1);
   assert.equal(source.isOpen(), true);
+});
+
+test("a warm consumer skips an oversized cached GOP and starts at the next IDR", async () => {
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  source.writeVideo(packet(0n, { config: true }));
+  source.writeVideo(packet(1_000n, { keyFrame: true }));
+  for (let i = 1n; i <= 5n; i += 1n) {
+    source.writeVideo(packet(1_000n + i * 16_667n));
+  }
+  const delivered: number[] = [];
+  const sink = new QueuedScrcpyMediaSink({
+    isOpen: () => true,
+    onClose: () => undefined,
+    writeStatus: () => undefined,
+    writeVideo: async (frame) => {
+      delivered.push(frame.readUInt16BE(6));
+    },
+    writeAudio: async () => undefined,
+    close: () => undefined,
+  });
+  const attachment = source.attach(sink);
+  try {
+    source.writeVideo(packet(101_000n));
+    await setImmediate();
+    assert.deepEqual(delivered, []);
+    assert.equal(sink.snapshot().video.awaitingKeyFrame, true);
+    source.writeVideo(packet(118_000n, { keyFrame: true }));
+    source.writeVideo(packet(135_000n));
+    await setImmediate();
+    assert.deepEqual(delivered, [5, 6, 0]);
+  } finally {
+    attachment.detach();
+  }
 });
 
 test("video bootstrap waits for configuration plus IDR and reports the SPS profile", async () => {

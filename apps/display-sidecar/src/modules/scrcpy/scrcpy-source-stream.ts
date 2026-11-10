@@ -8,6 +8,7 @@ import type {
   ScrcpyVideoBootstrap,
 } from "./scrcpy.types";
 import { inspectScrcpyH264Configuration } from "./scrcpy-h264-profile";
+import { canReplayVideoGop } from "./scrcpy-media-queue";
 
 const MAX_CACHED_GOP_SPAN_US = 2_000_000n;
 const MAX_CACHED_GOP_BYTES = 16 * 1024 * 1024;
@@ -342,10 +343,12 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
       return null;
     }
     const generation = this.codecGeneration;
+    const isCurrent = () => !this.closed && this.codecGeneration === generation;
     const inspected = inspectScrcpyH264Configuration(config);
     return {
+      isCurrent,
       attachMedia: (sink) => {
-        if (this.closed || this.codecGeneration !== generation) {
+        if (!isCurrent()) {
           return null;
         }
         const attachment = this.attach(sink, config.data);
@@ -412,8 +415,11 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     if (this.cachedConfig) {
       sink.writeVideo(this.cachedConfig);
     }
-    for (const packet of this.cachedGop) {
-      sink.writeVideo(packet);
+    // A partial GOP would leave the next live delta without its references.
+    if (canReplayVideoGop(this.cachedGop)) {
+      for (const packet of this.cachedGop) {
+        sink.writeVideo(packet);
+      }
     }
   }
 }

@@ -152,15 +152,21 @@ createInterface({ input: process.stdin }).once("line", () => {
   }
 });
 
-test("an offer cannot attach to a codec generation that changed during signaling", async (t) => {
+test("WebRTC waits for the peer and never attaches media from a different codec generation", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "rebroid-webrtc-codec-"));
   const executable = join(directory, "bridge");
   const receivedOffer = join(directory, "offer");
   const sendAnswer = join(directory, "answer");
+  const sendConnected = join(directory, "connected");
+  const receivedVideo = join(directory, "video");
+  let resets = 0;
   const source = new ScrcpySourceStream(
     () => undefined,
     () => undefined,
-    () => true,
+    () => {
+      resets += 1;
+      return true;
+    },
   );
   const service = setup(
     {
@@ -179,12 +185,20 @@ test("an offer cannot attach to a codec generation that changed during signaling
     `#!${process.execPath}
 const fs = require("node:fs");
 const input = require("node:readline").createInterface({ input: process.stdin });
+fs.createReadStream(null, { fd: 3 }).once("data", (data) => {
+  fs.writeFileSync(${JSON.stringify(receivedVideo)}, data);
+});
 input.once("line", (line) => {
   fs.writeFileSync(${JSON.stringify(receivedOffer)}, line);
   const timer = setInterval(() => {
     if (!fs.existsSync(${JSON.stringify(sendAnswer)})) return;
     clearInterval(timer);
     console.log(JSON.stringify({ type: "answer", sdp: "fixture answer" }));
+    const connecting = setInterval(() => {
+      if (!fs.existsSync(${JSON.stringify(sendConnected)})) return;
+      clearInterval(connecting);
+      console.log(JSON.stringify({ type: "state", state: "connected" }));
+    }, 10);
   }, 10);
 });
 `,
@@ -240,8 +254,36 @@ input.once("line", (line) => {
   assert.equal(source.consumerCount(), 0);
   assert.equal(source.isOpen(), true);
 
+  const staleAnswer = await service.createAnswer(request);
+  assert.equal(staleAnswer.profileLevelId, "42c01f");
+  writeConfigAndIdr("20", 30n);
+  await writeFile(sendConnected, "");
+  const detachDeadline = Date.now() + 3_000;
+  while (source.consumerCount() !== 0 && Date.now() < detachDeadline) {
+    await delay(10);
+  }
+  assert.equal(source.consumerCount(), 0);
+  assert.equal(resets, 0);
+  await assert.rejects(access(receivedVideo), { code: "ENOENT" });
+  await rm(sendConnected);
+
   const answer = await service.createAnswer(request);
-  assert.equal(answer.profileLevelId, "42c01f");
+  assert.equal(answer.profileLevelId, "42c020");
+  assert.equal(source.consumerCount(), 1);
+  assert.equal(resets, 0, "bootstrap has not attached a media consumer");
+  await assert.rejects(access(receivedVideo), { code: "ENOENT" });
+  await writeFile(sendConnected, "");
+  const mediaDeadline = Date.now() + 3_000;
+  while (true) {
+    try {
+      await access(receivedVideo);
+      break;
+    } catch (error) {
+      if (Date.now() >= mediaDeadline) throw error;
+      await delay(10);
+    }
+  }
+  assert.equal(resets, 1);
   assert.equal(source.consumerCount(), 1);
 });
 
@@ -249,6 +291,7 @@ test("losing the bridge audio pipe leaves the video consumer attached", async (t
   const directory = await mkdtemp(join(tmpdir(), "rebroid-webrtc-audio-"));
   const executable = join(directory, "bridge");
   const disabled = join(directory, "audio-disabled");
+  const attached = join(directory, "media-attached");
   const source = new ScrcpySourceStream(
     () => undefined,
     () => undefined,
@@ -276,6 +319,10 @@ input.on("line", (line) => {
   if (message.type === "offer") {
     fs.closeSync(4);
     console.log(JSON.stringify({ type: "answer", sdp: "fixture answer" }));
+    console.log(JSON.stringify({ type: "state", state: "connected" }));
+  }
+  if (message.payload?.type === "webrtc-profile") {
+    fs.writeFileSync(${JSON.stringify(attached)}, "");
   }
   if (message.payload?.type === "audio-disabled") {
     fs.writeFileSync(${JSON.stringify(disabled)}, "");
@@ -309,6 +356,16 @@ input.on("line", (line) => {
     ].join("\r\n"),
   });
 
+  const attachDeadline = Date.now() + 3_000;
+  while (true) {
+    try {
+      await access(attached);
+      break;
+    } catch (error) {
+      if (Date.now() >= attachDeadline) throw error;
+      await delay(10);
+    }
+  }
   source.writeAudio({
     data: Buffer.from([1]),
     config: false,
