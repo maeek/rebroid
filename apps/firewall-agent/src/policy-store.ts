@@ -15,12 +15,14 @@ import { FirewallPolicy, validatePolicy } from "./firewall";
 export interface FirewallPolicyState {
   policies: Map<string, FirewallPolicy>;
   removals: Map<string, number>;
+  revisions: Map<string, number>;
   lastReconciledAt: number | null;
 }
 
 interface StoredPolicyState {
   policies: FirewallPolicy[];
   removals: [string, number][];
+  revisions?: [string, number][];
   lastReconciledAt: number | null;
 }
 
@@ -28,6 +30,7 @@ export class FirewallPolicyStore {
   private state: FirewallPolicyState = {
     policies: new Map(),
     removals: new Map(),
+    revisions: new Map(),
     lastReconciledAt: null,
   };
 
@@ -46,7 +49,8 @@ export class FirewallPolicyStore {
         (stored.lastReconciledAt !== null &&
           (!Number.isSafeInteger(stored.lastReconciledAt) ||
             stored.lastReconciledAt < 0)) ||
-        stored.removals.some(
+        (stored.revisions !== undefined && !Array.isArray(stored.revisions)) ||
+        [...stored.removals, ...(stored.revisions ?? [])].some(
           (entry) =>
             !Array.isArray(entry) ||
             typeof entry[0] !== "string" ||
@@ -62,9 +66,19 @@ export class FirewallPolicyStore {
         validatePolicy(policy.applicationId, policy),
       );
     }
+    const revisions = new Map(legacy ? [] : (stored.revisions ?? []));
+    for (const { applicationId, revision } of policies.values()) {
+      if (revision !== undefined) {
+        revisions.set(
+          applicationId,
+          Math.max(revisions.get(applicationId) ?? 0, revision),
+        );
+      }
+    }
     this.state = {
       policies,
       removals: new Map(legacy ? [] : stored.removals),
+      revisions,
       lastReconciledAt: legacy ? null : stored.lastReconciledAt,
     };
     return this.snapshot();
@@ -74,26 +88,29 @@ export class FirewallPolicyStore {
     return {
       policies: new Map(this.state.policies),
       removals: new Map(this.state.removals),
+      revisions: new Map(this.state.revisions),
       lastReconciledAt: this.state.lastReconciledAt,
     };
   }
 
-  save(next: FirewallPolicyState) {
+  save(next: FirewallPolicyState, beforeCommit?: () => void) {
     const stored: StoredPolicyState = {
       policies: [...next.policies.values()],
       removals: [...next.removals],
+      revisions: [...next.revisions],
       lastReconciledAt: next.lastReconciledAt,
     };
     mkdirSync(dirname(this.statePath), { recursive: true });
     const temporaryPath = `${this.statePath}.${process.pid}.tmp`;
-    const descriptor = openSync(temporaryPath, "w", 0o600);
     try {
-      writeFileSync(descriptor, JSON.stringify(stored));
-      fsyncSync(descriptor);
-    } finally {
-      closeSync(descriptor);
-    }
-    try {
+      const descriptor = openSync(temporaryPath, "w", 0o600);
+      try {
+        writeFileSync(descriptor, JSON.stringify(stored));
+        fsyncSync(descriptor);
+      } finally {
+        closeSync(descriptor);
+      }
+      beforeCommit?.();
       renameSync(temporaryPath, this.statePath);
     } catch (error) {
       try {

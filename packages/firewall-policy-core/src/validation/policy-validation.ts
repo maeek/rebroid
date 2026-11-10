@@ -31,6 +31,12 @@ export const validatePolicy = (
     throw new Error("Invalid policy generation.");
   }
   if (
+    body.revision !== undefined &&
+    (!Number.isSafeInteger(body.revision) || body.revision < 0 || startup)
+  ) {
+    throw new Error("Invalid policy revision.");
+  }
+  if (
     !Array.isArray(body.allowCidrs) ||
     body.allowCidrs.length > MAX_ALLOW_CIDRS
   ) {
@@ -54,6 +60,7 @@ export const validatePolicy = (
     enabled: body.enabled !== false,
     allowCidrs: uniqueStrings(allowCidrs as string[]),
     generation: body.generation!,
+    ...(body.revision !== undefined ? { revision: body.revision } : {}),
     ...(startup ? { startup: true } : {}),
   };
 };

@@ -1,15 +1,38 @@
 import type { FirewallAdapter, FirewallPolicy } from "./firewall";
-import type { FirewallPolicyStore } from "./policy-store";
+import type { FirewallPolicyState, FirewallPolicyStore } from "./policy-store";
 
 // Policy IDs cannot contain JSON punctuation, so scoped and app-wide removals share the store.
 const containerRemovalKey = (id: string, containerId: string) =>
   JSON.stringify([id, containerId]);
 
+export type FirewallPolicyRecovery =
+  | { commands: FirewallPolicyCommands; adapterName: string }
+  | { commands?: never; adapterName?: string; error: unknown };
+
 export class FirewallPolicyCommands {
-  constructor(
+  private constructor(
     private readonly adapter: FirewallAdapter,
     private readonly store: FirewallPolicyStore,
   ) {}
+
+  static restore(
+    store: FirewallPolicyStore,
+    selectAdapter: () => FirewallAdapter,
+  ): FirewallPolicyRecovery {
+    let adapter: FirewallAdapter | undefined;
+    try {
+      const { policies } = store.load();
+      adapter = selectAdapter();
+      adapter.initialize();
+      adapter.reconcile(policies);
+      return {
+        commands: new FirewallPolicyCommands(adapter, store),
+        adapterName: adapter.name,
+      };
+    } catch (error) {
+      return { adapterName: adapter?.name, error };
+    }
+  }
 
   reconcile(desired: Map<string, FirewallPolicy>, startedAt?: number) {
     const state = this.store.snapshot();
@@ -22,12 +45,21 @@ export class FirewallPolicyCommands {
     }
 
     for (const [id, policy] of desired) {
+      const existing = state.policies.get(id);
       const generation = startedAt ?? policy.generation;
+      const newerRevisionForSameRuntime =
+        existing?.containerId === policy.containerId &&
+        (policy.revision ?? 0) > (existing.revision ?? 0);
       if (
+        (policy.revision ?? 0) < (state.revisions.get(id) ?? 0) ||
         this.wasRemoved(state.removals, policy, generation) ||
-        (state.lastReconciledAt !== null && generation < state.lastReconciledAt)
+        (!newerRevisionForSameRuntime &&
+          ((state.lastReconciledAt !== null &&
+            generation < state.lastReconciledAt) ||
+            (existing && existing.generation >= generation)))
       ) {
-        desired.delete(id);
+        if (existing) desired.set(id, existing);
+        else desired.delete(id);
       } else if (generation !== policy.generation) {
         desired.set(id, { ...policy, generation });
       }
@@ -36,7 +68,9 @@ export class FirewallPolicyCommands {
       if (
         policy.startup ||
         state.policies.get(`startup-${id}`)?.startup ||
-        (startedAt !== undefined && policy.generation >= startedAt)
+        (!desired.has(id) &&
+          startedAt !== undefined &&
+          policy.generation >= startedAt)
       ) {
         desired.set(id, policy);
       }
@@ -50,8 +84,15 @@ export class FirewallPolicyCommands {
     }
 
     state.policies = desired;
-    this.store.save(state);
-    this.adapter.reconcile(desired);
+    for (const { applicationId, revision } of desired.values()) {
+      if (revision !== undefined) {
+        state.revisions.set(
+          applicationId,
+          Math.max(state.revisions.get(applicationId) ?? 0, revision),
+        );
+      }
+    }
+    this.commit(state, () => this.adapter.reconcile(desired));
     return "applied";
   }
 
@@ -60,7 +101,10 @@ export class FirewallPolicyCommands {
     const id = policy.applicationId;
     const existing = state.policies.get(id);
     if (
-      (existing && existing.generation > policy.generation) ||
+      (policy.revision ?? 0) < (state.revisions.get(id) ?? 0) ||
+      (existing &&
+        (existing.revision ?? 0) === (policy.revision ?? 0) &&
+        existing.generation > policy.generation) ||
       this.wasRemoved(state.removals, policy, policy.generation) ||
       (!existing &&
         state.lastReconciledAt !== null &&
@@ -70,22 +114,48 @@ export class FirewallPolicyCommands {
     }
 
     state.policies.set(id, policy);
+    if (policy.revision !== undefined) state.revisions.set(id, policy.revision);
     state.removals.delete(id);
     state.removals.delete(containerRemovalKey(id, policy.containerId));
-    this.store.save(state);
-    if (policy.enabled) this.adapter.apply(policy, state.policies);
-    else this.adapter.remove(id, state.policies);
+    this.commit(state, () => {
+      if (policy.enabled) this.adapter.apply(policy, state.policies);
+      else this.adapter.remove(id, state.policies);
+    });
     return "applied";
   }
 
-  remove(id: string, expectedContainerId?: string, generation?: number) {
+  refresh(policy: FirewallPolicy) {
+    const existing = this.store.snapshot().policies.get(policy.applicationId);
+    if (
+      !policy.enabled ||
+      policy.startup ||
+      policy.revision === undefined ||
+      !existing?.enabled ||
+      existing.startup ||
+      existing.containerId !== policy.containerId ||
+      (existing.revision ?? 0) !== policy.revision
+    ) {
+      return "stale";
+    }
+    return this.apply(policy);
+  }
+
+  remove(
+    id: string,
+    expectedContainerId?: string,
+    generation?: number,
+    revision?: number,
+  ) {
     const state = this.store.snapshot();
     const existing = state.policies.get(id);
     if (
-      generation !== undefined &&
-      ((existing && existing.generation >= generation) ||
-        (state.lastReconciledAt !== null &&
-          state.lastReconciledAt > generation))
+      (revision ?? 0) < (state.revisions.get(id) ?? 0) ||
+      (generation !== undefined &&
+        ((existing &&
+          (existing.revision ?? 0) === (revision ?? 0) &&
+          existing.generation >= generation) ||
+          (state.lastReconciledAt !== null &&
+            state.lastReconciledAt > generation)))
     ) {
       return "unchanged";
     }
@@ -101,6 +171,7 @@ export class FirewallPolicyCommands {
       expectedContainerId === undefined
         ? id
         : containerRemovalKey(id, expectedContainerId);
+    if (revision !== undefined) state.revisions.set(id, revision);
     state.removals.set(
       key,
       Math.max(
@@ -115,10 +186,30 @@ export class FirewallPolicyCommands {
     }
 
     state.policies.delete(id);
-    // Keep the persisted protection if the host rejects the removal.
-    this.adapter.remove(id, state.policies);
-    this.store.save(state);
+    this.commit(state, () => this.adapter.remove(id, state.policies));
     return "applied";
+  }
+
+  private commit(next: FirewallPolicyState, install: () => void) {
+    let installed = false;
+    try {
+      this.store.save(next, () => {
+        install();
+        installed = true;
+      });
+    } catch (error) {
+      if (installed) {
+        try {
+          this.adapter.reconcile(this.store.snapshot().policies);
+        } catch (rollbackError) {
+          throw new AggregateError(
+            [error, rollbackError],
+            "Could not persist the firewall update or restore the previous rules.",
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   private wasRemoved(

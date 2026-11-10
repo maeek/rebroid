@@ -5,6 +5,7 @@ export interface FirewallPolicy {
   enabled: boolean;
   allowCidrs: string[];
   generation: number;
+  revision?: number;
   startup?: true;
 }
 

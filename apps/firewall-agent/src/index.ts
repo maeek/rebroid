@@ -1,47 +1,25 @@
 import { chmodSync, mkdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 import { firewallAgentConfig } from "./config";
-import { detectAdapter, FirewallAdapter } from "./firewall";
+import { detectAdapter } from "./firewall";
+import { FirewallPolicyCommands } from "./policy-commands";
 import { FirewallPolicyStore } from "./policy-store";
 import { createFirewallAgentServer } from "./server";
 
 const { socketPath, statePath, secret } = firewallAgentConfig;
-const store = new FirewallPolicyStore(statePath);
-let adapter: FirewallAdapter | undefined;
-let startupError: string | undefined;
+const recovery = FirewallPolicyCommands.restore(
+  new FirewallPolicyStore(statePath),
+  () => detectAdapter(firewallAgentConfig.adapter),
+);
 
-const addStartupError = (message: string) => {
-  startupError = startupError ? `${startupError} ${message}` : message;
-};
-
-if (!secret) {
-  addStartupError(
-    "Firewall agent shared secret is not configured; policy operations are disabled.",
-  );
-}
-
-try {
-  const { policies } = store.load();
-  adapter = detectAdapter(firewallAgentConfig.adapter);
-  adapter.initialize();
-  adapter.reconcile(policies);
-} catch (error) {
+if (!recovery.commands) {
+  const { error } = recovery;
   console.error(
     `[firewall-agent] ${error instanceof Error ? error.message : "Firewall backend is unavailable."}`,
   );
-  addStartupError(
-    error instanceof Error
-      ? `Firewall backend is unavailable: ${error.message}`
-      : "Firewall backend is unavailable.",
-  );
 }
 
-const server = createFirewallAgentServer({
-  secret,
-  startupError,
-  adapter,
-  store,
-});
+const server = createFirewallAgentServer({ secret, recovery });
 
 mkdirSync(dirname(socketPath), { recursive: true });
 rmSync(socketPath, { force: true });

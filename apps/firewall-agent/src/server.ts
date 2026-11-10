@@ -1,15 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import {
-  FirewallAdapter,
-  FirewallPolicy,
-  validatePolicies,
-  validatePolicy,
-} from "./firewall";
-import { FirewallPolicyCommands } from "./policy-commands";
-import { FirewallPolicyStore } from "./policy-store";
+import { FirewallPolicy, validatePolicies, validatePolicy } from "./firewall";
+import type { FirewallPolicyRecovery } from "./policy-commands";
 
 const maximumBodyBytes = 128 * 1024;
+const isNonnegativeInteger = (value: string) =>
+  /^\d+$/.test(value) && Number.isSafeInteger(Number(value));
 
 class RequestBodyTooLargeError extends Error {}
 class InvalidRequestBodyError extends Error {}
@@ -67,25 +63,35 @@ export const readJsonBody = (request: IncomingMessage) =>
 
 interface FirewallAgentServerOptions {
   secret: string;
-  startupError?: string;
-  adapter?: FirewallAdapter;
-  store: FirewallPolicyStore;
+  recovery: FirewallPolicyRecovery;
 }
 
 export const createFirewallAgentServer = ({
   secret,
-  startupError,
-  adapter,
-  store,
+  recovery,
 }: FirewallAgentServerOptions) => {
-  const commands = adapter && new FirewallPolicyCommands(adapter, store);
+  const { commands, adapterName } = recovery;
+  const startupErrors: string[] = [];
+  if (!secret) {
+    startupErrors.push(
+      "Firewall agent shared secret is not configured; policy operations are disabled.",
+    );
+  }
+  if (!commands) {
+    startupErrors.push(
+      recovery.error instanceof Error
+        ? `Firewall backend is unavailable: ${recovery.error.message}`
+        : "Firewall backend is unavailable.",
+    );
+  }
+  const startupError = startupErrors.join(" ");
   const server = createServer(async (request, response) => {
     if (request.url === "/v1/health" && request.method === "GET") {
       json(response, startupError ? 503 : 200, {
         ok: !startupError,
         status: startupError ? "unhealthy" : "healthy",
-        adapter: adapter?.name ?? null,
-        message: startupError ?? "Firewall agent is ready.",
+        adapter: adapterName ?? null,
+        message: startupError || "Firewall agent is ready.",
       });
       return;
     }
@@ -93,10 +99,8 @@ export const createFirewallAgentServer = ({
       json(response, 401, { message: "Unauthorized." });
       return;
     }
-    if (startupError || !commands) {
-      json(response, 503, {
-        message: startupError ?? "Firewall adapter is unavailable.",
-      });
+    if (!commands) {
+      json(response, 503, { message: startupError });
       return;
     }
 
@@ -124,41 +128,53 @@ export const createFirewallAgentServer = ({
         return;
       }
       const [path, query] = (request.url ?? "").split("?", 2);
-      const match = path.match(/^\/v1\/policies\/([^/]+)$/);
+      const match = path.match(/^\/v1\/policies\/([^/]+)(\/refresh)?$/);
       if (!match) {
         json(response, 404, { message: "Not found." });
         return;
       }
       const applicationId = decodeURIComponent(match[1]);
-      if (request.method === "DELETE") {
+      const refresh = Boolean(match[2]);
+      if (request.method === "DELETE" && !refresh) {
         if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/.test(applicationId)) {
           json(response, 400, { message: "Invalid application id." });
           return;
         }
         let expectedContainerId: string | undefined;
         let generation: number | undefined;
+        let revision: number | undefined;
         if (query !== undefined) {
           const params = new URLSearchParams(query);
           const containerIds = params.getAll("containerId");
           const generations = params.getAll("generation");
+          const revisions = params.getAll("revision");
           if (
-            containerIds.length !== 1 ||
-            !containerIds[0] ||
+            params.size === 0 ||
+            containerIds.length > 1 ||
+            containerIds.includes("") ||
             generations.length > 1 ||
-            params.size !== containerIds.length + generations.length ||
+            revisions.length > 1 ||
+            params.size !==
+              containerIds.length + generations.length + revisions.length ||
             (generations.length > 0 &&
-              (!/^\d+$/.test(generations[0]) ||
-                !Number.isSafeInteger(Number(generations[0]))))
+              (!containerIds.length ||
+                !isNonnegativeInteger(generations[0]))) ||
+            (revisions.length > 0 && !isNonnegativeInteger(revisions[0]))
           ) {
             json(response, 400, { message: "Invalid policy removal query." });
             return;
           }
           expectedContainerId = containerIds[0];
           if (generations.length) generation = Number(generations[0]);
+          if (revisions.length) revision = Number(revisions[0]);
         }
         if (
-          commands.remove(applicationId, expectedContainerId, generation) ===
-          "unchanged"
+          commands.remove(
+            applicationId,
+            expectedContainerId,
+            generation,
+            revision,
+          ) === "unchanged"
         ) {
           json(response, 200, { status: "unchanged" });
           return;
@@ -174,8 +190,13 @@ export const createFirewallAgentServer = ({
           applicationId,
           await readJsonBody(request),
         );
-        if (commands.apply(policy) === "stale") {
-          json(response, 409, { message: "Stale policy generation." });
+        const result = refresh
+          ? commands.refresh(policy)
+          : commands.apply(policy);
+        if (result === "stale") {
+          json(response, 409, {
+            message: "Stale policy revision, generation, or runtime.",
+          });
           return;
         }
         json(response, 200, {
