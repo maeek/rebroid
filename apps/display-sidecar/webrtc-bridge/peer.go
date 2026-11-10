@@ -122,7 +122,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	if err != nil {
 		return err
 	}
-	startWorker(func() { drainRTCP(videoSender, metrics, recovery, emit) })
+	startWorker(func() { drainRTCP(videoSender, metrics, &metrics.videoFeedback, recovery, emit) })
 
 	var audioTrack *webrtc.TrackLocalStaticRTP
 	if cfg.Audio {
@@ -138,7 +138,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 		if err != nil {
 			return err
 		}
-		startWorker(func() { drainRTCP(audioSender, metrics, nil, emit) })
+		startWorker(func() { drainRTCP(audioSender, metrics, &metrics.audioFeedback, nil, emit) })
 		emit(stdoutMessage{Type: "log", Message: "audio track negotiated"})
 	}
 

@@ -63,6 +63,18 @@ func TestH264RelayWaitsForConfigAndIDRAfterGap(t *testing.T) {
 	}
 }
 
+func TestAudioWriteErrorsCountInAggregate(t *testing.T) {
+	input := bytes.NewReader(encodedMediaFrame(mediaKindAudio, 1, 0, 0, []byte{0xf8, 0xff, 0xfe}))
+	var metrics bridgeMetrics
+	failure := errors.New("audio write failed")
+	if err := streamOpus(input, &captureRTP{failure: failure}, &metrics, &sourceTimeline{}, func(stdoutMessage) {}); !errors.Is(err, failure) {
+		t.Fatalf("expected audio write failure, got %v", err)
+	}
+	if metrics.rtpSendErrors.Load() != 1 || metrics.rtpPackets.Load() != 0 {
+		t.Fatal("failed audio write should count as one send error")
+	}
+}
+
 func TestDroppedVideoRegressionInvalidatesSharedTimeline(t *testing.T) {
 	var media bytes.Buffer
 	for sequence, pts := range []uint64{100, 300, 200} {

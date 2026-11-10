@@ -6,14 +6,13 @@ import (
 
 	"github.com/pion/rtp"
 	"github.com/pion/rtp/codecs"
-	"github.com/pion/webrtc/v4"
 )
 
 const audioClockRate = uint64(48_000)
 
 func streamOpus(
 	input io.Reader,
-	track *webrtc.TrackLocalStaticRTP,
+	track rtpWriter,
 	metrics *bridgeMetrics,
 	timeline *sourceTimeline,
 	emit func(stdoutMessage),
@@ -50,11 +49,9 @@ func streamOpus(
 		packets := packetizer.Packetize(frame.data, 0)
 		for _, packet := range packets {
 			packet.Timestamp = rtpTimestamp
-			if err := track.WriteRTP(packet); err != nil {
+			if err := metrics.writeRTP(track, packet); err != nil {
 				return err
 			}
-			metrics.rtpPackets.Add(1)
-			metrics.rtpBytes.Add(uint64(len(packet.Payload)))
 		}
 		metrics.audioFrames.Add(1)
 		if !wroteFrame {

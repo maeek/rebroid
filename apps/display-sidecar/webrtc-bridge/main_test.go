@@ -162,21 +162,23 @@ func TestRTCPFeedbackRequestsGOPRecoveryAndCountsLoss(t *testing.T) {
 	metrics := &bridgeMetrics{}
 	recovery := &videoRecovery{}
 	handleRTCPPacket(&rtcp.TransportLayerNack{
-		Nacks: rtcp.NackPairsFromSequenceNumbers([]uint16{10, 11, 14}),
-	}, metrics, recovery, func(stdoutMessage) {})
-	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery, func(stdoutMessage) {})
-	handleRTCPPacket(&rtcp.PictureLossIndication{}, metrics, recovery, func(stdoutMessage) {})
-	handleRTCPPacket(&rtcp.FullIntraRequest{}, metrics, recovery, func(stdoutMessage) {})
+		MediaSSRC: 11,
+		Nacks:     rtcp.NackPairsFromSequenceNumbers([]uint16{10, 11, 14}),
+	}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.PictureLossIndication{MediaSSRC: 11}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.PictureLossIndication{MediaSSRC: 11}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
+	handleRTCPPacket(&rtcp.FullIntraRequest{FIR: []rtcp.FIREntry{{SSRC: 11}}}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
 	handleRTCPPacket(&rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{{
+		SSRC:      11,
 		TotalLost: 7,
 		Jitter:    90,
-	}}}, metrics, recovery, func(stdoutMessage) {})
+	}}}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
 
 	generation := recovery.generation.Load()
 	if metrics.nacks.Load() != 3 || metrics.plis.Load() != 2 {
 		t.Fatalf("unexpected NACK/PLI metrics: %d/%d", metrics.nacks.Load(), metrics.plis.Load())
 	}
-	if metrics.packetsLost.Load() != 7 || metrics.jitter.Load() != 90 {
+	if metrics.videoFeedback.packetsLost.Load() != 7 || metrics.videoFeedback.jitter.Load() != 90 {
 		t.Fatalf("unexpected receiver report metrics")
 	}
 	if generation != 1 {
@@ -191,5 +193,45 @@ func TestVideoRecoveryExpiresAfterOneAndAHalfSecondsOfPTS(t *testing.T) {
 	}
 	if !recoveryExpiredPTS(startedAt, startedAt+1_500_001) {
 		t.Fatal("recovery did not expire after the boundary")
+	}
+}
+
+func TestVideoMetricsUseOnlyMatchingFeedback(t *testing.T) {
+	metrics := &bridgeMetrics{}
+	mixed := &rtcp.ReceiverReport{Reports: []rtcp.ReceptionReport{
+		{SSRC: 11, TotalLost: 7, Jitter: 90},
+		{SSRC: 22, TotalLost: 200, Jitter: 480},
+	}}
+	emit := func(stdoutMessage) {}
+	handleRTCPPacket(mixed, 11, metrics, &metrics.videoFeedback, nil, emit)
+	handleRTCPPacket(mixed, 22, metrics, &metrics.audioFeedback, nil, emit)
+	snapshot := metricSnapshot(metrics, nil)
+	if snapshot["packetsLost"] != 7 || snapshot["jitterRtp"] != 90 || metrics.audioFeedback.packetsLost.Load() != 200 {
+		t.Fatalf("expected video fallback with separate audio feedback, got %v", snapshot)
+	}
+}
+
+func TestCompoundFeedbackUsesTargetSSRC(t *testing.T) {
+	metrics := &bridgeMetrics{}
+	recovery := &videoRecovery{}
+	resyncs := 0
+	emit := func(event stdoutMessage) {
+		if event.Type == "video-resync-request" {
+			resyncs++
+		}
+	}
+	audioPLI := &rtcp.PictureLossIndication{MediaSSRC: 22}
+	audioFIR := &rtcp.FullIntraRequest{FIR: []rtcp.FIREntry{{SSRC: 22}}}
+	videoNACK := &rtcp.TransportLayerNack{MediaSSRC: 11, Nacks: rtcp.NackPairsFromSequenceNumbers([]uint16{7})}
+	for _, packet := range []rtcp.Packet{audioPLI, audioFIR, videoNACK} {
+		handleRTCPPacket(packet, 11, metrics, &metrics.videoFeedback, recovery, emit)
+		handleRTCPPacket(packet, 22, metrics, &metrics.audioFeedback, nil, emit)
+	}
+	if resyncs != 0 || metrics.plis.Load() != 1 || metrics.nacks.Load() != 1 {
+		t.Fatalf("expected audio-only PLI and one video NACK, got %d resyncs, %d PLIs and %d NACKs", resyncs, metrics.plis.Load(), metrics.nacks.Load())
+	}
+	handleRTCPPacket(&rtcp.FullIntraRequest{FIR: []rtcp.FIREntry{{SSRC: 11}}}, 11, metrics, &metrics.videoFeedback, recovery, emit)
+	if resyncs != 1 {
+		t.Fatalf("expected video FIR to request recovery, got %d", resyncs)
 	}
 }

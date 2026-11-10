@@ -63,12 +63,9 @@ func streamH264(
 		writeStarted := time.Now()
 		for _, packet := range packets {
 			packet.Timestamp = rtpTimestamp
-			if err := track.WriteRTP(packet); err != nil {
-				metrics.rtpSendErrors.Add(1)
+			if err := metrics.writeRTP(track, packet); err != nil {
 				return err
 			}
-			metrics.rtpPackets.Add(1)
-			metrics.rtpBytes.Add(uint64(len(packet.Payload)))
 		}
 		metrics.rtpWriteLatency.observe(time.Since(writeStarted))
 		metrics.videoFrames.Add(1)
