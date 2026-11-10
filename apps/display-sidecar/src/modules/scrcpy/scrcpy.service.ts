@@ -88,6 +88,7 @@ interface ScrcpyServerLaunch {
 interface ReverseSocketAcceptor {
   port: number;
   acceptSocket: (timeoutMs?: number) => Promise<Socket>;
+  stopAccepting: () => void;
   close: () => Promise<void>;
 }
 
@@ -103,7 +104,6 @@ interface ActiveScrcpySource {
   resetCount: number;
   lastResetAt: number;
 }
-
 
 @Injectable()
 export class ScrcpyService implements OnModuleDestroy {
@@ -294,9 +294,7 @@ export class ScrcpyService implements OnModuleDestroy {
             const controlWasEnabled = effectiveOptions.control !== false;
             effectiveOptions = nextOptions;
             if (audioWasEnabled && !effectiveOptions.audio) {
-              this.streamSessions.markAudioDisabled(
-                effectiveOptions.sessionId,
-              );
+              this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
             }
             restartAttempt += 1;
             const delayMs = this.restartDelayMs(restartAttempt);
@@ -400,10 +398,7 @@ export class ScrcpyService implements OnModuleDestroy {
         );
       } catch (error) {
         lastError = error;
-        if (
-          !options.sink.isOpen() ||
-          mode === modes[modes.length - 1]
-        ) {
+        if (!options.sink.isOpen() || mode === modes[modes.length - 1]) {
           throw error;
         }
 
@@ -446,7 +441,8 @@ export class ScrcpyService implements OnModuleDestroy {
     const activeSource = this.sources.get(options.sessionId);
     const source =
       activeSource?.stream === options.sink ? activeSource : undefined;
-    const ownsSource = () => source !== undefined && this.sources.get(options.sessionId) === source;
+    const ownsSource = () =>
+      source !== undefined && this.sources.get(options.sessionId) === source;
     source?.stream.setActualEncoder(actualEncoder);
 
     const cleanup = async (reason = "display stream stopped") => {
@@ -680,9 +676,11 @@ export class ScrcpyService implements OnModuleDestroy {
           });
         reverseActive = false;
       }
-      await reverseAcceptor?.close();
-      reverseAcceptor = null;
+      await reverseAcceptor?.stopAccepting();
       if (!ownsSource()) throw new Error("Display source was replaced.");
+      if (streamSocket.destroyed) {
+        throw new Error("scrcpy video socket closed during startup.");
+      }
 
       if (controlSocket) {
         this.controlSockets.set(options.sessionId, {
@@ -730,10 +728,9 @@ export class ScrcpyService implements OnModuleDestroy {
           control: this.streamControlEnabled(options),
           tunnel: tunnelMode,
         },
-        sourceAttemptId:
-          this.sources.get(options.sessionId)?.stream.sourceAttemptId,
-        encoderResetCount:
-          this.sources.get(options.sessionId)?.resetCount ?? 0,
+        sourceAttemptId: this.sources.get(options.sessionId)?.stream
+          .sourceAttemptId,
+        encoderResetCount: this.sources.get(options.sessionId)?.resetCount ?? 0,
         downgradeReason:
           options.compatibilityMode === "normal"
             ? null
@@ -832,8 +829,7 @@ export class ScrcpyService implements OnModuleDestroy {
 
         if (options.audio) {
           const videoParser = new ScrcpyPacketParser({
-            expectedCodec:
-              SCRCPY_CODEC_H264,
+            expectedCodec: SCRCPY_CODEC_H264,
             allowSessionPackets: true,
             onPacket: forwardVideoPayload,
           });
@@ -868,8 +864,7 @@ export class ScrcpyService implements OnModuleDestroy {
           audioSocket?.resume();
         } else {
           const videoParser = new ScrcpyPacketParser({
-            expectedCodec:
-              SCRCPY_CODEC_H264,
+            expectedCodec: SCRCPY_CODEC_H264,
             allowSessionPackets: true,
             onPacket: forwardVideoPayload,
           });
@@ -1213,6 +1208,8 @@ export class ScrcpyService implements OnModuleDestroy {
             return;
           }
           settled = true;
+          // The parser takes over after auxiliary sockets and tunnel cleanup.
+          socket.pause();
           socket.setTimeout(0);
           resolve({
             socket,
@@ -1463,6 +1460,7 @@ export class ScrcpyService implements OnModuleDestroy {
     return new Promise<ReverseSocketAcceptor>((resolve, reject) => {
       const server: Server = createServer();
       const accepted: Socket[] = [];
+      let drained: Promise<void> | undefined;
       const waiters: Array<{
         resolve: (socket: Socket) => void;
         reject: (error: Error) => void;
@@ -1472,6 +1470,16 @@ export class ScrcpyService implements OnModuleDestroy {
         while (waiters.length) {
           waiters.shift()!.reject(error);
         }
+      };
+      const stopAccepting = () => {
+        if (drained) return;
+        rejectWaiters(new Error("scrcpy reverse socket acceptor closed"));
+        for (const socket of accepted.splice(0)) {
+          socket.destroy();
+        }
+        // Handed-off sockets belong to the attempt. Start closing the listener
+        // without waiting for those sockets during startup.
+        drained = new Promise<void>((resolve) => server.close(() => resolve()));
       };
 
       server.on("connection", (socket) => {
@@ -1499,6 +1507,12 @@ export class ScrcpyService implements OnModuleDestroy {
           port,
           acceptSocket: (timeoutMs = SOCKET_CONNECT_TIMEOUT_MS) =>
             new Promise<Socket>((acceptResolve, acceptReject) => {
+              if (drained) {
+                acceptReject(
+                  new Error("scrcpy reverse socket acceptor closed"),
+                );
+                return;
+              }
               const socket = accepted.shift();
               if (socket) {
                 acceptResolve(socket);
@@ -1506,11 +1520,17 @@ export class ScrcpyService implements OnModuleDestroy {
               }
 
               const waiter = {
-                resolve: acceptResolve,
-                reject: acceptReject,
+                resolve: (socket: Socket) => {
+                  clearTimeout(timer);
+                  acceptResolve(socket);
+                },
+                reject: (error: Error) => {
+                  clearTimeout(timer);
+                  acceptReject(error);
+                },
               };
               waiters.push(waiter);
-              setTimeout(() => {
+              const timer = setTimeout(() => {
                 const index = waiters.indexOf(waiter);
                 if (index >= 0) {
                   waiters.splice(index, 1);
@@ -1522,14 +1542,11 @@ export class ScrcpyService implements OnModuleDestroy {
                 }
               }, timeoutMs);
             }),
-          close: () =>
-            new Promise<void>((closeResolve) => {
-              rejectWaiters(new Error("scrcpy reverse socket acceptor closed"));
-              for (const socket of accepted.splice(0)) {
-                socket.destroy();
-              }
-              server.close(() => closeResolve());
-            }),
+          stopAccepting,
+          close: async () => {
+            stopAccepting();
+            await drained;
+          },
         });
       });
     });
@@ -1573,9 +1590,7 @@ export class ScrcpyService implements OnModuleDestroy {
     description: string,
   ) {
     void operation?.catch((error) => {
-      this.logger.warn(
-        `${description} failed: ${this.errorMessage(error)}`,
-      );
+      this.logger.warn(`${description} failed: ${this.errorMessage(error)}`);
     });
   }
 
@@ -1621,12 +1636,10 @@ export class ScrcpyService implements OnModuleDestroy {
             "-lc",
             [
               'echo "== props =="',
-              COMPATIBILITY_PROBE_PROPERTIES
-                .map(
-                  (prop) =>
-                    `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
-                )
-                .join("; "),
+              COMPATIBILITY_PROBE_PROPERTIES.map(
+                (prop) =>
+                  `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
+              ).join("; "),
               'echo "== services =="',
               `for svc in ${compatibilityProbeServices.join(" ")}; do if service check "$svc" 2>/dev/null | grep -qi found; then echo "$svc=found"; else echo "$svc=missing"; fi; done`,
               'echo "== encoders =="',
@@ -1714,7 +1727,10 @@ export class ScrcpyService implements OnModuleDestroy {
     if (!probe) {
       return "Android compatibility diagnostics were unavailable.";
     }
-    const version = [probe.androidRelease, probe.androidSdk && `API ${probe.androidSdk}`]
+    const version = [
+      probe.androidRelease,
+      probe.androidSdk && `API ${probe.androidSdk}`,
+    ]
       .filter(Boolean)
       .join(" ");
     const services = Object.entries(probe.services)
