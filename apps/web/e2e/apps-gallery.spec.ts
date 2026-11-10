@@ -139,6 +139,6 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   await expect(recent).toContainText('Apps you open will appear here')
   unavailable = true
   await page.reload()
-  await expect(recent).toContainText('Recently opened apps are unavailable', { timeout: 15_000 })
+  await expect(recent).toContainText('Recently opened apps could not be loaded', { timeout: 15_000 })
   await expect(recent.getByRole('link', { name: 'All apps' })).toHaveAttribute('href', '/apps')
 })
