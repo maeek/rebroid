@@ -188,8 +188,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
             {administrationGroups.map(({ label, items }) => {
               const first = items[0]
               if (!first) return null
-              const active = items.some(item => itemIsActive(item.href))
-              const isOpen = expanded[label] ?? active
+              const isOpen = expanded[label] ?? (variant === 'sidebar' || items.some(item => itemIsActive(item.href)))
               return (
                 <NestedNavigationMenu
                   key={label}

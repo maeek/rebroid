@@ -154,7 +154,12 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
     if (width >= 1024) {
       for (const group of ['Platform settings', 'Infrastructure', 'Access and policies']) {
-        await page.getByRole('button', { name: `Expand ${group} menu` }).click()
+        const collapse = page.getByRole('button', { name: `Collapse ${group} menu` })
+        await expect(collapse).toHaveAttribute('aria-expanded', 'true')
+        await collapse.click()
+        const expand = page.getByRole('button', { name: `Expand ${group} menu` })
+        await expect(expand).toHaveAttribute('aria-expanded', 'false')
+        await expand.click()
       }
       const toggle = page.getByRole('button', { name: 'Collapse sidebar', exact: true })
       const header = await toggle.boundingBox()

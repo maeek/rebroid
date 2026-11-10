@@ -69,8 +69,9 @@ with the bottom edge of their trigger. In the expanded sidebar they open upward.
 the same floating surface and opens toward the center of the viewport from the mobile account menu.
 On mobile, the top bar contains the brand with its health dot, navigation drawer trigger, account, and notifications.
 Direct links keep their accessible names
-and show labels on hover and keyboard focus. Administration groups open labeled flyouts with
-their destinations and available shortcuts. Use the circled add icon for sidebar create shortcuts.
+and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
+In the icon rail, they open labeled flyouts with their destinations and available shortcuts.
+Use the circled add icon for sidebar create shortcuts.
 Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subheadings that
 repeat the page title or active tab. Put page-wide context in `PageHeader.description` and
 keep useful section-specific copy in `Section.description` without adding a heading.
