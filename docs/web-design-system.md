@@ -327,8 +327,9 @@ keep import/export and deletion in the action menu. Existing workflows share Edi
 navigation, including their loading states. Preserve unsaved-change guards on those links.
 
 Use the shared searchable action catalog with FormField associations and Select for fixed action choices.
-Trigger dialogs group identity, workflow/target/profile, and schedule without nested panel surfaces. Keep save
-actions in the footer and retain disabled/pending behavior. Workflow and trigger grids show tags with the name
+Trigger dialogs group identity, workflow/target/profile, and schedule without nested panel surfaces. Use side-by-side
+groups on wide screens and stack them on narrow screens. Keep footer actions visible while the form scrolls, and
+retain disabled/pending behavior. Workflow and trigger grids show tags with the name
 and one last-run result; open full failures on demand. Use ScheduleValue and DateTimeValue for recurrence and
 time presentation. Related workflow and app names are ResourceLinks. Run history keeps execution details in its
 inspector and preserves the `?run=` selection contract.
