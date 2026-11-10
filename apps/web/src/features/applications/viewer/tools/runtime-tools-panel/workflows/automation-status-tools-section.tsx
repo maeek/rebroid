@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconActivity, IconRefresh, IconRobot } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { AppAutomationRunAction } from '@/features/applications/viewer/actions/app-automation-run-action'
 import { cn } from '@/lib/utils'
 import { listActiveAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
+import { StateView } from '@/shared/ui/state-view'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 
@@ -37,6 +39,7 @@ export const AutomationStatusToolsSection = ({
   const [runs, setRuns] = useState<AutomationRun[]>([])
   const [selectedRunId, setSelectedRunId] = useState<string | null>(latestRun?.id ?? null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadRuns = useCallback(async () => {
@@ -53,6 +56,7 @@ export const AutomationStatusToolsSection = ({
         return [...byId.values()]
       })
       setLoadError(null)
+      setHasLoaded(true)
     } catch {
       setLoadError('Workflow activity could not be refreshed.')
     } finally {
@@ -80,6 +84,24 @@ export const AutomationStatusToolsSection = ({
     return [...byId.values()].sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
   }, [latestRun, runs])
   const selectedRun = visibleRuns.find(run => run.id === selectedRunId) ?? visibleRuns[0] ?? null
+  const emptyState = loadError ? (
+    <StateView
+      scope='grid'
+      kind='error'
+      title='Could not load workflow activity'
+      description={loadError}
+    />
+  ) : (
+    <StateView
+      scope='grid'
+      kind={hasLoaded ? 'empty' : 'loading'}
+      title={hasLoaded ? 'No workflow activity yet' : 'Loading workflow activity'}
+      description={
+        hasLoaded ? 'Run a workflow to see its progress and results here.' : 'Checking for runs on this app.'
+      }
+      icon={hasLoaded ? <IconActivity /> : undefined}
+    />
+  )
   const activeRunCount = visibleRuns.filter(run => activeStatuses.has(run.status)).length
 
   const updateRunStatus = useCallback(
@@ -127,39 +149,31 @@ export const AutomationStatusToolsSection = ({
         </div>
         <div className='flex items-center gap-2'>
           <AppAutomationRunAction onRunStarted={onRunStarted} />
-          <Button
+          <MutationButton
             type='button'
             size='icon-md'
             variant='outline'
             className='size-9'
-            aria-label='Refresh workflow runs'
+            aria-label={isRefreshing ? 'Refreshing workflow runs' : 'Refresh workflow runs'}
             title='Refresh workflow runs'
-            disabled={isRefreshing}
+            pending={isRefreshing}
+            pendingLabel={<span className='sr-only'>Refreshing…</span>}
             onClick={() => void loadRuns()}
           >
-            <IconRefresh className={cn('size-4', isRefreshing && 'animate-spin')} />
-          </Button>
+            <IconRefresh className='size-4' />
+          </MutationButton>
         </div>
       </div>
 
-      {loadError ? (
-        <div className='rounded-panel border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
-          {loadError}
-        </div>
+      {loadError && visibleRuns.length > 0 ? (
+        <Notice
+          description={loadError}
+          tone='warning'
+        />
       ) : null}
 
       {visibleRuns.length === 0 ? (
-        <div className='flex min-h-64 flex-col items-center justify-center gap-3 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/14 px-6 text-center'>
-          <span className='flex size-11 items-center justify-center rounded-feature border border-surface-border/55 bg-surface-panel/70 text-foreground-muted shadow-control'>
-            <IconActivity className='size-5' />
-          </span>
-          <div className='max-w-sm'>
-            <p className='text-sm font-medium text-foreground'>No workflow activity yet</p>
-            <p className='mt-1 text-xs leading-5 text-foreground-muted'>
-              Run a workflow to monitor its progress, tool activity, and final result here.
-            </p>
-          </div>
-        </div>
+        emptyState
       ) : (
         <div className='grid min-h-0 gap-3 lg:grid-cols-[minmax(17rem,20rem)_minmax(0,1fr)]'>
           <div className='grid min-h-0 content-start gap-2 rounded-panel border border-surface-border/55 bg-surface-band/18 p-2'>
