@@ -41,8 +41,8 @@ Ports declare independent capabilities; they must not derive their types from co
 ## Application lifecycle
 
 Creating, starting, recreating the runtime, installing an APK, or removing an app reserves one persisted lifecycle job.
-At most one job is active for an application. Application and job transitions are committed together;
-late progress or completion is ignored after a newer operation takes ownership.
+At most one job is active for an application. Each reservation has its own ID. The worker claims that ID,
+and guarded progress, handoff, and completion apply only while the reservation still belongs to that worker.
 
 - **Create and start** share runtime activation: resolve the image, prepare boundaries, create or start
   the container, apply network policy, and wait for Android readiness.
@@ -50,16 +50,26 @@ late progress or completion is ignored after a newer operation takes ownership.
   or marks an existing one as starting. Clone, Recreate, and automation starts share that admission check.
   Restricted startup installs a temporary forwarding block on the managed IPv4 subnet before starting
   the container. The app's allowlist takes over after the firewall agent acknowledges it.
+  The firewall agent persists removal ordering and the latest bulk snapshot timestamp so a stale refresh
+  cannot reinstall a removed policy after restart.
+  A container-scoped removal also fences stale first writes for that container.
 - **Recreate** replaces the stopped or errored app's container and managed network, then uses the
-  same activation path. It keeps profile volumes. Interrupted recreation is reported as an error
-  so the operator can retry.
-- **APK installation** receives a guarded handoff when the runtime needs the attached package installed.
-- **Stop** cancels active work before stopping runtime resources.
-- **Remove** replaces the reservation and performs bounded cleanup of runtime, network, volume, and viewer resources.
+  same activation path. It keeps profile volumes and owns its reservation through APK installation.
+  Interrupted recreation is reported as an error so the operator can retry.
+- **APK installation** receives a fresh reservation through a guarded handoff during Create or Start.
+- **Stop** discards queued work and waits for in-flight runtime work to settle before looking up and stopping the
+  container. Cancellation releases the worker's wait on a shared image pull.
+- **Remove** drains existing work before reserving and performing bounded cleanup of runtime, network, volume, and
+  viewer resources.
 - **Startup recovery** follows the persisted job kind. Missing or inconsistent reservations become explicit errors
   rather than guessing work from application status.
 
 Normal list/get operations read stored state only. Docker reconciliation is an explicit operation.
+Viewer activity and policy observations update only their own fields and are scoped to the observed
+runtime. The web console uses lifecycle acknowledgements for immediate feedback and follows the
+application state to observe queued removal and startup completion.
+After a removal acknowledgement, the web service confirms deletion in a bounded background check
+before removing icon and recent-app metadata. An unconfirmed removal retains that metadata.
 The owning lifecycle services and file-placement rules are listed in [AGENTS.md](../AGENTS.md).
 
 ## Workflow execution
@@ -67,6 +77,9 @@ The owning lifecycle services and file-placement rules are listed in [AGENTS.md]
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
+Target preparation authorizes either attaching or starting, then verifies the requested profile on the
+ready runtime. Cancellation fences new Start calls and holds the reservation until any in-flight
+Start admission settles. Android owns the lifecycle of work it has already admitted.
 
 These are correctness guarantees:
 
@@ -75,6 +88,8 @@ These are correctness guarantees:
 - Event sequence allocation and insertion happen in the same transaction, backed by a unique run/sequence index.
 - Live listeners subscribe before replay, then buffer and deduplicate the handoff.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
+- Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
+  that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
 
 ## AI decisions
 
@@ -95,6 +110,8 @@ A controller turn exposes one decision schema or fallback tool. Mutations bind t
 snapshot and target; taps require an observed candidate or normalized coordinates. Completion
 must cite known evidence. Compatibility normalization may repair provider envelopes, but cannot
 invent grounding.
+After dispatching a screen-changing action, require fresh evidence before the next decision, including
+when the command response fails. If observation fails, the run reports a blocked outcome.
 
 Raw ADB shell is not a default capability. Approved escalation validates an allowlisted read-only
 command for one follow-up run. Provider streaming adapters preserve public results and usage
@@ -108,9 +125,13 @@ decision kinds, provider/perception boundaries, and the implementation map.
 Managed GApps builds use one queued patch job at a time, a non-root worker without engine access,
 verified revision-addressed caches, bounded extraction, and final image validation. Interrupted
 running jobs fail rather than resume.
+The Docker image runtime owns build stream errors, progress, and cancellation for custom, GApps,
+and display sidecar image builds. Each caller still owns its context, validation, and job state.
 
 Settings persistence normalizes defaults; separate services own provider CRUD, connectivity checks,
 and downloads. Transport protocol stays independent from detected server flavor.
+Runtime Restore resets only the default image, registry, inactivity timeout, APK upload limit, and
+optional service connections. Settings editors use the saved values returned by their writes.
 
 For local commands and verification, use the [contribution guide](../CONTRIBUTING.md).
 API changes require regenerated contracts through `pnpm openapi:generate`.

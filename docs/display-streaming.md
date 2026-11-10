@@ -22,7 +22,9 @@ The edge sends `/viewer/display` and `/rebroid/display` traffic directly to the 
 WebRTC signaling uses HTTPS; RTP/RTCP uses the published UDP range. Next.js authorizes viewer
 access but never relays media.
 
-The sidecar owns in-memory sessions, expiry, and capacity. Internal session management requires
+The sidecar owns in-memory sessions, expiry, and capacity. A WebRTC offer owns its consumer
+attempt through target preparation, bootstrap, signaling, and detach. Release or replacement
+cancels that attempt. Internal session management requires
 a shared secret; public viewer routes require a short-lived session token. A source supervisor
 owns scrcpy for a session/profile. Browser, peer, decoder, or bridge failures detach only that
 consumer. Sources can remain alive for 30 seconds without consumers; release, expiry, profile
@@ -66,10 +68,16 @@ Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers va
 WebSocket decoding stays in the media worker where browser support permits. Chromium keeps
 encoded access units and decoded frames off the main thread. Firefox uses worker-produced fMP4
 and main-thread MediaSource. Decoder/backlog recovery resynchronizes the consumer rather than
-reconnecting its media socket. PCM is delivered to an AudioWorklet with a bounded ring.
+reconnecting its media socket. Both renderer paths wait for configuration and an IDR after recovery.
+MediaSource fragments and presentation callbacks carry a recovery epoch so the browser can discard
+work from an abandoned append queue. PCM is delivered to an AudioWorklet with a bounded ring.
 
-All transports share validated device-control semantics. Discrete controls use reliable delivery;
-WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
+All transports share validated device-control semantics. Parent-window keyboard capture follows the
+active surface. Discrete controls use reliable delivery and report correlated execution outcomes.
+Each admitted pointer-down reserves room for its release. Virtual surfaces require stream control
+because the ADB fallback targets the device's default display.
+The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
+outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
 
 ## Protected scrcpy lifecycle
 

@@ -121,6 +121,7 @@ Use shared controls, including their focus and keyboard behavior:
 - `MultiSelectCombobox`: searchable multiple relationships, preserving removable chips, option descriptions,
   keyboard behavior, anchored scrolling, and empty state. Do not replace it with an expanded checkbox list.
 - `TabsRoot`, `TabsList`, `TabsTrigger`, `TabsPanel`: tabs without feature-local focus/role implementations.
+  Give each tab and resource navigation item a decorative icon alongside its text label.
 
 Declare `SelectTrigger` width explicitly. Use a numeric slider only when direct range manipulation
 helps the task. Page-form actions belong in the header; dialog actions in the footer. Hidden file
@@ -317,7 +318,14 @@ App resource views share one device pane in AppDeviceLayout, including configura
 
 The Viewer layout menu beside the breadcrumbs switches between the default right-hand pane and a stacked layout. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
-The embedded Files view uses a single folder grid with ancestor breadcrumbs, a Locations menu, current-folder search and column sorting. Upload and New folder act on the current folder. File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
+The desktop mini player keeps the same live display mounted when the viewer scrolls under the top bar.
+Disable input while the preview floats. Closing docks the player, preserves the page scroll position,
+and keeps the preview dismissed until the inline viewer returns.
+The authorized clipboard dialog belongs in the display toolbar, with explicit read, copy, and send actions.
+
+The embedded Files view opens in Downloads and uses one folder grid with visible location shortcuts, ancestor
+breadcrumbs, current-folder search, and column sorting. Upload and New folder act on the current folder.
+File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
 App Configuration keeps Runtime settings visible as an ordinary section container. Technical Details and Logs belong only in Diagnostics.
 
@@ -360,9 +368,13 @@ Scheduler uses the shared QuickGlanceCard summary surfaces and flat DataGridWork
 
 Scheduler rows show availability once through the Enabled switch beside the task name. An unscheduled next run is an em dash. Built-in task metadata does not repeat its action label; custom tasks retain action context. Recurrence and time have predictable separate lines; execution timestamps use unambiguous month names and 24-hour local times, with the full timestamp and time zone available on hover and to assistive technology. Failure results open a read-only dialog with the complete error instead of stretching table rows.
 
+Runtime inventory and detail pages use the shared server-side failure classification. An unavailable read retains its
+request reference in the page notice. A missing runtime resource offers a return link. Services keeps its selected
+infrastructure view and retains an existing connection draft across a failed refresh.
+
 The Services inventory uses Service, Status, Connection, and Actions columns. Show endpoint and timeout together; keep optional tuning in its editor. Service names are explicit resource links or edit buttons, with a non-resizable action column that reserves enough space for text and icons. Configuration presence is neutral, while verified health uses semantic status colors. Managed-only inventories omit Save/Reset; editable inventories enable Save only for a changed draft. Dialog Done retains the draft for the page-level Save. Loading shares ServicesGrid and ServicesPageLayout.
 
-Runtime defaults group image selection and registry separately from app behavior and upload limits. Show the deployment-owned API URL as a read-only detail with a copy action, not an editable-looking input. Keep Save and Discard changes tied to a saved baseline; maintain local drafts through maintenance revalidation. Maintenance stays visible as a compact action list on one shared section surface, without nested action cards. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restoring runtime defaults also resets optional service connections; it does not reset the web-owned app data deletion policy. Link to Scheduler for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
+Runtime defaults group image selection and registry separately from app behavior and upload limits. Show the deployment-owned API URL as a read-only detail with a copy action, not an editable-looking input. Keep Save and Discard changes tied to a saved baseline; maintain local drafts through maintenance revalidation. Maintenance stays visible as a compact action list on one shared section surface, without nested action cards. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Scheduler for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
 
 Services is the entry point for Connections and Features, using the shared ResourceNavigation on both existing routes. Keep feature management under Services in breadcrumbs and sidebar selection rather than a competing sidebar entry. Connections show disabled or unsupported services as discoverable rows with links to their feature setting; feature gates still protect their editors. Features use readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks; connection dialogs retain drafts until Save or Discard changes. Saves send only workflow-owned fields: connections, runtime defaults, or the selected default image, without replaying hidden settings. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
 

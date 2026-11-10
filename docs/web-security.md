@@ -44,13 +44,14 @@ and CSV exports neutralize spreadsheet formulas. Persistence changes use the
 
 ## Runtime authorization and revocation
 
-The orchestrator reauthorizes every automation immediately before target preparation through
+The orchestrator reauthorizes every automation during target preparation through
 `POST /api/internal/automations/authorize` on the web service. `WEB_INTERNAL_URL` defaults to
 `http://localhost:3101` for local development; Compose configures `http://web:3101`.
 The call uses the shared service secret, a bounded timeout, and fails closed when web is unavailable.
 Public ingress strips this secret. The endpoint does not accept browser sessions as authorization.
-The web service checks current account state, command permissions, target ownership, profile access,
-and startup permission and quotas, including queued automation target reservations.
+The request specifies whether preparation intends to attach or start. The web service checks current
+account state, command permissions, target ownership, and profile access. A Start request always
+checks startup permission and quotas, including queued automation target reservations.
 Scheduled runs therefore cannot retain permissions from the time their trigger was created.
 
 Administrative user/group edits, disabling, and deletion revoke the user's existing display sessions
