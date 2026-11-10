@@ -12,6 +12,7 @@ const nextConfig = {
   reactCompiler: true,
   reactStrictMode: true,
   poweredByHeader: false,
+  devIndicators: { position: 'bottom-right' },
   allowedDevOrigins,
   output: 'standalone',
   // The display sidecar serves the viewer directly. Keep slash normalization

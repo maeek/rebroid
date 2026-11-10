@@ -17,7 +17,7 @@ import {
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
-export type NavigationVariant = 'sidebar' | 'drawer'
+export type NavigationVariant = 'sidebar' | 'rail' | 'drawer'
 
 export type NavigationItem = {
   name: string
@@ -103,12 +103,26 @@ export const variantStyles = {
       'mr-1 flex size-8 items-center justify-center rounded-control text-foreground-muted transition hover:bg-accent/70 hover:text-foreground',
     dashboardSpacing: ''
   },
+  rail: {
+    root: 'flex w-full flex-col px-2 py-4',
+    sectionHeader: 'flex justify-center has-[a]:mb-1',
+    sectionTitle: 'sr-only',
+    sectionAction:
+      'touch-control flex size-8 shrink-0 items-center justify-center rounded-control text-foreground-muted hover:bg-control-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring',
+    sectionActionIcon: 'size-4 stroke-current',
+    list: 'grid justify-items-center gap-1 mb-3 border-b border-surface-border/60 pb-3 last:mb-0 last:border-b-0',
+    item: 'touch-control flex size-9 shrink-0 items-center justify-center rounded-control text-foreground hover:bg-control-hover focus-visible:outline-2 focus-visible:outline-ring',
+    activeItem: 'bg-accent text-accent-foreground!',
+    iconWrap: 'flex size-6 shrink-0 items-center justify-center',
+    icon: 'size-4.5 stroke-current',
+    label: 'sr-only'
+  },
   drawer: {
     root: 'flex flex-col p-4',
     sectionHeader: 'flex items-center justify-between gap-2 px-2 pb-4',
     sectionTitle: 'text-sm font-medium text-foreground-muted max-lg:text-sm',
     sectionAction:
-      'flex size-5 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-control hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+      'touch-control flex size-5 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-control hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     sectionActionIcon: 'size-4 stroke-current',
     list: 'w-full pb-6 flex flex-col',
     item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-control-hover rounded-control text-foreground hover:text-foreground cursor-pointer',
@@ -118,7 +132,7 @@ export const variantStyles = {
     label: 'text-base max-lg:text-inherit text-inherit',
     nestedList: 'min-h-0 space-y-1 py-1 pl-8',
     nestedItem:
-      'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-control-hover rounded-control text-foreground hover:text-foreground cursor-pointer',
+      'touch-control flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-control-hover rounded-control text-foreground hover:text-foreground cursor-pointer',
     nestedActiveItem: 'bg-control',
     nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-control',
     nestedIcon: 'size-4 stroke-current',

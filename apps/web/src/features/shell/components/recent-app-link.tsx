@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { requestApplicationStartAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import { NavigationHint } from './navigation-hint'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
 import type { RecentApp } from '@/shared/contracts/recent-app'
 
@@ -28,6 +29,38 @@ export const RecentAppLink = ({
   const [isStarting, setIsStarting] = useState(false)
   const isOperating = app.status === 'provisioning' || app.status === 'removing' || isStarting
   const canStart = app.status === 'stopped' || app.status === 'error'
+  const icon = (
+    <AppIcon
+      appId={app.id}
+      appName={app.name}
+      icon={app.icon}
+      className='size-6 text-[0.6rem]'
+    />
+  )
+
+  if (variant === 'rail') {
+    return (
+      <li>
+        <NavigationHint label={app.name}>
+          <Link
+            href={`/app/${app.id}`}
+            aria-label={app.name}
+            aria-current={isActive ? 'page' : undefined}
+            className={cn(styles.item, 'relative', isActive && styles.activeItem)}
+            onClick={onNavigate}
+          >
+            {icon}
+            {app.status === 'running' ? (
+              <span
+                className='absolute right-1 top-1 size-2 rounded-full bg-success'
+                aria-hidden='true'
+              />
+            ) : null}
+          </Link>
+        </NavigationHint>
+      </li>
+    )
+  }
 
   const startAndOpen = async () => {
     if (isStarting) return
@@ -52,14 +85,7 @@ export const RecentAppLink = ({
         onClick={onNavigate}
         className='flex min-w-0 flex-1 items-center gap-2'
       >
-        <div className={styles.iconWrap}>
-          <AppIcon
-            appId={app.id}
-            appName={app.name}
-            icon={app.icon}
-            className='size-6 text-[0.6rem]'
-          />
-        </div>
+        <div className={styles.iconWrap}>{icon}</div>
         <span className={cn(styles.label, 'truncate')}>{app.name}</span>
       </Link>
       <Visible when={app.status === 'running'}>

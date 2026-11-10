@@ -1,60 +1,116 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import {
+  legacySidebarCollapsedKey,
+  parseSidebarCollapsed,
+  sidebarCollapsedCookie
+} from '@/shared/model/settings/sidebar-preference'
+import { MobileNavigation } from './mobile-navigation'
 import Sidebar from './sidebar'
-import { TopBarProtected } from './top-bar/top-bar'
 import type { ShellUser } from './shell-user'
 
-const sidebarPreference = 'rebroid:sidebar-collapsed'
+const saveSidebarCollapsed = (collapsed: boolean) => {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${sidebarCollapsedCookie}=${collapsed}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+}
 
 export const ProtectedShell = ({
   children,
   user,
-  topBarActions
+  initialSidebarCollapsed,
+  pollNavigation = true
 }: {
   children: ReactNode
   user: ShellUser
-  topBarActions?: ReactNode
+  initialSidebarCollapsed?: boolean
+  pollNavigation?: boolean
 }) => {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [savedSidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed)
+  const sidebarCollapsed = savedSidebarCollapsed ?? false
+  const sidebarPending = savedSidebarCollapsed === undefined
+  const [animateSidebar, setAnimateSidebar] = useState(false)
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   useEffect(() => {
-    setSidebarCollapsed(window.localStorage.getItem(sidebarPreference) === 'true')
+    const viewport = window.matchMedia('(min-width: 64rem)')
+    const updateViewport = () => setIsDesktop(viewport.matches)
+    updateViewport()
+    viewport.addEventListener('change', updateViewport)
+    return () => viewport.removeEventListener('change', updateViewport)
   }, [])
+
+  useEffect(() => {
+    if (initialSidebarCollapsed !== undefined) return
+    try {
+      const previous = parseSidebarCollapsed(window.localStorage.getItem(legacySidebarCollapsedKey) ?? undefined)
+      setSidebarCollapsed(previous ?? false)
+      saveSidebarCollapsed(previous ?? false)
+      if (previous !== undefined) {
+        window.localStorage.removeItem(legacySidebarCollapsedKey)
+      }
+    } catch {
+      // Browser storage may be unavailable.
+      setSidebarCollapsed(false)
+    }
+  }, [initialSidebarCollapsed])
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
+    setAnimateSidebar(true)
     setSidebarCollapsed(next)
-    window.localStorage.setItem(sidebarPreference, String(next))
+    saveSidebarCollapsed(next)
   }
 
   return (
-    <div className='main-layout relative z-10 pt-16'>
+    <div
+      data-sidebar-collapsed={sidebarCollapsed}
+      data-sidebar-pending={sidebarPending || undefined}
+      data-sidebar-motion={animateSidebar}
+      className='main-layout relative z-10 flex flex-col pt-(--console-top-inset) [--shell-sidebar-duration:0ms] data-[sidebar-motion=true]:[--shell-sidebar-duration:220ms] [--shell-sidebar-inset:0.5rem] [--shell-sidebar-offset:calc(var(--shell-sidebar-width)+var(--shell-sidebar-inset))] [--shell-sidebar-width:18rem] data-[sidebar-collapsed=true]:[--shell-sidebar-width:4rem]'
+    >
       <a
         href='#main-content'
         className='sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-control focus:bg-surface-editor focus:px-4 focus:py-2 focus:text-primary focus:outline-2 focus:outline-ring'
       >
         Skip to main content
       </a>
-      <TopBarProtected
-        initialUser={user}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={toggleSidebar}
-        actions={topBarActions}
-      />
-      <div className='h-[calc(100%-4rem)] w-full'>
+      <div
+        className='contents'
+        data-sidebar-current=''
+      >
         <Sidebar
           initialUser={user}
           collapsed={sidebarCollapsed}
+          onToggle={toggleSidebar}
+          pollNavigation={pollNavigation && isDesktop === true}
         />
-        <main
-          id='main-content'
-          tabIndex={-1}
-          className={cn('min-h-[calc(100dvh-4rem)] w-full min-w-0 scroll-mt-16', !sidebarCollapsed && 'lg:pl-72')}
-        >
-          <div className='mx-auto flex w-full max-w-[120rem] flex-col'>{children}</div>
-        </main>
       </div>
+      {sidebarPending ? (
+        <div
+          className='hidden'
+          data-sidebar-legacy-preview=''
+        >
+          <Sidebar
+            id='desktop-navigation-legacy'
+            initialUser={user}
+            collapsed
+            onToggle={toggleSidebar}
+            pollNavigation={false}
+          />
+        </div>
+      ) : null}
+      <MobileNavigation
+        user={user}
+        isDesktop={isDesktop === true}
+        pollNavigation={pollNavigation && isDesktop === false}
+      />
+      <main
+        id='main-content'
+        tabIndex={-1}
+        className='w-full min-w-0 flex-1 scroll-mt-(--console-top-inset) lg:pl-[var(--shell-sidebar-offset)] lg:transition-[padding-left] lg:duration-[var(--shell-sidebar-duration)] lg:ease-out lg:motion-reduce:transition-none'
+      >
+        <div className='mx-auto flex w-full max-w-[120rem] flex-col'>{children}</div>
+      </main>
     </div>
   )
 }

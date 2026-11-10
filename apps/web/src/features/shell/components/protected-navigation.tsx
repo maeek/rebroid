@@ -7,6 +7,7 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
+import { NavigationRailGroups } from './navigation-rail-group'
 import {
   appSections,
   isNavigationDestinationActive,
@@ -62,6 +63,20 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
 
     return isActivePath(href, href === '/platform')
   }
+
+  const administrationGroups = [
+    { label: 'Platform settings', items: platformSections },
+    { label: 'Infrastructure', items: [...runtimeSections, ...systemSections] },
+    { label: 'Access and policies', items: securitySections }
+  ].map(({ label, items }) => ({
+    label,
+    items: items
+      .filter(item => !item.feature || isFeatureEnabled(item.feature))
+      .map(item => ({
+        ...item,
+        shortcut: item.shortcut?.feature && !isFeatureEnabled(item.shortcut.feature) ? undefined : item.shortcut
+      }))
+  }))
 
   const renderSection = (title: string, items: NavigationItem[]) => (
     <>
@@ -163,39 +178,36 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
           title='Administration'
           variant={variant}
         />
-        <ul className={styles.list}>
-          {[
-            { label: 'Platform settings', items: platformSections },
-            { label: 'Infrastructure', items: [...runtimeSections, ...systemSections] },
-            { label: 'Access and policies', items: securitySections }
-          ].map(group => {
-            const items = group.items
-              .filter(item => !item.feature || isFeatureEnabled(item.feature))
-              .map(item => ({
-                ...item,
-                shortcut: item.shortcut?.feature && !isFeatureEnabled(item.shortcut.feature) ? undefined : item.shortcut
-              }))
-            const first = items[0]
-            if (!first) return null
-            const active = items.some(item => itemIsActive(item.href))
-            const isOpen = expanded[group.label] ?? active
-            return (
-              <NestedNavigationMenu
-                key={group.label}
-                label={group.label}
-                Icon={first.Icon}
-                items={items}
-                variant={variant}
-                isOpen={isOpen}
-                isActivePath={itemIsActive}
-                onNavigate={onNavigate}
-                onToggle={() => setExpanded(current => ({ ...current, [group.label]: !isOpen }))}
-              />
-            )
-          })}
-        </ul>
-        {renderSection('Preferences', preferenceSections)}
+        {variant === 'rail' ? (
+          <NavigationRailGroups
+            groups={administrationGroups}
+            isActivePath={itemIsActive}
+          />
+        ) : (
+          <ul className={styles.list}>
+            {administrationGroups.map(({ label, items }) => {
+              const first = items[0]
+              if (!first) return null
+              const active = items.some(item => itemIsActive(item.href))
+              const isOpen = expanded[label] ?? active
+              return (
+                <NestedNavigationMenu
+                  key={label}
+                  label={label}
+                  Icon={first.Icon}
+                  items={items}
+                  variant={variant}
+                  isOpen={isOpen}
+                  isActivePath={itemIsActive}
+                  onNavigate={onNavigate}
+                  onToggle={() => setExpanded(current => ({ ...current, [label]: !isOpen }))}
+                />
+              )
+            })}
+          </ul>
+        )}
       </Visible>
+      {renderSection('Preferences', preferenceSections)}
     </div>
   )
 }

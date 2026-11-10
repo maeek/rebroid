@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { IconAlertTriangle, IconChevronRight, IconCircleCheck, IconLoader2 } from '@tabler/icons-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { IconChevronRight } from '@tabler/icons-react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
@@ -91,7 +92,8 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   }
 ]
 
-export const OrchestratorStatus = () => {
+export const OrchestratorStatus = ({ inRail = false, polling = true }: { inRail?: boolean; polling?: boolean }) => {
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<HealthState>('checking')
   const [message, setMessage] = useState('Checking')
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
@@ -130,6 +132,7 @@ export const OrchestratorStatus = () => {
   }, [])
 
   const { data, error } = usePollingQuery<OrchestratorHealth>('orchestrator:health', () => getOrchestratorHealth(), {
+    enabled: polling,
     intervalMs: 10_000
   })
 
@@ -141,39 +144,48 @@ export const OrchestratorStatus = () => {
     }
   }, [applyHealth, applyOfflineHealth, data, error])
 
-  const icon =
-    state === 'checking' ? (
-      <IconLoader2 className='size-4 animate-spin' />
-    ) : state === 'online' ? (
-      <IconCircleCheck className='size-4' />
-    ) : (
-      <IconAlertTriangle className='size-4' />
-    )
-
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
+    <Popover
+      onOpenChange={(open, details) => {
+        if (!open && details.reason === 'escape-key') {
+          requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }))
+        }
+      }}
+    >
+      <PopoverTrigger
+        asChild
+        openOnHover
+        closeDelay={150}
+      >
+        <Button
+          ref={triggerRef}
           type='button'
+          variant={inRail ? 'bare' : 'ghost'}
+          size='icon-sm'
+          aria-label={`Service status: ${message}`}
           className={cn(
-            'flex max-w-[18rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-            {
-              'border-surface-border/70 bg-surface-band/50 text-foreground': state === 'checking',
-              'border-success/35 bg-success/10 text-success': state === 'online',
-              'border-warning/40 bg-warning/10 text-warning': state === 'degraded',
-              'border-danger/50 bg-danger/15 text-danger': state === 'offline'
-            }
+            'size-6 rounded-full',
+            inRail && 'absolute -right-1 top-3 focus-visible:ring-inset touch:min-h-0 touch:min-w-0'
           )}
         >
-          {icon}
-          <span className='truncate'>{message}</span>
-        </button>
+          <span
+            aria-hidden='true'
+            className={cn('size-2 rounded-full', inRail && 'ring-2 ring-surface-navigation', {
+              'bg-foreground-muted/60': state === 'checking',
+              'bg-success': state === 'online',
+              'bg-warning': state === 'degraded',
+              'bg-danger': state === 'offline'
+            })}
+          />
+        </Button>
       </PopoverTrigger>
       <PopoverContent
+        side={inRail ? 'right' : 'bottom'}
         align='start'
+        sideOffset={inRail ? 16 : 8}
+        aria-label='Service status'
         collisionPadding={16}
-        sideOffset={8}
-        className='w-80 p-2'
+        className='scrollbar-thin max-h-(--available-height) w-[min(20rem,calc(100vw-2rem))] overflow-y-auto p-2'
       >
         <div className='space-y-0'>
           {serviceRows(health, message).map(({ name, href, service, impact }) => (
@@ -181,7 +193,7 @@ export const OrchestratorStatus = () => {
               key={name}
               href={href}
               title={service.message}
-              className='flex flex-wrap items-center gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-surface-band/55'
+              className='flex flex-wrap items-center gap-3 rounded-control px-3 py-2.5 transition-colors hover:bg-control-hover focus-visible:bg-control-hover'
             >
               <span className={cn('size-2.5 shrink-0 rounded-full', dotTone(service.status))} />
               <div className='flex min-w-0 grow items-center justify-between gap-2'>

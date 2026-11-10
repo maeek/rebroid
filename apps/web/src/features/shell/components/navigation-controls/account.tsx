@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { IconLogout, IconSettings, IconUser } from '@tabler/icons-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
@@ -13,22 +13,31 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { Visible } from '@/components/ui/visible'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { ProfileDialog } from './profile-dialog'
+import type { NavigationPopupPosition } from './popup-position'
 import type { ShellUser } from '../shell-user'
 
-export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
+export const NavigationAccount = ({
+  initialUser,
+  popupPosition
+}: {
+  initialUser: ShellUser
+  popupPosition: NavigationPopupPosition
+}) => {
   const [profileOpen, setProfileOpen] = useState(false)
-  const [avatar, setAvatar] = useState<string | null>(initialUser.avatarDataUrl)
-  const isAdmin = initialUser.role === 'admin'
+  const accountTrigger = useRef<HTMLButtonElement>(null)
 
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          ref={accountTrigger}
+          aria-label='Account'
+          className='touch-control inline-flex shrink-0 items-center justify-center rounded-full'
+        >
           <Avatar>
-            <AvatarImage src={avatar ?? ''} />
+            <AvatarImage src={initialUser.avatarDataUrl ?? ''} />
             <AvatarFallback
               style={{
                 backgroundColor: getHslColorFromCharCode(initialUser.name),
@@ -40,21 +49,19 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
           </Avatar>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          align='end'
-          style={{ width: '12rem' }}
+          {...popupPosition}
+          className='w-48 max-[359px]:w-42'
         >
-          <ThemeToggle />
+          <ThemeToggle side={popupPosition.side === 'bottom' ? 'left' : undefined} />
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-            <IconUser className='size-4 mr-2' /> Profile
+            <IconUser className='size-4 mr-2' /> Account overview
           </DropdownMenuItem>
-          <Visible when={isAdmin}>
-            <DropdownMenuItem asChild>
-              <Link href='/preferences/general'>
-                <IconSettings className='size-4 mr-2' /> Settings
-              </Link>
-            </DropdownMenuItem>
-          </Visible>
+          <DropdownMenuItem asChild>
+            <Link href='/preferences/general'>
+              <IconSettings className='size-4 mr-2' /> Preferences
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
             <IconLogout className='size-4 mr-2' /> Log out
@@ -63,12 +70,9 @@ export const TopBarAccount = ({ initialUser }: { initialUser: ShellUser }) => {
       </DropdownMenu>
       <ProfileDialog
         open={profileOpen}
-        name={initialUser.name}
-        avatar={avatar}
-        initialAccentColor={initialUser.accentColor}
-        initialMfaEnabled={initialUser.mfaEnabled}
+        user={initialUser}
         onOpenChange={setProfileOpen}
-        onAvatarSaved={setAvatar}
+        finalFocus={accountTrigger}
       />
     </>
   )

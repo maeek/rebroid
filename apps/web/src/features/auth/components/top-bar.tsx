@@ -1,14 +1,12 @@
 'use client'
 import { IconBrandGithub, IconSunMoon } from '@tabler/icons-react'
 import Link from 'next/link'
-import { useTheme } from 'next-themes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ThemeMenuItems } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 
 export const TopBarUnprotected = () => {
   const sectionClasses = 'flex items-center h-full px-4 gap-x-8'
-  const { setTheme } = useTheme()
 
   return (
     <div className='flex justify-between h-16 w-dvw shrink-0 fixed top-0 z-10'>
@@ -34,7 +32,7 @@ export const TopBarUnprotected = () => {
             <IconSunMoon className='size-6' />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            <ThemeMenuItems onSelect={setTheme} />
+            <ThemeMenuItems />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

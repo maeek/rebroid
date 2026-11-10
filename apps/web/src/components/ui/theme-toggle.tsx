@@ -1,10 +1,10 @@
 'use client'
 
-import * as React from 'react'
 import { IconDeviceMobile, IconMoon, IconSun, IconSunMoon } from '@tabler/icons-react'
 import { useTheme } from 'next-themes'
 import {
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -12,31 +12,41 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Visible } from '@/components/ui/visible'
 
-export type AppTheme = 'light' | 'dark' | 'oled' | 'system'
+export const appThemeOptions = [
+  { value: 'light', label: 'Light', Icon: IconSun },
+  { value: 'dark', label: 'Dark', Icon: IconMoon },
+  { value: 'oled', label: 'OLED', Icon: IconDeviceMobile },
+  { value: 'system', label: 'System', Icon: IconSunMoon }
+] as const
 
-export const ThemeMenuItems = ({ onSelect }: { onSelect: (theme: AppTheme) => void }) => (
-  <>
-    <DropdownMenuItem onClick={() => onSelect('light')}>
-      <IconSun className='h-4 mr-2' /> Light
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onSelect('dark')}>
-      <IconMoon className='h-4 mr-2' /> Dark
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onSelect('oled')}>
-      <IconDeviceMobile className='h-4 mr-2' /> OLED
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={() => onSelect('system')}>
-      <IconSunMoon className='h-4 mr-2' /> System
-    </DropdownMenuItem>
-  </>
-)
-
-export function ThemeToggle() {
+export const ThemeMenuItems = () => {
   const { setTheme, theme } = useTheme()
+  return (
+    <DropdownMenuRadioGroup
+      value={theme}
+      onValueChange={value => {
+        const option = appThemeOptions.find(item => item.value === value)
+        if (option) setTheme(option.value)
+      }}
+    >
+      {appThemeOptions.map(({ value, label, Icon }) => (
+        <DropdownMenuRadioItem
+          key={value}
+          value={value}
+        >
+          <Icon className='size-4' /> {label}
+        </DropdownMenuRadioItem>
+      ))}
+    </DropdownMenuRadioGroup>
+  )
+}
+
+export function ThemeToggle({ side }: { side?: 'left' | 'right' }) {
+  const { theme } = useTheme()
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger indicatorSide={side}>
         <Visible when={theme === 'light'}>
           <IconSun className='mr-2 size-4' />
         </Visible>
@@ -52,8 +62,12 @@ export function ThemeToggle() {
         <span>Theme</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>
-        <DropdownMenuSubContent>
-          <ThemeMenuItems onSelect={setTheme} />
+        <DropdownMenuSubContent
+          side={side}
+          sideOffset={12}
+          collisionPadding={8}
+        >
+          <ThemeMenuItems />
         </DropdownMenuSubContent>
       </DropdownMenuPortal>
     </DropdownMenuSub>

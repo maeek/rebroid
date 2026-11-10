@@ -8,15 +8,22 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { listRunningApplicationNotificationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { NotificationCard } from '@/shared/ui/notifications/notification-card'
+import type { NavigationPopupPosition } from './popup-position'
 import type { RunningApplicationNotifications } from '@/shared/contracts/application'
 
 const refreshIntervalMs = 10000
 
-export const TopBarNotifications = () => {
+export const NavigationNotifications = ({
+  popupPosition,
+  polling
+}: {
+  popupPosition: NavigationPopupPosition
+  polling: boolean
+}) => {
   const { data, isLoading } = usePollingQuery<RunningApplicationNotifications[]>(
     'applications:running-notifications',
     () => listRunningApplicationNotificationsAction(),
-    { intervalMs: refreshIntervalMs }
+    { enabled: polling, intervalMs: refreshIntervalMs }
   )
   const notifications = data ?? []
   const totalCount = notifications.reduce((sum, app) => sum + app.notifications.length, 0)
@@ -27,7 +34,7 @@ export const TopBarNotifications = () => {
         <button
           type='button'
           aria-label='Notifications'
-          className='relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-surface-band/70 hover:text-foreground'
+          className='touch-control relative inline-flex size-10 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-surface-band/70 hover:text-foreground'
         >
           <IconBell className='size-5' />
           <Visible when={totalCount > 0}>
@@ -43,10 +50,10 @@ export const TopBarNotifications = () => {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        align='start'
+        {...popupPosition}
+        aria-label='Notifications'
         collisionPadding={16}
-        sideOffset={8}
-        className='w-[min(24rem,calc(100vw-2rem))] border-surface-border/70 bg-surface-elevated/96 p-3 backdrop-blur-xl'
+        className='w-[min(24rem,calc(100vw-2rem))] p-3'
       >
         <div className='flex items-start justify-between gap-3 pb-3'>
           <div>

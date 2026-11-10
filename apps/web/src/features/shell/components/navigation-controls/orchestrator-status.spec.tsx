@@ -40,6 +40,7 @@ describe('OrchestratorStatus', () => {
     render(<OrchestratorStatus />)
 
     expect(usePollingQuery).toHaveBeenCalledWith('orchestrator:health', expect.any(Function), {
+      enabled: true,
       intervalMs: 10_000
     })
     await vi.mocked(usePollingQuery).mock.calls[0]?.[1]()

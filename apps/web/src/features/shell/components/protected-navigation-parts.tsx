@@ -1,8 +1,9 @@
 import { useId } from 'react'
-import { IconChevronRight, IconCirclePlus, IconPlus } from '@tabler/icons-react'
+import { IconChevronRight, IconCirclePlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+import { NavigationHint } from './navigation-hint'
 import { variantStyles, type NavigationItem, type NavigationVariant } from './protected-navigation-config'
 
 type NavLinkProps = {
@@ -22,19 +23,44 @@ type SectionHeaderProps = {
   onNavigate?: () => void
 }
 
-export const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavigate }: SectionHeaderProps) => {
+const NavigationAddLink = ({
+  href,
+  label,
+  variant,
+  className,
+  onNavigate
+}: {
+  href: string
+  label: string
+  variant: NavigationVariant
+  className?: string
+  onNavigate?: () => void
+}) => {
   const styles = variantStyles[variant]
-  const action =
-    actionHref && actionLabel ? (
+  return (
+    <NavigationHint label={label}>
       <Link
-        href={actionHref}
-        className={styles.sectionAction}
-        aria-label={actionLabel}
-        title={actionLabel}
+        href={href}
+        className={cn(styles.sectionAction, className)}
+        aria-label={label}
         onClick={onNavigate}
       >
         <IconCirclePlus className={styles.sectionActionIcon} />
       </Link>
+    </NavigationHint>
+  )
+}
+
+export const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavigate }: SectionHeaderProps) => {
+  const styles = variantStyles[variant]
+  const action =
+    actionHref && actionLabel ? (
+      <NavigationAddLink
+        href={actionHref}
+        label={actionLabel}
+        variant={variant}
+        onNavigate={onNavigate}
+      />
     ) : null
 
   return (
@@ -47,22 +73,21 @@ export const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavig
 
 export const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: NavLinkProps) => {
   const styles = variantStyles[variant]
-
-  return (
-    <li>
-      <Link
-        href={href}
-        className={cn(styles.item, isActive && styles.activeItem)}
-        onClick={onNavigate}
-        aria-current={isActive ? 'page' : undefined}
-      >
-        <div className={styles.iconWrap}>
-          <Icon className={styles.icon} />
-        </div>
-        <span className={styles.label}>{label}</span>
-      </Link>
-    </li>
+  const link = (
+    <Link
+      href={href}
+      className={cn(styles.item, isActive && styles.activeItem)}
+      onClick={onNavigate}
+      aria-current={isActive ? 'page' : undefined}
+    >
+      <div className={styles.iconWrap}>
+        <Icon className={styles.icon} />
+      </div>
+      <span className={styles.label}>{label}</span>
+    </Link>
   )
+
+  return <li>{variant === 'rail' ? <NavigationHint label={label}>{link}</NavigationHint> : link}</li>
 }
 
 export const NestedNavigationMenu = ({
@@ -76,7 +101,7 @@ export const NestedNavigationMenu = ({
   onToggle
 }: {
   label: string
-  variant: NavigationVariant
+  variant: Exclude<NavigationVariant, 'rail'>
   items: NavigationItem[]
   isOpen: boolean
   Icon: NavigationItem['Icon']
@@ -84,8 +109,8 @@ export const NestedNavigationMenu = ({
   onNavigate?: () => void
   onToggle: () => void
 }) => {
-  const styles = variantStyles[variant]
   const listId = useId()
+  const styles = variantStyles[variant]
   const containsActive = items.some(item => isActivePath(item.href))
 
   return (
@@ -121,7 +146,7 @@ export const NestedNavigationMenu = ({
                 className={cn(
                   styles.nestedItem,
                   'flex-1',
-                  shortcut && 'pr-9',
+                  shortcut && 'pr-9 touch:pr-2',
                   isActivePath(itemHref) && styles.nestedActiveItem
                 )}
                 onClick={onNavigate}
@@ -133,15 +158,13 @@ export const NestedNavigationMenu = ({
                 <span className='truncate'>{name}</span>
               </Link>
               {shortcut ? (
-                <Link
+                <NavigationAddLink
                   href={shortcut.href}
-                  className={cn(styles.sectionAction, 'absolute right-2 size-6')}
-                  aria-label={shortcut.label}
-                  title={shortcut.label}
-                  onClick={onNavigate}
-                >
-                  <IconPlus className='size-4' />
-                </Link>
+                  label={shortcut.label}
+                  variant={variant}
+                  className='absolute right-2 size-6 touch:static'
+                  onNavigate={onNavigate}
+                />
               ) : null}
             </li>
           ))}
