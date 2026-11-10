@@ -19,10 +19,8 @@ test("creates deterministic owned chain names", () => {
   );
 });
 
-test("keeps atomic iptables replacement chains within the compatibility limit", () => {
-  assert.ok(
-    `${chainName("12345678-1234-1234-1234-123456789abc")}_NEXT`.length < 29,
-  );
+test("keeps iptables policy chains within the compatibility limit", () => {
+  assert.ok(chainName("12345678-1234-1234-1234-123456789abc").length < 29);
 });
 
 test("validates and deduplicates IPv4 policies", () => {
@@ -68,25 +66,152 @@ test("authoritative reconciliation builds a desired policy map", () => {
   assert.equal(policies.get("app-1")?.generation, 2);
 });
 
-test("iptables adapters execute through the injected command runner", () => {
-  const calls: Array<{ binary: string; args: string[] }> = [];
+test("a failed iptables restore leaves the previously committed rules alone", () => {
+  const previous = "-A DOCKER-USER -j REBROID_FW\n-A REBROID_FW -j REJECT\n";
+  const calls: string[] = [];
+  let installed = previous;
   const runner: FirewallCommandRunner = {
-    run(binary, args) {
-      calls.push({ binary, args });
-      return { ok: args[1] !== "-C", output: "" };
+    run(binary, args, options) {
+      calls.push(binary);
+      if (binary === "iptables" && args.includes("-S")) {
+        return { ok: true, output: installed };
+      }
+      if (binary === "iptables-restore") {
+        assert.match(options?.input ?? "", /\nCOMMIT\n$/);
+        throw new Error("restore rejected");
+      }
+      installed = "";
+      throw new Error("unexpected standalone mutation");
     },
   };
   const adapter = new IptablesAdapter("DOCKER-USER", runner);
-  adapter.apply(
-    validatePolicy("app-1", {
-      containerId: "container-1",
-      containerIp: "172.18.0.2",
-      allowCidrs: ["10.0.0.0/8"],
-      generation: 1,
-    }),
+  const policy = validatePolicy("app-1", {
+    containerId: "container-1",
+    containerIp: "172.18.0.2",
+    allowCidrs: ["10.0.0.0/8"],
+    generation: 1,
+  });
+
+  assert.throws(
+    () => adapter.apply(policy, new Map([[policy.applicationId, policy]])),
+    /restore rejected/,
   );
-  assert.ok(calls.some((call) => call.args.includes("10.0.0.0/8")));
-  assert.ok(calls.every((call) => call.binary === "iptables"));
+  assert.equal(installed, previous);
+  assert.deepEqual(calls, ["iptables", "iptables-restore"]);
+});
+
+function recordIptablesRestores(listing = "") {
+  const batches: Array<{ rules: string[]; ignoreFailure: boolean }> = [];
+  const runner: FirewallCommandRunner = {
+    run(binary, args, options) {
+      if (binary === "iptables") {
+        assert.ok(args.includes("-S"));
+        return { ok: true, output: listing };
+      }
+      assert.equal(binary, "iptables-restore");
+      assert.ok(args.includes("--noflush"));
+      assert.ok(options?.input);
+      batches.push({
+        rules: options.input.trimEnd().split("\n"),
+        ignoreFailure: options.ignoreFailure ?? false,
+      });
+      return { ok: true, output: "" };
+    },
+  };
+  return { runner, batches };
+}
+
+test("legacy forwarding jumps are replaced in the same batch as the rebuilt rules", () => {
+  const { runner, batches } = recordIptablesRestores(
+    [
+      "-N REBROID_FW",
+      "-N REBROID_FW_NEXT",
+      "-N RB_APP_APP1_NEXT",
+      "-N UNRELATED",
+      "-A DOCKER-USER -j REBROID_FW_NEXT",
+      "-A DOCKER-USER -j REBROID_FW",
+      "-A DOCKER-USER -j REBROID_FW",
+      "-A DOCKER-USER -j UNRELATED",
+      "-A REBROID_FW_NEXT -s 172.18.0.2/32 -j RB_APP_APP1_NEXT",
+    ].join("\n"),
+  );
+  const adapter = new IptablesAdapter("DOCKER-USER", runner);
+  const policy = validatePolicy("app-1", {
+    containerId: "container-1",
+    containerIp: "172.18.0.2",
+    allowCidrs: ["10.0.0.0/8"],
+    generation: 1,
+  });
+
+  adapter.reconcile(new Map([[policy.applicationId, policy]]));
+
+  assert.deepEqual(batches, [
+    {
+      rules: [
+        "*filter",
+        ":REBROID_FW - [0:0]",
+        ":RB_APP_APP1 - [0:0]",
+        "-A RB_APP_APP1 -d 10.0.0.0/8 -j ACCEPT",
+        "-A RB_APP_APP1 -j REJECT",
+        "-A REBROID_FW -s 172.18.0.2 -j RB_APP_APP1",
+        "-D DOCKER-USER -j REBROID_FW_NEXT",
+        "-D DOCKER-USER -j REBROID_FW",
+        "-D DOCKER-USER -j REBROID_FW",
+        "-I DOCKER-USER 1 -j REBROID_FW",
+        "COMMIT",
+      ],
+      ignoreFailure: false,
+    },
+    {
+      rules: [
+        "*filter",
+        "-F REBROID_FW_NEXT",
+        "-F RB_APP_APP1_NEXT",
+        "-X REBROID_FW_NEXT",
+        "-X RB_APP_APP1_NEXT",
+        "COMMIT",
+      ],
+      ignoreFailure: true,
+    },
+  ]);
+});
+
+test("startup guards precede runtime allowlists when policies are committed", () => {
+  const { runner, batches } = recordIptablesRestores();
+  const adapter = new IptablesAdapter("FORWARD", runner);
+  const runtime = validatePolicy("app-1", {
+    containerId: "container-1",
+    containerIp: "172.18.0.2",
+    allowCidrs: ["10.0.0.0/8"],
+    generation: 1,
+  });
+  const guard = validatePolicy("startup-app-1", {
+    containerId: "guard-1",
+    containerIp: "172.18.0.0/24",
+    allowCidrs: [],
+    generation: 2,
+    startup: true,
+  });
+  const policies = new Map([
+    [runtime.applicationId, runtime],
+    [guard.applicationId, guard],
+  ]);
+
+  adapter.apply(guard, policies);
+
+  assert.equal(batches.length, 1);
+  const { rules } = batches[0];
+  assert.deepEqual(
+    rules.filter((rule) => rule.startsWith("-A REBROID_FW ")),
+    [
+      "-A REBROID_FW -s 172.18.0.0/24 -j RB_APP_STARTUPAPP1",
+      "-A REBROID_FW -s 172.18.0.2 -j RB_APP_APP1",
+    ],
+  );
+  assert.deepEqual(
+    rules.filter((rule) => rule.startsWith("-A RB_APP_STARTUPAPP1 ")),
+    ["-A RB_APP_STARTUPAPP1 -j REJECT"],
+  );
 });
 
 test("policy storage atomically replaces and reloads desired state", () => {
