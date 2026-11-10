@@ -267,62 +267,87 @@ describe('AndroidAppsViewerService', () => {
     expect(prepareScrcpyAdbTarget).toHaveBeenCalledTimes(2);
   });
 
-  it('does not reuse a prepared viewer target after the runtime container changes', async () => {
-    const firstApp = {
-      id: 'app-1',
-      containerId: 'container-1',
-      containerName: 'runtime-app-1',
-      adbPort: 5555,
-      scrcpyTransport: 'websocket',
-      status: AndroidApplicationStatus.Running,
-    } as AndroidApplication;
-    const secondApp = {
-      ...firstApp,
-      containerId: 'container-2',
-    } as AndroidApplication;
-    const ensureNetworkPrepared = jest.fn().mockResolvedValue({
-      configured: true,
-      connected: true,
-      message: 'attached',
-      error: null,
-    });
-    const prepareScrcpyAdbTarget = jest.fn().mockResolvedValue({
-      configured: true,
-      connected: true,
-      message: 'device',
-      error: null,
-    });
-    const service = new AndroidAppsViewerService(
-      {
-        get: () => undefined,
-        getOrThrow: () => 'webcodecs',
-      } as unknown as ConfigService,
-      {
-        tryCreateSessionForPreparedTarget: jest
-          .fn()
-          .mockResolvedValue(displaySession()),
-      } as unknown as AndroidAppsDisplaySidecarService,
-      logs(),
-      {
-        getStored: jest
-          .fn()
-          .mockResolvedValueOnce(firstApp)
-          .mockResolvedValueOnce(secondApp),
-      } as unknown as AndroidAppsQueryService,
-      {
-        recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
-      } as unknown as AndroidAppsStateWriter,
-      {
-        ensureNetworkPrepared,
-        resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
-        prepareScrcpyAdbTarget,
-      } as unknown as AndroidAppsViewerNetworkService,
-    );
+  it.each([{ containerId: 'container-2' }, { networkPolicyRevision: 2 }])(
+    'evicts a superseded viewer target when its runtime or policy changes (%o)',
+    async (change) => {
+      const firstApp = {
+        id: 'app-1',
+        containerId: 'container-1',
+        containerName: 'runtime-app-1',
+        adbPort: 5555,
+        networkPolicyRevision: 1,
+        scrcpyTransport: 'websocket',
+        status: AndroidApplicationStatus.Running,
+      } as AndroidApplication;
+      const secondApp = {
+        ...firstApp,
+        ...change,
+      } as AndroidApplication;
+      const ensureNetworkPrepared = jest.fn().mockResolvedValue({
+        configured: true,
+        connected: true,
+        message: 'attached',
+        error: null,
+      });
+      const prepareScrcpyAdbTarget = jest.fn().mockResolvedValue({
+        configured: true,
+        connected: true,
+        message: 'device',
+        error: null,
+      });
+      let oldSessionRequested!: () => void;
+      const oldRequest = new Promise<void>((resolve) => {
+        oldSessionRequested = resolve;
+      });
+      let finishOldSession!: (session: DisplaySessionDto) => void;
+      const oldSession = new Promise<DisplaySessionDto>((resolve) => {
+        finishOldSession = resolve;
+      });
+      const service = new AndroidAppsViewerService(
+        {
+          get: () => undefined,
+          getOrThrow: () => 'webcodecs',
+        } as unknown as ConfigService,
+        {
+          tryCreateSessionForPreparedTarget: jest
+            .fn()
+            .mockImplementationOnce(() => {
+              oldSessionRequested();
+              return oldSession;
+            })
+            .mockResolvedValue(displaySession()),
+        } as unknown as AndroidAppsDisplaySidecarService,
+        logs(),
+        {
+          getStored: jest
+            .fn()
+            .mockResolvedValueOnce(firstApp)
+            .mockResolvedValueOnce(secondApp)
+            .mockResolvedValueOnce(secondApp)
+            .mockResolvedValueOnce(firstApp),
+        } as unknown as AndroidAppsQueryService,
+        {
+          recordViewerActivity: jest.fn().mockResolvedValue(new Date()),
+        } as unknown as AndroidAppsStateWriter,
+        {
+          ensureNetworkPrepared,
+          resolveScrcpyAdbHost: jest.fn().mockResolvedValue('172.20.0.3'),
+          prepareScrcpyAdbTarget,
+        } as unknown as AndroidAppsViewerNetworkService,
+      );
 
-    await service.scrcpySession(firstApp.id);
-    await service.scrcpySession(firstApp.id);
+      const pending = service.scrcpySession(firstApp.id);
+      await oldRequest;
+      await service.scrcpySession(firstApp.id);
+      finishOldSession(displaySession());
+      await pending;
+      await service.scrcpySession(firstApp.id);
 
-    expect(ensureNetworkPrepared).toHaveBeenCalledTimes(2);
-    expect(prepareScrcpyAdbTarget).toHaveBeenCalledTimes(2);
-  });
+      expect(ensureNetworkPrepared).toHaveBeenCalledTimes(2);
+      // An older lookup must prepare again after its entry has been evicted.
+      await service.scrcpySession(firstApp.id);
+      expect(ensureNetworkPrepared).toHaveBeenCalledTimes(3);
+      expect(prepareScrcpyAdbTarget).toHaveBeenCalledTimes(3);
+    },
+  );
 });

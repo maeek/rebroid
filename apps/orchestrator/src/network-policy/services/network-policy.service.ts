@@ -1,8 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { FirewallAgentPolicy } from '@rebroid/firewall-policy-core/policy';
 import { randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
-import type { NetworkPolicyTarget } from '../../android-apps/contracts/android-apps-runtime-inventory.port';
+import type {
+  NetworkPolicyTarget,
+  RestrictedRuntimePolicyTarget,
+} from '../../android-apps/contracts/android-apps-runtime-inventory.port';
+import { getErrorMessage } from '../../common/error-message';
 import {
   DOCKER_NETWORK_RUNTIME,
   type DockerNetworkRuntimePort,
@@ -11,10 +16,6 @@ import {
   DOCKER_SIDECAR,
   type DockerSidecarPort,
 } from '../../docker/contracts/docker-sidecar.port';
-import {
-  DOCKER_ENGINE,
-  type DockerEnginePort,
-} from '../../docker/contracts/docker-engine.port';
 import {
   AllowedDestinations,
   AppliedNetworkPolicy,
@@ -29,6 +30,18 @@ import {
 import { FirewallAgentClientService } from './firewall-agent-client.service';
 import { mapWithConcurrency } from '../../common/map-with-concurrency';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
+import { NetworkPolicyRuntimeService } from './network-policy-runtime.service';
+
+type StartupPolicyObservation =
+  | { state: 'inactive' }
+  | { state: 'uncertain'; app: RestrictedRuntimePolicyTarget }
+  | {
+      state: 'live';
+      app: RestrictedRuntimePolicyTarget;
+      policy: FirewallAgentPolicy | null;
+    };
+
+const POLICY_CONCURRENCY = 4;
 
 @Injectable()
 export class NetworkPolicyService {
@@ -36,8 +49,7 @@ export class NetworkPolicyService {
 
   constructor(
     private readonly config: ConfigService,
-    @Inject(DOCKER_ENGINE)
-    private readonly engine: DockerEnginePort,
+    private readonly runtimes: NetworkPolicyRuntimeService,
     @Inject(DOCKER_NETWORK_RUNTIME)
     private readonly networks: DockerNetworkRuntimePort,
     @Inject(DOCKER_SIDECAR)
@@ -73,6 +85,19 @@ export class NetworkPolicyService {
       };
     }
 
+    return this.applyRestrictedPolicy(app, generation);
+  }
+
+  refreshViewerPolicy(app: NetworkPolicyTarget) {
+    this.features.assertEnabled('feature.firewall');
+    return this.applyRestrictedPolicy(app, Date.now(), true);
+  }
+
+  private async applyRestrictedPolicy(
+    app: NetworkPolicyTarget,
+    generation: number,
+    refresh = false,
+  ): Promise<AppliedNetworkPolicy> {
     const policy = await this.resolvePolicy(app, generation);
     if (!policy) {
       return {
@@ -82,12 +107,7 @@ export class NetworkPolicyService {
     }
 
     try {
-      const response = await this.agent.apply(app.id, policy.agentPolicy);
-      if (response.status !== 'applied') {
-        throw new Error(
-          'The firewall agent did not acknowledge the application policy.',
-        );
-      }
+      await this.applyAgentPolicy(app.id, policy.agentPolicy, refresh);
       return {
         status: 'applied',
         message: this.appliedMessage(policy.destinations),
@@ -109,7 +129,7 @@ export class NetworkPolicyService {
     const policies = (
       await mapWithConcurrency(
         apps.filter((app) => app.containerId && app.networkPolicyEnabled),
-        4,
+        POLICY_CONCURRENCY,
         async (app) => {
           const policy = await this.resolvePolicy(app, startedAt);
           return policy
@@ -119,6 +139,122 @@ export class NetworkPolicyService {
       )
     ).filter((policy): policy is NonNullable<typeof policy> => Boolean(policy));
     await this.agent.reconcile(policies, startedAt);
+  }
+
+  async restoreAtStartup(
+    apps: RestrictedRuntimePolicyTarget[],
+    startedAt: number,
+  ): Promise<{
+    complete: boolean;
+    unverified: RestrictedRuntimePolicyTarget[];
+  }> {
+    if (!this.features.isEnabled('feature.firewall')) {
+      return { complete: true, unverified: [] };
+    }
+    const observations = await mapWithConcurrency(
+      apps,
+      POLICY_CONCURRENCY,
+      (app) => this.prepareStartupPolicy(app, startedAt),
+    );
+    const live = observations.filter(
+      (observation) => observation.state === 'live',
+    );
+    const ready = live.flatMap(({ app, policy }) =>
+      policy ? [{ applicationId: app.id, ...policy }] : [],
+    );
+
+    if (
+      observations.every(({ state }) => state !== 'uncertain') &&
+      live.length === ready.length
+    ) {
+      try {
+        const response = await this.agent.reconcile(ready, startedAt);
+        if (response.status !== 'applied') {
+          throw new Error(
+            'The firewall agent did not acknowledge the startup snapshot.',
+          );
+        }
+        return { complete: true, unverified: [] };
+      } catch (error) {
+        this.logger.warn(
+          `Could not restore the firewall snapshot: ${getErrorMessage(error)}`,
+        );
+      }
+    }
+
+    // An incomplete snapshot would remove rules for runtimes we could not verify.
+    const unverified = await mapWithConcurrency(
+      observations.filter((observation) => observation.state !== 'inactive'),
+      POLICY_CONCURRENCY,
+      async (observation) => {
+        const { app } = observation;
+        if (observation.state === 'uncertain' || !observation.policy)
+          return app;
+        try {
+          await this.applyAgentPolicy(app.id, observation.policy);
+          return null;
+        } catch (error) {
+          this.logger.warn(
+            `Could not restore firewall policy for ${app.id}: ${getErrorMessage(error)}`,
+          );
+          return app;
+        }
+      },
+    );
+    return {
+      complete: false,
+      unverified: unverified.filter((app) => app !== null),
+    };
+  }
+
+  private async prepareStartupPolicy(
+    app: RestrictedRuntimePolicyTarget,
+    generation: number,
+  ): Promise<StartupPolicyObservation> {
+    const runtime = await this.runtimes.observeStartupRuntime(app);
+    if (runtime.state === 'uncertain') {
+      this.logger.warn(
+        `Could not verify runtime for firewall recovery (${app.id}): ${runtime.reason}`,
+      );
+      return { state: 'uncertain', app };
+    }
+    if (runtime.state === 'inactive') return runtime;
+
+    if (runtime.address) {
+      try {
+        const { agentPolicy } = await this.policyForAddress(
+          app,
+          app.containerId,
+          runtime.address,
+          generation,
+        );
+        return { state: 'live', app, policy: agentPolicy };
+      } catch (error) {
+        this.logger.warn(
+          `Could not resolve firewall policy for ${app.id}: ${getErrorMessage(error)}`,
+        );
+      }
+    } else {
+      this.logger.warn(
+        `No runtime IPv4 address for firewall recovery (${app.id}).`,
+      );
+    }
+    return { state: 'live', app, policy: null };
+  }
+
+  private async applyAgentPolicy(
+    appId: string,
+    policy: FirewallAgentPolicy,
+    refresh = false,
+  ) {
+    const response = refresh
+      ? await this.agent.refresh(appId, policy)
+      : await this.agent.apply(appId, policy);
+    if (response.status !== 'applied') {
+      throw new Error(
+        'The firewall agent did not acknowledge the application policy.',
+      );
+    }
   }
 
   async guardStartup(app: NetworkPolicyTarget) {
@@ -161,13 +297,18 @@ export class NetworkPolicyService {
   }
 
   async remove(
-    app: Pick<NetworkPolicyTarget, 'id'>,
+    app: Pick<NetworkPolicyTarget, 'id' | 'networkPolicyRevision'>,
     expectedContainerId?: string,
     generation?: number,
   ) {
     if (!this.features.isEnabled('feature.firewall')) return;
     await this.agent
-      .remove(app.id, expectedContainerId, generation)
+      .remove(
+        app.id,
+        expectedContainerId,
+        generation,
+        app.networkPolicyRevision,
+      )
       .catch((error) => {
         this.logger.warn(
           `Could not remove firewall policy for ${app.id}: ${
@@ -179,38 +320,30 @@ export class NetworkPolicyService {
       });
   }
 
-  private async validatedContainerIp(app: NetworkPolicyTarget) {
-    const inspect = await this.engine.read(
-      () => this.engine.docker.getContainer(app.containerId!).inspect(),
-      `Inspect runtime container ${app.containerId} for network policy`,
-    );
-    const labels = inspect.Config?.Labels ?? {};
-    if (
-      labels['com.rebroid.managed'] !== 'true' ||
-      labels['com.rebroid.application-id'] !== app.id ||
-      labels['com.rebroid.component'] !== 'runtime'
-    ) {
-      throw new Error('Managed container identity validation failed.');
-    }
-    return (
-      inspect.NetworkSettings?.Networks?.[app.networkName]?.IPAddress || null
-    );
-  }
-
   private async resolvePolicy(app: NetworkPolicyTarget, generation: number) {
-    const containerIp = await this.validatedContainerIp(app);
+    const containerIp = await this.runtimes.getContainerIp(app);
     if (!containerIp || !app.containerId) {
       return null;
     }
+    return this.policyForAddress(app, app.containerId, containerIp, generation);
+  }
+
+  private async policyForAddress(
+    app: NetworkPolicyTarget,
+    containerId: string,
+    containerIp: string,
+    generation: number,
+  ) {
     const destinations = await this.allowedDestinations(app);
     return {
       destinations,
       agentPolicy: {
-        containerId: app.containerId,
+        containerId,
         containerIp,
         enabled: true,
         allowCidrs: destinations.cidrs,
         generation,
+        revision: app.networkPolicyRevision,
       },
     };
   }

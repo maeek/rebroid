@@ -5,6 +5,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { NetworkPolicyService } from './services/network-policy.service';
 import { FirewallAgentClientService } from './services/firewall-agent-client.service';
 import { NetworkPolicyBootstrapService } from './services/network-policy-bootstrap.service';
+import { NetworkPolicyRuntimeService } from './services/network-policy-runtime.service';
 import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
     FirewallAgentClientService,
     NetworkPolicyService,
     NetworkPolicyBootstrapService,
+    NetworkPolicyRuntimeService,
   ],
   exports: [FirewallAgentClientService, NetworkPolicyService],
 })

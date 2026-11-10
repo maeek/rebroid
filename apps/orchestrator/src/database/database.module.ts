@@ -6,6 +6,7 @@ import { dirname } from 'node:path';
 import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-initialize-sqlite-schema';
 
 import { WorkflowRunSummaries1800000001000 } from './migrations/1800000001000-workflow-run-summaries';
+import { NetworkPolicyRevision1800000002000 } from './migrations/1800000002000-network-policy-revision';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WorkflowRunSummaries1800000001000 } from './migrations/1800000001000-wo
           migrations: [
             InitializeSqliteSchema1800000000000,
             WorkflowRunSummaries1800000001000,
+            NetworkPolicyRevision1800000002000,
           ],
           migrationsRun: true,
           synchronize: false,

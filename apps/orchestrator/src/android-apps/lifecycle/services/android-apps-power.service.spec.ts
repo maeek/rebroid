@@ -1,3 +1,4 @@
+import { NetworkPolicyRevision1800000002000 } from '../../../database/migrations/1800000002000-network-policy-revision';
 import { DataSource } from 'typeorm';
 import { InitializeSqliteSchema1800000000000 } from '../../../database/migrations/1800000000000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
@@ -28,7 +29,10 @@ describe('Android application power commands', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],
-      migrations: [InitializeSqliteSchema1800000000000],
+      migrations: [
+        InitializeSqliteSchema1800000000000,
+        NetworkPolicyRevision1800000002000,
+      ],
       migrationsRun: true,
     }).initialize();
     const creating = deferred();

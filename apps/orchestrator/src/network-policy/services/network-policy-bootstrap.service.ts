@@ -9,8 +9,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import {
   ANDROID_APPS_RUNTIME_INVENTORY,
   type AndroidAppsRuntimeInventoryPort,
+  type RestrictedRuntimePolicyTarget,
 } from '../../android-apps/contracts/android-apps-runtime-inventory.port';
+import { getErrorMessage } from '../../common/error-message';
 import { NetworkPolicyService } from './network-policy.service';
+import { NetworkPolicyRuntimeService } from './network-policy-runtime.service';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
   type DockerContainerLifecyclePort,
@@ -26,6 +29,7 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
     @Inject(ANDROID_APPS_RUNTIME_INVENTORY)
     private readonly applications: AndroidAppsRuntimeInventoryPort,
     private readonly policies: NetworkPolicyService,
+    private readonly runtimes: NetworkPolicyRuntimeService,
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly containers: DockerContainerLifecyclePort,
     private readonly features: FeatureFlagsService,
@@ -43,42 +47,69 @@ export class NetworkPolicyBootstrapService implements OnApplicationBootstrap {
       return;
     }
 
+    let unverified: RestrictedRuntimePolicyTarget[] = [];
     for (let attempt = 1; attempt <= 30; attempt += 1) {
       try {
         const startedAt = Date.now();
         const applications =
-          await this.applications.findRunningNetworkPolicyTargets();
-        await this.policies.reconcile(applications, startedAt);
-        return;
+          await this.applications.findRestrictedRuntimePolicyTargets();
+        const result = await this.policies.restoreAtStartup(
+          applications,
+          startedAt,
+        );
+        if (result.complete) return;
+        unverified = result.unverified;
+        this.logger.warn(
+          `Firewall policy restore attempt ${attempt} is incomplete.`,
+        );
       } catch (error) {
         this.logger.warn(
-          `Firewall policy restore attempt ${attempt} failed: ${
-            error instanceof Error ? error.message : 'unknown error'
-          }`,
+          `Firewall policy restore attempt ${attempt} failed: ${getErrorMessage(error)}`,
         );
-        if (attempt < 30) {
-          await delay(1000);
-        }
       }
+      if (attempt < 30) await delay(1000);
     }
     this.logger.error(
       'Firewall policies could not be restored during startup.',
     );
-    await this.stopApplicationsWithUnverifiedPolicies().catch((stopError) => {
-      this.logger.error(
-        `Could not stop applications with unverified firewall policies: ${
-          stopError instanceof Error ? stopError.message : 'unknown error'
-        }`,
-      );
-    });
+    await this.stopApplicationsWithUnverifiedPolicies(unverified).catch(
+      (stopError) => {
+        this.logger.error(
+          `Could not stop applications with unverified firewall policies: ${getErrorMessage(stopError)}`,
+        );
+      },
+    );
   }
 
-  private async stopApplicationsWithUnverifiedPolicies() {
-    const applications =
-      await this.applications.findRunningNetworkPolicyTargets();
-    for (const app of applications) {
-      if (app.containerId) {
+  private async stopApplicationsWithUnverifiedPolicies(
+    unverified: RestrictedRuntimePolicyTarget[],
+  ) {
+    if (!unverified.length || !this.features.isEnabled('feature.firewall'))
+      return;
+    for (const previous of unverified) {
+      try {
+        const runtime = await this.runtimes.observeStartupRuntime(previous);
+        if (runtime.state !== 'live') continue;
+        const [app] =
+          await this.applications.findRestrictedRuntimePolicyTargets([
+            previous.id,
+          ]);
+        if (
+          !app ||
+          app.id !== previous.id ||
+          app.containerId !== previous.containerId ||
+          app.networkName !== previous.networkName ||
+          app.networkPolicyRevision !== previous.networkPolicyRevision ||
+          app.networkPolicyAllowCidrs !== previous.networkPolicyAllowCidrs ||
+          !this.features.isEnabled('feature.firewall')
+        ) {
+          continue;
+        }
         await this.containers.stopContainer(app.containerId);
+      } catch (error) {
+        this.logger.error(
+          `Could not stop unverified runtime for ${previous.id}: ${getErrorMessage(error)}`,
+        );
       }
     }
   }

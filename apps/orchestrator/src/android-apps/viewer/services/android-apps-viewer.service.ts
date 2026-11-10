@@ -10,28 +10,27 @@ import { AndroidApplicationStatus } from '../../contracts/android-application-st
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
-import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
+import {
+  AndroidAppsViewerNetworkService,
+  ViewerRuntimeChangedError,
+} from './android-apps-viewer-network.service';
 
 type PreparedViewerTarget = {
   adbHost: string;
   viewerTarget: ViewerTargetStatus;
 };
 
+type ViewerTargetEntry = {
+  fingerprint: string;
+  pending?: Promise<PreparedViewerTarget>;
+  ready?: { expiresAt: number; result: PreparedViewerTarget };
+};
+
 @Injectable()
 export class AndroidAppsViewerService {
   private static readonly viewerTargetReadyCacheTtlMs = 10_000;
   private readonly logger = new Logger(AndroidAppsViewerService.name);
-  private readonly viewerTargetPreparations = new Map<
-    string,
-    Promise<PreparedViewerTarget>
-  >();
-  private readonly viewerTargetReadyCache = new Map<
-    string,
-    {
-      expiresAt: number;
-      result: PreparedViewerTarget;
-    }
-  >();
+  private readonly viewerTargets = new Map<string, ViewerTargetEntry>();
 
   constructor(
     private readonly config: ConfigService,
@@ -54,7 +53,8 @@ export class AndroidAppsViewerService {
     const app = await this.getRunningRuntimeApp(id);
     const proxyRemote =
       this.config.get<string>('app.displaySidecar.proxyRemote') ?? 'tcp:8886';
-    const { adbHost, viewerTarget } = await this.prepareViewerTarget(app);
+    const { entry, result } = await this.prepareViewerTarget(app);
+    const { adbHost, viewerTarget } = result;
     const udid = `${adbHost}:${app.adbPort}`;
     const displaySession =
       viewerTarget.configured && viewerTarget.connected
@@ -70,14 +70,19 @@ export class AndroidAppsViewerService {
             ],
           )
         : null;
-    if (displaySession) {
+    if (this.viewerTargets.get(app.id) === entry && displaySession) {
       this.cachePreparedViewerTarget(
         app,
-        { adbHost, viewerTarget },
+        entry,
+        result,
         displaySession.expiresAt,
       );
-    } else {
-      this.invalidatePreparedViewerTarget(app, 'display-session-unavailable');
+    } else if (this.viewerTargets.get(app.id) === entry) {
+      this.invalidatePreparedViewerTarget(
+        app,
+        entry,
+        'display-session-unavailable',
+      );
     }
     await this.writer.recordViewerActivity(app);
 
@@ -101,8 +106,13 @@ export class AndroidAppsViewerService {
   private async prepareViewerTarget(
     app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
   ) {
-    const key = this.viewerTargetCacheKey(app);
-    const cached = this.viewerTargetReadyCache.get(key);
+    const fingerprint = this.viewerTargetFingerprint(app);
+    const previous = this.viewerTargets.get(app.id);
+    const entry: ViewerTargetEntry =
+      previous?.fingerprint === fingerprint ? previous : { fingerprint };
+    if (entry !== previous) this.viewerTargets.set(app.id, entry);
+
+    const cached = entry.ready;
     if (cached && cached.expiresAt > Date.now()) {
       this.logger.debug(
         `Using cached display sidecar target for ${app.id}; adbHost=${cached.result.adbHost}`,
@@ -113,47 +123,33 @@ export class AndroidAppsViewerService {
         containerId: app.containerId,
         cacheExpiresAt: new Date(cached.expiresAt).toISOString(),
       });
-      return cached.result;
+      return { entry, result: cached.result };
     }
-    this.viewerTargetReadyCache.delete(key);
+    entry.ready = undefined;
 
-    const existing = this.viewerTargetPreparations.get(key);
-    if (existing) {
-      return existing;
-    }
-
-    const pending = this.prepareViewerTargetOnce(app)
+    entry.pending ??= this.prepareViewerTargetOnce(app)
       .then((result) => {
         if (result.viewerTarget.connected) {
-          this.viewerTargetReadyCache.set(key, {
+          entry.ready = {
             expiresAt:
               Date.now() + AndroidAppsViewerService.viewerTargetReadyCacheTtlMs,
             result,
-          });
-        } else {
-          this.viewerTargetReadyCache.delete(key);
+          };
         }
         return result;
       })
       .finally(() => {
-        if (this.viewerTargetPreparations.get(key) === pending) {
-          this.viewerTargetPreparations.delete(key);
-        }
+        entry.pending = undefined;
       });
-    this.viewerTargetPreparations.set(key, pending);
-    return pending;
+    return { entry, result: await entry.pending };
   }
 
   private cachePreparedViewerTarget(
     app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
+    entry: ViewerTargetEntry,
     result: PreparedViewerTarget,
     expiresAt: string,
   ) {
-    if (!result.viewerTarget.connected) {
-      this.invalidatePreparedViewerTarget(app, 'viewer-target-disconnected');
-      return;
-    }
-
     const sessionExpiresAt = Date.parse(expiresAt);
     const fallbackExpiresAt =
       Date.now() + AndroidAppsViewerService.viewerTargetReadyCacheTtlMs;
@@ -161,10 +157,10 @@ export class AndroidAppsViewerService {
       Number.isFinite(sessionExpiresAt) && sessionExpiresAt > Date.now()
         ? sessionExpiresAt
         : fallbackExpiresAt;
-    this.viewerTargetReadyCache.set(this.viewerTargetCacheKey(app), {
+    entry.ready = {
       expiresAt: cacheExpiresAt,
       result,
-    });
+    };
     this.appendViewerLog(app, 'Display sidecar target cached', {
       adbHost: result.adbHost,
       adbPort: app.adbPort,
@@ -175,9 +171,10 @@ export class AndroidAppsViewerService {
 
   private invalidatePreparedViewerTarget(
     app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
+    entry: ViewerTargetEntry,
     reason: string,
   ) {
-    this.viewerTargetReadyCache.delete(this.viewerTargetCacheKey(app));
+    entry.ready = undefined;
     this.appendViewerLog(app, 'Display sidecar target cache invalidated', {
       adbPort: app.adbPort,
       containerId: app.containerId,
@@ -185,10 +182,17 @@ export class AndroidAppsViewerService {
     });
   }
 
-  private viewerTargetCacheKey(
+  private viewerTargetFingerprint(
     app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
   ) {
-    return `${app.id}:${app.containerId ?? app.containerName}:${app.adbPort}`;
+    return JSON.stringify([
+      app.id,
+      app.containerId,
+      app.networkName,
+      app.lastStartedAt,
+      app.networkPolicyRevision,
+      app.adbPort,
+    ]);
   }
 
   private appendViewerLog(
@@ -229,7 +233,7 @@ export class AndroidAppsViewerService {
           error: {
             code: 'unknown',
             message,
-            retryable: true,
+            retryable: !(error instanceof ViewerRuntimeChangedError),
             exitCode: null,
             command: null,
             stdout: null,

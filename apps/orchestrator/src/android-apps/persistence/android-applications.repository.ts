@@ -7,7 +7,7 @@ import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import type {
   AndroidAppsRuntimeInventoryPort,
-  NetworkPolicyTarget,
+  RestrictedRuntimePolicyTarget,
 } from '../contracts/android-apps-runtime-inventory.port';
 
 type ViewerRuntime = Pick<
@@ -32,8 +32,14 @@ export class AndroidApplicationsRepository
     return this.applications.create(values);
   }
 
-  save(app: AndroidApplication) {
-    return this.applications.save(app);
+  async save(app: AndroidApplication) {
+    // Only the policy command can update settings and advance their revision.
+    const changes: Partial<AndroidApplication> = { ...app };
+    delete changes.networkPolicyEnabled;
+    delete changes.networkPolicyAllowCidrs;
+    delete changes.networkPolicyRevision;
+    const saved = await this.applications.save(changes);
+    return Object.assign(app, saved);
   }
 
   updateLifecycle(
@@ -103,7 +109,10 @@ export class AndroidApplicationsRepository
     runtime: ViewerRuntime &
       Pick<
         AndroidApplication,
-        'networkPolicyEnabled' | 'networkPolicyAllowCidrs'
+        | 'networkPolicyEnabled'
+        | 'networkPolicyAllowCidrs'
+        | 'networkPolicyRevision'
+        | 'networkName'
       >,
     patch: NetworkPolicyState,
   ) {
@@ -112,6 +121,8 @@ export class AndroidApplicationsRepository
         ...this.runningViewerRuntime(runtime),
         networkPolicyEnabled: runtime.networkPolicyEnabled,
         networkPolicyAllowCidrs: runtime.networkPolicyAllowCidrs,
+        networkPolicyRevision: runtime.networkPolicyRevision,
+        networkName: runtime.networkName,
       },
       patch,
     );
@@ -137,7 +148,7 @@ export class AndroidApplicationsRepository
   ) {
     return this.applications.update(
       { id: applicationId, status: Not(AndroidApplicationStatus.Provisioning) },
-      patch,
+      { ...patch, networkPolicyRevision: () => '"networkPolicyRevision" + 1' },
     );
   }
 
@@ -172,7 +183,9 @@ export class AndroidApplicationsRepository
     return new Set(applications.map((app) => app.id));
   }
 
-  async findRunningNetworkPolicyTargets(): Promise<NetworkPolicyTarget[]> {
+  async findRestrictedRuntimePolicyTargets(
+    applicationIds?: string[],
+  ): Promise<RestrictedRuntimePolicyTarget[]> {
     const applications = await this.applications.find({
       select: {
         id: true,
@@ -180,19 +193,28 @@ export class AndroidApplicationsRepository
         networkName: true,
         networkPolicyEnabled: true,
         networkPolicyAllowCidrs: true,
+        networkPolicyRevision: true,
       },
       where: {
-        status: AndroidApplicationStatus.Running,
+        ...(applicationIds ? { id: In(applicationIds) } : {}),
+        containerId: Not(IsNull()),
         networkPolicyEnabled: true,
       },
     });
-    return applications.map((app) => ({
-      id: app.id,
-      containerId: app.containerId,
-      networkName: app.networkName,
-      networkPolicyEnabled: app.networkPolicyEnabled,
-      networkPolicyAllowCidrs: app.networkPolicyAllowCidrs,
-    }));
+    return applications.flatMap((app) =>
+      app.containerId === null
+        ? []
+        : [
+            {
+              id: app.id,
+              containerId: app.containerId,
+              networkName: app.networkName,
+              networkPolicyEnabled: app.networkPolicyEnabled,
+              networkPolicyAllowCidrs: app.networkPolicyAllowCidrs,
+              networkPolicyRevision: app.networkPolicyRevision,
+            },
+          ],
+    );
   }
 
   countUsingUploadedApk(uploadedApkId: string) {

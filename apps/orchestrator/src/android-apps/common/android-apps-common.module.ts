@@ -6,6 +6,7 @@ import { AndroidAppsPersistenceModule } from '../persistence/android-apps-persis
 import { ANDROID_APPS_RUNTIME_LOG_MAINTENANCE } from '../contracts/android-apps-runtime-log-maintenance.port';
 import { LifecycleBackgroundJobRunner } from '../lifecycle/services/lifecycle-background-job-runner.service';
 import { AndroidAppsLogService } from './services/android-apps-log.service';
+import { AndroidAppsPolicyGate } from './services/android-apps-policy-gate.service';
 import { AndroidAppsLifecycleTransitionService } from './services/android-apps-lifecycle-transition.service';
 import { AndroidAppsProvisioningTrackerService } from './services/android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from './services/android-apps-query.service';
@@ -22,6 +23,7 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
   ],
   providers: [
     AndroidAppsLogService,
+    AndroidAppsPolicyGate,
     {
       provide: ANDROID_APPS_RUNTIME_LOG_MAINTENANCE,
       useExisting: AndroidAppsLogService,
@@ -36,6 +38,7 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
   ],
   exports: [
     AndroidAppsLogService,
+    AndroidAppsPolicyGate,
     ANDROID_APPS_RUNTIME_LOG_MAINTENANCE,
     AndroidAppsLifecycleTransitionService,
     LifecycleBackgroundJobRunner,

@@ -35,15 +35,25 @@ export class FirewallAgentClientService {
     );
   }
 
+  refresh(applicationId: string, policy: FirewallAgentPolicy) {
+    return this.send(
+      'PUT',
+      `/v1/policies/${encodeURIComponent(applicationId)}/refresh`,
+      policy,
+    );
+  }
+
   remove(
     applicationId: string,
     expectedContainerId?: string,
     generation?: number,
+    revision?: number,
   ) {
     const parameters = new URLSearchParams();
     if (expectedContainerId) parameters.set('containerId', expectedContainerId);
     if (generation !== undefined)
       parameters.set('generation', String(generation));
+    if (revision !== undefined) parameters.set('revision', String(revision));
     const query = parameters.size ? `?${parameters}` : '';
     return this.send(
       'DELETE',

@@ -1,18 +1,18 @@
 import { ConfigService } from '@nestjs/config';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import type { NetworkPolicyTarget } from '../../android-apps/contracts/android-apps-runtime-inventory.port';
-import type { DockerEnginePort } from '../../docker/contracts/docker-engine.port';
 import type { DockerNetworkRuntimePort } from '../../docker/contracts/docker-network-runtime.port';
 import type { DockerSidecarPort } from '../../docker/contracts/docker-sidecar.port';
 import { FirewallAgentClientService } from './firewall-agent-client.service';
 import { NetworkPolicyService } from './network-policy.service';
+import type { NetworkPolicyRuntimeService } from './network-policy-runtime.service';
 
 describe('disabled firewall policy enforcement', () => {
   const agent = { apply: jest.fn(), remove: jest.fn() };
-  const read = jest.fn();
+  const getContainerIp = jest.fn();
   const service = new NetworkPolicyService(
     {} as ConfigService,
-    { read } as unknown as DockerEnginePort,
+    { getContainerIp } as unknown as NetworkPolicyRuntimeService,
     {} as DockerNetworkRuntimePort,
     {} as DockerSidecarPort,
     agent as unknown as FirewallAgentClientService,
@@ -30,7 +30,7 @@ describe('disabled firewall policy enforcement', () => {
       expect(result.status).toBe(networkPolicyEnabled ? 'error' : 'skipped');
       expect(agent.apply).not.toHaveBeenCalled();
       expect(agent.remove).not.toHaveBeenCalled();
-      expect(read).not.toHaveBeenCalled();
+      expect(getContainerIp).not.toHaveBeenCalled();
     },
   );
 });

@@ -1,3 +1,4 @@
+import { NetworkPolicyRevision1800000002000 } from '../../database/migrations/1800000002000-network-policy-revision';
 import { DataSource, type Repository } from 'typeorm';
 import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
 import { AndroidApplication } from '../android-application.entity';
@@ -22,7 +23,7 @@ describe('AndroidApplicationsRepository capability ports', () => {
     );
   });
 
-  it('maps running policy rows to the minimal network-policy target', async () => {
+  it('maps restricted runtime rows to the minimal network-policy target', async () => {
     const find = jest.fn().mockResolvedValue([
       {
         id: 'app-1',
@@ -30,22 +31,24 @@ describe('AndroidApplicationsRepository capability ports', () => {
         networkName: 'network-1',
         networkPolicyEnabled: true,
         networkPolicyAllowCidrs: '["10.0.0.0/8"]',
+        networkPolicyRevision: 2,
         name: 'must not leak',
       },
     ]);
     const repository = createRepository({ find });
 
-    await expect(repository.findRunningNetworkPolicyTargets()).resolves.toEqual(
-      [
-        {
-          id: 'app-1',
-          containerId: 'container-1',
-          networkName: 'network-1',
-          networkPolicyEnabled: true,
-          networkPolicyAllowCidrs: '["10.0.0.0/8"]',
-        },
-      ],
-    );
+    await expect(
+      repository.findRestrictedRuntimePolicyTargets(),
+    ).resolves.toEqual([
+      {
+        id: 'app-1',
+        containerId: 'container-1',
+        networkName: 'network-1',
+        networkPolicyEnabled: true,
+        networkPolicyAllowCidrs: '["10.0.0.0/8"]',
+        networkPolicyRevision: 2,
+      },
+    ]);
   });
 
   it('exposes APK reference counts and ids without leaking entities', async () => {
@@ -72,7 +75,10 @@ describe('Android application runtime observations', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication],
-      migrations: [InitializeSqliteSchema1800000000000],
+      migrations: [
+        InitializeSqliteSchema1800000000000,
+        NetworkPolicyRevision1800000002000,
+      ],
       migrationsRun: true,
     }).initialize();
     apps = database.getRepository(AndroidApplication);
@@ -98,6 +104,48 @@ describe('Android application runtime observations', () => {
         lastStartedAt: new Date('2026-01-01T00:00:00Z'),
       }),
     );
+
+  it('includes restricted containers even when the app is marked Error', async () => {
+    const app = await makeApp();
+    await apps.update(app.id, { networkPolicyEnabled: false });
+    expect(await repository.findRestrictedRuntimePolicyTargets()).toEqual([]);
+
+    await apps.update(app.id, {
+      status: AndroidApplicationStatus.Error,
+      networkPolicyEnabled: true,
+    });
+    expect(await repository.findRestrictedRuntimePolicyTargets()).toEqual([
+      {
+        id: app.id,
+        containerId: 'container-1',
+        networkName: app.networkName,
+        networkPolicyEnabled: true,
+        networkPolicyAllowCidrs: '[]',
+        networkPolicyRevision: 0,
+      },
+    ]);
+
+    await apps.update(app.id, { containerId: null });
+    expect(await repository.findRestrictedRuntimePolicyTargets()).toEqual([]);
+  });
+
+  it('increments the revision with policy settings and preserves it on unrelated saves', async () => {
+    const stale = await makeApp();
+    await repository.updateNetworkPolicyConfiguration(stale.id, {
+      networkPolicyEnabled: false,
+      networkPolicyAllowCidrs: '["192.0.2.0/24"]',
+    });
+    stale.name = 'Renamed';
+    await repository.save(stale);
+    await expect(apps.findOneByOrFail({ id: stale.id })).resolves.toMatchObject(
+      {
+        name: 'Renamed',
+        networkPolicyEnabled: false,
+        networkPolicyAllowCidrs: '["192.0.2.0/24"]',
+        networkPolicyRevision: 1,
+      },
+    );
+  });
 
   it('updates activity without overwriting newer fields or reversing the timestamp', async () => {
     const app = await makeApp();

@@ -8,9 +8,16 @@ export interface NetworkPolicyTarget {
   networkName: string;
   networkPolicyEnabled: boolean;
   networkPolicyAllowCidrs: string;
+  networkPolicyRevision: number;
+}
+
+export interface RestrictedRuntimePolicyTarget extends NetworkPolicyTarget {
+  containerId: string;
 }
 
 export interface AndroidAppsRuntimeInventoryPort {
   findExistingIds(applicationIds: string[]): Promise<ReadonlySet<string>>;
-  findRunningNetworkPolicyTargets(): Promise<NetworkPolicyTarget[]>;
+  findRestrictedRuntimePolicyTargets(
+    applicationIds?: string[],
+  ): Promise<RestrictedRuntimePolicyTarget[]>;
 }

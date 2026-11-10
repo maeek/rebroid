@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
@@ -11,8 +12,6 @@ import { FeatureFlagsService } from '../../../feature-flags/feature-flags.servic
 
 @Injectable()
 export class AndroidAppsNetworkPolicyService {
-  private readonly pendingChanges = new Set<string>();
-
   constructor(
     private readonly runtimeNetwork: AndroidAppsRuntimeNetworkService,
     private readonly queries: AndroidAppsQueryService,
@@ -20,11 +19,12 @@ export class AndroidAppsNetworkPolicyService {
     private readonly writer: AndroidAppsStateWriter,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly features: FeatureFlagsService,
+    private readonly policyGate: AndroidAppsPolicyGate,
   ) {}
 
   /** Saves network policy settings and reapplies them. */
   updateNetworkPolicy(id: string, dto: UpdateNetworkPolicyDto) {
-    return this.runPolicyChange(id, () => this.saveAndApplyPolicy(id, dto));
+    return this.policyGate.run(id, () => this.saveAndApplyPolicy(id, dto));
   }
 
   private async saveAndApplyPolicy(id: string, dto: UpdateNetworkPolicyDto) {
@@ -58,7 +58,7 @@ export class AndroidAppsNetworkPolicyService {
 
   /** Reapplies network policy for one app. */
   applyNetworkPolicy(id: string): Promise<AndroidApplication> {
-    return this.runPolicyChange(id, () => this.applyStoredPolicy(id));
+    return this.policyGate.run(id, () => this.applyStoredPolicy(id));
   }
 
   private async applyStoredPolicy(id: string) {
@@ -76,23 +76,6 @@ export class AndroidAppsNetworkPolicyService {
       await this.runtimeNetwork.reconcilePolicy(app, { generation });
     }
     return this.queries.decorate(app);
-  }
-
-  private async runPolicyChange(
-    id: string,
-    apply: () => Promise<AndroidApplication>,
-  ) {
-    if (this.pendingChanges.has(id)) {
-      throw new ConflictException(
-        'A network policy change is already in progress for this app.',
-      );
-    }
-    this.pendingChanges.add(id);
-    try {
-      return await apply();
-    } finally {
-      this.pendingChanges.delete(id);
-    }
   }
 
   /** Rebuilds the agent rule set from stored apps, pruning stale rules. */

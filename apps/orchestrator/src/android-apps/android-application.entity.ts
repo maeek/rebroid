@@ -279,6 +279,9 @@ export class AndroidApplication {
   @Column({ type: 'text', default: '[]' })
   networkPolicyAllowCidrs!: string;
 
+  @Column({ type: 'integer', default: 0 })
+  networkPolicyRevision!: number;
+
   @ApiPropertyOptional({ example: 'applied', nullable: true })
   @Column({ type: 'text', nullable: true })
   networkPolicyStatus!: string | null;

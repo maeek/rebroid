@@ -13,6 +13,7 @@ import {
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
+import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
@@ -47,6 +48,7 @@ describe('application network policy with firewall disabled', () => {
       controllers: [AndroidAppsNetworkController],
       providers: [
         AndroidAppsNetworkPolicyService,
+        AndroidAppsPolicyGate,
         {
           provide: FeatureFlagsService,
           useValue: {

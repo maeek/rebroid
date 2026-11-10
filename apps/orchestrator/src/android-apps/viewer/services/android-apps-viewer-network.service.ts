@@ -15,8 +15,19 @@ import {
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
+import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { isRedroidRuntime } from '@rebroid/android-application-core/redroid-runtime';
+
+export class ViewerRuntimeChangedError extends Error {
+  constructor() {
+    super(
+      'Application runtime or network policy changed during viewer preparation.',
+    );
+  }
+}
 
 @Injectable()
 export class AndroidAppsViewerNetworkService {
@@ -34,6 +45,8 @@ export class AndroidAppsViewerNetworkService {
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly writer: AndroidAppsStateWriter,
+    private readonly queries: AndroidAppsQueryService,
+    private readonly policyGate: AndroidAppsPolicyGate,
   ) {}
 
   /** Makes sure the viewer sidecar is on the app network. */
@@ -151,7 +164,15 @@ export class AndroidAppsViewerNetworkService {
   async prepareScrcpyAdbTarget(app: AndroidApplication, adbHost: string) {
     return this.coalesce(
       this.adbTargetPreparations,
-      `${app.containerId ?? app.containerName}:${adbHost}:${app.adbPort}`,
+      JSON.stringify([
+        app.id,
+        app.containerId,
+        app.networkName,
+        app.lastStartedAt,
+        app.networkPolicyRevision,
+        adbHost,
+        app.adbPort,
+      ]),
       () => this.prepareScrcpyAdbTargetOnce(app, adbHost),
     );
   }
@@ -160,7 +181,7 @@ export class AndroidAppsViewerNetworkService {
     app: AndroidApplication,
     adbHost: string,
   ) {
-    await this.reapplyNetworkPolicy(app);
+    await this.refreshNetworkPolicy(app);
     await this.ensureRedroidTcpAdb(app);
 
     await this.appendLifecycleLog(
@@ -212,17 +233,29 @@ export class AndroidAppsViewerNetworkService {
     return pending;
   }
 
-  /** Reapplies policy before opening viewer access. */
-  private async reapplyNetworkPolicy(app: AndroidApplication) {
-    const result = await this.networkPolicy.apply(app);
-    if (!(await this.writer.recordViewerNetworkPolicy(app, result))) {
-      throw new Error(
-        'Application runtime or network policy changed during viewer preparation.',
-      );
-    }
-    if (app.networkPolicyEnabled && result.status !== 'applied') {
-      throw new Error(`Outbound policy enforcement failed: ${result.message}`);
-    }
+  private refreshNetworkPolicy(expected: AndroidApplication) {
+    return this.policyGate.run(expected.id, async () => {
+      const app = await this.queries.getStored(expected.id);
+      if (
+        !app.containerId ||
+        app.status !== AndroidApplicationStatus.Running ||
+        app.containerId !== expected.containerId ||
+        app.networkName !== expected.networkName ||
+        app.lastStartedAt?.getTime() !== expected.lastStartedAt?.getTime()
+      ) {
+        throw new ViewerRuntimeChangedError();
+      }
+      if (!app.networkPolicyEnabled) return;
+      const result = await this.networkPolicy.refreshViewerPolicy(app);
+      if (!(await this.writer.recordViewerNetworkPolicy(app, result))) {
+        throw new ViewerRuntimeChangedError();
+      }
+      if (result.status !== 'applied') {
+        throw new Error(
+          `Outbound policy enforcement failed: ${result.message}`,
+        );
+      }
+    });
   }
 
   /** Recovered Redroid containers may be running before provisioning enabled TCP ADB. */
