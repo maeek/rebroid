@@ -12,6 +12,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
@@ -23,8 +24,7 @@ import { GroupMembershipEditor } from './components/group-membership-editor'
 import { UserAccountSections } from './components/identity-fields'
 import { PermissionEditor } from './components/permission-editor'
 import { QuotaFields } from './components/quota-fields'
-import { resolveUserGroups } from './model/permission-access'
-import { buildUserUpdateInput, getPermissionInheritanceMap, toUserDraft } from './user-edit-page-model'
+import { buildUserUpdateInput, toUserDraft } from './user-edit-page-model'
 import type { UserDraft } from './user-edit-page-model'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
@@ -35,9 +35,9 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   const [avatarPending, setAvatarPending] = useState(false)
   const busy = isSaving || avatarPending
   const resourceLimits = useResourceLimitBounds(true)
-  const inheritedPermissions = useMemo(
-    () => getPermissionInheritanceMap(groups, draft.groupIds, draft.role),
-    [draft.groupIds, draft.role, groups]
+  const effectiveAccess = useMemo(
+    () => resolveEffectiveAccess(groups, draft.groupIds, draft.role, draft.permissionOverrides),
+    [draft.groupIds, draft.permissionOverrides, draft.role, groups]
   )
 
   const updateDraft = (patch: Partial<UserDraft>) => {
@@ -128,7 +128,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
                 {draft.groupIds.length === 0 ? (
                   <Notice
                     title='Default group applies'
-                    description={`${resolveUserGroups(groups, [], draft.role)[0]?.name ?? 'No group'} is used when no groups are selected.`}
+                    description={`${effectiveAccess.groups[0]?.name ?? 'No group'} is used when no groups are selected.`}
                   />
                 ) : null}
               </>
@@ -136,7 +136,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             permissions={
               <PermissionEditor
                 permissions={draft.permissionOverrides}
-                inheritedPermissions={inheritedPermissions}
+                effectiveAccess={effectiveAccess}
                 admin={draft.role === 'admin'}
                 disabled={busy}
                 onChange={permissionOverrides => updateDraft({ permissionOverrides })}

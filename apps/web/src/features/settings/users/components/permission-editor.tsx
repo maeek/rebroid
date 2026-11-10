@@ -6,6 +6,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Notice } from '@/components/ui/notice'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { resolveEffectiveAccess, type EffectiveAccess } from '@/shared/permissions/effective-access'
 import { permissionCategories, permissionDefinitions, type PermissionMap } from '@/shared/permissions/permissions'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -17,20 +18,19 @@ import {
   PermissionEffectiveCell,
   PermissionSettingCell
 } from './permission-cells'
-import type { PermissionInheritanceMap } from '../model/permission-access'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const PermissionEditor = ({
   permissions,
   onChange,
-  inheritedPermissions,
+  effectiveAccess,
   admin = false,
   disabled = false,
   loading = false
 }: {
   permissions: PermissionMap
   onChange: (permissions: PermissionMap) => void
-  inheritedPermissions?: PermissionInheritanceMap
+  effectiveAccess?: EffectiveAccess
   admin?: boolean
   disabled?: boolean
   loading?: boolean
@@ -40,21 +40,18 @@ export const PermissionEditor = ({
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [view, setView] = useState('all')
-  const isUser = inheritedPermissions !== undefined
+  const isUser = effectiveAccess !== undefined
   let actionLabel = 'Group setting'
   if (isUser) actionLabel = 'User override'
   const overrideCount = permissionDefinitions.filter(permission => permissions[permission.id] !== undefined).length
-  const allowed = (id: (typeof permissionDefinitions)[number]['id']) => {
-    if (admin) return true
-    return permissions[id] ?? inheritedPermissions?.[id]?.allowed ?? false
-  }
-  const grantedCount = permissionDefinitions.filter(permission => allowed(permission.id)).length
+  const { decisions } = effectiveAccess ?? resolveEffectiveAccess([], [], admin ? 'admin' : 'user', permissions)
+  const grantedCount = permissionDefinitions.filter(permission => decisions[permission.id]?.allowed).length
   const query = search.trim().toLowerCase()
   const visible = permissionDefinitions.filter(permission => {
     if (category !== 'all' && permission.category !== category) return false
     if (!admin && view === 'overrides' && permissions[permission.id] === undefined) return false
     const categoryName = permissionCategories.find(item => item.id === permission.category)?.name ?? ''
-    return `${permission.name} ${permission.id} ${permission.description} ${categoryName} ${inheritedPermissions?.[permission.id]?.source ?? ''}`
+    return `${permission.name} ${permission.id} ${permission.description} ${categoryName} ${effectiveAccess?.decisions[permission.id]?.groupName ?? (effectiveAccess && admin ? 'Admin role' : '')}`
       .toLowerCase()
       .includes(query)
   })
@@ -105,7 +102,7 @@ export const PermissionEditor = ({
     [isUser, admin, actionLabel]
   )
   return (
-    <PermissionEditorContext.Provider value={{ permissions, inheritedPermissions, isUser, admin, disabled, onChange }}>
+    <PermissionEditorContext.Provider value={{ permissions, decisions, isUser, disabled, onChange }}>
       <div
         className='@container/permissions grid min-w-0 gap-4'
         data-permission-editor=''

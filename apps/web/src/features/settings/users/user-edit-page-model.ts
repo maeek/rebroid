@@ -1,6 +1,5 @@
-import { allPermissionIds, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
-import { resolveUserGroups, type PermissionInheritanceMap } from './model/permission-access'
-import type { PublicUser, UserEditorInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
+import { type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
+import type { PublicUser, UserEditorInput, UserRole } from '@/shared/contracts/auth-user'
 
 export type UserDraft = {
   username: string
@@ -39,22 +38,3 @@ export const buildUserUpdateInput = (draft: UserDraft): UserEditorInput => ({
   permissionOverrides: draft.permissionOverrides,
   quotas: draft.quotas
 })
-
-export const getPermissionInheritanceMap = (
-  groups: UserGroup[],
-  groupIds: string[],
-  role: UserRole
-): PermissionInheritanceMap => {
-  if (role === 'admin') {
-    return Object.fromEntries(allPermissionIds.map(id => [id, { allowed: true, source: 'Admin role' }]))
-  }
-
-  const inheritance: PermissionInheritanceMap = {}
-  for (const group of resolveUserGroups(groups, groupIds, role)) {
-    for (const id of allPermissionIds) {
-      const allowed = group.permissions[id]
-      if (allowed !== undefined) inheritance[id] = { allowed, source: group.name }
-    }
-  }
-  return inheritance
-}

@@ -103,7 +103,7 @@ const EditBodySkeleton = ({ variant }: { variant: 'user' | 'group' }) => (
       permissions={
         <PermissionEditor
           permissions={{}}
-          inheritedPermissions={variant === 'user' ? {} : undefined}
+          effectiveAccess={variant === 'user' ? { groups: [], decisions: {} } : undefined}
           loading
           onChange={() => undefined}
         />

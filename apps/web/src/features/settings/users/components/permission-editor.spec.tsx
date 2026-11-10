@@ -1,10 +1,21 @@
 import { useState } from 'react'
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { PermissionEditor } from './permission-editor'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
-const inherited = { 'applications:create': { allowed: true, source: 'Operators' } }
+const operators: UserGroup = {
+  id: 'operators',
+  name: 'Operators',
+  role: 'user',
+  description: '',
+  permissions: { 'applications:create': true },
+  quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null },
+  createdAt: '',
+  updatedAt: ''
+}
 const Harness = ({ admin = false, group = false }: { admin?: boolean; group?: boolean }) => {
   const [permissions, setPermissions] = useState<PermissionMap>({ 'applications:delete': false })
   return (
@@ -12,7 +23,9 @@ const Harness = ({ admin = false, group = false }: { admin?: boolean; group?: bo
       <PermissionEditor
         permissions={permissions}
         onChange={setPermissions}
-        inheritedPermissions={group ? undefined : inherited}
+        effectiveAccess={
+          group ? undefined : resolveEffectiveAccess([operators], ['operators'], admin ? 'admin' : 'user', permissions)
+        }
         admin={admin}
       />
       <output data-testid='payload'>{JSON.stringify(permissions)}</output>

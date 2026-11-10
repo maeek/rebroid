@@ -1,7 +1,8 @@
 import { createContext, useContext, useId } from 'react'
 import { IconCheck, IconMinus } from '@tabler/icons-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { setPermissionDecision, type PermissionInheritanceMap } from '../model/permission-access'
+import { setPermissionDecision } from '../model/permission-access'
+import type { EffectiveAccess, EffectivePermissionDecision } from '@/shared/permissions/effective-access'
 import type { permissionDefinitions, PermissionMap } from '@/shared/permissions/permissions'
 import type { CellContext } from '@tanstack/react-table'
 
@@ -55,23 +56,12 @@ const PermissionSetting = ({
   )
 }
 
-const PermissionEffectiveAccess = ({
-  permission,
-  permissions,
-  inherited,
-  admin
-}: {
-  permission: PermissionDefinition
-  permissions: PermissionMap
-  inherited?: PermissionInheritanceMap[PermissionDefinition['id']]
-  admin: boolean
-}) => {
-  const overridden = permissions[permission.id] !== undefined
-  const enabled = admin || (permissions[permission.id] ?? inherited?.allowed ?? false)
+const PermissionEffectiveAccess = ({ decision }: { decision?: EffectivePermissionDecision }) => {
+  const enabled = decision?.allowed ?? false
   let source = 'Not granted by a group'
-  if (inherited) source = `From ${inherited.source}`
-  if (overridden) source = 'User override'
-  if (admin) source = 'Admin role'
+  if (decision?.source === 'group') source = `From ${decision.groupName}`
+  if (decision?.source === 'override') source = 'User override'
+  if (decision?.source === 'admin') source = 'Admin role'
   return (
     <div className='grid gap-1'>
       <span className='flex items-center gap-1.5 text-sm'>
@@ -95,9 +85,8 @@ const PermissionEffectiveAccess = ({
 
 type PermissionEditorContextValue = {
   permissions: PermissionMap
-  inheritedPermissions?: PermissionInheritanceMap
+  decisions: EffectiveAccess['decisions']
   isUser: boolean
-  admin: boolean
   disabled: boolean
   onChange: (permissions: PermissionMap) => void
 }
@@ -114,15 +103,8 @@ export const PermissionIdentityCell = ({ row }: CellContext<PermissionDefinition
   </div>
 )
 export const PermissionEffectiveCell = ({ row }: CellContext<PermissionDefinition, unknown>) => {
-  const { permissions, inheritedPermissions, admin } = usePermissionEditor()
-  return (
-    <PermissionEffectiveAccess
-      permission={row.original}
-      permissions={permissions}
-      inherited={inheritedPermissions?.[row.original.id]}
-      admin={admin}
-    />
-  )
+  const { decisions } = usePermissionEditor()
+  return <PermissionEffectiveAccess decision={decisions[row.original.id]} />
 }
 export const PermissionSettingCell = ({ row }: CellContext<PermissionDefinition, unknown>) => {
   const { permissions, isUser, disabled, onChange } = usePermissionEditor()
