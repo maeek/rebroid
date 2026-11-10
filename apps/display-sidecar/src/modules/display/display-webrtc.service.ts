@@ -20,6 +20,7 @@ import { DisplaySessionService } from "./display-session.service";
 import type { DisplayControlRequest } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { displayControlError } from "./display-control-response";
+import { resolveDisplayStreamProfile } from "./display-stream-profile";
 import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 type WebrtcOfferOptions = {
@@ -50,11 +51,6 @@ type BridgeAttempt = {
   requestVideoReset: (reason: string) => void;
 };
 
-const DEFAULT_MAX_SIZE = 0;
-const DEFAULT_MAX_FPS = 60;
-const DEFAULT_BITRATE = 16_000_000;
-const INTERACTIVE_I_FRAME_INTERVAL = 1;
-
 @Injectable()
 export class DisplayWebrtcService {
   private readonly logger = new Logger(DisplayWebrtcService.name);
@@ -78,11 +74,11 @@ export class DisplayWebrtcService {
       throw new ConflictException("Could not determine WebRTC ICE host.");
     }
 
+    const sourceOptions = this.sourceOptions(options, session);
     this.stopSession(options.sessionId);
     const attempt = new AbortController();
     this.active.set(options.sessionId, attempt);
     const { signal } = attempt;
-    const sourceOptions = this.sourceOptions(options, session);
     let bootstrapAttachment: ScrcpyStreamAttachment | undefined;
     const detachBootstrap = () => {
       const attachment = bootstrapAttachment;
@@ -124,6 +120,7 @@ export class DisplayWebrtcService {
         attempt,
         detachBootstrap,
         iceHost,
+        maxFps: sourceOptions.maxFps,
         declaredLevelSupportsRequestedRate,
       });
     } catch (error) {
@@ -141,6 +138,7 @@ export class DisplayWebrtcService {
     attempt,
     detachBootstrap,
     iceHost,
+    maxFps,
     declaredLevelSupportsRequestedRate,
   }: {
     options: WebrtcOfferOptions;
@@ -148,6 +146,7 @@ export class DisplayWebrtcService {
     attempt: AbortController;
     detachBootstrap: () => void;
     iceHost: string;
+    maxFps: number;
     declaredLevelSupportsRequestedRate: boolean;
   }) {
     const { signal } = attempt;
@@ -247,7 +246,7 @@ export class DisplayWebrtcService {
     const answer = await this.configureBridge(bridgeAttempt, {
       offerSdp: options.sdp,
       iceHost,
-      maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),
+      maxFps,
       audio: options.audio,
       h264FmtpLine: bootstrap.sdpFmtpLine,
       h264ProfileLevelId: bootstrap.profileLevelId,
@@ -294,6 +293,12 @@ export class DisplayWebrtcService {
     options: WebrtcOfferOptions,
     session: ReturnType<DisplaySessionService["assertStreamToken"]>,
   ): Omit<ScrcpyStreamOptions, "sink"> {
+    let profile: ReturnType<typeof resolveDisplayStreamProfile>;
+    try {
+      profile = resolveDisplayStreamProfile(options);
+    } catch (error) {
+      throw new ConflictException(this.errorMessage(error));
+    }
     return {
       sessionId: options.sessionId,
       udid: session.udid,
@@ -301,15 +306,7 @@ export class DisplayWebrtcService {
       displayId: session.displayId,
       newDisplay: session.newDisplay,
       audio: options.audio,
-      maxSize: this.nativeMaxSize(options.maxSize),
-      maxFps: this.nativeFrameRate(options.maxFps),
-      bitrate: this.number(
-        options.bitrate,
-        DEFAULT_BITRATE,
-        100_000,
-        100_000_000,
-      ),
-      iFrameInterval: INTERACTIVE_I_FRAME_INTERVAL,
+      ...profile,
       onActivity: () => this.sessions.touch(options.sessionId),
     };
   }
@@ -509,44 +506,6 @@ export class DisplayWebrtcService {
     return first.startsWith("[")
       ? first.slice(1, first.indexOf("]"))
       : first.split(":")[0];
-  }
-
-  private number(
-    value: number | undefined,
-    fallback: number,
-    min: number,
-    max: number,
-  ) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed)
-      ? Math.min(Math.max(Math.round(parsed), min), max)
-      : fallback;
-  }
-
-  private nativeMaxSize(value: number | undefined) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return DEFAULT_MAX_SIZE;
-    }
-    if (Math.round(parsed) === 0) {
-      return 0;
-    }
-    throw new ConflictException(
-      "Interactive display streaming requires native resolution (maxSize=0).",
-    );
-  }
-
-  private nativeFrameRate(value: number | undefined) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return DEFAULT_MAX_FPS;
-    }
-    if (Math.round(parsed) === DEFAULT_MAX_FPS) {
-      return DEFAULT_MAX_FPS;
-    }
-    throw new ConflictException(
-      "Interactive display streaming requires maxFps=60.",
-    );
   }
 
   private assertOfferSupportsBootstrap(

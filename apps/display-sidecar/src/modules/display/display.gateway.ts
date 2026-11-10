@@ -6,11 +6,7 @@ import { QueuedScrcpyMediaSink } from "../scrcpy/scrcpy-media-sink";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { DisplaySessionService } from "./display-session.service";
 import type { ScrcpyStreamAttachment } from "../scrcpy/scrcpy.types";
-
-const DEFAULT_MAX_SIZE = 0;
-const DEFAULT_MAX_FPS = 60;
-const DEFAULT_BITRATE = 16_000_000;
-const INTERACTIVE_I_FRAME_INTERVAL = 1;
+import { resolveDisplayStreamProfile } from "./display-stream-profile";
 
 @WebSocketGateway({
   path: "/rebroid/display/stream",
@@ -37,8 +33,11 @@ export class DisplayGateway implements OnGatewayConnection {
 
       const session = this.sessions.assertStreamToken(sessionId, token);
       this.sessions.assertCapability(session, "video");
-      const maxSize = this.nativeMaxSize(url.searchParams.get("maxSize"));
-      const maxFps = this.nativeFrameRate(url.searchParams.get("maxFps"));
+      const profile = resolveDisplayStreamProfile({
+        maxSize: url.searchParams.get("maxSize"),
+        maxFps: url.searchParams.get("maxFps"),
+        bitrate: url.searchParams.get("bitrate"),
+      });
       const sink = new QueuedScrcpyMediaSink({
         isOpen: () => client.readyState === WebSocket.OPEN,
         onClose: (listener) => client.once("close", listener),
@@ -152,15 +151,7 @@ export class DisplayGateway implements OnGatewayConnection {
           displayId: session.displayId,
           newDisplay: session.newDisplay,
           audio: url.searchParams.get("audio") === "1",
-          maxSize,
-          maxFps,
-          bitrate: this.parseNumber(
-            url.searchParams.get("bitrate"),
-            DEFAULT_BITRATE,
-            100_000,
-            100_000_000,
-          ),
-          iFrameInterval: INTERACTIVE_I_FRAME_INTERVAL,
+          ...profile,
           onActivity: () => {
             this.sessions.touch(sessionId);
           },
@@ -193,45 +184,6 @@ export class DisplayGateway implements OnGatewayConnection {
         resolve();
       });
     });
-  }
-
-  private nativeMaxSize(value: string | null) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return DEFAULT_MAX_SIZE;
-    }
-
-    const rounded = Math.round(parsed);
-    if (rounded === 0) {
-      return 0;
-    }
-    throw new Error(
-      "Interactive display streaming requires native resolution (maxSize=0).",
-    );
-  }
-
-  private nativeFrameRate(value: string | null) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return DEFAULT_MAX_FPS;
-    }
-    if (Math.round(parsed) === DEFAULT_MAX_FPS) {
-      return DEFAULT_MAX_FPS;
-    }
-    throw new Error("Interactive display streaming requires maxFps=60.");
-  }
-
-  private parseNumber(
-    value: string | null,
-    fallback: number,
-    min: number,
-    max: number,
-  ) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return fallback;
-    }
-    return Math.min(Math.max(Math.round(parsed), min), max);
   }
 
   private isOptionalSequence(value: unknown): boolean {
