@@ -29,6 +29,10 @@ a shared secret; public viewer routes require a short-lived session token. A sou
 owns scrcpy for a session/profile. Browser, peer, decoder, or bridge failures detach only that
 consumer. Sources can remain alive for 30 seconds without consumers; release, expiry, profile
 changes, shutdown, or a genuine source failure close them.
+Transport recovery reuses the current session. If the sidecar reports that the session is gone,
+both transports ask the parent viewer to refresh through the authorized web path. An automatic
+refresh is attempted once until a replacement displays video. Initial startup retries in both
+viewer entry points are bounded by the Android startup deadline.
 
 ## RBD1 protocol
 
@@ -56,11 +60,13 @@ Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers va
   with cached codec configuration plus an IDR keyframe. Never drop an arbitrary delta and continue.
 - Resynchronization discards audio older than the resumed keyframe. Reattachment caches are bounded
   to two seconds and 16 MiB.
-- WebRTC waits for configuration and an IDR before answering, negotiates the exact compatible H.264
-  profile, derives RTP timing from source timestamps, and continuously drains sender RTCP.
+- WebRTC negotiates from a configuration and IDR from the same source generation. If the source
+  changes generation during signaling, the offer fails with a retryable response. If configuration
+  changes after attachment, only the negotiated consumer detaches. The bridge derives RTP timing
+  from source timestamps and continuously drains sender RTCP.
 - Consumer attachment, PLI, and decoder recovery use scrcpy v4 reset-video message `17` over the
-  existing control socket, coalesced to at most once per second. An explicit reset must yield
-  configuration and an IDR within three seconds before its watchdog can restart the source attempt.
+  existing control socket, coalesced to at most once per second. An outstanding reset keeps its
+  original three-second deadline and completes when configuration is followed by an IDR.
 - Static screens are healthy. Recovery must compare advancing source frames with delivery and
   presentation, rather than treating an idle source as a freeze.
 - Retries never silently lower requested resolution, FPS, bitrate, or switch transport.
@@ -73,9 +79,12 @@ MediaSource fragments and presentation callbacks carry a recovery epoch so the b
 work from an abandoned append queue. PCM is delivered to an AudioWorklet with a bounded ring.
 
 All transports share validated device-control semantics. Parent-window keyboard capture follows the
-active surface. Discrete controls use reliable delivery and report correlated execution outcomes.
-Each admitted pointer-down reserves room for its release. Virtual surfaces require stream control
-because the ADB fallback targets the device's default display.
+active surface. Discrete controls use reliable delivery and report correlated dispatch outcomes.
+Commands waiting for a reconnect are acknowledged after the transport write completes. They fail if
+the queue is full, the session ends, or three seconds elapse before dispatch. A write failure can
+leave the outcome unknown. Live pointer phases are never queued for replay after a reconnect. Each
+admitted pointer-down reserves room for its release in the browser. Virtual surfaces require stream
+control because the ADB fallback targets the device's default display.
 The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
 outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
 
