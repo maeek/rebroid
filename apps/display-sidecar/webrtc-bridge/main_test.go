@@ -172,14 +172,14 @@ func TestRTCPFeedbackRequestsGOPRecoveryAndCountsLoss(t *testing.T) {
 		Jitter:    90,
 	}}}, metrics, recovery, func(stdoutMessage) {})
 
-	generation, requestedAt := recovery.snapshot()
+	generation := recovery.generation.Load()
 	if metrics.nacks.Load() != 3 || metrics.plis.Load() != 2 {
 		t.Fatalf("unexpected NACK/PLI metrics: %d/%d", metrics.nacks.Load(), metrics.plis.Load())
 	}
 	if metrics.packetsLost.Load() != 7 || metrics.jitter.Load() != 90 {
 		t.Fatalf("unexpected receiver report metrics")
 	}
-	if generation != 1 || requestedAt.IsZero() {
+	if generation != 1 {
 		t.Fatalf("PLI/FIR recovery requests were not rate limited")
 	}
 }

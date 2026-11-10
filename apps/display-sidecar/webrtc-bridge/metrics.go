@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pion/rtcp"
+	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -56,32 +57,8 @@ func (samples *latencySamples) takeP95() float64 {
 	return values[index-1]
 }
 
-type videoRecovery struct {
-	generation  atomic.Uint64
-	requestedAt atomic.Int64
-}
-
-func (recovery *videoRecovery) request() bool {
-	now := time.Now().UnixNano()
-	for {
-		previous := recovery.requestedAt.Load()
-		if previous != 0 && now-previous < int64(time.Second) {
-			return false
-		}
-		if recovery.requestedAt.CompareAndSwap(previous, now) {
-			recovery.generation.Add(1)
-			return true
-		}
-	}
-}
-
-func (recovery *videoRecovery) snapshot() (uint64, time.Time) {
-	generation := recovery.generation.Load()
-	requestedAt := recovery.requestedAt.Load()
-	if requestedAt == 0 {
-		return generation, time.Time{}
-	}
-	return generation, time.Unix(0, requestedAt)
+type rtpWriter interface {
+	WriteRTP(*rtp.Packet) error
 }
 
 func drainRTCP(sender *webrtc.RTPSender, metrics *bridgeMetrics, recovery *videoRecovery, emit func(stdoutMessage)) {
@@ -106,11 +83,11 @@ func handleRTCPPacket(packet rtcp.Packet, metrics *bridgeMetrics, recovery *vide
 		metrics.nacks.Add(requested)
 	case *rtcp.PictureLossIndication:
 		metrics.plis.Add(1)
-		if recovery != nil && recovery.request() {
+		if recovery != nil && recovery.request(time.Now()) {
 			emit(stdoutMessage{Type: "video-resync-request", Message: "pli"})
 		}
 	case *rtcp.FullIntraRequest:
-		if recovery != nil && recovery.request() {
+		if recovery != nil && recovery.request(time.Now()) {
 			emit(stdoutMessage{Type: "video-resync-request", Message: "fir"})
 		}
 	case *rtcp.ReceiverReport:
