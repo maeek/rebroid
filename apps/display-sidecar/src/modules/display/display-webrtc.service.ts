@@ -38,6 +38,13 @@ type BridgeMessage =
   | { type: "video-resync-request"; message?: string }
   | { type: "error"; message: string };
 
+type BridgeAttempt = {
+  bridge: ChildProcess;
+  signal: AbortSignal;
+  sessionId: string;
+  requestVideoReset: (reason: string) => void;
+};
+
 const DEFAULT_MAX_SIZE = 0;
 const DEFAULT_MAX_FPS = 60;
 const DEFAULT_BITRATE = 16_000_000;
@@ -46,7 +53,7 @@ const INTERACTIVE_I_FRAME_INTERVAL = 1;
 @Injectable()
 export class DisplayWebrtcService {
   private readonly logger = new Logger(DisplayWebrtcService.name);
-  private readonly active = new Map<string, () => void>();
+  private readonly active = new Map<string, AbortController>();
 
   constructor(
     private readonly sessions: DisplaySessionService,
@@ -61,22 +68,38 @@ export class DisplayWebrtcService {
       options.token,
     );
     this.sessions.assertCapability(session, "video");
-    await this.scrcpy.assertTargetSupported(session.udid);
     const iceHost = this.resolveIceHost(options.requestHost);
     if (!iceHost) {
       throw new ConflictException("Could not determine WebRTC ICE host.");
     }
 
     this.stopSession(options.sessionId);
+    const attempt = new AbortController();
+    this.active.set(options.sessionId, attempt);
+    const { signal } = attempt;
     const sourceOptions = this.sourceOptions(options, session);
-    const bootstrapSink = new ScrcpyBootstrapSink();
-    let bootstrapAttachment: ScrcpyStreamAttachment | null = null;
+    let bootstrapAttachment: ScrcpyStreamAttachment | undefined;
+    const detachBootstrap = () => {
+      const attachment = bootstrapAttachment;
+      bootstrapAttachment = undefined;
+      attachment?.detach("WebRTC bootstrap finished");
+    };
+    signal.addEventListener("abort", detachBootstrap, { once: true });
     try {
+      await awaitAttempt(
+        this.scrcpy.assertTargetSupported(session.udid),
+        signal,
+      );
+      signal.throwIfAborted();
       bootstrapAttachment = this.scrcpy.attachStream({
         ...sourceOptions,
-        sink: bootstrapSink,
+        sink: new ScrcpyBootstrapSink(),
       });
-      const bootstrap = await bootstrapAttachment.awaitVideoBootstrap(3_000);
+      const bootstrap = await awaitAttempt(
+        bootstrapAttachment.awaitVideoBootstrap(3_000),
+        signal,
+      );
+      signal.throwIfAborted();
       this.assertBootstrapHasDimensions(bootstrap);
       this.assertOfferSupportsBootstrap(options.sdp, bootstrap);
       const declaredLevelSupportsRequestedRate = supportsH264PixelRate(
@@ -94,13 +117,17 @@ export class DisplayWebrtcService {
         options,
         sourceOptions,
         bootstrap,
-        bootstrapAttachment,
+        attempt,
+        detachBootstrap,
         iceHost,
         declaredLevelSupportsRequestedRate,
       });
     } catch (error) {
-      bootstrapAttachment?.detach("WebRTC bootstrap failed");
+      this.finishAttempt(options.sessionId, attempt);
       throw error;
+    } finally {
+      signal.removeEventListener("abort", detachBootstrap);
+      detachBootstrap();
     }
   }
 
@@ -108,17 +135,21 @@ export class DisplayWebrtcService {
     options,
     sourceOptions,
     bootstrap,
-    bootstrapAttachment,
+    attempt,
+    detachBootstrap,
     iceHost,
     declaredLevelSupportsRequestedRate,
   }: {
     options: WebrtcOfferOptions;
     sourceOptions: Omit<ScrcpyStreamOptions, "sink">;
     bootstrap: ScrcpyVideoBootstrap;
-    bootstrapAttachment: ScrcpyStreamAttachment;
+    attempt: AbortController;
+    detachBootstrap: () => void;
     iceHost: string;
     declaredLevelSupportsRequestedRate: boolean;
   }) {
+    const { signal } = attempt;
+    signal.throwIfAborted();
     const bridge = spawn(this.config.webrtcBridgePath, [], {
       stdio: ["pipe", "pipe", "pipe", "pipe", "pipe"],
     });
@@ -184,58 +215,49 @@ export class DisplayWebrtcService {
     const close = () => {
       clearInterval(queueMetricsTimer);
       attachment?.detach("WebRTC consumer closed");
-      bootstrapAttachment.detach("WebRTC bootstrap consumer closed");
-      if (!attachment) {
-        sink.close();
-      }
+      sink.close();
     };
-    this.active.set(options.sessionId, close);
+    signal.addEventListener("abort", close, { once: true });
+    for (const input of [bridge.stdin, videoInput, audioInput]) {
+      input?.on("error", () => this.finishAttempt(options.sessionId, attempt));
+    }
 
     bridge.stderr.setEncoding("utf8");
     bridge.stderr.on("data", (chunk: string) => {
       for (const line of chunk.split(/\r?\n/)) {
-        if (line.trim()) {
+        if (line.trim())
           this.logger.debug(`[webrtc:${options.sessionId}] ${line}`);
-        }
       }
     });
-
-    bridge.once("close", (code, signal) => {
-      clearInterval(queueMetricsTimer);
-      if (this.active.get(options.sessionId) === close) {
-        this.active.delete(options.sessionId);
-      }
+    bridge.once("close", (code, closeSignal) => {
+      this.finishAttempt(options.sessionId, attempt);
       this.logger.debug(
-        `[webrtc:${options.sessionId}] bridge closed code=${code ?? 0}${signal ? ` signal=${signal}` : ""}`,
+        `[webrtc:${options.sessionId}] bridge closed code=${code ?? 0}${closeSignal ? ` signal=${closeSignal}` : ""}`,
       );
     });
 
-    let answer: { sdp: string };
-    try {
-      answer = await this.configureBridge({
-        bridge,
-        sessionId: options.sessionId,
-        offerSdp: options.sdp,
-        iceHost,
-        maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),
-        audio: options.audio,
-        h264FmtpLine: bootstrap.sdpFmtpLine,
-        h264ProfileLevelId: bootstrap.profileLevelId,
-      });
-    } catch (error) {
-      if (this.active.get(options.sessionId) === close) {
-        this.active.delete(options.sessionId);
-      }
-      close();
-      throw error;
-    }
+    const bridgeAttempt: BridgeAttempt = {
+      bridge,
+      signal,
+      requestVideoReset: (reason) => attachment?.requestVideoReset(reason),
+      sessionId: options.sessionId,
+    };
+    const answer = await this.configureBridge(bridgeAttempt, {
+      offerSdp: options.sdp,
+      iceHost,
+      maxFps: this.number(options.maxFps, DEFAULT_MAX_FPS, 1, 120),
+      audio: options.audio,
+      h264FmtpLine: bootstrap.sdpFmtpLine,
+      h264ProfileLevelId: bootstrap.profileLevelId,
+    });
+    signal.throwIfAborted();
 
     try {
       attachment = this.scrcpy.attachStream({
         ...sourceOptions,
         sink,
       });
-      bootstrapAttachment.detach("WebRTC bridge attached");
+      detachBootstrap();
       sink.sendStatus({
         type: "webrtc-profile",
         profileLevelId: bootstrap.profileLevelId,
@@ -245,20 +267,13 @@ export class DisplayWebrtcService {
         actualEncoder: bootstrap.actualEncoder,
         declaredLevelSupportsRequestedRate,
       });
-      void attachment.closed.then(() => {
-        if (bridge.exitCode === null && !bridge.killed) {
-          bridge.kill("SIGTERM");
-        }
-      });
+      void attachment.closed.then(() =>
+        this.finishAttempt(options.sessionId, attempt),
+      );
     } catch (error) {
       this.logger.warn(
         `[webrtc:${options.sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
       );
-      sink.close();
-      bootstrapAttachment.detach("WebRTC bridge attach failed");
-      if (this.active.get(options.sessionId) === close) {
-        this.active.delete(options.sessionId);
-      }
       throw error;
     }
 
@@ -295,25 +310,25 @@ export class DisplayWebrtcService {
     };
   }
 
-  private configureBridge({
-    bridge,
-    sessionId,
-    offerSdp,
-    iceHost,
-    maxFps,
-    audio,
-    h264FmtpLine,
-    h264ProfileLevelId,
-  }: {
-    bridge: ChildProcess;
-    sessionId: string;
-    offerSdp: string;
-    iceHost: string;
-    maxFps: number;
-    audio: boolean;
-    h264FmtpLine: string;
-    h264ProfileLevelId: string;
-  }) {
+  private configureBridge(
+    attempt: BridgeAttempt,
+    {
+      offerSdp,
+      iceHost,
+      maxFps,
+      audio,
+      h264FmtpLine,
+      h264ProfileLevelId,
+    }: {
+      offerSdp: string;
+      iceHost: string;
+      maxFps: number;
+      audio: boolean;
+      h264FmtpLine: string;
+      h264ProfileLevelId: string;
+    },
+  ) {
+    const { bridge, signal } = attempt;
     return new Promise<{ sdp: string }>((resolve, reject) => {
       let settled = false;
       let buffer = "";
@@ -324,8 +339,11 @@ export class DisplayWebrtcService {
 
       const cleanup = () => {
         clearTimeout(timeout);
-        bridge.off("error", onError);
         bridge.off("close", onClose);
+      };
+      const onAbort = () => {
+        bridge.stdout?.off("data", onData);
+        fail(signal.reason as Error);
       };
       const fail = (error: Error) => {
         if (settled) {
@@ -333,7 +351,6 @@ export class DisplayWebrtcService {
         }
         settled = true;
         cleanup();
-        bridge.kill("SIGTERM");
         reject(error);
       };
       const onError = (error: Error) => fail(error);
@@ -345,7 +362,8 @@ export class DisplayWebrtcService {
         while (newline >= 0) {
           const line = buffer.slice(0, newline).trim();
           buffer = buffer.slice(newline + 1);
-          this.handleBridgeLine(bridge, sessionId, line, (sdp) => {
+          if (signal.aborted) return;
+          this.handleBridgeLine(attempt, line, (sdp) => {
             if (settled) {
               return;
             }
@@ -357,8 +375,10 @@ export class DisplayWebrtcService {
         }
       };
 
+      signal.addEventListener("abort", onAbort, { once: true });
       bridge.stdout?.on("data", onData);
-      bridge.once("error", onError);
+      bridge.on("error", onError);
+      bridge.once("close", () => bridge.off("error", onError));
       bridge.once("close", onClose);
       bridge.stdin?.write(
         `${JSON.stringify({
@@ -377,8 +397,7 @@ export class DisplayWebrtcService {
   }
 
   private handleBridgeLine(
-    bridge: ChildProcess,
-    sessionId: string,
+    { bridge, sessionId, signal, requestVideoReset }: BridgeAttempt,
     line: string,
     onAnswer?: (sdp: string) => void,
   ) {
@@ -398,15 +417,11 @@ export class DisplayWebrtcService {
       return;
     }
     if (message.type === "control") {
-      void this.handleControlMessage(sessionId, message.payload)
-        .then((payload) => this.sendDataChannelMessage(bridge, payload))
-        .catch((error) => {
-          const failure = displayControlError(error);
-          this.logger.warn(
-            `[webrtc:${sessionId}] control message failed: ${failure.code}`,
-          );
-          this.sendDataChannelMessage(bridge, failure);
-        });
+      void this.handleControlMessage(sessionId, message.payload).then(
+        (payload) => {
+          if (!signal.aborted) this.sendDataChannelMessage(bridge, payload);
+        },
+      );
       return;
     }
     if (message.type === "error") {
@@ -421,10 +436,7 @@ export class DisplayWebrtcService {
       return;
     }
     if (message.type === "video-resync-request") {
-      this.scrcpy.requestVideoReset(
-        sessionId,
-        `webrtc:${message.message?.slice(0, 80) || "pli"}`,
-      );
+      requestVideoReset(`webrtc:${message.message?.slice(0, 80) || "pli"}`);
       return;
     }
     if (message.type === "log" || message.type === "state") {
@@ -443,11 +455,17 @@ export class DisplayWebrtcService {
         message: "Invalid viewer control message.",
       };
     }
-    return {
-      id: message.id,
-      ok: true as const,
-      ...(await this.controls.execute(sessionId, message)),
-    };
+    const id =
+      typeof message.id === "string" ? message.id.slice(0, 128) : undefined;
+    try {
+      return {
+        id,
+        ok: true as const,
+        ...(await this.controls.execute(sessionId, message)),
+      };
+    } catch (error) {
+      return { id, ...displayControlError(error) };
+    }
   }
 
   private sendDataChannelMessage(bridge: ChildProcess, payload: unknown) {
@@ -467,8 +485,13 @@ export class DisplayWebrtcService {
   }
 
   stopSession(sessionId: string) {
-    this.active.get(sessionId)?.();
-    this.active.delete(sessionId);
+    const attempt = this.active.get(sessionId);
+    if (attempt) this.finishAttempt(sessionId, attempt);
+  }
+
+  private finishAttempt(sessionId: string, attempt: AbortController) {
+    if (this.active.get(sessionId) === attempt) this.active.delete(sessionId);
+    attempt.abort(new ConflictException("WebRTC offer was cancelled."));
   }
 
   private resolveIceHost(requestHost: string | null) {
@@ -559,5 +582,22 @@ export class DisplayWebrtcService {
         resolve();
       });
     });
+  }
+}
+
+async function awaitAttempt<T>(
+  work: Promise<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  let onAbort: () => void;
+  const cancelled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    return await Promise.race([work, cancelled]);
+  } finally {
+    signal.removeEventListener("abort", onAbort!);
   }
 }
