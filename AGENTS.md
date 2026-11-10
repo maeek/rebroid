@@ -114,6 +114,8 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   uses the rate-limited scrcpy v4 reset-video control message over the existing
   control socket without changing socket startup order.
 - Scope WebRTC offer work and bridge events to their consumer attempt. Scope keyboard capture to the active viewer surface.
+  The Go bridge owns peer shutdown and joins its media workers. Keep audio-only failures local to audio and end
+  the attempt on shared timestamp regression. The sidecar test suite requires Go 1.24 and local UDP loopback.
   Bind WebRTC negotiation and media attachment to the same source codec generation. Keep an outstanding
   encoder reset on its original deadline. Route expired viewer session recovery through the authorized web viewer.
   Correlate discrete control outcomes and choose fallback before dispatch. Fence MediaSource fragments and callbacks by recovery epoch.

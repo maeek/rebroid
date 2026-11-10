@@ -7,6 +7,7 @@ changing service boundaries, and [AGENTS.md](AGENTS.md) for repository-specific 
 ## Local development
 
 Use Node.js 24 and pnpm through Corepack. Run commands from the repository root unless noted.
+The display sidecar tests use Go 1.24 and local UDP sockets for WebRTC loopback.
 Full Android operation still requires a supported native Linux rootful engine and binder devices;
 a local UI/API development environment does not provide those host capabilities.
 

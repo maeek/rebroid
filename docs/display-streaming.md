@@ -64,6 +64,10 @@ Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers va
   changes generation during signaling, the offer fails with a retryable response. If configuration
   changes after attachment, only the negotiated consumer detaches. The bridge derives RTP timing
   from source timestamps and continuously drains sender RTCP.
+- The Go bridge owns shutdown of its peer and media workers. A track-local audio error closes
+  that input and leaves video active. A shared timestamp regression ends the peer attempt.
+- Repeated RTCP feedback leaves an outstanding consumer recovery deadline in place. The deadline
+  advances with source PTS while waiting for configuration and an IDR.
 - Consumer attachment, PLI, and decoder recovery use scrcpy v4 reset-video message `17` over the
   existing control socket, coalesced to at most once per second. An outstanding reset keeps its
   original three-second deadline and completes when configuration is followed by an IDR.
@@ -87,6 +91,7 @@ admitted pointer-down reserves room for its release in the browser. Virtual surf
 control because the ADB fallback targets the device's default display.
 The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
 outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
+The Go relay sends correlated replies in order and coalesces replaceable telemetry under pressure.
 
 ## Protected scrcpy lifecycle
 

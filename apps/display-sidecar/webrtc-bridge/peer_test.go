@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pion/ice/v4"
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -262,6 +263,92 @@ func TestPointerMovementUsesBestEffortBridgeEvent(t *testing.T) {
 	if string(event.Payload) != move {
 		t.Fatalf("unexpected movement payload: %s", event.Payload)
 	}
+	fixture.cancel()
+	if err := receive(t, fixture.result); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReceiverObservesSourcePTSAndSenderReports(t *testing.T) {
+	fixture := startAttempt(t)
+	type receivedTrack struct {
+		track    *webrtc.TrackRemote
+		receiver *webrtc.RTPReceiver
+	}
+	audioTrack, videoTrack := make(chan receivedTrack, 1), make(chan receivedTrack, 1)
+	fixture.client.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		if track.Kind() == webrtc.RTPCodecTypeAudio {
+			audioTrack <- receivedTrack{track, receiver}
+		} else {
+			videoTrack <- receivedTrack{track, receiver}
+		}
+	})
+	fixture.connect(t)
+	writeFrame := func(pipe *io.PipeWriter, kind uint8, seq uint32, pts uint64, flags uint16, data []byte) {
+		t.Helper()
+		if _, err := pipe.Write(encodedMediaFrame(kind, seq, pts, flags, data)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	config := []byte{0, 0, 0, 1, 0x67, 0x42, 0xe0, 0x1f, 0, 0, 0, 1, 0x68, 0xce, 0x06, 0xe2}
+	idr := []byte{0, 0, 0, 1, 0x65, 1}
+	writeFrame(fixture.video, mediaKindVideo, 0, 0, mediaFlagConfig, config)
+	writeFrame(fixture.video, mediaKindVideo, 1, 1_020_000, mediaFlagKey, idr)
+	video := receive(t, videoTrack)
+	time.Sleep(80 * time.Millisecond)
+	writeFrame(fixture.audio, mediaKindAudio, 1, 1_000_000, 0, []byte{0xf8, 0xff, 0xfe})
+	audio := receive(t, audioTrack)
+
+	readPTS := func(track *webrtc.TrackRemote) uint32 {
+		t.Helper()
+		if err := track.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		packet, _, err := track.ReadRTP()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return packet.Timestamp
+	}
+	videoStart, audioStart := readPTS(video.track), readPTS(audio.track)
+	sourceSkewUs := int64(int32(videoStart-mediaRTPOrigin))*1_000_000/int64(videoClockRate) -
+		int64(int32(audioStart-mediaRTPOrigin))*1_000_000/int64(audioClockRate)
+	if sourceSkewUs != 20_000 {
+		t.Fatalf("receiver source skew = %d us", sourceSkewUs)
+	}
+
+	// Skip a full GOP while preserving source time at the receiver.
+	writeFrame(fixture.video, mediaKindVideo, 2, 2_020_000, mediaFlagKey|mediaFlagGap, idr)
+	var resumed uint32
+	for resumed = readPTS(video.track); resumed == videoStart; resumed = readPTS(video.track) {
+	}
+	if resumed-videoStart != 90_000 {
+		t.Fatalf("unexpected RTP gap: %d", resumed-videoStart)
+	}
+
+	reportOrigin := func(track receivedTrack, initial uint32, clock uint64) float64 {
+		t.Helper()
+		if err := track.receiver.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+			t.Fatal(err)
+		}
+		for {
+			packets, _, err := track.receiver.ReadRTCP()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, packet := range packets {
+				report, ok := packet.(*rtcp.SenderReport)
+				if ok && report.SSRC == uint32(track.track.SSRC()) && report.PacketCount > 0 {
+					return float64(report.NTPTime)/float64(uint64(1)<<32) -
+						float64(int32(report.RTPTime-initial))/float64(clock)
+				}
+			}
+		}
+	}
+	videoAnchor := reportOrigin(video, videoStart, videoClockRate)
+	audioAnchor := reportOrigin(audio, audioStart, audioClockRate)
+	t.Logf("receiver sender-report mapping places first video %.1f ms from first audio; source PTS skew is %.1f ms",
+		(videoAnchor-audioAnchor)*1000, float64(sourceSkewUs)/1000)
 	fixture.cancel()
 	if err := receive(t, fixture.result); err != nil {
 		t.Fatal(err)
