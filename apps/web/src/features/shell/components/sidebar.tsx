@@ -1,7 +1,6 @@
 'use client'
 
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from '@tabler/icons-react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { focusRingClassName } from '@/components/ui/surface'
@@ -10,6 +9,8 @@ import { cn } from '@/lib/utils'
 import { NavigationControls } from './navigation-controls/navigation-controls'
 import { NavigationHint } from './navigation-hint'
 import { ProtectedNavigation } from './protected-navigation'
+import { RebroidIcon } from './rebroid-icon'
+import styles from './rebroid-wordmark.module.css'
 import type { ShellUser } from './shell-user'
 
 export default function Sidebar({
@@ -37,16 +38,11 @@ export default function Sidebar({
         collapsed ? 'w-9 touch:min-w-0' : 'max-w-44'
       )}
     >
-      <Image
-        src='/rebroid-icon.svg'
-        alt=''
-        width={24}
-        height={24}
-        className='shrink-0'
-      />
+      <RebroidIcon />
       <span
         aria-hidden={collapsed}
         className={cn(
+          styles.wordmark,
           'truncate text-lg font-bold transition-[max-width,margin,opacity] duration-[var(--shell-sidebar-duration)] motion-reduce:transition-none',
           collapsed ? 'max-w-0 opacity-0' : 'ml-2 max-w-32 opacity-100'
         )}

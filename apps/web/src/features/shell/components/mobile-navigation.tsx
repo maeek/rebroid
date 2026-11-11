@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { NavigationControls } from './navigation-controls/navigation-controls'
 import { ProtectedNavigation } from './protected-navigation'
+import styles from './rebroid-wordmark.module.css'
 import type { ShellUser } from './shell-user'
 
 export const MobileNavigation = ({
@@ -72,7 +73,7 @@ export const MobileNavigation = ({
             href='/'
             className='min-w-0 truncate text-lg font-bold'
           >
-            Rebroid
+            <span className={styles.wordmark}>Rebroid</span>
           </Link>
         </div>
       </div>

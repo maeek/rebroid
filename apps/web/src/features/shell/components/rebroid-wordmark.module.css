@@ -1,0 +1,45 @@
+@supports (background-clip: text) and (color: color-mix(in oklab, white, black)) {
+  @media (forced-colors: none) {
+    .wordmark {
+      --wordmark-ink: hsl(var(--foreground));
+      --wordmark-accent: hsl(var(--primary));
+      background-image:
+        linear-gradient(112deg, transparent 42%, var(--wordmark-ink) 50%, transparent 58%),
+        linear-gradient(
+          105deg,
+          var(--wordmark-ink),
+          color-mix(in oklab, var(--wordmark-ink) 78%, var(--wordmark-accent)) 38%,
+          color-mix(in oklab, var(--wordmark-ink) 42%, var(--wordmark-accent))
+        );
+      background-position:
+        100% 50%,
+        center;
+      background-repeat: no-repeat;
+      background-size:
+        300% 100%,
+        100% 100%;
+      background-clip: text;
+      color: transparent;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      a:focus-visible > .wordmark {
+        animation: shimmer 650ms ease-out;
+      }
+
+      @media (hover: hover) {
+        a:hover > .wordmark {
+          animation: shimmer 650ms ease-out;
+        }
+      }
+    }
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position:
+      0% 50%,
+      center;
+  }
+}
