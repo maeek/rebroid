@@ -1,7 +1,7 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { isViewerPlacement, viewerPlacementCookie, type ViewerPlacement } from './viewer-placement'
+import { createContext, useContext, useState, type ReactNode } from 'react'
+import { viewerPlacementCookie, type ViewerPlacement } from './viewer-placement'
 
 const defaultViewerPlacement: ViewerPlacement = 'top'
 
@@ -26,19 +26,6 @@ export const ViewerPlacementProvider = ({
   children: ReactNode
 }) => {
   const [placement, setPlacement] = useState<ViewerPlacement>(initialPlacement ?? defaultViewerPlacement)
-
-  useEffect(() => {
-    if (initialPlacement) return
-    try {
-      const previous = window.localStorage.getItem('rebroid:app-viewer-placement')
-      if (isViewerPlacement(previous)) {
-        savePlacement(previous)
-        setPlacement(previous)
-      }
-    } catch {
-      // Older browser preferences are optional.
-    }
-  }, [initialPlacement])
 
   return (
     <ViewerPlacementContext.Provider

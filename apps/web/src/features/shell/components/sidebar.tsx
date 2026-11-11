@@ -13,14 +13,14 @@ import { RebroidIcon } from './rebroid-icon'
 import styles from './rebroid-wordmark.module.css'
 import type { ShellUser } from './shell-user'
 
+const sidebarId = 'desktop-navigation'
+
 export default function Sidebar({
-  id = 'desktop-navigation',
   initialUser,
   collapsed,
   onToggle,
   pollNavigation
 }: {
-  id?: string
   initialUser: ShellUser
   collapsed: boolean
   onToggle: () => void
@@ -54,7 +54,7 @@ export default function Sidebar({
 
   return (
     <aside
-      id={id}
+      id={sidebarId}
       aria-label='Primary navigation'
       className='fixed inset-y-[var(--shell-sidebar-inset)] left-[var(--shell-sidebar-inset)] z-40 hidden w-(--shell-sidebar-width) flex-col overflow-hidden rounded-panel bg-surface-navigation transition-[width] duration-[var(--shell-sidebar-duration)] ease-out lg:flex motion-reduce:transition-none'
     >
@@ -81,7 +81,7 @@ export default function Sidebar({
                 collapsed ? 'top-11' : 'top-1.5'
               )}
               aria-label={toggleLabel}
-              aria-controls={id}
+              aria-controls={sidebarId}
               aria-expanded={!collapsed}
               onClick={onToggle}
             >

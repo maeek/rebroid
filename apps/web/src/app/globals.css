@@ -506,18 +506,6 @@
     --page-header-top-inset: 0rem;
   }
 
-  [data-legacy-sidebar-collapsed] [data-sidebar-pending] {
-    --shell-sidebar-width: 4rem;
-  }
-
-  [data-legacy-sidebar-collapsed] [data-sidebar-pending] [data-sidebar-current] {
-    display: none;
-  }
-
-  [data-legacy-sidebar-collapsed] [data-sidebar-pending] [data-sidebar-legacy-preview] {
-    display: contents;
-  }
-
   .app-device-pane[data-viewer-placement='top'] {
     --app-viewer-height: calc(100svh - var(--console-top-inset) - 4.5rem);
   }

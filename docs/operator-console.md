@@ -18,8 +18,8 @@ managed image inventory and are recorded in the audit log.
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
 - `/app/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
   and relevant destinations. Reading this page does not reconcile Docker or create a viewer session.
-- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. Old Viewer and Clipboard tab links open Overview. The separate viewer window uses `/viewer/apps/[id]`.
-- The resource navigation is one row, with permission-based destinations kept consistent across views. Legacy manage/profile paths and workspace queries redirect to the canonical section URLs.
+- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
+- The resource navigation is one row, with permission-based destinations kept consistent across views.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
   remains restricted. Error references and technical hints require backend-detail permission.

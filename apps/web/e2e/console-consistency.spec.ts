@@ -434,24 +434,17 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   await expect(sidebar.getByRole('button', { name: 'Account' })).toBeVisible()
 })
 
-test('an older collapsed sidebar preference is visible before hydration', async ({ page }) => {
+test('a saved sidebar preference is visible before hydration', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.addInitScript(() => localStorage.setItem('rebroid:sidebar-collapsed', 'true'))
+  await page.context().addCookies([{ name: 'rebroid-sidebar-collapsed', value: 'true', url: baseURL }])
   const scriptChunks = '**/_next/static/**/*.js'
   await page.route(scriptChunks, route => route.abort())
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
-  await expect(page.locator('[data-sidebar-pending]')).toBeVisible()
+  await expect(page.locator('[data-sidebar-collapsed]')).toHaveAttribute('data-sidebar-collapsed', 'true')
   await expect(sidebar).toHaveCSS('width', '64px')
   await expect(sidebar.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
   await expect(page.getByRole('main')).toHaveCSS('padding-left', '72px')
-
-  await page.unroute(scriptChunks)
-  await page.reload()
-  await expect(page.locator('[data-sidebar-pending]')).toHaveCount(0)
-  await expect(page.locator('[data-sidebar-collapsed]')).toHaveAttribute('data-sidebar-collapsed', 'true')
-  const response = await page.request.get(page.url())
-  expect(await response.text()).toContain('data-sidebar-collapsed="true"')
 })
 
 test('console anchors only clear the top bar when it is visible', async ({ page }) => {

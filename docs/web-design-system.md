@@ -213,8 +213,7 @@ Route `loading.tsx` files are thin feature entrypoints. Explicit Suspense fallba
 feature loading component. Scope index-page loaders to a leaf route group when that URL also has
 nested pages: the platform overview, provider list, and service inventory must not become fallbacks
 for their detail pages. Route groups preserve the public URLs and the shared authorization layout.
-The protected-route matrix remains 36 renderable routes with feature-owned
-loaders; the legacy display-sessions redirect is the only loader-free exclusion.
+Every renderable protected route has a feature-owned loader.
 
 ## Responsive behavior and accessibility
 

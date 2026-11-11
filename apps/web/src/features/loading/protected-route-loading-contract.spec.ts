@@ -6,8 +6,6 @@ const protectedRoot = resolve(process.cwd(), 'src/app/(protected)')
 
 const renderableRoutes = [
   '(standard)/app/[slug]',
-  '(standard)/app/[slug]/manage',
-  '(standard)/app/[slug]/manage/profiles',
   '(standard)/apps',
   '(standard)/apps/create',
   '(standard)/automations',
@@ -57,12 +55,10 @@ const dataGridLoadingOwners = [
 ] as const
 
 describe('protected route loading contract', () => {
-  it('covers all 36 renderable routes with thin feature-owned loaders', () => {
-    expect(renderableRoutes).toHaveLength(36)
+  it('covers every protected route with a thin feature-owned loader', () => {
     const discoveredRoutes = readdirSync(protectedRoot, { recursive: true, encoding: 'utf8' })
       .filter(path => path.endsWith('/page.tsx'))
       .map(path => path.slice(0, -'/page.tsx'.length))
-      .filter(route => route !== '(standard)/platform/display-sessions')
     expect(discoveredRoutes.sort()).toEqual([...renderableRoutes].sort())
 
     for (const route of renderableRoutes) {
@@ -80,14 +76,6 @@ describe('protected route loading contract', () => {
         expect(source, `${route} loader`).toMatch(/^export \{ [A-Za-z0-9_]+ as default \} from '@\/features\/[^']+'$/)
       }
     }
-  })
-
-  it('keeps the legacy redirect as the only loader-free protected route', () => {
-    const route = '(standard)/platform/display-sessions'
-
-    expect(existsSync(resolve(protectedRoot, route, 'page.tsx'))).toBe(true)
-    expect(existsSync(resolve(protectedRoot, route, 'loading.tsx'))).toBe(false)
-    expect(existsSync(resolve(protectedRoot, '(standard)/app/[slug]/details/loading.tsx'))).toBe(false)
   })
 
   it('scopes platform loaders to their destination instead of inheriting an index page fallback', () => {

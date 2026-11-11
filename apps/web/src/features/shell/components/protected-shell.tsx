@@ -1,11 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import {
-  legacySidebarCollapsedKey,
-  parseSidebarCollapsed,
-  sidebarCollapsedCookie
-} from '@/shared/model/settings/sidebar-preference'
+import { sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { MobileNavigation } from './mobile-navigation'
 import Sidebar from './sidebar'
 import type { ShellUser } from './shell-user'
@@ -18,7 +14,7 @@ const saveSidebarCollapsed = (collapsed: boolean) => {
 export const ProtectedShell = ({
   children,
   user,
-  initialSidebarCollapsed,
+  initialSidebarCollapsed = false,
   pollNavigation = true
 }: {
   children: ReactNode
@@ -26,9 +22,7 @@ export const ProtectedShell = ({
   initialSidebarCollapsed?: boolean
   pollNavigation?: boolean
 }) => {
-  const [savedSidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed)
-  const sidebarCollapsed = savedSidebarCollapsed ?? false
-  const sidebarPending = savedSidebarCollapsed === undefined
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed)
   const [animateSidebar, setAnimateSidebar] = useState(false)
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   useEffect(() => {
@@ -38,21 +32,6 @@ export const ProtectedShell = ({
     viewport.addEventListener('change', updateViewport)
     return () => viewport.removeEventListener('change', updateViewport)
   }, [])
-
-  useEffect(() => {
-    if (initialSidebarCollapsed !== undefined) return
-    try {
-      const previous = parseSidebarCollapsed(window.localStorage.getItem(legacySidebarCollapsedKey) ?? undefined)
-      setSidebarCollapsed(previous ?? false)
-      saveSidebarCollapsed(previous ?? false)
-      if (previous !== undefined) {
-        window.localStorage.removeItem(legacySidebarCollapsedKey)
-      }
-    } catch {
-      // Browser storage may be unavailable.
-      setSidebarCollapsed(false)
-    }
-  }, [initialSidebarCollapsed])
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
@@ -64,7 +43,6 @@ export const ProtectedShell = ({
   return (
     <div
       data-sidebar-collapsed={sidebarCollapsed}
-      data-sidebar-pending={sidebarPending || undefined}
       data-sidebar-motion={animateSidebar}
       className='main-layout relative z-10 flex flex-col pt-(--console-top-inset) [--shell-sidebar-duration:0ms] data-[sidebar-motion=true]:[--shell-sidebar-duration:220ms] [--shell-sidebar-inset:0.5rem] [--shell-sidebar-offset:calc(var(--shell-sidebar-width)+var(--shell-sidebar-inset))] [--shell-sidebar-width:18rem] data-[sidebar-collapsed=true]:[--shell-sidebar-width:4rem]'
     >
@@ -74,31 +52,12 @@ export const ProtectedShell = ({
       >
         Skip to main content
       </a>
-      <div
-        className='contents'
-        data-sidebar-current=''
-      >
-        <Sidebar
-          initialUser={user}
-          collapsed={sidebarCollapsed}
-          onToggle={toggleSidebar}
-          pollNavigation={pollNavigation && isDesktop === true}
-        />
-      </div>
-      {sidebarPending ? (
-        <div
-          className='hidden'
-          data-sidebar-legacy-preview=''
-        >
-          <Sidebar
-            id='desktop-navigation-legacy'
-            initialUser={user}
-            collapsed
-            onToggle={toggleSidebar}
-            pollNavigation={false}
-          />
-        </div>
-      ) : null}
+      <Sidebar
+        initialUser={user}
+        collapsed={sidebarCollapsed}
+        onToggle={toggleSidebar}
+        pollNavigation={pollNavigation && isDesktop === true}
+      />
       <MobileNavigation
         user={user}
         isDesktop={isDesktop === true}

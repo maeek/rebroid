@@ -9,24 +9,10 @@ import NextTopLoader from 'nextjs-toploader'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
-import {
-  legacySidebarCollapsedKey,
-  parseSidebarCollapsed,
-  sidebarCollapsedCookie
-} from '@/shared/model/settings/sidebar-preference'
 import { isViewerPlacement, viewerPlacementCookie } from '@/shared/model/settings/viewer-placement'
 import { ViewerPlacementProvider } from '@/shared/model/settings/viewer-placement-context'
 import { getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
 import './globals.css'
-
-// Select the legacy layout before the browser paints the server-rendered sidebar.
-const legacySidebarBootstrap = `
-  try {
-    if (localStorage.getItem(${JSON.stringify(legacySidebarCollapsedKey)}) === "true") {
-      document.documentElement.setAttribute("data-legacy-sidebar-collapsed", "");
-    }
-  } catch {}
-`
 
 const ubuntu = localFont({
   src: [
@@ -75,7 +61,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [session, requestHeaders, requestCookies] = await Promise.all([getServerAuthSession(), headers(), cookies()])
   const nonce = requestHeaders.get('x-nonce') ?? undefined
   const viewerPlacement = requestCookies.get(viewerPlacementCookie)?.value
-  const sidebarCollapsed = parseSidebarCollapsed(requestCookies.get(sidebarCollapsedCookie)?.value)
 
   return (
     <html
@@ -90,14 +75,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         } as CSSProperties
       }
     >
-      {sidebarCollapsed === undefined ? (
-        <head>
-          <script
-            nonce={nonce}
-            dangerouslySetInnerHTML={{ __html: legacySidebarBootstrap }}
-          />
-        </head>
-      ) : null}
       <body>
         <div className='root'>
           <ThemeProvider

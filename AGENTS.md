@@ -201,9 +201,8 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Grid selection uses softly rounded background emphasis without accent stripes. Bulk toolbars swap immediately, with ghost actions and `danger-ghost` for destructive actions. Sheet transitions use Base UI starting/ending states and keep the backdrop transparent through unmount.
 - Query-selected nested service loaders must retain the Docker/Orchestrator detail layout; profile route and inner Suspense loaders must both retain the profile list and device pane. Feature loaders may show stable shell-manifest metadata, but must mask availability and enabled values.
 - Display sessions reads sidecar logs through its administrator-only log endpoint. Keep logs out of health responses and caches, decode Docker log frames before rendering, and bound both Docker reads and returned tails.
-- Keep the protected route loading matrix at 36 renderable routes with thin feature-owned loaders; the legacy
-  display-sessions redirect is the only loader-free exclusion. Explicit Suspense boundaries reuse the same feature
-  loading component as the route loader.
+- Give every renderable protected route a thin feature-owned loader. Explicit Suspense boundaries reuse the same
+  feature loading component as the route loader.
 
 ## Security and Performance
 
