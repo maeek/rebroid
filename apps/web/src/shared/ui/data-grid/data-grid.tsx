@@ -97,6 +97,7 @@ export function DataGrid<TData>({
   const loadingState = loading === true ? {} : loading || undefined
   const {
     getColumnPixelWidth,
+    hasHorizontalOverflow,
     lastVisibleColumnId,
     renderedTableWidth,
     selectRowForContextMenu,
@@ -129,6 +130,7 @@ export function DataGrid<TData>({
       <DataGridTable
         table={table}
         tableContainerRef={tableContainerRef}
+        hasHorizontalOverflow={hasHorizontalOverflow}
         renderedTableWidth={renderedTableWidth}
         minWidth={minWidth}
         getColumnPixelWidth={getColumnPixelWidth}

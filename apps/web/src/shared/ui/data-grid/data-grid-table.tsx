@@ -16,6 +16,7 @@ import type {
 type DataGridTableProps<TData> = {
   table: ReactTable<TData>
   tableContainerRef: RefObject<HTMLDivElement | null>
+  hasHorizontalOverflow: boolean
   renderedTableWidth: number
   minWidth?: string
   getColumnPixelWidth: (column: ReturnType<ReactTable<TData>['getVisibleLeafColumns']>[number]) => number
@@ -79,6 +80,7 @@ const renderLoadingCell = (skeleton: DataGridCellSkeleton | undefined, rowIndex:
 export const DataGridTable = <TData,>({
   table,
   tableContainerRef,
+  hasHorizontalOverflow,
   renderedTableWidth,
   minWidth,
   getColumnPixelWidth,
@@ -99,7 +101,11 @@ export const DataGridTable = <TData,>({
     <>
       <Table
         className='table-fixed'
-        containerClassName={cn('overflow-x-auto overflow-y-hidden', !isEmpty && 'border-b border-surface-border/40')}
+        containerClassName={cn(
+          'overflow-x-auto overflow-y-hidden',
+          hasHorizontalOverflow && 'pb-4',
+          !isEmpty && 'border-b border-surface-border/40'
+        )}
         containerRef={tableContainerRef}
         style={{
           width: renderedTableWidth,

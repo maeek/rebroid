@@ -168,6 +168,28 @@ test('Features loader preserves its feature catalog and row geometry', async ({ 
   }
 })
 
+test('Features reserves space below the last row only when the grid scrolls horizontally', async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 1000 })
+  await page.goto('/skeleton-contract-test?editor=features')
+  const scroller = page.getByRole('table').locator('..')
+  const measure = () =>
+    scroller.evaluate(node => ({
+      overflows: node.scrollWidth > node.clientWidth,
+      clearance: node.clientHeight - node.querySelector('table')!.offsetHeight
+    }))
+
+  await expect.poll(measure).toEqual({ overflows: true, clearance: 16 })
+  expect(
+    await scroller.evaluate(node => {
+      node.scrollLeft = node.scrollWidth
+      return node.scrollLeft
+    })
+  ).toBeGreaterThan(0)
+
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await expect.poll(measure).toEqual({ overflows: false, clearance: 0 })
+})
+
 test('nested Services loaders show their own sections and remain inert', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))

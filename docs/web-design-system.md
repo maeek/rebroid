@@ -172,6 +172,7 @@ and above pagination, with no perimeter frame, vertical rules, or shadow. Shared
 loading placeholders; hover and selection supply row emphasis. Keep pagination unboxed and table
 utilities as ghost actions. Apply this composition to both page-level and embedded grids rather than
 adding feature-specific wrappers.
+Horizontally overflowing grids reserve space below the table for overlay scrollbars.
 
 Selection replaces the search/action toolbar in the same measured grid track; it never inserts a
 new bar above the table. Keep both toolbar modes mounted for stable responsive geometry, with the
