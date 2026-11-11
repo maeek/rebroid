@@ -126,7 +126,7 @@ const ModelSelect = ({
   )
 }
 
-const PlannerModelFields = ({
+const PrimaryModelFields = ({
   catalog,
   isLoadingCatalog,
   onModelChange,
@@ -149,11 +149,7 @@ const PlannerModelFields = ({
         value={selectedProvider?.id ?? ''}
         disabled={catalog.length === 0}
         placeholder={isLoadingCatalog ? 'Loading providers...' : 'Select provider'}
-        onChange={nextProviderId => {
-          const nextSelection = nextCatalogProviderAndModel(catalog, nextProviderId, 'planner')
-          onProviderChange(nextProviderId)
-          onModelChange(nextSelection.model?.id ?? '')
-        }}
+        onChange={onProviderChange}
       />
     ) : null}
     <ModelSelect
@@ -302,7 +298,7 @@ export const AiModelPickerFields = ({
 
   return (
     <div className='grid gap-3'>
-      <PlannerModelFields
+      <PrimaryModelFields
         catalog={catalog}
         selectedProvider={selectedProvider}
         selectedModel={selectedModel}
@@ -364,7 +360,7 @@ export const AiModelPickerHealthFooter = ({
         variant='ghost'
         size='icon-sm'
         disabled={!selectedModel || isCheckingHealth}
-        aria-label='Re-check planner health'
+        aria-label='Re-check model health'
         onClick={onRecheckHealth}
       >
         <IconRefresh className='size-3.5' />

@@ -3,6 +3,7 @@
 import { useMemo, useRef } from 'react'
 import { IconArrowUp, IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { catalogByRole, selectCatalogProviderAndModel } from '@/shared/model/ai-model-catalog'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import {
   AiAgentConversationLayout,
@@ -59,6 +60,7 @@ export const AiAgentConversation = ({
     adHocTimeoutMs,
     canSubmit,
     cancelRun,
+    catalog,
     clearConversation,
     error,
     health,
@@ -67,7 +69,7 @@ export const AiAgentConversation = ({
     isClearing,
     isLoadingHistory,
     isAtBottom,
-    plannerCatalog,
+    primaryCatalog,
     prompt,
     queuedTurn,
     onTranscriptScroll,
@@ -94,22 +96,34 @@ export const AiAgentConversation = ({
     visionCatalog
   } = session
 
+  const preferredPlanningModelId = selectedModel?.roles.includes('planner') ? selectedModel.id : ''
+  const planning = useMemo(
+    () =>
+      selectCatalogProviderAndModel(
+        catalogByRole(catalog, 'planner'),
+        selectedProvider?.id ?? '',
+        preferredPlanningModelId,
+        'planner'
+      ),
+    [catalog, selectedProvider?.id, preferredPlanningModelId]
+  )
+
   const suggestions = useAiAgentPromptSuggestions({
     activeTurn,
     app,
     contextualSuggestionsEnabled,
     fallbackSuggestions,
     generatePromptSuggestions,
-    selectedModel,
-    selectedProvider,
+    selectedModel: planning.model,
+    selectedProvider: planning.provider,
     turns
   })
 
   const { draftingRunId, saveTurnAsWorkflow } = useAiAgentWorkflowDraft({
     draftWorkflowFromRun,
     openWorkflowDraft,
-    selectedModel,
-    selectedProvider,
+    selectedModel: planning.model,
+    selectedProvider: planning.provider,
     selectedVisionModel,
     selectedVisionProvider
   })
@@ -158,7 +172,7 @@ export const AiAgentConversation = ({
       }
       transcript={
         <AiAgentTranscript
-          canSaveWorkflow={canSaveWorkflow && Boolean(selectedProvider && selectedModel && draftWorkflowFromRun)}
+          canSaveWorkflow={canSaveWorkflow && Boolean(planning.provider && planning.model && draftWorkflowFromRun)}
           draftingRunId={draftingRunId}
           isLoadingHistory={isLoadingHistory}
           onApproveEscalation={approveEscalation}
@@ -200,7 +214,7 @@ export const AiAgentConversation = ({
             <div className='flex min-w-0 flex-wrap items-center gap-1'>
               <AiAgentSettingsPopover
                 adHocTimeoutMinutes={adHocTimeoutMinutes}
-                catalog={plannerCatalog}
+                catalog={primaryCatalog}
                 health={health}
                 isCheckingHealth={isCheckingHealth}
                 onRecheckHealth={() => void recheckHealth()}

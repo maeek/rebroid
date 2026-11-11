@@ -17,6 +17,7 @@ import {
   summarizeAiRunInput
 } from './ai-run.model'
 import type { AutomationActionDefinition } from '../automation-action-definition'
+import type { AiModelRole } from '@/shared/model/ai-model-catalog'
 
 export const aiRunAction: AutomationActionDefinition = {
   uses: 'ai.run',
@@ -44,15 +45,16 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       ),
     []
   )
-  const checkPlannerHealth = useCallback(
-    (nextProviderId: string, nextModelId: string) =>
+  const checkModelHealth = useCallback(
+    (nextProviderId: string, nextModelId: string, role: AiModelRole) =>
       import('@/server/orchestrator/settings/actions').then(({ checkAutomationAiProviderHealthAction }) =>
-        checkAutomationAiProviderHealthAction(nextProviderId, nextModelId, 'planner')
+        checkAutomationAiProviderHealthAction(nextProviderId, nextModelId, role)
       ),
     []
   )
   const modelSelection = useAiModelCatalogSelection({
-    checkHealth: checkPlannerHealth,
+    checkHealth: checkModelHealth,
+    role: 'controller',
     loadCatalog,
     modelId,
     onSelectionChange: patchInput,
@@ -74,7 +76,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
         onChange={prompt => patchInput({ prompt })}
       />
       <AiModelPickerFields
-        catalog={modelSelection.plannerCatalog}
+        catalog={modelSelection.primaryCatalog}
         selectedProvider={modelSelection.selectedProvider}
         selectedModel={modelSelection.selectedModel}
         selectedVisionProvider={modelSelection.selectedVisionProvider}

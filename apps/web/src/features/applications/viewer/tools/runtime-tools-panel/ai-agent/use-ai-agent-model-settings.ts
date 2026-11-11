@@ -32,14 +32,10 @@ export const useAiAgentModelSettings = () => {
   }, [])
 
   const loadCatalog = useCallback(() => listAutomationAiModelCatalogAction(), [])
-  const checkPlannerHealth = useCallback(
-    (nextProviderId: string, nextModelId: string) =>
-      checkAutomationAiProviderHealthAction(nextProviderId, nextModelId, 'controller'),
-    []
-  )
 
   const modelSelection = useAiModelCatalogSelection({
-    checkHealth: checkPlannerHealth,
+    checkHealth: checkAutomationAiProviderHealthAction,
+    role: 'controller',
     loadCatalog,
     modelId,
     onSelectionChange: patchSelection,
@@ -52,13 +48,13 @@ export const useAiAgentModelSettings = () => {
     catalog,
     health,
     isCheckingHealth,
-    plannerCatalog,
+    primaryCatalog,
     selectedModel,
     selectedProvider,
     selectedVisionModel,
     selectedVisionProvider,
-    setModelId: setPlannerModelId,
-    setProviderId: setPlannerProviderId,
+    setModelId: setControllerModelId,
+    setProviderId: setControllerProviderId,
     setVisionModelId: setSelectedVisionModelId,
     setVisionProviderId: setSelectedVisionProviderId,
     visionCatalog
@@ -82,15 +78,15 @@ export const useAiAgentModelSettings = () => {
     health,
     isCheckingHealth,
     modelIsValid,
-    plannerCatalog,
+    primaryCatalog,
     recheckHealth: modelSelection.recheckHealth,
     selectedModel,
     selectedProvider,
     selectedVisionModel,
     selectedVisionProvider,
     selectionMessage,
-    setModelId: setPlannerModelId,
-    setProviderId: setPlannerProviderId,
+    setModelId: setControllerModelId,
+    setProviderId: setControllerProviderId,
     setVisionModelId: setSelectedVisionModelId,
     setVisionProviderId: setSelectedVisionProviderId,
     setTimeoutMinutesInput,

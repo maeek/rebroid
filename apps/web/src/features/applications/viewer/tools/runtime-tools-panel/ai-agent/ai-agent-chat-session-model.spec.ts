@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   collectLatestRunSequences,
   createPromptTurn,
-  findActiveHistoryTurnId,
+  findActiveChatTurn,
   findTerminalRunStatus,
   latestEventSequence,
   mergeHistoryTurns,
@@ -86,13 +86,13 @@ describe('ai agent chat session model', () => {
   })
 
   it('finds the latest active history turn', () => {
-    const activeTurnId = findActiveHistoryTurnId([
+    const activeTurn = findActiveChatTurn([
       turn({ id: 'old-active', run: run({ id: 'run-1', status: 'running' }) }),
       turn({ id: 'done', run: run({ id: 'run-2', status: 'success' }) }),
       turn({ id: 'new-active', run: run({ id: 'run-3', status: 'queued' }) })
     ])
 
-    expect(activeTurnId).toBe('new-active')
+    expect(activeTurn?.id).toBe('new-active')
   })
 
   it('deduplicates run events and projects terminal status', () => {
@@ -106,7 +106,7 @@ describe('ai agent chat session model', () => {
       ],
       'run-1',
       [
-        event({ id: 'event-2', sequence: 1 }),
+        event({ id: 'event-2', sequence: 1, type: 'run.started' }),
         event({ id: 'event-1', sequence: 2, type: 'run.completed', message: 'new' })
       ]
     )
@@ -124,17 +124,17 @@ describe('ai agent chat session model', () => {
     expect(latestEventSequence(7, [])).toBe(7)
   })
 
-  it('creates prompt turns with queued state only when another turn is active', () => {
-    expect(createPromptTurn({ id: 'turn', prompt: 'Go', hasActiveTurn: false })).toMatchObject({
+  it('creates prompt turns with the requested queue state', () => {
+    expect(createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: false })).toMatchObject({
       id: 'turn',
       status: 'starting'
     })
-    expect(createPromptTurn({ id: 'turn', prompt: 'Go', hasActiveTurn: true })).toMatchObject({
+    expect(createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: true })).toMatchObject({
       id: 'turn',
       status: 'queued'
     })
     expect(
-      createPromptTurn({ id: 'turn', prompt: 'Go', hasActiveTurn: false, rawShellPolicy: 'allowlisted' })
+      createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: false, rawShellPolicy: 'allowlisted' })
     ).toMatchObject({ rawShellPolicy: 'allowlisted' })
   })
 })

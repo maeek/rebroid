@@ -1,6 +1,7 @@
 import { FormField } from '@/components/ui/form-field'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
+import { MAX_AD_HOC_AI_TIMEOUT_MINUTES } from './ai-agent-chat-utils'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 export const AiAgentSettingsPopover = ({
@@ -64,7 +65,7 @@ export const AiAgentSettingsPopover = ({
           id='ai-agent-timeout'
           unit='min'
           min={1}
-          max={120}
+          max={MAX_AD_HOC_AI_TIMEOUT_MINUTES}
           step={1}
           value={timeoutMinutesInput}
           onBlur={() => setTimeoutMinutesInput(String(adHocTimeoutMinutes))}

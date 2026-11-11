@@ -30,17 +30,43 @@ const turn = {
       runId: 'run-1',
       ownerUserId: 'owner-1',
       sequence: 1,
+      type: 'ai.user.message',
+      stepId: null,
+      parentStepId: null,
+      message: 'Open Settings',
+      data: { clientMessageId: 'turn-1' },
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'event-2',
+      runId: 'run-1',
+      ownerUserId: 'owner-1',
+      sequence: 2,
       type: 'ai.message.completed',
       stepId: null,
       parentStepId: null,
       message: 'Settings is open.',
-      data: {},
+      data: { completed: true },
       createdAt: '2026-01-01T00:00:01.000Z'
     }
   ]
 } satisfies ChatTurn
 
 describe('ChatTurnSaveWorkflowAction', () => {
+  it('does not offer workflow drafting for a blocked AI task', () => {
+    render(
+      <ChatTurnSaveWorkflowAction
+        turn={{
+          ...turn,
+          events: turn.events.map(event =>
+            event.type === 'ai.message.completed' ? { ...event, data: { completed: false } } : event
+          )
+        }}
+      />
+    )
+    expect(screen.queryByRole('button', { name: 'Save as workflow' })).toBeNull()
+  })
+
   it('copies the final response and keeps workflow drafting available', async () => {
     const writeText = vi.fn<(value: string) => Promise<void>>(() => Promise.resolve())
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })

@@ -74,7 +74,7 @@ const chatSession = (
   isAtBottom: true,
   scrollToLatest: vi.fn(),
   onTranscriptScroll: vi.fn(),
-  plannerCatalog: [],
+  primaryCatalog: [],
   prompt: '',
   queuedTurn: undefined,
   recheckHealth: () => Promise.resolve(undefined),
@@ -200,17 +200,36 @@ describe('AiAgentToolsSection', () => {
         suggestions: [{ id: 'dynamic', label: 'Dynamic chip', prompt: 'Inspect the current screen.' }]
       })
     )
+    const deviceModel = {
+      id: 'device',
+      label: 'Device control',
+      roles: ['controller'] as const,
+      enabled: true,
+      defaultFor: [],
+      settings: {}
+    }
+    const selectedModel = { ...deviceModel, roles: [...deviceModel.roles] }
+    const selectedProvider = {
+      id: 'device-provider',
+      label: 'Device',
+      kind: 'ollama' as const,
+      models: [selectedModel]
+    }
     vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
-        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
-        selectedModel: {
-          id: 'model_1',
-          label: 'Model',
-          roles: ['planner'],
-          enabled: true,
-          defaultFor: ['planner'],
-          settings: {}
-        }
+        selectedProvider,
+        selectedModel,
+        catalog: [
+          selectedProvider,
+          {
+            id: 'planner-provider',
+            label: 'Planning',
+            kind: 'ollama',
+            models: [
+              { ...selectedModel, id: 'planner:exact', roles: ['controller', 'planner'], defaultFor: ['planner'] }
+            ]
+          }
+        ]
       })
     )
 
@@ -223,7 +242,11 @@ describe('AiAgentToolsSection', () => {
 
     expect(await screen.findByText('Dynamic chip')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dynamic chip' }).className).toContain('font-normal')
-    expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({ targetApplicationId: app.id })
+    expect(generatePromptSuggestions.mock.calls[0]?.[0]).toMatchObject({
+      targetApplicationId: app.id,
+      providerId: 'planner-provider',
+      modelId: 'planner:exact'
+    })
   })
 
   it('exports visible conversation turns as debug json', async () => {

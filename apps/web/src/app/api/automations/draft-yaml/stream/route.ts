@@ -1,3 +1,4 @@
+import { AUTOMATION_DRAFT_PROMPT_MAX_LENGTH } from '@rebroid/automation-core/yaml-draft'
 import { NextRequest, NextResponse } from 'next/server'
 import { assertAutomationPermission, listPermittedAiTools } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
@@ -26,8 +27,15 @@ export const POST = async (request: NextRequest) => {
     return NextResponse.json({ message: 'Draft request body must be JSON.' }, { status: 400 })
   }
 
-  if (typeof input.prompt !== 'string' || !input.prompt.trim()) {
+  if (!input || typeof input.prompt !== 'string' || !input.prompt.trim()) {
     return NextResponse.json({ message: 'Draft prompt is required.' }, { status: 400 })
+  }
+
+  if (input.prompt.length > AUTOMATION_DRAFT_PROMPT_MAX_LENGTH) {
+    return NextResponse.json(
+      { message: `Draft prompt must be at most ${AUTOMATION_DRAFT_PROMPT_MAX_LENGTH} characters.` },
+      { status: 400 }
+    )
   }
 
   const response = await orchestratorAutomationsClient.draftYamlStream(

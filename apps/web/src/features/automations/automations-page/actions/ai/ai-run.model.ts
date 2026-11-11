@@ -1,5 +1,5 @@
-import { catalogByRole, selectCatalogModel, selectCatalogProvider } from '@/shared/model/ai-model-catalog'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run'
+import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const defaultPrompt = 'Inspect the screen and complete the requested task.'
@@ -38,7 +38,10 @@ export const normalizeAiRunInput = (input: Record<string, unknown>) => ({
     ? { allowedTools: stringArrayValue(input, 'allowedTools') }
     : {}),
   maxToolCalls: Math.min(Math.max(numberValue(input, 'maxToolCalls', defaultMaxToolCalls), 1), 100),
-  timeoutMs: Math.min(Math.max(numberValue(input, 'timeoutMs', defaultTimeoutMs), 1000), 360_0000),
+  timeoutMs: Math.min(
+    Math.max(numberValue(input, 'timeoutMs', defaultTimeoutMs), 1000),
+    AUTOMATION_AI_RUN_MAX_TIMEOUT_MS
+  ),
   requireFinalAnswer: booleanValue(input, 'requireFinalAnswer', true)
 })
 
@@ -55,38 +58,11 @@ export const summarizeAiRunInput = (input: Record<string, unknown>) => {
     visionProvider || visionModel
       ? ` · vision ${visionProvider || 'default'}${visionModel ? `/${visionModel}` : ''}`
       : ''
-  return `${preview} · planner ${provider || 'default'}${model ? `/${model}` : ''}${vision} · ${timeoutSeconds}s · ${maxToolCalls} calls`
+  return `${preview} · device control ${provider || 'default'}${model ? `/${model}` : ''}${vision} · ${timeoutSeconds}s · ${maxToolCalls} calls`
 }
 
 export const selectableAiRunCommands = (commands: AutomationCommand[]) =>
   commands.filter(command => command.uses !== 'ai.run').sort((left, right) => left.uses.localeCompare(right.uses))
-
-export const buildAiRunCatalogPatch = ({
-  catalog,
-  modelId,
-  providerId,
-  visionModelId,
-  visionProviderId
-}: {
-  catalog: AutomationAiModelCatalogProvider[]
-  modelId: string
-  providerId: string
-  visionModelId: string
-  visionProviderId: string
-}) => {
-  const plannerProviders = catalogByRole(catalog, 'planner')
-  const visionProviders = catalogByRole(catalog, 'vision')
-  const provider = selectCatalogProvider(plannerProviders, providerId)
-  const model = selectCatalogModel(provider, modelId, 'planner')
-  const visionProvider = selectCatalogProvider(visionProviders, visionProviderId)
-  const visionModel = selectCatalogModel(visionProvider, visionModelId, 'vision')
-  const patch: Record<string, unknown> = {}
-  if (provider && provider.id !== providerId) patch.providerId = provider.id
-  if (model && model.id !== modelId) patch.modelId = model.id
-  if (visionProvider && !visionProviderId) patch.visionProviderId = visionProvider.id
-  if (visionModel && !visionModelId) patch.visionModelId = visionModel.id
-  return patch
-}
 
 export const nextAllowedAiRunTools = ({
   allowedTools,

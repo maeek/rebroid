@@ -2,6 +2,7 @@
 
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { toast } from '@/hooks/use-toast'
+import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-automation-draft-stream'
 import { definitionToForm } from './builder-utils'
 import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
 import type { EditorSnapshot } from './use-automation-editor-history'
@@ -20,22 +21,6 @@ const eventId = () =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`
-
-const parseDraftStreamEvent = (event: string): AutomationYamlDraftStreamEvent | null => {
-  const data = event
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line.startsWith('data:'))
-    .map(line => line.slice('data:'.length).trimStart())
-    .join('\n')
-  if (!data) return null
-  try {
-    const parsed = JSON.parse(data) as unknown
-    return parsed && typeof parsed === 'object' && 'type' in parsed ? (parsed as AutomationYamlDraftStreamEvent) : null
-  } catch {
-    return null
-  }
-}
 
 const responseErrorMessage = async (response: Response) => {
   const error = (await response.json().catch(() => null)) as { message?: unknown } | null
@@ -109,42 +94,19 @@ export const useAutomationAiDraft = ({
       signal
     })
     if (!response.ok) throw new Error(await responseErrorMessage(response))
-    if (!response.body) throw new Error('Draft stream did not return a response body.')
-
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    try {
-      while (true) {
-        const { done, value } = await reader.read()
-        buffer += decoder.decode(value, { stream: !done })
-        const events = buffer.split(/\r?\n\r?\n/)
-        buffer = events.pop() ?? ''
-        for (const rawEvent of events) {
-          const event = parseDraftStreamEvent(rawEvent)
-          if (!event) continue
-          appendLog(event.type, event.message)
-          if (event.type === 'draft.completed') {
-            setAiDraftResult(event.data)
-            setAiDraftStatus('completed')
-            return
-          }
-          if (event.type === 'draft.clarification.requested') {
-            setAiDraftClarificationQuestion(event.data.question)
-            setAiDraftStatus('needs-input')
-            return
-          }
-          if (event.type === 'draft.failed') {
-            setAiDraftStatus('failed')
-            throw new Error(event.message)
-          }
-        }
-        if (done) break
-      }
-    } finally {
-      reader.releaseLock()
+    const outcome = await readAutomationDraftStream(response.body, {
+      signal,
+      onEvent: event => appendLog(event.type, event.message)
+    })
+    signal.throwIfAborted()
+    if (outcome.type === 'draft.failed') throw new Error(outcome.message)
+    if (outcome.type === 'draft.clarification.requested') {
+      setAiDraftClarificationQuestion(outcome.question)
+      setAiDraftStatus('needs-input')
+      return
     }
-    throw new Error('AI draft stream ended without a completed draft.')
+    setAiDraftResult(outcome.draft)
+    setAiDraftStatus('completed')
   }
 
   const draftFromPrompt = async (nextClarifications = clarifications) => {

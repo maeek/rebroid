@@ -3,7 +3,6 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { listAdHocAiAutomationRunHistoryAction } from '@/server/orchestrator/automations/automation-run-actions'
 import {
   collectLatestRunSequences,
-  findActiveHistoryTurnId,
   mergeHistoryTurns,
   sortChatTurnsByRunCreatedAt
 } from './ai-agent-chat-session-model'
@@ -13,14 +12,12 @@ export const useAiAgentHistory = ({
   appId,
   conversationVersionRef,
   runSequencesRef,
-  setActiveTurnId,
   setError,
   setTurns
 }: {
   appId: string
   conversationVersionRef: RefObject<number>
   runSequencesRef: RefObject<Map<string, number>>
-  setActiveTurnId: (turnId: string | null) => void
   setError: (error: string | null) => void
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
 }) => {
@@ -38,16 +35,14 @@ export const useAiAgentHistory = ({
         if (cancelled || version !== conversationVersionRef.current) return
         const orderedTurns = sortChatTurnsByRunCreatedAt(loadedTurns)
         for (const [runId, sequence] of collectLatestRunSequences(orderedTurns)) {
-          runSequencesRef.current.set(runId, sequence)
+          runSequencesRef.current.set(runId, Math.max(sequence, runSequencesRef.current.get(runId) ?? 0))
         }
         setTurns(current => mergeHistoryTurns(current, orderedTurns))
-        const loadedActiveTurnId = findActiveHistoryTurnId(orderedTurns)
-        if (loadedActiveTurnId) setActiveTurnId(loadedActiveTurnId)
       } catch (historyError) {
         if (cancelled || version !== conversationVersionRef.current) return
         setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
       } finally {
-        if (!cancelled && version === conversationVersionRef.current) {
+        if (!cancelled) {
           setIsLoadingHistory(false)
         }
       }
@@ -58,7 +53,7 @@ export const useAiAgentHistory = ({
     return () => {
       cancelled = true
     }
-  }, [appId, conversationVersionRef, runSequencesRef, setActiveTurnId, setError, setTurns])
+  }, [appId, conversationVersionRef, runSequencesRef, setError, setTurns])
 
   return isLoadingHistory
 }

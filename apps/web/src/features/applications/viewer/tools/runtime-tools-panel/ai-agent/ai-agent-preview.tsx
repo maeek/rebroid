@@ -90,7 +90,7 @@ export const AiAgentPreview = () => {
         isCheckingHealth: false,
         isClearing: false,
         isLoadingHistory: state === 'loading',
-        plannerCatalog: model ? [provider] : [],
+        primaryCatalog: model ? [provider] : [],
         prompt,
         queuedTurn: undefined,
         recheckHealth: () => Promise.resolve(),

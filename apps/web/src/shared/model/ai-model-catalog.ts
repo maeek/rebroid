@@ -17,13 +17,13 @@ export interface AiModelCatalogProvider<TModel extends AiCatalogModel = AiCatalo
   models: TModel[]
 }
 
-export interface AiCatalogSelection<TProvider extends AiModelCatalogProvider = AiModelCatalogProvider> {
+interface AiCatalogSelection<TProvider extends AiModelCatalogProvider = AiModelCatalogProvider> {
   provider: TProvider | undefined
   model: TProvider['models'][number] | undefined
 }
 
-export interface PlannerVisionCatalogSelection<TProvider extends AiModelCatalogProvider = AiModelCatalogProvider> {
-  plannerCatalog: TProvider[]
+interface AiRoleCatalogSelection<TProvider extends AiModelCatalogProvider = AiModelCatalogProvider> {
+  primaryCatalog: TProvider[]
   visionCatalog: TProvider[]
   selectedProvider: TProvider | undefined
   selectedModel: TProvider['models'][number] | undefined
@@ -79,28 +79,30 @@ export const nextCatalogProviderAndModel = <TProvider extends AiModelCatalogProv
   return { provider, model }
 }
 
-export const selectPlannerVisionCatalog = <TProvider extends AiModelCatalogProvider>({
+export const selectRoleVisionCatalog = <TProvider extends AiModelCatalogProvider>({
   catalog,
   modelId,
   providerId,
+  role,
   visionModelId,
   visionProviderId
 }: {
   catalog: TProvider[]
   modelId: string
   providerId: string
+  role: Exclude<AiModelRole, 'vision'>
   visionModelId: string
   visionProviderId: string
-}): PlannerVisionCatalogSelection<TProvider> => {
-  const plannerCatalog = catalogByRole(catalog, 'planner')
+}): AiRoleCatalogSelection<TProvider> => {
+  const primaryCatalog = catalogByRole(catalog, role)
   const visionCatalog = catalogByRole(catalog, 'vision')
-  const selectedProvider = selectCatalogProvider(plannerCatalog, providerId)
-  const selectedModel = selectCatalogModel(selectedProvider, modelId, 'planner')
+  const selectedProvider = selectCatalogProvider(primaryCatalog, providerId)
+  const selectedModel = selectCatalogModel(selectedProvider, modelId, role)
   const selectedVisionProvider = selectCatalogProvider(visionCatalog, visionProviderId)
   const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId, 'vision')
 
   return {
-    plannerCatalog,
+    primaryCatalog,
     visionCatalog,
     selectedProvider,
     selectedModel,
@@ -134,7 +136,7 @@ export const selectMatchingVisionPair = <TProvider extends AiModelCatalogProvide
 
 export const selectInitialPlannerVisionCatalog = <TProvider extends AiModelCatalogProvider>(
   catalog: TProvider[]
-): PlannerVisionCatalogSelection<TProvider> => {
+): AiRoleCatalogSelection<TProvider> => {
   const plannerCatalog = catalogByRole(catalog, 'planner')
   const visionCatalog = catalogByRole(catalog, 'vision')
   const selectedProvider = plannerCatalog[0]
@@ -149,7 +151,7 @@ export const selectInitialPlannerVisionCatalog = <TProvider extends AiModelCatal
   const selectedVisionModel = matchingVision.model ?? selectCatalogModel(selectedVisionProvider, '', 'vision')
 
   return {
-    plannerCatalog,
+    primaryCatalog: plannerCatalog,
     visionCatalog,
     selectedProvider,
     selectedModel,

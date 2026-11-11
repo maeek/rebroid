@@ -59,6 +59,7 @@ const userEvent = {
 
 describe('useAiAgentChatSession', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([{ run, events: [userEvent] }])
     vi.mocked(actions.listAutomationRunEventsAction).mockResolvedValue([])
     vi.mocked(actions.createAutomationRunEventStreamUrlAction).mockResolvedValue('ws://localhost/events')
@@ -69,7 +70,7 @@ describe('useAiAgentChatSession', () => {
       health: null,
       isCheckingHealth: false,
       modelIsValid: true,
-      plannerCatalog: [],
+      primaryCatalog: [],
       recheckHealth: vi.fn<() => Promise<void>>(() => Promise.resolve()),
       selectedModel: {
         id: 'model_1',
@@ -119,6 +120,35 @@ describe('useAiAgentChatSession', () => {
     })
 
     expect(result.current.isClearing).toBe(false)
+  })
+
+  it('clears a run admitted while a start request is pending', async () => {
+    let admitRun: (admitted: typeof run) => void = () => undefined
+    vi.mocked(actions.runAdHocAiAutomationAction).mockReturnValue(
+      new Promise(resolve => {
+        admitRun = resolve
+      })
+    )
+    const onRunStarted = vi.fn()
+    const { result } = renderHook(() => useAiAgentChatSession({ app, onRunStarted }))
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+
+    let start: Promise<void>
+    let clear: Promise<void>
+    act(() => {
+      start = result.current.submitPrompt('Open settings')
+      clear = result.current.clearConversation()
+    })
+    expect(result.current.turns).toEqual([])
+    expect(actions.clearAdHocAiAutomationRunsAction).not.toHaveBeenCalled()
+
+    await act(async () => {
+      admitRun(run)
+      await Promise.all([start, clear])
+    })
+    expect(actions.clearAdHocAiAutomationRunsAction).toHaveBeenCalledWith(app.id)
+    expect(result.current.turns).toEqual([])
+    expect(onRunStarted).not.toHaveBeenCalled()
   })
 
   it('keeps transcript position when history arrives after the user scrolled up', async () => {
@@ -192,6 +222,70 @@ describe('useAiAgentChatSession', () => {
         rawShellPolicy: 'allowlisted'
       })
     )
+  })
+
+  it('keeps newer prompts behind prompts already queued', async () => {
+    const startRun = vi.mocked(actions.runAdHocAiAutomationAction)
+    startRun.mockClear()
+    startRun.mockResolvedValueOnce({ ...run, id: 'next-run' }).mockResolvedValueOnce({ ...run, id: 'queued-run' })
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(result.current.turns).toHaveLength(1))
+
+    await act(async () => {
+      const first = result.current.submitPrompt('Open settings')
+      await result.current.submitPrompt('Find display settings')
+      await first
+    })
+    expect(result.current.activeTurn).toBeNull()
+
+    await act(async () => {
+      await result.current.submitPrompt('Find brightness')
+    })
+    expect(startRun).toHaveBeenCalledTimes(1)
+    expect(result.current.queuedTurn?.prompt).toBe('Find display settings')
+
+    await act(async () => {
+      await result.current.runQueuedTurn()
+    })
+    expect(startRun).toHaveBeenLastCalledWith(expect.objectContaining({ prompt: 'Find display settings' }))
+    expect(result.current.queuedTurn?.prompt).toBe('Find brightness')
+  })
+
+  it('replays final transcript events when the cancel response arrives before the stream', async () => {
+    const listEvents = vi.mocked(actions.listAutomationRunEventsAction)
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([
+      { run: { ...run, status: 'running' }, events: [userEvent] }
+    ])
+    vi.mocked(actions.cancelAutomationRunAction).mockResolvedValue({ ...run, status: 'canceled' })
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(listEvents).toHaveBeenCalledWith(run.id, 1))
+
+    const assistantEvent = {
+      ...userEvent,
+      id: 'event_2',
+      sequence: 2,
+      type: 'ai.message.completed',
+      message: 'Opened settings before cancellation.'
+    } satisfies AutomationRunEvent
+    const canceledEvent = {
+      ...userEvent,
+      id: 'event_3',
+      sequence: 3,
+      type: 'run.canceled',
+      message: 'Automation canceled.'
+    } satisfies AutomationRunEvent
+    listEvents.mockResolvedValueOnce([assistantEvent]).mockResolvedValueOnce([canceledEvent])
+
+    await act(async () => {
+      await result.current.cancelRun()
+    })
+
+    expect(listEvents).toHaveBeenLastCalledWith(run.id, 2)
+    expect(result.current.activeTurn).toBeNull()
+    expect(result.current.turns[0]).toMatchObject({
+      status: 'canceled',
+      events: [userEvent, assistantEvent, canceledEvent]
+    })
   })
 
   it('keeps stopped-device prompt drafts from starting a run', async () => {

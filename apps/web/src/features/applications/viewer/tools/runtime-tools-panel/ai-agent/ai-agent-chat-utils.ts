@@ -1,19 +1,16 @@
-import {
-  conversationBeforeTurn,
-  currentStreamingText,
-  type AutomationAiConversationMessage
-} from './ai-agent-conversation'
+import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const activeRunStatuses = new Set<AutomationRun['status']>(['queued', 'running'])
 export const terminalRunStatuses = new Set<AutomationRun['status']>(['success', 'failed', 'canceled'])
 export const DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES = 5
 
-export const clampAdHocTimeoutMinutes = (value: number) => Math.min(120, Math.max(1, Math.trunc(value || 1)))
+export const MAX_AD_HOC_AI_TIMEOUT_MINUTES = AUTOMATION_AI_RUN_MAX_TIMEOUT_MS / 60_000
+
+export const clampAdHocTimeoutMinutes = (value: number) =>
+  Math.min(MAX_AD_HOC_AI_TIMEOUT_MINUTES, Math.max(1, Math.trunc(value || 1)))
 
 export type ChatTurnStatus = 'queued' | 'starting' | 'running' | 'canceling' | 'success' | 'failed' | 'canceled'
-export type ChatConversationMessage = AutomationAiConversationMessage
-export { conversationBeforeTurn, currentStreamingText }
 
 export interface ChatTurn {
   id: string
@@ -33,7 +30,7 @@ export const updateRunStatusFromEvent = (event: AutomationRunEvent): AutomationR
   return null
 }
 
-const runStatusToTurnStatus = (status: AutomationRun['status']): ChatTurnStatus => {
+export const runStatusToTurnStatus = (status: AutomationRun['status']): ChatTurnStatus => {
   if (status === 'queued' || status === 'running') return 'running'
   return status
 }
@@ -42,11 +39,16 @@ export const chatTurnFromRun = (run: AutomationRun, events: AutomationRunEvent[]
   const userEvent = events.find(event => event.type === 'ai.user.message')
   const clientMessageId =
     userEvent && typeof userEvent.data.clientMessageId === 'string' ? userEvent.data.clientMessageId : run.id
+  const terminal = [...events]
+    .reverse()
+    .map(updateRunStatusFromEvent)
+    .find(status => status && terminalRunStatuses.has(status))
+  const restoredRun = terminal && activeRunStatuses.has(run.status) ? { ...run, status: terminal } : run
   return {
     id: clientMessageId,
     prompt: userEvent?.message || 'Ad-hoc AI run',
-    status: runStatusToTurnStatus(run.status),
-    run,
+    status: runStatusToTurnStatus(restoredRun.status),
+    run: restoredRun,
     events
   }
 }

@@ -3,23 +3,46 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   cancelAutomationRunAction,
   clearAdHocAiAutomationRunsAction,
+  listAutomationRunEventsAction,
   runAdHocAiAutomationAction
 } from '@/server/orchestrator/automations/automation-run-actions'
-import { createPromptTurn } from './ai-agent-chat-session-model'
-import {
-  activeRunStatuses,
-  conversationBeforeTurn,
-  type ChatConversationMessage,
-  type ChatTurn,
-  type ChatTurnStatus
-} from './ai-agent-chat-utils'
+import { createPromptTurn, findTerminalRunStatus, latestEventSequence } from './ai-agent-chat-session-model'
+import { activeRunStatuses, runStatusToTurnStatus, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
+import { conversationBeforeTurn, type AutomationAiConversationMessage } from './ai-agent-conversation'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
-import type { AutomationRun } from '@/shared/contracts/automation'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
+
+type AppendRunEvents = (runId: string, events: AutomationRunEvent[]) => void
+
+const replayTerminalRunEvents = async ({
+  runId,
+  after,
+  appendRunEvents,
+  isCurrent
+}: {
+  runId: string
+  after: number
+  appendRunEvents: AppendRunEvents
+  isCurrent: () => boolean
+}) => {
+  let cursor = after
+  for (const delay of [0, 250, 750, 2_000]) {
+    if (delay) await new Promise(resolve => setTimeout(resolve, delay))
+    if (!isCurrent()) return
+    const events = await listAutomationRunEventsAction(runId, cursor).catch(() => null)
+    if (!isCurrent()) return
+    if (!events) continue
+    appendRunEvents(runId, events)
+    if (findTerminalRunStatus(events)) return
+    cursor = latestEventSequence(cursor, events)
+  }
+}
 
 export const useAiAgentRunActions = ({
   activeTurn,
   adHocTimeoutMs,
+  appendRunEvents,
   app,
   conversationVersionRef,
   modelIsValid,
@@ -31,7 +54,6 @@ export const useAiAgentRunActions = ({
   selectedProvider,
   selectedVisionModel,
   selectedVisionProvider,
-  setActiveTurnId,
   setError,
   setPrompt,
   setTurns,
@@ -39,6 +61,7 @@ export const useAiAgentRunActions = ({
 }: {
   activeTurn: ChatTurn | null
   adHocTimeoutMs: number
+  appendRunEvents: AppendRunEvents
   app: AppDefinition
   conversationVersionRef: RefObject<number>
   modelIsValid: boolean
@@ -50,7 +73,6 @@ export const useAiAgentRunActions = ({
   selectedProvider: AutomationAiModelCatalogProvider | undefined
   selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedVisionProvider: AutomationAiModelCatalogProvider | undefined
-  setActiveTurnId: (turnId: string | null) => void
   setError: (error: string | null) => void
   setPrompt: Dispatch<SetStateAction<string>>
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
@@ -58,18 +80,20 @@ export const useAiAgentRunActions = ({
 }) => {
   const [isCanceling, setIsCanceling] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
+  const pendingStart = useRef<Promise<AutomationRun> | null>(null)
+  const clearing = useRef(false)
   const cancelingRunIdRef = useRef<string | null>(null)
 
   const startTurn = useCallback(
-    async (turn: ChatTurn, conversation: ChatConversationMessage[]) => {
-      if (!selectedProvider || !selectedModel) return
-      setActiveTurnId(turn.id)
+    async (turn: ChatTurn, conversation: AutomationAiConversationMessage[]) => {
+      if (!selectedProvider || !selectedModel || pendingStart.current || clearing.current) return
+      const version = conversationVersionRef.current
       setError(null)
       setTurns(current =>
         current.map(item => (item.id === turn.id ? { ...item, status: 'starting', error: null } : item))
       )
       try {
-        const nextRun = await runAdHocAiAutomationAction({
+        pendingStart.current = runAdHocAiAutomationAction({
           targetApplicationId: app.id,
           profileMode: app.profileMode,
           profileName: app.profileName,
@@ -89,12 +113,14 @@ export const useAiAgentRunActions = ({
           rawShellPolicy: turn.rawShellPolicy ?? 'deny',
           startPolicy: 'require-running'
         })
+        const nextRun = await pendingStart.current
+        if (version !== conversationVersionRef.current) return
         setTurns(current =>
           current.map(item =>
-            item.id === turn.id
+            item.id === turn.id && !item.run
               ? {
                   ...item,
-                  status: activeRunStatuses.has(nextRun.status) ? 'running' : (nextRun.status as ChatTurnStatus),
+                  status: runStatusToTurnStatus(nextRun.status),
                   run: nextRun
                 }
               : item
@@ -102,12 +128,14 @@ export const useAiAgentRunActions = ({
         )
         onRunStarted?.(nextRun)
       } catch (submitError) {
+        if (version !== conversationVersionRef.current) return
         const message = submitError instanceof Error ? submitError.message : 'AI automation could not start.'
         setTurns(current =>
           current.map(item => (item.id === turn.id ? { ...item, status: 'failed', error: message } : item))
         )
-        setActiveTurnId(null)
         setError(message)
+      } finally {
+        pendingStart.current = null
       }
     },
     [
@@ -118,7 +146,7 @@ export const useAiAgentRunActions = ({
       selectedProvider,
       selectedVisionModel,
       selectedVisionProvider,
-      setActiveTurnId,
+      conversationVersionRef,
       setError,
       setTurns
     ]
@@ -129,16 +157,17 @@ export const useAiAgentRunActions = ({
     options: { rawShellPolicy?: ChatTurn['rawShellPolicy']; clearComposer?: boolean } = {}
   ) => {
     const text = promptText.trim()
-    if (!app.running || !text || !modelIsValid) return
+    if (!app.running || !text || !modelIsValid || clearing.current) return
+    const shouldQueue = Boolean(activeTurn || queuedTurn || pendingStart.current)
     const nextTurn = createPromptTurn({
       id: crypto.randomUUID(),
       prompt: text,
-      hasActiveTurn: Boolean(activeTurn),
+      shouldQueue,
       rawShellPolicy: options.rawShellPolicy
     })
     setTurns(current => [...current, nextTurn])
     if (options.clearComposer) setPrompt('')
-    if (!activeTurn) {
+    if (!shouldQueue) {
       await startTurn(nextTurn, conversationBeforeTurn(nextTurn.id, turns))
     }
   }
@@ -161,51 +190,68 @@ export const useAiAgentRunActions = ({
     if (cancelingRunIdRef.current === activeTurn.run.id) return
     cancelingRunIdRef.current = activeTurn.run.id
     const runId = activeTurn.run.id
+    const version = conversationVersionRef.current
+    const after = runSequencesRef.current.get(runId) ?? 0
+    const isCurrent = () => version === conversationVersionRef.current
     const turnId = activeTurn.id
     setIsCanceling(true)
     setError(null)
     setTurns(current => current.map(turn => (turn.id === turnId ? { ...turn, status: 'canceling' } : turn)))
     try {
       const canceled = await cancelAutomationRunAction(runId)
+      if (!isCurrent()) return
+      const terminal = terminalRunStatuses.has(canceled.status)
+      if (terminal) {
+        // The run transition can become visible before its terminal event is persisted.
+        await replayTerminalRunEvents({ runId, after, appendRunEvents, isCurrent })
+        if (!isCurrent()) return
+      }
       setTurns(current =>
         current.map(turn =>
-          turn.id === turnId
+          turn.run?.id === runId && (turn.status === 'canceling' || terminal)
             ? {
                 ...turn,
-                status: 'canceled',
+                status: runStatusToTurnStatus(canceled.status),
                 run: canceled
               }
             : turn
         )
       )
-      setActiveTurnId(null)
     } catch (cancelError) {
+      if (!isCurrent()) return
+      setTurns(current =>
+        current.map(turn => (turn.id === turnId && turn.status === 'canceling' ? { ...turn, status: 'running' } : turn))
+      )
       setError(cancelError instanceof Error ? cancelError.message : 'AI automation could not be canceled.')
     } finally {
-      if (cancelingRunIdRef.current === runId) cancelingRunIdRef.current = null
-      setIsCanceling(false)
+      if (cancelingRunIdRef.current === runId) {
+        cancelingRunIdRef.current = null
+        setIsCanceling(false)
+      }
     }
   }
 
   const clearConversation = async () => {
-    if (isClearing) return
+    if (clearing.current) return
+    clearing.current = true
     conversationVersionRef.current += 1
     setTurns([])
-    setActiveTurnId(null)
     runSequencesRef.current.clear()
     setIsClearing(true)
     setError(null)
     try {
+      await pendingStart.current?.catch(() => undefined)
       await clearAdHocAiAutomationRunsAction(app.id)
     } catch (clearError) {
       setError(clearError instanceof Error ? clearError.message : 'AI conversation could not be cleared.')
     } finally {
+      clearing.current = false
       setIsClearing(false)
     }
   }
 
   return {
-    canSubmit: app.running && Boolean(prompt.trim()) && modelIsValid,
+    canSubmit: app.running && Boolean(prompt.trim()) && modelIsValid && !isClearing,
     cancelRun,
     clearConversation,
     isCanceling,

@@ -1,4 +1,5 @@
-import { currentStreamingText, type ChatTurn } from './ai-agent-chat-utils'
+import { currentStreamingText } from './ai-agent-conversation'
+import type { ChatTurn } from './ai-agent-chat-utils'
 
 export const visibleChatTurnEvents = (turn: ChatTurn) =>
   turn.events.filter(

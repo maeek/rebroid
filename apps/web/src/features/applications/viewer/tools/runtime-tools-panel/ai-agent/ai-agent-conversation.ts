@@ -1,16 +1,15 @@
+import type { ChatTurn } from './ai-agent-chat-utils'
 import type { RunAdHocAiAutomationInput } from '@/shared/contracts/automation'
 
 export type AutomationAiConversationMessage = NonNullable<RunAdHocAiAutomationInput['conversation']>[number]
 
-export interface AiConversationEvent {
+interface AiConversationEvent {
   type: string
   message: string
 }
 
-export interface AiConversationTurn {
-  id?: string
-  prompt: string
-  events: AiConversationEvent[]
+interface AiConversationTurn {
+  events: readonly AiConversationEvent[]
 }
 
 const assistantCompletedEventType = 'ai.message.completed'
@@ -37,13 +36,14 @@ export const currentStreamingText = (turn: AiConversationTurn) => {
 
 export const conversationBeforeTurn = (
   turnId: string,
-  turns: AiConversationTurn[],
+  turns: readonly (AiConversationTurn & Pick<ChatTurn, 'id' | 'prompt' | 'status'>)[],
   limit = 20
 ): AutomationAiConversationMessage[] => {
   const index = turns.findIndex(turn => turn.id === turnId)
   const priorTurns = index === -1 ? turns : turns.slice(0, index)
   return priorTurns
     .flatMap(turn => {
+      if (turn.status === 'queued') return []
       const assistant = lastAssistantText(turn)
       return [
         { role: 'user' as const, content: turn.prompt },

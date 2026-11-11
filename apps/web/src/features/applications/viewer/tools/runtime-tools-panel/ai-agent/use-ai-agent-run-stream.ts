@@ -4,50 +4,55 @@ import {
   createAutomationRunEventStreamUrlAction,
   listAutomationRunEventsAction
 } from '@/server/orchestrator/automations/automation-run-actions'
-import { activeRunStatuses } from './ai-agent-chat-utils'
-import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
+import { findTerminalRunStatus } from './ai-agent-chat-session-model'
+import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
 export const useAiAgentRunStream = ({
-  activeRun,
+  runId,
   appendRunEvents,
   conversationVersionRef,
   runSequencesRef
 }: {
-  activeRun: AutomationRun | null
+  runId: string | undefined
   appendRunEvents: (runId: string, events: AutomationRunEvent[]) => void
   conversationVersionRef: RefObject<number>
   runSequencesRef: RefObject<Map<string, number>>
 }) => {
   useEffect(() => {
-    if (!activeRun || !activeRunStatuses.has(activeRun.status)) return
+    if (!runId) return
     let closed = false
     let socket: WebSocket | null = null
+    let reconnectTimer: number | undefined
     const version = conversationVersionRef.current
 
+    const isCurrent = () => !closed && version === conversationVersionRef.current
+    const reconnect = () => {
+      if (isCurrent()) reconnectTimer = window.setTimeout(() => void connect().catch(reconnect), 1500)
+    }
     const connect = async () => {
-      const after = runSequencesRef.current.get(activeRun.id) ?? 0
-      runSequencesRef.current.set(activeRun.id, after)
-      const initialEvents = await listAutomationRunEventsAction(activeRun.id, after)
-      if (closed || version !== conversationVersionRef.current) return
-      appendRunEvents(activeRun.id, initialEvents)
-      const streamAfter = runSequencesRef.current.get(activeRun.id) ?? after
-      const url = await createAutomationRunEventStreamUrlAction(activeRun.id, streamAfter)
-      if (closed || version !== conversationVersionRef.current) return
+      if (!isCurrent()) return
+      const after = runSequencesRef.current.get(runId) ?? 0
+      const initialEvents = await listAutomationRunEventsAction(runId, after)
+      if (!isCurrent()) return
+      appendRunEvents(runId, initialEvents)
+      if (findTerminalRunStatus(initialEvents)) return
+      const streamAfter = runSequencesRef.current.get(runId) ?? after
+      const url = await createAutomationRunEventStreamUrlAction(runId, streamAfter)
+      if (!isCurrent()) return
       socket = new WebSocket(url)
       socket.onmessage = event => {
-        if (version !== conversationVersionRef.current) return
+        if (!isCurrent()) return
         const payload = JSON.parse(String(event.data)) as { type: string; event?: AutomationRunEvent }
-        if (payload.type === 'event' && payload.event) appendRunEvents(activeRun.id, [payload.event])
+        if (payload.type === 'event' && payload.event) appendRunEvents(runId, [payload.event])
       }
-      socket.onclose = () => {
-        if (!closed && version === conversationVersionRef.current) window.setTimeout(() => void connect(), 1500)
-      }
+      socket.onclose = reconnect
     }
 
-    void connect()
+    void connect().catch(reconnect)
     return () => {
       closed = true
+      window.clearTimeout(reconnectTimer)
       socket?.close()
     }
-  }, [activeRun, appendRunEvents, conversationVersionRef, runSequencesRef])
+  }, [runId, appendRunEvents, conversationVersionRef, runSequencesRef])
 }

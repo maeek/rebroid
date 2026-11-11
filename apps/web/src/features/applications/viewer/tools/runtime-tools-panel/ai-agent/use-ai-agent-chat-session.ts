@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { findTerminalRunStatus, latestEventSequence, mergeRunEventsIntoTurns } from './ai-agent-chat-session-model'
+import { findActiveChatTurn, latestEventSequence, mergeRunEventsIntoTurns } from './ai-agent-chat-session-model'
 import { type ChatTurn } from './ai-agent-chat-utils'
 import { useAiAgentHistory } from './use-ai-agent-history'
 import { useAiAgentModelSettings } from './use-ai-agent-model-settings'
@@ -18,7 +18,6 @@ export const useAiAgentChatSession = ({
 }) => {
   const [prompt, setPrompt] = useState('')
   const [turns, setTurns] = useState<ChatTurn[]>([])
-  const [activeTurnId, setActiveTurnId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const runSequencesRef = useRef(new Map<string, number>())
   const conversationVersionRef = useRef(0)
@@ -29,7 +28,7 @@ export const useAiAgentChatSession = ({
     health,
     isCheckingHealth,
     modelIsValid,
-    plannerCatalog,
+    primaryCatalog,
     recheckHealth,
     selectedModel,
     selectedProvider,
@@ -45,14 +44,13 @@ export const useAiAgentChatSession = ({
     visionCatalog
   } = useAiAgentModelSettings()
 
-  const activeTurn = turns.find(turn => turn.id === activeTurnId) ?? null
+  const activeTurn = findActiveChatTurn(turns)
   const queuedTurn = turns.find(turn => turn.status === 'queued')
 
   const isLoadingHistory = useAiAgentHistory({
     appId: app.id,
     conversationVersionRef,
     runSequencesRef,
-    setActiveTurnId,
     setError,
     setTurns
   })
@@ -63,13 +61,9 @@ export const useAiAgentChatSession = ({
     const nextSequence = latestEventSequence(runSequencesRef.current.get(runId) ?? 0, nextEvents)
     runSequencesRef.current.set(runId, nextSequence)
     setTurns(current => mergeRunEventsIntoTurns(current, runId, nextEvents))
-    if (findTerminalRunStatus(nextEvents)) {
-      setActiveTurnId(null)
-    }
   }, [])
 
-  const activeRun = activeTurn?.run ?? null
-  useAiAgentRunStream({ activeRun, appendRunEvents, conversationVersionRef, runSequencesRef })
+  useAiAgentRunStream({ runId: activeTurn?.run?.id, appendRunEvents, conversationVersionRef, runSequencesRef })
   const {
     canSubmit,
     cancelRun,
@@ -83,9 +77,10 @@ export const useAiAgentChatSession = ({
   } = useAiAgentRunActions({
     activeTurn,
     adHocTimeoutMs,
+    appendRunEvents,
     app,
     conversationVersionRef,
-    modelIsValid,
+    modelIsValid: modelIsValid && !isLoadingHistory,
     onRunStarted,
     prompt,
     queuedTurn,
@@ -94,7 +89,6 @@ export const useAiAgentChatSession = ({
     selectedProvider,
     selectedVisionModel,
     selectedVisionProvider,
-    setActiveTurnId,
     setError,
     setPrompt,
     setTurns,
@@ -116,7 +110,7 @@ export const useAiAgentChatSession = ({
     isClearing,
     isLoadingHistory,
     isAtBottom,
-    plannerCatalog,
+    primaryCatalog,
     prompt,
     queuedTurn,
     recheckHealth,

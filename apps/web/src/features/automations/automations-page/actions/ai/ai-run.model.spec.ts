@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildAiRunCatalogPatch,
   defaultAiRunInput,
   healthLabel,
   nextAllowedAiRunTools,
@@ -8,7 +7,7 @@ import {
   selectableAiRunCommands,
   summarizeAiRunInput
 } from './ai-run.model'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const command = (uses: string): AutomationCommand => ({
@@ -23,27 +22,6 @@ const command = (uses: string): AutomationCommand => ({
     inputFieldOrder: [],
     yamlSnippetFields: []
   }
-})
-
-const provider = (
-  id: string,
-  roles: Array<'planner' | 'vision'>,
-  modelId: string,
-  isDefault = false
-): AutomationAiModelCatalogProvider => ({
-  id,
-  label: id,
-  kind: 'ollama',
-  models: [
-    {
-      id: modelId,
-      label: modelId,
-      roles,
-      settings: {},
-      enabled: true,
-      defaultFor: isDefault ? roles : []
-    }
-  ]
 })
 
 describe('ai run action model', () => {
@@ -89,28 +67,8 @@ describe('ai run action model', () => {
         timeoutMs: 45000
       })
     ).toBe(
-      'Inspect the current display · planner planner-provider/planner-model · vision vision-provider/vision-model · 45s · 7 calls'
+      'Inspect the current display · device control planner-provider/planner-model · vision vision-provider/vision-model · 45s · 7 calls'
     )
-  })
-
-  it('derives catalog patches for missing planner and vision selections', () => {
-    const patch = buildAiRunCatalogPatch({
-      catalog: [
-        provider('planner-provider', ['planner'], 'planner-default', true),
-        provider('vision-provider', ['vision'], 'vision-default', true)
-      ],
-      providerId: '',
-      modelId: '',
-      visionProviderId: '',
-      visionModelId: ''
-    })
-
-    expect(patch).toEqual({
-      providerId: 'planner-provider',
-      modelId: 'planner-default',
-      visionProviderId: 'vision-provider',
-      visionModelId: 'vision-default'
-    })
   })
 
   it('selects all commands by empty allowlist and stores only partial selections', () => {

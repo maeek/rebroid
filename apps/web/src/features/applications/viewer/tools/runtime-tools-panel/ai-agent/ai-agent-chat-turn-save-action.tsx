@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { IconCheck, IconCopy, IconLoader2, IconRoute } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { adHocAiRunPrompt, finalAiRunEvent } from '@/shared/model/ad-hoc-ai-run-events'
 import type { ChatTurn } from './ai-agent-chat-utils'
 
 export const ChatTurnSaveWorkflowAction = ({
@@ -15,8 +16,11 @@ export const ChatTurnSaveWorkflowAction = ({
   turn: ChatTurn
 }) => {
   const [copied, setCopied] = useState(false)
-  const finalResponse = [...turn.events].reverse().find(event => event.type === 'ai.message.completed')?.message ?? ''
-  const canSave = turn.status === 'success' && Boolean(turn.run)
+  const finalEvent = finalAiRunEvent(turn.events)
+  const finalResponse = finalEvent?.message ?? ''
+  const canSave =
+    turn.status === 'success' &&
+    Boolean(turn.run && adHocAiRunPrompt(turn.events) && finalEvent?.data.completed === true)
   if (!finalResponse && !canSave) return null
 
   const copyResponse = async () => {

@@ -26,6 +26,7 @@ describe('useAiModelCatalogSelection', () => {
     const onSelectionChange = vi.fn()
     renderHook(() =>
       useAiModelCatalogSelection({
+        role: 'planner',
         loadCatalog: () => Promise.resolve(catalog),
         modelId: '',
         onSelectionChange,
@@ -59,6 +60,7 @@ describe('useAiModelCatalogSelection', () => {
 
     const { result } = renderHook(() =>
       useAiModelCatalogSelection({
+        role: 'planner',
         checkHealth,
         loadCatalog: () => Promise.resolve(catalog),
         modelId: 'qwen',
@@ -70,13 +72,14 @@ describe('useAiModelCatalogSelection', () => {
     )
 
     await waitFor(() => expect(result.current.health).toEqual(health))
-    expect(checkHealth).toHaveBeenCalledWith('local', 'qwen')
+    expect(checkHealth).toHaveBeenCalledWith('local', 'qwen', 'planner')
   })
 
   it('patches planner and matching vision model when provider changes', async () => {
     const onSelectionChange = vi.fn()
     const { result } = renderHook(() =>
       useAiModelCatalogSelection({
+        role: 'planner',
         loadCatalog: () => Promise.resolve(catalog),
         modelId: 'qwen',
         onSelectionChange,

@@ -10,6 +10,7 @@ import {
   selectCatalogProviderAndModel,
   selectInitialPlannerVisionCatalog,
   selectMatchingVisionPair,
+  selectRoleVisionCatalog,
   type AiModelCatalogProvider
 } from './ai-model-catalog'
 
@@ -50,6 +51,36 @@ describe('AI model catalog', () => {
     const provider = selectCatalogProvider(catalogByRole(catalog, 'planner'), '')
     expect(provider?.id).toBe('planner-only')
     expect(selectCatalogModel(provider, '')?.id).toBe('p-default')
+  })
+
+  it('selects a controller-only model for the agent and a planning model for drafting', () => {
+    const roleCatalog: AiModelCatalogProvider[] = [
+      {
+        id: 'device',
+        label: 'Device',
+        kind: 'ollama',
+        models: [{ id: 'control:exact', label: 'Control', roles: ['controller'], defaultFor: ['controller'] }]
+      },
+      ...catalog
+    ]
+    const controller = selectRoleVisionCatalog({
+      catalog: roleCatalog,
+      role: 'controller',
+      providerId: '',
+      modelId: '',
+      visionProviderId: '',
+      visionModelId: ''
+    })
+    expect(controller.selectedModel?.id).toBe('control:exact')
+    expect(controller.selectedVisionModel?.id).toBe('v-default')
+    expect(
+      selectCatalogProviderAndModel(
+        catalogByRole(roleCatalog, 'planner'),
+        controller.selectedProvider?.id ?? '',
+        controller.selectedModel?.id ?? '',
+        'planner'
+      ).model?.id
+    ).toBe('p-default')
   })
 
   it('selects explicit and next-provider models together', () => {

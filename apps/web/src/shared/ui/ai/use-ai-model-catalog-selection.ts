@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   nextCatalogProviderAndModel,
   selectMatchingVisionPair,
-  selectPlannerVisionCatalog
+  selectRoleVisionCatalog,
+  type AiModelRole
 } from '@/shared/model/ai-model-catalog'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
@@ -14,11 +15,12 @@ export type AiModelSelectionPatch = {
 }
 
 type AiModelCatalogSelectionInput = {
-  checkHealth?: (providerId: string, modelId: string) => Promise<AutomationAiProviderHealth>
+  checkHealth?: (providerId: string, modelId: string, role: AiModelRole) => Promise<AutomationAiProviderHealth>
   loadCatalog: () => Promise<AutomationAiModelCatalogProvider[]>
   modelId: string
   onSelectionChange: (patch: AiModelSelectionPatch) => void
   providerId: string
+  role: Exclude<AiModelRole, 'vision'>
   visionModelId: string
   visionProviderId: string
   visionPatchMode?: 'missing' | 'mismatch'
@@ -46,6 +48,7 @@ export const useAiModelCatalogSelection = ({
   modelId,
   onSelectionChange,
   providerId,
+  role,
   visionModelId,
   visionPatchMode = 'mismatch',
   visionProviderId
@@ -56,6 +59,7 @@ export const useAiModelCatalogSelection = ({
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true)
   const latestSelectionInputRef = useRef({ modelId, providerId, visionModelId, visionProviderId })
   const onSelectionChangeRef = useRef(onSelectionChange)
+  const healthRequest = useRef(0)
 
   useEffect(() => {
     latestSelectionInputRef.current = { modelId, providerId, visionModelId, visionProviderId }
@@ -63,14 +67,15 @@ export const useAiModelCatalogSelection = ({
   }, [modelId, onSelectionChange, providerId, visionModelId, visionProviderId])
 
   const selection = useMemo(
-    () => selectPlannerVisionCatalog({ catalog, modelId, providerId, visionModelId, visionProviderId }),
-    [catalog, modelId, providerId, visionModelId, visionProviderId]
+    () => selectRoleVisionCatalog({ catalog, modelId, providerId, role, visionModelId, visionProviderId }),
+    [catalog, modelId, providerId, role, visionModelId, visionProviderId]
   )
 
   const patchSelectionFromCatalog = useCallback(
     (nextCatalog: AutomationAiModelCatalogProvider[]) => {
       const current = latestSelectionInputRef.current
-      const nextSelection = selectPlannerVisionCatalog({
+      const nextSelection = selectRoleVisionCatalog({
+        role,
         catalog: nextCatalog,
         modelId: current.modelId,
         providerId: current.providerId,
@@ -102,7 +107,7 @@ export const useAiModelCatalogSelection = ({
       }
       if (Object.keys(patch).length > 0) onSelectionChangeRef.current(patch)
     },
-    [visionPatchMode]
+    [role, visionPatchMode]
   )
 
   useEffect(() => {
@@ -114,6 +119,7 @@ export const useAiModelCatalogSelection = ({
         setCatalog(nextCatalog)
         patchSelectionFromCatalog(nextCatalog)
       })
+      .catch(() => undefined)
       .finally(() => {
         if (!cancelled) setIsLoadingCatalog(false)
       })
@@ -122,59 +128,37 @@ export const useAiModelCatalogSelection = ({
     }
   }, [loadCatalog, patchSelectionFromCatalog])
 
-  const checkSelectedPlannerHealth = useCallback(async () => {
-    if (!checkHealth || !selection.selectedProvider || !selection.selectedModel) {
+  const selectedProviderId = selection.selectedProvider?.id
+  const selectedModelId = selection.selectedModel?.id
+  const checkSelectedModelHealth = useCallback(async () => {
+    const request = ++healthRequest.current
+    if (!checkHealth || !selectedProviderId || !selectedModelId) {
       setHealth(null)
+      setIsCheckingHealth(false)
       return
     }
 
     setIsCheckingHealth(true)
     try {
-      setHealth(await checkHealth(selection.selectedProvider.id, selection.selectedModel.id))
+      const result = await checkHealth(selectedProviderId, selectedModelId, role)
+      if (request === healthRequest.current) setHealth(result)
     } catch (error) {
-      setHealth(
-        errorHealth({
-          error,
-          providerId: selection.selectedProvider.id,
-          modelId: selection.selectedModel.id
-        })
-      )
+      if (request === healthRequest.current) {
+        setHealth(errorHealth({ error, providerId: selectedProviderId, modelId: selectedModelId }))
+      }
     } finally {
-      setIsCheckingHealth(false)
+      if (request === healthRequest.current) setIsCheckingHealth(false)
     }
-  }, [checkHealth, selection.selectedModel, selection.selectedProvider])
+  }, [checkHealth, role, selectedModelId, selectedProviderId])
 
   useEffect(() => {
-    if (!checkHealth || !selection.selectedProvider || !selection.selectedModel) {
-      setHealth(null)
-      return
-    }
-
-    let cancelled = false
-    setIsCheckingHealth(true)
-    void checkHealth(selection.selectedProvider.id, selection.selectedModel.id)
-      .then(result => {
-        if (!cancelled) setHealth(result)
-      })
-      .catch(error => {
-        if (cancelled || !selection.selectedProvider || !selection.selectedModel) return
-        setHealth(
-          errorHealth({
-            error,
-            providerId: selection.selectedProvider.id,
-            modelId: selection.selectedModel.id
-          })
-        )
-      })
-      .finally(() => {
-        if (!cancelled) setIsCheckingHealth(false)
-      })
+    void checkSelectedModelHealth()
     return () => {
-      cancelled = true
+      healthRequest.current += 1
     }
-  }, [checkHealth, selection.selectedModel, selection.selectedProvider])
+  }, [checkSelectedModelHealth])
 
-  const setPlannerModelId = useCallback(
+  const setPrimaryModelId = useCallback(
     (nextModelId: string) => {
       const nextModel = selection.selectedProvider?.models.find(model => model.id === nextModelId)
       const matchingVision = selectMatchingVisionPair({
@@ -195,9 +179,9 @@ export const useAiModelCatalogSelection = ({
     [onSelectionChange, selection.selectedProvider, selection.visionCatalog]
   )
 
-  const setPlannerProviderId = useCallback(
+  const setPrimaryProviderId = useCallback(
     (nextProviderId: string) => {
-      const nextSelection = nextCatalogProviderAndModel(selection.plannerCatalog, nextProviderId, 'planner')
+      const nextSelection = nextCatalogProviderAndModel(selection.primaryCatalog, nextProviderId, role)
       const matchingVision = selectMatchingVisionPair({
         plannerModel: nextSelection.model,
         plannerProvider: nextSelection.provider,
@@ -214,7 +198,7 @@ export const useAiModelCatalogSelection = ({
           : {})
       })
     },
-    [onSelectionChange, selection.plannerCatalog, selection.visionCatalog]
+    [onSelectionChange, role, selection.primaryCatalog, selection.visionCatalog]
   )
 
   const setVisionProviderId = useCallback(
@@ -231,12 +215,12 @@ export const useAiModelCatalogSelection = ({
   return {
     ...selection,
     catalog,
-    health,
+    health: health?.providerId === selectedProviderId && health?.modelId === selectedModelId ? health : null,
     isCheckingHealth,
     isLoadingCatalog,
-    recheckHealth: checkSelectedPlannerHealth,
-    setModelId: setPlannerModelId,
-    setProviderId: setPlannerProviderId,
+    recheckHealth: checkSelectedModelHealth,
+    setModelId: setPrimaryModelId,
+    setProviderId: setPrimaryProviderId,
     setVisionModelId: (nextModelId: string) => onSelectionChange({ visionModelId: nextModelId }),
     setVisionProviderId
   }
