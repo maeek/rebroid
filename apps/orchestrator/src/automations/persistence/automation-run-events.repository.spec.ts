@@ -154,6 +154,32 @@ it('rolls back a terminal status and sequence when event insertion fails, then p
   }
 });
 
+it('reads the failure code and request ID from the owner’s terminal event', async () => {
+  const { db, events, run } = await createRunPersistence();
+  try {
+    await events.append({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'run.failed',
+      data: {
+        code: 'authorization_unreachable',
+        requestId: 'authorization-request-1',
+      },
+    });
+    await expect(
+      events.findFailureDetails(run.ownerUserId, run.id),
+    ).resolves.toEqual({
+      failureCode: 'authorization_unreachable',
+      failureRequestId: 'authorization-request-1',
+    });
+    await expect(events.findFailureDetails('other', run.id)).resolves.toEqual(
+      {},
+    );
+  } finally {
+    await db.destroy();
+  }
+});
+
 it('projects ordered step results through the run and fences writes after cancellation', async () => {
   const { db, runs, events, run } = await createRunPersistence();
   try {

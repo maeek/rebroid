@@ -50,8 +50,8 @@ export class AutomationRunEventBus {
     return this.events.listConversationEvents(ownerUserId, runIds);
   }
 
-  findFailureRequestId(ownerUserId: string, runId: string) {
-    return this.events.findFailureRequestId(ownerUserId, runId);
+  findFailureDetails(ownerUserId: string, runId: string) {
+    return this.events.findFailureDetails(ownerUserId, runId);
   }
 
   deleteForRuns(ownerUserId: string, runIds: string[]) {

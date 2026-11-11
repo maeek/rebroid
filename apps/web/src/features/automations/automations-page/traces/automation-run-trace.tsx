@@ -9,7 +9,7 @@ import { Notice } from '@/components/ui/notice'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import { sendBff } from '@/lib/http/bff'
-import { workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
+import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -49,6 +49,7 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
     })
   }
   const failedStep = run.stepResults.find(step => step.status === 'failed')
+  const authorizationFailure = workflowAuthorizationFailure(run.failureCode)
   const targetPath = `/app/${encodeURIComponent(run.targetApplicationId)}`
   const targetHref = `${targetPath}?view=workflows&run=${encodeURIComponent(run.id)}`
   return (
@@ -106,8 +107,13 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
         {run.status === 'failed' ? (
           <Notice
             tone='danger'
-            title={failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed'}
-            description={workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)}
+            title={
+              authorizationFailure?.title ?? (failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed')
+            }
+            description={
+              authorizationFailure?.description ??
+              workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)
+            }
           />
         ) : null}
         <WorkflowRunSummaryPanel

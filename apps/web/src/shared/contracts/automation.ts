@@ -106,6 +106,7 @@ export interface AutomationRun {
   completedAt: string | null
   stepResults: AutomationStepResult[]
   failureRequestId?: string
+  failureCode?: string
   error: string | null
   createdAt: string
   updatedAt: string

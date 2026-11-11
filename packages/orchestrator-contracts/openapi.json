@@ -9334,6 +9334,10 @@
           },
           "updatedAt": {
             "type": "string"
+          },
+          "failureCode": {
+            "type": "string",
+            "description": "Code recorded for a failed run."
           }
         },
         "required": [
@@ -11715,6 +11719,10 @@
           "automationName": {
             "type": "string",
             "nullable": true
+          },
+          "failureCode": {
+            "type": "string",
+            "description": "Code recorded for a failed run."
           }
         },
         "required": [

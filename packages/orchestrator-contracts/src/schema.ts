@@ -3037,6 +3037,8 @@ export interface components {
             /** @description Request ID recorded for a failed service request. */
             failureRequestId?: string;
             updatedAt: string;
+            /** @description Code recorded for a failed run. */
+            failureCode?: string;
         };
         AiPromptSuggestionContextEventDto: {
             /** @example ai.plan.proposed */
@@ -3704,6 +3706,8 @@ export interface components {
             failureRequestId?: string;
             updatedAt: string;
             automationName: string | null;
+            /** @description Code recorded for a failed run. */
+            failureCode?: string;
         };
         ApplicationWorkflowRunRowDto: {
             id: string;

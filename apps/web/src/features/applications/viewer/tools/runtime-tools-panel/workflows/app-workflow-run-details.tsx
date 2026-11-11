@@ -10,7 +10,7 @@ import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
-import { workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
+import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
@@ -141,13 +141,19 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
 
 const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
   const failedStep = run.stepResults.find(step => step.status === 'failed')
+  const authorizationFailure = workflowAuthorizationFailure(run.failureCode)
   const profile = run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
   return (
     <>
       {run.status === 'failed' ? (
         <Notice
-          title={failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed'}
-          description={workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)}
+          title={
+            authorizationFailure?.title ?? (failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed')
+          }
+          description={
+            authorizationFailure?.description ??
+            workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)
+          }
           tone='danger'
         />
       ) : null}

@@ -27,11 +27,13 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
   const assertCommandPermissions = (uses: string) => {
     const command = commandByUses.get(uses)
     if (!command) {
-      throw new Error(`Unsupported automation command "${uses}".`)
+      throw new PublicActionError(`Unsupported automation command "${uses}".`, { code: 'validation' })
     }
     for (const permission of command.requiredPermissions) {
       if (!commandPermissionIsKnown(permission)) {
-        throw new Error(`Automation command "${uses}" requires an unknown permission.`)
+        throw new PublicActionError(`Automation command "${uses}" requires an unknown permission.`, {
+          code: 'forbidden'
+        })
       }
       assertAutomationPermission(user, permission)
     }

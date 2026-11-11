@@ -52,13 +52,22 @@ export class AutomationRunAuthorizationService {
         }),
         signal: abortSignal ? AbortSignal.any([abortSignal, timeout]) : timeout,
       },
-    ).catch(() => {
+    ).catch((error: unknown) => {
       abortSignal?.throwIfAborted();
       const timedOut = timeout.aborted;
       const code = timedOut
         ? 'authorization_timeout'
         : 'authorization_unreachable';
-      this.logger.warn({ requestId, code });
+      const cause = error instanceof Error ? error.cause : undefined;
+      const transportCode =
+        cause &&
+        typeof cause === 'object' &&
+        'code' in cause &&
+        typeof cause.code === 'string' &&
+        /^[A-Z0-9_]{1,64}$/.test(cause.code)
+          ? cause.code
+          : undefined;
+      this.logger.warn({ requestId, code, transportCode });
       throw new AutomationAuthorizationError(
         timedOut
           ? 'Workflow authorization timed out.'
@@ -68,15 +77,10 @@ export class AutomationRunAuthorizationService {
       );
     });
     if (!response.ok) {
-      const code =
-        response.status >= 500
-          ? 'authorization_unavailable'
-          : 'authorization_rejected';
+      const { code, message } = authorizationResponseFailure(response.status);
       this.logger.warn({ requestId, code, httpStatus: response.status });
       throw new AutomationAuthorizationError(
-        response.status >= 500
-          ? 'The web service could not authorize this workflow.'
-          : 'Workflow authorization was rejected.',
+        message,
         requestId,
         code,
         response.status,
@@ -101,3 +105,25 @@ export class AutomationRunAuthorizationService {
     return Number(quota);
   }
 }
+
+const authorizationResponseFailure = (status: number) => {
+  if (status === 401)
+    return {
+      code: 'authorization_credentials',
+      message: 'The web service rejected the orchestrator credentials.',
+    };
+  if (status === 403)
+    return {
+      code: 'authorization_rejected',
+      message: 'Workflow authorization was rejected.',
+    };
+  if (status === 400)
+    return {
+      code: 'authorization_invalid_request',
+      message: 'The web service rejected the authorization request format.',
+    };
+  return {
+    code: 'authorization_unavailable',
+    message: 'The web service could not authorize this workflow.',
+  };
+};

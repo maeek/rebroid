@@ -12,11 +12,13 @@ const run = {
   targetProfileMode: 'persistent',
   trigger: 'manual',
   status: 'failed',
-  startedAt: '2026-11-11T12:00:01Z',
+  startedAt: null,
   completedAt: '2026-11-11T12:00:03Z',
   createdAt: '2026-11-11T12:00:00Z',
   updatedAt: '2026-11-11T12:00:03Z',
-  error: 'App did not become ready.',
+  error: 'The web service could not be reached to authorize this workflow.',
+  failureCode: 'authorization_unreachable',
+  failureRequestId: 'authorization-request-1',
   stepResults: []
 }
 
@@ -41,8 +43,8 @@ test('app run history survives reload and opens summary and events beside the sa
               runId: id,
               sequence: 1,
               type: 'run.failed',
-              message: 'App did not become ready.',
-              data: { reason: 'readiness-timeout' },
+              message: run.error,
+              data: { code: run.failureCode, requestId: run.failureRequestId },
               createdAt: run.completedAt
             }
           ]
@@ -62,7 +64,10 @@ test('app run history survives reload and opens summary and events beside the sa
   await link.click()
   await expect(page).toHaveURL(new RegExp(`[?&]run=${id}`))
   await expect(page.getByRole('tab', { name: 'Summary' })).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByText('App did not become ready.', { exact: true })).toBeVisible()
+  const failure = page.getByRole('region', { name: 'Check inventory', exact: true }).getByRole('alert')
+  await expect(failure).toContainText('Workflow authorization service is unreachable')
+  await expect(failure).toContainText('then run the workflow again')
+  await expect(page.getByRole('region', { name: 'Run summary' })).toContainText(run.failureRequestId)
   await expect(page.getByRole('link', { name: 'Open full trace' })).toHaveAttribute(
     'href',
     `/automations/workflow-1/traces?run=${id}`
@@ -78,8 +83,12 @@ test('app run history survives reload and opens summary and events beside the sa
   await expect(page.getByRole('heading', { name: 'Check inventory', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: 'Events' }).click()
   const log = page.getByRole('log')
-  await log.getByText('App did not become ready.', { exact: true }).click()
-  await expect(log.getByText(/readiness-timeout/)).toBeVisible()
+  await log.getByText('Workflow authorization service is unreachable', { exact: true }).click()
+  await expect(log.getByText(run.failureRequestId)).toBeVisible()
+  await expect(log.getByText(/check the connection/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    page.viewportSize()!.width
+  )
   await expect(device).toBeVisible()
   await page.getByRole('button', { name: 'Run history', exact: true }).click()
   await expect(link).toBeVisible()

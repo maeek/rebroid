@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { hasInternalSecret } from '@/server/auth/internal-secret'
 import { authorizeAutomationExecution } from '@/server/automations/authorize-execution'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 import { getRequestId } from '@/server/observability/request-id'
 import { openAppQuotaHeaders } from '@/server/orchestrator/applications/open-app-quota'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 const inputSchema = z
@@ -20,14 +22,19 @@ const inputSchema = z
 export const POST = async (request: Request) => {
   if (!hasInternalSecret(request.headers)) return new Response(null, { status: 401 })
   const requestId = await getRequestId(request.headers.get('x-request-id'))
+  const input = inputSchema.safeParse(await request.json().catch(() => null))
+  if (!input.success) return new Response(null, { status: 400, headers: { 'x-request-id': requestId } })
   try {
-    const quota = await authorizeAutomationExecution(inputSchema.parse(await request.json()))
+    const quota = await authorizeAutomationExecution(input.data)
     return new Response(null, {
       status: 204,
       headers: { 'x-request-id': requestId, 'x-rebroid-max-open-apps': 'unlimited', ...openAppQuotaHeaders(quota) }
     })
-  } catch {
-    logger.warn('automation.authorization_rejected', { requestId })
-    return new Response(null, { status: 403, headers: { 'x-request-id': requestId } })
+  } catch (error) {
+    const denied =
+      (error instanceof PublicActionError && ['forbidden', 'not_found', 'validation'].includes(error.code)) ||
+      (error instanceof OrchestratorRequestError && error.status === 404)
+    logger.warn(denied ? 'automation.authorization_rejected' : 'automation.authorization_unavailable', { requestId })
+    return new Response(null, { status: denied ? 403 : 503, headers: { 'x-request-id': requestId } })
   }
 }

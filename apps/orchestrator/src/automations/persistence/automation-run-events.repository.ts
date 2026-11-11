@@ -146,17 +146,24 @@ export class AutomationRunEventsRepository {
     });
   }
 
-  async findFailureRequestId(ownerUserId: string, runId: string) {
+  async findFailureDetails(ownerUserId: string, runId: string) {
     const failure = await this.events.findOne({
       where: { ownerUserId, runId, type: 'run.failed' },
       order: { sequence: 'DESC' },
     });
-    if (!failure) return undefined;
-    const { requestId } = toRecord(failure).data;
-    return typeof requestId === 'string' &&
-      /^[a-zA-Z0-9._:-]{1,128}$/.test(requestId)
-      ? requestId
-      : undefined;
+    if (!failure) return {};
+    const { requestId, code } = toRecord(failure).data;
+    return {
+      failureRequestId:
+        typeof requestId === 'string' &&
+        /^[a-zA-Z0-9._:-]{1,128}$/.test(requestId)
+          ? requestId
+          : undefined,
+      failureCode:
+        typeof code === 'string' && /^[a-z][a-z0-9_]{0,63}$/.test(code)
+          ? code
+          : undefined,
+    };
   }
 
   async listConversationEvents(ownerUserId: string, runIds: string[]) {

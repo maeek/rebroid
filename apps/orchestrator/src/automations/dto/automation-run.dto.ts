@@ -155,6 +155,9 @@ export class AutomationRunDto {
   })
   failureRequestId?: string;
 
+  @ApiPropertyOptional({ description: 'Code recorded for a failed run.' })
+  failureCode?: string;
+
   @ApiProperty()
   updatedAt!: string;
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/internal/automations/authorize/route'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { authorizeAutomationExecution } from './authorize-execution'
 vi.mock('./authorize-execution', () => ({ authorizeAutomationExecution: vi.fn() }))
 describe('private execution authorization endpoint', () => {
@@ -15,9 +16,12 @@ describe('private execution authorization endpoint', () => {
     expect(response.status).toBe(401)
     expect(authorizeAutomationExecution).not.toHaveBeenCalled()
   })
-  it('fails closed when current permissions are denied', async () => {
+  it.each([
+    [new PublicActionError('denied', { code: 'forbidden' }), 403],
+    [new Error('upstream unavailable'), 503]
+  ])('fails closed when authorization returns %s', async (error, status) => {
     vi.stubEnv('ORCHESTRATOR_SHARED_SECRET', 'secret')
-    vi.mocked(authorizeAutomationExecution).mockRejectedValue(new Error('denied'))
+    vi.mocked(authorizeAutomationExecution).mockRejectedValue(error)
     const response = await POST(
       new Request('http://web/api/internal/automations/authorize', {
         method: 'POST',
@@ -30,7 +34,7 @@ describe('private execution authorization endpoint', () => {
         })
       })
     )
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(status)
     expect(authorizeAutomationExecution).toHaveBeenCalledWith(expect.objectContaining({ operation: 'start' }))
   })
   it('rejects legacy requests that specify a policy without an operation', async () => {
@@ -47,7 +51,7 @@ describe('private execution authorization endpoint', () => {
         })
       })
     )
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(400)
     expect(authorizeAutomationExecution).not.toHaveBeenCalled()
   })
 })

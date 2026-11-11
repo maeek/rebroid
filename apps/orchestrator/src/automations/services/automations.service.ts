@@ -339,11 +339,11 @@ export class AutomationsService {
   private async runDetails(run: AutomationRun) {
     const result = this.mapper.run(run);
     if (run.status !== AutomationRunStatus.Failed) return result;
-    const failureRequestId = await this.events.findFailureRequestId(
+    const failure = await this.events.findFailureDetails(
       run.ownerUserId,
       run.id,
     );
-    return { ...result, failureRequestId };
+    return { ...result, ...failure };
   }
 
   private async getOwnedRun(ownerUserId: string, id: string) {

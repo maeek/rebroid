@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
-import { workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
+import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import {
   AutomationRunStatusBadge,
   type AutomationRunDisplayStatus
@@ -64,7 +64,10 @@ const eventLabel = (event: AutomationRunEvent) => {
 
 const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; startedAt: string | null }) => {
   const [open, setOpen] = useState(false)
-  const label = event.type === 'run.failed' ? workflowRunFailureMessage(event.message, startedAt) : eventLabel(event)
+  const failed = event.type === 'run.failed'
+  const authorizationFailure = failed ? workflowAuthorizationFailure(event.data.code) : undefined
+  const label =
+    authorizationFailure?.title ?? (failed ? workflowRunFailureMessage(event.message, startedAt) : eventLabel(event))
   return (
     <details
       className='group border-b border-surface-border/50'
@@ -101,7 +104,16 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
               />
             </span>
           </div>
-          {Object.keys(event.data).length ? (
+          {authorizationFailure ? (
+            <div className='grid gap-1 text-sm text-foreground-muted'>
+              <p>{authorizationFailure.description}</p>
+              {typeof event.data.requestId === 'string' ? (
+                <p className='text-xs'>
+                  Request ID <code className='break-all'>{event.data.requestId}</code>
+                </p>
+              ) : null}
+            </div>
+          ) : Object.keys(event.data).length ? (
             <JsonViewer
               value={event.data}
               title='Event data'
