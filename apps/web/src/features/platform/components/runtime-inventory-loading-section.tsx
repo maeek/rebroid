@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -18,56 +19,60 @@ export const RuntimeInventoryLoadingSection = <TData,>({
   columns: ColumnDef<TData>[]
   pageSize?: number
   searchPlaceholder: string
-}) => (
-  <Section
-    surface='plain'
-    contentClassName='gap-4'
-  >
-    <DataGridWorkspace
-      disabled
-      search=''
-      searchPlaceholder={searchPlaceholder}
-      onSearchChange={() => undefined}
-      onSearch={() => undefined}
-      filters={
-        <PlatformResourceScopeFilter
-          value='managed'
-          onValueChange={() => undefined}
-        />
-      }
-      onResetFilters={() => undefined}
-      bulkActions={actionLabels.map(label => (
-        <Button
-          key={label}
-          type='button'
-          variant='ghost'
-          disabled
-        >
-          {label}
-        </Button>
-      ))}
+}) => {
+  const search = useSearchParams()?.get('q')?.trim() ?? ''
+
+  return (
+    <Section
+      surface='plain'
+      contentClassName='gap-4'
     >
-      <DataGrid
-        columns={columns}
-        data={[]}
-        totalItems={0}
-        pageIndex={0}
-        pageSize={pageSize}
-        getRowId={() => ''}
-        loading={{
-          rowCount: Math.min(pageSize, 20),
-          selectable: true,
-          rowMenu: true
-        }}
-      />
-      <DataGridPagination
-        loading
-        totalItems={0}
-        pageIndex={0}
-        pageSize={pageSize}
-        onPageIndexChange={() => undefined}
-        onPageSizeChange={() => undefined}
-      />
-    </DataGridWorkspace>
-  </Section>
-)
+      <DataGridWorkspace
+        disabled
+        search={search}
+        searchPlaceholder={searchPlaceholder}
+        onSearchChange={() => undefined}
+        onSearch={() => undefined}
+        filters={
+          <PlatformResourceScopeFilter
+            value='managed'
+            onValueChange={() => undefined}
+          />
+        }
+        onResetFilters={() => undefined}
+        bulkActions={actionLabels.map(label => (
+          <Button
+            key={label}
+            type='button'
+            variant='ghost'
+            disabled
+          >
+            {label}
+          </Button>
+        ))}
+      >
+        <DataGrid
+          columns={columns}
+          data={[]}
+          totalItems={0}
+          pageIndex={0}
+          pageSize={pageSize}
+          getRowId={() => ''}
+          loading={{
+            rowCount: Math.min(pageSize, 20),
+            selectable: true,
+            rowMenu: true
+          }}
+        />
+        <DataGridPagination
+          loading
+          totalItems={0}
+          pageIndex={0}
+          pageSize={pageSize}
+          onPageIndexChange={() => undefined}
+          onPageSizeChange={() => undefined}
+        />
+      </DataGridWorkspace>
+    </Section>
+  )
+}

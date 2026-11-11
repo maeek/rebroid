@@ -22,7 +22,7 @@ const AppsPageContent = async () => {
 
 export const AppsListPageEntry = () => {
   return (
-    <StandardPage>
+    <StandardPage gridToolbar>
       <Suspense fallback={<AppsPageSkeleton withLayout={false} />}>
         <AppsPageContent />
       </Suspense>

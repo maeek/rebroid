@@ -149,6 +149,13 @@ Every interactive `DataGrid` uses `DataGridWorkspace` for search, active-filter 
 and optional structured filtering. Use filter sheets only for page-level datasets with
 meaningful facets; embedded or small fixed datasets use search-only mode.
 
+Page-level inventories can opt into `StandardPage`'s `gridToolbar`. On wide page canvases, the
+workspace toolbar aligns with the breadcrumbs. Place refresh at the right edge, then search,
+then filters and other dataset actions. Search expands on hover and focus, and an entered query
+keeps it open. On narrow canvases the workspace keeps its full search field above the grid.
+Keep filter chips by the grid and keep embedded grids, including the app viewer, in their local layout.
+Use the same toolbar placement for ready and loading views.
+
 Grids are flat data surfaces. Keep the toolbar unboxed, the table body transparent,
 and the header on a quiet semantic editor surface with the shared control radius at all four corners.
 Keep that radius consistent with inputs and buttons rather than introducing square header bands.

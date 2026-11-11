@@ -6,20 +6,26 @@ import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 
 export const AiProvidersPageLayout = ({
   actions,
+  breadcrumbRefresh,
   providers,
   suggestions
 }: {
   actions?: ReactNode
+  breadcrumbRefresh?: ReactNode
   providers: ReactNode
   suggestions: ReactNode
 }) => (
-  <StandardPage className='gap-2'>
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
     <PageHeader
       section={{ label: 'Platform', href: '/platform' }}
       title='AI'
       leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
       description='Manage model providers and AI-assisted automation.'
       actions={actions}
+      breadcrumbRefresh={breadcrumbRefresh}
     />
     <PageContent>
       <Section

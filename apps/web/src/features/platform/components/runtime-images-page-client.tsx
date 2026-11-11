@@ -52,27 +52,30 @@ const RuntimeImagesPageFrame = ({
 }) => {
   const { isFeatureEnabled } = useFeatureFlags()
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Runtime' }}
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
+        breadcrumbRefresh={
+          <PlatformPageRefreshButton
+            disabled={loading}
+            isRefreshing={isRefreshing}
+            onRefresh={onRefresh}
+          />
+        }
         actions={
-          <>
-            {isFeatureEnabled('feature.image-builder') && (
-              <Button asChild>
-                <Link href='/runtime/images/build'>
-                  <IconPlus className='size-4' />
-                  Build image
-                </Link>
-              </Button>
-            )}
-            <PlatformPageRefreshButton
-              disabled={loading}
-              isRefreshing={isRefreshing}
-              onRefresh={onRefresh}
-            />
-          </>
+          isFeatureEnabled('feature.image-builder') && (
+            <Button asChild>
+              <Link href='/runtime/images/build'>
+                <IconPlus className='size-4' />
+                Build image
+              </Link>
+            </Button>
+          )
         }
       />
       <PageContent>{children}</PageContent>

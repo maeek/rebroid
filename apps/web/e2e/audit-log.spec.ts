@@ -104,6 +104,12 @@ test('audit loading retains toolbar and table header geometry', async ({ page })
     for (const editor of ['activity-loading', 'activity']) {
       await page.goto(`/skeleton-contract-test?editor=${editor}`)
       await expect(page.getByRole('columnheader').first()).toBeVisible()
+      // The flexible spacer gets its final width after the grid measures its scroll container.
+      await expect
+        .poll(() =>
+          page.getByRole('table').evaluate(table => parseFloat(table.style.width) >= table.parentElement!.clientWidth)
+        )
+        .toBe(true)
       measurements.push(
         await page.locator('thead th').evaluateAll(nodes =>
           nodes.map(node => {

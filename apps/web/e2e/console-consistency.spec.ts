@@ -7,10 +7,12 @@ test('phone headers keep actions together and form controls inside the viewport'
     await page.setViewportSize({ width, height: 800 })
     await page.goto('/skeleton-contract-test?editor=service-docker')
     const title = (await page.getByRole('heading', { name: 'Docker', exact: true }).boundingBox())!
+    const breadcrumbs = (await page.getByRole('navigation', { name: 'breadcrumb' }).boundingBox())!
     const refresh = (await page.getByRole('button', { name: 'Refresh', exact: true }).boundingBox())!
-    expect(refresh.x).toBeGreaterThan(title.x)
-    expect(refresh.y).toBeLessThan(title.y + title.height)
-    expect(refresh.y + refresh.height).toBeGreaterThan(title.y)
+    expect(refresh.x).toBeGreaterThan(breadcrumbs.x)
+    expect(refresh.y).toBeLessThan(breadcrumbs.y + breadcrumbs.height)
+    expect(refresh.y + refresh.height).toBeGreaterThan(breadcrumbs.y)
+    expect(refresh.y + refresh.height).toBeLessThan(title.y)
 
     await page.goto('/skeleton-contract-test?editor=runtime')
     const discard = (await page.getByRole('button', { name: 'Discard changes' }).boundingBox())!
@@ -108,20 +110,24 @@ test('trigger creation uses consistent, searchable and keyboard accessible field
 })
 
 test('network policies keep the same grid and filter geometry while loading', async ({ page }) => {
+  const grid = page.getByRole('table')
   for (const width of widths) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=policies-loading')
     const header = await page.getByRole('columnheader').allTextContents()
-    const loadingGrid = await page.getByRole('table').boundingBox()
+    await expect
+      .poll(() => grid.evaluate(table => parseFloat(table.style.width) >= table.parentElement!.clientWidth))
+      .toBe(true)
+    const loadingGrid = await grid.boundingBox()
     await expect(page.getByRole('button', { name: 'Reconcile all' })).toBeDisabled()
     await page.getByRole('button', { name: 'Filters', exact: true }).click()
     await expect(page.getByRole('combobox', { name: 'Restriction' })).toBeEnabled()
     await page.getByRole('button', { name: 'Done' }).click()
     await page.goto('/skeleton-contract-test?editor=policies')
     expect(await page.getByRole('columnheader').allTextContents()).toEqual(header)
-    const readyGrid = await page.getByRole('table').boundingBox()
+    await expect.poll(async () => (await grid.boundingBox())?.width).toBe(loadingGrid?.width)
+    const readyGrid = await grid.boundingBox()
     expect(readyGrid?.x).toBe(loadingGrid?.x)
-    expect(readyGrid?.width).toBe(loadingGrid?.width)
     expect(readyGrid?.y).toBe(loadingGrid?.y)
     await expect(page.getByRole('button', { name: 'Reconcile all' })).toBeEnabled()
     await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(

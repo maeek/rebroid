@@ -17,7 +17,10 @@ export function AutomationsListPage({
   loading = false
 }: AutomationsListPageProps) {
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Automations' }}
         title='Workflows'

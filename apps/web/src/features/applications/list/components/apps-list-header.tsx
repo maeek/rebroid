@@ -22,6 +22,8 @@ export const AppsListHeader = ({ canCreate = false, loading = false }: { canCrea
   }
   return (
     <PageHeader
+      section={{ label: 'Apps' }}
+      breadcrumbLabel='All apps'
       title='Apps'
       actions={actions}
     />

@@ -59,7 +59,11 @@ export const SearchField = ({
   }
 
   return (
-    <div className={cn('relative w-full', className)}>
+    <div
+      className={cn('relative w-full', className)}
+      data-slot='search-field'
+      data-has-value={value ? '' : undefined}
+    >
       <IconSearch
         aria-hidden='true'
         data-testid='search-field-icon'

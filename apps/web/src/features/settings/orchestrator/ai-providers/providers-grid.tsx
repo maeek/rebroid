@@ -131,6 +131,7 @@ export const ProvidersGrid = ({
       contentClassName='gap-4'
     >
       <DataGridWorkspace
+        disabled={loading}
         search={searchDraft}
         searchPlaceholder='Search AI providers'
         onSearchChange={setSearchDraft}

@@ -37,5 +37,5 @@ export const AppsPageSkeleton = ({ withLayout = true }: { withLayout?: boolean }
       </PageContent>
     </>
   )
-  return withLayout ? <StandardPage>{content}</StandardPage> : content
+  return withLayout ? <StandardPage gridToolbar>{content}</StandardPage> : content
 }

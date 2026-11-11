@@ -6,16 +6,21 @@ import { ResourceNavigation } from '@/shared/ui/resource-navigation'
 
 export const ServicesPageLayout = ({
   actions,
+  breadcrumbRefresh,
   children,
   view = 'connections',
   meta
 }: {
   actions?: ReactNode
+  breadcrumbRefresh?: ReactNode
   children: ReactNode
   view?: 'connections' | 'features'
   meta?: ReactNode
 }) => (
-  <StandardPage className='gap-2'>
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
     <PageHeader
       section={{ label: 'Platform', href: '/platform' }}
       title='Services'
@@ -27,6 +32,7 @@ export const ServicesPageLayout = ({
           : 'Review service health, manage connections, and inspect infrastructure.'
       }
       actions={actions}
+      breadcrumbRefresh={breadcrumbRefresh}
       meta={meta}
     />
     <PageContent>

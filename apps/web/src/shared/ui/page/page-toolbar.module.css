@@ -1,0 +1,143 @@
+.page {
+  position: relative;
+  container: page-toolbar / inline-size;
+  --page-toolbar-control-size: 2.25rem;
+  --breadcrumb-refresh-space: 0rem;
+}
+
+.page:has(> header .breadcrumbRefresh) {
+  --breadcrumb-refresh-space: calc(var(--page-toolbar-control-size) + 0.5rem);
+}
+
+@media (pointer: coarse) {
+  .page {
+    --page-toolbar-control-size: var(--touch-target-size);
+  }
+}
+
+@container page-toolbar (min-width: 52rem) {
+  /* Both rows use the page header's top and side gutters so the workspace owns the same controls at every width. */
+  .breadcrumbRow {
+    min-block-size: var(--page-toolbar-control-size);
+  }
+
+  .breadcrumbRow > nav {
+    max-inline-size: 38%;
+  }
+
+  .toolbarArea {
+    display: contents;
+  }
+
+  .toolbar {
+    position: absolute;
+    inset-block-start: 1rem;
+    inset-inline-end: calc(1.5rem + var(--breadcrumb-refresh-space));
+    inline-size: max-content;
+    max-inline-size: calc(60% - var(--breadcrumb-refresh-space));
+    min-block-size: var(--page-toolbar-control-size);
+    z-index: 1;
+  }
+
+  .toolbar:has(.persistentAction) {
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 0.5rem;
+  }
+
+  .toolbar:has(.persistentAction) > :not(.persistentAction) {
+    grid-column: 2;
+  }
+
+  .persistentAction {
+    grid-column: 1;
+  }
+
+  .toolbar > [inert] {
+    display: none;
+  }
+
+  .controls {
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: end;
+    gap: 0.5rem;
+  }
+
+  .actions:not(:empty) {
+    display: contents;
+  }
+
+  .actions > :not(.refresh) {
+    order: -1;
+  }
+
+  .searchControls {
+    display: contents;
+  }
+
+  .refresh {
+    order: 2;
+  }
+
+  .toolbar [data-slot='search-field'] {
+    order: 1;
+    inline-size: var(--page-toolbar-control-size);
+    flex: 0 1 auto;
+    transition: inline-size 200ms ease;
+  }
+
+  .toolbar [data-slot='search-field'] > svg {
+    inset-inline-start: calc((var(--page-toolbar-control-size) - 1rem) / 2);
+  }
+
+  .toolbar [data-slot='search-field']:not(:focus-within, [data-has-value]) input {
+    background-color: transparent;
+    border-color: transparent;
+    padding-inline: 0;
+    cursor: pointer;
+  }
+
+  .toolbar [data-slot='search-field']:not(:focus-within, [data-has-value]) input::placeholder {
+    color: transparent;
+  }
+
+  .toolbar [data-slot='search-field']:is(:focus-within, [data-has-value]) {
+    inline-size: min(20cqi, 20rem);
+  }
+
+  /* The loading toolbar preserves the search appearance while its controls are disabled. */
+  .toolbar [data-slot='search-field'] > :is(input, button):disabled {
+    opacity: 1;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .toolbar [data-slot='search-field']:hover {
+      inline-size: min(20cqi, 20rem);
+    }
+
+    .toolbar [data-slot='search-field']:hover input {
+      background-color: hsl(var(--control));
+      border-color: hsl(var(--control-border) / 0.35);
+      padding-inline-start: 2.25rem;
+      padding-inline-end: 0.75rem;
+    }
+
+    .toolbar [data-slot='search-field']:hover input:not(:disabled) {
+      cursor: text;
+    }
+
+    .toolbar [data-slot='search-field'][data-has-value]:hover input {
+      padding-inline-end: 2.25rem;
+    }
+
+    .toolbar [data-slot='search-field']:hover input::placeholder {
+      color: hsl(var(--foreground-muted));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toolbar [data-slot='search-field'] {
+      transition: none;
+    }
+  }
+}

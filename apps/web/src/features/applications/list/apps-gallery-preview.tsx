@@ -7,7 +7,7 @@ import { galleryPreviewApplications } from './apps-gallery-preview-data'
 import { AppsList } from './apps-list'
 
 export const AppsGalleryPreview = () => (
-  <StandardPage>
+  <StandardPage gridToolbar>
     <AppsList
       canCreate
       canFilterByOwner

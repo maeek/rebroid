@@ -23,6 +23,7 @@ export const PlatformPageRefreshButton = ({
           variant='ghost'
           size='icon-md'
           aria-label={label}
+          aria-busy={isRefreshing || undefined}
           disabled={disabled || isRefreshing}
           onClick={onRefresh}
         >

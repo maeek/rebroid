@@ -3,6 +3,7 @@
 import { type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { SearchField } from '@/shared/ui/search-field'
+import styles from '@/shared/ui/page/page-toolbar.module.css'
 
 export type DataGridToolbarProps = {
   search: string
@@ -13,6 +14,7 @@ export type DataGridToolbarProps = {
   searchActions?: ReactNode
   selectedCount?: number
   actions?: ReactNode
+  refresh?: ReactNode
   disabled?: boolean
   layout?: 'spread' | 'compact'
 }
@@ -26,19 +28,30 @@ export function DataGridToolbar({
   searchActions,
   selectedCount = 0,
   actions,
+  refresh,
   disabled = false,
   layout = 'spread'
 }: DataGridToolbarProps) {
   return (
     <div
       aria-busy={disabled || undefined}
-      className={cn('flex flex-wrap items-end gap-x-4 gap-y-2', layout === 'spread' && 'justify-between')}
+      className={cn(
+        styles.controls,
+        'flex flex-wrap items-end gap-x-4 gap-y-2',
+        layout === 'spread' && 'justify-between'
+      )}
     >
       <fieldset
         className='contents'
         disabled={disabled}
       >
-        <div className={cn('flex min-w-0 items-center gap-2', layout === 'spread' ? 'flex-1 basis-72' : 'w-full')}>
+        <div
+          className={cn(
+            styles.searchControls,
+            'flex min-w-0 items-center gap-2',
+            layout === 'spread' ? 'flex-1 basis-72' : 'w-full'
+          )}
+        >
           <SearchField
             value={search}
             placeholder={searchPlaceholder}
@@ -50,9 +63,15 @@ export function DataGridToolbar({
           {filterControl}
           {searchActions}
         </div>
-        <div className='flex max-w-full shrink-0 flex-wrap items-center gap-2 empty:hidden sm:justify-end sm:gap-3'>
+        <div
+          className={cn(
+            styles.actions,
+            'flex max-w-full shrink-0 flex-wrap items-center gap-2 empty:hidden sm:justify-end sm:gap-3'
+          )}
+        >
           {selectedCount > 0 ? <span className='text-sm text-foreground-muted'>{selectedCount} selected</span> : null}
           {actions}
+          {refresh ? <div className={styles.refresh}>{refresh}</div> : null}
         </div>
       </fieldset>
     </div>

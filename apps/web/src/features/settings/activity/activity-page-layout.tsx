@@ -3,7 +3,10 @@ import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 
 export const ActivityPageLayout = ({ children }: { children: ReactNode }) => (
-  <StandardPage className='gap-2'>
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
     <PageHeader
       section={{ label: 'Security' }}
       title='Audit log'

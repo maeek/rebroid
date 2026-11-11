@@ -46,12 +46,15 @@ const RuntimeNetworksPageFrame = ({
   loading?: boolean
   onRefresh: () => void
 }) => (
-  <StandardPage className='gap-2'>
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
     <PageHeader
       section={{ label: 'Runtime' }}
       title='Networks'
       description='Docker networks visible to the platform, including application isolation networks.'
-      actions={
+      breadcrumbRefresh={
         <PlatformPageRefreshButton
           disabled={loading}
           isRefreshing={isRefreshing}

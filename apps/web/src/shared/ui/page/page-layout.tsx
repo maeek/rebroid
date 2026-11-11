@@ -1,9 +1,16 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import styles from './page-toolbar.module.css'
 
-export const StandardPage = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <div className={cn('flex w-full flex-col', className)}>{children}</div>
-)
+export const StandardPage = ({
+  children,
+  className,
+  gridToolbar = false
+}: {
+  children: ReactNode
+  className?: string
+  gridToolbar?: boolean
+}) => <div className={cn('flex w-full flex-col', gridToolbar && styles.page, className)}>{children}</div>
 
 export const StandardPageSplit = ({ children, className }: { children: ReactNode; className?: string }) => (
   <div

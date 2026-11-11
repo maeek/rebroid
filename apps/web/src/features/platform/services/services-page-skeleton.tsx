@@ -26,15 +26,13 @@ export const ServicesInventorySkeleton = () => {
   const hasConfiguration = isFeatureEnabled('feature.ocr') || isFeatureEnabled('feature.firewall')
   return (
     <ServicesPageLayout
-      actions={
-        <>
-          <PlatformPageRefreshButton
-            disabled
-            onRefresh={() => undefined}
-          />
-          {hasConfiguration ? <ServicesPageActions disabled /> : null}
-        </>
+      breadcrumbRefresh={
+        <PlatformPageRefreshButton
+          disabled
+          onRefresh={() => undefined}
+        />
       }
+      actions={hasConfiguration ? <ServicesPageActions disabled /> : undefined}
       meta={hasConfiguration ? <ServicesSaveStatus loading /> : undefined}
     >
       <ServicesGrid

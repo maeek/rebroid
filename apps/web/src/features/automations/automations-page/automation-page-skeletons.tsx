@@ -15,25 +15,33 @@ import { AutomationStepsList } from './steps/list/automation-steps-list'
 import { AutomationTracesPage } from './traces/automation-traces-page'
 import { AutomationTriggersPage } from './triggers/automation-triggers-page'
 
-export const AutomationsListPageSkeleton = () => (
-  <AutomationsListPage
-    initialApplications={[]}
-    initialTriggers={[]}
-    automationsPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
-    gridQuery={{}}
-    loading
-  />
-)
+export const AutomationsListPageSkeleton = () => {
+  const q = useSearchParams()?.get('q')?.trim() || undefined
 
-export const AutomationTriggersPageSkeleton = () => (
-  <AutomationTriggersPage
-    initialApplications={[]}
-    initialAutomations={[]}
-    triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
-    gridQuery={{}}
-    loading
-  />
-)
+  return (
+    <AutomationsListPage
+      initialApplications={[]}
+      initialTriggers={[]}
+      automationsPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
+      gridQuery={{ q }}
+      loading
+    />
+  )
+}
+
+export const AutomationTriggersPageSkeleton = () => {
+  const q = useSearchParams()?.get('q')?.trim() || undefined
+
+  return (
+    <AutomationTriggersPage
+      initialApplications={[]}
+      initialAutomations={[]}
+      triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
+      gridQuery={{ q }}
+      loading
+    />
+  )
+}
 
 const noop = () => undefined
 

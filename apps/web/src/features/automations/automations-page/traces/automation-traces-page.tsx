@@ -79,7 +79,10 @@ export function AutomationTracesPage({
     )
   }
   return (
-    <StandardPage className='gap-0'>
+    <StandardPage
+      gridToolbar
+      className='gap-0'
+    >
       <PageHeader
         section={{ label: 'Automations' }}
         trail={trail}

@@ -46,12 +46,15 @@ const RuntimeContainersPageFrame = ({
   loading?: boolean
   onRefresh: () => void
 }) => (
-  <StandardPage className='gap-2'>
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
     <PageHeader
       section={{ label: 'Runtime' }}
       title='Containers'
       description='Docker containers visible to the platform. Managed application containers are shown first.'
-      actions={
+      breadcrumbRefresh={
         <PlatformPageRefreshButton
           disabled={loading}
           isRefreshing={isRefreshing}

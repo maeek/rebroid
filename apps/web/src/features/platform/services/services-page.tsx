@@ -207,21 +207,21 @@ export const PlatformServicesPage = ({
 
   return (
     <ServicesPageLayout
+      breadcrumbRefresh={
+        <PlatformPageRefreshButton
+          isRefreshing={refreshing}
+          onRefresh={() => startRefresh(() => router.refresh())}
+        />
+      }
       actions={
-        <>
-          <PlatformPageRefreshButton
-            isRefreshing={refreshing}
-            onRefresh={() => startRefresh(() => router.refresh())}
+        !unavailable && (hasConfiguration || hasChanges) ? (
+          <ServicesPageActions
+            hasChanges={hasChanges}
+            saving={pendingAction === 'save'}
+            onDiscard={() => setForm(current => ({ ...current, services: current.savedServices }))}
+            onSave={() => void saveSettings()}
           />
-          {!unavailable && (hasConfiguration || hasChanges) ? (
-            <ServicesPageActions
-              hasChanges={hasChanges}
-              saving={pendingAction === 'save'}
-              onDiscard={() => setForm(current => ({ ...current, services: current.savedServices }))}
-              onSave={() => void saveSettings()}
-            />
-          ) : null}
-        </>
+        ) : undefined
       }
       meta={hasConfiguration || hasChanges ? <ServicesSaveStatus hasChanges={hasChanges} /> : undefined}
     >

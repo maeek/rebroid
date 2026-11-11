@@ -26,7 +26,10 @@ const ScheduledTasksPageContent = ({ loading }: { loading: boolean }) => {
   const controller = useScheduledTasksControllerContext()
 
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Platform', href: '/platform' }}
         title='Scheduler'

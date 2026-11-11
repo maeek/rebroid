@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { cn } from '@/lib/utils'
 import { DataGridEmptyContext } from './data-grid-empty-state'
 import { DataGridToolbar } from './data-grid-toolbar'
+import styles from '@/shared/ui/page/page-toolbar.module.css'
 
 export type DataGridFilterEntry = {
   id: string
@@ -33,6 +34,7 @@ export type DataGridWorkspaceProps = {
   searchActions?: ReactNode
   toolbarAction?: ReactNode
   actions?: ReactNode
+  refresh?: ReactNode
   notice?: ReactNode
   disabled?: boolean
   toolbarLayout?: 'spread' | 'compact'
@@ -57,6 +59,7 @@ export const DataGridWorkspace = ({
   searchActions,
   toolbarAction,
   actions,
+  refresh,
   notice,
   disabled = false,
   toolbarLayout = 'spread',
@@ -75,11 +78,12 @@ export const DataGridWorkspace = ({
     >
       <div className={cn('grid min-w-0 gap-3', className)}>
         {notice}
-        <div className='grid min-w-0 gap-2'>
+        <div className={cn('grid min-w-0 gap-2', styles.toolbarArea)}>
           <div
             data-slot='data-grid-toolbar'
             className={cn(
               'grid min-w-0 items-center [&_button]:transition-none',
+              styles.toolbar,
               toolbarAction && 'grid-cols-[minmax(0,1fr)_auto]',
               compact && 'sm:w-fit sm:max-w-full'
             )}
@@ -122,6 +126,7 @@ export const DataGridWorkspace = ({
                 }
                 searchActions={searchActions}
                 actions={actions}
+                refresh={refresh}
                 disabled={disabled}
                 layout={toolbarLayout}
               />
@@ -152,7 +157,9 @@ export const DataGridWorkspace = ({
                 </div>
               </div>
             ) : null}
-            {toolbarAction ? <div className='col-start-2 row-start-1'>{toolbarAction}</div> : null}
+            {toolbarAction ? (
+              <div className={cn('col-start-2 row-start-1', styles.persistentAction)}>{toolbarAction}</div>
+            ) : null}
           </div>
 
           {activeFilters.length > 0 ? (

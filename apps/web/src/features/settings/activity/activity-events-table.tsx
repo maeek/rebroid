@@ -10,7 +10,7 @@ import { ActivityFilterPanel } from './filters/activity-filter-panel'
 import { ActivitySummary } from './summary/activity-summary'
 import { ActivityEventsDataTable } from './table/activity-events-data-table'
 import { ActivityEventsPagination } from './table/activity-events-pagination'
-import { ActivityEventsActions } from './table/activity-events-toolbar'
+import { ActivityEventsActions, ActivityEventsRefresh } from './table/activity-events-toolbar'
 import type { ActivityEventsTableProps } from './activity-types'
 
 const ActivityEventsContent = () => {
@@ -46,6 +46,7 @@ const ActivityEventsContent = () => {
           }))}
           onResetFilters={controller.resetFilters}
           actions={<ActivityEventsActions />}
+          refresh={application ? undefined : <ActivityEventsRefresh />}
         >
           <ActivityEventsDataTable />
           <ActivityEventsPagination />

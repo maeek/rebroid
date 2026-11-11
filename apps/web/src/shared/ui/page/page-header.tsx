@@ -3,9 +3,11 @@ import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { PageBreadcrumbs, type PageBreadcrumbItem } from '@/shared/ui/page/page-breadcrumbs'
 import { PageHeadingRow } from '@/shared/ui/page/page-heading-row'
+import styles from './page-toolbar.module.css'
 
 export const PageHeader = ({
   actions,
+  breadcrumbRefresh,
   breadcrumbLabel,
   className,
   description,
@@ -17,6 +19,7 @@ export const PageHeader = ({
   meta
 }: {
   actions?: ReactNode
+  breadcrumbRefresh?: ReactNode
   breadcrumbLabel?: ReactNode
   className?: string
   description?: ReactNode
@@ -40,11 +43,18 @@ export const PageHeader = ({
   return (
     <header className={cn('shrink-0 px-6 py-4 max-sm:px-4', className)}>
       <div className='grid grid-cols-[minmax(0,1fr)] gap-3'>
-        {showBreadcrumbs ? (
-          <PageBreadcrumbs
-            className='pt-0'
-            items={breadcrumbs}
-          />
+        {showBreadcrumbs || breadcrumbRefresh ? (
+          <div className={cn('flex min-w-0 items-center gap-2', styles.breadcrumbRow)}>
+            {showBreadcrumbs ? (
+              <PageBreadcrumbs
+                className='min-w-0 flex-1 pt-0'
+                items={breadcrumbs}
+              />
+            ) : null}
+            {breadcrumbRefresh ? (
+              <div className={cn('ml-auto shrink-0', styles.breadcrumbRefresh)}>{breadcrumbRefresh}</div>
+            ) : null}
+          </div>
         ) : null}
         <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-2', showBreadcrumbs && 'pt-4')}>
           <PageHeadingRow actions={actions}>

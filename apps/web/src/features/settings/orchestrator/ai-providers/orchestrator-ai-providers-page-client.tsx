@@ -176,20 +176,20 @@ export const OrchestratorAiProvidersPageClient = ({
   return (
     <>
       <AiProvidersPageLayout
+        breadcrumbRefresh={
+          <PlatformPageRefreshButton
+            isRefreshing={isRefreshing}
+            onRefresh={refresh}
+          />
+        }
         actions={
-          <>
-            <PlatformPageRefreshButton
-              isRefreshing={isRefreshing}
-              onRefresh={refresh}
-            />
-            <Button
-              type='button'
-              onClick={openCreateDialog}
-            >
-              <IconPlus className='size-4' />
-              Add provider
-            </Button>
-          </>
+          <Button
+            type='button'
+            onClick={openCreateDialog}
+          >
+            <IconPlus className='size-4' />
+            Add provider
+          </Button>
         }
         providers={
           <ProvidersGrid

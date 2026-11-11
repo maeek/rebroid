@@ -26,12 +26,15 @@ export const FirewallSettingsPageClient = ({
   }
 
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Security' }}
         title='Network policies'
         description='Apply outbound network restrictions to application containers.'
-        actions={
+        breadcrumbRefresh={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing || loading}
             onRefresh={refresh}

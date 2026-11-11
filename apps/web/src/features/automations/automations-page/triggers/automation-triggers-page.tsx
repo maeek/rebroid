@@ -261,7 +261,10 @@ export function AutomationTriggersPage({
   const busy = loading || saving || busyId !== null || bulkPending !== null
 
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Automations' }}
         title='Triggers'

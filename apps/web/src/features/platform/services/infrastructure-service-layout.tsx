@@ -27,7 +27,7 @@ export const InfrastructureServiceLayout = ({
       section={{ label: 'Platform', href: '/platform' }}
       trail={[{ label: 'Services', href: '/platform/services' }]}
       title={serviceId === 'docker' ? 'Docker' : 'Orchestrator'}
-      actions={actions}
+      breadcrumbRefresh={actions}
     />
     <PageContent>
       {health}

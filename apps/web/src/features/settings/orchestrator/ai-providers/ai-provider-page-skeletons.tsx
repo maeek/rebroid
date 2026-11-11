@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderEditorLayout, type ProviderEditorView } from './provider-editor-layout'
@@ -20,6 +21,12 @@ const noop = () => undefined
 export const AiProvidersPageSkeleton = () => (
   <AiProvidersPageLayout
     actions={<Skeleton className='h-9 w-32' />}
+    breadcrumbRefresh={
+      <PlatformPageRefreshButton
+        disabled
+        onRefresh={noop}
+      />
+    }
     providers={
       <ProvidersGrid
         providers={[]}

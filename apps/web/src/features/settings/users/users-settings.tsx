@@ -125,7 +125,10 @@ export const UsersSettings = ({
   }
 
   return (
-    <StandardPage className='gap-2'>
+    <StandardPage
+      gridToolbar
+      className='gap-2'
+    >
       <PageHeader
         section={{ label: 'Security' }}
         title='Users'
