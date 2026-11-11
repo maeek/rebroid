@@ -22,7 +22,7 @@ export interface FirewallPolicyState {
 interface StoredPolicyState {
   policies: FirewallPolicy[];
   removals: [string, number][];
-  revisions?: [string, number][];
+  revisions: [string, number][];
   lastReconciledAt: number | null;
 }
 
@@ -38,48 +38,38 @@ export class FirewallPolicyStore {
 
   load() {
     if (!existsSync(this.statePath)) return this.snapshot();
-    const stored = JSON.parse(readFileSync(this.statePath, "utf8")) as
-      StoredPolicyState | FirewallPolicy[];
-    const policies = new Map<string, FirewallPolicy>();
-    const legacy = Array.isArray(stored);
+    const stored = JSON.parse(
+      readFileSync(this.statePath, "utf8"),
+    ) as StoredPolicyState | null;
     if (
-      !legacy &&
-      (!Array.isArray(stored.policies) ||
-        !Array.isArray(stored.removals) ||
-        (stored.lastReconciledAt !== null &&
-          (!Number.isSafeInteger(stored.lastReconciledAt) ||
-            stored.lastReconciledAt < 0)) ||
-        (stored.revisions !== undefined && !Array.isArray(stored.revisions)) ||
-        [...stored.removals, ...(stored.revisions ?? [])].some(
-          (entry) =>
-            !Array.isArray(entry) ||
-            typeof entry[0] !== "string" ||
-            !Number.isSafeInteger(entry[1]) ||
-            entry[1] < 0,
-        ))
+      !Array.isArray(stored?.policies) ||
+      !Array.isArray(stored.removals) ||
+      !Array.isArray(stored.revisions) ||
+      (stored.lastReconciledAt !== null &&
+        (!Number.isSafeInteger(stored.lastReconciledAt) ||
+          stored.lastReconciledAt < 0)) ||
+      [...stored.removals, ...stored.revisions].some(
+        (entry) =>
+          !Array.isArray(entry) ||
+          typeof entry[0] !== "string" ||
+          !Number.isSafeInteger(entry[1]) ||
+          entry[1] < 0,
+      )
     ) {
       throw new Error("Invalid persisted firewall policy state.");
     }
-    for (const policy of legacy ? stored : stored.policies) {
+    const policies = new Map<string, FirewallPolicy>();
+    for (const policy of stored.policies) {
       policies.set(
         policy.applicationId,
         validatePolicy(policy.applicationId, policy),
       );
     }
-    const revisions = new Map(legacy ? [] : (stored.revisions ?? []));
-    for (const { applicationId, revision } of policies.values()) {
-      if (revision !== undefined) {
-        revisions.set(
-          applicationId,
-          Math.max(revisions.get(applicationId) ?? 0, revision),
-        );
-      }
-    }
     this.state = {
       policies,
-      removals: new Map(legacy ? [] : stored.removals),
-      revisions,
-      lastReconciledAt: legacy ? null : stored.lastReconciledAt,
+      removals: new Map(stored.removals),
+      revisions: new Map(stored.revisions),
+      lastReconciledAt: stored.lastReconciledAt,
     };
     return this.snapshot();
   }

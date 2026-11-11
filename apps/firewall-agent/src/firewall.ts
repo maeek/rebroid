@@ -7,9 +7,7 @@ import {
 } from "@rebroid/firewall-policy-core/policy";
 
 const ROOT_CHAIN = "REBROID_FW";
-const LEGACY_ROOT_CHAIN = "REBROID_FW_NEXT";
-const OWNED_APP_CHAIN =
-  /^-N ((?:RB_APP_|REBROID_APP_)[A-Z0-9]{1,16}(?:_NEXT)?)$/;
+const OWNED_APP_CHAIN = /^-N (RB_APP_[A-Z0-9]{1,16})$/;
 const IPTABLES_LOCK_WAIT = "5";
 const NFT_TABLE = "rebroid_fw";
 
@@ -93,7 +91,6 @@ export class IptablesAdapter implements FirewallAdapter {
 
     const rules = listing.output.split("\n");
     const anchorRule = `-A ${this.anchor} -j ${ROOT_CHAIN}`;
-    const legacyAnchorRule = `-A ${this.anchor} -j ${LEGACY_ROOT_CHAIN}`;
     const activeChains = new Set([ROOT_CHAIN]);
     const declarations = [`:${ROOT_CHAIN} - [0:0]`];
     const updates: string[] = [];
@@ -115,7 +112,7 @@ export class IptablesAdapter implements FirewallAdapter {
     }
 
     for (const rule of rules) {
-      if (rule === anchorRule || rule === legacyAnchorRule) {
+      if (rule === anchorRule) {
         updates.push(`-D ${rule.slice(3)}`);
       }
     }
@@ -127,11 +124,7 @@ export class IptablesAdapter implements FirewallAdapter {
     // Retire obsolete chains only after the new forwarding path is committed.
     // If any chain is still referenced, deletion fails and this batch is discarded.
     const staleChains = rules
-      .map((rule) =>
-        rule === `-N ${LEGACY_ROOT_CHAIN}`
-          ? LEGACY_ROOT_CHAIN
-          : OWNED_APP_CHAIN.exec(rule)?.[1],
-      )
+      .map((rule) => OWNED_APP_CHAIN.exec(rule)?.[1])
       .filter(
         (chain): chain is string =>
           chain !== undefined && !activeChains.has(chain),

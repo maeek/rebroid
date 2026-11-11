@@ -7,7 +7,7 @@ import {
   validatePolicy,
   type FirewallCommandRunner,
 } from "./firewall";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FirewallPolicyStore } from "./policy-store";
@@ -121,18 +121,16 @@ function recordIptablesRestores(listing = "") {
   return { runner, batches };
 }
 
-test("legacy forwarding jumps are replaced in the same batch as the rebuilt rules", () => {
+test("forwarding jumps are replaced atomically before unused chains are removed", () => {
   const { runner, batches } = recordIptablesRestores(
     [
       "-N REBROID_FW",
-      "-N REBROID_FW_NEXT",
-      "-N RB_APP_APP1_NEXT",
+      "-N RB_APP_RETIRED",
       "-N UNRELATED",
-      "-A DOCKER-USER -j REBROID_FW_NEXT",
       "-A DOCKER-USER -j REBROID_FW",
       "-A DOCKER-USER -j REBROID_FW",
       "-A DOCKER-USER -j UNRELATED",
-      "-A REBROID_FW_NEXT -s 172.18.0.2/32 -j RB_APP_APP1_NEXT",
+      "-A REBROID_FW -s 172.18.0.3/32 -j RB_APP_RETIRED",
     ].join("\n"),
   );
   const adapter = new IptablesAdapter("DOCKER-USER", runner);
@@ -154,7 +152,6 @@ test("legacy forwarding jumps are replaced in the same batch as the rebuilt rule
         "-A RB_APP_APP1 -d 10.0.0.0/8 -j ACCEPT",
         "-A RB_APP_APP1 -j REJECT",
         "-A REBROID_FW -s 172.18.0.2 -j RB_APP_APP1",
-        "-D DOCKER-USER -j REBROID_FW_NEXT",
         "-D DOCKER-USER -j REBROID_FW",
         "-D DOCKER-USER -j REBROID_FW",
         "-I DOCKER-USER 1 -j REBROID_FW",
@@ -163,14 +160,7 @@ test("legacy forwarding jumps are replaced in the same batch as the rebuilt rule
       ignoreFailure: false,
     },
     {
-      rules: [
-        "*filter",
-        "-F REBROID_FW_NEXT",
-        "-F RB_APP_APP1_NEXT",
-        "-X REBROID_FW_NEXT",
-        "-X RB_APP_APP1_NEXT",
-        "COMMIT",
-      ],
+      rules: ["*filter", "-F RB_APP_RETIRED", "-X RB_APP_RETIRED", "COMMIT"],
       ignoreFailure: true,
     },
   ]);
@@ -225,9 +215,9 @@ test("policy storage atomically replaces and reloads desired state", () => {
       allowCidrs: ["10.0.0.0/8"],
       generation: 3,
     });
-    writeFileSync(statePath, JSON.stringify([policy]));
     const state = store.load();
-    assert.equal(state.policies.get("app-1")?.generation, 3);
+    state.policies.set("app-1", policy);
+    store.save(state);
     state.removals.set("app-2", 4);
     store.save(state);
     assert.equal(

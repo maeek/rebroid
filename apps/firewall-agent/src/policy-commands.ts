@@ -49,54 +49,44 @@ export class FirewallPolicyCommands {
     }
   }
 
-  reconcile(desired: Map<string, FirewallPolicy>, startedAt?: number) {
+  reconcile(desired: Map<string, FirewallPolicy>, startedAt: number) {
     this.recoverIfNeeded();
     const state = this.store.snapshot();
-    if (
-      startedAt !== undefined &&
-      state.lastReconciledAt !== null &&
-      startedAt < state.lastReconciledAt
-    ) {
+    if (state.lastReconciledAt !== null && startedAt < state.lastReconciledAt) {
       return "stale";
     }
 
     for (const [id, policy] of desired) {
       const existing = state.policies.get(id);
-      const generation = startedAt ?? policy.generation;
       const newerRevisionForSameRuntime =
         existing?.containerId === policy.containerId &&
         (policy.revision ?? 0) > (existing.revision ?? 0);
       if (
         (policy.revision ?? 0) < (state.revisions.get(id) ?? 0) ||
-        this.wasRemoved(state.removals, policy, generation) ||
+        this.wasRemoved(state.removals, policy, startedAt) ||
         (!newerRevisionForSameRuntime &&
-          ((state.lastReconciledAt !== null &&
-            generation < state.lastReconciledAt) ||
-            (existing && existing.generation >= generation)))
+          existing &&
+          existing.generation >= startedAt)
       ) {
         if (existing) desired.set(id, existing);
         else desired.delete(id);
-      } else if (generation !== policy.generation) {
-        desired.set(id, { ...policy, generation });
+      } else if (startedAt !== policy.generation) {
+        desired.set(id, { ...policy, generation: startedAt });
       }
     }
     for (const [id, policy] of state.policies) {
       if (
         policy.startup ||
         state.policies.get(`startup-${id}`)?.startup ||
-        (!desired.has(id) &&
-          startedAt !== undefined &&
-          policy.generation >= startedAt)
+        (!desired.has(id) && policy.generation >= startedAt)
       ) {
         desired.set(id, policy);
       }
     }
-    if (startedAt !== undefined) {
-      state.lastReconciledAt = startedAt;
-      // The durable snapshot timestamp blocks older replays after pruning removals.
-      for (const [id, removedAt] of state.removals) {
-        if (removedAt < startedAt) state.removals.delete(id);
-      }
+    state.lastReconciledAt = startedAt;
+    // The durable snapshot timestamp blocks older replays after pruning removals.
+    for (const [id, removedAt] of state.removals) {
+      if (removedAt < startedAt) state.removals.delete(id);
     }
 
     state.policies = desired;

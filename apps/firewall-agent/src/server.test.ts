@@ -19,7 +19,7 @@ const adapter: FirewallAdapter = {
   reconcile() {},
 };
 
-test("startup recovery reinstalls saved policies without rewriting legacy state", (context) => {
+test("startup recovery reinstalls saved policies without rewriting state", (context) => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const statePath = join(directory, "policies.json");
@@ -32,7 +32,11 @@ test("startup recovery reinstalls saved policies without rewriting legacy state"
     generation: 10,
     startup: true,
   };
-  const saved = JSON.stringify([policy], null, 2);
+  const saved = JSON.stringify(
+    { policies: [policy], removals: [], revisions: [], lastReconciledAt: null },
+    null,
+    2,
+  );
   writeFileSync(statePath, saved);
   const installed = new Map<string, FirewallPolicy>();
 
@@ -138,7 +142,10 @@ test("server restores saved rules before the generated shared secret is availabl
     allowCidrs: [],
     generation: 10,
   };
-  writeFileSync(statePath, JSON.stringify([policy]));
+  const store = new FirewallPolicyStore(statePath);
+  const state = store.snapshot();
+  state.policies.set(policy.applicationId, policy);
+  store.save(state);
   const installed: FirewallPolicy[] = [];
   const server = startTestServer(
     new FirewallPolicyStore(statePath),
@@ -163,26 +170,38 @@ test("server restores saved rules before the generated shared secret is availabl
     },
   });
   assert.equal(
-    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    await requestPolicy(server, "PUT", "/v1/reconcile", {
+      policies: [],
+      startedAt: 20,
+    }),
     401,
   );
   assert.deepEqual(installed, [policy]);
 
   writeFileSync(secretPath, "");
   assert.equal(
-    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    await requestPolicy(server, "PUT", "/v1/reconcile", {
+      policies: [],
+      startedAt: 20,
+    }),
     401,
   );
   writeFileSync(secretPath, "secret\n");
   assert.equal(
-    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    await requestPolicy(server, "PUT", "/v1/reconcile", {
+      policies: [],
+      startedAt: 20,
+    }),
     200,
   );
 
   rmSync(secretPath);
   assert.equal((await requestAgent(server, "GET", "/v1/health")).status, 200);
   assert.equal(
-    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    await requestPolicy(server, "PUT", "/v1/reconcile", {
+      policies: [],
+      startedAt: 20,
+    }),
     200,
   );
 });
@@ -543,17 +562,20 @@ test("bulk snapshots respect policy revisions and runtime generation ordering", 
     generation: 30,
     revision: 1,
   };
-  const snapshot = (policies: FirewallPolicy[], startedAt?: number) =>
+  const snapshot = (policies: FirewallPolicy[], startedAt: number) =>
     requestPolicy(server, "PUT", "/v1/reconcile", { policies, startedAt });
   assert.equal(
     await requestPolicy(server, "PUT", "/v1/policies/app-1", policy),
     200,
   );
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    400,
+  );
+  assert.equal(await snapshot([{ ...policy, generation: 50 }], 10), 200);
   assert.equal(await snapshot([], 20), 200);
-  for (const generation of [10, 25]) {
-    assert.equal(await snapshot([{ ...policy, generation }]), 200);
-    assert.deepEqual(store.snapshot().policies.get("app-1"), policy);
-  }
+  assert.equal(await snapshot([{ ...policy, generation: 50 }], 25), 200);
+  assert.deepEqual(store.snapshot().policies.get("app-1"), policy);
   const newRevision = { ...policy, revision: 2, allowCidrs: ["192.0.2.0/24"] };
   assert.equal(await snapshot([newRevision], 30), 200);
   assert.deepEqual(store.snapshot().policies.get("app-1"), newRevision);
@@ -566,8 +588,11 @@ test("bulk snapshots respect policy revisions and runtime generation ordering", 
   );
   assert.deepEqual(store.snapshot().policies.get("app-1"), newRevision);
   const laterRevision = { ...newRevision, revision: 3, generation: 25 };
-  assert.equal(await snapshot([laterRevision]), 200);
-  assert.deepEqual(store.snapshot().policies.get("app-1"), laterRevision);
+  assert.equal(await snapshot([laterRevision], 31), 200);
+  assert.deepEqual(store.snapshot().policies.get("app-1"), {
+    ...laterRevision,
+    generation: 31,
+  });
 });
 
 test("a guarded removal fences a stale first write without blocking the replacement", async (context) => {
