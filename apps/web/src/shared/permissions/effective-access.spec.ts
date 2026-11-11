@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { administratorsGroupId, resolveEffectiveAccess } from './effective-access'
+import { defaultUserQuota, normalizeGroupQuota } from './permissions'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
 const groups: UserGroup[] = [
@@ -63,6 +64,17 @@ describe('effective access', () => {
   it('leaves empty and missing memberships without a grant', () => {
     expect(resolveEffectiveAccess(groups, []).decisions).toEqual({})
     expect(resolveEffectiveAccess(groups, ['deleted']).decisions).toEqual({})
+    expect(resolveEffectiveAccess(groups, ['deleted']).quotas).toEqual(defaultUserQuota)
+  })
+
+  it('uses the final resolved group’s entire quota profile, including unlimited fields', () => {
+    const operators = { ...groups[0], quotas: normalizeGroupQuota({ maxMemoryMb: 4096, maxCpuCpus: 4 }) }
+    const auditors = { ...groups[1], quotas: normalizeGroupQuota({ maxOpenApps: null }) }
+    expect(resolveEffectiveAccess([operators, auditors], ['operators', 'auditors', 'missing']).quotas).toEqual({
+      ...defaultUserQuota,
+      maxOpenApps: null
+    })
+    expect(resolveEffectiveAccess([operators, auditors], ['auditors', 'operators']).quotas).toEqual(operators.quotas)
   })
 
   it('gives the built-in Administrators group full access independent of group order', () => {

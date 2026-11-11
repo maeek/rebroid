@@ -11,7 +11,7 @@ import { revalidateApplicationDetail, revalidateApplicationList } from '../../..
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { getEnforcedResourceQuota } from '../../resource-quota'
 import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
-import { assertCanOpenApplicationSlot, getAccessibleApplication } from '../common/action-helpers'
+import { getAccessibleApplication } from '../common/action-helpers'
 
 export const requestApplicationCloneAction = async (id: string) =>
   runSafeAction(
@@ -30,7 +30,6 @@ export const requestApplicationCloneAction = async (id: string) =>
       const quotas = await getEnforcedResourceQuota(user.quotas)
       enforceResourceQuotas(source.runtime.resources, quotas)
       enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, quotas)
-      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps)
       const command = await orchestratorAppCatalogClient.cloneApplication(
         id,
         {

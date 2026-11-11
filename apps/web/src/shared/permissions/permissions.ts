@@ -238,16 +238,12 @@ export const unlimitedQuota: ResourceQuota = {
   maxCpuCpus: null
 }
 
-export const mergeQuotas = (...quotas: Array<Partial<ResourceQuota> | null | undefined>): ResourceQuota =>
-  quotas.reduce<ResourceQuota>(
-    (merged, quota) => ({
-      maxOpenApps: quota?.maxOpenApps !== undefined ? quota.maxOpenApps : merged.maxOpenApps,
-      maxSessionSeconds: quota?.maxSessionSeconds !== undefined ? quota.maxSessionSeconds : merged.maxSessionSeconds,
-      maxMemoryMb: quota?.maxMemoryMb !== undefined ? quota.maxMemoryMb : merged.maxMemoryMb,
-      maxCpuCpus: quota?.maxCpuCpus !== undefined ? quota.maxCpuCpus : merged.maxCpuCpus
-    }),
-    { ...defaultUserQuota }
-  )
+export const normalizeGroupQuota = ({
+  maxOpenApps = defaultUserQuota.maxOpenApps,
+  maxSessionSeconds = defaultUserQuota.maxSessionSeconds,
+  maxMemoryMb = defaultUserQuota.maxMemoryMb,
+  maxCpuCpus = defaultUserQuota.maxCpuCpus
+}: Partial<ResourceQuota>): ResourceQuota => ({ maxOpenApps, maxSessionSeconds, maxMemoryMb, maxCpuCpus })
 
 export const hasPermission = (permissions: PermissionMap, permission: PermissionId) => permissions[permission] === true
 

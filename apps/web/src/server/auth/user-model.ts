@@ -10,7 +10,7 @@ import {
   defaultUserPermissions,
   defaultUserQuota,
   fullPermissions,
-  mergeQuotas,
+  normalizeGroupQuota,
   unlimitedQuota,
   type PermissionMap,
   type ResourceQuota
@@ -123,5 +123,5 @@ export const validateGroupPolicy = (permissions: PermissionMap, quotas: Partial<
   if (!parsedPermissions.success || !parsedQuotas.success) {
     throw new PublicActionError('Check the group permissions and quotas.', { code: 'validation', status: 422 })
   }
-  return { permissions: parsedPermissions.data, quotas: mergeQuotas(parsedQuotas.data) }
+  return { permissions: parsedPermissions.data, quotas: normalizeGroupQuota(parsedQuotas.data) }
 }

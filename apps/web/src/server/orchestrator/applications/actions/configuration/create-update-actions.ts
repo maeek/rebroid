@@ -24,7 +24,7 @@ import {
   enforceSessionQuota,
   sanitizeAndroidApplicationForUser
 } from '../../safety'
-import { assertCanAccessApplication, assertCanOpenApplicationSlot } from '../common/action-helpers'
+import { assertCanAccessApplication } from '../common/action-helpers'
 import { toCreateApplicationError } from './create-application-error'
 
 const assertCanChangeResources = (
@@ -167,7 +167,6 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
       const quotas = await getEnforcedResourceQuota(user.quotas, manifest)
       enforceResourceQuotas(input, quotas)
       enforceSessionQuota(input, quotas)
-      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps)
       const ownerUserId = await getCurrentOwnerUserId()
       const containerImage = input.containerImage?.trim()
       const command = await orchestratorAppCatalogClient

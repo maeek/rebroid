@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util'
 import 'server-only'
 import { z } from 'zod'
 import { groupPermissionsSchema, groupQuotaSchema, type StoredUser, type UsersFile } from '@/server/auth/user-model'
-import { mergeQuotas } from '@/shared/permissions/permissions'
+import { normalizeGroupQuota } from '@/shared/permissions/permissions'
 import { getDatabase } from './database'
 import { enqueueWebMaintenance, type ViewerRevocationJob } from './web-maintenance-repository'
 import type { UserGroup } from '@/shared/contracts/auth-user'
@@ -39,7 +39,7 @@ const readGroups = (): UserGroup[] =>
     name: row.name,
     description: row.description,
     permissions: groupPermissionsSchema.parse(JSON.parse(row.permissions_json)),
-    quotas: mergeQuotas(groupQuotaSchema.parse(JSON.parse(row.quotas_json))),
+    quotas: normalizeGroupQuota(groupQuotaSchema.parse(JSON.parse(row.quotas_json))),
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }))

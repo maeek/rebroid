@@ -16,7 +16,6 @@ import { getEnforcedResourceQuota } from '../../resource-quota'
 import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import {
   assertCanAccessApplication,
-  assertCanOpenApplicationSlot,
   assertCanUseOwnedApplicationRuntime,
   getAccessibleApplication,
   ownedRuntimeControlMessage
@@ -48,7 +47,6 @@ export const requestApplicationStartAction = async (id: string, input?: SwitchAp
       const quotas = await getEnforcedResourceQuota(user.quotas)
       enforceResourceQuotas(currentApp.runtime.resources, quotas)
       enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, quotas)
-      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps, id)
       const command = await orchestratorAppLifecycleClient.startApplication(id, input, user.quotas.maxOpenApps)
       recordAuditEvent({
         actorUserId: user.ownerUserId,
@@ -122,7 +120,6 @@ export const recreateApplicationAction = async (id: string) =>
       const quotas = await getEnforcedResourceQuota(user.quotas)
       enforceResourceQuotas(app.runtime.resources, quotas)
       enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, quotas)
-      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps, id)
       const command = await orchestratorAppLifecycleClient.recreateApplication(id, user.quotas.maxOpenApps)
       recordAuditEvent({
         actorUserId: user.ownerUserId,

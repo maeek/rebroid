@@ -1,4 +1,10 @@
-import { allPermissionIds, mergeQuotas, unlimitedQuota, type PermissionId, type ResourceQuota } from './permissions'
+import {
+  allPermissionIds,
+  defaultUserQuota,
+  unlimitedQuota,
+  type PermissionId,
+  type ResourceQuota
+} from './permissions'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
 export const administratorsGroupId = 'admins'
@@ -37,6 +43,6 @@ export const resolveEffectiveAccess = (groups: readonly UserGroup[], groupIds: r
     groups: selected,
     isPlatformAdmin: Boolean(administrators),
     decisions,
-    quotas: administrators ? unlimitedQuota : mergeQuotas(...selected.map(group => group.quotas))
+    quotas: administrators ? unlimitedQuota : { ...(selected.at(-1)?.quotas ?? defaultUserQuota) }
   }
 }

@@ -23,7 +23,7 @@ vi.mock('../../../current-user', () => ({
 vi.mock('../../../features', () => ({ loadFeatureFlags: vi.fn().mockResolvedValue(null), requireFeature: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
 vi.mock('../../catalog-client', () => ({
-  orchestratorAppCatalogClient: { getApplication: vi.fn(), createApplication: vi.fn() }
+  orchestratorAppCatalogClient: { getApplication: vi.fn(), createApplication: vi.fn(), listApplications: vi.fn() }
 }))
 vi.mock('../../lifecycle-client', () => ({ orchestratorAppLifecycleClient: {} }))
 vi.mock('../../network-policy-client', () => ({
@@ -215,6 +215,31 @@ describe('network policy actions', () => {
       error: { code: 'forbidden' }
     })
     expect(orchestratorAppCatalogClient.createApplication).not.toHaveBeenCalled()
+  })
+
+  it('leaves manual open-app admission to the orchestrator with the configured limit', async () => {
+    const actor = user({ 'applications:create': true }, false, {
+      maxOpenApps: 2,
+      maxCpuCpus: 1,
+      maxMemoryMb: 512,
+      maxSessionSeconds: 60
+    })
+    vi.mocked(getCurrentUserContext).mockResolvedValue(actor)
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValueOnce({
+      id: '6d8b5e09-e4bf-4568-9aa9-0572237c04d3',
+      name: 'Test app'
+    } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
+
+    const result = await submitCreateApplicationAction({ name: 'Test app' })
+
+    expect(result).toMatchObject({ ok: true })
+    expect(orchestratorAppCatalogClient.listApplications).not.toHaveBeenCalled()
+    expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Test app' }),
+      result.requestId,
+      2,
+      actor
+    )
   })
 
   it('skips web quota checks while preserving the configured limit for transactional admission', async () => {
