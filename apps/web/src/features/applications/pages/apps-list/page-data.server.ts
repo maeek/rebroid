@@ -9,7 +9,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 export const getAppsListPageData = async () => {
   const initialSettingsPromise = getServerOrchestratorUiSettings()
   const user = await getCurrentUserContext()
-  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
   const ownerNamesPromise = getVisibleOwnerDisplayNames(user)
   let orchestratorError: string | null = null
   const appsPromise = orchestratorAppCatalogClient
@@ -39,8 +39,8 @@ export const getAppsListPageData = async () => {
 
   return {
     apps,
-    canCreate: user.role === 'admin' || hasPermission(user.permissions, 'applications:create'),
-    canFilterByOwner: user.role === 'admin',
+    canCreate: hasPermission(user.permissions, 'applications:create'),
+    canFilterByOwner: user.isPlatformAdmin,
     currentOwnerUserId: user.ownerUserId,
     initialSettings,
     orchestratorError

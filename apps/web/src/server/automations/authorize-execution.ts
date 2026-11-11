@@ -26,7 +26,6 @@ export const authorizeAutomationExecution = async (input: {
   }
   const user = {
     ownerUserId: account.id,
-    role: account.role,
     permissions: account.effectivePermissions,
     quotas: account.effectiveQuotas
   }

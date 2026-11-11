@@ -1,11 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  defaultUserPermissions,
-  defaultUserQuota,
-  fullPermissions,
-  unlimitedQuota
-} from '@/shared/permissions/permissions'
+import { defaultUserPermissions, defaultUserQuota } from '@/shared/permissions/permissions'
 import { buildCreateGroupInput, CreateGroupDialog, createInitialGroupDraft } from './create-group-dialog'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 
@@ -27,7 +22,6 @@ const createdGroup: UserGroup = {
   id: 'group-1',
   name: 'Support',
   description: 'Support operators',
-  role: 'user',
   permissions: defaultUserPermissions,
   quotas: defaultUserQuota,
   createdAt: '2026-07-29T00:00:00.000Z',
@@ -47,28 +41,12 @@ describe('CreateGroupDialog', () => {
     mocks.toast.mockReset()
   })
 
-  it('uses user defaults and locks admin payloads to full access', () => {
+  it('starts from the standard group permission and quota defaults', () => {
     expect(buildCreateGroupInput(createInitialGroupDraft())).toEqual({
       name: '',
       description: '',
-      role: 'user',
       quotas: defaultUserQuota,
       permissions: defaultUserPermissions
-    })
-
-    expect(
-      buildCreateGroupInput({
-        ...createInitialGroupDraft(),
-        role: 'admin',
-        quotas: { maxOpenApps: 1 },
-        permissions: { 'applications:create': false }
-      })
-    ).toEqual({
-      name: '',
-      description: '',
-      role: 'admin',
-      quotas: unlimitedQuota,
-      permissions: fullPermissions
     })
   })
 
@@ -95,7 +73,6 @@ describe('CreateGroupDialog', () => {
     expect(mocks.createUserGroupAction).toHaveBeenCalledWith({
       name: 'Support',
       description: 'Support operators',
-      role: 'user',
       quotas: defaultUserQuota,
       permissions: defaultUserPermissions
     })

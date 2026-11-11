@@ -9,14 +9,14 @@ import type { RunningApplicationNotifications } from '@/shared/contracts/applica
 
 export const listApplicationsAction = async () => {
   const user = await getCurrentUserContext()
-  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
   const apps = await orchestratorAppCatalogClient.listApplications(ownerUserId)
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
 }
 
 export const reconcileApplicationsRuntimeStateAction = async () => {
   const user = await getCurrentUserContext()
-  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
   const results = await orchestratorAppCatalogClient.reconcileApplications(ownerUserId)
   return results.map(result => ({
     ...result,

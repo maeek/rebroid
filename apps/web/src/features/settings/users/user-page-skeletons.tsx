@@ -11,7 +11,7 @@ import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupMembershipEditor } from './components/group-membership-editor'
 import { GroupDetailsSections, UserAccountSections } from './components/identity-fields'
 import { PermissionEditor } from './components/permission-editor'
-import { QuotaFields } from './components/quota-fields'
+import { EffectiveQuotaFields, QuotaFields } from './components/quota-fields'
 import { GroupsSettings } from './groups-settings'
 import { UsersSettings } from './users-settings'
 
@@ -103,18 +103,22 @@ const EditBodySkeleton = ({ variant }: { variant: 'user' | 'group' }) => (
       permissions={
         <PermissionEditor
           permissions={{}}
-          effectiveAccess={variant === 'user' ? { groups: [], decisions: {} } : undefined}
           loading
-          onChange={() => undefined}
+          onChange={variant === 'group' ? () => undefined : undefined}
         />
       }
+      quotasDescription={variant === 'user' ? 'Effective limits from the selected groups.' : undefined}
       quotas={
-        <FormLoadingBoundary>
-          <QuotaFields
-            quotas={{}}
-            onChange={() => undefined}
-          />
-        </FormLoadingBoundary>
+        variant === 'user' ? (
+          <EffectiveQuotaFields loading />
+        ) : (
+          <FormLoadingBoundary>
+            <QuotaFields
+              quotas={{}}
+              onChange={() => undefined}
+            />
+          </FormLoadingBoundary>
+        )
       }
     />
   </PageContent>

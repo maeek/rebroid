@@ -11,7 +11,7 @@ export const listRecentAppsAction = listVisibleRecentApps
 export const rememberRecentAppAction = async (appId: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(appId)
-  if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
+  if (!user.isPlatformAdmin && app.ownerUserId !== user.ownerUserId) {
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   }
 

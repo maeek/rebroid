@@ -33,13 +33,13 @@ export const requestApplicationStartAction = async (id: string, input?: SwitchAp
     async () => {
       assertValidApplicationId(id)
       const { app: currentApp, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:start')) {
+      if (!hasPermission(user.permissions, 'applications:start')) {
         throw new PublicActionError('You do not have permission to start applications.', {
           code: 'forbidden',
           status: 403
         })
       }
-      if (input && user.role !== 'admin' && !hasPermission(user.permissions, 'applications:switch-profile')) {
+      if (input && !hasPermission(user.permissions, 'applications:switch-profile')) {
         throw new PublicActionError('You do not have permission to switch profiles.', {
           code: 'forbidden',
           status: 403
@@ -77,7 +77,7 @@ export const requestApplicationStopAction = async (id: string) =>
     async () => {
       assertValidApplicationId(id)
       const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:stop')) {
+      if (!hasPermission(user.permissions, 'applications:stop')) {
         throw new PublicActionError('You do not have permission to stop applications.', {
           code: 'forbidden',
           status: 403
@@ -111,9 +111,8 @@ export const recreateApplicationAction = async (id: string) =>
       assertValidApplicationId(id)
       const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
       if (
-        user.role !== 'admin' &&
-        (!hasPermission(user.permissions, 'applications:start') ||
-          !hasPermission(user.permissions, 'applications:stop'))
+        !hasPermission(user.permissions, 'applications:start') ||
+        !hasPermission(user.permissions, 'applications:stop')
       ) {
         throw new PublicActionError('Recreating an app requires permission to start and stop it.', {
           code: 'forbidden',
@@ -143,7 +142,7 @@ export const recreateApplicationAction = async (id: string) =>
 export const deleteApplicationProfileAction = async (id: string, profileName: string) => {
   await assertCanAccessApplication(id)
   const user = await getCurrentUserContext()
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
+  if (!hasPermission(user.permissions, 'applications:delete')) {
     throw new PublicActionError('You do not have permission to delete application profiles.', {
       code: 'forbidden',
       status: 403
@@ -171,7 +170,7 @@ export const requestApplicationDeletionAction = async (id: string, removeData = 
     async requestId => {
       assertValidApplicationId(id)
       const { user } = await getAccessibleApplication(id)
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:delete')) {
+      if (!hasPermission(user.permissions, 'applications:delete')) {
         throw new PublicActionError('You do not have permission to delete applications.', {
           code: 'forbidden',
           status: 403

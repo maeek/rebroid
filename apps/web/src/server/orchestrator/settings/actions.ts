@@ -12,7 +12,7 @@ import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-
 
 const requireAutomationAiRunUser = async () => {
   const user = await getCurrentUserContext()
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'automations:run-ai')) {
+  if (!hasPermission(user.permissions, 'automations:run-ai')) {
     throw new PublicActionError('You do not have permission to use automation AI.', { code: 'forbidden', status: 403 })
   }
   return user

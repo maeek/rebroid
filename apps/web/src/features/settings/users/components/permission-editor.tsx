@@ -1,12 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
-import { Notice } from '@/components/ui/notice'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { resolveEffectiveAccess, type EffectiveAccess } from '@/shared/permissions/effective-access'
 import { permissionCategories, permissionDefinitions, type PermissionMap } from '@/shared/permissions/permissions'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -18,20 +15,19 @@ import {
   PermissionEffectiveCell,
   PermissionSettingCell
 } from './permission-cells'
+import type { EffectiveAccess } from '@/shared/permissions/effective-access'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const PermissionEditor = ({
-  permissions,
+  permissions = {},
   onChange,
-  effectiveAccess,
-  admin = false,
+  decisions = {},
   disabled = false,
   loading = false
 }: {
-  permissions: PermissionMap
-  onChange: (permissions: PermissionMap) => void
-  effectiveAccess?: EffectiveAccess
-  admin?: boolean
+  permissions?: PermissionMap
+  onChange?: (permissions: PermissionMap) => void
+  decisions?: EffectiveAccess['decisions']
   disabled?: boolean
   loading?: boolean
 }) => {
@@ -39,19 +35,15 @@ export const PermissionEditor = ({
   const [category, setCategory] = useState('all')
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(10)
-  const [view, setView] = useState('all')
-  const isUser = effectiveAccess !== undefined
-  let actionLabel = 'Group setting'
-  if (isUser) actionLabel = 'User override'
-  const overrideCount = permissionDefinitions.filter(permission => permissions[permission.id] !== undefined).length
-  const { decisions } = effectiveAccess ?? resolveEffectiveAccess([], [], admin ? 'admin' : 'user', permissions)
-  const grantedCount = permissionDefinitions.filter(permission => decisions[permission.id]?.allowed).length
+  const editable = onChange !== undefined
+  const grantedCount = permissionDefinitions.filter(permission =>
+    editable ? permissions[permission.id] === true : decisions[permission.id]?.allowed
+  ).length
   const query = search.trim().toLowerCase()
   const visible = permissionDefinitions.filter(permission => {
     if (category !== 'all' && permission.category !== category) return false
-    if (!admin && view === 'overrides' && permissions[permission.id] === undefined) return false
     const categoryName = permissionCategories.find(item => item.id === permission.category)?.name ?? ''
-    return `${permission.name} ${permission.id} ${permission.description} ${categoryName} ${effectiveAccess?.decisions[permission.id]?.groupName ?? (effectiveAccess && admin ? 'Admin role' : '')}`
+    return `${permission.name} ${permission.id} ${permission.description} ${categoryName} ${decisions[permission.id]?.groupName ?? ''}`
       .toLowerCase()
       .includes(query)
   })
@@ -69,7 +61,7 @@ export const PermissionEditor = ({
         meta: { skeleton: { kind: 'stacked' } },
         cell: PermissionIdentityCell
       },
-      ...(isUser || admin
+      ...(!editable
         ? [
             {
               id: 'effective',
@@ -83,11 +75,11 @@ export const PermissionEditor = ({
             }
           ]
         : []),
-      ...(!admin
+      ...(editable
         ? [
             {
               id: 'setting',
-              header: actionLabel,
+              header: 'Group setting',
               size: 200,
               minSize: 180,
               enableResizing: false,
@@ -99,24 +91,14 @@ export const PermissionEditor = ({
           ]
         : [])
     ],
-    [isUser, admin, actionLabel]
+    [editable]
   )
   return (
-    <PermissionEditorContext.Provider value={{ permissions, decisions, isUser, disabled, onChange }}>
+    <PermissionEditorContext.Provider value={{ permissions, decisions, disabled, onChange }}>
       <div
         className='@container/permissions grid min-w-0 gap-4'
         data-permission-editor=''
       >
-        {admin ? (
-          <Notice
-            title='Full administrator access'
-            description={
-              isUser
-                ? 'Admin users have every permission. Group settings and user overrides cannot restrict this role.'
-                : 'Admin groups grant every permission. Choose the User template to customize access.'
-            }
-          />
-        ) : null}
         <div className='flex flex-wrap items-center justify-between gap-2 text-sm'>
           <p
             className='text-foreground-muted'
@@ -131,21 +113,9 @@ export const PermissionEditor = ({
               <>
                 {' '}
                 {grantedCount} of {permissionDefinitions.length} permissions granted
-                {isUser && !admin ? ` · ${overrideCount} user ${overrideCount === 1 ? 'override' : 'overrides'}` : ''}
               </>
             )}
           </p>
-          {isUser && !admin ? (
-            <Button
-              type='button'
-              size='sm'
-              variant='ghost'
-              disabled={disabled || loading || overrideCount === 0}
-              onClick={() => onChange({})}
-            >
-              Reset all overrides
-            </Button>
-          ) : null}
         </div>
         <DataGridWorkspace
           search={search}
@@ -187,30 +157,6 @@ export const PermissionEditor = ({
                   </SelectContent>
                 </Select>
               </FormField>
-              {isUser && !admin ? (
-                <FormField
-                  label='Show'
-                  className='w-52 max-w-full'
-                  layout='vertical'
-                >
-                  <Select
-                    value={view}
-                    disabled={loading}
-                    onValueChange={value => {
-                      setView(value)
-                      setPageIndex(0)
-                    }}
-                  >
-                    <SelectTrigger className='w-full'>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='all'>All permissions</SelectItem>
-                      <SelectItem value='overrides'>User overrides</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              ) : null}
             </div>
           }
         >
@@ -224,12 +170,7 @@ export const PermissionEditor = ({
             loading={loading && { rowCount: 6 }}
             emptyState={
               <DataGridEmptyState
-                title={view === 'overrides' ? 'No user overrides' : 'No permissions available'}
-                description={
-                  view === 'overrides'
-                    ? 'Access is inherited from the selected role and groups.'
-                    : 'Permissions will appear here when they are available.'
-                }
+                title='No matching permissions'
                 filtered={Boolean(search.trim()) || category !== 'all'}
                 onReset={
                   category !== 'all'
@@ -254,7 +195,7 @@ export const PermissionEditor = ({
             loading={loading}
           />
         </DataGridWorkspace>
-        <p className='text-xs text-foreground-muted'>Changes apply when you save.</p>
+        {editable ? <p className='text-xs text-foreground-muted'>Changes apply when you save.</p> : null}
       </div>
     </PermissionEditorContext.Provider>
   )

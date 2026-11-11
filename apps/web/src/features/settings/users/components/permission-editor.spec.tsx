@@ -9,24 +9,19 @@ import type { PermissionMap } from '@/shared/permissions/permissions'
 const operators: UserGroup = {
   id: 'operators',
   name: 'Operators',
-  role: 'user',
   description: '',
   permissions: { 'applications:create': true },
   quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null },
   createdAt: '',
   updatedAt: ''
 }
-const Harness = ({ admin = false, group = false }: { admin?: boolean; group?: boolean }) => {
+const Harness = () => {
   const [permissions, setPermissions] = useState<PermissionMap>({ 'applications:delete': false })
   return (
     <>
       <PermissionEditor
         permissions={permissions}
         onChange={setPermissions}
-        effectiveAccess={
-          group ? undefined : resolveEffectiveAccess([operators], ['operators'], admin ? 'admin' : 'user', permissions)
-        }
-        admin={admin}
       />
       <output data-testid='payload'>{JSON.stringify(permissions)}</output>
     </>
@@ -42,21 +37,16 @@ const selectOption = async (name: string, option: string) => {
 const row = (name: string) => screen.getAllByRole('row').find(item => within(item).queryByText(name, { exact: true }))!
 
 describe('PermissionEditor', () => {
-  it('separates inherited access and overrides, and removes an override when Inherit is chosen', async () => {
-    render(<Harness />)
+  it('shows the source of an effective permission without a user-level editor', () => {
+    const { decisions } = resolveEffectiveAccess([operators], ['operators'])
+    render(<PermissionEditor decisions={decisions} />)
     expect(within(row('Create applications')).getByText('Granted', { exact: true })).toBeVisible()
     expect(within(row('Create applications')).getByText('From Operators')).toBeVisible()
-    await selectOption('Override Create applications', 'Deny')
-    expect(within(row('Create applications')).getByText('Not granted', { exact: true })).toBeVisible()
-    expect(screen.getByTestId('payload')).toHaveTextContent('"applications:create":false')
-    await selectOption('Override Create applications', 'Inherit')
-    expect(screen.getByTestId('payload')).not.toHaveTextContent('applications:create')
-    expect(screen.getByTestId('payload')).toHaveTextContent('"applications:delete":false')
-    expect(within(row('Create applications')).getByText('From Operators')).toBeVisible()
+    expect(within(row('Create applications')).queryByRole('combobox')).toBeNull()
   })
 
   it('searches all categories and edits only the chosen permission', async () => {
-    render(<Harness group />)
+    render(<Harness />)
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search permissions' }), { target: { value: 'Run ADB' } })
     expect(screen.queryByText('Create applications', { exact: true })).toBeNull()
     await selectOption('Set Run ADB shell steps', 'Grant')
@@ -69,25 +59,5 @@ describe('PermissionEditor', () => {
     expect(screen.getByRole('combobox', { name: 'Set Run ADB shell steps' })).toHaveAccessibleDescription(
       'Allow automation steps that run Android shell commands.'
     )
-  })
-
-  it('filters to explicit overrides and can reset them without changing membership', async () => {
-    render(<Harness />)
-    await selectOption('Show', 'User overrides')
-    expect(screen.queryByText('Create applications', { exact: true })).toBeNull()
-    expect(screen.getByText('Delete applications', { exact: true })).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Reset all overrides' }))
-    expect(screen.getByTestId('payload')).toHaveTextContent('{}')
-    expect(screen.getByText('No user overrides')).toBeVisible()
-  })
-
-  it('does not pretend a user override can restrict an administrator', () => {
-    render(<Harness admin />)
-    expect(screen.getByText('28 of 28 permissions granted')).toBeVisible()
-    expect(within(row('Delete applications')).getByText('Granted', { exact: true })).toBeVisible()
-    expect(screen.queryByRole('combobox', { name: 'Set Delete applications' })).toBeNull()
-    expect(screen.queryByRole('combobox', { name: 'Override Delete applications' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Reset all overrides' })).toBeNull()
-    expect(screen.getByTestId('payload')).toHaveTextContent('"applications:delete":false')
   })
 })

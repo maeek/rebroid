@@ -24,7 +24,7 @@ export const GroupsSettings = ({
       <PageHeader
         section={{ label: 'Security' }}
         title='Groups'
-        description='Groups provide default permissions and quotas. User-level settings can override them when needed.'
+        description='Groups provide the permissions and quotas that members inherit.'
         actions={
           <CreateGroupDialog
             disabled={loading}

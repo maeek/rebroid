@@ -14,7 +14,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getCurrentUser).mockResolvedValue({
     id: 'admin-1',
-    role: 'admin',
+    isPlatformAdmin: true,
     name: 'Operator',
     username: 'admin'
   } as Awaited<ReturnType<typeof getCurrentUser>>)
@@ -30,7 +30,9 @@ describe('audit CSV authorization and scope', () => {
   })
 
   it('denies non-administrators before touching the audit data', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({ role: 'user' } as Awaited<ReturnType<typeof getCurrentUser>>)
+    vi.mocked(getCurrentUser).mockResolvedValue({ isPlatformAdmin: false } as Awaited<
+      ReturnType<typeof getCurrentUser>
+    >)
     expect((await GET(request('?resourceType=application&resourceId=app-1'))).status).toBe(403)
     expect(exportAuditEvents).not.toHaveBeenCalled()
     expect(recordAuditEvent).not.toHaveBeenCalled()

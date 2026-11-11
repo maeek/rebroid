@@ -488,25 +488,23 @@ Groups, Permissions, and Quotas through the shared keyboard-accessible tabs with
 Group editors use Details, Permissions, and Quotas. Tabs retain mounted drafts and search/page state; the header
 Save persists the whole editor. Quotas have their own section and tab, separate from the permission table,
 without a disclosure or nested card. Explain unlimited administrator quotas in the Quotas tab.
-The Account tab groups identity, password, account status, appearance, and access role in separate shared Section
-containers. Group Details keeps name and role together and gives description its own Notes section. These sections
-are owned by the same components in ready and loading states, without an enclosing Account card.
+The Account tab groups identity, password, account status, and appearance in shared Section
+containers. Group Details keeps the name and description in separate sections. Ready and loading
+states use the same sections.
 
-Permissions use the shared DataGridWorkspace, DataGrid, and pagination rather than a feature-local table/list.
-Search names, descriptions, IDs, categories, and inherited sources; category and override filters combine with
-search. Group settings distinguish Grant/Deny/Not set, with Not set removing the stored decision so other groups
-can supply access. User rows show effective access, its source, and Inherit/Allow/Deny overrides. Inherit deletes
-the override, including explicit false values. Admin access stays read-only without a repeated action column.
-Keep cell renderer identities stable so editing a setting preserves keyboard focus. Avoid category-wide mutations
-that silently affect hidden search results.
+Permissions use the shared DataGridWorkspace, DataGrid, and pagination. Search names,
+descriptions, IDs, categories, and inherited sources. Editable group settings distinguish
+Grant, Deny, and Not set. The user editor previews effective access and its group source and
+displays effective quotas as read-only fields. Keep cell renderer identities stable so editing
+preserves keyboard focus.
 
-The Groups tab uses a searchable, paginated membership grid, with names, descriptions, priority, and reorder/remove
-actions. Edit membership opens a bounded dialog using the shared MultiSelectCombobox, removable chips, and option
-descriptions. Cancel discards dialog changes; Apply updates the user draft, and Save persists it. Keep the selected
-chip area scrollable so large memberships do not grow the dialog. Preserve stored membership order: later groups'
-defined permissions and quotas take precedence, then user overrides apply. Reorder by the full membership order,
-including when searched or paginated. When empty, preview the same fallback group as the server. Group editors and
-links remain administrator-authorized; do not change grant semantics to imitate another console.
+The Groups tab uses a searchable, paginated membership grid with names, descriptions, priority,
+and reorder and remove actions. Edit membership uses the shared MultiSelectCombobox with
+removable chips and option descriptions. Cancel discards changes, Apply updates the draft,
+and Save persists it. Keep the selected chip area scrollable. Reorder by the full membership order,
+including when searched or paginated. Later groups' defined permissions and quotas take
+precedence. The built-in Administrators group grants platform administration, full permissions,
+and unlimited quotas. An empty membership list grants no group permissions.
 
 Profile photos use UserAvatarInput with FileUploadField and a real keyboard-accessible picker button, an aligned
 preview, inline validation/error feedback, a processing state, and an explicit Remove photo action. Re-selecting

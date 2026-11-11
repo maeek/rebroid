@@ -9,13 +9,12 @@ import type {
 } from '@/shared/contracts/application'
 
 type AppSafetyContext = {
-  role: 'admin' | 'user'
   permissions: PermissionMap
   quotas: ResourceQuota
 }
 
 const canViewBackendDetails = (context: AppSafetyContext) =>
-  context.role === 'admin' || hasPermission(context.permissions, 'applications:view-backend-details')
+  hasPermission(context.permissions, 'applications:view-backend-details')
 
 const redactBackendDetails = (value: string) =>
   value

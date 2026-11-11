@@ -10,7 +10,6 @@ const groups: UserGroup[] = ['Operators', 'Auditors', 'Support'].map(name => ({
   id: name.toLowerCase(),
   name,
   description: `${name} access`,
-  role: 'user',
   permissions: {},
   quotas: defaultUserQuota,
   createdAt: '',

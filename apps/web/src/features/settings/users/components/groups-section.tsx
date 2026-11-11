@@ -6,11 +6,10 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
+import { isBuiltInGroup } from '@/shared/permissions/effective-access'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
@@ -31,19 +30,17 @@ export const GroupsSection = ({
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pendingDeleteGroups, setPendingDeleteGroups] = useState<UserGroup[]>([])
   const visibleGroups = groups.filter(group => {
     const query = search.trim().toLowerCase()
-    if (query && !`${group.name} ${group.description}`.toLowerCase().includes(query)) return false
-    return roleFilter === 'all' || group.role === roleFilter
+    return `${group.name} ${group.description}`.toLowerCase().includes(query)
   })
   const sortedGroups = [...visibleGroups].sort((left, right) => {
     const activeSorting = sorting.length > 0 ? sorting : [{ id: 'name', desc: false }]
     for (const item of activeSorting) {
       const multiplier = item.desc ? -1 : 1
-      const result = item.id === 'role' ? left.role.localeCompare(right.role) : left.name.localeCompare(right.name)
+      const result = left.name.localeCompare(right.name)
       if (result !== 0) return result * multiplier
     }
     return left.id.localeCompare(right.id)
@@ -68,14 +65,6 @@ export const GroupsSection = ({
           <div className='text-xs text-foreground-muted'>{row.original.description}</div>
         </ResourceLink>
       )
-    },
-    {
-      id: 'role',
-      accessorFn: group => group.role,
-      header: 'Role',
-      size: 128,
-      meta: { label: 'Role', skeleton: { kind: 'text', width: 'w-20' } },
-      cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
     }
   ]
 
@@ -120,32 +109,6 @@ export const GroupsSection = ({
           searchPlaceholder='Search groups'
           onSearchChange={setSearchDraft}
           onSearch={setSearch}
-          filters={
-            <FormField
-              label='Role'
-              layout='vertical'
-            >
-              <Select
-                value={roleFilter}
-                onValueChange={setRoleFilter}
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Any role</SelectItem>
-                  <SelectItem value='admin'>Admin</SelectItem>
-                  <SelectItem value='user'>User</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
-          }
-          activeFilters={
-            roleFilter === 'all'
-              ? []
-              : [{ id: 'role', label: 'Role', value: roleFilter, onRemove: () => setRoleFilter('all') }]
-          }
-          onResetFilters={() => setRoleFilter('all')}
           selectedCount={selectedGroups.length}
           bulkActions={
             <Button
@@ -173,6 +136,7 @@ export const GroupsSection = ({
             }
             selection={{
               disabled: loading,
+              canSelectId: id => !isBuiltInGroup(id),
               selectedIds,
               onSelectedIdsChange: setSelectedIds
             }}
@@ -200,14 +164,16 @@ export const GroupsSection = ({
                   <ContextMenuItem asChild>
                     <Link href={`/security/groups/${row.original.id}`}>Open group</Link>
                   </ContextMenuItem>
-                  <ContextMenuItem
-                    className='text-danger focus:text-danger'
-                    disabled={isSaving}
-                    onSelect={() => setPendingDeleteGroups([row.original])}
-                  >
-                    <IconTrash className='mr-2 size-4' />
-                    Delete
-                  </ContextMenuItem>
+                  {!isBuiltInGroup(row.original.id) ? (
+                    <ContextMenuItem
+                      className='text-danger focus:text-danger'
+                      disabled={isSaving}
+                      onSelect={() => setPendingDeleteGroups([row.original])}
+                    >
+                      <IconTrash className='mr-2 size-4' />
+                      Delete
+                    </ContextMenuItem>
+                  ) : null}
                 </>
               )
             }}
@@ -222,7 +188,7 @@ export const GroupsSection = ({
             : `Delete ${pendingDeleteGroups.length} selected groups?`
         }
         description='This removes the selected groups from the user store.'
-        consequence='Users assigned to these groups will fall back to their role defaults.'
+        consequence='Members lose the permissions and quotas inherited from these groups.'
         confirmLabel={pendingDeleteGroups.length === 1 ? 'Delete group' : 'Delete groups'}
         pending={isSaving}
         pendingLabel='Deleting…'

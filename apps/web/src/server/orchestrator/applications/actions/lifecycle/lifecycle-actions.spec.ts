@@ -8,6 +8,7 @@ import { runDueWebMaintenance } from '@/server/maintenance/web-maintenance'
 import { resetDatabaseForTests } from '@/server/persistence/database'
 import { listRecentApplications, rememberRecentApplication } from '@/server/persistence/recent-applications-repository'
 import { listDueWebMaintenance } from '@/server/persistence/web-maintenance-repository'
+import { fullPermissions } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
@@ -43,8 +44,8 @@ describe('application lifecycle acknowledgements', () => {
     vi.resetAllMocks()
     vi.mocked(getCurrentUserContext).mockResolvedValue({
       ownerUserId: 'owner',
-      role: 'admin',
-      permissions: {},
+      isPlatformAdmin: true,
+      permissions: fullPermissions,
       quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
     })
     vi.mocked(orchestratorAppCatalogClient.getApplication)
@@ -154,7 +155,7 @@ describe('application lifecycle acknowledgements', () => {
   it('preserves the stop permission and stable error code', async () => {
     vi.mocked(getCurrentUserContext).mockResolvedValue({
       ownerUserId: 'owner',
-      role: 'user',
+      isPlatformAdmin: false,
       permissions: {},
       quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
     })

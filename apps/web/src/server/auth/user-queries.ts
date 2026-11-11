@@ -78,7 +78,6 @@ export const authenticate = async (username: string, password: string, mfaCode?:
     email: null,
     image: user.avatarDataUrl,
     accentColor: user.accentColor,
-    role: user.role,
     passwordChangeRequired: user.passwordChangeRequired,
     sessionVersion: user.sessionVersion
   }

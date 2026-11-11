@@ -1,6 +1,7 @@
 import { readUsersFileFromDatabase, writeUsersFileToDatabase } from '@/server/persistence/users-repository'
+import { administratorsGroupId } from '@/shared/permissions/effective-access'
 import { hashPassword } from './password-hashing'
-import { normalizeGroups, normalizeUser, nowIso } from './user-model'
+import { defaultGroups, nowIso } from './user-model'
 import type { StoredUser, UsersFile } from './user-model'
 import type { ViewerRevocationJob } from '@/server/persistence/web-maintenance-repository'
 
@@ -16,15 +17,12 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
     id: 'admin',
     username: 'admin',
     name: 'Admin',
-    role: 'admin',
-    groupIds: ['admins'],
+    groupIds: [administratorsGroupId],
     disabled: false,
     passwordChangeRequired: true,
     sessionVersion: 1,
     avatarDataUrl: null,
     accentColor: 'blue',
-    permissionOverrides: {},
-    quotas: {},
     passwordHash: await hashPassword(initialPassword),
     mfaSecretEncrypted: null,
     mfaRecoveryCodeHashes: [],
@@ -33,21 +31,13 @@ const defaultAdminUser = async (): Promise<StoredUser> => {
   }
 }
 
-const normalizeUsersFile = async (input: Partial<UsersFile>): Promise<UsersFile> => {
-  const normalizedGroups = normalizeGroups(input.groups)
-  const users =
-    input.users && input.users.length > 0 ? input.users.map(user => normalizeUser(user)) : [await defaultAdminUser()]
-
-  return { groups: normalizedGroups, users }
-}
-
 export const readUsersFile = async (): Promise<UsersFile> => {
   const stored = readUsersFileFromDatabase()
-  if (stored !== null) {
-    return normalizeUsersFile(stored)
-  }
+  if (stored !== null) return stored
 
-  const initial = await normalizeUsersFile({})
+  const initial = { groups: defaultGroups(), users: [await defaultAdminUser()] }
+  const initialized = readUsersFileFromDatabase()
+  if (initialized !== null) return initialized
   writeUsersFileToDatabase(initial)
   return initial
 }

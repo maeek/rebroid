@@ -77,7 +77,8 @@ df -i /var/lib/docker
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema
 changes require a clean database. The commands below delete data when `--execute` is supplied.
-Preview the reported paths and resources first.
+Preview the reported paths and resources first. The group-based authorization schema requires a
+fresh web database. Older web databases are rejected at startup.
 
 ### Orchestrator reset
 

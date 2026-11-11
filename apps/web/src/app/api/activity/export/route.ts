@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser()
-  if (user.role !== 'admin') {
+  if (!user.isPlatformAdmin) {
     return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 })
   }
 

@@ -1,53 +1,42 @@
-import { allPermissionIds, type PermissionId, type PermissionMap } from './permissions'
-import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
+import { allPermissionIds, mergeQuotas, unlimitedQuota, type PermissionId, type ResourceQuota } from './permissions'
+import type { UserGroup } from '@/shared/contracts/auth-user'
 
-export type EffectivePermissionDecision = { allowed: boolean } & (
-  | { source: 'group'; groupName: string }
-  | { source: 'override'; groupName?: string }
-  | { source: 'admin'; groupName?: never }
-)
+export const administratorsGroupId = 'admins'
+export const defaultUserGroupId = 'users'
+
+export const isBuiltInGroup = (id: string) => id === administratorsGroupId || id === defaultUserGroupId
+
+export type EffectivePermissionDecision = { allowed: boolean; groupName: string }
 
 export type EffectiveAccess = {
   groups: UserGroup[]
+  isPlatformAdmin: boolean
   decisions: Partial<Record<PermissionId, EffectivePermissionDecision>>
+  quotas: ResourceQuota
 }
 
-export const resolveUserGroups = (
-  groups: readonly UserGroup[],
-  groupIds: readonly string[] | undefined,
-  role: UserRole
-): UserGroup[] => {
-  const selected = (groupIds ?? []).flatMap(id => {
-    const group = groups.find(candidate => candidate.id === id)
+export const resolveEffectiveAccess = (groups: readonly UserGroup[], groupIds: readonly string[]): EffectiveAccess => {
+  const groupsById = new Map(groups.map(group => [group.id, group]))
+  const selected = groupIds.flatMap(id => {
+    const group = groupsById.get(id)
     return group ? [group] : []
   })
-  if (selected.length > 0) return selected
-  const fallback = groups.find(group => group.role === role)
-  return fallback ? [fallback] : []
-}
-
-export const resolveEffectiveAccess = (
-  groups: readonly UserGroup[],
-  groupIds: readonly string[] | undefined,
-  role: UserRole,
-  overrides: PermissionMap
-): EffectiveAccess => {
-  const resolvedGroups = resolveUserGroups(groups, groupIds, role)
+  const administrators = selected.find(group => group.id === administratorsGroupId)
   const decisions: EffectiveAccess['decisions'] = {}
   for (const id of allPermissionIds) {
-    if (role === 'admin') {
-      decisions[id] = { allowed: true, source: 'admin' }
+    if (administrators) {
+      decisions[id] = { allowed: true, groupName: administrators.name }
       continue
     }
-
-    for (const group of resolvedGroups) {
+    for (const group of selected) {
       const allowed = group.permissions[id]
-      if (allowed !== undefined) decisions[id] = { allowed, source: 'group', groupName: group.name }
-    }
-    const override = overrides[id]
-    if (override !== undefined) {
-      decisions[id] = { allowed: override, source: 'override', groupName: decisions[id]?.groupName }
+      if (allowed !== undefined) decisions[id] = { allowed, groupName: group.name }
     }
   }
-  return { groups: resolvedGroups, decisions }
+  return {
+    groups: selected,
+    isPlatformAdmin: Boolean(administrators),
+    decisions,
+    quotas: administrators ? unlimitedQuota : mergeQuotas(...selected.map(group => group.quotas))
+  }
 }

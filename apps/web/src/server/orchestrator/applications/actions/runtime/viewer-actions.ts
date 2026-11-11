@@ -18,9 +18,9 @@ export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
   assertViewerRevocationComplete(user.ownerUserId)
   const session = await orchestratorAppViewerClient.getScrcpySession(id, {
-    control: user.role === 'admin' || hasPermission(user.permissions, 'applications:control-viewer'),
-    clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard'),
-    screenshot: user.role === 'admin' || hasPermission(user.permissions, 'applications:capture-screenshot')
+    control: hasPermission(user.permissions, 'applications:control-viewer'),
+    clipboard: hasPermission(user.permissions, 'applications:sync-clipboard'),
+    screenshot: hasPermission(user.permissions, 'applications:capture-screenshot')
   })
   await assertViewerGrantCurrent(user)
   return sanitizeScrcpySessionForUser(session, user)
@@ -33,7 +33,7 @@ export const recordViewerActivityAction = async (id: string) => {
 
 export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+  if (!hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new PublicActionError('You do not have permission to control this viewer.', {
       code: 'forbidden',
       status: 403
@@ -56,7 +56,7 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
 export const createApplicationVirtualDisplayAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
   await requireFeature('feature.display-virtual')
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+  if (!hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new PublicActionError('You do not have permission to add displays for this viewer.', {
       code: 'forbidden',
       status: 403
@@ -66,8 +66,8 @@ export const createApplicationVirtualDisplayAction = async (id: string) => {
   assertViewerRevocationComplete(user.ownerUserId)
   const session = await orchestratorAppViewerClient.createVirtualDisplay(id, {
     control: true,
-    clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard'),
-    screenshot: user.role === 'admin' || hasPermission(user.permissions, 'applications:capture-screenshot')
+    clipboard: hasPermission(user.permissions, 'applications:sync-clipboard'),
+    screenshot: hasPermission(user.permissions, 'applications:capture-screenshot')
   })
   await assertViewerGrantCurrent(user)
   return session
@@ -75,7 +75,7 @@ export const createApplicationVirtualDisplayAction = async (id: string) => {
 
 export const releaseApplicationVirtualDisplayAction = async (id: string, surfaceId: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:control-viewer')) {
+  if (!hasPermission(user.permissions, 'applications:control-viewer')) {
     throw new PublicActionError('You do not have permission to close displays for this viewer.', {
       code: 'forbidden',
       status: 403

@@ -6,15 +6,17 @@ import { assertViewerGrantCurrent } from './viewer-grant-access'
 vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingViewerRevocation: vi.fn() }))
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById: vi.fn() } }))
 vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeUserViewerSessions: vi.fn() }))
-const grant = { ownerUserId: 'user', role: 'user', permissions: { 'applications:control-viewer': true } } as Parameters<
-  typeof assertViewerGrantCurrent
->[0]
+const grant = {
+  ownerUserId: 'user',
+  isPlatformAdmin: false,
+  permissions: { 'applications:control-viewer': true }
+} as Parameters<typeof assertViewerGrantCurrent>[0]
 describe('viewer grant revocation races', () => {
   it.each([
     null,
-    { role: 'user', disabled: true },
-    { role: 'user', passwordChangeRequired: true },
-    { role: 'user', effectivePermissions: {} }
+    { isPlatformAdmin: false, disabled: true },
+    { isPlatformAdmin: false, passwordChangeRequired: true },
+    { isPlatformAdmin: false, effectivePermissions: {} }
   ])('revokes sessions and rejects stale grants', async account => {
     vi.mocked(userService.getUserById).mockResolvedValue(account as never)
     await expect(assertViewerGrantCurrent(grant)).rejects.toThrow('authorization changed')
@@ -22,7 +24,7 @@ describe('viewer grant revocation races', () => {
   })
   it('retains grants whose current permissions still allow them', async () => {
     vi.mocked(userService.getUserById).mockResolvedValue({
-      role: 'user',
+      isPlatformAdmin: false,
       effectivePermissions: grant.permissions
     } as never)
     await expect(assertViewerGrantCurrent(grant)).resolves.toBeUndefined()
@@ -30,7 +32,7 @@ describe('viewer grant revocation races', () => {
   })
   it('withholds new grants while a committed revocation is pending', async () => {
     vi.mocked(userService.getUserById).mockResolvedValue({
-      role: 'user',
+      isPlatformAdmin: false,
       effectivePermissions: grant.permissions
     } as never)
     vi.mocked(hasPendingViewerRevocation).mockReturnValue(true)

@@ -9,7 +9,6 @@ const groups: UserGroup[] = Array.from({ length: 13 }, (_, index) => ({
   id: `group-${index}`,
   name: `Group ${index}`,
   description: `Purpose ${index}`,
-  role: 'user',
   permissions: {},
   quotas: defaultUserQuota,
   createdAt: '',

@@ -16,7 +16,6 @@ const groups: UserGroup[] = [
     id: 'admins',
     name: 'Administrators',
     description: 'Full platform access.',
-    role: 'admin',
     permissions: {},
     quotas: {
       maxOpenApps: null,
@@ -31,7 +30,6 @@ const groups: UserGroup[] = [
     id: 'users',
     name: 'Users',
     description: 'Standard app owners with bounded resources.',
-    role: 'user',
     permissions: {},
     quotas: {
       maxOpenApps: 2,
@@ -54,7 +52,7 @@ describe('GroupsSettings', () => {
     )
 
     expect(screen.getAllByRole('heading', { name: /^Groups$/ })).toHaveLength(1)
-    expect(screen.getByText(/Groups provide default permissions and quotas/)).toBeVisible()
+    expect(screen.getByText(/Groups provide the permissions and quotas that members inherit/)).toBeVisible()
     expect(screen.getByRole('region', { name: 'Group list' })).toBeVisible()
 
     expect(screen.getByRole('heading', { name: 'Groups', level: 1 })).toBeInTheDocument()

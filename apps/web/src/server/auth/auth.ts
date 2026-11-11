@@ -27,9 +27,6 @@ export const authOptions: NextAuthOptions = {
       if (account && account.type === 'credentials') {
         token.userId = account.providerAccountId
       }
-      if (user && 'role' in user) {
-        token.role = user.role
-      }
       if (user && 'sessionVersion' in user) {
         token.sessionVersion = user.sessionVersion
         token.authEpoch = getAuthEpoch()
@@ -58,7 +55,6 @@ export const authOptions: NextAuthOptions = {
 
       session.user.id = currentUser.id
       session.user.name = currentUser.name
-      session.user.role = currentUser.role
       session.user.sessionVersion = token.sessionVersion
       session.user.authEpoch = token.authEpoch
       session.user.passwordChangeRequired = currentUser.passwordChangeRequired

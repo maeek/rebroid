@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fullPermissions } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { loadFeatureFlags, requireFeature } from '../../../features'
 import { OrchestratorRequestError } from '../../../request'
@@ -41,12 +42,12 @@ vi.mock('../../safety', () => ({
 
 const user = (
   permissions: PermissionMap = {},
-  role: 'admin' | 'user' = 'user',
+  isPlatformAdmin = false,
   quotas: ResourceQuota = { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
 ) => ({
   ownerUserId: 'owner-1',
-  role,
-  permissions,
+  isPlatformAdmin,
+  permissions: isPlatformAdmin ? { ...fullPermissions, ...permissions } : permissions,
   quotas
 })
 
@@ -129,7 +130,7 @@ describe('network policy actions', () => {
   )
 
   it.each([updateNetworkPolicyAction, applyNetworkPolicyAction])('preserves ownership checks', async action => {
-    vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user({}, 'user'), ownerUserId: 'other-owner' })
+    vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user({}, false), ownerUserId: 'other-owner' })
     await expect(action('app-1', { networkPolicyEnabled: false })).resolves.toMatchObject({
       ok: false,
       error: { code: 'not_found' }
@@ -159,7 +160,7 @@ describe('network policy actions', () => {
 
   it('allows creating an unrestricted app while firewall is disabled', async () => {
     const appId = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
-    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, true))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
       id: appId,
       name: 'Test app'
@@ -174,7 +175,7 @@ describe('network policy actions', () => {
       expect.objectContaining({ networkPolicyEnabled: false }),
       result.requestId,
       null,
-      expect.objectContaining({ role: 'admin' })
+      expect.objectContaining({ isPlatformAdmin: true })
     )
     expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
     expect(requireFeature).not.toHaveBeenCalled()
@@ -213,7 +214,7 @@ describe('network policy actions', () => {
   })
 
   it('skips web quota checks while preserving the configured limit for transactional admission', async () => {
-    const actor = user({}, 'admin', { maxOpenApps: 0, maxCpuCpus: 1, maxMemoryMb: 512, maxSessionSeconds: 60 })
+    const actor = user({}, true, { maxOpenApps: 0, maxCpuCpus: 1, maxMemoryMb: 512, maxSessionSeconds: 60 })
     vi.mocked(getCurrentUserContext).mockResolvedValue(actor)
     vi.mocked(loadFeatureFlags).mockResolvedValueOnce({
       revision: 1,
@@ -257,7 +258,7 @@ describe('network policy actions', () => {
   })
 
   it('treats an acknowledgement with no app ID as unconfirmed', async () => {
-    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, true))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
       name: 'Test app'
     } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
@@ -270,7 +271,7 @@ describe('network policy actions', () => {
   })
 
   it.each([true, undefined])('keeps restricted creation gated (%s)', async networkPolicyEnabled => {
-    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, true))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
       new OrchestratorRequestError('feature.firewall is disabled.', 409, 'request-1', { code: 'feature_disabled' })
     )
@@ -283,7 +284,7 @@ describe('network policy actions', () => {
   })
 
   it('returns a safe outage message with the same request reference sent upstream', async () => {
-    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, true))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
       new OrchestratorRequestError('connect ENOENT /private/container-engine.sock', 503, 'request-1', {
         code: 'container_engine_unavailable'
@@ -300,12 +301,12 @@ describe('network policy actions', () => {
       expect.anything(),
       result.requestId,
       null,
-      expect.objectContaining({ role: 'admin' })
+      expect.objectContaining({ isPlatformAdmin: true })
     )
   })
 
   it('maps validation field names without forwarding upstream details', async () => {
-    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, 'admin'))
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({}, true))
     vi.mocked(orchestratorAppCatalogClient.createApplication).mockRejectedValue(
       new OrchestratorRequestError('private backend details', 400, 'request-1', {
         fields: ['memoryLimitMb', 'ownerUserId']

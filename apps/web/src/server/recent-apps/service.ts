@@ -18,7 +18,7 @@ const toRecentApp = async (app: AndroidApplicationSummary, openedAt: number): Pr
 
 const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
   const user = await getCurrentUserContext()
-  const ownerUserId = user.role === 'admin' ? undefined : user.ownerUserId
+  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
   const recent = listStoredRecentApps(user.ownerUserId)
   const apps = await orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId)
   const navigationApps = recentOnly

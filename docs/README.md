@@ -20,7 +20,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | [Web contributor guide](web-contributor-guide.md)                  | Page structure, browser/server contracts, and code placement.                           |
 | [Operator console](operator-console.md) | Sidebar and app navigation, image pulls, live viewer, device files, app recovery, and workflow runs. |
 | [Web design system](web-design-system.md)                          | Shared layouts, tokens, controls, loading states, and illustrated outage feedback.       |
-| [Web security](web-security.md)                                    | Sessions, MFA, execution authorization, viewer revocation, and public error handling.                 |
+| [Web security](web-security.md)                                    | Sessions, MFA, group authorization, viewer revocation, and public error handling.                 |
 | [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, audio diagnosis, recovery, and manual verification. |
 | [AMD acceleration research](research/amd-hardware-acceleration.md) | Redroid Forge integration, Ryzen 7 4800U suitability, Android compatibility, and a proposed implementation plan. |
 

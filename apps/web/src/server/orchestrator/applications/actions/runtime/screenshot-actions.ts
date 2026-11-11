@@ -8,7 +8,7 @@ import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../com
 
 export const captureApplicationScreenshotAction = async (id: string) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:capture-screenshot')) {
+  if (!hasPermission(user.permissions, 'applications:capture-screenshot')) {
     throw new PublicActionError('You do not have permission to capture screenshots.', {
       code: 'forbidden',
       status: 403

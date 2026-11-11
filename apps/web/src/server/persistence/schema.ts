@@ -1,11 +1,10 @@
-export const webSchemaVersion = 3
+export const webSchemaVersion = 4
 
 export const freshWebSchema = `
   CREATE TABLE groups (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'user')),
     permissions_json TEXT NOT NULL,
     quotas_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -16,14 +15,11 @@ export const freshWebSchema = `
     id TEXT PRIMARY KEY NOT NULL,
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
     name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'user')),
     disabled INTEGER NOT NULL CHECK (disabled IN (0, 1)),
     password_change_required INTEGER NOT NULL CHECK (password_change_required IN (0, 1)),
     session_version INTEGER NOT NULL CHECK (session_version > 0),
     avatar_data_url TEXT,
     accent_color TEXT NOT NULL,
-    permission_overrides_json TEXT NOT NULL,
-    quotas_json TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     mfa_secret_encrypted TEXT,
     mfa_recovery_codes_json TEXT NOT NULL,
@@ -34,7 +30,9 @@ export const freshWebSchema = `
   CREATE TABLE group_memberships (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, group_id)
+    position INTEGER NOT NULL CHECK (position >= 0),
+    PRIMARY KEY (user_id, group_id),
+    UNIQUE (user_id, position)
   );
 
   CREATE TABLE web_settings (

@@ -15,30 +15,22 @@ import {
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Notice } from '@/components/ui/notice'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserGroupAction } from '@/server/users/actions/create-user-group-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
-import {
-  defaultUserPermissions,
-  defaultUserQuota,
-  fullPermissions,
-  unlimitedQuota
-} from '@/shared/permissions/permissions'
+import { defaultUserPermissions, defaultUserQuota } from '@/shared/permissions/permissions'
 import { PermissionEditor } from './permission-editor'
 import { QuotaFields } from './quota-fields'
 import { useCreateDialog } from './use-create-dialog'
-import type { CreateUserGroupInput, UserGroup, UserRole } from '@/shared/contracts/auth-user'
+import type { CreateUserGroupInput, UserGroup } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 export type CreateGroupDraft = {
   name: string
   description: string
-  role: UserRole
   permissions: PermissionMap
   quotas: Partial<ResourceQuota>
 }
@@ -54,7 +46,6 @@ const getStepIndicatorClassName = (currentStep: number, itemStep: number) => {
 export const createInitialGroupDraft = (): CreateGroupDraft => ({
   name: '',
   description: '',
-  role: 'user',
   permissions: { ...defaultUserPermissions },
   quotas: { ...defaultUserQuota }
 })
@@ -62,9 +53,8 @@ export const createInitialGroupDraft = (): CreateGroupDraft => ({
 export const buildCreateGroupInput = (draft: CreateGroupDraft): CreateUserGroupInput => ({
   name: draft.name,
   description: draft.description,
-  role: draft.role,
-  permissions: draft.role === 'admin' ? { ...fullPermissions } : draft.permissions,
-  quotas: draft.role === 'admin' ? { ...unlimitedQuota } : draft.quotas
+  permissions: draft.permissions,
+  quotas: draft.quotas
 })
 
 export const CreateGroupDialog = ({
@@ -79,7 +69,6 @@ export const CreateGroupDialog = ({
   const [draft, setDraft] = useState<CreateGroupDraft>(createInitialGroupDraft)
   const [isSaving, setIsSaving] = useState(false)
   const resourceLimits = useResourceLimitBounds(open)
-  const isAdmin = draft.role === 'admin'
 
   const reset = () => {
     setStep(0)
@@ -134,9 +123,7 @@ export const CreateGroupDialog = ({
       >
         <DialogHeader>
           <DialogTitle>Create group</DialogTitle>
-          <DialogDescription>
-            Set the role defaults, quotas, and permissions inherited by group members.
-          </DialogDescription>
+          <DialogDescription>Set the permissions and quotas inherited by group members.</DialogDescription>
         </DialogHeader>
 
         <ol
@@ -177,25 +164,6 @@ export const CreateGroupDialog = ({
                     onChange={event => updateDraft({ name: event.target.value })}
                   />
                 </FormField>
-                <FormField
-                  label='Role'
-                  layout='vertical'
-                  description='The role supplies the initial access template.'
-                  required
-                >
-                  <Select
-                    value={draft.role}
-                    onValueChange={value => updateDraft({ role: value === 'admin' ? 'admin' : 'user' })}
-                  >
-                    <SelectTrigger className='w-full'>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='user'>User</SelectItem>
-                      <SelectItem value='admin'>Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
               </div>
               <FormField
                 label='Description'
@@ -214,34 +182,21 @@ export const CreateGroupDialog = ({
 
           {step === 1 ? (
             <div className='grid gap-5'>
-              {isAdmin ? (
-                <Notice tone='info'>
-                  Admin groups always have unlimited quotas. These values are locked because the server enforces them.
-                </Notice>
-              ) : (
-                <QuotaFields
-                  quotas={draft.quotas}
-                  resourceLimits={resourceLimits}
-                  onChange={quotas => updateDraft({ quotas })}
-                />
-              )}
+              <QuotaFields
+                quotas={draft.quotas}
+                resourceLimits={resourceLimits}
+                onChange={quotas => updateDraft({ quotas })}
+              />
             </div>
           ) : null}
 
           {step === 2 ? (
             <div className='grid gap-5'>
-              {isAdmin ? (
-                <Notice tone='info'>
-                  Admin groups always receive every permission. These values are locked because the server enforces
-                  them.
-                </Notice>
-              ) : (
-                <PermissionEditor
-                  disabled={isSaving}
-                  permissions={draft.permissions}
-                  onChange={permissions => updateDraft({ permissions })}
-                />
-              )}
+              <PermissionEditor
+                disabled={isSaving}
+                permissions={draft.permissions}
+                onChange={permissions => updateDraft({ permissions })}
+              />
             </div>
           ) : null}
         </div>

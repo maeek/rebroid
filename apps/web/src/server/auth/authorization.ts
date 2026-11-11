@@ -34,7 +34,7 @@ export const getCurrentUser = cache(async () => {
 
 export const requireAdmin = async () => {
   const user = await getCurrentUser()
-  if (user.role !== 'admin') {
+  if (!user.isPlatformAdmin) {
     redirect('/apps')
   }
   return user

@@ -4,7 +4,7 @@ import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from './acti
 
 export const assertCanTransferApplicationFiles = async (id: string) => {
   const context = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (context.user.role !== 'admin' && !hasPermission(context.user.permissions, 'applications:transfer-files')) {
+  if (!hasPermission(context.user.permissions, 'applications:transfer-files')) {
     throw new PublicActionError('You do not have permission to transfer files.', {
       code: 'forbidden',
       status: 403
@@ -15,7 +15,7 @@ export const assertCanTransferApplicationFiles = async (id: string) => {
 
 export const assertCanManageApplicationFiles = async (id: string) => {
   const context = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (context.user.role !== 'admin' && !hasPermission(context.user.permissions, 'applications:manage-files')) {
+  if (!hasPermission(context.user.permissions, 'applications:manage-files')) {
     throw new PublicActionError('You do not have permission to manage files.', {
       code: 'forbidden',
       status: 403

@@ -1,11 +1,11 @@
 import { userService } from '@/server/auth/user'
 
 type OwnerLookupUser = {
-  role: string
+  isPlatformAdmin: boolean
 }
 
 export const getVisibleOwnerDisplayNames = async (user: OwnerLookupUser) =>
-  user.role === 'admin'
+  user.isPlatformAdmin
     ? new Map((await userService.listUsers()).map(owner => [owner.id, owner.name || owner.username]))
     : new Map<string, string>()
 

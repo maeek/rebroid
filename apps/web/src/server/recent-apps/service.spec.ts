@@ -19,7 +19,7 @@ const summary = (id: string, currentStatus: 'running' | 'stopped' = 'stopped') =
 beforeEach(() => {
   vi.mocked(getCurrentUserContext).mockResolvedValue({
     ownerUserId: 'signed-in-user',
-    role: 'user',
+    isPlatformAdmin: false,
     permissions: {},
     quotas: {}
   } as Awaited<ReturnType<typeof getCurrentUserContext>>)
@@ -58,7 +58,7 @@ describe('authorized recent application reads', () => {
 
   it('allows administrators to revisit other owners while retaining personal history', async () => {
     const user = await getCurrentUserContext()
-    vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user, role: 'admin' })
+    vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user, isPlatformAdmin: true })
 
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
     expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledWith(undefined)

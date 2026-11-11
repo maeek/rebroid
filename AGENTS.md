@@ -246,7 +246,10 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
   shared paginated DataGridWorkspace/DataGrid; membership dialogs use MultiSelectCombobox with a bounded chip area.
   Reorder using the full membership order, not searched/page positions. Keep quotas in their own tab and section,
   explain unlimited quotas there, and block user Save while a profile photo is being prepared. Profile photos remain local drafts until explicit Save, including in the current-user profile dialog. Editor dialogs provide their own containment; keep their sections flat without nested panels or outer section padding.
-- User/group editors reuse their feature-owned access layout and permission editor. Distinguish effective access from Inherit/Allow/Deny user overrides; Inherit removes an override; group Not set removes a group decision rather than writing a denial. Use the shared effective-access resolver for server enforcement and draft previews, including ordered group decisions, fallback, and unconditional Admin access. Preserve multi-select chips and keyboard behavior; do not turn category filtering into hidden bulk permission changes.
+- Use the shared effective-access resolver for authorization and account previews. Persist ordered memberships,
+  protect the last enabled Administrators member, and display effective permissions and quotas read-only for users.
+  Group Not set removes the decision. Preserve membership picker chips and keyboard behavior.
+  Read [Web security](docs/web-security.md#authorization) when changing group or operation authorization.
 
 - Image builders remain workspaces with shared feature-owned ready/loading layouts, rounded resource panels, one header Build action, explicit template application, grouped validation, and stable-height build logs. Keep uploaded context selection searchable, preserve upload/validation bounds, and use the shared active-build module for start, cancel, polling, and guarded job updates.
 

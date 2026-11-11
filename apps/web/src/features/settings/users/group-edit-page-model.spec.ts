@@ -6,7 +6,6 @@ const group: UserGroup = {
   id: 'operators',
   name: 'Operators',
   description: 'Runtime operators',
-  role: 'user',
   permissions: {
     'applications:start': true,
     'automations:run': true
@@ -24,7 +23,6 @@ const group: UserGroup = {
 const draft: GroupDraft = {
   name: 'Operators',
   description: 'Runtime operators',
-  role: 'user',
   permissions: {
     'applications:start': true
   },
@@ -38,7 +36,6 @@ describe('group edit page model', () => {
     expect(toGroupDraft(group)).toEqual({
       name: 'Operators',
       description: 'Runtime operators',
-      role: 'user',
       permissions: {
         'applications:start': true,
         'automations:run': true
@@ -56,7 +53,6 @@ describe('group edit page model', () => {
     expect(buildGroupUpdateInput(draft)).toEqual({
       name: 'Operators',
       description: 'Runtime operators',
-      role: 'user',
       permissions: {
         'applications:start': true
       },

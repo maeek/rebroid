@@ -11,19 +11,17 @@ type PermissionDefinition = (typeof permissionDefinitions)[number]
 const PermissionSetting = ({
   permission,
   permissions,
-  isUser,
   disabled,
   onChange
 }: {
   permission: PermissionDefinition
   permissions: PermissionMap
-  isUser: boolean
   disabled: boolean
   onChange: (permissions: PermissionMap) => void
 }) => {
   const labelId = useId()
   const overridden = permissions[permission.id] !== undefined
-  let setting = isUser ? 'inherit' : 'unset'
+  let setting = 'unset'
   if (overridden) setting = permissions[permission.id] ? 'allow' : 'deny'
 
   return (
@@ -41,14 +39,14 @@ const PermissionSetting = ({
       >
         <SelectTrigger
           className='w-full'
-          aria-label={`${isUser ? 'Override' : 'Set'} ${permission.name}`}
+          aria-label={`Set ${permission.name}`}
           aria-describedby={`${labelId}-description`}
         >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={isUser ? 'inherit' : 'unset'}>{isUser ? 'Inherit' : 'Not set'}</SelectItem>
-          <SelectItem value='allow'>{isUser ? 'Allow' : 'Grant'}</SelectItem>
+          <SelectItem value='unset'>Not set</SelectItem>
+          <SelectItem value='allow'>Grant</SelectItem>
           <SelectItem value='deny'>Deny</SelectItem>
         </SelectContent>
       </Select>
@@ -58,10 +56,6 @@ const PermissionSetting = ({
 
 const PermissionEffectiveAccess = ({ decision }: { decision?: EffectivePermissionDecision }) => {
   const enabled = decision?.allowed ?? false
-  let source = 'Not granted by a group'
-  if (decision?.source === 'group') source = `From ${decision.groupName}`
-  if (decision?.source === 'override') source = 'User override'
-  if (decision?.source === 'admin') source = 'Admin role'
   return (
     <div className='grid gap-1'>
       <span className='flex items-center gap-1.5 text-sm'>
@@ -78,7 +72,9 @@ const PermissionEffectiveAccess = ({ decision }: { decision?: EffectivePermissio
         )}
         {enabled ? 'Granted' : 'Not granted'}
       </span>
-      <span className='break-words text-xs text-foreground-muted'>{source}</span>
+      <span className='break-words text-xs text-foreground-muted'>
+        {decision ? `From ${decision.groupName}` : 'Not granted by a group'}
+      </span>
     </div>
   )
 }
@@ -86,9 +82,8 @@ const PermissionEffectiveAccess = ({ decision }: { decision?: EffectivePermissio
 type PermissionEditorContextValue = {
   permissions: PermissionMap
   decisions: EffectiveAccess['decisions']
-  isUser: boolean
   disabled: boolean
-  onChange: (permissions: PermissionMap) => void
+  onChange?: (permissions: PermissionMap) => void
 }
 export const PermissionEditorContext = createContext<PermissionEditorContextValue | null>(null)
 const usePermissionEditor = () => {
@@ -107,12 +102,12 @@ export const PermissionEffectiveCell = ({ row }: CellContext<PermissionDefinitio
   return <PermissionEffectiveAccess decision={decisions[row.original.id]} />
 }
 export const PermissionSettingCell = ({ row }: CellContext<PermissionDefinition, unknown>) => {
-  const { permissions, isUser, disabled, onChange } = usePermissionEditor()
+  const { permissions, disabled, onChange } = usePermissionEditor()
+  if (!onChange) return null
   return (
     <PermissionSetting
       permission={row.original}
       permissions={permissions}
-      isUser={isUser}
       disabled={disabled}
       onChange={onChange}
     />

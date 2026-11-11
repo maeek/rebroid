@@ -10,7 +10,6 @@ import {
 import type { AndroidApplication, ScrcpySession } from '@/shared/contracts/application'
 
 const userContext = {
-  role: 'user' as const,
   permissions: {},
   quotas: {
     maxOpenApps: 1,
@@ -94,9 +93,12 @@ describe('application safety redaction', () => {
       apk: {}
     } as AndroidApplication
     expect(sanitizeAndroidApplicationForUser(app, userContext).runtime.appliedRendering).toBeNull()
-    expect(sanitizeAndroidApplicationForUser(app, { ...userContext, role: 'admin' }).runtime.appliedRendering).toEqual(
-      app.runtime.appliedRendering
-    )
+    expect(
+      sanitizeAndroidApplicationForUser(app, {
+        ...userContext,
+        permissions: { 'applications:view-backend-details': true }
+      }).runtime.appliedRendering
+    ).toEqual(app.runtime.appliedRendering)
   })
 
   it('removes backend addresses from ordinary-user viewer sessions', () => {

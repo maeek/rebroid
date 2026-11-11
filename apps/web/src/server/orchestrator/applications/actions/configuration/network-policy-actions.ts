@@ -19,14 +19,13 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
     async () => {
       await assertCanAccessApplication(id)
       const user = await getCurrentUserContext()
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
+      if (!hasPermission(user.permissions, 'applications:configure-egress')) {
         throw new PublicActionError('You do not have permission to configure network access.', {
           code: 'forbidden',
           status: 403
         })
       }
       if (
-        user.role !== 'admin' &&
         (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
         !hasPermission(user.permissions, 'applications:use-internet')
       ) {
@@ -65,7 +64,7 @@ export const applyNetworkPolicyAction = async (id: string) =>
     async () => {
       await assertCanAccessApplication(id)
       const user = await getCurrentUserContext()
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:configure-egress')) {
+      if (!hasPermission(user.permissions, 'applications:configure-egress')) {
         throw new PublicActionError('You do not have permission to apply network policy.', {
           code: 'forbidden',
           status: 403
@@ -94,7 +93,7 @@ export const applyNetworkPolicyAction = async (id: string) =>
 export const reconcileNetworkPoliciesAction = async () => {
   await requireFeature('feature.firewall')
   const user = await getCurrentUserContext()
-  if (user.role !== 'admin') {
+  if (!user.isPlatformAdmin) {
     throw new PublicActionError('You do not have permission to reconcile all network policies.', {
       code: 'forbidden',
       status: 403

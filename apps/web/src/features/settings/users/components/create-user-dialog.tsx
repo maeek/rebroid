@@ -16,14 +16,14 @@ import {
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { createUserAction } from '@/server/users/actions/create-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { defaultUserGroupId } from '@/shared/permissions/effective-access'
 import { GroupMembershipPicker } from './group-membership-picker'
 import { useCreateDialog } from './use-create-dialog'
-import type { PublicUser, UserGroup, UserRole } from '@/shared/contracts/auth-user'
+import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
 export const CreateUserDialog = ({
   groups,
@@ -37,21 +37,19 @@ export const CreateUserDialog = ({
   const { open, setOpen } = useCreateDialog(disabled)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<UserRole>('user')
-  const [groupIds, setGroupIds] = useState([
-    groups.find(group => group.role === 'user')?.id ?? groups[0]?.id ?? 'users'
-  ])
+  const [groupIds, setGroupIds] = useState(() =>
+    groups.some(group => group.id === defaultUserGroupId) ? [defaultUserGroupId] : []
+  )
   const [isSaving, setIsSaving] = useState(false)
 
   const createUser = async () => {
     setIsSaving(true)
     try {
-      const user = unwrapActionResult(await createUserAction({ username, password, role, groupIds }))
+      const user = unwrapActionResult(await createUserAction({ username, password, groupIds }))
       onCreated(user)
       setUsername('')
       setPassword('')
-      setRole('user')
-      setGroupIds([groups.find(group => group.role === 'user')?.id ?? groups[0]?.id ?? 'users'])
+      setGroupIds([defaultUserGroupId])
       setOpen(false)
       toast({ title: 'User created', variant: 'success' })
     } catch (error) {
@@ -125,24 +123,6 @@ export const CreateUserDialog = ({
               placeholder='Minimum 1 character'
               onChange={event => setPassword(event.target.value)}
             />
-          </FormField>
-          <FormField
-            label='Role'
-            layout='vertical'
-            required
-          >
-            <Select
-              value={role}
-              onValueChange={value => setRole(value === 'admin' ? 'admin' : 'user')}
-            >
-              <SelectTrigger className='w-full'>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='user'>User</SelectItem>
-                <SelectItem value='admin'>Admin</SelectItem>
-              </SelectContent>
-            </Select>
           </FormField>
           <FormField
             label='Groups'

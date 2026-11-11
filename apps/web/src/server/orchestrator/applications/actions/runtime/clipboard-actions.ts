@@ -8,7 +8,7 @@ import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../com
 
 export const getApplicationClipboardAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
+  if (!hasPermission(user.permissions, 'applications:sync-clipboard')) {
     throw new PublicActionError('You do not have permission to sync clipboard.', { code: 'forbidden', status: 403 })
   }
   return orchestratorAppRuntimeClient.getClipboard(id)
@@ -16,7 +16,7 @@ export const getApplicationClipboardAction = async (id: string) => {
 
 export const setApplicationClipboardAction = async (id: string, text: string) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:sync-clipboard')) {
+  if (!hasPermission(user.permissions, 'applications:sync-clipboard')) {
     throw new PublicActionError('You do not have permission to sync clipboard.', { code: 'forbidden', status: 403 })
   }
   const result = await orchestratorAppRuntimeClient.setClipboard(id, text)

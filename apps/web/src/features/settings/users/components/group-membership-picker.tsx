@@ -29,8 +29,7 @@ export const GroupMembershipPicker = ({
   const options: MultiSelectComboboxOption[] = groups.map(group => ({
     value: group.id,
     label: group.name,
-    description: group.description,
-    keywords: [group.role]
+    description: group.description
   }))
 
   return (

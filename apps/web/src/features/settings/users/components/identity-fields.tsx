@@ -3,12 +3,11 @@
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
-import { toUserRole, type UserDraft } from '../user-edit-page-model'
 import type { GroupDraft } from '../group-edit-page-model'
+import type { UserDraft } from '../user-edit-page-model'
 
 export const UserAccountSections = ({
   draft,
@@ -96,48 +95,7 @@ export const UserAccountSections = ({
         onChange={avatarDataUrl => onChange?.({ avatarDataUrl })}
       />
     </Section>
-    <Section
-      title='Access role'
-      surface='plain'
-    >
-      <AccessRoleField
-        disabled={disabled}
-        role={draft?.role}
-        onChange={role => onChange?.({ role })}
-      />
-    </Section>
   </div>
-)
-
-const AccessRoleField = ({
-  role = 'user',
-  onChange,
-  disabled = false
-}: {
-  role?: UserDraft['role']
-  onChange?: (role: UserDraft['role']) => void
-  disabled?: boolean
-}) => (
-  <FormField
-    layout='vertical'
-    label='Role'
-    required
-    description='User access comes from groups and overrides. Admin grants every permission and unlimited quotas.'
-  >
-    <Select
-      disabled={disabled}
-      value={role}
-      onValueChange={value => onChange?.(toUserRole(value))}
-    >
-      <SelectTrigger className='w-full'>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value='user'>User</SelectItem>
-        <SelectItem value='admin'>Admin</SelectItem>
-      </SelectContent>
-    </Select>
-  </FormField>
 )
 
 export const GroupDetailsSections = ({
@@ -163,29 +121,10 @@ export const GroupDetailsSections = ({
         >
           <Input
             value={draft?.name ?? ''}
+            disabled={disabled}
             required
             onChange={event => onChange?.({ name: event.target.value })}
           />
-        </FormField>
-        <FormField
-          layout='vertical'
-          label='Role template'
-          required
-          description='Admin grants all permissions and unlimited quotas.'
-        >
-          <Select
-            disabled={disabled}
-            value={draft?.role ?? 'user'}
-            onValueChange={value => onChange?.({ role: toUserRole(value) })}
-          >
-            <SelectTrigger className='w-full'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='user'>User</SelectItem>
-              <SelectItem value='admin'>Admin</SelectItem>
-            </SelectContent>
-          </Select>
         </FormField>
       </div>
     </Section>
@@ -200,6 +139,7 @@ export const GroupDetailsSections = ({
       >
         <Textarea
           value={draft?.description ?? ''}
+          disabled={disabled}
           rows={3}
           onChange={event => onChange?.({ description: event.target.value })}
         />

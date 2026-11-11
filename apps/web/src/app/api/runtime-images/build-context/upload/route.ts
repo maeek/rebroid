@@ -42,7 +42,7 @@ export const POST = async (request: NextRequest) => {
     return NextResponse.json({ message: 'Authentication required' }, { status: 401 })
   }
 
-  if (user.role !== 'admin') {
+  if (!user.isPlatformAdmin) {
     return NextResponse.json({ message: 'Administrator access required' }, { status: 403 })
   }
 

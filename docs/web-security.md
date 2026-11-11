@@ -18,6 +18,13 @@ be reported through the [security policy](../SECURITY.md).
 
 ## Authorization
 
+Accounts inherit permissions and quotas from explicitly assigned groups. Later groups take
+precedence for values they define. Administrators membership grants platform administration,
+all application and workflow permissions, and unlimited quotas. The built-in Users group
+is assigned when a new account is created without an explicit group selection. Removing
+the last membership leaves the account without group permissions. At least one enabled
+account must remain in Administrators.
+
 Check permissions and resource ownership on the server before orchestrator calls. Shared
 permission/quota types support UI and server code, but browser visibility is not authorization.
 Automation definitions, targets, profiles, and triggers are revalidated before use; unknown command

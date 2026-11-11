@@ -11,7 +11,7 @@ import type { ShellUser } from './shell-user'
 const user: ShellUser = {
   name: 'Preview operator',
   username: 'preview-operator',
-  role: 'admin',
+  isPlatformAdmin: true,
   accentColor: 'blue',
   avatarDataUrl: null,
   mfaEnabled: false

@@ -8,7 +8,7 @@ export type CurrentUserContext = Awaited<ReturnType<typeof getCurrentUserContext
 export const getAccessibleApplication = async (id: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(id)
-  if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
+  if (!user.isPlatformAdmin && app.ownerUserId !== user.ownerUserId) {
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   }
   return { app, user }

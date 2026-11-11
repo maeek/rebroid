@@ -9,6 +9,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
+import { administratorsGroupId, resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
@@ -83,14 +84,18 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
             permissions={
               <PermissionEditor
                 permissions={draft.permissions}
-                admin={draft.role === 'admin'}
                 disabled={isSaving}
-                onChange={permissions => updateDraft({ permissions })}
+                onChange={group.id === administratorsGroupId ? undefined : permissions => updateDraft({ permissions })}
+                decisions={
+                  group.id === administratorsGroupId ? resolveEffectiveAccess([group], [group.id]).decisions : undefined
+                }
               />
             }
-            quotasDescription={draft.role === 'admin' ? 'Resource limits for applications and sessions.' : undefined}
+            quotasDescription={
+              group.id === administratorsGroupId ? 'Resource limits for applications and sessions.' : undefined
+            }
             quotas={
-              draft.role === 'admin' ? (
+              group.id === administratorsGroupId ? (
                 <StateView
                   kind='not-applicable'
                   title='Unlimited quotas'

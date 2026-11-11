@@ -54,7 +54,9 @@ describe('Browser settings reads', () => {
   })
 
   it.each(['admin', 'user'] as const)('applies the same audience policy to BFF and page reads for %s', async role => {
-    vi.mocked(getCurrentUser).mockResolvedValue({ role } as Awaited<ReturnType<typeof getCurrentUser>>)
+    vi.mocked(getCurrentUser).mockResolvedValue({ isPlatformAdmin: role === 'admin' } as Awaited<
+      ReturnType<typeof getCurrentUser>
+    >)
     const settings = await getRequiredServerOrchestratorUiSettings()
     const response = await GET()
     expect(response.status).toBe(200)
@@ -71,7 +73,9 @@ describe('Browser settings reads', () => {
   })
 
   it('uses defaults for optional reads and propagates required read failures', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({ role: 'user' } as Awaited<ReturnType<typeof getCurrentUser>>)
+    vi.mocked(getCurrentUser).mockResolvedValue({ isPlatformAdmin: false } as Awaited<
+      ReturnType<typeof getCurrentUser>
+    >)
     vi.mocked(orchestratorSettingsClient.getSettings).mockRejectedValue(new Error('offline'))
     await expect(getRequiredServerOrchestratorUiSettings()).rejects.toThrow('offline')
     const response = await GET()

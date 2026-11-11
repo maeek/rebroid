@@ -19,7 +19,7 @@ const input = {
 } as Parameters<typeof authorizeAutomationExecution>[0]
 const account = {
   id: 'user',
-  role: 'user',
+  isPlatformAdmin: false,
   disabled: false,
   passwordChangeRequired: false,
   effectivePermissions: { 'automations:run': true },

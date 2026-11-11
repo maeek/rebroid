@@ -43,6 +43,7 @@ export type DataGridLoadingState = {
 
 export type DataGridSelectionState = {
   disabled?: boolean
+  canSelectId?: (rowId: string) => boolean
   selectedIds: Set<string>
   onSelectedIdsChange: (selectedIds: Set<string>) => void
 }

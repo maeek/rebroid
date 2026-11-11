@@ -20,7 +20,7 @@ export const requestApplicationCloneAction = async (id: string) =>
         throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
       }
       const { app: source, user } = await getAccessibleApplication(id)
-      if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:create')) {
+      if (!hasPermission(user.permissions, 'applications:create')) {
         throw new PublicActionError('You do not have permission to create applications.', {
           code: 'forbidden',
           status: 403

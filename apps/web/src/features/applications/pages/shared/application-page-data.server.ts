@@ -56,7 +56,7 @@ export const getApplicationPageData = async (id: string) => {
       initialSettings,
       permissions: user.permissions,
       currentOwnerUserId: user.ownerUserId,
-      isAdmin: user.role === 'admin'
+      isAdmin: user.isPlatformAdmin
     }
   }
 }

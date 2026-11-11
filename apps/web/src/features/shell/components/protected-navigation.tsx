@@ -41,7 +41,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
     () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
     { intervalMs: 5000 }
   )
-  const isAdmin = initialUser.role === 'admin'
+  const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
   const styles = variantStyles[variant]
 

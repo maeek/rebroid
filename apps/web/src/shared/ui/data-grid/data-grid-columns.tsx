@@ -35,19 +35,21 @@ export const selectionColumn = <TData,>({
   maxSize: 48,
   enableResizing: false,
   header: ({ table }) => {
-    const rows = table.getRowModel().rows
-    const allSelected = rows.length > 0 && rows.every(row => selection.selectedIds.has(getRowId(row.original)))
+    const ids = table
+      .getRowModel()
+      .rows.map(row => getRowId(row.original))
+      .filter(id => selection.canSelectId?.(id) !== false)
+    const allSelected = ids.length > 0 && ids.every(id => selection.selectedIds.has(id))
     return (
       <div className='flex min-h-5 items-center justify-center'>
         <Checkbox
           checked={allSelected}
-          disabled={selection.disabled}
+          disabled={selection.disabled || ids.length === 0}
           aria-label='Select current page'
           onCheckedChange={checked => {
             if (selection.disabled) return
             const next = new Set(selection.selectedIds)
-            for (const row of rows) {
-              const id = getRowId(row.original)
+            for (const id of ids) {
               if (checked === true) next.add(id)
               else next.delete(id)
             }
@@ -59,6 +61,7 @@ export const selectionColumn = <TData,>({
   },
   cell: ({ row, table }) => {
     const id = getRowId(row.original)
+    if (selection.canSelectId?.(id) === false) return null
     return (
       <div className='flex min-h-10 items-center justify-center'>
         <Checkbox
@@ -73,7 +76,8 @@ export const selectionColumn = <TData,>({
               const start = Math.min(lastSelectedIndexRef.current, row.index)
               const end = Math.max(lastSelectedIndexRef.current, row.index)
               for (const rangeRow of rows.slice(start, end + 1)) {
-                next.add(getRowId(rangeRow.original))
+                const rangeId = getRowId(rangeRow.original)
+                if (selection.canSelectId?.(rangeId) !== false) next.add(rangeId)
               }
             } else if (next.has(id)) {
               next.delete(id)

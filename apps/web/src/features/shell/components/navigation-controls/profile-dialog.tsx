@@ -58,12 +58,14 @@ export const ProfileDialog = ({
               <p className='text-sm text-foreground-muted'>{user.username}</p>
             </div>
           </div>
-          <Badge
-            className='w-fit capitalize'
-            variant='neutral'
-          >
-            {user.role}
-          </Badge>
+          {user.isPlatformAdmin ? (
+            <Badge
+              className='w-fit'
+              variant='neutral'
+            >
+              Administrator
+            </Badge>
+          ) : null}
           <Button
             variant='ghost'
             asChild

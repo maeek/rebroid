@@ -2,7 +2,7 @@ import type { PermissionId, PermissionMap } from '@/shared/permissions/permissio
 
 export const setPermissionDecision = (permissions: PermissionMap, id: PermissionId, value: string): PermissionMap => {
   const next = { ...permissions }
-  if (value === 'inherit' || value === 'unset') delete next[id]
+  if (value === 'unset') delete next[id]
   else next[id] = value === 'allow'
   return next
 }

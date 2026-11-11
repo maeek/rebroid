@@ -19,7 +19,7 @@ export const getResourceLimitBounds = async () => {
 
 export const getDisplaySidecarLogs = async (expanded: boolean) => {
   const user = await getCurrentUser()
-  if (user.role !== 'admin') {
+  if (!user.isPlatformAdmin) {
     throw new PublicActionError('Display sidecar logs require administrator access.', {
       code: 'forbidden',
       status: 403

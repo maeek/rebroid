@@ -6,24 +6,21 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Notice } from '@/components/ui/notice'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
-import { StateView } from '@/shared/ui/state-view'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupMembershipEditor } from './components/group-membership-editor'
 import { UserAccountSections } from './components/identity-fields'
 import { PermissionEditor } from './components/permission-editor'
-import { QuotaFields } from './components/quota-fields'
+import { EffectiveQuotaFields } from './components/quota-fields'
 import { buildUserUpdateInput, toUserDraft } from './user-edit-page-model'
 import type { UserDraft } from './user-edit-page-model'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
@@ -34,11 +31,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   const [isSaving, setIsSaving] = useState(false)
   const [avatarPending, setAvatarPending] = useState(false)
   const busy = isSaving || avatarPending
-  const resourceLimits = useResourceLimitBounds(true)
-  const effectiveAccess = useMemo(
-    () => resolveEffectiveAccess(groups, draft.groupIds, draft.role, draft.permissionOverrides),
-    [draft.groupIds, draft.permissionOverrides, draft.role, groups]
-  )
+  const effectiveAccess = useMemo(() => resolveEffectiveAccess(groups, draft.groupIds), [draft.groupIds, groups])
 
   const updateDraft = (patch: Partial<UserDraft>) => {
     setDraft(current => ({ ...current, ...patch }))
@@ -118,46 +111,21 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
               />
             }
             access={
-              <>
-                <GroupMembershipEditor
-                  groups={groups}
-                  selectedGroupIds={draft.groupIds}
-                  disabled={busy}
-                  onChange={groupIds => updateDraft({ groupIds })}
-                />
-                {draft.groupIds.length === 0 ? (
-                  <Notice
-                    title='Default group applies'
-                    description={`${effectiveAccess.groups[0]?.name ?? 'No group'} is used when no groups are selected.`}
-                  />
-                ) : null}
-              </>
+              <GroupMembershipEditor
+                groups={groups}
+                selectedGroupIds={draft.groupIds}
+                disabled={busy}
+                onChange={groupIds => updateDraft({ groupIds })}
+              />
             }
             permissions={
               <PermissionEditor
-                permissions={draft.permissionOverrides}
-                effectiveAccess={effectiveAccess}
-                admin={draft.role === 'admin'}
+                decisions={effectiveAccess.decisions}
                 disabled={busy}
-                onChange={permissionOverrides => updateDraft({ permissionOverrides })}
               />
             }
-            quotasDescription={draft.role === 'admin' ? 'Resource limits for applications and sessions.' : undefined}
-            quotas={
-              draft.role === 'admin' ? (
-                <StateView
-                  kind='not-applicable'
-                  title='Unlimited quotas'
-                  description='Administrators have unlimited quotas. Group limits and user overrides do not restrict this role.'
-                />
-              ) : (
-                <QuotaFields
-                  quotas={draft.quotas}
-                  resourceLimits={resourceLimits}
-                  onChange={quotas => updateDraft({ quotas })}
-                />
-              )
-            }
+            quotasDescription='Effective limits from the selected groups.'
+            quotas={<EffectiveQuotaFields quotas={effectiveAccess.quotas} />}
           />
         </fieldset>
       </PageContent>

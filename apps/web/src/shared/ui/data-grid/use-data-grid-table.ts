@@ -142,7 +142,7 @@ export const useDataGridTable = <TData>({
     if (!selection) return
 
     const rowId = getRowId(row.original)
-    if (selection.selectedIds.has(rowId)) return
+    if (selection.selectedIds.has(rowId) || selection.canSelectId?.(rowId) === false) return
 
     lastSelectedIndexRef.current = row.index
     selection.onSelectedIdsChange(new Set([rowId]))

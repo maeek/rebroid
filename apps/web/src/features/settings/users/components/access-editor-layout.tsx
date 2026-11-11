@@ -66,7 +66,7 @@ export const AccessEditorLayout = ({
         <TabsPanel value='groups'>
           <Section
             title='Group membership'
-            description='Later groups take precedence when permissions or quotas conflict. User overrides apply last.'
+            description='Later groups take precedence when permissions or quotas conflict. The Administrators group always grants full access.'
             surface='plain'
           >
             {access}

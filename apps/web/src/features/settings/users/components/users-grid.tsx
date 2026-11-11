@@ -25,7 +25,6 @@ const sortUsers = (users: PublicUser[], groups: UserGroup[], sorting: SortingSta
       const multiplier = item.desc ? -1 : 1
       let result = 0
       if (item.id === 'name') result = left.name.localeCompare(right.name)
-      else if (item.id === 'role') result = left.role.localeCompare(right.role)
       else if (item.id === 'groups') {
         result = left.groupIds
           .map(id => groupLabel(groups, id))
@@ -120,7 +119,6 @@ export const UsersGrid = ({
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [mfaFilter, setMfaFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
@@ -128,14 +126,13 @@ export const UsersGrid = ({
     const query = search.trim().toLowerCase()
     return users.filter(user => {
       if (query && !`${user.name} ${user.username}`.toLowerCase().includes(query)) return false
-      if (roleFilter !== 'all' && user.role !== roleFilter) return false
       if (statusFilter === 'active' && user.disabled) return false
       if (statusFilter === 'disabled' && !user.disabled) return false
       if (mfaFilter === 'enabled' && !user.mfaEnabled) return false
       if (mfaFilter === 'disabled' && user.mfaEnabled) return false
       return true
     })
-  }, [mfaFilter, roleFilter, search, statusFilter, users])
+  }, [mfaFilter, search, statusFilter, users])
   const sortedUsers = useMemo(() => sortUsers(filteredUsers, groups, sorting), [filteredUsers, groups, sorting])
   const selectedUsers = sortedUsers.filter(user => selectedIds.has(user.id))
 
@@ -155,19 +152,11 @@ export const UsersGrid = ({
         cell: ({ row }) => <UserIdentity user={row.original} />
       },
       {
-        id: 'role',
-        accessorFn: user => user.role,
-        header: 'Role',
-        size: 144,
-        meta: { label: 'Role', skeleton: { kind: 'text', width: 'w-24' } },
-        cell: ({ row }) => <span className='capitalize text-sm text-foreground-muted'>{row.original.role}</span>
-      },
-      {
         id: 'groups',
         accessorFn: user => user.groupIds.map(groupId => groupLabel(groups, groupId)).join(', '),
-        header: 'Group',
+        header: 'Groups',
         size: 288,
-        meta: { label: 'Group', skeleton: { kind: 'text', width: 'w-36' } },
+        meta: { label: 'Groups', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => (
           <GroupBadges
             user={row.original}
@@ -202,24 +191,6 @@ export const UsersGrid = ({
         onSearch={setSearch}
         filters={
           <>
-            <FormField
-              label='Role'
-              layout='vertical'
-            >
-              <Select
-                value={roleFilter}
-                onValueChange={setRoleFilter}
-              >
-                <SelectTrigger className='w-full'>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value='all'>Any role</SelectItem>
-                  <SelectItem value='admin'>Admin</SelectItem>
-                  <SelectItem value='user'>User</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormField>
             <FormField
               label='Status'
               layout='vertical'
@@ -259,9 +230,6 @@ export const UsersGrid = ({
           </>
         }
         activeFilters={[
-          ...(roleFilter !== 'all'
-            ? [{ id: 'role', label: 'Role', value: roleFilter, onRemove: () => setRoleFilter('all') }]
-            : []),
           ...(statusFilter !== 'all'
             ? [{ id: 'status', label: 'Status', value: statusFilter, onRemove: () => setStatusFilter('all') }]
             : []),
@@ -270,7 +238,6 @@ export const UsersGrid = ({
             : [])
         ]}
         onResetFilters={() => {
-          setRoleFilter('all')
           setStatusFilter('all')
           setMfaFilter('all')
         }}

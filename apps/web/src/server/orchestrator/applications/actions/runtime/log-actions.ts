@@ -12,7 +12,7 @@ export const getApplicationLogsAction = async (
   tail = 300
 ) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  if (user.role !== 'admin' && !hasPermission(user.permissions, 'applications:view-logs')) {
+  if (!hasPermission(user.permissions, 'applications:view-logs')) {
     throw new PublicActionError('You do not have permission to view logs.', { code: 'forbidden', status: 403 })
   }
   const log = await orchestratorAppRuntimeClient.getApplicationLogs(id, source, tail)

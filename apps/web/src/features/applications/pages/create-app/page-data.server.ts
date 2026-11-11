@@ -8,7 +8,7 @@ export const getCreateAppPageData = async (uploadedApkId?: string) => {
   const [initialSettings, user, images, uploadedApks] = await Promise.all([
     getRequiredServerOrchestratorUiSettings(),
     userPromise,
-    userPromise.then(currentUser => (currentUser.role === 'admin' ? listPlatformImagesAction() : [])),
+    userPromise.then(currentUser => (currentUser.isPlatformAdmin ? listPlatformImagesAction() : [])),
     userPromise.then(currentUser =>
       uploadedApkId ? orchestratorApkUploadsClient.listUploadedApks(currentUser.ownerUserId) : []
     )
@@ -18,7 +18,7 @@ export const getCreateAppPageData = async (uploadedApkId?: string) => {
     images,
     initialSettings,
     permissions: user.permissions,
-    canBuildImages: user.role === 'admin',
+    canBuildImages: user.isPlatformAdmin,
     initialUploadedApk: uploadedApks.find(upload => upload.id === uploadedApkId) ?? null
   }
 }

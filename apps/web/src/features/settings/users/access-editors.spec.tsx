@@ -24,7 +24,6 @@ const groups: UserGroup[] = [
     id: 'operators',
     name: 'Operators',
     description: 'Operate apps',
-    role: 'user',
     permissions: { 'applications:create': true },
     quotas: defaultUserQuota,
     createdAt: '',
@@ -34,7 +33,6 @@ const groups: UserGroup[] = [
     id: 'auditors',
     name: 'Auditors',
     description: 'Audit apps',
-    role: 'user',
     permissions: { 'applications:create': false },
     quotas: defaultUserQuota,
     createdAt: '',
@@ -43,8 +41,7 @@ const groups: UserGroup[] = [
 ]
 const user = {
   ...previewUsers[0],
-  groupIds: ['operators', 'auditors'],
-  permissionOverrides: { 'applications:delete': false }
+  groupIds: ['operators', 'auditors']
 }
 const selectOption = async (name: RegExp, option: string) => {
   const trigger = screen.getByRole('combobox', { name })
@@ -89,7 +86,7 @@ describe('access editors', () => {
     )
   })
 
-  it('previews ordered group changes and saves the same order without changing unrelated overrides', async () => {
+  it('previews ordered group changes and saves the same order', async () => {
     mocks.updateUser.mockResolvedValue({ ok: true, data: user, requestId: 'saved' })
     render(
       <UserEditPage
@@ -113,36 +110,29 @@ describe('access editors', () => {
       user.id,
       expect.objectContaining({
         groupIds: ['auditors', 'operators'],
-        permissionOverrides: { 'applications:delete': false },
         password: undefined
       })
     )
   })
 
-  it('locks effective admin access and retains overrides when switching back to User', async () => {
+  it('shows the Administrators group permissions and effective quotas without account overrides', () => {
+    const administrators = { ...groups[0], id: 'admins', name: 'Administrators' }
     render(
       <UserEditPage
-        user={user}
-        groups={groups}
+        user={{ ...user, groupIds: ['admins', 'auditors'] }}
+        groups={[...groups, administrators]}
       />
     )
-    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Max Open Apps' }), { target: { value: '6' } })
-    fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
-    await selectOption(/^Role/, 'Admin')
     fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
-    expect(screen.getByText('Full administrator access')).toBeVisible()
+    const permission = screen
+      .getAllByRole('row')
+      .find(item => within(item).queryByText('Create applications', { exact: true }))!
+    expect(within(permission).getByText('Granted', { exact: true })).toBeVisible()
+    expect(within(permission).getByText('From Administrators')).toBeVisible()
     expect(screen.queryByRole('combobox', { name: 'Override Delete applications' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
-    expect(screen.getByText(/Administrators have unlimited quotas/)).toBeVisible()
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByText('Unlimited')).toHaveLength(4)
     expect(screen.queryByRole('spinbutton')).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'Account' }))
-    await selectOption(/^Role/, 'User')
-    fireEvent.click(screen.getByRole('tab', { name: 'Permissions' }))
-    expect(screen.getByRole('combobox', { name: 'Override Delete applications' })).toHaveTextContent('Deny')
-    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
-    expect(screen.getByRole('spinbutton', { name: 'Max Open Apps' })).toHaveValue(6)
   })
 
   it('retains edited group permissions after save failure and blocks duplicate saves while pending', async () => {

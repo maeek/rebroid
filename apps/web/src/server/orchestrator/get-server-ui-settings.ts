@@ -28,7 +28,7 @@ const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSe
   ])
 
   const settings = normalizeOrchestratorUiSettings(webSettings, orchestratorSettings, getOrchestratorBaseUrl())
-  if (user.role === 'admin') return settings
+  if (user.isPlatformAdmin) return settings
 
   return {
     ...settings,

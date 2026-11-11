@@ -185,12 +185,6 @@ export const permissionDefinitions = [
     category: 'automations',
     name: 'Run AI automations',
     description: 'Allow automation steps that use configured AI providers and tool calls.'
-  },
-  {
-    id: 'automations:manage-ai-providers',
-    category: 'automations',
-    name: 'Manage AI',
-    description: 'Configure AI providers and model defaults used by automation steps.'
   }
 ] as const
 

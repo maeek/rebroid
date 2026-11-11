@@ -23,7 +23,7 @@ export const FeedbackPreview = () => {
           <StateView
             kind='not-applicable'
             title='Unlimited quotas'
-            description='Administrators have unlimited quotas. Group limits and user overrides do not restrict this role.'
+            description='The Administrators group grants unlimited quotas.'
           />
         </Section>
         <Section

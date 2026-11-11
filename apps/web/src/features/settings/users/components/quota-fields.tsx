@@ -2,6 +2,7 @@
 
 import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
+import { DetailFields } from '@/shared/ui/detail-fields'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
@@ -115,3 +116,13 @@ export const QuotaFields = ({
     </div>
   )
 }
+
+export const EffectiveQuotaFields = ({ quotas, loading }: { quotas?: ResourceQuota; loading?: boolean }) => (
+  <DetailFields
+    loading={loading}
+    fields={quotaFields.map(field => {
+      const value = quotas?.[field.key]
+      return { label: field.label, value: value == null ? 'Unlimited' : `${value} ${field.inputSuffix}` }
+    })}
+  />
+)

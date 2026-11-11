@@ -102,7 +102,7 @@ export const GroupMembershipEditor = ({
           emptyState={
             <DataGridEmptyState
               title='No groups assigned'
-              description='The default group applies. Use Edit membership to assign groups.'
+              description='Use Edit membership to assign groups and grant access.'
             />
           }
         />

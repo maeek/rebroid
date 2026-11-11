@@ -1,16 +1,26 @@
+import { z } from 'zod'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
-import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import {
+  administratorsGroupId,
+  defaultUserGroupId,
+  resolveEffectiveAccess
+} from '@/shared/permissions/effective-access'
+import {
+  allPermissionIds,
   defaultUserPermissions,
   defaultUserQuota,
   fullPermissions,
   mergeQuotas,
-  unlimitedQuota
+  unlimitedQuota,
+  type PermissionMap,
+  type ResourceQuota
 } from '@/shared/permissions/permissions'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
-export type StoredUser = Omit<PublicUser, 'effectivePermissions' | 'effectiveQuotas' | 'mfaEnabled'> & {
+export type StoredUser = Omit<
+  PublicUser,
+  'effectivePermissions' | 'effectiveQuotas' | 'isPlatformAdmin' | 'mfaEnabled'
+> & {
   passwordHash: string
   mfaSecretEncrypted: string | null
   mfaRecoveryCodeHashes: string[]
@@ -44,20 +54,18 @@ export const defaultGroups = (): UserGroup[] => {
   const now = nowIso()
   return [
     {
-      id: 'admins',
+      id: administratorsGroupId,
       name: 'Administrators',
       description: 'Full platform access.',
-      role: 'admin',
       permissions: fullPermissions,
       quotas: unlimitedQuota,
       createdAt: now,
       updatedAt: now
     },
     {
-      id: 'users',
+      id: defaultUserGroupId,
       name: 'Users',
       description: 'Standard app owners with bounded resources.',
-      role: 'user',
       permissions: defaultUserPermissions,
       quotas: defaultUserQuota,
       createdAt: now,
@@ -67,18 +75,15 @@ export const defaultGroups = (): UserGroup[] => {
 }
 
 export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
-  const { groups, decisions } = resolveEffectiveAccess(file.groups, user.groupIds, user.role, user.permissionOverrides)
+  const { groups, decisions, isPlatformAdmin, quotas } = resolveEffectiveAccess(file.groups, user.groupIds)
   const effectivePermissions = Object.fromEntries(
     Object.entries(decisions).map(([id, decision]) => [id, decision.allowed])
   )
-  const effectiveQuotas =
-    user.role === 'admin' ? unlimitedQuota : mergeQuotas(...groups.map(group => group.quotas), user.quotas)
-
   return {
     id: user.id,
     username: user.username,
     name: user.name,
-    role: user.role,
+    isPlatformAdmin,
     groupIds: groups.map(group => group.id),
     disabled: user.disabled,
     passwordChangeRequired: user.passwordChangeRequired,
@@ -86,59 +91,37 @@ export const toPublicUser = (file: UsersFile, user: StoredUser): PublicUser => {
     sessionVersion: user.sessionVersion,
     avatarDataUrl: user.avatarDataUrl,
     accentColor: user.accentColor,
-    permissionOverrides: user.permissionOverrides,
     effectivePermissions,
-    quotas: user.quotas,
-    effectiveQuotas,
+    effectiveQuotas: quotas,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt
   }
 }
 
-export const normalizeUser = (
-  user: Partial<StoredUser> & Pick<StoredUser, 'id' | 'username' | 'passwordHash'>
-): StoredUser => {
-  const now = nowIso()
-  const role = user.role ?? 'user'
-  const groupIds = user.groupIds ?? [role === 'admin' ? 'admins' : 'users']
+const groupIdsSchema = z.array(z.string())
 
-  return {
-    id: user.id,
-    username: user.username,
-    name: user.name ?? user.username,
-    role,
-    groupIds,
-    disabled: user.disabled ?? false,
-    passwordChangeRequired: user.passwordChangeRequired ?? false,
-    sessionVersion: user.sessionVersion ?? 1,
-    avatarDataUrl: user.avatarDataUrl ?? null,
-    accentColor: isAccentColor(user.accentColor) ? user.accentColor : defaultAccentColor,
-    permissionOverrides: user.permissionOverrides ?? {},
-    quotas: user.quotas ?? {},
-    passwordHash: user.passwordHash,
-    mfaSecretEncrypted: user.mfaSecretEncrypted ?? null,
-    mfaRecoveryCodeHashes: user.mfaRecoveryCodeHashes ?? [],
-    createdAt: user.createdAt ?? now,
-    updatedAt: user.updatedAt ?? now
+export const validateGroupIds = (groups: readonly UserGroup[], groupIds: unknown): string[] => {
+  const knownIds = new Set(groups.map(group => group.id))
+  const parsed = groupIdsSchema.safeParse(groupIds)
+  if (!parsed.success || parsed.data.some(id => !knownIds.has(id))) {
+    throw new PublicActionError('Select existing groups.', { code: 'validation', status: 422 })
   }
+  return [...new Set(parsed.data)]
 }
 
-export const normalizeGroups = (groups: Partial<UserGroup>[] | undefined) => {
-  const sourceGroups = groups && groups.length > 0 ? groups : defaultGroups()
+export const groupPermissionsSchema = z.partialRecord(z.enum(allPermissionIds), z.boolean())
+export const groupQuotaSchema = z.object({
+  maxOpenApps: z.number().nonnegative().int().nullable().optional(),
+  maxSessionSeconds: z.number().nonnegative().int().nullable().optional(),
+  maxMemoryMb: z.number().nonnegative().int().nullable().optional(),
+  maxCpuCpus: z.number().nonnegative().nullable().optional()
+})
 
-  return sourceGroups.map(group => {
-    const role = group.role ?? 'user'
-
-    return {
-      ...group,
-      id: group.id ?? role,
-      name: group.name ?? role,
-      description: group.description ?? '',
-      role,
-      permissions: role === 'admin' ? fullPermissions : (group.permissions ?? {}),
-      quotas: role === 'admin' ? unlimitedQuota : mergeQuotas(group.quotas),
-      createdAt: group.createdAt ?? nowIso(),
-      updatedAt: group.updatedAt ?? nowIso()
-    }
-  })
+export const validateGroupPolicy = (permissions: PermissionMap, quotas: Partial<ResourceQuota>) => {
+  const parsedPermissions = groupPermissionsSchema.safeParse(permissions)
+  const parsedQuotas = groupQuotaSchema.safeParse(quotas)
+  if (!parsedPermissions.success || !parsedQuotas.success) {
+    throw new PublicActionError('Check the group permissions and quotas.', { code: 'validation', status: 422 })
+  }
+  return { permissions: parsedPermissions.data, quotas: mergeQuotas(parsedQuotas.data) }
 }

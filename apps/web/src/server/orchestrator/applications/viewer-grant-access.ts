@@ -26,7 +26,7 @@ export const assertViewerGrantCurrent = async (user: CurrentUserContext) => {
     !account ||
     account.disabled ||
     account.passwordChangeRequired ||
-    account.role !== user.role ||
+    account.isPlatformAdmin !== user.isPlatformAdmin ||
     viewerPermissions.some(
       permission =>
         hasPermission(user.permissions, permission) && !hasPermission(account.effectivePermissions, permission)

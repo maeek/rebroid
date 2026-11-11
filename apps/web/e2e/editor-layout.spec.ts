@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const [kind, titles] of [
-  ['user', ['Identity', 'Password', 'Account status', 'Appearance', 'Access role']],
+  ['user', ['Identity', 'Password', 'Account status', 'Appearance']],
   ['group', ['Group details', 'Notes']]
 ] as const) {
   test(`${kind} editor sections preserve loading geometry and drafts`, async ({ page }) => {
@@ -37,7 +37,11 @@ for (const [kind, titles] of [
       expect(await geometry()).toEqual(quotaLoading)
       const quotas = page.getByRole('region', { name: 'Quotas', exact: true })
       await expect(quotas.getByRole('heading', { name: 'Quotas', exact: true })).toHaveCount(0)
-      await expect(quotas).toContainText('Resource limits for applications and sessions.')
+      await expect(quotas).toContainText(
+        kind === 'user'
+          ? 'Effective limits from the selected groups.'
+          : 'Resource limits for applications and sessions.'
+      )
       await expect(quotas).toHaveAttribute('data-surface', 'editor')
       await expect(quotas.locator('[data-surface="editor"]')).toHaveCount(0)
       await page.getByRole('tab', { name: kind === 'user' ? 'Account' : 'Details', exact: true }).click()

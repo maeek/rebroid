@@ -184,9 +184,65 @@ describe('userService.changeOwnPassword', () => {
     })
   })
 
-  it('does not allow the last active administrator to be demoted', async () => {
-    await expect(userService.updateUser('admin', { role: 'user' })).rejects.toThrow(
-      'Cannot remove or disable the last active admin.'
-    )
+  it('protects the last enabled Administrators member from removal, disabling, and deletion', async () => {
+    const expected = 'At least one enabled account must belong to Administrators.'
+    await expect(userService.updateUser('admin', { groupIds: ['users'] })).rejects.toThrow(expected)
+    await expect(userService.setUserDisabled('admin', true)).rejects.toThrow(expected)
+    await expect(userService.deleteUser('admin')).rejects.toThrow(expected)
+    await expect(userService.deleteGroup('admins')).rejects.toThrow('Built-in groups cannot be deleted.')
+    await expect(userService.deleteGroup('users')).rejects.toThrow('Built-in groups cannot be deleted.')
+
+    const otherAdmin = await userService.createUser({
+      username: 'second',
+      password: 'original-password',
+      groupIds: ['admins']
+    })
+    expect(otherAdmin.isPlatformAdmin).toBe(true)
+    await expect(userService.updateUser('admin', { groupIds: ['users'] })).resolves.toMatchObject({
+      isPlatformAdmin: false
+    })
+  })
+
+  it('persists permission precedence when a user reorders the same groups', async () => {
+    const allow = await userService.createGroup({ name: 'Allow', permissions: { 'applications:start': true } })
+    const deny = await userService.createGroup({ name: 'Deny', permissions: { 'applications:start': false } })
+    const user = await userService.createUser({
+      username: 'operator',
+      password: 'original-password',
+      groupIds: [allow.id, deny.id]
+    })
+    expect(user.effectivePermissions['applications:start']).toBe(false)
+
+    const groupIds = [deny.id, allow.id]
+    const updated = await userService.updateUser(user.id, { groupIds })
+    expect(updated.effectivePermissions['applications:start']).toBe(true)
+    expect(await userService.getUserById(user.id)).toMatchObject({
+      groupIds,
+      effectivePermissions: { 'applications:start': true }
+    })
+  })
+
+  it('revokes actual members on group edits and leaves removed memberships without implicit viewer access', async () => {
+    const group = await userService.createGroup({
+      name: 'Operators',
+      permissions: { 'applications:control-viewer': true }
+    })
+    const operator = await userService.createUser({
+      username: 'operator',
+      password: 'original-password',
+      groupIds: [group.id]
+    })
+    const defaultUser = await userService.createUser({ username: 'default-user', password: 'original-password' })
+    const prepareRevocation = vi.fn((_userIds: readonly string[]) => Promise.resolve(undefined))
+
+    await userService.deleteGroup(group.id, prepareRevocation)
+    expect(prepareRevocation).toHaveBeenLastCalledWith([operator.id])
+    expect(await userService.getUserById(operator.id)).toMatchObject({ groupIds: [], effectivePermissions: {} })
+
+    await userService.updateGroup('users', { permissions: {} }, prepareRevocation)
+    expect(prepareRevocation).toHaveBeenLastCalledWith([defaultUser.id])
+    expect(
+      (await userService.getUserById(defaultUser.id))?.effectivePermissions['applications:control-viewer']
+    ).toBeUndefined()
   })
 })

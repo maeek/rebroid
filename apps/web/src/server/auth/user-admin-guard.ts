@@ -1,26 +1,22 @@
 import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { administratorsGroupId } from '@/shared/permissions/effective-access'
 import type { StoredUser, UsersFile } from './user-model'
 
-export const assertCanRemoveOrDisableUser = (file: UsersFile, user: StoredUser) => {
-  if (user.role !== 'admin') return
-
-  const activeAdmins = file.users.filter(item => item.role === 'admin' && !item.disabled)
-  if (activeAdmins.length < 2) {
-    throw new PublicActionError('Cannot remove or disable the last active admin.', { code: 'conflict', status: 409 })
-  }
-}
-
-export const assertCanUpdateUser = (
+export const assertCanChangeAdministrator = (
   file: UsersFile,
   user: StoredUser,
-  update: { disabled?: boolean; role?: StoredUser['role'] }
+  next: Pick<StoredUser, 'disabled' | 'groupIds'>
 ) => {
-  if (user.role !== 'admin' || user.disabled) return
-
-  const nextRole = update.role ?? user.role
-  const nextDisabled = update.disabled ?? user.disabled
-  if (nextRole === 'admin' && !nextDisabled) return
-
-  assertCanRemoveOrDisableUser(file, user)
+  if (user.disabled || !user.groupIds.includes(administratorsGroupId)) return
+  if (!next.disabled && next.groupIds.includes(administratorsGroupId)) return
+  const hasOtherAdmin = file.users.some(
+    account => account.id !== user.id && !account.disabled && account.groupIds.includes(administratorsGroupId)
+  )
+  if (!hasOtherAdmin) {
+    throw new PublicActionError('At least one enabled account must belong to Administrators.', {
+      code: 'conflict',
+      status: 409
+    })
+  }
 }

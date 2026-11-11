@@ -10,7 +10,7 @@ export const GET = async (_request: Request, { params }: { params: Promise<{ id:
   try {
     const [user, app] = await Promise.all([getCurrentUserContext(), orchestratorAppCatalogClient.getApplication(id)])
 
-    if (user.role !== 'admin' && app.ownerUserId !== user.ownerUserId) {
+    if (!user.isPlatformAdmin && app.ownerUserId !== user.ownerUserId) {
       return NextResponse.json({ message: 'Not found' }, { status: 404 })
     }
 

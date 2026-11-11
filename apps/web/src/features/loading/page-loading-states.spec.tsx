@@ -37,8 +37,8 @@ describe('feature-owned page loading states', () => {
   it.each([
     ['workflows', AutomationsListPageSkeleton, ['Workflow', 'Steps', 'Last run']],
     ['triggers', AutomationTriggersPageSkeleton, ['Trigger', 'Target']],
-    ['users', UsersPageSkeleton, ['User', 'Role', 'Status']],
-    ['groups', GroupsPageSkeleton, ['Group', 'Role']],
+    ['users', UsersPageSkeleton, ['User', 'Groups', 'Status']],
+    ['groups', GroupsPageSkeleton, ['Group']],
     ['audit log', ActivityPageSkeleton, ['Event', 'Actor', 'Target', 'Outcome', 'Time']]
   ] as const)('keeps the %s grid chrome and real column labels while data is unknown', (_, Component, columns) => {
     renderLoading(<Component />)

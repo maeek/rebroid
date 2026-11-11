@@ -11,7 +11,7 @@ export const getCurrentUserContext = cache(async () => {
 
   return {
     ownerUserId: user.id || user.name || 'admin',
-    role: user.role,
+    isPlatformAdmin: user.isPlatformAdmin,
     permissions: user.effectivePermissions,
     quotas: user.effectiveQuotas
   }

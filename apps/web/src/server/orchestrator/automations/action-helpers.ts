@@ -10,10 +10,10 @@ import { orchestratorAutomationsClient } from './client'
 import type { RunAutomationInput, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 import type { AutomationDefinition, AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
-export type CurrentAutomationUser = Awaited<ReturnType<typeof getCurrentUserContext>>
+export type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
 
 export const assertAutomationPermission = (user: CurrentAutomationUser, permission: PermissionId) => {
-  if (user.role !== 'admin' && !hasPermission(user.permissions, permission)) {
+  if (!hasPermission(user.permissions, permission)) {
     throw new PublicActionError('You do not have permission to use automations.', { code: 'forbidden', status: 403 })
   }
 }
@@ -92,8 +92,7 @@ export const listPermittedAiTools = async (user: CurrentAutomationUser) => {
     .filter(command => command.uses !== 'ai.run')
     .filter(command =>
       command.requiredPermissions.every(
-        permission =>
-          commandPermissionIsKnown(permission) && (user.role === 'admin' || hasPermission(user.permissions, permission))
+        permission => commandPermissionIsKnown(permission) && hasPermission(user.permissions, permission)
       )
     )
     .map(command => command.uses)
@@ -110,7 +109,6 @@ export const assertRunProfilePermission = (
   input: Pick<RunAutomationInput, 'profileMode' | 'profileName'>
 ) => {
   if (
-    user.role !== 'admin' &&
     (input.profileMode || input.profileName?.trim()) &&
     !hasPermission(user.permissions, 'applications:switch-profile')
   ) {
