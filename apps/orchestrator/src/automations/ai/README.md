@@ -40,13 +40,17 @@ spec:
         rawShellPolicy: deny
 ```
 
+Ad hoc prompts are recorded when the run is queued, so the conversation can restore them even if
+execution never starts. Save as workflow uses the prompt and a completed AI task result.
+
 The target is selected when the workflow runs. The caller needs `automations:run-ai` and the
 permissions required by the actions it executes. `providerId` and `modelId` can select a specific
 configured controller; otherwise provider selection uses the configured role defaults.
 
 `maxActions` bounds action attempts; when omitted, `maxToolCalls` supplies the limit. The timeout
-bounds the task deadline. Reaching either budget without verified completion returns a blocked
-result. Cancellation and provider failures are handled through the surrounding execution path.
+bounds the task deadline across provider requests, device commands, and observation. The final
+allowed action leaves one terminal verification turn. Controller turns have their own limit.
+Exhausting the time or turn budget without verification returns a blocked result. Cancellation and provider failures are handled through the surrounding execution path.
 
 ### Decision loop
 
@@ -90,7 +94,8 @@ but must not invent a target.
 
 After a screen-changing action, the executor observes again and records the result as evidence.
 The finish verifier rejects unknown evidence/subgoal IDs, completed results without evidence,
-and completion that omits planned subgoals. Results include the final text, completed/blocked
+and completion that omits planned subgoals. Failed dispatch evidence alone cannot verify
+completion. Terminal results publish the citations accepted by the verifier. Results include the final text, completed/blocked
 status, action count, blocked reason, and evidence references.
 
 `android.adbShell` is excluded from ordinary routed capabilities. Escalation needs both an explicit
@@ -106,9 +111,14 @@ Provider CRUD, persistence, model roles, health checks, and downloads belong to
 surface. The device harness uses the selected controller model for decisions and optional plans;
 drafting and suggestions select the planner role. A separate vision provider/model is optional.
 
-The chat client normalizes OpenAI-compatible SSE and native Ollama NDJSON, preserving content,
+Provider request deadlines cover the response body. Non-streamed Vision and health probes decode
+both OpenAI-compatible and native Ollama responses. The chat client normalizes OpenAI-compatible SSE
+and native Ollama NDJSON, preserving content,
 tool decisions, usage, finish reasons, and timing. Transport is independent from detected server
 flavor. Hidden reasoning text is not persisted; only its presence is recorded.
+
+Vision lookup filters local detections before applying the result cap and enforces the requested
+region on model matches. OCR health reports when the expected language differs from the deployment.
 
 Perception captures the screen and UI data, sends the original lossless image to the OCR adapter,
 and optionally asks a vision model to describe it. Fusion ranks candidates and prepares the marked
@@ -122,10 +132,11 @@ single configured language. Capture, OCR, model description, and fusion remain s
 | Budgets, planning policy, and main loop                   | [Harness](automation-ai-harness.service.ts).                                                                          |
 | Controller/planner requests and decision retries          | [Decision service](automation-ai-decision.service.ts).                                                                |
 | Action validation, execution, and post-action observation | [Action executor](automation-ai-action-executor.service.ts).                                                          |
+| Run state, action evidence, and budgets                   | [Run state](automation-device-agent-run-state.ts).                                                                    |
 | Target identity, capabilities, and shell allowlist        | [Agent state and policy](automation-device-agent-state.ts).                                                           |
 | Typed decisions and controller/planner prompts            | [Decision contract](core/device-decision.ts), [messages](core/device-messages.ts).                                    |
 | Terminal evidence checks                                  | [Finish verifier](automation-ai-finish-verifier.ts).                                                                  |
-| Provider streaming                                        | [Chat client](automation-ai-chat-client.service.ts), [stream parser](core/streaming.ts).                              |
+| Provider streaming                                        | [Chat client](automation-ai-chat-client.service.ts), [stream parser](../../common/ai-provider-stream.ts).             |
 | Drafting and suggestions                                  | [YAML drafts](automation-ai-yaml-draft.service.ts), [suggestions](automation-ai-suggestions.service.ts).              |
 | Observation orchestration and fusion                      | [Perception](../vision/automation-perception.service.ts), [vision facade](../vision/automation-vision.service.ts).    |
 | Command registration and ad-hoc run definitions           | [`ai.run`](../commands/ai-automation-commands.service.ts), [definition factory](automation-ai-definition.factory.ts). |

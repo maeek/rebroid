@@ -118,6 +118,34 @@ describe('AiProviderSettingsService', () => {
     expect(result.model.id).toBe('planner');
   });
 
+  it('skips providers without a model for the requested default role', async () => {
+    const settings = createSettings();
+    const primary = settings.aiProviders[0];
+    settings.aiProviders.unshift({
+      ...primary,
+      id: 'device-only',
+      models: [
+        {
+          ...primary.models[0],
+          id: 'controller',
+          roles: ['controller'],
+          defaultFor: ['controller'],
+        },
+      ],
+    });
+    const { service } = createService(settings);
+
+    await expect(
+      service.getProviderForExecution(undefined, undefined, 'planner'),
+    ).resolves.toMatchObject({
+      provider: { id: 'primary' },
+      model: { id: 'planner' },
+    });
+    await expect(
+      service.getProviderForExecution('device-only', undefined, 'planner'),
+    ).rejects.toThrow('No enabled planner AI model');
+  });
+
   it('selects a role-specific model when requested', async () => {
     const { service } = createService();
 

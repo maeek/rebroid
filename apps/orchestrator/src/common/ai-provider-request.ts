@@ -1,3 +1,7 @@
+import {
+  providerRequestHeaders,
+  withProviderResponse,
+} from './ai-provider-http';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -42,6 +46,19 @@ export interface ChatResponseFormat {
   };
 }
 
+export const modelSupportsStructuredOutput = (
+  model: AutomationAiProviderModel,
+) => model.capabilities?.structuredOutput === true;
+export const modelSupportsTools = (model: AutomationAiProviderModel) =>
+  model.capabilities?.tools !== false;
+
+export const deviceControllerResponseMode = (
+  model: AutomationAiProviderModel,
+) => {
+  if (modelSupportsStructuredOutput(model)) return 'schema';
+  return modelSupportsTools(model) ? 'tool' : null;
+};
+
 export const providerProtocol = (
   provider: Pick<AutomationAiProvider, 'protocol'>,
 ): AutomationAiProviderProtocol =>
@@ -76,6 +93,35 @@ export const providerModelsEndpoint = (provider: AutomationAiProvider) =>
   providerProtocol(provider) === 'ollama-native-chat'
     ? `${provider.baseUrl.replace(/\/+$/, '')}/api/tags`
     : `${providerOpenAiRoot(provider)}/models`;
+
+export const withProviderChatResponse = <T>(
+  request: Parameters<typeof buildChatRequestBody>[0],
+  options: Parameters<typeof withProviderResponse>[2],
+  consume: (response: Response) => Promise<T>,
+) =>
+  withProviderResponse(
+    chatCompletionsEndpoint(request.provider),
+    {
+      method: 'POST',
+      headers: providerRequestHeaders(request.provider, { json: true }),
+      body: JSON.stringify(buildChatRequestBody(request)),
+    },
+    options,
+    consume,
+  );
+
+export const providerAssistantMessage = (body: unknown) => {
+  const root = objectRecord(body);
+  const choice = Array.isArray(root?.choices)
+    ? objectRecord(root.choices[0])
+    : null;
+  return objectRecord(choice?.message) ?? objectRecord(root?.message);
+};
+
+const objectRecord = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 
 export const buildChatRequestBody = ({
   messages,

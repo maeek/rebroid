@@ -1,3 +1,4 @@
+import { matchesVisionLocateBounds } from './vision-geometry';
 import {
   BadRequestException,
   Injectable,
@@ -5,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { createDetection } from './vision-observation';
 import {
-  buildChatRequestBody,
-  chatCompletionsEndpoint,
+  providerAssistantMessage,
+  withProviderChatResponse,
   type ChatMessage,
 } from '../../common/ai-provider-request';
 import { correctScreenStateHypothesis } from '../ai/core/screen-state-policy';
@@ -15,9 +16,8 @@ import type {
   AutomationAiProviderModel,
 } from '../../settings/contracts/ai-provider';
 import {
-  createProviderRequestScope,
-  isProviderAbortError,
-  providerRequestHeaders,
+  ProviderRequestAbort,
+  readProviderJson,
   readBoundedProviderText,
 } from '../../common/ai-provider-http';
 import { MetricsService } from '../../metrics/metrics.service';
@@ -159,6 +159,11 @@ export class AutomationVisionModelService {
             type: 'text',
             text: [
               `Find visible target: ${request.input.query}`,
+              ...(request.input.region
+                ? [
+                    `Only search inside this normalized region: ${JSON.stringify(request.input.region)}.`,
+                  ]
+                : []),
               `Return at most ${request.input.maxResults} match(es) with confidence >= ${request.input.threshold}.`,
               'JSON shape: {"matches":[{"label":"...","description":"...","confidence":0.0,"bounds":{"left":0,"top":0,"width":0,"height":0}}],"reason":"..."}',
             ].join('\n'),
@@ -171,8 +176,6 @@ export class AutomationVisionModelService {
       await this.requestText(request, messages, 'Vision locate request'),
     );
     const matches = parsed.matches
-      .filter((match) => match.confidence >= request.input.threshold)
-      .slice(0, request.input.maxResults)
       .map((match, index) =>
         createDetection({
           id: `vision-${index + 1}`,
@@ -182,7 +185,11 @@ export class AutomationVisionModelService {
           bounds: match.bounds,
           source: 'vision-model',
         }),
-      );
+      )
+      .filter((detection) =>
+        matchesVisionLocateBounds(detection, request.input),
+      )
+      .slice(0, request.input.maxResults);
     return {
       matches,
       query: request.input.query,
@@ -199,42 +206,41 @@ export class AutomationVisionModelService {
     failurePrefix: string,
   ) {
     const finishMetrics = this.metrics.beginAiProviderRequest('chat', 'vision');
-    const scope = createProviderRequestScope({
-      abortSignal: request.abortSignal,
-      deadline: request.deadline,
-      timeoutMs: 30_000,
-    });
     try {
-      const response = await fetch(chatCompletionsEndpoint(request.provider), {
-        method: 'POST',
-        signal: scope.signal,
-        headers: providerRequestHeaders(request.provider, { json: true }),
-        body: JSON.stringify(
-          buildChatRequestBody({
-            provider: request.provider,
-            model: request.model,
-            messages,
-            stream: false,
-          }),
-        ),
-      });
-      if (!response.ok) {
-        const detail = providerErrorDetailFromText(
-          await readBoundedProviderText(response),
-        );
-        throw new BadRequestException(
-          `${failurePrefix} failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
-        );
-      }
-      const body = (await response.json().catch(() => null)) as {
-        choices?: Array<{ message?: ChatMessage }>;
-      } | null;
+      const content = await withProviderChatResponse(
+        {
+          provider: request.provider,
+          model: request.model,
+          messages,
+          stream: false,
+        },
+        {
+          abortSignal: request.abortSignal,
+          deadline: request.deadline,
+          timeoutMs: 30_000,
+        },
+        async (response) => {
+          if (!response.ok) {
+            const detail = providerErrorDetailFromText(
+              await readBoundedProviderText(response),
+            );
+            throw new BadRequestException(
+              `${failurePrefix} failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
+            );
+          }
+          const message = providerAssistantMessage(
+            await readProviderJson(response),
+          );
+          return textContent(message?.content);
+        },
+      );
       finishMetrics('success');
-      return textContent(body?.choices?.[0]?.message?.content ?? null);
+      return content;
     } catch (error) {
-      const timedOut = scope.wasTimedOut() || isProviderAbortError(error);
+      const timedOut =
+        error instanceof ProviderRequestAbort && error.kind === 'timeout';
       finishMetrics(timedOut ? 'timeout' : 'error');
-      if (scope.wasCanceled()) {
+      if (error instanceof ProviderRequestAbort && error.kind === 'canceled') {
         throw new BadRequestException(
           'Automation vision operation was canceled.',
         );
@@ -243,8 +249,6 @@ export class AutomationVisionModelService {
         throw new RequestTimeoutException('Vision provider request timed out.');
       }
       throw error;
-    } finally {
-      scope.cleanup();
     }
   }
 }

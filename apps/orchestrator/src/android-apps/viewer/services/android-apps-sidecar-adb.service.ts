@@ -17,26 +17,38 @@ export class AndroidAppsSidecarAdbService {
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
   ) {}
 
-  async getClipboard(app: AndroidApplication) {
+  async getClipboard(app: AndroidApplication, signal?: AbortSignal) {
     return this.request<{ text: string; supported: boolean }>(
       app,
       '/clipboard',
+      { signal },
     );
   }
 
-  async setClipboard(app: AndroidApplication, text: string) {
+  async setClipboard(
+    app: AndroidApplication,
+    text: string,
+    signal?: AbortSignal,
+  ) {
     return this.request<{ text: string; supported: boolean }>(
       app,
       '/clipboard',
       {
+        signal,
         method: 'PUT',
         body: JSON.stringify({ text }),
       },
     );
   }
 
-  async tap(app: AndroidApplication, x: number, y: number) {
+  async tap(
+    app: AndroidApplication,
+    x: number,
+    y: number,
+    signal?: AbortSignal,
+  ) {
     return this.request<{ executed: boolean }>(app, '/tap', {
+      signal,
       method: 'POST',
       body: JSON.stringify({ x, y }),
     });
@@ -51,22 +63,26 @@ export class AndroidAppsSidecarAdbService {
       y2: number;
       durationMs: number;
     },
+    signal?: AbortSignal,
   ) {
     return this.request<{ executed: boolean }>(app, '/swipe', {
+      signal,
       method: 'POST',
       body: JSON.stringify(input),
     });
   }
 
-  async inputText(app: AndroidApplication, text: string) {
+  async inputText(app: AndroidApplication, text: string, signal?: AbortSignal) {
     return this.request<{ executed: boolean }>(app, '/input-text', {
+      signal,
       method: 'POST',
       body: JSON.stringify({ text }),
     });
   }
 
-  async key(app: AndroidApplication, key: string) {
+  async key(app: AndroidApplication, key: string, signal?: AbortSignal) {
     return this.request<{ executed: boolean }>(app, '/key', {
+      signal,
       method: 'POST',
       body: JSON.stringify({ key }),
     });
@@ -76,25 +92,33 @@ export class AndroidAppsSidecarAdbService {
     app: AndroidApplication,
     orientation:
       'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
+    signal?: AbortSignal,
   ) {
     return this.request<{ executed: boolean }>(app, '/rotate-display', {
+      signal,
       method: 'POST',
       body: JSON.stringify({ orientation }),
     });
   }
 
-  async shell(app: AndroidApplication, command: string, timeoutMs: number) {
+  async shell(
+    app: AndroidApplication,
+    command: string,
+    timeoutMs: number,
+    signal?: AbortSignal,
+  ) {
     return this.request<{
       stdout: string;
       stderr: string;
       exitCode: number;
     }>(app, '/shell', {
+      signal,
       method: 'POST',
       body: JSON.stringify({ command, timeoutMs }),
     });
   }
 
-  async dumpUi(app: AndroidApplication) {
+  async dumpUi(app: AndroidApplication, signal?: AbortSignal) {
     return this.request<{
       status: 'available' | 'failed';
       xml?: string;
@@ -120,7 +144,7 @@ export class AndroidAppsSidecarAdbService {
         xmlBytes: number;
         rawNodeCount: number;
       }>;
-    }>(app, '/ui-dump');
+    }>(app, '/ui-dump', { signal });
   }
 
   async tapText(app: AndroidApplication, text: string) {
@@ -187,12 +211,12 @@ export class AndroidAppsSidecarAdbService {
     return parseAndroidNotifications(result.output);
   }
 
-  async screenshot(app: AndroidApplication) {
+  async screenshot(app: AndroidApplication, signal?: AbortSignal) {
     return this.request<{
       mimeType: string;
       dataUrl: string;
       capturedAt: string;
-    }>(app, '/screenshot');
+    }>(app, '/screenshot', { signal });
   }
 
   private async request<T = unknown>(
@@ -200,8 +224,11 @@ export class AndroidAppsSidecarAdbService {
     path: string,
     init: RequestInit = {},
   ): Promise<T> {
+    init.signal?.throwIfAborted();
     const cacheKey = this.targetCacheKey(app);
     const udid = await this.prepareUdid(app, cacheKey);
+    init.signal?.throwIfAborted();
+    const timeout = AbortSignal.timeout(20_000);
     const baseUrl = this.config
       .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
       .replace(/\/$/, '');
@@ -222,7 +249,7 @@ export class AndroidAppsSidecarAdbService {
       {
         ...init,
         headers,
-        signal: AbortSignal.timeout(20_000),
+        signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       },
     ).catch((error) => {
       this.preparedTargets.delete(cacheKey);

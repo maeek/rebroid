@@ -224,7 +224,7 @@ const OcrSettingsTab = ({
     <FormField
       layout='vertical'
       label='Language'
-      description='The PaddleOCR language/model selected for this deployment.'
+      description='Expected OCR language. It must match the sidecar’s deployed model.'
     >
       <Input
         value={services.ocr.language}

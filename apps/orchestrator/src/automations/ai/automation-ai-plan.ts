@@ -1,5 +1,5 @@
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
-import type { DeviceAgentSubgoal } from './automation-device-agent-state';
+import type { DeviceAgentSubgoal } from './automation-device-agent-run-state';
 
 export const devicePlanSchema: Record<string, unknown> = {
   type: 'object',
@@ -75,7 +75,7 @@ export const fallbackDevicePlan = (prompt: string): DeviceAgentSubgoal[] => [
   },
 ];
 
-export const devicePlanText = (subgoals: DeviceAgentSubgoal[]) =>
+export const devicePlanText = (subgoals: readonly DeviceAgentSubgoal[]) =>
   subgoals.length === 0
     ? ''
     : subgoals

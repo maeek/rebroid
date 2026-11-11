@@ -5,13 +5,15 @@ import {
   RequestTimeoutException,
 } from '@nestjs/common';
 import {
-  buildChatRequestBody,
-  chatCompletionsEndpoint,
+  withProviderChatResponse,
   providerProtocol,
   type ChatResponseFormat,
   type ChatMessage,
 } from '../../common/ai-provider-request';
-import { consumeChatCompletionStream } from './core/streaming';
+import {
+  consumeChatCompletionStream,
+  providerStreamFormat,
+} from '../../common/ai-provider-stream';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -22,9 +24,7 @@ import {
 } from './automation-ai-observation.utils';
 import { MetricsService } from '../../metrics/metrics.service';
 import {
-  createProviderRequestScope,
-  isProviderAbortError,
-  providerRequestHeaders,
+  ProviderRequestAbort,
   readBoundedProviderText,
 } from '../../common/ai-provider-http';
 
@@ -59,56 +59,31 @@ export class AutomationAiChatClientService {
       'chat',
       'controller',
     );
-    const requestScope = createProviderRequestScope({ deadline, abortSignal });
     try {
-      let response: Response;
-      try {
-        response = await fetch(chatCompletionsEndpoint(provider), {
-          method: 'POST',
-          signal: requestScope.signal,
-          headers: providerRequestHeaders(provider, { json: true }),
-          body: JSON.stringify(
-            buildChatRequestBody({
-              provider,
-              model,
-              messages,
-              responseFormat,
-              tools,
-              stream: true,
-            }),
-          ),
-        });
-      } catch (error) {
-        if (requestScope.wasCanceled()) {
-          throw new BadRequestException('AI automation was canceled.');
-        }
-        if (requestScope.wasTimedOut() || isProviderAbortError(error)) {
-          throw new RequestTimeoutException(
-            'AI automation timed out waiting for the provider response.',
+      const result = await withProviderChatResponse(
+        { provider, model, messages, responseFormat, tools, stream: true },
+        { deadline, abortSignal },
+        async (response) => {
+          if (!response.ok) {
+            const detail = await this.readProviderError(response);
+            this.logger.warn(
+              `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
+            );
+            throw new BadRequestException(
+              `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
+            );
+          }
+          if (!response.body) {
+            throw new BadRequestException(
+              'AI provider did not return a streaming response body.',
+            );
+          }
+          return this.consumeStream(
+            response.body,
+            providerStreamFormat(provider),
+            onContentDelta,
           );
-        }
-        throw error;
-      }
-      if (!response.ok) {
-        const detail = await this.readProviderError(response);
-        this.logger.warn(
-          `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
-        );
-        throw new BadRequestException(
-          `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
-        );
-      }
-      if (!response.body) {
-        throw new BadRequestException(
-          'AI provider did not return a streaming response body.',
-        );
-      }
-      const result = await this.consumeStream(
-        response.body,
-        providerProtocol(provider) === 'ollama-native-chat'
-          ? 'ollama-ndjson'
-          : 'openai-sse',
-        onContentDelta,
+        },
       );
       finishMetrics('success');
       return {
@@ -123,11 +98,19 @@ export class AutomationAiChatClientService {
       };
     } catch (error) {
       finishMetrics(
-        error instanceof RequestTimeoutException ? 'timeout' : 'error',
+        error instanceof ProviderRequestAbort && error.kind === 'timeout'
+          ? 'timeout'
+          : 'error',
       );
+      if (error instanceof ProviderRequestAbort) {
+        if (error.kind === 'canceled') {
+          throw new BadRequestException('AI automation was canceled.');
+        }
+        throw new RequestTimeoutException(
+          'AI automation timed out waiting for the provider response.',
+        );
+      }
       throw error;
-    } finally {
-      requestScope.cleanup();
     }
   }
 

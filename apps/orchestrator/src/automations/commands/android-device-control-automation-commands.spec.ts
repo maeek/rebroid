@@ -19,6 +19,10 @@ describe('android device control automation commands', () => {
     ).resolves.toEqual({
       summary: expect.any(String),
     });
-    expect(viewerControl).toHaveBeenCalledWith({ id: 'app_1' }, viewerCommand);
+    expect(viewerControl).toHaveBeenCalledWith(
+      { id: 'app_1' },
+      viewerCommand,
+      undefined,
+    );
   });
 });

@@ -25,16 +25,22 @@ export const createProviderRequestScope = ({
   abortSignal,
 }: ProviderRequestScopeOptions) => {
   const controller = new AbortController();
-  const remainingMs =
-    deadline === undefined ? timeoutMs : deadline - Date.now();
-  const boundedTimeout = Math.max(1, remainingMs ?? 60_000);
+  const remainingMs = deadline === undefined ? Infinity : deadline - Date.now();
+  const boundedTimeout = Math.max(
+    0,
+    Math.min(
+      remainingMs,
+      timeoutMs ?? (deadline === undefined ? 60_000 : Infinity),
+    ),
+  );
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
     controller.abort();
   }, boundedTimeout);
   const abort = () => controller.abort();
-  abortSignal?.addEventListener('abort', abort, { once: true });
+  if (abortSignal?.aborted) abort();
+  else abortSignal?.addEventListener('abort', abort, { once: true });
 
   return {
     signal: controller.signal,
@@ -47,11 +53,83 @@ export const createProviderRequestScope = ({
   };
 };
 
+export class ProviderRequestAbort extends Error {
+  constructor(
+    readonly kind: 'canceled' | 'timeout',
+    cause?: unknown,
+  ) {
+    super(
+      kind === 'timeout'
+        ? 'Provider request timed out.'
+        : 'Provider request was canceled.',
+      { cause },
+    );
+    this.name = kind === 'timeout' ? 'TimeoutError' : 'AbortError';
+  }
+}
+
+export async function withProviderResponse<T>(
+  url: string,
+  init: RequestInit,
+  options: ProviderRequestScopeOptions,
+  consume: (response: Response) => Promise<T>,
+): Promise<T> {
+  const scope = createProviderRequestScope(options);
+  try {
+    scope.signal.throwIfAborted();
+    if (options.deadline !== undefined && options.deadline <= Date.now()) {
+      throw new ProviderRequestAbort('timeout');
+    }
+    const response = await fetch(url, { ...init, signal: scope.signal });
+    const result = await consume(response);
+    scope.signal.throwIfAborted();
+    return result;
+  } catch (error) {
+    if (scope.wasCanceled()) throw new ProviderRequestAbort('canceled', error);
+    if (
+      scope.wasTimedOut() ||
+      (isProviderAbortError(error) && !(error instanceof ProviderRequestAbort))
+    ) {
+      throw new ProviderRequestAbort('timeout', error);
+    }
+    throw error;
+  } finally {
+    scope.cleanup();
+  }
+}
+
+export const readProviderJson = async (
+  response: Response,
+): Promise<unknown> => {
+  try {
+    return await response.json();
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+};
+
 export const readBoundedProviderText = async (
   response: Response,
   maxCharacters = 2_000,
-) => (await response.text().catch(() => '')).slice(0, maxCharacters);
+) => {
+  const reader = response.body?.getReader();
+  if (!reader) return '';
+  const decoder = new TextDecoder();
+  let text = '';
+  try {
+    while (text.length < maxCharacters) {
+      const chunk = await reader.read();
+      if (chunk.done) return (text + decoder.decode()).slice(0, maxCharacters);
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    return text.slice(0, maxCharacters);
+  } finally {
+    void reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+};
 
-export const isProviderAbortError = (error: unknown) =>
+const isProviderAbortError = (error: unknown) =>
   error instanceof Error &&
   (error.name === 'AbortError' || error.name === 'TimeoutError');

@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
 import {
   listPackagesSchema,
@@ -51,18 +52,20 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           query,
           timeoutMs,
         }: z.infer<typeof listPackagesSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         let result = await adb.shell(
           app,
           `pm list packages${includeSystem ? '' : ' -3'}`,
           timeoutMs,
+          abortSignal,
         );
         if (result.exitCode !== 0) {
           result = await adb.shell(
             app,
             `cmd package list packages${includeSystem ? '' : ' -3'}`,
             timeoutMs,
+            abortSignal,
           );
         }
         if (result.exitCode !== 0) {
@@ -130,7 +133,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       ],
       execute: async (
         { timeoutMs }: z.infer<typeof openSystemSettingsSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const attempts = [];
         for (const command of [
@@ -138,7 +141,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           'cmd activity start-activity -a android.settings.SETTINGS',
           'am start -a android.settings.SETTINGS',
         ]) {
-          const result = await adb.shell(app, command, timeoutMs);
+          const result = await adb.shell(app, command, timeoutMs, abortSignal);
           attempts.push({
             command,
             exitCode: result.exitCode,
@@ -198,13 +201,14 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       ],
       execute: async (
         { packageName, timeoutMs }: z.infer<typeof packageNameSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const installCheck = await checkPackageInstalled(
           app,
           adb,
           packageName,
           timeoutMs,
+          abortSignal,
         );
         if (!installCheck.installed) {
           return {
@@ -222,6 +226,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           app,
           `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`,
           timeoutMs,
+          abortSignal,
         );
         let output = [launchResult.stdout, launchResult.stderr]
           .map((part) => part.trim())
@@ -235,6 +240,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
             app,
             'cmd activity start-activity -a android.settings.SETTINGS',
             timeoutMs,
+            abortSignal,
           );
           output = [settingsResult.stdout, settingsResult.stderr]
             .map((part) => part.trim())
@@ -271,15 +277,15 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       schema: textWaitSchema,
       execute: async (
         { text, timeoutMs, intervalMs }: z.infer<typeof textWaitSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const deadline = Date.now() + timeoutMs;
         do {
-          const dump = await adb.dumpUi(app);
+          const dump = await adb.dumpUi(app, abortSignal);
           if (dump.status === 'available' && dump.xml?.includes(text)) {
             return { summary: `Found text "${text}".` };
           }
-          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          await delay(intervalMs, undefined, { signal: abortSignal });
         } while (Date.now() < deadline);
         throw new Error(`Text "${text}" was not found within ${timeoutMs}ms.`);
       },
@@ -311,7 +317,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       ],
       execute: async (
         { text, timeoutMs, intervalMs }: z.infer<typeof textWaitSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const deadline = Date.now() + timeoutMs;
         do {
@@ -322,7 +328,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
               data: { x: result.x, y: result.y },
             };
           }
-          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          await delay(intervalMs, undefined, { signal: abortSignal });
         } while (Date.now() < deadline);
         throw new Error(`Text "${text}" was not found within ${timeoutMs}ms.`);
       },
@@ -334,8 +340,14 @@ const checkPackageInstalled = async (
   adb: AutomationCommandContext['adb'],
   packageName: string,
   timeoutMs: number,
+  abortSignal?: AbortSignal,
 ) => {
-  const pathResult = await adb.shell(app, `pm path ${packageName}`, timeoutMs);
+  const pathResult = await adb.shell(
+    app,
+    `pm path ${packageName}`,
+    timeoutMs,
+    abortSignal,
+  );
   if (pathResult.exitCode === 0 && pathResult.stdout.trim()) {
     return { installed: true, reason: null };
   }
@@ -344,7 +356,7 @@ const checkPackageInstalled = async (
     `pm list packages ${packageName}`,
     `cmd package list packages ${packageName}`,
   ]) {
-    const listResult = await adb.shell(app, command, timeoutMs);
+    const listResult = await adb.shell(app, command, timeoutMs, abortSignal);
     if (
       listResult.exitCode === 0 &&
       listResult.stdout

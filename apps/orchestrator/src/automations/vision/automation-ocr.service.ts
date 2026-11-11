@@ -45,6 +45,7 @@ export class AutomationOcrService implements AutomationOcrPort {
     image: AiScreenshot,
     abortSignal?: AbortSignal,
   ): Promise<AutomationOcrResult> {
+    abortSignal?.throwIfAborted();
     const settings = (await this.settingsStore.getStoredSettings()).services
       .ocr;
     const baseUrl = settings.endpoint ?? '';
@@ -52,6 +53,7 @@ export class AutomationOcrService implements AutomationOcrPort {
       return { status: 'disabled', detections: [] };
     }
 
+    abortSignal?.throwIfAborted();
     const timeoutMs = settings.timeoutMs;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);

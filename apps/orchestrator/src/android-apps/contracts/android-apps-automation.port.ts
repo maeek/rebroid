@@ -40,15 +40,18 @@ export interface AndroidAutomationNetworkPolicyUpdate {
 export interface AndroidAutomationAdbPort {
   getClipboard(
     app: AndroidAutomationApplication,
+    signal?: AbortSignal,
   ): Promise<{ text: string; supported: boolean }>;
   setClipboard(
     app: AndroidAutomationApplication,
     text: string,
+    signal?: AbortSignal,
   ): Promise<{ text: string; supported: boolean }>;
   tap(
     app: AndroidAutomationApplication,
     x: number,
     y: number,
+    signal?: AbortSignal,
   ): Promise<{ executed: boolean }>;
   swipe(
     app: AndroidAutomationApplication,
@@ -59,26 +62,34 @@ export interface AndroidAutomationAdbPort {
       y2: number;
       durationMs: number;
     },
+    signal?: AbortSignal,
   ): Promise<{ executed: boolean }>;
   inputText(
     app: AndroidAutomationApplication,
     text: string,
+    signal?: AbortSignal,
   ): Promise<{ executed: boolean }>;
   key(
     app: AndroidAutomationApplication,
     key: string,
+    signal?: AbortSignal,
   ): Promise<{ executed: boolean }>;
   rotateDisplay(
     app: AndroidAutomationApplication,
     orientation:
       'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
+    signal?: AbortSignal,
   ): Promise<{ executed: boolean }>;
   shell(
     app: AndroidAutomationApplication,
     command: string,
     timeoutMs: number,
+    signal?: AbortSignal,
   ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
-  dumpUi(app: AndroidAutomationApplication): Promise<{
+  dumpUi(
+    app: AndroidAutomationApplication,
+    signal?: AbortSignal,
+  ): Promise<{
     status: 'available' | 'failed';
     xml?: string;
     error?: string;
@@ -114,6 +125,7 @@ export interface AndroidAutomationAdbPort {
   ): Promise<AndroidAutomationNotification[]>;
   screenshot(
     app: AndroidAutomationApplication,
+    signal?: AbortSignal,
   ): Promise<{ mimeType: string; dataUrl: string; capturedAt: string }>;
 }
 
@@ -142,6 +154,7 @@ export interface AndroidAutomationDisplayPort {
   viewerControl(
     app: AndroidAutomationApplication,
     command: ApplicationViewerControlCommand,
+    signal?: AbortSignal,
   ): Promise<{
     session: AndroidAutomationDisplaySession;
     command: ApplicationViewerControlCommand;

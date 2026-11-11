@@ -1,3 +1,4 @@
+import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run';
 import { Injectable } from '@nestjs/common';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { z } from 'zod';
@@ -22,7 +23,12 @@ const aiRunSchema = z.object({
   initialScreenshotDataUrl: z.string().trim().min(1).optional(),
   maxToolCalls: z.number().int().min(1).max(100).default(20),
   maxActions: z.number().int().min(1).max(100).optional(),
-  timeoutMs: z.number().int().min(1_000).max(900_000).default(120_000),
+  timeoutMs: z
+    .number()
+    .int()
+    .min(1_000)
+    .max(AUTOMATION_AI_RUN_MAX_TIMEOUT_MS)
+    .default(120_000),
   allowedTools: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
   capabilities: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
   agentMode: z.enum(['adaptive', 'controller', 'planned']).default('adaptive'),

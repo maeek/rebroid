@@ -22,6 +22,10 @@
       "types": "./dist/ai-public-text.d.ts",
       "default": "./dist/ai-public-text.js"
     },
+    "./ai-run": {
+      "types": "./dist/ai-run.d.ts",
+      "default": "./dist/ai-run.js"
+    },
     "./yaml-draft": {
       "types": "./dist/yaml-draft.d.ts",
       "default": "./dist/yaml-draft.js"
@@ -40,6 +44,9 @@
       ],
       "ai-public-text": [
         "dist/ai-public-text.d.ts"
+      ],
+      "ai-run": [
+        "dist/ai-run.d.ts"
       ],
       "yaml-draft": [
         "dist/yaml-draft.d.ts"

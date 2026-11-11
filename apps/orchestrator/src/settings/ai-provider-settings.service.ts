@@ -65,10 +65,16 @@ export class AiProviderSettingsService {
     );
     const provider = providerId
       ? providers.find((item) => item.id === providerId)
-      : providers[0];
+      : providers.find((item) =>
+          item.models.some(
+            (model) => model.enabled && model.roles.includes(role),
+          ),
+        );
     if (!provider) {
       throw new BadRequestException(
-        'No enabled AI provider is configured for automations.',
+        providerId || providers.length === 0
+          ? 'No enabled AI provider is configured for automations.'
+          : `No enabled ${role} AI model is configured.`,
       );
     }
     const enabledModels = provider.models.filter(

@@ -41,12 +41,14 @@ describe('android package automation commands', () => {
       { id: 'app_1' },
       'pm path com.android.settings',
       10_000,
+      undefined,
     );
     expect(shell).toHaveBeenNthCalledWith(
       2,
       { id: 'app_1' },
       'pm list packages com.android.settings',
       10_000,
+      undefined,
     );
   });
 
@@ -90,6 +92,7 @@ describe('android package automation commands', () => {
       { id: 'app_1' },
       'cmd activity start-activity -a android.settings.SETTINGS',
       10_000,
+      undefined,
     );
   });
 
@@ -120,6 +123,7 @@ describe('android package automation commands', () => {
       { id: 'app_1' },
       'monkey -p com.android.settings -c android.intent.category.LAUNCHER 1',
       10_000,
+      undefined,
     );
   });
 
@@ -158,6 +162,7 @@ describe('android package automation commands', () => {
       { id: 'app_1' },
       'cmd activity start-activity -a android.settings.SETTINGS',
       10_000,
+      undefined,
     );
   });
 });

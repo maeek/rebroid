@@ -6,29 +6,6 @@ import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';
 import { SCREEN_MUTATING_TOOLS } from './automation-ai-observation.utils';
 
-export interface DeviceAgentSubgoal {
-  id: string;
-  goal: string;
-  successEvidence: string;
-  status: 'pending' | 'completed';
-}
-
-export interface DeviceAgentEvidence {
-  id: string;
-  kind: 'snapshot' | 'action' | 'typed-result';
-  summary: string;
-  snapshotId?: string;
-  data?: Record<string, unknown>;
-}
-
-export interface DeviceAgentTrajectoryEntry {
-  action: string;
-  outcome: string;
-  evidenceId: string;
-  snapshotId?: string;
-  failed: boolean;
-}
-
 export interface DeviceTargetSession {
   id: string;
   fingerprint: string;
@@ -37,18 +14,6 @@ export interface DeviceTargetSession {
   containerName: string;
   networkName: string;
   adbPort: number;
-}
-
-export interface DeviceAgentState {
-  target: DeviceTargetSession;
-  observation: AutomationScreenObservation;
-  plannerText: string;
-  subgoals: DeviceAgentSubgoal[];
-  evidence: DeviceAgentEvidence[];
-  trajectory: DeviceAgentTrajectoryEntry[];
-  actions: number;
-  consecutiveFailures: number;
-  planAttempts: number;
 }
 
 const fixedActionUses = new Set([

@@ -1,0 +1,1 @@
+export const AUTOMATION_AI_RUN_MAX_TIMEOUT_MS = 900_000;

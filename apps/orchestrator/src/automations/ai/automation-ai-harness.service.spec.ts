@@ -127,7 +127,15 @@ const createHarness = ({
   commandUses?: string[];
 }) => {
   const events: AutomationRunEventInput[] = [];
-  const chat = jest.fn();
+  const chat = jest.fn().mockResolvedValue(
+    decisionResponse({
+      kind: 'finish',
+      status: 'blocked',
+      finalText: 'No further action available.',
+      evidenceIds: [],
+      completedSubgoalIds: [],
+    }),
+  );
   for (const response of chatResponses) chat.mockResolvedValueOnce(response);
   const perception = jest.fn();
   for (const value of observations) {
@@ -264,18 +272,23 @@ describe('AutomationAiHarnessService', () => {
       data: { x: 216, y: 585 },
     });
 
-    const result = await service.run(input, context(toolExecutor));
+    const result = await service.run(
+      { ...input, maxActions: 1 },
+      context(toolExecutor),
+    );
 
     expect(toolExecutor).toHaveBeenCalledWith(
       expect.objectContaining({
         name: 'android.tapNormalized',
         arguments: { x: 0.2, y: 0.25 },
       }),
+      expect.any(AbortSignal),
     );
     expect(result.data).toMatchObject({
       status: 'completed',
       completed: true,
       toolCalls: 1,
+      evidence: { evidenceIds: ['action:1'] },
     });
     expect(events.some((event) => event.type === 'ai.tool.completed')).toBe(
       true,
@@ -353,7 +366,7 @@ describe('AutomationAiHarnessService', () => {
 
   it('observes after a routed screen mutation even when dispatch rejects', async () => {
     const uses = 'android.rotateDisplay';
-    const { service, chat, perception } = createHarness({
+    const { service, chat, perception, events } = createHarness({
       commandUses: [uses],
       observations: [observation('screen-1'), observation('screen-2')],
       chatResponses: [
@@ -370,7 +383,7 @@ describe('AutomationAiHarnessService', () => {
         }),
         decisionResponse({
           kind: 'finish',
-          status: 'blocked',
+          status: 'completed',
           finalText: 'The rotation result was unavailable.',
           evidenceIds: ['action:1'],
           completedSubgoalIds: [],
@@ -381,13 +394,21 @@ describe('AutomationAiHarnessService', () => {
       .fn()
       .mockRejectedValue(new Error('Lost response'));
 
-    await service.run(
+    const result = await service.run(
       { ...input, capabilities: [uses] },
       context(toolExecutor),
     );
 
+    expect(result.data.status).toBe('blocked');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.guardrail.triggered',
+        message: 'Completed status requires observed evidence.',
+      }),
+    );
     expect(toolExecutor).toHaveBeenCalledWith(
       expect.objectContaining({ name: uses }),
+      expect.any(AbortSignal),
     );
     expect(perception).toHaveBeenCalledWith(
       expect.objectContaining({ reason: `after:${uses}` }),
@@ -395,6 +416,35 @@ describe('AutomationAiHarnessService', () => {
     expect(JSON.stringify(chat.mock.calls[1]?.[0])).toContain(
       'snapshotId=screen-2',
     );
+  });
+
+  it('does not dispatch a decision received after its deadline', async () => {
+    const { service, chat } = createHarness({ chatResponses: [] });
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    chat.mockImplementationOnce(async () => {
+      now.mockReturnValue(3000);
+      return decisionResponse({
+        kind: 'act',
+        snapshotId: 'screen-1',
+        intent: 'Wait',
+        expectedOutcome: 'Pause',
+        action: { type: 'wait', durationMs: 1000 },
+      });
+    });
+    const toolExecutor = jest.fn();
+    try {
+      const result = await service.run(
+        { ...input, timeoutMs: 1000 },
+        context(toolExecutor),
+      );
+      expect(result.data).toMatchObject({
+        status: 'blocked',
+        blockedReason: 'Agent timeout reached.',
+      });
+      expect(toolExecutor).not.toHaveBeenCalled();
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it('blocks further actions when a dispatched tap cannot be observed', async () => {
@@ -530,7 +580,8 @@ describe('AutomationAiHarnessService', () => {
     );
 
     expect(result.data).toMatchObject({ status: 'blocked', toolCalls: 1 });
-    expect(chat).toHaveBeenCalledTimes(1);
+    expect(chat).toHaveBeenCalledTimes(2);
+    expect(toolExecutor).toHaveBeenCalledTimes(1);
     expect(events.some((event) => event.type === 'ai.tool.failed')).toBe(true);
   });
 
@@ -570,6 +621,7 @@ describe('AutomationAiHarnessService', () => {
           timeoutMs: 10_000,
         },
       }),
+      expect.any(AbortSignal),
     );
   });
 });

@@ -14,20 +14,22 @@ import {
   screenFingerprint,
   toolAllowedForRun,
   validatedEscalationCommand,
-  type DeviceAgentEvidence,
-  type DeviceAgentState,
 } from './automation-device-agent-state';
+import type { DeviceAgentRunState } from './automation-device-agent-run-state';
 
 type ActionContext = {
   input: AutomationAiRunInput;
   context: AutomationAiHarnessContext;
-  state: DeviceAgentState;
+  state: DeviceAgentRunState;
 };
 
 type ActDecision = Extract<DeviceAgentDecision, { kind: 'act' }>;
 type ResolvedAction = ReturnType<typeof resolveActionTool>;
 type ToolResult = Awaited<
   ReturnType<AutomationAiHarnessContext['toolExecutor']>
+>;
+type ObservedScreen = Awaited<
+  ReturnType<AutomationAiActionExecutor['observe']>
 >;
 type ActionDispatch = { result: ToolResult } | { error: unknown };
 
@@ -46,6 +48,7 @@ export class AutomationAiActionExecutor {
 
   async executeAction(args: ExecuteActionArgs) {
     const { context, decision, input, state } = args;
+    const attempt = state.beginAction();
     const resolved = await this.resolvePermittedAction(args);
     if (!resolved) return;
 
@@ -68,33 +71,36 @@ export class AutomationAiActionExecutor {
       decision.expectedOutcome,
       { uses: resolved.uses, input: resolved.input },
     );
+    context.abortSignal?.throwIfAborted();
     let dispatch: ActionDispatch;
     try {
-      const result = await context.toolExecutor({
-        name: resolved.uses,
-        arguments: resolved.input,
-        intent: decision.intent,
-        expectedOutcome: decision.expectedOutcome,
-        envelopeValid: true,
-        toolCallId: `action-${state.actions + 1}`,
-      });
+      const result = await context.toolExecutor(
+        {
+          name: resolved.uses,
+          arguments: resolved.input,
+          intent: decision.intent,
+          expectedOutcome: decision.expectedOutcome,
+          envelopeValid: true,
+          toolCallId: `action-${attempt}`,
+        },
+        context.abortSignal,
+      );
       dispatch = { result };
     } catch (error) {
       dispatch = { error };
     }
 
     // A dispatch can reach the device even if its response fails.
+    let observed: ObservedScreen | undefined;
     if (resolved.screenMutating) {
       try {
-        const observed = await this.observe({
+        observed = await this.observe({
           input,
           context,
           deadline: args.deadline,
           reason: `after:${resolved.uses}`,
           uses: resolved.uses,
         });
-        state.observation = observed.observation;
-        state.plannerText = observed.plannerText;
       } catch (error) {
         await this.recordActionFailure(context, state, resolved.uses, error);
         return 'observation-unavailable' as const;
@@ -107,6 +113,7 @@ export class AutomationAiActionExecutor {
         state,
         resolved.uses,
         dispatch.error,
+        observed,
       );
       return;
     }
@@ -115,6 +122,7 @@ export class AutomationAiActionExecutor {
       resolved,
       dispatch.result,
       beforeFingerprint,
+      observed,
     );
   }
 
@@ -163,34 +171,30 @@ export class AutomationAiActionExecutor {
     resolved: ResolvedAction,
     result: ToolResult,
     beforeFingerprint: string,
+    observed?: ObservedScreen,
   ) {
     const { context, decision, state } = args;
+    const observation = observed?.observation ?? state.observation;
     const structuredFailure = resultIndicatesFailure(result.data ?? {});
     const unchanged =
       resolved.screenMutating &&
       decision.action.type !== 'wait' &&
-      beforeFingerprint === screenFingerprint(state.observation);
+      beforeFingerprint === screenFingerprint(observation);
     const failed = structuredFailure || unchanged;
-    const evidence: DeviceAgentEvidence = {
-      id: `action:${state.actions + 1}`,
-      kind: resolved.screenMutating ? 'action' : 'typed-result',
-      summary: unchanged
-        ? `${result.summary} Screen did not change.`
-        : result.summary,
-      ...(resolved.screenMutating
-        ? { snapshotId: state.observation.snapshotId }
-        : {}),
-      ...(result.data ? { data: result.data } : {}),
-    };
-    state.evidence.push(evidence);
-    state.trajectory.push({
-      action: `${resolved.uses} (${decision.intent})`,
-      outcome: evidence.summary,
-      evidenceId: evidence.id,
-      snapshotId: evidence.snapshotId,
+    const evidence = state.recordAction(
+      `${resolved.uses} (${decision.intent})`,
+      {
+        kind: resolved.screenMutating ? 'action' : 'typed-result',
+        command: resolved.uses,
+        summary: unchanged
+          ? `${result.summary} Screen did not change.`
+          : result.summary,
+        ...(observed ? { snapshotId: observation.snapshotId } : {}),
+        ...(result.data ? { data: result.data } : {}),
+      },
       failed,
-    });
-    state.consecutiveFailures = failed ? state.consecutiveFailures + 1 : 0;
+      observed,
+    );
     await emitAutomationAiEvent(
       this.events,
       context,
@@ -210,33 +214,35 @@ export class AutomationAiActionExecutor {
 
   private async recordActionFailure(
     context: AutomationAiHarnessContext,
-    state: DeviceAgentState,
+    state: DeviceAgentRunState,
     uses: string,
     error: unknown,
+    observed?: ObservedScreen,
   ) {
     const message = sanitizeAiText(
       error instanceof Error ? error.message : String(error),
       1_000,
     );
-    const evidenceId = `action:${state.actions + 1}`;
-    state.evidence.push({
-      id: evidenceId,
-      kind: 'typed-result',
-      summary: message,
-    });
-    state.trajectory.push({
-      action: uses,
-      outcome: message,
-      evidenceId,
-      failed: true,
-    });
-    state.consecutiveFailures += 1;
+    const evidence = state.recordAction(
+      uses,
+      {
+        kind: 'typed-result',
+        summary: message,
+        ...(observed ? { snapshotId: observed.observation.snapshotId } : {}),
+      },
+      true,
+      observed,
+    );
     await emitAutomationAiEvent(
       this.events,
       context,
       'ai.tool.failed',
       message,
-      { uses, evidenceId, targetFingerprint: state.target.fingerprint },
+      {
+        uses,
+        evidenceId: evidence.id,
+        targetFingerprint: state.target.fingerprint,
+      },
     );
   }
 
@@ -262,48 +268,41 @@ export class AutomationAiActionExecutor {
           targetFingerprint: state.target.fingerprint,
         },
       );
-      state.trajectory.push({
-        action: 'request_escalation',
-        outcome: reason,
-        evidenceId: state.evidence[0].id,
-        failed: true,
-      });
-      state.consecutiveFailures += 1;
-      return false;
+      state.recordRejectedDecision('request_escalation', reason);
+      return;
     }
 
+    context.abortSignal?.throwIfAborted();
     assertTargetSession(state.target, context);
-    const result = await context.toolExecutor({
-      name: 'android.adbShell',
-      arguments: { command, timeoutMs: 10_000 },
-      intent: decision.reason,
-      expectedOutcome: 'Read-only Android state is returned.',
-      envelopeValid: true,
-      toolCallId: `escalation-${state.actions + 1}`,
-    });
+    const attempt = state.beginAction();
+    const result = await context.toolExecutor(
+      {
+        name: 'android.adbShell',
+        arguments: { command, timeoutMs: 10_000 },
+        intent: decision.reason,
+        expectedOutcome: 'Read-only Android state is returned.',
+        envelopeValid: true,
+        toolCallId: `escalation-${attempt}`,
+      },
+      context.abortSignal,
+    );
     const failed = resultIndicatesFailure(result.data ?? {});
-    const evidenceId = `action:${state.actions + 1}`;
-    state.evidence.push({
-      id: evidenceId,
-      kind: 'typed-result',
-      summary: result.summary,
-      data: result.data,
-    });
-    state.trajectory.push({
-      action: `allowlisted:${decision.program}`,
-      outcome: result.summary,
-      evidenceId,
+    const evidence = state.recordAction(
+      `allowlisted:${decision.program}`,
+      {
+        kind: 'typed-result',
+        summary: result.summary,
+        data: result.data,
+      },
       failed,
-    });
-    state.consecutiveFailures = failed ? state.consecutiveFailures + 1 : 0;
+    );
     await emitAutomationAiEvent(
       this.events,
       context,
       failed ? 'ai.tool.failed' : 'ai.tool.completed',
       result.summary,
-      { uses: 'android.adbShell', evidenceId, failed },
+      { uses: 'android.adbShell', evidenceId: evidence.id, failed },
     );
-    return true;
   }
 
   observe({
@@ -331,17 +330,11 @@ export class AutomationAiActionExecutor {
 
   private async recordRejectedAction(
     context: AutomationAiHarnessContext,
-    state: DeviceAgentState,
+    state: DeviceAgentRunState,
     decision: ActDecision,
     reason: string,
   ) {
-    state.trajectory.push({
-      action: decision.action.type,
-      outcome: reason,
-      evidenceId: state.evidence[0].id,
-      failed: true,
-    });
-    state.consecutiveFailures += 1;
+    state.recordRejectedDecision(decision.action.type, reason);
     await emitAutomationAiEvent(
       this.events,
       context,

@@ -55,8 +55,10 @@ export class AndroidAppsDisplaySidecarService {
       'files',
       'diagnostics',
     ],
+    signal?: AbortSignal,
   ): Promise<DisplaySessionDto> {
     const result = await this.request<DisplaySessionResponse>('/sessions', {
+      signal,
       method: 'POST',
       body: JSON.stringify({
         appId: app.id,
@@ -86,11 +88,13 @@ export class AndroidAppsDisplaySidecarService {
   async viewerControl(
     app: AndroidApplication,
     command: ApplicationViewerControlCommand,
+    signal?: AbortSignal,
   ) {
-    const session = await this.ensureSession(app);
+    const session = await this.ensureSession(app, signal);
     const response = await this.request<DisplayActionResponse>(
       `/sessions/${session.id}/actions`,
       {
+        signal,
         method: 'POST',
         body: JSON.stringify({ command }),
       },
@@ -176,9 +180,11 @@ export class AndroidAppsDisplaySidecarService {
     );
   }
 
-  private async ensureSession(app: AndroidApplication) {
+  private async ensureSession(app: AndroidApplication, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const udid = await this.prepareUdid(app);
-    return this.createSessionForPreparedTarget(app, udid);
+    signal?.throwIfAborted();
+    return this.createSessionForPreparedTarget(app, udid, undefined, signal);
   }
 
   private async findMainSession(app: AndroidApplication) {
@@ -272,10 +278,11 @@ export class AndroidAppsDisplaySidecarService {
     const normalizedPath = path.startsWith('/rebroid/display')
       ? path
       : `/rebroid/display${path}`;
+    const timeout = AbortSignal.timeout(20_000);
     return fetch(`${baseUrl}${normalizedPath}`, {
       ...init,
       headers,
-      signal: AbortSignal.timeout(20_000),
+      signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
     }).catch((error) => {
       throw new ConflictException(
         `Display sidecar API is not reachable: ${getErrorMessage(error)}`,

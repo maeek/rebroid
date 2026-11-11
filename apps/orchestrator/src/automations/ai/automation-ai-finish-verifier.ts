@@ -2,11 +2,12 @@ import type { DeviceAgentDecision } from './core/device-decision';
 import type {
   DeviceAgentState,
   DeviceAgentSubgoal,
-} from './automation-device-agent-state';
+} from './automation-device-agent-run-state';
 
 type FinishDecision = Extract<DeviceAgentDecision, { kind: 'finish' }>;
 type FinishVerification =
-  { ok: true; subgoals: DeviceAgentSubgoal[] } | { ok: false; reason: string };
+  | { ok: true; subgoals: DeviceAgentSubgoal[]; evidenceIds: string[] }
+  | { ok: false; reason: string };
 
 export const verifyAutomationAiFinish = (
   decision: FinishDecision,
@@ -22,7 +23,15 @@ export const verifyAutomationAiFinish = (
       reason: `Completion referenced unknown evidence: ${unknownEvidence.join(', ')}.`,
     };
   }
-  if (decision.status === 'completed' && decision.evidenceIds.length === 0) {
+  const eligibleEvidence = new Set(
+    state.evidence
+      .filter((evidence) => evidence.eligibleForCompletion !== false)
+      .map((evidence) => evidence.id),
+  );
+  if (
+    decision.status === 'completed' &&
+    !decision.evidenceIds.some((id) => eligibleEvidence.has(id))
+  ) {
     return {
       ok: false,
       reason: 'Completed status requires observed evidence.',
@@ -48,6 +57,9 @@ export const verifyAutomationAiFinish = (
 
   return {
     ok: true,
+    evidenceIds: [...new Set(decision.evidenceIds)].filter(
+      (id) => decision.status === 'blocked' || eligibleEvidence.has(id),
+    ),
     subgoals: state.subgoals.map((subgoal) => ({
       ...subgoal,
       status: decision.completedSubgoalIds.includes(subgoal.id)

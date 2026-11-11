@@ -40,10 +40,14 @@ export class AutomationVisionCaptureService {
       );
     }
 
-    const screenshot = await context.adb.screenshot(context.app);
+    const screenshot = await context.adb.screenshot(
+      context.app,
+      context.abortSignal,
+    );
+    context.abortSignal?.throwIfAborted();
     const aiImage = await optimizeAiScreenshot(screenshot);
     const uiPromise = context.adb
-      .dumpUi(context.app)
+      .dumpUi(context.app, context.abortSignal)
       .catch((error: unknown) => ({
         status: 'failed' as const,
         error:
@@ -54,6 +58,7 @@ export class AutomationVisionCaptureService {
       this.ocr.recognize(screenshot, context.abortSignal),
     ]);
 
+    context.abortSignal?.throwIfAborted();
     return { screenshot, aiImage, ui, ocr };
   }
 }

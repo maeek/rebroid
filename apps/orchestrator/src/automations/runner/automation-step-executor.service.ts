@@ -104,16 +104,21 @@ export class AutomationStepExecutorService {
       options,
     );
     try {
-      const executeTool = async (tool: {
-        name: string;
-        arguments: Record<string, unknown>;
-      }) => {
+      const executeTool = async (
+        tool: {
+          name: string;
+          arguments: Record<string, unknown>;
+        },
+        signal = options.abortSignal,
+      ) => {
+        signal?.throwIfAborted();
         if (options.isRunCanceled(run.id)) {
           throw new ConflictException('Automation run was canceled.');
         }
         return this.registry.execute(tool.name, tool.arguments, {
           app: state.app,
           ...this.applications.automationAdapters(),
+          abortSignal: signal,
         });
       };
       const result = await this.registry.execute(step.uses, step.with, {

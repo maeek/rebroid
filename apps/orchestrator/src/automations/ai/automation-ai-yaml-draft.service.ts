@@ -4,7 +4,11 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import type { AutomationYamlDraftStreamEvent } from '@rebroid/automation-core/yaml-draft';
+import { modelSupportsTools } from '../../common/ai-provider-request';
+import {
+  AUTOMATION_DRAFT_TIMEOUT_MS,
+  type AutomationYamlDraftStreamEvent,
+} from '@rebroid/automation-core/yaml-draft';
 import { DraftAutomationYamlDto } from '../dto/automation.dto';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
@@ -22,7 +26,6 @@ import {
   yamlRepairMessage,
 } from './automation-ai-yaml-draft';
 
-const DRAFT_TIMEOUT_MS = 120_000;
 const MAX_DRAFT_ATTEMPTS = 3;
 
 @Injectable()
@@ -80,7 +83,7 @@ export class AutomationAiYamlDraftService {
         'No automation commands are available for this draft.',
       );
     }
-    const deadline = Date.now() + DRAFT_TIMEOUT_MS;
+    const deadline = Date.now() + AUTOMATION_DRAFT_TIMEOUT_MS;
     const messages = buildYamlDraftMessages({
       prompt: dto.prompt,
       commands,
@@ -98,7 +101,7 @@ export class AutomationAiYamlDraftService {
             : 'Regenerating workflow YAML with validation feedback.',
         data: { attempt, phase: 'generating' },
       };
-      const stream = this.chatWithStreamEvents({
+      const response = yield* this.chatWithStreamEvents({
         provider,
         model,
         messages,
@@ -106,12 +109,6 @@ export class AutomationAiYamlDraftService {
         abortSignal,
         attempt,
       });
-      let next = await stream.next();
-      while (!next.done) {
-        yield next.value;
-        next = await stream.next();
-      }
-      const response = next.value;
       const message = response.choices?.[0]?.message;
       if (!message) {
         lastError = 'AI provider returned no message.';
@@ -201,6 +198,11 @@ export class AutomationAiYamlDraftService {
     Awaited<ReturnType<AutomationAiChatClientService['chat']>>
   > {
     const pending: AutomationYamlDraftStreamEvent[] = [];
+    const scope = new AbortController();
+    const signal = abortSignal
+      ? AbortSignal.any([abortSignal, scope.signal])
+      : scope.signal;
+    let releaseProgress: (() => void) | undefined;
     let wake: (() => void) | null = null;
     let finished = false;
     let result: Awaited<
@@ -221,16 +223,23 @@ export class AutomationAiYamlDraftService {
         provider,
         model,
         messages,
-        tools: [submitYamlTool(), requestClarificationTool()],
+        tools: modelSupportsTools(model)
+          ? [submitYamlTool(), requestClarificationTool()]
+          : [],
         deadline,
-        abortSignal,
+        abortSignal: signal,
         onContentDelta: async (delta) => {
+          signal.throwIfAborted();
+          const consumed = new Promise<void>((resolve) => {
+            releaseProgress = resolve;
+          });
           pending.push({
             type: 'draft.message.delta',
             message: delta,
             data: { attempt },
           });
           notify();
+          await consumed;
         },
       })
       .then((response) => {
@@ -244,12 +253,19 @@ export class AutomationAiYamlDraftService {
         notify();
       });
 
-    while (!finished || pending.length > 0) {
-      while (pending.length > 0) {
-        const event = pending.shift();
-        if (event) yield event;
+    try {
+      while (!finished || pending.length > 0) {
+        while (pending.length > 0) {
+          const event = pending.shift();
+          if (event) yield event;
+          releaseProgress?.();
+          releaseProgress = undefined;
+        }
+        if (!finished) await wait();
       }
-      if (!finished) await wait();
+    } finally {
+      scope.abort();
+      releaseProgress?.();
     }
 
     if (failure) throw failure;

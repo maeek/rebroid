@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  buildChatRequestBody,
-  chatCompletionsEndpoint,
+  withProviderChatResponse,
+  deviceControllerResponseMode,
+  modelSupportsTools,
   providerModelsEndpoint,
 } from '../common/ai-provider-request';
+import {
+  consumeChatCompletionStream,
+  providerStreamFormat,
+} from '../common/ai-provider-stream';
 import { parseProviderRemoteModels } from './ai-provider-remote-models';
 import type {
   AutomationAiProvider,
@@ -15,8 +20,8 @@ import type {
   AutomationAiProviderRemoteModelDto,
 } from './dto/automation-ai-provider-health.dto';
 import {
-  createProviderRequestScope,
-  isProviderAbortError,
+  withProviderResponse,
+  readProviderJson,
   providerRequestHeaders,
   readBoundedProviderText,
 } from '../common/ai-provider-http';
@@ -43,14 +48,25 @@ export class AiProviderHealthService {
     modelId?: string,
     role?: AutomationAiProviderModelRole,
   ): Promise<AutomationAiProviderHealthDto> {
+    const eligibleModels = provider.models.filter(
+      (item) => item.enabled && (!role || item.roles.includes(role)),
+    );
     const model = modelId
       ? provider.models.find((item) => item.id === modelId)
-      : (provider.models.find(
-          (item) => item.enabled && (!role || item.defaultFor.includes(role)),
-        ) ?? provider.models.find((item) => item.enabled));
+      : (eligibleModels.find(
+          (item) => !role || item.defaultFor.includes(role),
+        ) ?? eligibleModels[0]);
     if (modelId && !model) {
       throw new NotFoundException(
         `AI model "${modelId}" was not found for provider "${provider.id}".`,
+      );
+    }
+    if (!model && role) {
+      return this.healthResult(
+        provider.id,
+        undefined,
+        'disabled',
+        `No enabled model is configured for the ${role} role.`,
       );
     }
     if (model && !model.enabled) {
@@ -71,15 +87,11 @@ export class AiProviderHealthService {
     }
 
     try {
-      const response = await this.requestProvider(
+      const response = await this.requestModels(
         provider,
-        providerModelsEndpoint(provider),
-        {
-          headers: providerRequestHeaders(provider),
-        },
-        PROVIDER_MODEL_LIST_TIMEOUT_MS,
         'models',
         role ?? 'provider',
+        readProviderJson,
       );
       if (!response.ok) {
         return this.healthResult(
@@ -89,11 +101,10 @@ export class AiProviderHealthService {
           `Provider returned HTTP ${response.status}.`,
         );
       }
-      const body = (await response.json().catch(() => null)) as {
-        data?: Array<{ id?: unknown }>;
-      } | null;
       const remoteModelIds = new Set(
-        parseProviderRemoteModels(provider, body).map((item) => item.id),
+        parseProviderRemoteModels(provider, response.body).map(
+          (item) => item.id,
+        ),
       );
       if (model && remoteModelIds.size > 0 && !remoteModelIds.has(model.id)) {
         return this.healthResult(
@@ -133,9 +144,21 @@ export class AiProviderHealthService {
     role: AutomationAiProviderModelRole,
   ) {
     try {
-      const messages = modelRoleProbeMessages(role);
+      let mode: 'schema' | 'tool' | 'text' | null = 'text';
+      if (role === 'controller') mode = deviceControllerResponseMode(model);
+      else if (role === 'planner' && modelSupportsTools(model)) mode = 'tool';
+      if (!mode) {
+        return this.healthResult(
+          provider.id,
+          model.id,
+          'error',
+          'The controller model requires structured output or tool calling.',
+        );
+      }
+      const stream = role !== 'vision';
+      const messages = modelRoleProbeMessages(role, mode);
       const tools =
-        role === 'controller'
+        mode === 'tool'
           ? [
               {
                 type: 'function',
@@ -152,28 +175,43 @@ export class AiProviderHealthService {
               },
             ]
           : undefined;
-      const response = await this.requestProvider(
-        provider,
-        chatCompletionsEndpoint(provider),
-        {
-          method: 'POST',
-          headers: providerRequestHeaders(provider, { json: true }),
-          body: JSON.stringify(
-            buildChatRequestBody({
-              provider,
-              model,
-              messages,
-              stream: false,
-              tools,
-            }),
-          ),
-        },
-        MODEL_ROLE_PROBE_TIMEOUT_MS,
-        'health',
-        role,
+      const response = await this.measureRequest('health', role, () =>
+        withProviderChatResponse(
+          {
+            provider,
+            model,
+            messages,
+            tools,
+            stream,
+            ...(mode === 'schema'
+              ? {
+                  responseFormat: {
+                    type: 'json_schema' as const,
+                    schema: {
+                      type: 'object',
+                      properties: { ok: { type: 'boolean' } },
+                      required: ['ok'],
+                      additionalProperties: false,
+                    },
+                  },
+                }
+              : {}),
+          },
+          { timeoutMs: MODEL_ROLE_PROBE_TIMEOUT_MS },
+          async (response) => ({
+            ok: response.ok,
+            status: response.status,
+            body: response.ok
+              ? await readProbeBody(response, stream, provider)
+              : null,
+            detail: response.ok
+              ? ''
+              : await readBoundedProviderText(response, 500),
+          }),
+        ),
       );
       if (!response.ok) {
-        const detail = await readBoundedProviderText(response, 500);
+        const detail = response.detail;
         return this.healthResult(
           provider.id,
           model.id,
@@ -181,8 +219,11 @@ export class AiProviderHealthService {
           `${modelRoleLabel(role)} role check failed: HTTP ${response.status}${detail ? ` - ${detail.slice(0, 500)}` : ''}`,
         );
       }
-      const body = (await response.json().catch(() => null)) as unknown;
-      const incompatibility = modelRoleProbeIncompatibility(role, body);
+      const incompatibility = modelRoleProbeIncompatibility(
+        role,
+        response.body,
+        mode,
+      );
       if (incompatibility) {
         return this.healthResult(
           provider.id,
@@ -207,15 +248,13 @@ export class AiProviderHealthService {
 
   async checkProviderConnection(provider: AutomationAiProvider) {
     try {
-      const response = await this.requestProvider(
+      const response = await this.requestModels(
         provider,
-        providerModelsEndpoint(provider),
-        {
-          headers: providerRequestHeaders(provider),
-        },
-        PROVIDER_MODEL_LIST_TIMEOUT_MS,
         'health',
         'provider',
+        async (response) => {
+          await response.body?.cancel();
+        },
       );
       if (!response.ok) {
         return this.healthResult(
@@ -244,19 +283,17 @@ export class AiProviderHealthService {
   async listRemoteModels(
     provider: AutomationAiProvider,
   ): Promise<AutomationAiProviderRemoteModelDto[]> {
-    const response = await this.requestProvider(
+    const response = await this.requestModels(
       provider,
-      providerModelsEndpoint(provider),
-      { headers: providerRequestHeaders(provider) },
-      PROVIDER_MODEL_LIST_TIMEOUT_MS,
       'models',
       'provider',
+      async (response): Promise<unknown> => response.json(),
     );
     if (!response.ok) {
       throw new Error(`Provider returned HTTP ${response.status}.`);
     }
 
-    return parseProviderRemoteModels(provider, await response.json());
+    return parseProviderRemoteModels(provider, response.body);
   }
 
   private providerModelListErrorMessage(error: unknown) {
@@ -294,44 +331,62 @@ export class AiProviderHealthService {
   }
 
   private async tryProbe(url: string, headers: HeadersInit) {
-    const scope = createProviderRequestScope({ timeoutMs: 2_000 });
     try {
-      const response = await fetch(url, { headers, signal: scope.signal });
-      if (!response.ok) return null;
-      const body = (await response.json().catch(() => null)) as unknown;
-      return body && typeof body === 'object' && !Array.isArray(body)
-        ? (body as Record<string, unknown>)
-        : null;
+      return await withProviderResponse(
+        url,
+        { headers },
+        { timeoutMs: 2_000 },
+        async (response) => {
+          if (!response.ok) {
+            await response.body?.cancel();
+            return null;
+          }
+          const body = await readProviderJson(response);
+          return body && typeof body === 'object' && !Array.isArray(body)
+            ? (body as Record<string, unknown>)
+            : null;
+        },
+      );
     } catch {
       return null;
-    } finally {
-      scope.cleanup();
     }
   }
 
-  private async requestProvider(
+  private requestModels<T>(
     provider: AutomationAiProvider,
-    url: string,
-    init: RequestInit,
-    timeoutMs: number,
     operation: 'health' | 'models',
     role: 'provider' | AutomationAiProviderModelRole,
+    consume: (response: Response) => Promise<T>,
+  ) {
+    return this.measureRequest(operation, role, () =>
+      withProviderResponse(
+        providerModelsEndpoint(provider),
+        { headers: providerRequestHeaders(provider) },
+        { timeoutMs: PROVIDER_MODEL_LIST_TIMEOUT_MS },
+        async (response) => {
+          if (!response.ok) {
+            await response.body?.cancel();
+            return { ok: false as const, status: response.status };
+          }
+          return { ok: true as const, body: await consume(response) };
+        },
+      ),
+    );
+  }
+
+  private async measureRequest<T extends { ok: boolean }>(
+    operation: 'health' | 'models',
+    role: 'provider' | AutomationAiProviderModelRole,
+    request: () => Promise<T>,
   ) {
     const finishMetrics = this.metrics.beginAiProviderRequest(operation, role);
-    const scope = createProviderRequestScope({ timeoutMs });
     try {
-      const response = await fetch(url, { ...init, signal: scope.signal });
-      finishMetrics(response.ok ? 'success' : 'error');
-      return response;
+      const result = await request();
+      finishMetrics(result.ok ? 'success' : 'error');
+      return result;
     } catch (error) {
-      finishMetrics(
-        scope.wasTimedOut() || isProviderAbortError(error)
-          ? 'timeout'
-          : 'error',
-      );
+      finishMetrics(isProviderTimeoutError(error) ? 'timeout' : 'error');
       throw error;
-    } finally {
-      scope.cleanup();
     }
   }
 
@@ -358,3 +413,17 @@ export class AiProviderHealthService {
     };
   }
 }
+
+const readProbeBody = async (
+  response: Response,
+  stream: boolean,
+  provider: AutomationAiProvider,
+) => {
+  if (!stream) return readProviderJson(response);
+  if (!response.body) return null;
+  const result = await consumeChatCompletionStream({
+    body: response.body,
+    format: providerStreamFormat(provider),
+  });
+  return { message: result.message };
+};

@@ -1,5 +1,8 @@
 import type { AutomationDefinition } from "./definition";
 
+export const AUTOMATION_DRAFT_PROMPT_MAX_LENGTH = 12_000;
+export const AUTOMATION_DRAFT_TIMEOUT_MS = 120_000;
+
 export interface AutomationYamlDraft {
   yaml: string;
   definition: AutomationDefinition;

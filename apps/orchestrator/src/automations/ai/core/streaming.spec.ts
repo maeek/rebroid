@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { DEVICE_DECISION_TOOL_NAME } from './device-decision';
-import { consumeChatCompletionStream } from './streaming';
+import { consumeChatCompletionStream } from '../../../common/ai-provider-stream';
 
 describe('automation AI streaming', () => {
   it('consumes streamed assistant text', async () => {
@@ -23,6 +23,21 @@ describe('automation AI streaming', () => {
       content: 'Open settings',
       tool_calls: [],
     });
+  });
+
+  it('cancels the provider body when the SSE completion marker arrives before EOF', async () => {
+    const cancel = jest.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+      },
+      cancel,
+    });
+
+    await consumeChatCompletionStream({ body });
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(body.locked).toBe(false);
   });
 
   it('consumes streamed tool calls with chunked arguments', async () => {

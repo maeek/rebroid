@@ -89,3 +89,10 @@ export const pointWithinBox = (point: NormalizedPoint, box: NormalizedBox) => {
     p.y <= b.top + b.height
   );
 };
+
+export const matchesVisionLocateBounds = (
+  detection: { confidence: number; center: { x: number; y: number } },
+  input: { threshold: number; region?: Parameters<typeof pointWithinBox>[1] },
+) =>
+  detection.confidence >= input.threshold &&
+  (!input.region || pointWithinBox(detection.center, input.region));

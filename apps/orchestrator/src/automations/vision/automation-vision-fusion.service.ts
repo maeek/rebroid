@@ -26,6 +26,10 @@ export interface AutomationVisionDescription {
 
 @Injectable()
 export class AutomationVisionFusionService {
+  lookupDetections(capture: AutomationVisionCapture) {
+    return [...readUiEvidence(capture).detections, ...capture.ocr.detections];
+  }
+
   async fuse(
     capture: AutomationVisionCapture,
     described: AutomationVisionDescription,
@@ -39,11 +43,7 @@ export class AutomationVisionFusionService {
       capturedAt: screenshot.capturedAt,
       source: 'screenshot' as const,
     };
-    const uiDumpAvailable = ui.status === 'available' && Boolean(ui.xml);
-    const preparedUi = uiDumpAvailable && ui.xml ? prepareUiXml(ui.xml) : null;
-    const detections = preparedUi
-      ? extractUiDetections(preparedUi.xml, image)
-      : [];
+    const { preparedUi, detections } = readUiEvidence(capture);
     const uiXml = preparedUi
       ? {
           bytes: Buffer.byteLength(preparedUi.xml),
@@ -235,4 +235,16 @@ const boundsOverlap = (
   const union =
     left.width * left.height + right.width * right.height - intersection;
   return union > 0 ? intersection / union : 0;
+};
+
+const readUiEvidence = ({ aiImage, ui }: AutomationVisionCapture) => {
+  const preparedUi =
+    ui.status === 'available' && ui.xml ? prepareUiXml(ui.xml) : null;
+  const detections = preparedUi
+    ? extractUiDetections(preparedUi.xml, {
+        width: aiImage.width ?? 1,
+        height: aiImage.height ?? 1,
+      })
+    : [];
+  return { preparedUi, detections };
 };

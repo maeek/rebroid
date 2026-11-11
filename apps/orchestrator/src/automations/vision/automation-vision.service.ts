@@ -1,10 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import {
-  createDetection,
-  matchesDetectionQuery,
-  sortDetections,
-} from './vision-observation';
-import { pointWithinBox } from './vision-geometry';
+import { matchesDetectionQuery, sortDetections } from './vision-observation';
+import { matchesVisionLocateBounds } from './vision-geometry';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -40,17 +36,28 @@ export class AutomationVisionService {
     deadline?: number,
     visionContext?: AutomationVisionContext,
   ): Promise<AutomationScreenObservation> {
-    const capture = await this.captureService.capture(context);
+    const signal = observationSignal(context.abortSignal, deadline);
+    const capture = await this.captureService.capture({
+      ...context,
+      abortSignal: signal,
+    });
     const described = visionModel
       ? await this.modelService.describeSafe({
           image: capture.aiImage,
-          abortSignal: context.abortSignal,
+          abortSignal: signal,
           deadline,
           visionContext,
           ...visionModel,
         })
       : {};
-    return await this.fusionService.fuse(capture, described, visionContext);
+    signal?.throwIfAborted();
+    const observation = await this.fusionService.fuse(
+      capture,
+      described,
+      visionContext,
+    );
+    signal?.throwIfAborted();
+    return observation;
   }
 
   async locate(
@@ -59,42 +66,31 @@ export class AutomationVisionService {
     visionModel?: VisionModelSelection,
     deadline?: number,
   ): Promise<AutomationVisionLocateOutput> {
-    const observation = await this.observe(context, undefined, deadline);
-    const fusedDetections = observation.candidates.flatMap((candidate) => {
-      if (!candidate.bounds) return [];
-      return [
-        createDetection({
-          id: candidate.id,
-          label: candidate.label,
-          confidence: candidate.confidence,
-          bounds: candidate.bounds,
-          source:
-            candidate.source === 'vision-model'
-              ? 'vision-model'
-              : candidate.source === 'ocr'
-                ? 'ocr'
-                : 'ui-xml',
-          ...(candidate.role ? { role: candidate.role } : {}),
-        }),
-      ];
+    const signal = observationSignal(context.abortSignal, deadline);
+    const capture = await this.captureService.capture({
+      ...context,
+      abortSignal: signal,
     });
+    signal?.throwIfAborted();
     const matches = sortDetections(
-      fusedDetections.filter((detection) => {
-        if (detection.confidence < input.threshold) return false;
-        if (!matchesDetectionQuery(detection, input.query)) return false;
-        return input.region
-          ? pointWithinBox(detection.center, input.region)
-          : true;
-      }),
+      this.fusionService
+        .lookupDetections(capture)
+        .filter(
+          (detection) =>
+            matchesDetectionQuery(detection, input.query) &&
+            matchesVisionLocateBounds(detection, input),
+        ),
     ).slice(0, input.maxResults);
-    if (matches.length === 0 && visionModel && observation.aiImage) {
-      return this.modelService.locateSafe({
-        image: observation.aiImage,
-        abortSignal: context.abortSignal,
+    if (matches.length === 0 && visionModel) {
+      const result = await this.modelService.locateSafe({
+        image: capture.aiImage,
+        abortSignal: signal,
         deadline,
         input,
         ...visionModel,
       });
+      signal?.throwIfAborted();
+      return result;
     }
 
     return {
@@ -114,3 +110,13 @@ export class AutomationVisionService {
     return summarizeVisionObservationForPlanner(observation);
   }
 }
+
+const observationSignal = (signal?: AbortSignal, deadline?: number) => {
+  signal?.throwIfAborted();
+  if (deadline === undefined) return signal;
+  const remaining = deadline - Date.now();
+  if (remaining <= 0)
+    throw new DOMException('Observation deadline expired.', 'TimeoutError');
+  const timeout = AbortSignal.timeout(remaining);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+};

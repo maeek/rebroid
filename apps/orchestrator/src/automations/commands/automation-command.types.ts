@@ -23,10 +23,13 @@ export interface AutomationCommandContext {
   parentStepId?: string | null;
   path?: string;
   abortSignal?: AbortSignal;
-  toolExecutor?: (tool: {
-    name: string;
-    arguments: Record<string, unknown>;
-  }) => Promise<AutomationCommandResult>;
+  toolExecutor?: (
+    tool: {
+      name: string;
+      arguments: Record<string, unknown>;
+    },
+    signal?: AbortSignal,
+  ) => Promise<AutomationCommandResult>;
 }
 
 export interface AutomationCommandResult {

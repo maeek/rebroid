@@ -67,6 +67,42 @@ describe('AiProviderHealthService', () => {
     );
   });
 
+  it('probes a schema-only controller through streaming without tools', async () => {
+    const model = {
+      ...provider().models[0],
+      roles: ['controller' as const],
+      capabilities: { structuredOutput: true, tools: false },
+    };
+    const mock = jest
+      .fn()
+      .mockResolvedValueOnce(Response.json({ data: [{ id: model.id }] }))
+      .mockResolvedValueOnce(
+        new Response(
+          'data: ' +
+            JSON.stringify({
+              choices: [
+                { delta: { content: '{"ok":true}' }, finish_reason: 'stop' },
+              ],
+            }) +
+            '\n\ndata: [DONE]\n\n',
+        ),
+      );
+    global.fetch = mock;
+    const service = new AiProviderHealthService();
+    const result = await service.checkProviderHealth(
+      provider({ serverFlavor: 'openai', models: [model] }),
+      model.id,
+      'controller',
+    );
+    expect(result.status).toBe('ok');
+    const request = (mock.mock.calls[1] as [string, RequestInit])[1];
+    expect(JSON.parse(String(request.body))).toMatchObject({
+      stream: true,
+      response_format: { type: 'json_schema' },
+    });
+    expect(JSON.parse(String(request.body))).not.toHaveProperty('tools');
+  });
+
   it('requires the controller probe to produce the requested tool call', async () => {
     const configured = provider({
       enabled: true,
@@ -91,23 +127,28 @@ describe('AiProviderHealthService', () => {
       )
       .mockResolvedValueOnce(
         new Response(
-          JSON.stringify({
-            choices: [
-              {
-                message: {
-                  role: 'assistant',
-                  content: null,
-                  tool_calls: [
-                    {
-                      type: 'function',
-                      function: { name: 'health_check_noop', arguments: '{}' },
-                    },
-                  ],
+          'data: ' +
+            JSON.stringify({
+              choices: [
+                {
+                  delta: {
+                    tool_calls: [
+                      {
+                        index: 0,
+                        id: 'call-1',
+                        type: 'function',
+                        function: {
+                          name: 'health_check_noop',
+                          arguments: '{}',
+                        },
+                      },
+                    ],
+                  },
+                  finish_reason: 'tool_calls',
                 },
-              },
-            ],
-          }),
-          { status: 200 },
+              ],
+            }) +
+            '\n\ndata: [DONE]\n\n',
         ),
       );
 

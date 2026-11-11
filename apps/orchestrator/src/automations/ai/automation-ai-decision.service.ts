@@ -1,3 +1,8 @@
+import {
+  deviceControllerResponseMode,
+  modelSupportsStructuredOutput,
+  modelSupportsTools,
+} from '../../common/ai-provider-request';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   buildDeviceControllerMessages,
@@ -30,18 +35,18 @@ import {
 import {
   capabilityPrompt,
   routeCapabilities,
-  type DeviceAgentState,
 } from './automation-device-agent-state';
+import type { DeviceAgentRunState } from './automation-device-agent-run-state';
 
 const MAX_DECISION_ATTEMPTS = 2;
 
-type DecisionContext = {
+export type AutomationAiDecisionContext = {
   input: AutomationAiRunInput;
   context: AutomationAiHarnessContext;
   provider: AutomationAiProvider;
   model: AutomationAiProviderModel;
   deadline: number;
-  state: DeviceAgentState;
+  state: DeviceAgentRunState;
 };
 
 @Injectable()
@@ -52,8 +57,9 @@ export class AutomationAiDecisionService {
   ) {}
 
   async requestDecision(
-    args: DecisionContext & {
+    args: AutomationAiDecisionContext & {
       capabilities: ReturnType<typeof routeCapabilities>;
+      terminalOnly?: boolean;
     },
   ) {
     let validationError = '';
@@ -96,8 +102,9 @@ export class AutomationAiDecisionService {
   }
 
   private async requestControllerTurn(
-    args: DecisionContext & {
+    args: AutomationAiDecisionContext & {
       capabilities: ReturnType<typeof routeCapabilities>;
+      terminalOnly?: boolean;
     },
     attempt: number,
     validationError: string,
@@ -108,8 +115,15 @@ export class AutomationAiDecisionService {
       state: args.state,
       capabilities: args.capabilities,
       validationError,
+      terminalOnly: args.terminalOnly,
     });
-    const structuredOutput = args.model.capabilities?.structuredOutput === true;
+    const mode = deviceControllerResponseMode(args.model);
+    if (!mode) {
+      throw new BadRequestException(
+        'The controller model requires structured output or tool calling.',
+      );
+    }
+    const structuredOutput = mode === 'schema';
     const effectiveModel =
       attempt > 0 && args.model.settings.thinkingMode !== 'disabled'
         ? {
@@ -156,8 +170,8 @@ export class AutomationAiDecisionService {
     return response;
   }
 
-  async updatePlan(args: DecisionContext & { reason?: string }) {
-    args.state.planAttempts += 1;
+  async updatePlan(args: AutomationAiDecisionContext & { reason?: string }) {
+    const attempt = args.state.beginPlan();
     const messages = buildDevicePlannerMessages({
       goal: conversationGoal(args.input),
       snapshot: boundedAiText(args.state.plannerText, 18_000),
@@ -167,8 +181,8 @@ export class AutomationAiDecisionService {
         2_000,
       ),
     });
-    const structuredOutput = args.model.capabilities?.structuredOutput === true;
-    const toolsSupported = args.model.capabilities?.tools !== false;
+    const structuredOutput = modelSupportsStructuredOutput(args.model);
+    const toolsSupported = modelSupportsTools(args.model);
     const response = await this.chatClient.chat({
       provider: args.provider,
       model: args.model,
@@ -197,12 +211,13 @@ export class AutomationAiDecisionService {
     const content =
       planCall?.function.arguments ?? textContent(message?.content);
     const subgoals = parseDevicePlan(content);
-    args.state.subgoals =
-      subgoals.length > 0 ? subgoals : fallbackDevicePlan(args.input.prompt);
+    args.state.setSubgoals(
+      subgoals.length > 0 ? subgoals : fallbackDevicePlan(args.input.prompt),
+    );
     await emitAutomationAiEvent(
       this.events,
       args.context,
-      args.state.planAttempts === 1 ? 'ai.plan.proposed' : 'ai.plan.updated',
+      attempt === 1 ? 'ai.plan.proposed' : 'ai.plan.updated',
       devicePlanText(args.state.subgoals),
       {
         reason: args.reason ?? 'initial complexity policy',
@@ -218,12 +233,14 @@ export class AutomationAiDecisionService {
     state,
     capabilities,
     validationError,
+    terminalOnly,
   }: {
     input: AutomationAiRunInput;
     model: AutomationAiProviderModel;
-    state: DeviceAgentState;
+    state: DeviceAgentRunState;
     capabilities: ReturnType<typeof routeCapabilities>;
     validationError: string;
+    terminalOnly?: boolean;
   }) {
     const messages = buildDeviceControllerMessages({
       goal: conversationGoal(input),
@@ -234,15 +251,19 @@ export class AutomationAiDecisionService {
       plan: devicePlanText(state.subgoals),
       trajectory: boundedAiText(
         [
+          terminalOnly
+            ? '- The action budget is exhausted. Return finish or ask_user.'
+            : '',
+          validationError
+            ? `- Previous decision rejected: ${validationError}. Return a corrected decision.`
+            : '',
+          ...state.controllerEvidence(),
           ...state.trajectory
             .slice(-8)
             .map(
               (entry) =>
                 `- ${entry.action}: ${entry.outcome} [evidence=${entry.evidenceId}${entry.snapshotId ? `, snapshot=${entry.snapshotId}` : ''}]`,
             ),
-          validationError
-            ? `- Previous decision rejected: ${validationError}. Return a corrected decision.`
-            : '',
         ]
           .filter(Boolean)
           .join('\n'),

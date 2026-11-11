@@ -24,9 +24,9 @@ export const createAndroidInputAutomationCommands = () =>
       schema: tapSchema,
       execute: async (
         input: z.infer<typeof tapSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.tap(app, input.x, input.y);
+        await adb.tap(app, input.x, input.y, abortSignal);
         return { summary: `Tapped ${input.x}, ${input.y}.` };
       },
     },
@@ -58,16 +58,16 @@ export const createAndroidInputAutomationCommands = () =>
       },
       execute: async (
         input: z.infer<typeof tapNormalizedSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const screenshot = await readAiScreenshotMetadata(
-          await adb.screenshot(app),
+          await adb.screenshot(app, abortSignal),
         );
         const point = normalizedPointToPixels(input, {
           width: screenshot.width ?? 1,
           height: screenshot.height ?? 1,
         });
-        await adb.tap(app, point.x, point.y);
+        await adb.tap(app, point.x, point.y, abortSignal);
         return {
           summary: `Tapped normalized ${input.x}, ${input.y}.`,
           data: { x: point.x, y: point.y },
@@ -82,9 +82,9 @@ export const createAndroidInputAutomationCommands = () =>
       schema: swipeSchema,
       execute: async (
         input: z.infer<typeof swipeSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.swipe(app, input);
+        await adb.swipe(app, input, abortSignal);
         return { summary: 'Swipe completed.' };
       },
     },
@@ -133,10 +133,10 @@ export const createAndroidInputAutomationCommands = () =>
       },
       execute: async (
         input: z.infer<typeof swipeNormalizedSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
         const screenshot = await readAiScreenshotMetadata(
-          await adb.screenshot(app),
+          await adb.screenshot(app, abortSignal),
         );
         const image = {
           width: screenshot.width ?? 1,
@@ -144,13 +144,17 @@ export const createAndroidInputAutomationCommands = () =>
         };
         const start = normalizedPointToPixels(input.start, image);
         const end = normalizedPointToPixels(input.end, image);
-        await adb.swipe(app, {
-          x1: start.x,
-          y1: start.y,
-          x2: end.x,
-          y2: end.y,
-          durationMs: input.durationMs,
-        });
+        await adb.swipe(
+          app,
+          {
+            x1: start.x,
+            y1: start.y,
+            x2: end.x,
+            y2: end.y,
+            durationMs: input.durationMs,
+          },
+          abortSignal,
+        );
         return {
           summary: 'Normalized swipe completed.',
           data: {
@@ -170,9 +174,9 @@ export const createAndroidInputAutomationCommands = () =>
       schema: textSchema,
       execute: async (
         { text }: z.infer<typeof textSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.inputText(app, text);
+        await adb.inputText(app, text, abortSignal);
         return { summary: `Input ${text.length} character(s).` };
       },
     },
@@ -184,9 +188,9 @@ export const createAndroidInputAutomationCommands = () =>
       schema: keySchema,
       execute: async (
         { key }: z.infer<typeof keySchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.key(app, key);
+        await adb.key(app, key, abortSignal);
         return { summary: `Sent key ${key}.` };
       },
     },
@@ -198,9 +202,9 @@ export const createAndroidInputAutomationCommands = () =>
       schema: textSchema,
       execute: async (
         { text }: z.infer<typeof textSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.setClipboard(app, text);
+        await adb.setClipboard(app, text, abortSignal);
         return { summary: `Set clipboard to ${text.length} character(s).` };
       },
     },
@@ -226,9 +230,9 @@ export const createAndroidInputAutomationCommands = () =>
       ],
       execute: async (
         _input: Record<string, never>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        const result = await adb.getClipboard(app);
+        const result = await adb.getClipboard(app, abortSignal);
         return {
           summary: result.supported
             ? 'Clipboard read.'

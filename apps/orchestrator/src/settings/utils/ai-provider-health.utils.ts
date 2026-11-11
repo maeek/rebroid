@@ -1,4 +1,7 @@
-import type { ChatMessage } from '../../common/ai-provider-request';
+import {
+  providerAssistantMessage,
+  type ChatMessage,
+} from '../../common/ai-provider-request';
 import type { AutomationAiProviderModelRole } from '../contracts/ai-provider';
 
 export const modelRoleLabel = (role: AutomationAiProviderModelRole) => {
@@ -9,6 +12,7 @@ export const modelRoleLabel = (role: AutomationAiProviderModelRole) => {
 
 export const modelRoleProbeMessages = (
   role: AutomationAiProviderModelRole,
+  mode: 'tool' | 'schema' | 'text' = role === 'controller' ? 'tool' : 'text',
 ): ChatMessage[] => {
   if (role === 'vision') {
     return [
@@ -29,7 +33,11 @@ export const modelRoleProbeMessages = (
       },
     ];
   }
-  if (role === 'controller') {
+  if (mode === 'schema')
+    return [
+      { role: 'user', content: 'Reply with the JSON object {"ok":true}.' },
+    ];
+  if (mode === 'tool') {
     return [
       {
         role: 'user',
@@ -43,28 +51,36 @@ export const modelRoleProbeMessages = (
 export const modelRoleProbeIncompatibility = (
   role: AutomationAiProviderModelRole,
   body: unknown,
+  mode: 'tool' | 'schema' | 'text' = role === 'controller' ? 'tool' : 'text',
 ) => {
   const root = record(body);
   if (!root) {
     return `${modelRoleLabel(role)} role check returned an invalid JSON body.`;
   }
-  const choice = Array.isArray(root.choices) ? root.choices[0] : null;
-  const message = record(record(choice)?.message) ?? record(root.message);
+  const message = providerAssistantMessage(root);
   if (!message) {
     return `${modelRoleLabel(role)} role check returned no assistant message.`;
   }
-  if (role === 'controller') {
+  if (mode === 'tool') {
     const calls = Array.isArray(message.tool_calls) ? message.tool_calls : [];
     const hasExpectedCall = calls.some(
       (call) => record(record(call)?.function)?.name === 'health_check_noop',
     );
     return hasExpectedCall
       ? null
-      : 'Controller role check did not produce the required structured tool call.';
+      : `${modelRoleLabel(role)} role check did not produce the required structured tool call.`;
   }
 
   const content =
     typeof message.content === 'string' ? message.content.trim() : '';
+  if (mode === 'schema') {
+    try {
+      if (record(JSON.parse(content))?.ok === true) return null;
+    } catch {
+      // The model did not return the configured structured response.
+    }
+    return `${modelRoleLabel(role)} role check did not produce the required JSON response.`;
+  }
   if (!content) {
     const reasoning =
       typeof message.reasoning_content === 'string'

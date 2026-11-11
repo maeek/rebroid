@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
 import {
   emptyInputSchema,
@@ -19,8 +20,11 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       description: 'Pauses the automation for a fixed duration.',
       requiredPermissions: ['automations:run'],
       schema: waitSchema,
-      execute: async ({ durationMs }: z.infer<typeof waitSchema>) => {
-        await new Promise((resolve) => setTimeout(resolve, durationMs));
+      execute: async (
+        { durationMs }: z.infer<typeof waitSchema>,
+        { abortSignal }: AutomationCommandContext,
+      ) => {
+        await delay(durationMs, undefined, { signal: abortSignal });
         return { summary: `Waited ${durationMs}ms.` };
       },
     },
@@ -32,9 +36,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       schema: viewerCommandSchema,
       execute: async (
         { command }: z.infer<typeof viewerCommandSchema>,
-        { app, display }: AutomationCommandContext,
+        { app, display, abortSignal }: AutomationCommandContext,
       ) => {
-        await display.viewerControl(app, command);
+        await display.viewerControl(app, command, abortSignal);
         return { summary: `Sent ${command}.` };
       },
     },
@@ -53,9 +57,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       schema: emptyInputSchema,
       execute: async (
         _input: Record<string, never>,
-        { app, display }: AutomationCommandContext,
+        { app, display, abortSignal }: AutomationCommandContext,
       ) => {
-        await display.viewerControl(app, 'expand-notifications');
+        await display.viewerControl(app, 'expand-notifications', abortSignal);
         return { summary: 'Expanded notification shade.' };
       },
     },
@@ -74,9 +78,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       schema: emptyInputSchema,
       execute: async (
         _input: Record<string, never>,
-        { app, display }: AutomationCommandContext,
+        { app, display, abortSignal }: AutomationCommandContext,
       ) => {
-        await display.viewerControl(app, 'expand-settings');
+        await display.viewerControl(app, 'expand-settings', abortSignal);
         return { summary: 'Expanded quick settings.' };
       },
     },
@@ -88,9 +92,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       schema: emptyInputSchema,
       execute: async (
         _input: Record<string, never>,
-        { app, display }: AutomationCommandContext,
+        { app, display, abortSignal }: AutomationCommandContext,
       ) => {
-        await display.viewerControl(app, 'collapse-panels');
+        await display.viewerControl(app, 'collapse-panels', abortSignal);
         return { summary: 'Collapsed system panels.' };
       },
     },
@@ -102,9 +106,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       schema: rotateSchema,
       execute: async (
         { orientation }: z.infer<typeof rotateSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.rotateDisplay(app, orientation);
+        await adb.rotateDisplay(app, orientation, abortSignal);
         return { summary: `Set display orientation to ${orientation}.` };
       },
     },
@@ -137,9 +141,9 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       ],
       execute: async (
         _input: Record<string, never>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        const result = await adb.screenshot(app);
+        const result = await adb.screenshot(app, abortSignal);
         return {
           summary: 'Screenshot captured.',
           data: {

@@ -70,13 +70,18 @@ export class OcrSidecarHealthService {
         };
       }
 
-      const ready = body.ready !== false;
+      const languageMatches = body.language === settings.language;
+      const ready = body.ready === true && languageMatches;
+      let message = body.message || 'OCR sidecar is reachable but not ready.';
+      if (!body.language)
+        message = 'OCR sidecar did not report its deployed language.';
+      else if (!languageMatches)
+        message = `OCR expects ${settings.language}, but the sidecar serves ${body.language}.`;
+      else if (ready) message = 'OCR sidecar is reachable.';
       return {
         ok: ready,
         status: ready ? 'healthy' : 'unhealthy',
-        message: ready
-          ? 'OCR sidecar is reachable.'
-          : body.message || 'OCR sidecar is reachable but not ready.',
+        message,
         details: { ...details, response: this.sanitizePayload(body) },
       };
     } catch (error) {

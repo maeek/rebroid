@@ -1,7 +1,15 @@
-import type {
-  ChatMessage,
-  ChatToolCall,
-} from '../../../common/ai-provider-request';
+import {
+  providerProtocol,
+  type ChatMessage,
+  type ChatToolCall,
+} from './ai-provider-request';
+
+export const providerStreamFormat = (
+  provider: Parameters<typeof providerProtocol>[0],
+) =>
+  providerProtocol(provider) === 'ollama-native-chat'
+    ? ('ollama-ndjson' as const)
+    : ('openai-sse' as const);
 
 type ChatStreamFormat = 'openai-sse' | 'ollama-ndjson';
 
@@ -185,57 +193,24 @@ const parseChatEvents = async function* (
   body: ReadableStream<Uint8Array>,
   format: ChatStreamFormat,
 ) {
-  if (format === 'ollama-ndjson') {
-    yield* parseNewlineDelimitedJson(body);
-    return;
-  }
-  yield* parseServerSentEvents(body);
-};
-
-const parseServerSentEvents = async function* (
-  body: ReadableStream<Uint8Array>,
-) {
+  const separator = format === 'openai-sse' ? /\r?\n\r?\n/ : /\r?\n/;
   const decoder = new TextDecoder();
   const reader = body.getReader();
   let buffer = '';
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() ?? '';
-      for (const event of events) {
-        const data = eventData(event);
+      buffer += decoder.decode(value, { stream: !done });
+      const frames = buffer.split(separator);
+      if (!done) buffer = frames.pop() ?? '';
+      for (const frame of frames) {
+        const data = format === 'openai-sse' ? eventData(frame) : frame.trim();
         if (data) yield data;
       }
+      if (done) return;
     }
-    buffer += decoder.decode();
-    const data = eventData(buffer);
-    if (data) yield data;
   } finally {
-    reader.releaseLock();
-  }
-};
-
-const parseNewlineDelimitedJson = async function* (
-  body: ReadableStream<Uint8Array>,
-) {
-  const decoder = new TextDecoder();
-  const reader = body.getReader();
-  let buffer = '';
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? '';
-      for (const line of lines) if (line.trim()) yield line.trim();
-    }
-    buffer += decoder.decode();
-    if (buffer.trim()) yield buffer.trim();
-  } finally {
+    void reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 };

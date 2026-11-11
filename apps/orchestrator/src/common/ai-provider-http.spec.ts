@@ -3,6 +3,8 @@ import {
   createProviderRequestScope,
   providerRequestHeaders,
   readBoundedProviderText,
+  readProviderJson,
+  withProviderResponse,
 } from './ai-provider-http';
 
 it('builds authenticated JSON provider headers', () => {
@@ -28,4 +30,36 @@ it('propagates cancellation and bounds provider response text', async () => {
 
   const response = new Response('abcdef');
   assert.equal(await readBoundedProviderText(response, 3), 'abc');
+});
+
+it('enforces the timeout while reading a response body', async () => {
+  jest.useFakeTimers();
+  const fetch = jest
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (_url, init) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          init?.signal?.addEventListener(
+            'abort',
+            () => controller.error(init.signal?.reason),
+            { once: true },
+          );
+        },
+      });
+      return new Response(body);
+    });
+  try {
+    const pending = withProviderResponse(
+      'http://provider.test',
+      {},
+      { timeoutMs: 25 },
+      readProviderJson,
+    );
+    const expected = expect(pending).rejects.toMatchObject({ kind: 'timeout' });
+    await jest.advanceTimersByTimeAsync(25);
+    await expected;
+  } finally {
+    fetch.mockRestore();
+    jest.useRealTimers();
+  }
 });

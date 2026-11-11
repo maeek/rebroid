@@ -1,6 +1,38 @@
+import { createDetection } from './vision-observation';
+import { AutomationVisionFusionService } from './automation-vision-fusion.service';
 import { AutomationVisionService } from './automation-vision.service';
 
 describe('AutomationVisionService', () => {
+  it('finds a matching OCR detection beyond the planner shortlist', async () => {
+    const bounds = { left: 0.1, top: 0.1, width: 0.2, height: 0.2 };
+    const detections = Array.from({ length: 31 }, (_, index) =>
+      createDetection({
+        id: `ocr-${index}`,
+        label: index === 30 ? 'Network' : `Unrelated ${index}`,
+        source: 'ocr',
+        confidence: index === 30 ? 0.7 : 0.99,
+        bounds,
+      }),
+    );
+    const model = { locateSafe: jest.fn() };
+    const service = new AutomationVisionService(
+      {
+        capture: jest
+          .fn()
+          .mockResolvedValue({ ui: { status: 'failed' }, ocr: { detections } }),
+      } as never,
+      new AutomationVisionFusionService(),
+      model as never,
+    );
+    const result = await service.locate({} as never, {
+      query: 'network',
+      threshold: 0.5,
+      maxResults: 1,
+    });
+    expect(result.matches.map((match) => match.id)).toEqual(['ocr-30']);
+    expect(model.locateSafe).not.toHaveBeenCalled();
+  });
+
   it('locates OCR candidates from the fused observation before VLM fallback', async () => {
     const observation = {
       snapshotId: 'screen-1',
@@ -26,7 +58,9 @@ describe('AutomationVisionService', () => {
     const model = { locateSafe: jest.fn() };
     const service = new AutomationVisionService(
       { capture: jest.fn().mockResolvedValue({}) } as never,
-      { fuse: jest.fn().mockResolvedValue(observation) } as never,
+      {
+        lookupDetections: jest.fn().mockReturnValue(observation.candidates),
+      } as never,
       model as never,
     );
 

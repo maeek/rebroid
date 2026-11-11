@@ -1,5 +1,5 @@
 import { verifyAutomationAiFinish } from './automation-ai-finish-verifier';
-import type { DeviceAgentState } from './automation-device-agent-state';
+import type { DeviceAgentState } from './automation-device-agent-run-state';
 
 const state = (): DeviceAgentState => ({
   target: {
@@ -78,6 +78,7 @@ describe('verifyAutomationAiFinish', () => {
   it('marks verified subgoals complete', () => {
     expect(verifyAutomationAiFinish(finish(), state())).toEqual({
       ok: true,
+      evidenceIds: ['snapshot:screen-1'],
       subgoals: [
         expect.objectContaining({ id: 'open-settings', status: 'completed' }),
       ],

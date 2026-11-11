@@ -1,10 +1,17 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  RequestTimeoutException,
+} from '@nestjs/common';
 import type { DeviceAgentDecision } from './core/device-decision';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import { AutomationAiActionExecutor } from './automation-ai-action-executor.service';
-import { AutomationAiDecisionService } from './automation-ai-decision.service';
+import {
+  AutomationAiDecisionService,
+  type AutomationAiDecisionContext,
+} from './automation-ai-decision.service';
 import { emitAutomationAiEvent } from './automation-ai-events';
 import { verifyAutomationAiFinish } from './automation-ai-finish-verifier';
 import { sanitizeAiText } from './automation-ai-observation.utils';
@@ -14,11 +21,20 @@ import {
   createTargetSession,
   routeCapabilities,
   shouldPlanInitially,
-  type DeviceAgentEvidence,
-  type DeviceAgentState,
 } from './automation-device-agent-state';
+import {
+  DeviceAgentRunState,
+  type DeviceAgentState,
+} from './automation-device-agent-run-state';
 
 const MAX_PLAN_ATTEMPTS = 2;
+
+type AutomationAiOutcome = {
+  status: 'completed' | 'blocked';
+  finalText: string;
+  blockedReason: string | null;
+  evidenceIds?: string[];
+};
 
 @Injectable()
 export class AutomationAiHarnessService {
@@ -30,9 +46,64 @@ export class AutomationAiHarnessService {
     private readonly actions: AutomationAiActionExecutor,
   ) {}
 
-  async run(input: AutomationAiRunInput, context: AutomationAiHarnessContext) {
+  async run(
+    input: AutomationAiRunInput,
+    runContext: AutomationAiHarnessContext,
+  ) {
     const deadline = Date.now() + input.timeoutMs;
-    const maxActions = input.maxActions ?? input.maxToolCalls;
+    const timeout = AbortSignal.timeout(input.timeoutMs);
+    const context = {
+      ...runContext,
+      abortSignal: runContext.abortSignal
+        ? AbortSignal.any([runContext.abortSignal, timeout])
+        : timeout,
+    };
+    let state: DeviceAgentRunState | undefined;
+    let outcome: AutomationAiOutcome;
+    try {
+      context.abortSignal.throwIfAborted();
+      const maxActions = input.maxActions ?? input.maxToolCalls;
+      const { provider, model, capabilities } = await this.start(
+        input,
+        context,
+        maxActions,
+      );
+      const observed = await this.actions.observe({
+        input,
+        context,
+        deadline,
+        reason: 'initial',
+      });
+      state = new DeviceAgentRunState(createTargetSession(context), observed);
+      outcome = await this.runDecisions(
+        { input, context, provider, model, deadline, state },
+        capabilities,
+        maxActions,
+      );
+    } catch (error) {
+      this.assertNotCanceled(runContext.abortSignal);
+      if (
+        !timeout.aborted &&
+        Date.now() < deadline &&
+        !(error instanceof RequestTimeoutException)
+      ) {
+        throw error;
+      }
+      outcome = {
+        status: 'blocked',
+        finalText:
+          'The device agent timed out before the requested result was verified.',
+        blockedReason: 'Agent timeout reached.',
+      };
+    }
+    return this.finish(context, input, state, outcome);
+  }
+
+  private async start(
+    input: AutomationAiRunInput,
+    context: AutomationAiHarnessContext,
+    maxActions: number,
+  ) {
     const { provider, model } = await this.aiProviders.getProvider(
       input.providerId,
       input.modelId,
@@ -58,50 +129,31 @@ export class AutomationAiHarnessService {
       },
     );
 
-    const observed = await this.actions.observe({
-      input,
-      context,
-      deadline,
-      reason: 'initial',
-    });
-    const target = createTargetSession(context);
-    const initialEvidence: DeviceAgentEvidence = {
-      id: `snapshot:${observed.observation.snapshotId}`,
-      kind: 'snapshot',
-      summary:
-        observed.observation.summary ?? 'Initial device snapshot captured.',
-      snapshotId: observed.observation.snapshotId,
-    };
-    const state: DeviceAgentState = {
-      target,
-      observation: observed.observation,
-      plannerText: observed.plannerText,
-      subgoals: [],
-      evidence: [initialEvidence],
-      trajectory: [],
-      actions: 0,
-      consecutiveFailures: 0,
-      planAttempts: 0,
-    };
-    const decisionContext = {
-      input,
-      context,
-      provider,
-      model,
-      deadline,
-      state,
-    };
+    return { provider, model, capabilities };
+  }
 
+  private async runDecisions(
+    decisionContext: AutomationAiDecisionContext & {
+      context: AutomationAiHarnessContext & { abortSignal: AbortSignal };
+    },
+    capabilities: ReturnType<typeof routeCapabilities>,
+    maxActions: number,
+  ): Promise<AutomationAiOutcome> {
+    const { input, context, deadline, state } = decisionContext;
     if (shouldPlanInitially(input.agentMode ?? 'adaptive', input.prompt)) {
       await this.decisions.updatePlan(decisionContext);
     }
 
-    while (Date.now() < deadline && state.actions < maxActions) {
+    const maxTurns = maxActions * 2 + MAX_PLAN_ATTEMPTS + 1;
+    for (let turn = 0; turn < maxTurns && Date.now() < deadline; turn += 1) {
+      const terminalOnly = state.actions >= maxActions;
       this.assertNotCanceled(context.abortSignal);
       const decision = await this.decisions.requestDecision({
         ...decisionContext,
         capabilities,
+        terminalOnly,
       });
+      context.abortSignal.throwIfAborted();
       await emitAutomationAiEvent(
         this.events,
         context,
@@ -118,15 +170,22 @@ export class AutomationAiHarnessService {
         },
       );
 
+      context.abortSignal.throwIfAborted();
+      if (Date.now() >= deadline) break;
+      if (
+        terminalOnly &&
+        decision.kind !== 'finish' &&
+        decision.kind !== 'ask_user'
+      )
+        break;
+
       if (decision.kind === 'needs_plan') {
         if (state.planAttempts >= MAX_PLAN_ATTEMPTS) {
-          state.trajectory.push({
-            action: 'needs_plan',
-            outcome:
-              'Planner budget exhausted; choose a concrete action or finish blocked.',
-            evidenceId: initialEvidence.id,
-            failed: true,
-          });
+          state.recordRejectedDecision(
+            'needs_plan',
+            'Planner budget exhausted; choose a concrete action or finish blocked.',
+            false,
+          );
           continue;
         }
         await this.decisions.updatePlan({
@@ -136,36 +195,37 @@ export class AutomationAiHarnessService {
         continue;
       }
       if (decision.kind === 'ask_user') {
-        return this.finish(context, input, state, {
+        return {
           status: 'blocked',
           finalText: decision.question,
           blockedReason: decision.reason,
-        });
+        };
       }
       if (decision.kind === 'finish') {
         const verified = verifyAutomationAiFinish(decision, state);
         if (!verified.ok) {
           await this.rejectFinish(context, input, state, verified.reason);
+          if (terminalOnly) break;
           continue;
         }
-        state.subgoals = verified.subgoals;
-        return this.finish(context, input, state, {
+        state.setSubgoals(verified.subgoals);
+        return {
           status: decision.status,
           finalText: decision.finalText,
+          evidenceIds: verified.evidenceIds,
           blockedReason:
             decision.status === 'blocked'
               ? (decision.reason ?? decision.finalText)
               : null,
-        });
+        };
       }
       if (decision.kind === 'request_escalation') {
-        const executed = await this.actions.executeEscalation({
+        await this.actions.executeEscalation({
           decision,
           input,
           context,
           state,
         });
-        if (executed) state.actions += 1;
         continue;
       }
 
@@ -177,17 +237,18 @@ export class AutomationAiHarnessService {
         state,
         capabilities,
       });
-      state.actions += 1;
+      context.abortSignal.throwIfAborted();
       if (actionResult === 'observation-unavailable') {
         this.assertNotCanceled(context.abortSignal);
-        return this.finish(context, input, state, {
+        return {
           status: 'blocked',
           finalText:
             'The device agent could not observe the screen after the last action.',
           blockedReason: 'A fresh screen observation is unavailable.',
-        });
+        };
       }
       if (
+        state.actions < maxActions &&
         state.consecutiveFailures >= 2 &&
         state.planAttempts < MAX_PLAN_ATTEMPTS &&
         input.agentMode !== 'controller'
@@ -199,22 +260,20 @@ export class AutomationAiHarnessService {
       }
     }
 
-    const timedOut = Date.now() >= deadline;
-    return this.finish(context, input, state, {
+    let blockedReason = 'Controller turn limit reached.';
+    if (state.actions >= maxActions) blockedReason = 'Action limit reached.';
+    if (Date.now() >= deadline) blockedReason = 'Agent timeout reached.';
+    return {
       status: 'blocked',
-      finalText: timedOut
-        ? 'The device agent timed out before the requested result was verified.'
-        : 'The device agent reached its action limit before the requested result was verified.',
-      blockedReason: timedOut
-        ? 'Agent timeout reached.'
-        : 'Action limit reached.',
-    });
+      finalText: `${blockedReason} The requested result could not be verified.`,
+      blockedReason,
+    };
   }
 
   private async rejectFinish(
     context: AutomationAiHarnessContext,
     input: AutomationAiRunInput,
-    state: DeviceAgentState,
+    state: DeviceAgentRunState,
     reason: string,
   ) {
     await emitAutomationAiEvent(
@@ -224,27 +283,17 @@ export class AutomationAiHarnessService {
       reason,
       { clientMessageId: input.clientMessageId ?? null },
     );
-    state.trajectory.push({
-      action: 'finish',
-      outcome: reason,
-      evidenceId: state.evidence[0].id,
-      failed: true,
-    });
-    state.consecutiveFailures += 1;
+    state.recordRejectedDecision('finish', reason);
   }
 
   private async finish(
     context: AutomationAiHarnessContext,
     input: AutomationAiRunInput,
-    state: DeviceAgentState,
-    result: {
-      status: 'completed' | 'blocked';
-      finalText: string;
-      blockedReason: string | null;
-    },
+    state: DeviceAgentState | undefined,
+    result: AutomationAiOutcome,
   ) {
     const finalText = sanitizeAiText(result.finalText, 4_000);
-    const evidenceIds = state.evidence.map((evidence) => evidence.id);
+    const evidenceIds = result.evidenceIds ?? [];
     await emitAutomationAiEvent(
       this.events,
       context,
@@ -255,8 +304,8 @@ export class AutomationAiHarnessService {
         completed: result.status === 'completed',
         clientMessageId: input.clientMessageId ?? null,
         evidenceIds,
-        targetFingerprint: state.target.fingerprint,
-        lastSnapshotId: state.observation.snapshotId,
+        targetFingerprint: state?.target.fingerprint ?? null,
+        lastSnapshotId: state?.observation.snapshotId ?? null,
       },
     );
     return {
@@ -265,16 +314,16 @@ export class AutomationAiHarnessService {
         finalText,
         status: result.status,
         completed: result.status === 'completed',
-        toolCalls: state.actions,
+        toolCalls: state?.actions ?? 0,
         blockedReason: result.blockedReason,
         evidence: {
-          actionCount: state.actions,
+          actionCount: state?.actions ?? 0,
           actionLimitReached:
-            state.actions >= (input.maxActions ?? input.maxToolCalls),
-          lastSnapshotId: state.observation.snapshotId,
-          targetFingerprint: state.target.fingerprint,
-          verifierFailures: state.trajectory.filter((entry) => entry.failed)
-            .length,
+            (state?.actions ?? 0) >= (input.maxActions ?? input.maxToolCalls),
+          lastSnapshotId: state?.observation.snapshotId ?? null,
+          targetFingerprint: state?.target.fingerprint ?? null,
+          verifierFailures:
+            state?.trajectory.filter((entry) => entry.failed).length ?? 0,
           evidenceIds,
         },
       },
