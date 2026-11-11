@@ -32,7 +32,7 @@ export const AppearanceSettings = ({
       surface='plain'
       title='Appearance'
     >
-      <div className='grid gap-4 sm:grid-cols-2'>
+      <div className='grid gap-x-6 gap-y-4 sm:grid-cols-2'>
         <ThemeField loading={loading} />
         <ViewerPlacementField loading={loading} />
       </div>

@@ -59,7 +59,7 @@ export const AccountPasswordSettings = ({ loading = false }: { loading?: boolean
           onChange={event => setCurrentPassword(event.target.value)}
         />
       </FormField>
-      <div className='grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2'>
+      <div className='grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2'>
         <FormField
           label='New password'
           layout='vertical'
