@@ -35,8 +35,7 @@ const app = (
     network: {
       policy: {
         enabled: overrides.restricted ?? false,
-        status: overrides.policyStatus,
-        result: overrides.resultCode ? { code: overrides.resultCode } : null,
+        result: overrides.resultCode ? { code: overrides.resultCode, status: overrides.policyStatus } : null,
         allowCidrs: overrides.allowCidrs ?? []
       }
     }
@@ -46,12 +45,13 @@ describe('firewall settings model', () => {
   it('filters applications by identity, status, policy status, and CIDR', () => {
     const applications = [
       app('alpha', { name: 'Calendar', allowCidrs: ['10.0.0.0/24'] }),
-      app('beta', { status: 'stopped', policyStatus: 'pending' })
+      app('beta', { status: 'stopped', policyStatus: 'error', resultCode: 'apply_failed' })
     ]
 
     expect(filterFirewallApplications(applications, 'calendar')).toEqual([applications[0]])
     expect(filterFirewallApplications(applications, '10.0.0.0')).toEqual([applications[0]])
-    expect(filterFirewallApplications(applications, 'pending')).toEqual([applications[1]])
+    expect(filterFirewallApplications(applications, 'apply_failed')).toEqual([applications[1]])
+    expect(filterFirewallApplications(applications, 'error')).toEqual([applications[1]])
     expect(filterFirewallApplications(applications, 'stopped')).toEqual([applications[1]])
   })
 
@@ -125,15 +125,8 @@ describe('firewall settings model', () => {
       label: 'apply_failed',
       variant: 'neutral'
     })
-    expect(
-      firewallPolicyResultDisplay(
-        app('b', {
-          policyStatus: 'pending',
-          resultCode: undefined
-        })
-      )
-    ).toEqual({
-      label: 'pending',
+    expect(firewallPolicyResultDisplay(app('b'))).toEqual({
+      label: 'Not applied',
       variant: 'neutral'
     })
     expect(firewallRestrictionLabel(app('restricted', { restricted: true }))).toBe('Restricted')

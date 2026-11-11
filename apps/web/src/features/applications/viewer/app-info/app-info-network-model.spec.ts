@@ -33,8 +33,6 @@ const app = (override: Partial<AppDefinition> = {}): AppDefinition => ({
   recreateContainerOnNextStart: false,
   networkPolicyEnabled: true,
   networkPolicyAllowCidrs: ['10.0.0.0/8'],
-  networkPolicyStatus: 'legacy-status',
-  networkPolicyMessage: 'legacy message',
   networkPolicyResult: null,
   networkPolicyAppliedAt: null,
   apkOriginalName: null,
@@ -56,15 +54,15 @@ const app = (override: Partial<AppDefinition> = {}): AppDefinition => ({
 })
 
 describe('app info network model', () => {
-  it('falls back to legacy policy status and message fields when no result exists', () => {
+  it('shows the unapplied state when no result exists', () => {
     const value = app()
 
-    expect(getPolicyStatusText(value)).toBe('legacy-status')
-    expect(getPolicyMessage(value)).toBe('legacy message')
+    expect(getPolicyStatusText(value)).toBe('not applied')
+    expect(getPolicyMessage(value)).toBeUndefined()
     expect(getPolicyHint(value)).toBeUndefined()
   })
 
-  it('prefers structured network policy result details', () => {
+  it('shows structured network policy result details', () => {
     const value = app({
       networkPolicyResult: {
         status: 'error',

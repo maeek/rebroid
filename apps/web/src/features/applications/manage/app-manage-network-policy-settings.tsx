@@ -21,11 +21,9 @@ type AppManageNetworkPolicySettingsProps = {
   onUpdated: (app: AppDefinition) => void
 }
 
-const getPolicyStatus = (app: AppDefinition) =>
-  app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
+const getPolicyStatus = (app: AppDefinition) => app.networkPolicyResult?.status ?? 'not applied'
 
-const getPolicyMessage = (app: AppDefinition) =>
-  app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message ?? app.networkPolicyMessage
+const getPolicyMessage = (app: AppDefinition) => app.networkPolicyResult?.hint ?? app.networkPolicyResult?.message
 
 export const AppManageNetworkPolicySettings = ({ app, onUpdated }: AppManageNetworkPolicySettingsProps) => {
   const [networkPolicyEnabled, setNetworkPolicyEnabled] = useState(app.networkPolicyEnabled)

@@ -40,7 +40,7 @@ export const applicationPreview: AndroidApplication = {
   },
   network: {
     networkName: 'inventory-network',
-    policy: { enabled: true, allowCidrs: ['10.0.0.0/24'], status: null, message: null, result: null, appliedAt: null }
+    policy: { enabled: true, allowCidrs: ['10.0.0.0/24'], result: null, appliedAt: null }
   },
   apk: { filePath: null, originalName: null, packageName: null, uploadedApkId: null },
   createdAt: '2026-11-07T10:00:00Z',

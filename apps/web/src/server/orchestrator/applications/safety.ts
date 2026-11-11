@@ -70,8 +70,6 @@ export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, conte
       networkName: 'Managed network',
       policy: {
         ...app.network.policy,
-        status: app.network.policy.status ? redactBackendDetails(app.network.policy.status) : null,
-        message: app.network.policy.message ? redactBackendDetails(app.network.policy.message) : null,
         result: app.network.policy.result
           ? {
               ...app.network.policy.result,

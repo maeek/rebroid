@@ -34,8 +34,6 @@ export interface AppDefinition {
   recreateContainerOnNextStart: boolean
   networkPolicyEnabled: boolean
   networkPolicyAllowCidrs: string[]
-  networkPolicyStatus: string | null
-  networkPolicyMessage: string | null
   networkPolicyResult: AndroidNetworkPolicyResult | null
   networkPolicyAppliedAt: Date | null
   apkOriginalName: string | null

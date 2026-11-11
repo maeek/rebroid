@@ -70,7 +70,7 @@ export const FirewallSettings = ({
         if (restrictionFilter === 'restricted' && !application.network.policy.enabled) return false
         if (restrictionFilter === 'unrestricted' && application.network.policy.enabled) return false
         if (runtimeFilter !== 'all' && application.status.currentStatus !== runtimeFilter) return false
-        const result = application.network.policy.result?.code ?? application.network.policy.status ?? 'not-applied'
+        const result = application.network.policy.result?.code ?? 'not-applied'
         if (resultFilter !== 'all' && result !== resultFilter) return false
         return true
       }),
@@ -291,14 +291,7 @@ export const FirewallSettings = ({
                   <SelectContent>
                     <SelectItem value='all'>Any result</SelectItem>
                     {Array.from(
-                      new Set(
-                        applications.map(
-                          application =>
-                            application.network.policy.result?.code ??
-                            application.network.policy.status ??
-                            'not-applied'
-                        )
-                      )
+                      new Set(applications.map(application => application.network.policy.result?.code ?? 'not-applied'))
                     ).map(value => (
                       <SelectItem
                         key={value}

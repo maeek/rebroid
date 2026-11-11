@@ -7849,14 +7849,6 @@
               "type": "string"
             }
           },
-          "status": {
-            "type": "string",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
           "result": {
             "nullable": true,
             "type": "object",
@@ -7874,8 +7866,6 @@
         "required": [
           "enabled",
           "allowCidrs",
-          "status",
-          "message",
           "result",
           "appliedAt"
         ]

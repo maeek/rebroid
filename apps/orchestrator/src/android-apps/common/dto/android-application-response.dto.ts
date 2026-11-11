@@ -134,12 +134,6 @@ export class AndroidApplicationNetworkPolicyDto {
   @ApiProperty({ type: [String] })
   allowCidrs!: string[];
 
-  @ApiProperty({ type: String, nullable: true })
-  status!: string | null;
-
-  @ApiProperty({ type: String, nullable: true })
-  message!: string | null;
-
   @ApiProperty({
     type: () => AndroidNetworkPolicyResult,
     nullable: true,
@@ -253,8 +247,6 @@ export class AndroidApplicationResponseDto {
         policy: {
           enabled: app.networkPolicyEnabled,
           allowCidrs: parseJsonStringArray(app.networkPolicyAllowCidrs),
-          status: app.networkPolicyStatus,
-          message: app.networkPolicyMessage,
           result: app.networkPolicyResult,
           appliedAt: toIso(app.networkPolicyAppliedAt),
         },

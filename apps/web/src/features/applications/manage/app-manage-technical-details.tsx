@@ -18,7 +18,7 @@ export const AppManageTechnicalDetails = ({
     canViewInfrastructure && value ? <ResourceLink href={href}>{value}</ResourceLink> : value
   const containerValue = (value: string | undefined) =>
     app?.containerId ? resourceValue(value, `/runtime/containers/${encodeURIComponent(app?.containerId)}`) : value
-  const policyMessage = app?.networkPolicyResult?.hint ?? app?.networkPolicyResult?.message ?? app?.networkPolicyMessage
+  const policyMessage = app?.networkPolicyResult?.hint ?? app?.networkPolicyResult?.message
   const adbAddress = `${app?.containerName}:${app?.adbPort}`
   const containerFields: DetailField[] = [
     {
@@ -67,7 +67,7 @@ export const AppManageTechnicalDetails = ({
     },
     { label: 'Transport', value: app?.scrcpyTransport },
     { label: 'ADB', value: adbAddress, copyValue: adbAddress, code: true, fullWidth: true },
-    { label: 'Network policy', value: app?.networkPolicyResult?.status ?? app?.networkPolicyStatus ?? 'Not applied' }
+    { label: 'Network policy', value: app?.networkPolicyResult?.status ?? 'Not applied' }
   ]
   if (app?.networkPolicyAppliedAt)
     networkFields.push({ label: 'Policy applied', value: formatDateLocale(app?.networkPolicyAppliedAt) })

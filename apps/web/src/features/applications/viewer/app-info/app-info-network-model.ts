@@ -33,15 +33,13 @@ export const getPolicyStatusDescription = (result?: AppDefinition['networkPolicy
   return policyStatusDescriptions[result.code]?.(result) ?? noPolicyResultDescription
 }
 
-export const getPolicyStatusText = (app: AppDefinition) =>
-  app.networkPolicyResult?.status ?? app.networkPolicyStatus ?? 'not applied'
+export const getPolicyStatusText = (app: AppDefinition) => app.networkPolicyResult?.status ?? 'not applied'
 
 export const getPolicyAppliedAt = (app: AppDefinition) => app.networkPolicyAppliedAt ?? undefined
 
 export const getPolicyHint = (app: AppDefinition) => app.networkPolicyResult?.hint ?? undefined
 
-export const getPolicyMessage = (app: AppDefinition) =>
-  app.networkPolicyResult?.message ?? app.networkPolicyMessage ?? undefined
+export const getPolicyMessage = (app: AppDefinition) => app.networkPolicyResult?.message ?? undefined
 
 export const getAppAllowCidrs = (app?: AppDefinition) => app?.networkPolicyAllowCidrs ?? []
 

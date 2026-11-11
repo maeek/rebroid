@@ -4,8 +4,7 @@ import type { SortingState } from '@tanstack/react-table'
 const defaultSorting: SortingState = [{ id: 'name', desc: false }]
 const visibleFirewallCidrCount = 3
 
-const firewallPolicyResult = (application: AndroidApplication) =>
-  application.network.policy.result?.code ?? application.network.policy.status ?? ''
+const firewallPolicyResult = (application: AndroidApplication) => application.network.policy.result?.code ?? ''
 
 const compareFirewallApplications = (
   left: AndroidApplication,
@@ -44,7 +43,8 @@ export const filterFirewallApplications = (applications: AndroidApplication[], s
       application.id,
       application.name,
       application.status.currentStatus,
-      application.network.policy.status,
+      application.network.policy.result?.status,
+      application.network.policy.result?.code,
       ...application.network.policy.allowCidrs
     ]
       .filter(Boolean)
@@ -94,7 +94,7 @@ export const firewallPolicyResultDisplay = (application: AndroidApplication) => 
   const policy = application.network.policy
 
   return {
-    label: policy.result?.code ?? policy.status ?? 'Not applied',
+    label: policy.result?.code ?? 'Not applied',
     variant: policy.result?.status === 'error' ? 'danger' : 'neutral'
   } as const
 }

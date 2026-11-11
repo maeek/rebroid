@@ -94,7 +94,7 @@ export const useFirewallPolicyColumns = ({
       },
       {
         id: 'result',
-        accessorFn: application => application.network.policy.result?.code ?? application.network.policy.status ?? '',
+        accessorFn: application => application.network.policy.result?.code ?? '',
         header: 'Result',
         size: 176,
         meta: { label: 'Result', skeleton: { kind: 'badge' } },

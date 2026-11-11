@@ -2561,8 +2561,6 @@ export interface components {
         AndroidApplicationNetworkPolicyDto: {
             enabled: boolean;
             allowCidrs: string[];
-            status: string | null;
-            message: string | null;
             result: components["schemas"]["AndroidNetworkPolicyResult"] | null;
             appliedAt: string | null;
         };

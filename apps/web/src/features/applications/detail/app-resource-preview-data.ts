@@ -52,8 +52,6 @@ export const previewApp: AppDefinition = {
   recreateContainerOnNextStart: true,
   networkPolicyEnabled: true,
   networkPolicyAllowCidrs: [],
-  networkPolicyStatus: null,
-  networkPolicyMessage: null,
   networkPolicyResult: null,
   networkPolicyAppliedAt: null,
   apkOriginalName: 'inventory.apk',

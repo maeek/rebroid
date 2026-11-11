@@ -45,8 +45,6 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   recreateContainerOnNextStart: app.status.recreateRequired,
   networkPolicyEnabled: app.network.policy.enabled,
   networkPolicyAllowCidrs: app.network.policy.allowCidrs,
-  networkPolicyStatus: app.network.policy.status,
-  networkPolicyMessage: app.network.policy.message,
   networkPolicyResult: app.network.policy.result,
   networkPolicyAppliedAt: app.network.policy.appliedAt ? new Date(app.network.policy.appliedAt) : null,
   apkOriginalName: app.apk.originalName,
