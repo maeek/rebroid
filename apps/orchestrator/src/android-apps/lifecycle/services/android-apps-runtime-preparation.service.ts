@@ -30,7 +30,11 @@ import {
   parseSavedProfiles,
   rememberSavedProfile,
 } from '../../common/utils/android-apps-profile-history.utils';
-import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  applyRedroidDefaultContainerArgs,
+  isRedroidRuntime,
+  stripManagedRedroidGpuArgs,
+} from '@rebroid/android-application-core/redroid-runtime';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
@@ -80,13 +84,16 @@ export class AndroidAppsRuntimePreparationService {
     app: AndroidApplication,
     dto: UpdateAndroidApplicationDto,
   ) {
+    const currentArgs = isRedroidRuntime(app.containerImage, app.runtimeKind)
+      ? stripManagedRedroidGpuArgs(app.containerArgs)
+      : app.containerArgs;
     return (
       (dto.memoryLimitMb !== undefined &&
         dto.memoryLimitMb !== app.memoryLimitMb) ||
       (dto.cpuLimitCpus !== undefined &&
         dto.cpuLimitCpus !== app.cpuLimitCpus) ||
       (dto.containerArgs !== undefined &&
-        (dto.containerArgs?.trim() || null) !== app.containerArgs)
+        (dto.containerArgs?.trim() || null) !== currentArgs)
     );
   }
 
@@ -287,7 +294,11 @@ export class AndroidAppsRuntimePreparationService {
     const previousContainerArgs = app.containerArgs;
     app.containerArgs = nextContainerArgs;
 
-    if (!app.containerId) {
+    if (
+      !app.containerId ||
+      (isRedroidRuntime(app.containerImage, app.runtimeKind) &&
+        nextContainerArgs === stripManagedRedroidGpuArgs(previousContainerArgs))
+    ) {
       await this.writer.save(app);
       return;
     }

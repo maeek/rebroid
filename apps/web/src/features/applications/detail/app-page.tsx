@@ -16,6 +16,7 @@ import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
 import { ApplicationViewerProvider, useApplicationViewerContext } from './application-viewer-context'
+import type { InspectedContainerCommand } from '@/features/applications/manage/app-manage-technical-details'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
@@ -26,7 +27,8 @@ export const AppViewerPage = ({
   currentOwnerUserId,
   isAdmin,
   viewMode = 'workspace',
-  activity
+  activity,
+  inspectedCommand
 }: {
   app?: AppDefinition
   permissions: PermissionMap
@@ -35,6 +37,7 @@ export const AppViewerPage = ({
   isAdmin: boolean
   viewMode?: 'workspace' | 'details'
   activity?: ReactNode
+  inspectedCommand?: InspectedContainerCommand | null
 }) => {
   return (
     <ApplicationViewerProvider
@@ -47,6 +50,7 @@ export const AppViewerPage = ({
       <AppViewerPageContent
         viewMode={viewMode}
         activity={activity}
+        inspectedCommand={inspectedCommand}
       />
     </ApplicationViewerProvider>
   )
@@ -54,10 +58,12 @@ export const AppViewerPage = ({
 
 const AppViewerPageContent = ({
   viewMode = 'workspace',
-  activity
+  activity,
+  inspectedCommand
 }: {
   viewMode?: 'workspace' | 'details'
   activity?: ReactNode
+  inspectedCommand?: InspectedContainerCommand | null
 }) => {
   const { app, permissions } = useApplicationViewerContext()
   const search = useSearchParams()
@@ -88,6 +94,7 @@ const AppViewerPageContent = ({
         <AppResourceBody
           view={view}
           activity={activity}
+          inspectedCommand={inspectedCommand}
           app={app}
           permissions={permissions}
         />
@@ -111,12 +118,14 @@ const AppResourceBody = ({
   view,
   activity,
   app,
-  permissions
+  permissions,
+  inspectedCommand
 }: {
   view: ReturnType<typeof resolveAppResourceView>
   activity?: ReactNode
   app: AppDefinition
   permissions: PermissionMap
+  inspectedCommand?: InspectedContainerCommand | null
 }) => {
   switch (view) {
     case 'configuration':
@@ -137,6 +146,7 @@ const AppResourceBody = ({
         <AppResourceHome
           view={view}
           activity={activity}
+          inspectedCommand={inspectedCommand}
         />
       )
   }

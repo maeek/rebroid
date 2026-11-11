@@ -5,9 +5,11 @@ import {
   applyRedroidDisplayContainerArgs,
   getRedroidDisplayDimensionsFromArgs,
   isRedroidImageName,
+  parseCommandLine,
   redroidDefaultContainerArgs,
   resolveRuntimeImageMetadata,
   runtimeImageLabelKeys,
+  stripManagedRedroidGpuArgs,
 } from "./redroid-runtime";
 
 describe("redroid runtime", () => {
@@ -49,6 +51,25 @@ describe("redroid runtime", () => {
     assert.deepEqual(
       args.filter((value) => value.startsWith("androidboot.use_memfd=")),
       ["androidboot.use_memfd=false"],
+    );
+  });
+
+  it("keeps managed GPU flags out of Redroid configuration and preserves other argument values", () => {
+    const input =
+      'androidboot.redroid_gpu_mode=guest ro.boot.redroid_gpu_mode=host androidboot.redroid_gpu_node=/dev/dri/renderD128 ro.boot.redroid_gpu_node=/dev/dri/renderD129 name="My device"';
+    const editable = stripManagedRedroidGpuArgs(input);
+    assert.deepEqual(parseCommandLine(editable), ["name=My device"]);
+    const configured = applyRedroidDefaultContainerArgs(
+      "redroid/redroid:16",
+      input,
+    );
+    assert.deepEqual(parseCommandLine(configured), [
+      ...redroidDefaultContainerArgs,
+      "name=My device",
+    ]);
+    assert.equal(
+      applyRedroidDefaultContainerArgs("registry/worker:latest", input),
+      input,
     );
   });
 

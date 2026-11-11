@@ -9,7 +9,6 @@ describe('redroid-runtime utils', () => {
       applyRedroidDefaultContainerArgs('redroid/redroid:14.0.0-latest'),
     ).toBe(redroidDefaultContainerArgs.join(' '));
     expect(redroidDefaultContainerArgs).toEqual([
-      'androidboot.redroid_gpu_mode=guest',
       'androidboot.use_memfd=true',
       'ro.secure=0',
       'ro.debuggable=1',
@@ -28,7 +27,6 @@ describe('redroid-runtime utils', () => {
       ),
     ).toBe(
       [
-        'androidboot.redroid_gpu_mode=guest',
         'androidboot.use_memfd=true',
         'ro.debuggable=1',
         'androidboot.redroid_height=2340',

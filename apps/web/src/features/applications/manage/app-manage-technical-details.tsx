@@ -5,13 +5,20 @@ import { DetailFields, type DetailField } from '@/shared/ui/detail-fields'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
+export interface InspectedContainerCommand {
+  containerId: string
+  command: string
+}
+
 export const AppManageTechnicalDetails = ({
   app,
   canViewInfrastructure = false,
+  inspectedCommand,
   loading = false
 }: {
   app?: AppDefinition
   canViewInfrastructure?: boolean
+  inspectedCommand?: InspectedContainerCommand | null
   loading?: boolean
 }) => {
   const resourceValue = (value: string | undefined, href: string) =>
@@ -50,11 +57,12 @@ export const AppManageTechnicalDetails = ({
       fullWidth: true
     }
   ]
-  if (loading || app?.containerArgs)
+  const command = inspectedCommand?.containerId === app?.containerId ? inspectedCommand?.command : undefined
+  if (loading || (canViewInfrastructure && app?.containerId))
     containerFields.push({
-      label: 'Container arguments',
-      value: app?.containerArgs,
-      copyValue: app?.containerArgs ?? undefined,
+      label: 'Container command',
+      value: command ?? 'Unavailable',
+      copyValue: command,
       code: true,
       fullWidth: true
     })

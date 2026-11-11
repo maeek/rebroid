@@ -5,5 +5,6 @@ const quoteShellArgument = (value: string) => {
   return `'${value.replaceAll("'", "'\"'\"'")}'`
 }
 
-export const formatRuntimeArguments = (value: string) =>
-  (parseCommandLine(value) ?? []).map(quoteShellArgument).join(' \\\n')
+export const formatRuntimeCommand = (args: string[]) => args.map(quoteShellArgument).join(' \\\n')
+
+export const formatRuntimeArguments = (value: string) => formatRuntimeCommand(parseCommandLine(value) ?? [])

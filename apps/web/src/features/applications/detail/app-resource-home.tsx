@@ -16,13 +16,16 @@ import { AppResourceNavigation } from './app-resource-navigation'
 import { AppViewerStatusSection } from './app-viewer-status-section'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { InspectedContainerCommand } from '@/features/applications/manage/app-manage-technical-details'
 
 export const AppResourceHome = ({
   view,
-  activity
+  activity,
+  inspectedCommand
 }: {
   view: 'overview' | 'activity' | 'diagnostics'
   activity?: ReactNode
+  inspectedCommand?: InspectedContainerCommand | null
 }) => {
   const { app, permissions, isForeignOwnedApp, canViewInfrastructure, canViewAuditActivity } = useApplicationViewerApp()
   const canViewLogs = !isForeignOwnedApp && hasPermission(permissions, 'applications:view-logs')
@@ -86,6 +89,7 @@ export const AppResourceHome = ({
             <AppManageTechnicalDetails
               app={app}
               canViewInfrastructure={canViewInfrastructure}
+              inspectedCommand={inspectedCommand}
             />
           ) : null}
           {canViewLogs ? (

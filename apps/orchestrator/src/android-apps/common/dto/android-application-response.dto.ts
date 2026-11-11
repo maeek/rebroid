@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  stripManagedRedroidGpuArgs,
+  type RuntimeImageKind,
+} from '@rebroid/android-application-core/redroid-runtime';
 import {
   viewerTransports,
   type ViewerTransport,
@@ -242,7 +245,10 @@ export class AndroidApplicationResponseDto {
                 renderDevice: app.appliedRendering.renderDevice,
               }
             : null,
-        containerArgs: app.containerArgs,
+        containerArgs:
+          app.runtimeKind === 'redroid'
+            ? stripManagedRedroidGpuArgs(app.containerArgs)
+            : app.containerArgs,
         adbPort: app.adbPort,
         scrcpyTransport: app.scrcpyTransport,
         inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,

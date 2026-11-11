@@ -23,6 +23,8 @@ managed image inventory and are recorded in the audit log.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
   remains restricted. Error references and technical hints require backend-detail permission.
+  Administrators see the container command from Docker inspect, including arguments generated
+  by the platform's rendering policy.
 - On desktop, scrolling past the top of the embedded live viewer floats a read-only preview. Closing
   it docks the player and preserves your scroll position. The device toolbar opens a clipboard dialog for authorized users.
 - Files opens in Downloads. Use the location shortcuts or breadcrumbs to change folders. Uploads,

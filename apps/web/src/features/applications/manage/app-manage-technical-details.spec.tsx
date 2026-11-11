@@ -48,4 +48,29 @@ describe('app diagnostic resource references', () => {
     expect(screen.queryByRole('link', { name: 'worker' })).toBeNull()
     expect(screen.getByText('Not created')).toBeVisible()
   })
+
+  it('shows the inspected command for the current container instead of its saved arguments', () => {
+    const savedApp = { ...app, containerArgs: 'androidboot.redroid_gpu_mode=guest' }
+    const command = '/init androidboot.redroid_gpu_mode=host'
+    const inspectedCommand = { containerId: app.containerId, command }
+    const { rerender } = render(
+      <AppManageTechnicalDetails
+        app={savedApp}
+        canViewInfrastructure
+        inspectedCommand={inspectedCommand}
+      />
+    )
+    expect(screen.getByText(command)).toBeVisible()
+    expect(screen.queryByText(savedApp.containerArgs)).not.toBeInTheDocument()
+
+    rerender(
+      <AppManageTechnicalDetails
+        app={{ ...savedApp, containerId: 'replacement' }}
+        canViewInfrastructure
+        inspectedCommand={inspectedCommand}
+      />
+    )
+    expect(screen.queryByText(command)).not.toBeInTheDocument()
+    expect(screen.getByText('Unavailable')).toBeVisible()
+  })
 })

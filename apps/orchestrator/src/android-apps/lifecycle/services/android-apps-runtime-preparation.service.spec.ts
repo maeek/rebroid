@@ -3,6 +3,7 @@ import { ApplicationProfileMode } from '../../contracts/application-profile-mode
 import { AndroidAppsRuntimePreparationService } from './android-apps-runtime-preparation.service';
 import type { AndroidApplication } from '../../android-application.entity';
 import { dockerSafeName } from '../../../common/docker-name';
+import { redroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 
 const makeService = () => {
   const resources = {
@@ -44,6 +45,27 @@ const makeApp = (patch: Partial<AndroidApplication> = {}): AndroidApplication =>
     ]),
     ...patch,
   }) as AndroidApplication;
+
+it('cleans up stored GPU flags without replacing the existing container', async () => {
+  const { service, state } = makeService();
+  const args = redroidDefaultContainerArgs.join(' ');
+  const app = makeApp({
+    containerId: 'existing',
+    containerImage: 'redroid/redroid:16',
+    runtimeKind: 'redroid',
+    containerArgs: `androidboot.redroid_gpu_mode=guest ${args}`,
+  });
+  expect(
+    service.shouldRecreateContainerOnUpdate(app, { containerArgs: args }),
+  ).toBe(false);
+  await service.prepareRuntimeDefaults(app);
+  expect(state.save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      containerId: 'existing',
+      containerArgs: args,
+    }),
+  );
+});
 
 describe('AndroidAppsRuntimePreparationService profile deletion', () => {
   it('deletes a non-active saved persistent profile and removes its volume', async () => {

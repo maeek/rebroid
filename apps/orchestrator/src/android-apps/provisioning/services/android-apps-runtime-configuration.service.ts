@@ -1,6 +1,9 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import {
   parseCommandLine,
+  isManagedRedroidGpuArg,
+  redroidGpuModeArgKey,
+  redroidGpuNodeArgKey,
   type AndroidRenderingSettings,
 } from '@rebroid/android-application-core/redroid-runtime';
 import { getErrorMessage } from '../../../common/error-message';
@@ -19,18 +22,6 @@ import {
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { SettingsService } from '../../../settings/settings.service';
 import type { AndroidApplication } from '../../android-application.entity';
-
-const gpuModeKey = 'androidboot.redroid_gpu_mode';
-const gpuNodeKey = 'androidboot.redroid_gpu_node';
-const isRenderingArgument = (arg: string) => {
-  const key = arg.split('=', 1)[0];
-  return (
-    key === gpuModeKey ||
-    key === gpuNodeKey ||
-    key === 'ro.boot.redroid_gpu_mode' ||
-    key === 'ro.boot.redroid_gpu_node'
-  );
-};
 
 interface RuntimeConfiguration {
   containerArgs: string | string[] | null;
@@ -64,11 +55,13 @@ export class AndroidAppsRuntimeConfigurationService {
     const saved = await this.settings.readAndroidRendering();
     const renderDevice = saved.mode === 'host' ? saved.renderDevice : null;
     const originalArgs = parseCommandLine(app.containerArgs) ?? [];
-    const renderingIndex = originalArgs.findIndex(isRenderingArgument);
+    const renderingIndex = originalArgs.findIndex(isManagedRedroidGpuArg);
     const containerArgs = originalArgs.filter(
-      (arg) => !isRenderingArgument(arg),
+      (arg) => !isManagedRedroidGpuArg(arg),
     );
-    const renderingArgs = [`${gpuModeKey}=${renderDevice ? 'host' : 'guest'}`];
+    const renderingArgs = [
+      `${redroidGpuModeArgKey}=${renderDevice ? 'host' : 'guest'}`,
+    ];
     if (renderDevice) {
       const requiredMapping = `${renderDevice}:${renderDevice}:rwm`;
       this.removeDuplicateMapping(devices, renderDevice, requiredMapping);
@@ -78,10 +71,10 @@ export class AndroidAppsRuntimeConfigurationService {
         requiredMapping,
       );
       devices.push(requiredMapping);
-      renderingArgs.push(`${gpuNodeKey}=${renderDevice}`);
+      renderingArgs.push(`${redroidGpuNodeArgKey}=${renderDevice}`);
     }
     containerArgs.splice(
-      renderingIndex < 0 ? containerArgs.length : renderingIndex,
+      renderingIndex < 0 ? 0 : renderingIndex,
       0,
       ...renderingArgs,
     );
@@ -101,9 +94,11 @@ export class AndroidAppsRuntimeConfigurationService {
     if (!containerId || !configuration.rendering) return false;
     const inspect = await this.lifecycle.inspectContainer(containerId);
     const desiredArgs = Array.isArray(configuration.containerArgs)
-      ? configuration.containerArgs.filter(isRenderingArgument)
+      ? configuration.containerArgs.filter(isManagedRedroidGpuArg)
       : [];
-    const currentArgs = (inspect.Config.Cmd ?? []).filter(isRenderingArgument);
+    const currentArgs = (inspect.Config.Cmd ?? []).filter(
+      isManagedRedroidGpuArg,
+    );
     const cgroupnsMode = (inspect.HostConfig as { CgroupnsMode?: string })
       .CgroupnsMode;
     const expectedCgroupnsMode = this.config.cgroupnsMode?.trim();

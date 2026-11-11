@@ -93,7 +93,7 @@ const RuntimeBackendRows = ({ app }: { app?: AppDefinition }) => (
 const ContainerArgsRow = ({ containerArgs }: { containerArgs?: string }) => (
   <Visible when={containerArgs}>
     <AppInfoRow
-      label='Container args'
+      label='Configured arguments'
       value={containerArgs}
       copyValue={containerArgs}
     />

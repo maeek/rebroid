@@ -17,8 +17,34 @@ export const isDrmRenderDevice = (value: unknown): value is string =>
   value.length <= drmRenderDeviceMaxLength &&
   drmRenderDevicePattern.test(value);
 
+export const redroidGpuModeArgKey = "androidboot.redroid_gpu_mode";
+export const redroidGpuNodeArgKey = "androidboot.redroid_gpu_node";
+
+export const isManagedRedroidGpuArg = (arg: string) => {
+  const key = arg.split("=", 1)[0];
+  return (
+    key === redroidGpuModeArgKey ||
+    key === redroidGpuNodeArgKey ||
+    key === "ro.boot.redroid_gpu_mode" ||
+    key === "ro.boot.redroid_gpu_node"
+  );
+};
+
+const joinContainerArgs = (args: string[]) =>
+  args
+    .map((arg) =>
+      /[\s"'\\]/.test(arg) ? `"${arg.replace(/[\\"]/g, "\\$&")}"` : arg,
+    )
+    .join(" ");
+
+export const stripManagedRedroidGpuArgs = (value?: string | null) => {
+  const args = parseCommandLine(value) ?? [];
+  const editable = args.filter((arg) => !isManagedRedroidGpuArg(arg));
+  if (editable.length === args.length) return value?.trim() || null;
+  return joinContainerArgs(editable) || null;
+};
+
 export const redroidDefaultContainerArgs = [
-  "androidboot.redroid_gpu_mode=guest",
   "androidboot.use_memfd=true",
   "ro.secure=0",
   "ro.debuggable=1",
@@ -364,7 +390,9 @@ export const applyRedroidDefaultContainerArgs = (
     return trimmedArgs ?? null;
   }
 
-  const userArgs = parseCommandLine(trimmedArgs) ?? [];
+  const userArgs = (parseCommandLine(trimmedArgs) ?? []).filter(
+    (arg) => !isManagedRedroidGpuArg(arg),
+  );
   const userKeys = new Set(
     userArgs
       .map((arg) => arg.split("=")[0]?.trim())
@@ -374,7 +402,7 @@ export const applyRedroidDefaultContainerArgs = (
     (arg) => !userKeys.has(arg.split("=")[0]),
   );
 
-  return [...missingDefaults, ...userArgs].join(" ") || null;
+  return joinContainerArgs([...missingDefaults, ...userArgs]) || null;
 };
 
 export const applyRedroidDisplayContainerArgs = (

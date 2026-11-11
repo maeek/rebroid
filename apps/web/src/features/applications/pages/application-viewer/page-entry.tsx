@@ -5,6 +5,7 @@ import { AppPageSkeleton } from '@/features/applications/detail/app-page-skeleto
 import { getApplicationPageData } from '@/features/applications/pages/shared/application-page-data.server'
 import { loadApplicationActivity } from '@/server/audit/application-activity-query'
 import { firstSearchParamValue } from '@/shared/model/search-params'
+import { loadInspectedContainerCommand } from './page-data.server'
 import type { AuditSearchParams } from '@/shared/contracts/audit'
 
 type PageProps = {
@@ -21,10 +22,15 @@ const ApplicationViewerPageContent = async ({ params, searchParams, loadingActiv
   const result = await getApplicationPageData(slug)
   if (result.failure) return <AppPageFailure failure={result.failure} />
   const { data } = result
+  const inspectedCommand =
+    view === 'diagnostics' && data.isAdmin && data.app.containerId
+      ? await loadInspectedContainerCommand(data.app.containerId)
+      : undefined
   return (
     <AppViewerPage
       key={data.app?.id}
       {...data}
+      inspectedCommand={inspectedCommand}
       activity={
         data.app && data.isAdmin && view === 'activity' ? (
           <Suspense fallback={loadingActivity}>

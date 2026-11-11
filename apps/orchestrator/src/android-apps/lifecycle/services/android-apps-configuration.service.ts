@@ -188,9 +188,17 @@ export class AndroidAppsConfigurationService {
   async update(id: string, dto: UpdateAndroidApplicationDto) {
     const app = await this.reconciler.reconcileById(id);
     await this.assertRuntimeNotRecreating(app);
+    const containerArgs =
+      dto.containerArgs === undefined
+        ? undefined
+        : applyRedroidDefaultContainerArgs(
+            app.containerImage,
+            dto.containerArgs,
+            app.runtimeKind,
+          );
     const recreate = this.runtimePreparation.shouldRecreateContainerOnUpdate(
       app,
-      dto,
+      { ...dto, containerArgs },
     );
 
     if (dto.name !== undefined) app.name = dto.name;
@@ -199,13 +207,7 @@ export class AndroidAppsConfigurationService {
     }
     if (dto.memoryLimitMb !== undefined) app.memoryLimitMb = dto.memoryLimitMb;
     if (dto.cpuLimitCpus !== undefined) app.cpuLimitCpus = dto.cpuLimitCpus;
-    if (dto.containerArgs !== undefined) {
-      app.containerArgs = applyRedroidDefaultContainerArgs(
-        app.containerImage,
-        dto.containerArgs,
-        app.runtimeKind,
-      );
-    }
+    if (containerArgs !== undefined) app.containerArgs = containerArgs;
     if (recreate) {
       await this.runtimePreparation.markContainerForRecreation(app);
     }
