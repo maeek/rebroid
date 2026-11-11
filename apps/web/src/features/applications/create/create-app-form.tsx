@@ -16,6 +16,7 @@ import { submitCreateApplicationAction } from '@/server/orchestrator/application
 import { isActionResult, unwrapActionResult } from '@/shared/actions/action-result'
 import { unconfirmedAppCreationMessage } from '@/shared/contracts/application'
 import { isApplicationId } from '@/shared/model/application-id'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { runtimeKindForImageReference } from '@/shared/model/runtime-image/runtime-image-metadata'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -91,7 +92,9 @@ export const CreateAppForm = ({
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
-  const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  const { isFeatureEnabled } = useFeatureFlags()
+  const canConfigureEgress =
+    isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
   const canUseInternet = hasPermission(permissions, 'applications:use-internet')
   const runtimeKind = runtimeKindForImageReference(images, formValues.containerImage)
   const isRedroidRuntime = runtimeKind === 'redroid'

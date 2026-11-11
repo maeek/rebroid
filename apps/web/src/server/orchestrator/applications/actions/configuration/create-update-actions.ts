@@ -13,6 +13,7 @@ import {
 import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
+import { loadFeatureFlags } from '../../../features'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
@@ -158,7 +159,27 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
       assertCanChangeSessionLimit(user, input)
       assertCanChangeContainerArgs(user, input)
       assertCanConfigureCreateNetworkPolicy(user, input)
-      const quotas = await getEnforcedResourceQuota(user.quotas)
+      const manifest = await loadFeatureFlags()
+      const firewall = manifest?.features.find(feature => feature.key === 'feature.firewall')
+      const useUnrestrictedDefault =
+        input.networkPolicyEnabled === undefined &&
+        input.networkPolicyAllowCidrs === undefined &&
+        firewall !== undefined &&
+        (!firewall.enabled || !firewall.supported)
+      if (
+        useUnrestrictedDefault &&
+        user.role !== 'admin' &&
+        !hasPermission(user.permissions, 'applications:use-internet')
+      ) {
+        throw new PublicActionError(
+          'Creating an app while Firewall is unavailable requires unrestricted internet access permission.',
+          {
+            code: 'forbidden',
+            status: 403
+          }
+        )
+      }
+      const quotas = await getEnforcedResourceQuota(user.quotas, manifest)
       enforceResourceQuotas(input, quotas)
       enforceSessionQuota(input, quotas)
       await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps)
@@ -168,6 +189,7 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
         .createApplication(
           {
             ...applyCreateResourceQuotas(input, quotas),
+            ...(useUnrestrictedDefault ? { networkPolicyEnabled: false } : {}),
             ownerUserId,
             containerArgs: containerImage
               ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined

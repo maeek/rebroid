@@ -113,7 +113,9 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'app-loading')
     return (
       <main className='min-h-screen bg-background pt-(--console-top-inset)'>
-        <CreateAppPageLoading />
+        <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
+          <CreateAppPageLoading />
+        </FeatureFlagsProvider>
       </main>
     )
   if (editor === 'app-resource-loading')
@@ -258,6 +260,11 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'runtime-loading') return <RuntimeSettingsPreview loading />
   if (editor === 'app-resource') return <AppResourcePreview activity={<AppActivityPreview />} />
   if (editor === 'failed-run') return <AutomationRunPreview />
-  if (editor === 'app') return <CreateAppPreview />
+  if (editor === 'app')
+    return (
+      <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
+        <CreateAppPreview />
+      </FeatureFlagsProvider>
+    )
   return <SkeletonContractFixture Charts={ResourceChartsPreview} />
 }

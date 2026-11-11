@@ -11,6 +11,7 @@ import {
   reconcileNetworkPoliciesAction,
   updateNetworkPolicyAction
 } from './network-policy-actions'
+import type { FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
@@ -48,6 +49,29 @@ const user = (
   permissions,
   quotas
 })
+
+const disabledFirewall: FeatureFlagManifest = {
+  revision: 1,
+  features: [
+    {
+      key: 'feature.firewall',
+      owner: 'network-policy',
+      description: 'Firewall enforcement.',
+      revision: 1,
+      control: 'runtime',
+      mutable: true,
+      enabled: false,
+      supported: true,
+      effective: false,
+      syncStatus: 'applied',
+      disablePolicy: 'block_new',
+      lifecycle: 'permanent',
+      removalCondition: null,
+      dependencies: [],
+      conflicts: []
+    }
+  ]
+}
 
 describe('network policy actions', () => {
   beforeEach(() => {
@@ -154,6 +178,38 @@ describe('network policy actions', () => {
     )
     expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
     expect(requireFeature).not.toHaveBeenCalled()
+  })
+
+  it('uses unrestricted access for a draft with no network fields when Firewall is disabled', async () => {
+    const actor = user({ 'applications:create': true, 'applications:use-internet': true })
+    const id = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
+    vi.mocked(getCurrentUserContext).mockResolvedValue(actor)
+    vi.mocked(loadFeatureFlags).mockResolvedValueOnce(disabledFirewall)
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
+      id,
+      name: 'Test app'
+    } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
+
+    const result = await submitCreateApplicationAction({ name: 'Test app' })
+
+    expect(result).toMatchObject({ ok: true, data: { id } })
+    expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Test app', networkPolicyEnabled: false }),
+      result.requestId,
+      null,
+      actor
+    )
+  })
+
+  it('denies creation without unrestricted internet permission when Firewall is disabled', async () => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({ 'applications:create': true }))
+    vi.mocked(loadFeatureFlags).mockResolvedValueOnce(disabledFirewall)
+
+    await expect(submitCreateApplicationAction({ name: 'Test app' })).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'forbidden' }
+    })
+    expect(orchestratorAppCatalogClient.createApplication).not.toHaveBeenCalled()
   })
 
   it('skips web quota checks while preserving the configured limit for transactional admission', async () => {

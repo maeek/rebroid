@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from '@/hooks/use-toast'
 import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { actionError, actionOk } from '@/shared/actions/action-result'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { appResourcePreviewFeatures } from '../detail/app-resource-preview-data'
 import { CreateAppForm } from './create-app-form'
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }))
@@ -24,20 +26,51 @@ vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
   useResourceLimitBounds: () => ({ maxMemoryMb: 16384, maxCpuCpus: 8 })
 }))
 
-const renderForm = () =>
+const renderForm = (firewallEnabled = false) =>
   render(
-    <CreateAppForm
-      images={[]}
-      initialSettings={defaultOrchestratorUiSettings}
-      permissions={{ 'applications:change-resources': true }}
-      canBuildImages={false}
-    />
+    <FeatureFlagsProvider
+      manifest={{
+        ...appResourcePreviewFeatures,
+        features: appResourcePreviewFeatures.features.map(feature =>
+          feature.key === 'feature.firewall'
+            ? { ...feature, enabled: firewallEnabled, effective: firewallEnabled }
+            : feature
+        )
+      }}
+    >
+      <CreateAppForm
+        images={[]}
+        initialSettings={defaultOrchestratorUiSettings}
+        permissions={{ 'applications:change-resources': true, 'applications:configure-egress': true }}
+        canBuildImages={false}
+      />
+    </FeatureFlagsProvider>
   )
 
 describe('Create app failure feedback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(submitCreateApplicationAction).mockReset()
+  })
+
+  it('hides network controls and omits policy fields when Firewall is disabled', async () => {
+    vi.mocked(submitCreateApplicationAction).mockResolvedValueOnce(
+      actionOk({ id: '6d8b5e09-e4bf-4568-9aa9-0572237c04d3' })
+    )
+    renderForm()
+    expect(screen.queryByText('Network access')).toBeNull()
+    fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
+
+    await waitFor(() => expect(submitCreateApplicationAction).toHaveBeenCalledTimes(1))
+    const input = vi.mocked(submitCreateApplicationAction).mock.calls[0][0]
+    expect(input).not.toHaveProperty('networkPolicyEnabled')
+    expect(input).not.toHaveProperty('networkPolicyAllowCidrs')
+  })
+
+  it('shows network controls when Firewall and egress configuration are available', () => {
+    renderForm(true)
+    expect(screen.getByText('Network access')).toBeVisible()
   })
 
   it('shows and links to a field error before sending an invalid draft', () => {

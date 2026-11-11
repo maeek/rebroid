@@ -17,6 +17,7 @@ import { AppViewerHeading } from '@/features/applications/viewer/components/head
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
 import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -43,7 +44,9 @@ export const AppManage = () => {
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
-  const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  const { isFeatureEnabled } = useFeatureFlags()
+  const canConfigureEgress =
+    isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canViewLogs = hasPermission(permissions, 'applications:view-logs')
   const canDelete = hasPermission(permissions, 'applications:delete')

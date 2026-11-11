@@ -24,6 +24,7 @@ export const appResourcePreviewFeatures: FeatureFlagManifest = {
   features: [
     enabledPreviewFeature('feature.ai', 'automations'),
     enabledPreviewFeature('feature.workflows', 'automations'),
+    enabledPreviewFeature('feature.firewall', 'network-policy'),
     enabledPreviewFeature('feature.display-webrtc', 'display')
   ]
 }

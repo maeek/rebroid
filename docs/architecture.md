@@ -118,9 +118,10 @@ synchronized state before admitting new work.
 Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can
 finish, existing virtual displays drain, and disabling the firewall feature does not remove
 existing host rules. Feature flags do not replace authentication, permissions, or health checks.
-App network policies can still be saved or reapplied with restrictions disabled while the firewall
-feature is off. Creating or starting an unrestricted app remains available to users with the required
-permissions. Restricted policy updates, starts, and bulk reconciliation require firewall enforcement.
+Create and Configuration hide network access controls while the firewall feature is off. New apps
+use unrestricted access, which requires the corresponding permission. The orchestrator API can
+still save or reapply a disabled policy and start unrestricted apps. Restricted policy updates,
+starts, and bulk reconciliation require firewall enforcement.
 To remove existing host rules, enable the firewall feature and apply the app's disabled policy.
 
 ## Code boundaries

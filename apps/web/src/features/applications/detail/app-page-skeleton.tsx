@@ -18,6 +18,7 @@ import { AppManageTechnicalDetails } from '@/features/applications/manage/app-ma
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AppLogsLoading } from '@/features/applications/viewer/logs/app-logs-content'
 import { RuntimeToolsPanelLoading } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -110,6 +111,7 @@ const AppOverviewSkeleton = () => (
 )
 
 export const AppManagePageSkeleton = () => {
+  const { isFeatureEnabled } = useFeatureFlags()
   const values = getInitialCreateAppFormValues(defaultOrchestratorUiSettings)
   return (
     <LoadingAppLayout view='configuration'>
@@ -145,28 +147,30 @@ export const AppManagePageSkeleton = () => {
             canChangeContainerArgs
             canViewBackendDetails
           />
-          <AppNetworkPolicyEditorSection
-            title='Network access'
-            modeValue={false}
-            onModeChange={noop}
-            allowCidrs={[]}
-            onAddCidr={noop}
-            onRemoveCidr={noop}
-            onInvalidCidr={noop}
-            isBusy
-            modeDescription='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
-            sectionActions={
-              <>
-                <Button disabled>Save policy</Button>
-                <Button
-                  variant='secondary'
-                  disabled
-                >
-                  Apply now
-                </Button>
-              </>
-            }
-          />
+          {isFeatureEnabled('feature.firewall') ? (
+            <AppNetworkPolicyEditorSection
+              title='Network access'
+              modeValue={false}
+              onModeChange={noop}
+              allowCidrs={[]}
+              onAddCidr={noop}
+              onRemoveCidr={noop}
+              onInvalidCidr={noop}
+              isBusy
+              modeDescription='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
+              sectionActions={
+                <>
+                  <Button disabled>Save policy</Button>
+                  <Button
+                    variant='secondary'
+                    disabled
+                  >
+                    Apply now
+                  </Button>
+                </>
+              }
+            />
+          ) : null}
         </EditorPage>
       </FormLoadingBoundary>
     </LoadingAppLayout>

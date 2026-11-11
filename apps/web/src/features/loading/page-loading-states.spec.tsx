@@ -55,7 +55,7 @@ describe('feature-owned page loading states', () => {
     renderLoading(<AppManagePageSkeleton />)
     expect(screen.getByText('Name', { exact: true })).toBeVisible()
     expect(screen.getByText('Runtime settings')).toBeVisible()
-    expect(screen.getByText('Network access')).toBeVisible()
+    expect(screen.queryByText('Network access')).toBeNull()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.queryByRole('textbox')).toBeNull()
   })
