@@ -61,6 +61,36 @@ describe('FeaturesPage', () => {
     vi.clearAllMocks()
   })
 
+  it.each(['ready', 'loading'] as const)('groups related features in the initial %s list', state => {
+    const keys = [
+      'feature.ocr',
+      'feature.firewall',
+      'feature.image-builder',
+      'feature.display-virtual',
+      'feature.ai',
+      'feature.workflows',
+      'feature.resource-quota',
+      'feature.display-webrtc'
+    ] as const
+    const unorderedManifest = { ...manifest, features: keys.map(key => createFeature({ key })) }
+    render(
+      <FeatureFlagsProvider manifest={unorderedManifest}>
+        {state === 'loading' ? <FeaturesPageLoading /> : <FeaturesPage initialManifest={unorderedManifest} />}
+      </FeatureFlagsProvider>
+    )
+
+    expect(screen.getAllByTitle(/^feature\./).map(name => name.textContent)).toEqual([
+      'Workflows',
+      'AI',
+      'OCR perception',
+      'Virtual displays',
+      'WebRTC streaming',
+      'Image builder',
+      'Firewall enforcement',
+      'Resource quota'
+    ])
+  })
+
   it('keeps known feature metadata and row geometry while hiding unknown values during loading', () => {
     render(
       <FeatureFlagsProvider manifest={manifest}>
@@ -88,9 +118,11 @@ describe('FeaturesPage', () => {
     expect(screen.queryByText(/Configuration revision/)).toBeNull()
     expect(screen.getByRole('row', { name: /OCR perception/ })).toBeTruthy()
     expect(screen.getByRole('row', { name: /Virtual displays/ })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Services', level: 1 })).toBeVisible()
-    const navigation = screen.getByRole('navigation', { name: 'Services sections' })
-    expect(within(navigation).getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible()
+    const breadcrumb = screen.getByRole('navigation', { name: 'breadcrumb' })
+    expect(within(breadcrumb).getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/platform')
+    expect(within(breadcrumb).getByText('Features')).toBeVisible()
+    expect(within(breadcrumb).queryByRole('link', { name: 'Services' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Connection settings' })).toHaveAttribute(
       'href',
       '/platform/services?service=ocr'
@@ -150,6 +182,7 @@ describe('FeaturesPage', () => {
     })
     expect(refresh).toHaveBeenCalledOnce()
     expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked()
+    expect(within(screen.getByRole('row', { name: /OCR perception/ })).queryByRole('link')).toBeNull()
     expect(screen.queryByText(/Configuration revision/)).toBeNull()
   })
 
@@ -177,7 +210,7 @@ describe('FeaturesPage', () => {
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Disable OCR perception' })).toBeChecked())
   })
 
-  it('keeps unsupported and deployment-managed switches read-only', () => {
+  it('hides links for unsupported features and keeps unsupported and deployment-managed switches read-only', () => {
     render(
       <FeaturesPage
         initialManifest={{
@@ -193,6 +226,10 @@ describe('FeaturesPage', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Enable Virtual displays' }))
     expect(updateFeatureFlagsAction).not.toHaveBeenCalled()
     expect(screen.getByRole('switch', { name: 'Enable OCR perception' })).not.toBeChecked()
+    const ocrRow = within(screen.getByRole('row', { name: /OCR perception/ }))
+    expect(ocrRow.getByText('Unavailable', { exact: true })).toBeVisible()
+    expect(ocrRow.queryByRole('link')).toBeNull()
+    expect(screen.getByRole('link', { name: 'View sessions' })).toBeVisible()
   })
 
   it('keeps the requested value on failure and retries using a refreshed revision', async () => {

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { serviceHealthState } from '@/shared/model/diagnostics/service-health'
 import { InfrastructureServicePage } from './infrastructure-service-page'
-import { serviceHealthState } from './service-health-state'
 import { servicesPreviewHealth } from './services-preview'
 
 const { refresh, limits, metrics } = vi.hoisted(() => ({ refresh: vi.fn(), limits: vi.fn(), metrics: vi.fn() }))

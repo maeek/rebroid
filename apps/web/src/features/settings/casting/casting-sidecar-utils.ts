@@ -13,7 +13,7 @@ export const formatHealthDetail = (value: unknown) => {
   if (typeof value === 'string') return value
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (typeof value === 'number') return String(value)
-  return JSON.stringify(value)
+  return undefined
 }
 
 export const activeStatuses = new Set(['created', 'active'])

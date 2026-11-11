@@ -31,6 +31,7 @@ export const CastingSidecarSettings = ({
     refreshKey,
     onRefreshComplete
   })
+  const canViewLogs = controller.health.ok || typeof controller.health.details?.containerId === 'string'
 
   return (
     <>
@@ -39,13 +40,13 @@ export const CastingSidecarSettings = ({
         health={controller.health}
         busy={controller.busy}
         onRestart={() => void controller.restartSidecar()}
+        logs={
+          <CastingSidecarLogs
+            disabled={loading || !canViewLogs}
+            revision={controller.logRevision}
+          />
+        }
       />
-      {loading || controller.health.ok || typeof controller.health.details?.containerId === 'string' ? (
-        <CastingSidecarLogs
-          loading={loading}
-          revision={controller.logRevision}
-        />
-      ) : null}
       {loading || controller.health.ok || controller.sessions.length > 0 ? (
         <CastingSessionsSection
           loading={loading}

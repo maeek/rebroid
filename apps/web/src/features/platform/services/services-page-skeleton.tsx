@@ -5,8 +5,9 @@ import { useSearchParams } from 'next/navigation'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { InfrastructureServiceSkeleton } from './infrastructure-service-skeleton'
+import { isConfigurableService, visibleOptionalServiceIds } from './service-definitions'
+import { ServiceSettingsPage } from './service-settings-page'
 import { ServicesGrid } from './services-grid'
-import { ServicesPageActions, ServicesSaveStatus } from './services-page-actions'
 import { ServicesPageLayout } from './services-page-layout'
 
 export const PlatformServicesPageSkeleton = () => (
@@ -18,12 +19,20 @@ export const PlatformServicesPageSkeleton = () => (
 const ServicesRouteSkeleton = () => {
   const service = useSearchParams().get('service')
   if (service === 'docker' || service === 'orchestrator') return <InfrastructureServiceSkeleton serviceId={service} />
+  if (isConfigurableService(service)) {
+    return (
+      <ServiceSettingsPage
+        serviceId={service}
+        loading
+      />
+    )
+  }
   return <ServicesInventorySkeleton />
 }
 
 export const ServicesInventorySkeleton = () => {
-  const { isFeatureEnabled } = useFeatureFlags()
-  const hasConfiguration = isFeatureEnabled('feature.ocr') || isFeatureEnabled('feature.firewall')
+  const { getFeature } = useFeatureFlags()
+  const requiredServiceCount = 3
   return (
     <ServicesPageLayout
       breadcrumbRefresh={
@@ -32,13 +41,10 @@ export const ServicesInventorySkeleton = () => {
           onRefresh={() => undefined}
         />
       }
-      actions={hasConfiguration ? <ServicesPageActions disabled /> : undefined}
-      meta={hasConfiguration ? <ServicesSaveStatus loading /> : undefined}
     >
       <ServicesGrid
         rows={[]}
-        loading
-        onEdit={() => undefined}
+        loadingRowCount={requiredServiceCount + visibleOptionalServiceIds(getFeature).length}
         onActivate={() => undefined}
       />
     </ServicesPageLayout>

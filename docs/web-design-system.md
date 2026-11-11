@@ -64,6 +64,7 @@ The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, 
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
 brand and collapse control above the scrollable links. Keep the account, service health, and notifications
 at the bottom. Place a compact health chip next to the bell. The status control opens service details on hover, click, or tap.
+The popup hides disabled services and reports outages for enabled services.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
 is a 64 px icon rail with a status dot above the bell. Footer popups open beside the rail and align
 with the bottom edge of their trigger. In the expanded sidebar they open upward. The account Theme submenu uses
@@ -451,16 +452,20 @@ Runtime inventory and detail pages use the shared server-side failure classifica
 request reference in the page notice. A missing runtime resource offers a return link. Services keeps its selected
 infrastructure view and retains an existing connection draft across a failed refresh.
 
-The Services inventory uses Service, Status, Connection, and Actions columns. Show endpoint and timeout together; keep optional tuning in its editor. Service names are explicit resource links or edit buttons, with a non-resizable action column that reserves enough space for text and icons. Configuration presence is neutral, while verified health uses semantic status colors. Managed-only inventories omit Save/Reset; editable inventories enable Save only for a changed draft. Dialog Done retains the draft for the page-level Save. Loading shares ServicesGrid and ServicesPageLayout.
+The Services inventory uses Service, Status, Connection, and Actions columns. Show endpoint and timeout together. Service names link to their destinations, and the non-resizable action column reserves enough space for text and icons. Configuration presence is neutral, while verified health uses semantic status colors. Loading shares ServicesGrid and ServicesPageLayout.
 
 Runtime defaults group fields under Image defaults, App behavior, and Hardware Acceleration. The default image picker accepts local images and manually entered references. The runtime pulls a saved image when it is needed and unavailable locally. Show the GPU render device field when Host GPU is selected. All three sections share the page's Save and Discard changes actions. Send changed fields and retain unsaved edits through revalidation. Deployment-managed connection details live in Services. Maintenance stays visible as a compact action list on one shared section surface. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Scheduler for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
 
-Services is the entry point for Connections and Features, using the shared ResourceNavigation on both existing routes. Keep feature management under Services in breadcrumbs and sidebar selection rather than a competing sidebar entry. Connections show disabled or unsupported services as discoverable rows with links to their feature setting; feature gates still protect their editors. Features use readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks; connection dialogs retain drafts until Save or Discard changes. Saves send only workflow-owned fields: connections, runtime defaults, or the selected default image, without replaying hidden settings. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
+Services and Features are separate destinations under Platform settings. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Features. Feature gates still protect service editors. Features use readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
 
 Services lists Orchestrator, Docker, Display, Firewall, and OCR from the same health snapshot used
 by the shell indicator. A configured endpoint never substitutes for measured health. Docker combines
 engine reachability with runtime suitability. Orchestrator and Docker have resource views at
 `/platform/services?service=orchestrator` and `?service=docker`; shell health links point there.
+Display sessions shows the service notice, Connection details, and the session grid in that order.
+View logs opens a wide dialog and requests the bounded log tail on demand.
+OCR perception and Firewall agent use the same service header, health notice, and editable
+Connection section. OCR also has a Settings section for recognition. Each page saves only its own configuration.
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.

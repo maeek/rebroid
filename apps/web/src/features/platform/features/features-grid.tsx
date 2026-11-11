@@ -9,13 +9,13 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { FeatureAvailability, FeatureIdentity, FeatureManageLink } from './feature-grid-cells'
-import { featureLabel } from './feature-presentation'
+import { featureLabel, orderFeaturesForDisplay } from './feature-presentation'
 import { getEffectiveFeatureStatus } from './feature-status'
 import type { FeatureFlagKey, FeatureFlagState } from '@/shared/contracts/feature-flags'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const FeaturesGrid = ({
-  features,
+  features: manifestFeatures,
   pendingKey,
   onUpdate,
   loading = false
@@ -27,13 +27,14 @@ export const FeaturesGrid = ({
 }) => {
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
+  const features = useMemo(() => orderFeaturesForDisplay(manifestFeatures), [manifestFeatures])
   const columns = useMemo<ColumnDef<FeatureFlagState>[]>(
     () => [
       {
         id: 'key',
         accessorFn: feature => featureLabel(feature.key),
         header: 'Feature',
-        size: 320,
+        size: 440,
         meta: {
           label: 'Feature',
           skeleton: {
@@ -96,7 +97,7 @@ export const FeaturesGrid = ({
         id: 'effectiveStatus',
         accessorFn: feature => getEffectiveFeatureStatus(feature).label,
         enableSorting: false,
-        size: 280,
+        size: 512,
         header: () => (
           <span className='inline-flex items-center gap-1.5'>
             Availability

@@ -1,14 +1,29 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { ServicesPageLayout } from '@/features/platform/services/services-page-layout'
 import { toast } from '@/hooks/use-toast'
 import { updateFeatureFlagsAction } from '@/server/orchestrator/settings/actions'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { featureLabel } from './feature-presentation'
 import { FeaturesGrid } from './features-grid'
 import type { FeatureFlagKey, FeatureFlagManifest } from '@/shared/contracts/feature-flags'
+
+const FeaturesPageLayout = ({ children }: { children: ReactNode }) => (
+  <StandardPage
+    gridToolbar
+    className='gap-2'
+  >
+    <PageHeader
+      section={{ label: 'Platform', href: '/platform' }}
+      title='Features'
+      description='Manage platform capabilities and their availability. Changes are saved immediately.'
+    />
+    <PageContent>{children}</PageContent>
+  </StandardPage>
+)
 
 export const FeaturesPage = ({ initialManifest }: { initialManifest: FeatureFlagManifest }) => {
   const router = useRouter()
@@ -43,26 +58,26 @@ export const FeaturesPage = ({ initialManifest }: { initialManifest: FeatureFlag
     [manifest.revision, router]
   )
   return (
-    <ServicesPageLayout view='features'>
+    <FeaturesPageLayout>
       <FeaturesGrid
         features={manifest.features}
         pendingKey={pendingKey}
         onUpdate={updateFeature}
       />
-    </ServicesPageLayout>
+    </FeaturesPageLayout>
   )
 }
 
 export const FeaturesPageLoading = () => {
   const { manifest } = useFeatureFlags()
   return (
-    <ServicesPageLayout view='features'>
+    <FeaturesPageLayout>
       <FeaturesGrid
         features={manifest?.features ?? []}
         pendingKey={null}
         onUpdate={() => Promise.resolve()}
         loading
       />
-    </ServicesPageLayout>
+    </FeaturesPageLayout>
   )
 }

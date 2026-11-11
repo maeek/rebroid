@@ -347,7 +347,10 @@ test('services keep navigation actions readable and unclipped', async ({ page })
       await expect(page.getByRole('columnheader', { name: /^Connection/ })).toBeVisible()
       await expect(page.getByRole('columnheader', { name: 'Timeout', exact: true })).toHaveCount(0)
       await expect(page.getByRole('columnheader', { name: 'Settings', exact: true })).toHaveCount(0)
-      const link = page.getByRole('link', { name: 'View sessions', exact: true })
+      const link = page.getByRole('row', { name: 'View details for Display service' }).getByRole('link', {
+        name: 'View details',
+        exact: true
+      })
       await link.scrollIntoViewIfNeeded()
       await expect(link).toHaveAttribute('href', '/platform/services/display-sessions')
       expect(
@@ -359,11 +362,7 @@ test('services keep navigation actions readable and unclipped', async ({ page })
       ).toBe(true)
       await link.focus()
       await expect(link).toBeFocused()
-      if (editor === 'services') {
-        await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
-      } else {
-        await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
-      }
+      await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
       for (const theme of ['light', 'dark', 'oled']) {
         await page.evaluate(value => {
           document.documentElement.className = value
@@ -384,22 +383,25 @@ test('services keep navigation actions readable and unclipped', async ({ page })
     await page.goto(`/skeleton-contract-test?editor=${editor}`)
     expect((await page.getByRole('table').boundingBox())!.y).toBe(loadingY)
   }
-  await page.setViewportSize({ width: 390, height: 1000 })
-  await page.goto('/skeleton-contract-test?editor=services-edit')
-  const dialog = page.getByRole('dialog', { name: 'OCR perception' })
-  await expect(dialog.getByLabel('Endpoint', { exact: true })).toBeVisible()
-  await expect(dialog.getByLabel('Timeout', { exact: true })).toBeVisible()
-  const settingsTab = dialog.getByRole('tab', { name: 'Settings', exact: true })
-  await settingsTab.focus()
-  await page.keyboard.press('Enter')
-  await expect(settingsTab).toHaveAttribute('aria-selected', 'true')
-  await expect(dialog.getByLabel('Max image size', { exact: true })).toBeVisible()
-  await expect(dialog.getByLabel('Min confidence', { exact: true })).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
-  await page.screenshot({
-    path: `/tmp/rebroid-services-dialog-${test.info().project.name}.png`,
-    animations: 'disabled'
-  })
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 1000 })
+    await page.goto('/skeleton-contract-test?editor=service-ocr')
+    await expect(page.getByRole('heading', { name: 'OCR perception', level: 1 })).toBeVisible()
+    await expect(page.getByText('OCR sidecar is reachable.')).toBeVisible()
+    const connection = page.getByRole('region', { name: 'Connection' })
+    await expect(connection.getByLabel('Endpoint', { exact: true })).toBeVisible()
+    await expect(connection.getByLabel('Timeout', { exact: true })).toBeVisible()
+    const settings = page.getByRole('region', { name: 'Settings' })
+    await expect(settings.getByLabel('Max image size', { exact: true })).toBeVisible()
+    await expect(settings.getByLabel('Min confidence', { exact: true })).toBeVisible()
+    await expect(settings.getByLabel('Language', { exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+    await page.screenshot({
+      path: `/tmp/rebroid-ocr-service-${width}-${test.info().project.name}.png`,
+      animations: 'disabled'
+    })
+  }
   expect(errors).toEqual([])
 })
 
@@ -495,21 +497,15 @@ test('task dialog keeps its field groups flat and aligned', async ({ page }) => 
   }
 })
 
-test('services connects feature management and keeps disabled services discoverable', async ({ page }) => {
+test('services hides disabled entries and Features keeps their settings discoverable', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/skeleton-contract-test?editor=services')
-    let navigation = page.getByRole('navigation', { name: 'Services sections' })
-    await expect(navigation.getByRole('link', { name: 'Connections' })).toHaveAttribute('aria-current', 'page')
-    await expect(navigation.getByRole('link', { name: 'Features' })).toHaveAttribute('href', '/platform/features')
-    const ocr = page.getByRole('row', { name: 'Manage feature for OCR perception' })
-    await expect(ocr.getByRole('link', { name: 'Manage feature' })).toHaveAttribute(
-      'href',
-      '/platform/features#feature.ocr'
-    )
-    await expect(ocr.getByRole('cell', { name: 'Disabled', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Services sections' })).toHaveCount(0)
+    await expect(page.getByRole('row', { name: /OCR perception|Firewall agent/ })).toHaveCount(0)
+    await expect(page.getByRole('table').getByRole('row')).toHaveCount(4)
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
         document.documentElement.className = value
@@ -521,11 +517,11 @@ test('services connects feature management and keeps disabled services discovera
       })
     }
     await page.goto('/skeleton-contract-test?editor=features')
-    navigation = page.getByRole('navigation', { name: 'Services sections' })
-    await expect(navigation.getByRole('link', { name: 'Features' })).toHaveAttribute('aria-current', 'page')
-    await expect(navigation.getByRole('link', { name: 'Connections' })).toHaveAttribute('href', '/platform/services')
-    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('PlatformServicesFeatures')
-    await expect(page.getByRole('heading', { name: 'Services', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('PlatformFeatures')
+    await expect(page.getByRole('heading', { name: 'Features', exact: true })).toBeVisible()
+    const firewall = page.getByRole('row').filter({ hasText: 'Firewall enforcement' })
+    await expect(firewall.getByRole('switch', { name: 'Enable Firewall enforcement' })).toBeEnabled()
+    await expect(firewall.getByRole('link')).toHaveCount(0)
     await expect(page.getByRole('switch', { name: 'Enable OCR perception' })).toHaveAttribute('aria-disabled', 'true')
     expect(
       await page.getByRole('switch', { name: 'Enable OCR perception' }).evaluate(node => getComputedStyle(node).opacity)
@@ -543,7 +539,7 @@ test('services connects feature management and keeps disabled services discovera
       }, theme)
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
       await page.screenshot({
-        path: `/tmp/rebroid-service-features-${width}-${theme}-${test.info().project.name}.png`,
+        path: `/tmp/rebroid-features-${width}-${theme}-${test.info().project.name}.png`,
         animations: 'disabled'
       })
     }
@@ -559,6 +555,52 @@ test('services connects feature management and keeps disabled services discovera
   await page.goto('/skeleton-contract-test?editor=features')
   expect((await page.getByRole('table').boundingBox())!.y).toBe(loadingY)
   expect(errors).toEqual([])
+})
+
+test('display sessions shows connection details and opens logs in a wide dialog on demand', async ({ page }) => {
+  const requests: string[] = []
+  await page.route('**/api/bff/platform/display-sidecar/logs?*', route => {
+    requests.push(route.request().url())
+    return route.fulfill({
+      json: {
+        ok: true,
+        data: { output: 'Display sidecar ready\n' + 'diagnostic output '.repeat(120), lineLimit: 20, truncated: false },
+        requestId: 'display-logs-preview'
+      }
+    })
+  })
+
+  for (const width of [390, 1440]) {
+    requests.length = 0
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/skeleton-contract-test?editor=display-sessions')
+
+    const status = page.getByRole('status').filter({ hasText: 'Healthy' })
+    const connection = page.getByRole('region', { name: 'Connection' })
+    const sessions = page.getByRole('region', { name: 'Sessions' })
+    const trigger = connection.getByRole('button', { name: 'View logs' })
+    await expect(status).toContainText('Display sidecar API is responding.')
+    await expect(connection.getByText('rebroid-display-sidecar', { exact: true })).toBeVisible()
+    await expect(connection.getByText('Not published')).toBeVisible()
+    await expect(sessions.getByRole('table')).toBeVisible()
+    expect((await status.boundingBox())!.y).toBeLessThan((await connection.boundingBox())!.y)
+    expect((await connection.boundingBox())!.y).toBeLessThan((await sessions.boundingBox())!.y)
+    expect(requests).toEqual([])
+
+    await trigger.click()
+    const dialog = page.getByRole('dialog', { name: 'Display sidecar logs' })
+    const output = dialog.getByRole('region', { name: 'Display sidecar log output' })
+    await expect(output).toContainText('Display sidecar ready')
+    expect(requests).toHaveLength(1)
+    const expectedWidth = width < 640 ? width - 32 : Math.round(width * 0.8)
+    await expect.poll(async () => Math.round((await dialog.boundingBox())!.width)).toBe(expectedWidth)
+    expect(await output.evaluate(node => node.scrollWidth)).toBeGreaterThan(
+      await output.evaluate(node => node.clientWidth)
+    )
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(trigger).toBeFocused()
+  }
 })
 
 test('embedded Files keeps folder navigation, filtering, and details in one workspace', async ({ page }) => {

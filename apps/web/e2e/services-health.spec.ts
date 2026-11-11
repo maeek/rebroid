@@ -1,54 +1,57 @@
 import { expect, test } from '@playwright/test'
 import { dockerOperationLimitsSchema } from '../src/shared/contracts/docker-operation-limits'
+import { defaultOrchestratorUiSettings } from '../src/shared/model/settings/orchestrator-ui-settings'
 
-test('service editors open without reloading the inventory and close without flashing', async ({ page }) => {
-  await page.goto('/skeleton-contract-test?editor=services-all#connections')
+test('Firewall agent has a service page with a scoped connection save', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=services-all')
   const search = page.getByPlaceholder('Search services')
   await search.fill('Firewall')
-  const row = page.getByRole('row', { name: 'Edit Firewall agent' })
+  const row = page.getByRole('row', { name: 'View details for Firewall agent' })
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(2)
-  await row.evaluate(element => element.setAttribute('data-retained-row', 'true'))
-  const navigations: string[] = []
-  page.on('request', request => {
-    if (new URL(request.url()).searchParams.has('service')) navigations.push(request.url())
-  })
-  const edit = row.getByRole('button', { name: 'Edit', exact: true })
-  await edit.click()
-  const dialog = page.getByRole('dialog', { name: 'Firewall agent' })
-  await expect(dialog).toBeVisible()
-  await expect(page).toHaveURL(/editor=services-all&service=firewall#connections$/)
-  await dialog.getByLabel('Endpoint').fill('/tmp/draft-firewall.sock')
-  await dialog.getByRole('button', { name: 'Done' }).click()
-  const closing = await page.evaluate(async () => {
-    const heights: number[] = []
-    let disappeared = false
-    let reappeared = false
-    const start = performance.now()
-    await new Promise<void>(resolve => {
-      const frame = () => {
-        const popup = document.querySelector('[role="dialog"]')
-        if (popup) {
-          heights.push(popup.getBoundingClientRect().height)
-          if (disappeared) reappeared = true
-        } else disappeared = true
-        if (performance.now() - start >= 400) resolve()
-        else requestAnimationFrame(frame)
+  await expect(row.getByRole('link', { name: 'View details' })).toHaveAttribute(
+    'href',
+    '/platform/services?service=firewall'
+  )
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+
+  const firewall = { endpoint: '/run/draft-firewall.sock', timeoutMs: 6000 }
+  const updates: unknown[] = []
+  await page.route('**/api/bff/preferences/ui-settings', route => {
+    updates.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: {
+          ...defaultOrchestratorUiSettings,
+          services: { ...defaultOrchestratorUiSettings.services, firewall }
+        }
       }
-      requestAnimationFrame(frame)
     })
-    return { heights, reappeared }
   })
-  expect(closing.reappeared).toBe(false)
-  for (const height of closing.heights) expect(height).toBeGreaterThan(250)
-  await expect(dialog).toHaveCount(0)
-  await expect(edit).toBeFocused()
-  await expect(row).toHaveAttribute('data-retained-row', 'true')
-  await expect(search).toHaveValue('Firewall')
-  await expect(page).toHaveURL(/editor=services-all#connections$/)
-  await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
-  await edit.click()
-  await expect(dialog.getByLabel('Endpoint')).toHaveValue('/tmp/draft-firewall.sock')
-  expect(navigations).toEqual([])
+  await page.goto('/skeleton-contract-test?editor=service-firewall')
+  await expect(page.getByRole('heading', { level: 1, name: 'Firewall agent' })).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Offline' })).toContainText(
+    'Firewall agent could not be reached.'
+  )
+  const connection = page.getByRole('region', { name: 'Connection' })
+  const endpoint = connection.getByRole('textbox', { name: 'Endpoint' })
+  const timeout = connection.getByRole('spinbutton', { name: 'Timeout' })
+  const save = page.getByRole('button', { name: 'Save', exact: true })
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(endpoint).toHaveValue(defaultOrchestratorUiSettings.services.firewall.endpoint!)
+  await expect(save).toBeDisabled()
+  await endpoint.fill(firewall.endpoint)
+  await timeout.fill(String(firewall.timeoutMs))
+  await save.click()
+  await expect.poll(() => updates).toEqual([{ operation: 'save-runtime', settings: { services: { firewall } } }])
+  await expect(save).toBeDisabled()
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(endpoint).toHaveValue(firewall.endpoint)
+    await expect(timeout).toHaveValue(String(firewall.timeoutMs))
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+  }
 })
 
 test('Docker failures stay compact and offer scoped recovery', async ({ page }) => {
@@ -111,7 +114,7 @@ test('services show complete observed health and matching loading geometry', asy
     expect(ready!.width).toBe(loading!.width)
     expect(await page.getByRole('columnheader').allTextContents()).toEqual(columns)
     await expect(page.getByRole('table').getByRole('row')).toHaveCount(6)
-    await expect(page.getByRole('row', { name: 'Edit Firewall agent' })).toContainText('Offline')
+    await expect(page.getByRole('row', { name: 'View details for Firewall agent' })).toContainText('Offline')
     await expect(page.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute(
       'href',
       '/platform/services?service=docker'

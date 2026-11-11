@@ -82,15 +82,7 @@ export const FeatureAvailability = ({
 
 export const FeatureManageLink = ({ feature }: { feature: FeatureFlagState }) => {
   const destination = featureDestination(feature)
-  if (!destination)
-    return (
-      <span
-        className='text-foreground-muted'
-        aria-label='Enable this feature to access its tools'
-      >
-        —
-      </span>
-    )
+  if (!destination) return <span className='text-foreground-muted'>—</span>
   return (
     <ResourceLink
       href={destination.href}

@@ -1,30 +1,29 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { IconArrowRight, IconPencil } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
+import { IconArrowRight } from '@tabler/icons-react'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import type { ServiceId } from './service-definitions'
 import type { ServiceRow } from './service-row'
 import type { ColumnDef } from '@tanstack/react-table'
 
+const detailsLabel = 'View details'
+
 export const ServicesGrid = ({
   rows,
-  loading = false,
+  loadingRowCount,
   disabled = false,
-  onEdit,
   onActivate
 }: {
   rows: ServiceRow[]
-  loading?: boolean
+  loadingRowCount?: number
   disabled?: boolean
-  onEdit: (id: ServiceId) => void
   onActivate: (service: ServiceRow) => void
 }) => {
+  const loading = loadingRowCount !== undefined
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
   const columns = useMemo<ColumnDef<ServiceRow>[]>(
@@ -46,24 +45,12 @@ export const ServicesGrid = ({
               {service.icon}
             </div>
             <div className='grid min-w-0 gap-1'>
-              {service.action.type === 'link' ? (
-                <ResourceLink
-                  href={service.action.href}
-                  className='font-medium'
-                >
-                  {service.title}
-                </ResourceLink>
-              ) : (
-                <Button
-                  type='button'
-                  disabled={disabled}
-                  variant='link'
-                  className='h-auto justify-start whitespace-normal p-0 text-left'
-                  onClick={() => onActivate(service)}
-                >
-                  {service.title}
-                </Button>
-              )}
+              <ResourceLink
+                href={service.href}
+                className='font-medium'
+              >
+                {service.title}
+              </ResourceLink>
               <span
                 className='line-clamp-2 text-xs text-foreground-muted'
                 title={service.description}
@@ -124,41 +111,21 @@ export const ServicesGrid = ({
         enableSorting: false,
         enableResizing: false,
         meta: { label: 'Actions', skeleton: { kind: 'text', width: 'w-28' } },
-        cell: ({ row }) => {
-          const action = row.original.action
-          if (action.type === 'link')
-            return (
-              <ResourceLink
-                href={action.href}
-                className='inline-flex min-h-8 items-center gap-2 whitespace-nowrap px-1 font-medium focus-visible:ring-inset'
-              >
-                {action.label}
-                <IconArrowRight
-                  aria-hidden='true'
-                  className='size-4 shrink-0'
-                />
-              </ResourceLink>
-            )
-          return (
-            <Button
-              type='button'
-              disabled={disabled}
-              variant='link'
-              size='sm'
-              className='px-1'
-              onClick={() => onEdit(action.serviceId)}
-            >
-              <IconPencil
-                aria-hidden='true'
-                className='size-4'
-              />
-              Edit
-            </Button>
-          )
-        }
+        cell: ({ row: { original: service } }) => (
+          <ResourceLink
+            href={service.href}
+            className='inline-flex min-h-8 items-center gap-2 whitespace-nowrap px-1 font-medium focus-visible:ring-inset'
+          >
+            {detailsLabel}
+            <IconArrowRight
+              aria-hidden='true'
+              className='size-4 shrink-0'
+            />
+          </ResourceLink>
+        )
       }
     ],
-    [disabled, onActivate, onEdit]
+    []
   )
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -187,13 +154,13 @@ export const ServicesGrid = ({
         pageSize={Math.max(visibleRows.length, 1)}
         getRowId={row => row.id}
         rowActivation={{
-          getLabel: row => (row.action.type === 'edit' ? `Edit ${row.title}` : `${row.action.label} for ${row.title}`),
+          getLabel: row => `${detailsLabel} for ${row.title}`,
           onActivate: service => {
             if (!disabled) onActivate(service)
           }
         }}
         minWidth='61rem'
-        loading={loading ? { rowCount: 5 } : false}
+        loading={loading ? { rowCount: loadingRowCount } : false}
         emptyState={
           <DataGridEmptyState
             title='No services available'

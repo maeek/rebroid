@@ -178,6 +178,10 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
       expect(sidebar!.y).toBe(8)
       expect(sidebar!.y + sidebar!.height).toBe(472)
       expect(await toggle.boundingBox()).toEqual(header)
+      await expect(page.getByRole('link', { name: 'Features', exact: true })).toHaveAttribute(
+        'href',
+        '/platform/features'
+      )
       await expect(page.getByRole('link', { name: 'Create user', exact: true })).toHaveAttribute(
         'href',
         '/security/users?create=1'

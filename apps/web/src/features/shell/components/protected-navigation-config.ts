@@ -12,6 +12,7 @@ import {
   IconRobot,
   IconServerSpark,
   IconShield,
+  IconToggleLeft,
   IconUsers
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
@@ -56,6 +57,7 @@ export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: Ico
 export const platformSections: NavigationItem[] = [
   { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
+  { name: 'Features', Icon: IconToggleLeft, href: '/platform/features' },
   { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' }
 ]
@@ -142,7 +144,5 @@ export const variantStyles = {
   }
 } as const
 
-export const isNavigationDestinationActive = (pathname: string, href: string, exact = false) => {
-  if (href === '/platform/services' && pathname === '/platform/features') return true
-  return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
-}
+export const isNavigationDestinationActive = (pathname: string, href: string, exact = false) =>
+  exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)

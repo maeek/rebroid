@@ -2,8 +2,10 @@ import { FeaturesPage, FeaturesPageLoading } from '@/features/platform/features/
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { InfrastructureServicePage } from './infrastructure-service-page'
+import { ServiceSettingsPage } from './service-settings-page'
 import { PlatformServicesPage } from './services-page'
 import { PlatformServicesPageSkeleton } from './services-page-skeleton'
+import type { ServiceId } from './service-definitions'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 import type { FeatureFlagState, FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 
@@ -103,12 +105,10 @@ export const InfrastructureServicePreview = ({
 
 export const ServicesPreview = ({
   all = false,
-  editing = false,
   loading = false,
   unavailable = false
 }: {
   all?: boolean
-  editing?: boolean
   loading?: boolean
   unavailable?: boolean
 }) => (
@@ -119,9 +119,26 @@ export const ServicesPreview = ({
       <PlatformServicesPage
         initialHealth={unavailable ? null : servicesPreviewHealth}
         initialSettings={defaultOrchestratorUiSettings}
-        requestedServiceId={editing ? 'ocr' : undefined}
       />
     )}
+  </FeatureFlagsProvider>
+)
+
+export const ServiceSettingsPreview = ({ serviceId }: { serviceId: ServiceId }) => (
+  <FeatureFlagsProvider manifest={servicesPreviewManifest(true)}>
+    <ServiceSettingsPage
+      serviceId={serviceId}
+      initialHealth={
+        serviceId === 'ocr'
+          ? { ok: true, status: 'healthy', message: 'OCR sidecar is reachable.' }
+          : servicesPreviewHealth.services.firewall
+      }
+      initialSettings={
+        serviceId === 'ocr'
+          ? { ...defaultOrchestratorUiSettings.services.ocr, endpoint: 'http://ocr-sidecar:4300' }
+          : defaultOrchestratorUiSettings.services.firewall
+      }
+    />
   </FeatureFlagsProvider>
 )
 

@@ -35,7 +35,8 @@ import { ImageBuilderPreview } from '@/features/platform/pages/runtime-image-bui
 import {
   FeaturesPreview,
   ServicesPreview,
-  InfrastructureServicePreview
+  InfrastructureServicePreview,
+  ServiceSettingsPreview
 } from '@/features/platform/services/services-preview'
 import { AppActivityLoading, ActivityPageSkeleton } from '@/features/settings/activity/activity-page-skeleton'
 import { CastingSettingsPageClient } from '@/features/settings/casting/casting-settings-page-client'
@@ -89,10 +90,24 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
         resourcesError
       />
     )
-  if (editor === 'display-offline')
+  if (editor === 'display-offline' || editor === 'display-sessions')
     return (
       <CastingSettingsPageClient
-        initialHealth={{ ok: false, status: 'offline', message: 'Display service is offline.' }}
+        initialHealth={
+          editor === 'display-offline'
+            ? { ok: false, status: 'offline', message: 'Display service is offline.' }
+            : {
+                ok: true,
+                status: 'healthy',
+                message: 'Display sidecar API is responding.',
+                details: {
+                  containerName: 'rebroid-display-sidecar',
+                  image: 'rebroid/display-sidecar:local',
+                  port: 4300,
+                  publishedHostPort: null
+                }
+              }
+        }
         initialSessions={[]}
         applications={[]}
         owners={[]}
@@ -237,13 +252,9 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'scheduler-loading') return <ScheduledTasksPageSkeleton />
   if (editor === 'service-docker' || editor === 'service-orchestrator')
     return <InfrastructureServicePreview serviceId={editor === 'service-docker' ? 'docker' : 'orchestrator'} />
-  if (editor === 'services' || editor === 'services-all' || editor === 'services-edit')
-    return (
-      <ServicesPreview
-        all={editor !== 'services'}
-        editing={editor === 'services-edit'}
-      />
-    )
+  if (editor === 'service-ocr' || editor === 'service-firewall')
+    return <ServiceSettingsPreview serviceId={editor === 'service-ocr' ? 'ocr' : 'firewall'} />
+  if (editor === 'services' || editor === 'services-all') return <ServicesPreview all={editor === 'services-all'} />
   if (editor === 'features') return <FeaturesPreview />
   if (editor === 'features-loading') return <FeaturesPreview loading />
   if (editor === 'service-route-loading') return <ServicesPreview loading />

@@ -13,7 +13,6 @@ const PlatformFeaturesContent = () => (
         title='Features'
         description='Manage platform capabilities and their availability.'
         section={{ label: 'Platform', href: '/platform' }}
-        trail={[{ label: 'Services', href: '/platform/services' }]}
       />
     )}
   >

@@ -33,13 +33,19 @@ const renderLoading = (node: ReactNode, search = '') => {
 }
 
 describe('platform destination loading states', () => {
+  it('omits skeleton rows for optional services known to be disabled', () => {
+    renderLoading(<PlatformServicesPageSkeleton />)
+
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(3)
+  })
+
   it.each([
     ['runtime', PlatformRuntimePageSkeleton, 'Runtime defaults', 'Image defaults'],
     ['scheduler', ScheduledTasksPageSkeleton, 'Scheduler', 'Task'],
-    ['features', FeaturesPageLoading, 'Services', 'OCR perception'],
+    ['features', FeaturesPageLoading, 'Features', 'OCR perception'],
     ['connections', PlatformServicesPageSkeleton, 'Services', 'Connection'],
     ['providers', AiProvidersPageSkeleton, 'AI', 'Providers'],
-    ['display sessions', PlatformDisplaySessionsPageSkeleton, 'Display sessions', 'Recent logs']
+    ['display sessions', PlatformDisplaySessionsPageSkeleton, 'Display sessions', 'Connection']
   ] as const)('renders the %s page chrome instead of overview content', (_, Component, title, content) => {
     renderLoading(<Component />)
 
@@ -50,12 +56,15 @@ describe('platform destination loading states', () => {
     expect(screen.queryByRole('heading', { name: 'Capacity' })).toBeNull()
   })
 
-  it.each(['docker', 'orchestrator'] as const)('selects the %s service loader from the destination query', service => {
+  it.each([
+    ['docker', 'Docker'],
+    ['orchestrator', 'Orchestrator'],
+    ['ocr', 'OCR perception'],
+    ['firewall', 'Firewall agent']
+  ] as const)('selects the %s service loader from the destination query', (service, title) => {
     renderLoading(<PlatformServicesPageSkeleton />, `service=${service}`)
 
-    expect(
-      screen.getByRole('heading', { level: 1, name: service === 'docker' ? 'Docker' : 'Orchestrator' })
-    ).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible()
     expect(screen.queryByRole('searchbox', { name: 'Search services' })).toBeNull()
   })
 

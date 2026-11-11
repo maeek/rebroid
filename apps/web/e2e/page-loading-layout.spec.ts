@@ -116,9 +116,9 @@ test('platform subpage loaders retain their own destination and chrome', async (
     ['runtime-loading', 'Runtime defaults', 'Image defaults'],
     ['scheduler-loading', 'Scheduler', 'Task'],
     ['services-all-loading', 'Services', 'Connection'],
-    ['features-loading', 'Services', 'OCR perception'],
+    ['features-loading', 'Features', 'OCR perception'],
     ['ai-list-loading', 'AI', 'Providers'],
-    ['display-sessions-loading', 'Display sessions', 'Recent logs']
+    ['display-sessions-loading', 'Display sessions', 'Connection']
   ] as const
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -149,7 +149,7 @@ test('Features loader preserves its feature catalog and row geometry', async ({ 
     await expect(page.getByText('OCR perception', { exact: true })).toBeVisible()
     await expect(page.getByText(/Configuration revision/)).toHaveCount(0)
     await expect(page.getByRole('switch')).toHaveCount(0)
-    await expect(page.getByText('Active', { exact: true })).not.toBeVisible()
+    await expect(page.getByText('Active', { exact: true }).filter({ visible: true })).toHaveCount(0)
     if (width === 1440 || width === 390) await page.screenshot({ path: `/tmp/rebroid-loader-features-${width}.png` })
     const before = await geometry(page, 'thead th, tbody tr')
     await page.goto('/skeleton-contract-test?editor=features')

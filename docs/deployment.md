@@ -199,9 +199,9 @@ preserve the requested audio setting. Main-display compatibility retries may use
 Requested resolution, frame rate, and bitrate are not silently reduced. If the viewer reconnects
 repeatedly, check its compatibility diagnostics and the display-sidecar logs.
 
-**Display sidecar restarts.** In Services → Display sessions, check the container state,
-start and finish times, exit code, and whether the process was killed for running out of memory.
-Administrators can open **Recent logs** for a bounded tail or select **Show more logs** for more output.
+**Display sidecar restarts.** In Services → Display sessions, check the Connection panel for the
+container state, start and finish times, exit code, and whether the process was killed for running out of memory.
+Administrators can select **View logs** for a bounded tail or **Show more logs** in the dialog for more output.
 If a log tail exceeds the read limit, use the container engine logs on the deployment host. A running container
 with an unreachable API can also indicate a listener, DNS, or connectivity problem. To investigate
 the restart itself, correlate the finish time with container engine events and timestamped logs on

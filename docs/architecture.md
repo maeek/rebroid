@@ -104,7 +104,7 @@ Pre-release schemas have no in-place upgrade path. Use the documented
 ## Feature configuration
 
 The orchestrator persists feature intent and revision, then publishes an immutable runtime snapshot.
-Administrators manage feature flags under **Platform → Services → Features**.
+Administrators manage feature flags under **Platform settings → Features**.
 The display sidecar receives only the virtual-display and WebRTC settings. Both require enabled,
 synchronized state before admitting new work.
 

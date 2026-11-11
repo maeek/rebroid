@@ -4,11 +4,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Notice } from '@/components/ui/notice'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
-import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
+import { dockerRuntimeHealth, serviceHealthState } from '@/shared/model/diagnostics/service-health'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
-import { serviceHealthState } from './service-health-state'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 
 export const InfrastructureServicePage = ({

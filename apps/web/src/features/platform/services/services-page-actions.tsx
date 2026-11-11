@@ -1,18 +1,19 @@
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Skeleton } from '@/components/ui/skeleton'
 
 export const ServicesPageActions = ({
   hasChanges = false,
   saving = false,
   disabled = false,
+  saveDisabled = false,
   onDiscard,
   onSave
 }: {
   hasChanges?: boolean
   saving?: boolean
   disabled?: boolean
+  saveDisabled?: boolean
   onDiscard?: () => void
   onSave?: () => void
 }) => (
@@ -30,28 +31,10 @@ export const ServicesPageActions = ({
       onClick={onSave}
       pending={saving}
       pendingLabel='Saving…'
-      disabled={disabled || !hasChanges}
+      disabled={disabled || saveDisabled || !hasChanges}
     >
       <IconDeviceFloppy className='size-4' />
       Save
     </MutationButton>
   </>
-)
-
-export const ServicesSaveStatus = ({
-  hasChanges = false,
-  loading = false
-}: {
-  hasChanges?: boolean
-  loading?: boolean
-}) => (
-  <span role='status'>
-    {loading ? (
-      <Skeleton className='h-4 w-44' />
-    ) : hasChanges ? (
-      'Unsaved connection changes'
-    ) : (
-      'All connection changes saved'
-    )}
-  </span>
 )

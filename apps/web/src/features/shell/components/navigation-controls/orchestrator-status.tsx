@@ -9,7 +9,8 @@ import { semanticToneClassNames } from '@/components/ui/surface'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
-import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
+import { dockerRuntimeHealth, isOptionalServiceVisible } from '@/shared/model/diagnostics/service-health'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { navigationPopupPositions, type NavigationPopupPosition } from './popup-position'
 import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 
@@ -41,10 +42,6 @@ const dotTone = (status: DisplayServiceStatus) => {
     return 'bg-success'
   }
 
-  if (status === 'disabled') {
-    return 'bg-foreground-muted/50'
-  }
-
   if (status === 'unhealthy' || status === 'degraded') {
     return 'bg-warning'
   }
@@ -55,10 +52,6 @@ const dotTone = (status: DisplayServiceStatus) => {
 const badgeTone = (status: DisplayServiceStatus) => {
   if (status === 'healthy') {
     return 'border-success/35 bg-success/10 text-success'
-  }
-
-  if (status === 'disabled') {
-    return 'border-surface-border/70 bg-surface-band/45 text-foreground-muted'
   }
 
   if (status === 'unhealthy' || status === 'degraded') {
@@ -90,12 +83,14 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   {
     impact: 'Network policy changes may not be applied.',
     name: 'Firewall',
+    optionalServiceId: 'firewall' as const,
     href: '/platform/services?service=firewall',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   },
   {
     impact: 'Automation text-recognition steps may be unavailable.',
     name: 'OCR',
+    optionalServiceId: 'ocr' as const,
     href: '/platform/services?service=ocr',
     service: health?.services.ocr ?? checkingService(fallbackMessage)
   }
@@ -113,6 +108,7 @@ export const OrchestratorStatus = ({
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<HealthState>('checking')
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
+  const { getFeature } = useFeatureFlags()
   const { label, tone, dot } = healthPresentation[state]
 
   const applyHealth = useCallback((nextHealth: OrchestratorHealth) => {
@@ -148,6 +144,12 @@ export const OrchestratorStatus = ({
   const { data, error } = usePollingQuery<OrchestratorHealth>('orchestrator:health', () => getOrchestratorHealth(), {
     enabled: polling,
     intervalMs: 10_000
+  })
+  const rows = serviceRows(health, label).filter(({ service, optionalServiceId }) => {
+    if (service.status === 'disabled') return false
+    if (!optionalServiceId) return true
+
+    return isOptionalServiceVisible(getFeature(`feature.${optionalServiceId}`), data?.services[optionalServiceId])
   })
 
   useEffect(() => {
@@ -208,7 +210,7 @@ export const OrchestratorStatus = ({
         className='scrollbar-thin max-h-(--available-height) w-[min(20rem,calc(100vw-2rem))] overflow-y-auto p-2'
       >
         <div className='space-y-0'>
-          {serviceRows(health, label).map(({ name, href, service, impact }) => (
+          {rows.map(({ name, href, service, impact }) => (
             <Link
               key={name}
               href={href}
@@ -228,7 +230,7 @@ export const OrchestratorStatus = ({
                 </span>
               </div>
               <IconChevronRight className='size-4 shrink-0 text-foreground-muted' />
-              {!service.ok && service.status !== 'disabled' ? (
+              {!service.ok ? (
                 <span className='w-full text-xs text-foreground-muted'>
                   {impact} {service.message}
                 </span>

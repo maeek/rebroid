@@ -15,14 +15,5 @@ export type ServiceRow = {
     tone: StatusBadgeTone
     description?: string
   }
-  action:
-    | {
-        type: 'edit'
-        serviceId: ServiceId
-      }
-    | {
-        type: 'link'
-        href: string
-        label: string
-      }
+  href: string
 }
