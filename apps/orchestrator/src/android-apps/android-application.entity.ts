@@ -221,6 +221,13 @@ export class AndroidApplication {
   @Column({ type: 'text', nullable: true })
   containerId!: string | null;
 
+  @Column({ type: 'simple-json', nullable: true })
+  appliedRendering!:
+    | (import('@rebroid/android-application-core/redroid-runtime').AndroidRenderingSettings & {
+        containerId: string;
+      })
+    | null;
+
   @ApiProperty({ example: 'rebroid-net-signal-android-98a530d6' })
   @Column()
   networkName!: string;

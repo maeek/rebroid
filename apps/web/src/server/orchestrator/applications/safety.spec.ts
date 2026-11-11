@@ -3,10 +3,11 @@ import {
   applyCreateResourceQuotas,
   enforceResourceQuotas,
   enforceSessionQuota,
+  sanitizeAndroidApplicationForUser,
   sanitizeApplicationLogForUser,
   sanitizeScrcpySessionForUser
 } from './safety'
-import type { ScrcpySession } from '@/shared/contracts/application'
+import type { AndroidApplication, ScrcpySession } from '@/shared/contracts/application'
 
 const userContext = {
   role: 'user' as const,
@@ -83,6 +84,21 @@ const session: ScrcpySession = {
 }
 
 describe('application safety redaction', () => {
+  it('only shows recorded GPU device paths to users who can view backend details', () => {
+    const app = {
+      status: {},
+      errors: {},
+      runtime: { appliedRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' } },
+      storage: { profileMode: 'persistent' },
+      network: { policy: {} },
+      apk: {}
+    } as AndroidApplication
+    expect(sanitizeAndroidApplicationForUser(app, userContext).runtime.appliedRendering).toBeNull()
+    expect(sanitizeAndroidApplicationForUser(app, { ...userContext, role: 'admin' }).runtime.appliedRendering).toEqual(
+      app.runtime.appliedRendering
+    )
+  })
+
   it('removes backend addresses from ordinary-user viewer sessions', () => {
     expect(JSON.stringify(sanitizeScrcpySessionForUser(session, userContext))).not.toContain('172.18.0.2')
   })

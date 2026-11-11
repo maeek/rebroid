@@ -16,7 +16,8 @@ export interface ApplicationContainerSpec {
   persistentData: boolean;
   memoryLimitMb?: number | null;
   cpuLimitCpus?: number | null;
-  containerArgs?: string | null;
+  containerArgs?: string | string[] | null;
+  requireMatchingConfiguration?: boolean;
   securityOptions?: string[];
   cgroupnsMode?: string | null;
   devices?: string[];

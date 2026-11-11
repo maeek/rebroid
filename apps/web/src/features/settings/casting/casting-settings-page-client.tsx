@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { AndroidRenderingSettings } from './android-rendering-settings'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
@@ -23,10 +25,13 @@ export const CastingSettingsPageClient = ({
 }) => {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isRefreshingPage, startRefresh] = useTransition()
+  const router = useRouter()
 
   const refresh = () => {
     setIsRefreshing(true)
     setRefreshKey(current => current + 1)
+    startRefresh(() => router.refresh())
   }
 
   return (
@@ -38,16 +43,21 @@ export const CastingSettingsPageClient = ({
         section={{ label: 'Platform', href: '/platform' }}
         trail={[{ label: 'Services', href: '/platform/services' }]}
         title='Display sessions'
-        description='Inspect the display service and end active viewer sessions.'
+        description='Configure Android rendering, inspect the display service, and manage viewer sessions.'
         breadcrumbRefresh={
           <PlatformPageRefreshButton
             disabled={loading}
-            isRefreshing={isRefreshing}
+            isRefreshing={isRefreshing || isRefreshingPage}
             onRefresh={refresh}
           />
         }
       />
       <PageContent>
+        <AndroidRenderingSettings
+          applications={applications}
+          loading={loading}
+          refreshKey={refreshKey}
+        />
         <CastingSidecarSettings
           loading={loading}
           initialHealth={initialHealth}

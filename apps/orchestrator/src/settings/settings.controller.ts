@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
@@ -32,6 +33,7 @@ import {
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
 import { SettingsService } from './settings.service';
+import { AndroidRenderingSettingsDto } from './dto/android-rendering-settings.dto';
 import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 
 @ApiTags('settings')
@@ -55,6 +57,18 @@ export class SettingsController {
   @ApiOkResponse({ type: OrchestratorSettingsDto })
   resetSettings() {
     return this.settings.resetSettings();
+  }
+
+  @Get('android-rendering')
+  @ApiOkResponse({ type: AndroidRenderingSettingsDto })
+  readAndroidRendering() {
+    return this.settings.readAndroidRendering();
+  }
+
+  @Put('android-rendering')
+  @ApiOkResponse({ type: AndroidRenderingSettingsDto })
+  updateAndroidRendering(@Body() dto: AndroidRenderingSettingsDto) {
+    return this.settings.updateAndroidRendering(dto);
   }
 
   @RequiresFeature('feature.ai')

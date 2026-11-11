@@ -138,6 +138,56 @@ For unusual hosts, use a Compose override. On SELinux hosts, `CONTAINER_SECURITY
 may be required for device access. `REDROID_DEVICES` is for required device mappings and fails
 when a path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings.
 
+### Android GPU rendering on Linux
+
+Rebroid defaults to **Software** rendering. Stock Redroid also supports using the Docker
+host GPU to draw Android applications. For an AMD Ryzen 7 4800U with Radeon Graphics,
+use a Linux Docker host with its AMD graphics driver loaded and a DRM render node
+available. Working VA-API in Jellyfin is evidence of device access for Jellyfin.
+Verify Redroid rendering separately for the exact image and driver combination.
+[Redroid GPU configuration](https://github.com/remote-android/redroid-doc#configuration)
+
+1. On the **Linux machine running the Docker daemon**, list its render nodes with
+   `ls -l /dev/dri/renderD*`. If there is more than one, use
+   `ls -l /dev/dri/by-path` and `lspci -k` to match the AMD GPU to its render node.
+   If Docker runs in a VM, use the device visible inside that VM.
+2. As a Rebroid administrator, open **Platform → Services → Display sessions**.
+   Under **Android GPU rendering**, choose **Host GPU** and enter the node you
+   identified, such as `/dev/dri/renderD128`. Save the setting. The path must
+   name a render node directly under `/dev/dri`.
+3. Try one stock Redroid Android 16 application with a persistent test profile. Stop and start
+   it to apply the saved setting. New Redroid runtimes use the setting on creation.
+   Rebroid replaces a stopped container if its configuration differs and reuses
+   its persistent profile volume. Temporary profiles follow their usual ephemeral
+   storage rules.
+4. Confirm that Android boots, the viewer shows the image, and input works.
+   Check the renderer reported by Android, for example the GLES line in
+   `adb shell dumpsys SurfaceFlinger` through an authorized ADB connection.
+   Look for the Radeon GPU and driver in the renderer name. A software renderer
+   such as SwiftShader or llvmpipe means the GPU is not doing the rendering.
+   The saved and recorded settings in Rebroid describe configuration, not actual
+   hardware use. Stop and start the application again to confirm that the profile
+   data is retained and the viewer reconnects.
+
+Saving applies the policy to future runtime starts across managed Redroid applications.
+It does not restart applications or the display sidecar. The orchestrator passes
+the required device mapping to Docker and sets the Redroid renderer and GPU node
+arguments. The policy takes precedence over manually supplied rendering arguments.
+Other container arguments and deployment-supplied device mappings remain in effect.
+The UI-managed mapping applies to Redroid containers. For independent device
+mappings set `REDROID_DEVICES` in the orchestrator's environment through a
+Compose override. A value in the Compose `.env` takes effect only if the
+service forwards it.
+
+If the GPU node is missing or conflicts with a deployment mapping, correct the
+path or mapping and retry Start. To return to software rendering, select
+**Software**, save, then stop and start affected applications. Persistent profiles
+are retained. See [rendering troubleshooting](operations.md#android-gpu-rendering).
+
+Docker can skip explicit same-path device mapping checks for privileged containers.
+Confirm the render node on the host and verify the renderer after Android starts.
+[Moby device handling](https://github.com/moby/moby/blob/master/daemon/oci_linux.go#L801-L844)
+
 ## Redroid display streaming support
 
 Live displays admit ReDroid 13–16 with scrcpy 5.0.1. Android 16 video and control have been
@@ -180,9 +230,9 @@ option; it is not a scrcpy server option or a Rebroid environment setting.
 Browser hardware decoding depends on the viewer machine's GPU, drivers, browser, and
 codec support. A WebCodecs hardware preference is a hint, not confirmation that a GPU
 was selected. See [browser decoding](display-streaming.md#browser-hardware-decoding).
-Android GPU rendering and hardware video encoding are separate capabilities; choosing
-an encoder name does not install it or guarantee acceleration. Keep the existing Redroid
-boot arguments until host/image-specific changes have passed manual verification.
+Android GPU rendering and hardware video encoding are separate capabilities. The
+[Android GPU rendering setting](#android-gpu-rendering-on-linux) controls Android
+graphics only. The scrcpy encoder must be available inside Android.
 
 A **separate native scrcpy desktop client** can use VA-API inside a Linux Docker container
 if the daemon's host/VM exposes a compatible GPU. That client container needs the desktop

@@ -2,6 +2,21 @@ import { parseCommandLine } from "./command-line";
 
 export { parseCommandLine };
 
+export const androidRenderingModes = ["software", "host"] as const;
+
+export interface AndroidRenderingSettings {
+  mode: (typeof androidRenderingModes)[number];
+  renderDevice: string | null;
+}
+
+export const drmRenderDevicePattern = /^\/dev\/dri\/renderD[0-9]+(?![\s\S])/;
+export const drmRenderDeviceMaxLength = 64;
+
+export const isDrmRenderDevice = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.length <= drmRenderDeviceMaxLength &&
+  drmRenderDevicePattern.test(value);
+
 export const redroidDefaultContainerArgs = [
   "androidboot.redroid_gpu_mode=guest",
   "androidboot.use_memfd=true",

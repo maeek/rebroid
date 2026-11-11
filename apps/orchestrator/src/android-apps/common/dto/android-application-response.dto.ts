@@ -1,9 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
 import {
   viewerTransports,
   type ViewerTransport,
 } from '@rebroid/android-application-core/viewer-control';
+import { AndroidRenderingSettingsDto } from '../../../settings/dto/android-rendering-settings.dto';
 import { parseJsonStringArray } from '../../../common/json-array';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
@@ -88,6 +89,12 @@ export class AndroidApplicationRuntimeDto {
 
   @ApiProperty({ type: String, nullable: true })
   containerId!: string | null;
+
+  @ApiPropertyOptional({
+    type: () => AndroidRenderingSettingsDto,
+    nullable: true,
+  })
+  appliedRendering?: AndroidRenderingSettingsDto | null;
 
   @ApiProperty({ type: String, nullable: true })
   containerArgs!: string | null;
@@ -227,6 +234,14 @@ export class AndroidApplicationResponseDto {
         kind: app.runtimeKind,
         containerName: app.containerName,
         containerId: app.containerId,
+        appliedRendering:
+          app.appliedRendering &&
+          app.appliedRendering.containerId === app.containerId
+            ? {
+                mode: app.appliedRendering.mode,
+                renderDevice: app.appliedRendering.renderDevice,
+              }
+            : null,
         containerArgs: app.containerArgs,
         adbPort: app.adbPort,
         scrcpyTransport: app.scrcpyTransport,

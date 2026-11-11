@@ -66,7 +66,11 @@ export const AppManageRuntimeSettings = ({
           containerArgsMode='editable'
           onContainerArgsChange={value => onChange({ customContainerArgs: value })}
           containerArgsLabel='Container arguments'
-          containerArgsDescription='Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
+          containerArgsDescription={
+            app?.runtimeKind === 'redroid'
+              ? 'Set Android GPU rendering in Platform → Services → Display sessions.'
+              : 'Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
+          }
           containerArgsPlaceholder='sleep infinity'
         />
       </Visible>

@@ -12,7 +12,7 @@ const PlatformDisplaySessionsPageContent = () => (
       <PlatformRouteUnavailable
         requestId={requestId}
         title='Display sessions'
-        description='Inspect the display service and end active viewer sessions.'
+        description='Configure Android rendering, inspect the display service, and manage viewer sessions.'
         section={{ label: 'Platform', href: '/platform' }}
         trail={[{ label: 'Services', href: '/platform/services' }]}
       />

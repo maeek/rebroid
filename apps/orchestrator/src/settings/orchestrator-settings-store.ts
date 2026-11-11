@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import {
+  isDrmRenderDevice,
+  type AndroidRenderingSettings,
+} from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 import { numberInRange } from '../common/number-range';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
@@ -29,6 +33,7 @@ export interface PersistedFeatureFlags {
 }
 
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
+  androidRendering: AndroidRenderingSettings;
   aiProviders: AutomationAiProvider[];
   featureFlags: PersistedFeatureFlags;
   dockerOperationLimits?: DockerOperationLimits;
@@ -108,6 +113,7 @@ export class OrchestratorSettingsStore {
 
   defaults(): StoredOrchestratorSettings {
     return {
+      androidRendering: { mode: 'software', renderDevice: null },
       defaultContainerImage: this.config.getOrThrow<string>(
         'app.container.image',
       ),
@@ -129,7 +135,17 @@ export class OrchestratorSettingsStore {
     value: Partial<StoredOrchestratorSettings>,
   ): StoredOrchestratorSettings {
     const defaults = this.defaults();
+    const renderDevice = isDrmRenderDevice(value.androidRendering?.renderDevice)
+      ? value.androidRendering.renderDevice
+      : null;
     return {
+      androidRendering: {
+        mode:
+          value.androidRendering?.mode === 'host' && renderDevice
+            ? 'host'
+            : 'software',
+        renderDevice,
+      },
       defaultContainerImage:
         value.defaultContainerImage?.trim() || defaults.defaultContainerImage,
       dockerImageRegistry: this.normalizeRegistry(
@@ -164,6 +180,8 @@ export class OrchestratorSettingsStore {
     settings: StoredOrchestratorSettings,
   ): OrchestratorSettingsDto {
     const publicSettings = { ...settings };
+    delete (publicSettings as Partial<StoredOrchestratorSettings>)
+      .androidRendering;
     delete (publicSettings as Partial<StoredOrchestratorSettings>).aiProviders;
     delete (publicSettings as Partial<StoredOrchestratorSettings>).featureFlags;
     delete (publicSettings as Partial<StoredOrchestratorSettings>)

@@ -46,6 +46,7 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
           },
           { name: 'containerName', type: 'varchar', isNullable: false },
           { name: 'containerId', type: 'text', isNullable: true },
+          { name: 'appliedRendering', type: 'text', isNullable: true },
           { name: 'networkName', type: 'varchar', isNullable: false },
           { name: 'volumeName', type: 'varchar', isNullable: false },
           {

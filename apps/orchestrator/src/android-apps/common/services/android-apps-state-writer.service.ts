@@ -15,6 +15,7 @@ export type AndroidApplicationLifecyclePatch = Partial<
     | 'lastStoppedAt'
     | 'removeDataOnRemoval'
     | 'containerId'
+    | 'appliedRendering'
     | 'recreateContainerOnNextStart'
   >
 >;

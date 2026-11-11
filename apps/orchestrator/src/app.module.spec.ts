@@ -134,6 +134,39 @@ describe('AppModule', () => {
     expect(response.headers['cache-control']).toBe('no-store');
 
     const headers = { 'x-orchestrator-secret': 'test-secret' };
+    const renderingUrl = '/api/v1/settings/android-rendering';
+    const rendering = await app.inject({
+      method: 'GET',
+      url: renderingUrl,
+      headers,
+    });
+    expect(rendering.statusCode).toBe(200);
+    expect(rendering.json()).toEqual({ mode: 'software', renderDevice: null });
+    for (const renderDevice of [
+      null,
+      '/dev/dri/../sda',
+      '/dev/dri/renderD128\n',
+    ]) {
+      const invalid = await app.inject({
+        method: 'PUT',
+        url: renderingUrl,
+        headers,
+        payload: { mode: 'host', renderDevice },
+      });
+      expect(invalid.statusCode).toBe(400);
+    }
+    const saved = await app.inject({
+      method: 'PUT',
+      url: renderingUrl,
+      headers,
+      payload: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toEqual({
+      mode: 'host',
+      renderDevice: '/dev/dri/renderD128',
+    });
+
     const aiCatalog = await app.inject({
       method: 'GET',
       url: '/api/v1/settings/ai-model-catalog',

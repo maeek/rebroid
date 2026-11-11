@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ApplicationContainerSpec } from '../../docker.types';
 import { parseCommandLine } from '@rebroid/android-application-core/redroid-runtime';
@@ -7,23 +7,11 @@ import { DockerContainerLifecycleService } from './docker-container-lifecycle.se
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
 import type { DockerContainerProvisioningPort } from '../../contracts/docker-container-provisioning.port';
 
-const deviceMappingFromString = (value: string) => {
-  const [hostPath, containerPath = hostPath, permissions = 'rwm'] = value
-    .split(':')
-    .map((part) => part.trim());
-
-  if (!hostPath || !containerPath) {
-    return null;
-  }
-
-  return {
-    PathOnHost: hostPath,
-    PathInContainer: containerPath,
-    CgroupPermissions: permissions || 'rwm',
-  };
-};
-
-type DeviceMapping = NonNullable<ReturnType<typeof deviceMappingFromString>>;
+import {
+  dockerDeviceMappingsMatch,
+  parseDockerDeviceMappings,
+  type DockerDeviceMapping,
+} from '../../contracts/docker-device-mapping';
 
 @Injectable()
 export class DockerContainerProvisioningService implements DockerContainerProvisioningPort {
@@ -41,7 +29,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
       spec.applicationId,
     );
     if (existing) {
-      return this.engine.docker.getContainer(existing.Id);
+      return this.reuseExistingContainer(existing.Id, spec);
     }
 
     const hostConfig: import('dockerode').HostConfig = {
@@ -83,8 +71,8 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
       hostConfig.SecurityOpt = spec.securityOptions;
     }
 
-    const requiredDevices = this.deviceMappings(spec.devices);
-    const optionalDevices = this.deviceMappings(spec.optionalDevices);
+    const requiredDevices = parseDockerDeviceMappings(spec.devices);
+    const optionalDevices = parseDockerDeviceMappings(spec.optionalDevices);
     this.applyDevices(hostConfig, requiredDevices, optionalDevices);
 
     if (spec.cgroupnsMode?.trim()) {
@@ -115,7 +103,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
         spec.applicationId,
       );
       if (duplicate) {
-        return this.engine.docker.getContainer(duplicate.Id);
+        return this.reuseExistingContainer(duplicate.Id, spec);
       }
 
       throw error;
@@ -131,7 +119,9 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
         this.engine.docker.createContainer({
           Image: spec.image,
           name: spec.containerName,
-          Cmd: parseCommandLine(spec.containerArgs),
+          Cmd: Array.isArray(spec.containerArgs)
+            ? spec.containerArgs
+            : parseCommandLine(spec.containerArgs),
           Env: withHostTimezoneEnv([
             `ADB_TCP_PORT=${spec.adbPort}`,
             `ANDROID_ADB_SERVER_PORT=${spec.adbPort}`,
@@ -152,16 +142,41 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
     );
   }
 
-  private deviceMappings(devices: string[] | undefined) {
-    return (devices ?? [])
-      .map(deviceMappingFromString)
-      .filter((device): device is DeviceMapping => Boolean(device));
+  private async reuseExistingContainer(
+    containerId: string,
+    spec: ApplicationContainerSpec,
+  ) {
+    if (spec.requireMatchingConfiguration) {
+      const inspect = await this.lifecycle.inspectContainer(containerId);
+      const command = inspect.Config.Cmd ?? [];
+      const expected = Array.isArray(spec.containerArgs)
+        ? spec.containerArgs
+        : (parseCommandLine(spec.containerArgs) ?? []);
+      const cgroupnsMode = (inspect.HostConfig as { CgroupnsMode?: string })
+        .CgroupnsMode;
+      if (
+        command.length !== expected.length ||
+        !expected.every((arg, index) => arg === command[index]) ||
+        (spec.cgroupnsMode?.trim() &&
+          cgroupnsMode !== spec.cgroupnsMode.trim()) ||
+        !dockerDeviceMappingsMatch(
+          (inspect.HostConfig.Devices ?? []) as DockerDeviceMapping[],
+          parseDockerDeviceMappings(spec.devices),
+          parseDockerDeviceMappings(spec.optionalDevices),
+        )
+      ) {
+        throw new ConflictException(
+          'An existing runtime container has a different configuration. Recreate the stopped application runtime and try again.',
+        );
+      }
+    }
+    return this.engine.docker.getContainer(containerId);
   }
 
   private applyDevices(
     hostConfig: import('dockerode').HostConfig,
-    requiredDevices: DeviceMapping[],
-    optionalDevices: DeviceMapping[],
+    requiredDevices: DockerDeviceMapping[],
+    optionalDevices: DockerDeviceMapping[],
   ) {
     const devices = [...requiredDevices, ...optionalDevices];
     if (devices.length) {
@@ -174,7 +189,7 @@ export class DockerContainerProvisioningService implements DockerContainerProvis
 
   private isMissingOptionalDeviceError(
     error: unknown,
-    optionalDevices: DeviceMapping[],
+    optionalDevices: DockerDeviceMapping[],
   ) {
     const message = this.engine.errorMessage(error).toLowerCase();
     return optionalDevices.some(

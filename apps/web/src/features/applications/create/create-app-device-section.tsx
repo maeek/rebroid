@@ -93,11 +93,12 @@ export const CreateAppDeviceSection = ({
                   <CodeViewer
                     title='Effective arguments'
                     formatLabel='Shell'
-                    description='ReDroid defaults, including the selected display profile.'
+                    description='ReDroid arguments before applying the platform rendering setting.'
                     output={formatRuntimeArguments(redroidDefaultArgs)}
                   />
                   <p className='text-xs text-foreground-muted'>
-                    The managed ADB endpoint uses TCP port 5555. Additional values override matching keys.
+                    The managed ADB endpoint uses TCP port 5555. Android GPU rendering is set in Platform → Services →
+                    Display sessions. Other additional values override matching keys.
                   </p>
                 </div>
               </Visible>

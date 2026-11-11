@@ -4,6 +4,7 @@ import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 
 const createSettings = (): StoredOrchestratorSettings => ({
+  androidRendering: { mode: 'software', renderDevice: null },
   defaultContainerImage: 'redroid/redroid:latest',
   dockerImageRegistry: null,
   defaultScrcpyTransport: viewerTransport.WebRTC,

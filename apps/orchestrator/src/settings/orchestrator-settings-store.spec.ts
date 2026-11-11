@@ -55,7 +55,16 @@ describe('OrchestratorSettingsStore', () => {
   });
 
   it('serializes concurrent read-modify-write updates without losing fields', async () => {
+    const settings = new SettingsService(store, {} as never);
+    await expect(settings.readAndroidRendering()).resolves.toEqual({
+      mode: 'software',
+      renderDevice: null,
+    });
     await Promise.all([
+      settings.updateAndroidRendering({
+        mode: 'host',
+        renderDevice: '/dev/dri/renderD128',
+      }),
       store.updateSettings((current) => ({
         ...current,
         defaultContainerImage: 'rebroid:first',
@@ -70,6 +79,10 @@ describe('OrchestratorSettingsStore', () => {
     expect(stored.defaultContainerImage).toBe('rebroid:first');
     expect(stored.maxApkUploadSizeMb).toBe(128);
     expect(stored.featureFlags.revision).toBe(0);
+    await expect(settings.readAndroidRendering()).resolves.toEqual({
+      mode: 'host',
+      renderDevice: '/dev/dri/renderD128',
+    });
   });
 
   it('restores runtime defaults and connections while preserving unrelated settings', async () => {
@@ -77,6 +90,7 @@ describe('OrchestratorSettingsStore', () => {
     const defaults = store.normalizeSettings(store.defaults());
     const configured = await store.writeSettings({
       ...defaults,
+      androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
       defaultContainerImage: 'rebroid:custom',
       dockerImageRegistry: 'registry.test',
       defaultInactivityTimeoutSeconds: 300,
@@ -120,6 +134,7 @@ describe('OrchestratorSettingsStore', () => {
     );
     await expect(store.getStoredSettings()).resolves.toEqual({
       ...defaults,
+      androidRendering: configured.androidRendering,
       aiProviders: configured.aiProviders,
       featureFlags: configured.featureFlags,
       dockerOperationLimits: configured.dockerOperationLimits,

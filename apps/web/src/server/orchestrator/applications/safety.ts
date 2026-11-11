@@ -59,6 +59,7 @@ export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, conte
       ...app.runtime,
       containerName: 'Managed container',
       containerId: null,
+      appliedRendering: null,
       adbPort: 0
     },
     storage: {

@@ -113,6 +113,11 @@ describe('Android application power commands', () => {
         transitions,
         tracker,
         logs as never,
+        {
+          resolve: async () => ({ rendering: null }),
+          removeIfConfigurationChanged: async () => false,
+          explainDeviceError: (error: unknown) => error,
+        } as never,
       );
       const apk = { launchInstalledApk: jest.fn() };
       const startWorker = new AndroidAppsStartLifecycleService(
@@ -142,7 +147,6 @@ describe('Android application power commands', () => {
         {
           prepareRuntimeDefaults: jest.fn(),
           prepareFailedContainerForRestart: jest.fn(),
-          prepareContainerForRuntimeHostConfig: jest.fn(),
           prepareContainerForRecreationOnStart: jest.fn(),
         } as never,
         startWorker,

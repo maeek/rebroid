@@ -6,6 +6,7 @@ import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { OrchestratorSettingsDto } from './dto/orchestrator-settings.dto';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import { UpdateOrchestratorSettingsDto } from './dto/update-orchestrator-settings.dto';
+import type { AndroidRenderingSettingsDto } from './dto/android-rendering-settings.dto';
 import type {
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
@@ -31,6 +32,18 @@ export class SettingsService {
 
   async getDockerOperationLimits() {
     return (await this.store.getStoredSettings()).dockerOperationLimits;
+  }
+
+  async readAndroidRendering() {
+    return (await this.store.getStoredSettings()).androidRendering;
+  }
+
+  async updateAndroidRendering(androidRendering: AndroidRenderingSettingsDto) {
+    const updated = await this.store.updateSettings((current) => ({
+      ...current,
+      androidRendering,
+    }));
+    return updated.androidRendering;
   }
 
   async updateDockerOperationLimits(limits: DockerOperationLimits) {

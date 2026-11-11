@@ -33,6 +33,7 @@ class SettingsStoreStub {
 }
 
 const settings = (): StoredOrchestratorSettings => ({
+  androidRendering: { mode: 'software', renderDevice: null },
   defaultContainerImage: 'rebroid:test',
   dockerImageRegistry: null,
   defaultScrcpyTransport: 'webrtc',

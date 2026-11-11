@@ -92,7 +92,6 @@ export class AndroidAppsPowerService {
     }
     await this.runtimePreparation.prepareRuntimeDefaults(app);
     await this.runtimePreparation.prepareFailedContainerForRestart(app);
-    await this.runtimePreparation.prepareContainerForRuntimeHostConfig(app);
     await this.runtimePreparation.prepareContainerForRecreationOnStart(app);
 
     const patch = {

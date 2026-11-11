@@ -5703,6 +5703,56 @@
           "automations"
         ]
       }
+    },
+    "/api/v1/settings/android-rendering": {
+      "get": {
+        "operationId": "SettingsController_readAndroidRendering",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "SettingsController_updateAndroidRendering",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
     }
   },
   "info": {
@@ -7714,6 +7764,15 @@
           "containerId": {
             "type": "string",
             "nullable": true
+          },
+          "appliedRendering": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+              }
+            ]
           },
           "containerArgs": {
             "type": "string",
@@ -11799,6 +11858,27 @@
           "items",
           "total",
           "pageSize"
+        ]
+      },
+      "AndroidRenderingSettingsDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "software",
+              "host"
+            ]
+          },
+          "renderDevice": {
+            "type": "string",
+            "nullable": true,
+            "example": "/dev/dri/renderD128"
+          }
+        },
+        "required": [
+          "mode",
+          "renderDevice"
         ]
       }
     }

@@ -30,10 +30,7 @@ import {
   parseSavedProfiles,
   rememberSavedProfile,
 } from '../../common/utils/android-apps-profile-history.utils';
-import {
-  applyRedroidDefaultContainerArgs,
-  isRedroidRuntime,
-} from '@rebroid/android-application-core/redroid-runtime';
+import { applyRedroidDefaultContainerArgs } from '@rebroid/android-application-core/redroid-runtime';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
@@ -277,102 +274,6 @@ export class AndroidAppsRuntimePreparationService {
     await this.writer.save(app);
   }
 
-  async prepareContainerForRuntimeHostConfig(app: AndroidApplication) {
-    if (
-      !app.containerId ||
-      !isRedroidRuntime(app.containerImage, app.runtimeKind)
-    ) {
-      return;
-    }
-
-    const desiredCgroupnsMode = this.normalizedHostConfigValue(
-      this.config.get<string>('app.redroid.cgroupnsMode'),
-    );
-    const desiredDevices = this.normalizedDeviceMappings(
-      this.config.getOrThrow<string[]>('app.redroid.devices'),
-    );
-    if (!desiredCgroupnsMode && desiredDevices.length === 0) {
-      return;
-    }
-
-    let inspect;
-    try {
-      inspect = await this.lifecycle.inspectContainer(app.containerId);
-    } catch (error) {
-      if (
-        !(await this.lifecycle.getContainerRuntimeState(app.containerId)).exists
-      ) {
-        return;
-      }
-      throw error;
-    }
-    const hostConfig = inspect.HostConfig as
-      (Record<string, unknown> & { CgroupnsMode?: unknown }) | undefined;
-    const currentCgroupnsMode =
-      typeof hostConfig?.CgroupnsMode === 'string'
-        ? this.normalizedHostConfigValue(hostConfig.CgroupnsMode)
-        : null;
-    const currentDevices = Array.isArray(hostConfig?.Devices)
-      ? hostConfig.Devices.filter(
-          (
-            device,
-          ): device is {
-            PathOnHost?: unknown;
-            PathInContainer?: unknown;
-            CgroupPermissions?: unknown;
-          } => Boolean(device) && typeof device === 'object',
-        )
-          .map((device) =>
-            [
-              typeof device.PathOnHost === 'string' ? device.PathOnHost : '',
-              typeof device.PathInContainer === 'string'
-                ? device.PathInContainer
-                : '',
-              typeof device.CgroupPermissions === 'string'
-                ? device.CgroupPermissions
-                : '',
-            ].join(':'),
-          )
-          .sort()
-      : [];
-
-    if (
-      currentCgroupnsMode === desiredCgroupnsMode &&
-      this.sameStringArray(currentDevices, desiredDevices)
-    ) {
-      return;
-    }
-
-    const runtimeState = await this.lifecycle.getContainerRuntimeState(
-      app.containerId,
-    );
-    if (runtimeState.running) {
-      app.recreateContainerOnNextStart = true;
-      app.statusMessage =
-        'Runtime host configuration changed. Stop and start the app to recreate the managed container.';
-      await this.writer.save(app);
-      return;
-    }
-
-    await this.logs.append(
-      app.id,
-      'Recreating container for runtime host config',
-      {
-        containerId: app.containerId,
-        containerName: app.containerName,
-        currentCgroupnsMode,
-        desiredCgroupnsMode,
-        currentDevices,
-        desiredDevices,
-      },
-    );
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.statusMessage =
-      'Runtime host configuration changed. A new container will be created on next start.';
-    await this.writer.save(app);
-  }
-
   async prepareRuntimeDefaults(app: AndroidApplication) {
     const nextContainerArgs = applyRedroidDefaultContainerArgs(
       app.containerImage,
@@ -509,30 +410,5 @@ export class AndroidAppsRuntimePreparationService {
       );
       return false;
     }
-  }
-
-  private normalizedHostConfigValue(value: string | null | undefined) {
-    const trimmed = value?.trim();
-    return trimmed || null;
-  }
-
-  private normalizedDeviceMappings(devices: string[]) {
-    return devices
-      .map((device) => device.trim())
-      .filter(Boolean)
-      .map((device) => {
-        const [hostPath, containerPath = hostPath, permissions = 'rwm'] = device
-          .split(':')
-          .map((part) => part.trim());
-        return [hostPath, containerPath, permissions || 'rwm'].join(':');
-      })
-      .sort();
-  }
-
-  private sameStringArray(left: string[], right: string[]) {
-    return (
-      left.length === right.length &&
-      left.every((value, index) => value === right[index])
-    );
   }
 }

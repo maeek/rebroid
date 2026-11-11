@@ -29,8 +29,12 @@ import {
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsProvisioningAndroidService } from './android-apps-provisioning-android.service';
+import { AndroidAppsRuntimeConfigurationService } from './android-apps-runtime-configuration.service';
 
 type ActivationSource = 'provision' | 'start';
+type RuntimeConfiguration = Awaited<
+  ReturnType<AndroidAppsRuntimeConfigurationService['resolve']>
+>;
 
 @Injectable()
 export class AndroidAppsRuntimeActivationService {
@@ -53,6 +57,7 @@ export class AndroidAppsRuntimeActivationService {
     private readonly transitions: AndroidAppsLifecycleTransitionService,
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly logs: AndroidAppsLogService,
+    private readonly configurations: AndroidAppsRuntimeConfigurationService,
   ) {}
 
   async activate(
@@ -60,10 +65,11 @@ export class AndroidAppsRuntimeActivationService {
     reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
   ) {
+    const configuration = await this.configurations.resolve(app);
     this.logEngineSummary(app.id);
     await this.ensureImageAvailable(app, reservation);
     try {
-      await this.activateContainer(app, reservation, source);
+      await this.activateContainer(app, reservation, source, configuration);
     } catch (error) {
       this.tracker.ensureActive(app.id);
       const containerId = app.containerId;
@@ -76,12 +82,14 @@ export class AndroidAppsRuntimeActivationService {
 
       const updated = await this.transitions.updateProgress(reservation, {
         containerId: null,
+        appliedRendering: null,
         statusMessage:
           'The runtime container disappeared. Creating a replacement.',
       });
       if (!updated) throw error;
 
       app.containerId = null;
+      app.appliedRendering = null;
       await this.logs.append(
         app.id,
         'Retrying after runtime container disappeared',
@@ -89,7 +97,7 @@ export class AndroidAppsRuntimeActivationService {
           containerId,
         },
       );
-      await this.activateContainer(app, reservation, source);
+      await this.activateContainer(app, reservation, source, configuration);
     }
   }
 
@@ -97,10 +105,16 @@ export class AndroidAppsRuntimeActivationService {
     app: AndroidApplication,
     reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
+    configuration: RuntimeConfiguration,
   ) {
     this.tracker.ensureActive(app.id);
-    await this.prepareContainer(app, reservation, source);
-    await this.startContainer(app, reservation);
+    await this.prepareContainer(app, reservation, source, configuration);
+    await this.startContainer(app, reservation).catch((error: unknown) => {
+      throw this.configurations.explainDeviceError(
+        error,
+        configuration.rendering?.renderDevice,
+      );
+    });
     await this.prepareAndroid(app, reservation);
   }
 
@@ -160,7 +174,23 @@ export class AndroidAppsRuntimeActivationService {
     app: AndroidApplication,
     reservation: AndroidAppLifecycleReservation,
     source: ActivationSource,
+    configuration: RuntimeConfiguration,
   ) {
+    if (
+      await this.configurations.removeIfConfigurationChanged(app, configuration)
+    ) {
+      app.containerId = null;
+      app.appliedRendering = null;
+      const updated = await this.transitions.updateProgress(reservation, {
+        containerId: null,
+        appliedRendering: null,
+        statusMessage:
+          'Runtime configuration changed. Creating a replacement container.',
+      });
+      if (!updated)
+        throw new Error('Application activation is no longer reserved.');
+      this.tracker.ensureActive(app.id);
+    }
     if (app.containerId) {
       await this.transitions.updateProgress(reservation, {
         lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
@@ -181,30 +211,44 @@ export class AndroidAppsRuntimeActivationService {
       statusMessage: `Creating application container ${app.containerName}.`,
     });
 
-    const container = await this.containers.createApplicationContainer({
-      applicationId: app.id,
-      containerName: app.containerName,
-      networkName: app.networkName,
-      volumeName: app.volumeName,
-      image: app.containerImage,
-      dataMountPath: this.redroidConfig.dataMountPath,
-      adbPort: app.adbPort,
-      privileged: this.redroidConfig.privileged,
-      persistentData: app.profileMode === ApplicationProfileMode.Persistent,
-      memoryLimitMb: app.memoryLimitMb,
-      cpuLimitCpus: app.cpuLimitCpus,
-      containerArgs: app.containerArgs,
-      securityOptions: this.redroidConfig.securityOptions,
-      cgroupnsMode: this.redroidConfig.cgroupnsMode,
-      devices: this.redroidConfig.devices,
-      optionalDevices: this.redroidConfig.optionalDevices,
-    });
+    const container = await this.containers
+      .createApplicationContainer({
+        applicationId: app.id,
+        containerName: app.containerName,
+        networkName: app.networkName,
+        volumeName: app.volumeName,
+        image: app.containerImage,
+        dataMountPath: this.redroidConfig.dataMountPath,
+        adbPort: app.adbPort,
+        privileged: this.redroidConfig.privileged,
+        persistentData: app.profileMode === ApplicationProfileMode.Persistent,
+        memoryLimitMb: app.memoryLimitMb,
+        cpuLimitCpus: app.cpuLimitCpus,
+        containerArgs: configuration.containerArgs,
+        securityOptions: this.redroidConfig.securityOptions,
+        cgroupnsMode: this.redroidConfig.cgroupnsMode,
+        devices: configuration.devices,
+        optionalDevices: configuration.optionalDevices,
+        requireMatchingConfiguration: configuration.rendering !== null,
+      })
+      .catch((error: unknown) => {
+        throw this.configurations.explainDeviceError(
+          error,
+          configuration.rendering?.renderDevice,
+        );
+      });
     app.containerId = container.id;
+    app.appliedRendering = configuration.rendering
+      ? { containerId: container.id, ...configuration.rendering }
+      : null;
     app.recreateContainerOnNextStart = false;
-    await this.transitions.updateProgress(reservation, {
+    const recorded = await this.transitions.updateProgress(reservation, {
       containerId: container.id,
+      appliedRendering: app.appliedRendering,
       recreateContainerOnNextStart: false,
     });
+    if (!recorded)
+      throw new Error('Application activation is no longer reserved.');
     await this.logs.append(
       app.id,
       source === 'provision'

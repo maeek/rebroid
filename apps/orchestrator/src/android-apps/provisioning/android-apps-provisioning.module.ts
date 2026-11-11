@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ApkModule } from '../../apk/apk.module';
 import { AppConfigModule } from '../../config/app-config.module';
 import { DockerModule } from '../../docker/docker.module';
+import { SettingsModule } from '../../settings/settings.module';
+import { NetworkPolicyModule } from '../../network-policy/network-policy.module';
+import { AndroidAppsRuntimeConfigurationService } from './services/android-apps-runtime-configuration.service';
 import { AndroidAppsCommonModule } from '../common/android-apps-common.module';
 import { AndroidAppsRuntimeNetworkModule } from '../network/android-apps-runtime-network.module';
 import { AndroidAppsViewerModule } from '../viewer/android-apps-viewer.module';
@@ -16,6 +19,8 @@ import { AndroidAppsRuntimeActivationService } from './services/android-apps-run
     ApkModule,
     AppConfigModule,
     DockerModule,
+    SettingsModule,
+    NetworkPolicyModule,
     AndroidAppsCommonModule,
     AndroidAppsRuntimeNetworkModule,
     AndroidAppsViewerModule,
@@ -26,6 +31,7 @@ import { AndroidAppsRuntimeActivationService } from './services/android-apps-run
     AndroidAppsProvisioningApkService,
     AndroidAppsProvisioningService,
     AndroidAppsRuntimeActivationService,
+    AndroidAppsRuntimeConfigurationService,
   ],
   exports: [
     AndroidAppsProvisioningAndroidService,
