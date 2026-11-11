@@ -100,8 +100,9 @@ contracts. Never edit generated `schema.ts` files by hand. Use `pnpm openapi:che
 `pnpm boundaries` to verify contracts and imports.
 
 Scrcpy startup/cleanup changes require the [manual Redroid matrix](docs/display-streaming.md#manual-verification).
-Model tests use recorded fixtures, not live AI providers. Schema changes follow the
-[state reset procedures](docs/operations.md#stored-state); do not create a compatibility layer.
+Model tests use recorded fixtures. Keep applied orchestrator migrations stable and add a forward
+migration when changing a supported schema. Web schema changes and incompatible stored state follow
+the [state reset procedures](docs/operations.md#stored-state).
 
 ## Dependency updates
 

@@ -1,5 +1,6 @@
 import { DataSource } from 'typeorm';
 import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
+import { AutomationRunStepResults1800000004000 } from '../../database/migrations/1800000004000-automation-run-step-results';
 import { ApplicationWorkflowHistory1800000003000 } from '../../database/migrations/1800000003000-application-workflow-history';
 import { Automation } from '../entities/automation.entity';
 import {
@@ -17,6 +18,7 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
     migrations: [
       InitializeSqliteSchema1800000000000,
       ApplicationWorkflowHistory1800000003000,
+      AutomationRunStepResults1800000004000,
     ],
     migrationsRun: true,
   }).initialize();

@@ -97,6 +97,7 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - Track web metadata cleanup before requesting app deletion. Confirm upstream absence before removing metadata, and retry pending cleanup from durable web state after restart.
 - Create app preserves the draft on failure and only navigates after receiving a valid app ID. Use the orchestrator's structured validation fields for inline corrections and stable service error codes for form-level notices with the request ID. Keep raw upstream error details server-side. Incompatible Server Action responses need a new action name so already-open pages cannot interpret them using the old contract.
 - Web persistence has no migration or legacy compatibility path. Schema changes assume a clean deployment and use `pnpm reset:all-state -- --execute`; preserve external environment files and bind-mounted secrets.
+- Keep applied orchestrator migrations stable. Add a forward migration when a schema change can preserve existing data.
 - The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
 - `deploy/edge` nginx owns public HTTPS ingress. Keep Next.js internal and route
   display viewer/media paths directly to the display sidecar; do not

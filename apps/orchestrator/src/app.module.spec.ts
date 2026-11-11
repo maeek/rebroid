@@ -7,6 +7,11 @@ import { AppModule } from './app.module';
 import { DataSource } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { AutomationRunEventsRepository } from './automations/persistence/automation-run-events.repository';
+import { AutomationRunsRepository } from './automations/persistence/automation-runs.repository';
+import { InitializeSqliteSchema1800000000000 } from './database/migrations/1800000000000-initialize-sqlite-schema';
+import { WorkflowRunSummaries1800000001000 } from './database/migrations/1800000001000-workflow-run-summaries';
+import { NetworkPolicyRevision1800000002000 } from './database/migrations/1800000002000-network-policy-revision';
+import { ApplicationWorkflowHistory1800000003000 } from './database/migrations/1800000003000-application-workflow-history';
 import {
   configureFastifyPlatform,
   createFastifyAdapter,
@@ -55,6 +60,56 @@ describe('AppModule', () => {
       }
     }
     await rm(temporaryDirectory, { recursive: true, force: true });
+  });
+
+  it('upgrades stored workflow results before recovering an interrupted run', async () => {
+    const results = [{ stepId: 'first' }, { stepId: 'second' }];
+    const legacy = await new DataSource({
+      type: 'better-sqlite3',
+      database: join(temporaryDirectory, 'orchestrator.sqlite'),
+      migrations: [
+        InitializeSqliteSchema1800000000000,
+        WorkflowRunSummaries1800000001000,
+        NetworkPolicyRevision1800000002000,
+        ApplicationWorkflowHistory1800000003000,
+      ],
+      migrationsRun: true,
+    }).initialize();
+    try {
+      await legacy.query(
+        `INSERT INTO automation_runs
+           (id, automationId, ownerUserId, targetApplicationId, trigger, status,
+            stepResultsJson, lastEventSequence)
+         VALUES ('run', 'workflow', 'owner', 'app', 'manual', 'running', ?, 1)`,
+        [JSON.stringify(results)],
+      );
+      await legacy.query(
+        `INSERT INTO automation_run_events
+           (id, runId, ownerUserId, sequence, type, message)
+         VALUES ('started', 'run', 'owner', 1, 'run.started', 'Started')`,
+      );
+    } finally {
+      await legacy.destroy();
+    }
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(
+      createFastifyAdapter(),
+    );
+    await configureFastifyPlatform(app);
+    await app.init();
+
+    const runs = app.get(AutomationRunsRepository);
+    const events = app.get(AutomationRunEventsRepository);
+    const recovered = await runs.findByOwnerAndId('owner', 'run');
+    expect(recovered).toMatchObject({ status: 'failed', lastEventSequence: 2 });
+    expect(JSON.parse(recovered?.stepResultsJson ?? 'null')).toEqual(results);
+    await expect(events.listForRun('owner', 'run')).resolves.toMatchObject([
+      { sequence: 1, type: 'run.started' },
+      { sequence: 2, type: 'run.failed' },
+    ]);
   });
 
   it('boots with Fastify and initializes the SQLite schema', async () => {

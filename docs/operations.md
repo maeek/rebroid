@@ -60,9 +60,10 @@ df -i /var/lib/docker
 
 ## Stored state
 
-Pre-release databases do not have an in-place schema upgrade path. Reset only the state affected
-by a schema change. The commands below delete data when `--execute` is supplied; preview the
-reported paths and resources first.
+The orchestrator applies its registered SQLite migrations at startup. The workflow step results
+migration preserves existing results in their original order. Web schema changes and unsupported
+database layouts still require a state reset. The commands below delete data when `--execute` is
+supplied. Preview the reported paths and resources first.
 
 ### Orchestrator reset
 

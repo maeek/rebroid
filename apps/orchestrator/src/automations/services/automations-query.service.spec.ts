@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { WorkflowRunSummaries1800000001000 } from '../../database/migrations/1800000001000-workflow-run-summaries';
 import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
+import { AutomationRunStepResults1800000004000 } from '../../database/migrations/1800000004000-automation-run-step-results';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import {
   Automation,
@@ -35,6 +36,7 @@ describe('workflow run summaries', () => {
       migrations: [
         InitializeSqliteSchema1800000000000,
         WorkflowRunSummaries1800000001000,
+        AutomationRunStepResults1800000004000,
       ],
       migrationsRun: true,
     }).initialize();

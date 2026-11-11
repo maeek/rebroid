@@ -1,4 +1,5 @@
 import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
+import { AutomationRunStepResults1800000004000 } from '../../database/migrations/1800000004000-automation-run-step-results';
 import { DataSource } from 'typeorm';
 import { MetricsService } from '../../metrics/metrics.service';
 import {
@@ -75,7 +76,10 @@ const createRunPersistence = async () => {
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [AutomationRun, AutomationRunEvent],
-    migrations: [InitializeSqliteSchema1800000000000],
+    migrations: [
+      InitializeSqliteSchema1800000000000,
+      AutomationRunStepResults1800000004000,
+    ],
     migrationsRun: true,
   }).initialize();
   const queue = new AutomationPersistenceQueue();

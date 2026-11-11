@@ -335,6 +335,12 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'startedAt', type: 'datetime', isNullable: true },
           { name: 'completedAt', type: 'datetime', isNullable: true },
+          {
+            name: 'stepResultsJson',
+            type: 'text',
+            isNullable: false,
+            default: "'[]'",
+          },
           { name: 'error', type: 'text', isNullable: true },
           {
             name: 'lastEventSequence',
@@ -356,15 +362,6 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
         ],
       }),
-    );
-
-    await queryRunner.query(
-      `CREATE TABLE automation_run_step_results (
-         runId varchar NOT NULL REFERENCES automation_runs(id) ON DELETE CASCADE,
-         sequence integer NOT NULL,
-         resultJson text NOT NULL,
-         PRIMARY KEY (runId, sequence)
-       )`,
     );
 
     await queryRunner.createTable(
@@ -578,10 +575,6 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
 
     if (await queryRunner.hasTable('automation_triggers')) {
       await queryRunner.dropTable('automation_triggers');
-    }
-
-    if (await queryRunner.hasTable('automation_run_step_results')) {
-      await queryRunner.dropTable('automation_run_step_results');
     }
 
     if (await queryRunner.hasTable('automation_runs')) {
