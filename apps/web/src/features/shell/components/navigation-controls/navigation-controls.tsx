@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { NavigationAccount } from './account'
 import { NavigationNotifications } from './notifications'
+import { OrchestratorStatus } from './orchestrator-status'
 import { navigationPopupPositions } from './popup-position'
 import type { ShellUser } from '../shell-user'
 
@@ -22,13 +23,6 @@ export const NavigationControls = ({
       popupPosition={popupPosition}
     />
   )
-  const notifications = (
-    <NavigationNotifications
-      popupPosition={popupPosition}
-      polling={polling}
-    />
-  )
-
   return (
     <div
       role='group'
@@ -37,11 +31,22 @@ export const NavigationControls = ({
         'flex shrink-0 items-center gap-2',
         inHeader ? 'sm:gap-4' : 'py-3',
         placement === 'sidebar' && 'justify-between px-3',
-        compact && 'w-16 flex-col-reverse px-2'
+        compact && 'w-16 flex-col px-2'
       )}
     >
-      {inHeader ? notifications : account}
-      {inHeader ? account : notifications}
+      {placement === 'sidebar' ? account : null}
+      <div className={cn('flex items-center gap-1', compact && 'flex-col gap-2')}>
+        <OrchestratorStatus
+          compact={compact}
+          popupPosition={popupPosition}
+          polling={polling}
+        />
+        <NavigationNotifications
+          popupPosition={popupPosition}
+          polling={polling}
+        />
+      </div>
+      {placement !== 'sidebar' ? account : null}
     </div>
   )
 }

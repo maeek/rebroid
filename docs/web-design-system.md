@@ -62,12 +62,13 @@ The protected layout owns sidebar offset, `main`, width, and outer gutters. Stan
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
 The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
-brand, service health dot, and collapse control above the scrollable links. Keep the account and notifications
-at the bottom. The health dot opens service details on hover, click, or tap. Animate the desktop sidebar width
-and content inset together, respecting reduced motion. The collapsed sidebar is a 64 px icon rail. Footer popups open beside the rail and align
+brand and collapse control above the scrollable links. Keep the account, service health, and notifications
+at the bottom. Place a compact health chip next to the bell. The status control opens service details on hover, click, or tap.
+Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
+is a 64 px icon rail with a status dot above the bell. Footer popups open beside the rail and align
 with the bottom edge of their trigger. In the expanded sidebar they open upward. The account Theme submenu uses
 the same floating surface and opens toward the center of the viewport from the mobile account menu.
-On mobile, the top bar contains the brand with its health dot, navigation drawer trigger, account, and notifications.
+On mobile, the top bar contains the brand and navigation drawer trigger, with the health chip beside the bell in the account controls.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
 In the icon rail, they open labeled flyouts with their destinations and available shortcuts.

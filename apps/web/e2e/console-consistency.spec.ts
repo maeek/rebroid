@@ -233,27 +233,25 @@ test('sidebar footer popups clear the rail and open below the mobile header cont
   }
 })
 
-test('the health dot opens service details beside the brand on desktop and mobile', async ({ page }) => {
+test('the health chip sits next to notifications and becomes a dot in the rail', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
-  const status = sidebar.getByRole('button', { name: /^Service status:/ })
-  const brand = sidebar.getByRole('link', { name: 'Rebroid', exact: true })
+  const footer = sidebar.getByRole('group', { name: 'Navigation controls' })
+  const status = footer.getByRole('button', { name: /^Service status:/ })
+  const bell = footer.getByRole('button', { name: 'Notifications' })
   const details = page.getByRole('dialog', { name: 'Service status' })
-  const brandBox = (await brand.boundingBox())!
+  await expect(status).toHaveText('Checking')
   const statusBox = (await status.boundingBox())!
-  expect(statusBox.x).toBeGreaterThanOrEqual(brandBox.x + brandBox.width - 1)
-  expect(Math.abs(statusBox.y + statusBox.height / 2 - brandBox.y - brandBox.height / 2)).toBeLessThan(1)
-  await expect(
-    sidebar.getByRole('group', { name: 'Navigation controls' }).getByRole('button', {
-      name: /^Service status:/
-    })
-  ).toHaveCount(0)
+  const bellBox = (await bell.boundingBox())!
+  expect(statusBox.y + statusBox.height / 2).toBe(bellBox.y + bellBox.height / 2)
+  expect(bellBox.x - (statusBox.x + statusBox.width)).toBe(4)
 
   const finePointer = await page.evaluate(() => matchMedia('(pointer: fine)').matches)
   if (finePointer) {
     await status.hover()
-    await expect(details).toHaveAttribute('data-side', 'bottom')
+    await expect(status.getByText('Checking')).toHaveCSS('text-decoration-line', 'none')
+    await expect(details).toHaveAttribute('data-side', 'top')
     await details.getByRole('link', { name: /^Orchestrator/ }).hover()
     await expect(details).toBeVisible()
     await page.mouse.move(650, 10)
@@ -262,6 +260,12 @@ test('the health dot opens service details beside the brand on desktop and mobil
 
   await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
   await expect(sidebar).toHaveCSS('width', '64px')
+  await expect(status).toHaveText('')
+  await expect(status).toHaveAccessibleName('Service status: Checking')
+  const railStatus = (await status.boundingBox())!
+  const railBell = (await bell.boundingBox())!
+  expect(railStatus.x + railStatus.width / 2).toBe(railBell.x + railBell.width / 2)
+  expect(railStatus.y + railStatus.height).toBeLessThan(railBell.y)
   await status.press('Enter')
   await expect(details).toHaveAttribute('data-side', 'right')
   await expect(details.getByRole('link', { name: /^Docker/ })).toBeVisible()
@@ -270,7 +274,14 @@ test('the health dot opens service details beside the brand on desktop and mobil
   await expect(status).toBeFocused()
 
   await page.setViewportSize({ width: 320, height: 640 })
-  const mobileStatus = page.getByRole('banner').getByRole('button', { name: /^Service status:/ })
+  const mobileControls = page.getByRole('banner').getByRole('group', { name: 'Navigation controls' })
+  const mobileStatus = mobileControls.getByRole('button', { name: /^Service status:/ })
+  await expect(mobileStatus).toHaveText('Checking')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320)
+  const mobileStatusBox = (await mobileStatus.boundingBox())!
+  const mobileBellBox = (await mobileControls.getByRole('button', { name: 'Notifications' }).boundingBox())!
+  expect(mobileStatusBox.y + mobileStatusBox.height / 2).toBe(mobileBellBox.y + mobileBellBox.height / 2)
+  expect(mobileBellBox.x - (mobileStatusBox.x + mobileStatusBox.width)).toBe(4)
   if (finePointer) {
     await mobileStatus.click()
   } else {

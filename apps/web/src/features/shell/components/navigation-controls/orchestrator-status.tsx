@@ -5,14 +5,23 @@ import { IconChevronRight } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { semanticToneClassNames } from '@/components/ui/surface'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { cn } from '@/lib/utils'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
+import { navigationPopupPositions, type NavigationPopupPosition } from './popup-position'
 import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 
 type HealthState = 'checking' | 'online' | 'degraded' | 'offline'
 type DisplayServiceStatus = ServiceHealth['status'] | 'degraded'
+
+const healthPresentation = {
+  checking: { label: 'Checking', tone: 'neutral', dot: 'bg-foreground-muted/60' },
+  online: { label: 'Healthy', tone: 'success', dot: 'bg-success' },
+  degraded: { label: 'Degraded', tone: 'warning', dot: 'bg-warning' },
+  offline: { label: 'Offline', tone: 'danger', dot: 'bg-danger' }
+} as const
 
 const offlineService = (message: string): ServiceHealth => ({
   ok: false,
@@ -92,27 +101,32 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   }
 ]
 
-export const OrchestratorStatus = ({ inRail = false, polling = true }: { inRail?: boolean; polling?: boolean }) => {
+export const OrchestratorStatus = ({
+  compact = false,
+  popupPosition = navigationPopupPositions.header,
+  polling = true
+}: {
+  compact?: boolean
+  popupPosition?: NavigationPopupPosition
+  polling?: boolean
+}) => {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [state, setState] = useState<HealthState>('checking')
-  const [message, setMessage] = useState('Checking')
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
+  const { label, tone, dot } = healthPresentation[state]
 
   const applyHealth = useCallback((nextHealth: OrchestratorHealth) => {
     setHealth(nextHealth)
     if (nextHealth.ok) {
       setState('online')
-      setMessage('Online')
     } else {
       setState(nextHealth.services.orchestrator.ok ? 'degraded' : 'offline')
-      setMessage(nextHealth.services.orchestrator.ok ? 'Degraded' : 'Offline')
     }
   }, [])
 
   const applyOfflineHealth = useCallback((error: unknown) => {
     const errorMessage = error instanceof Error ? error.message : 'Unavailable'
     setState('offline')
-    setMessage('Offline')
     setHealth({
       ok: false,
       docker: false,
@@ -160,35 +174,41 @@ export const OrchestratorStatus = ({ inRail = false, polling = true }: { inRail?
         <Button
           ref={triggerRef}
           type='button'
-          variant={inRail ? 'bare' : 'ghost'}
-          size='icon-sm'
-          aria-label={`Service status: ${message}`}
-          className={cn(
-            'size-6 rounded-full',
-            inRail && 'absolute -right-1 top-3 focus-visible:ring-inset touch:min-h-0 touch:min-w-0'
-          )}
+          variant={compact ? 'ghost' : 'bare'}
+          size='icon-md'
+          aria-label={`Service status: ${label}`}
+          className={cn('h-10 rounded-full', compact ? 'w-10' : 'w-auto')}
         >
-          <span
-            aria-hidden='true'
-            className={cn('size-2 rounded-full', inRail && 'ring-2 ring-surface-navigation', {
-              'bg-foreground-muted/60': state === 'checking',
-              'bg-success': state === 'online',
-              'bg-warning': state === 'degraded',
-              'bg-danger': state === 'offline'
-            })}
-          />
+          {compact ? (
+            <span
+              aria-hidden='true'
+              className={cn('size-2 rounded-full', dot)}
+            />
+          ) : (
+            <span
+              data-tone={tone}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full border border-surface-border/60 bg-surface-band px-1.5 py-0.5 text-xs text-foreground-muted lg:px-2',
+                semanticToneClassNames[tone]
+              )}
+            >
+              <span
+                aria-hidden='true'
+                className={cn('size-1.5 shrink-0 rounded-full', dot)}
+              />
+              {label}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        side={inRail ? 'right' : 'bottom'}
-        align='start'
-        sideOffset={inRail ? 16 : 8}
+        {...popupPosition}
         aria-label='Service status'
         collisionPadding={16}
         className='scrollbar-thin max-h-(--available-height) w-[min(20rem,calc(100vw-2rem))] overflow-y-auto p-2'
       >
         <div className='space-y-0'>
-          {serviceRows(health, message).map(({ name, href, service, impact }) => (
+          {serviceRows(health, label).map(({ name, href, service, impact }) => (
             <Link
               key={name}
               href={href}

@@ -8,7 +8,6 @@ import { focusRingClassName } from '@/components/ui/surface'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { NavigationControls } from './navigation-controls/navigation-controls'
-import { OrchestratorStatus } from './navigation-controls/orchestrator-status'
 import { NavigationHint } from './navigation-hint'
 import { ProtectedNavigation } from './protected-navigation'
 import type { ShellUser } from './shell-user'
@@ -71,10 +70,6 @@ export default function Sidebar({
       >
         <div className={cn('absolute top-1.5 flex items-center', collapsed ? 'left-3.5' : 'left-[13px]')}>
           {collapsed ? <NavigationHint label='Rebroid'>{home}</NavigationHint> : home}
-          <OrchestratorStatus
-            inRail={collapsed}
-            polling={pollNavigation}
-          />
         </div>
         <Tooltip>
           <TooltipTrigger

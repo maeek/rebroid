@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { NavigationControls } from './navigation-controls/navigation-controls'
-import { OrchestratorStatus } from './navigation-controls/orchestrator-status'
 import { ProtectedNavigation } from './protected-navigation'
 import type { ShellUser } from './shell-user'
 
@@ -75,7 +74,6 @@ export const MobileNavigation = ({
           >
             Rebroid
           </Link>
-          <OrchestratorStatus polling={pollNavigation} />
         </div>
       </div>
       <NavigationControls

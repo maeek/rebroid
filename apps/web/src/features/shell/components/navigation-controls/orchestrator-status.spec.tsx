@@ -12,7 +12,7 @@ vi.mock('@/server/orchestrator/diagnostics/actions', () => ({
 }))
 
 describe('OrchestratorStatus', () => {
-  it('polls the shallow diagnostics summary', async () => {
+  it('polls the shallow diagnostics summary and shows Healthy when services are online', async () => {
     vi.mocked(usePollingQuery).mockReturnValue({
       data: undefined,
       error: undefined,
@@ -37,14 +37,24 @@ describe('OrchestratorStatus', () => {
       }
     })
 
-    render(<OrchestratorStatus />)
+    const { rerender } = render(<OrchestratorStatus />)
 
     expect(usePollingQuery).toHaveBeenCalledWith('orchestrator:health', expect.any(Function), {
       enabled: true,
       intervalMs: 10_000
     })
-    await vi.mocked(usePollingQuery).mock.calls[0]?.[1]()
+    const data = await vi.mocked(usePollingQuery).mock.calls[0]?.[1]()
     expect(getOrchestratorHealthSummaryAction).toHaveBeenCalledTimes(1)
+
+    vi.mocked(usePollingQuery).mockReturnValue({
+      data,
+      error: undefined,
+      isLoading: false,
+      isValidating: false,
+      mutate: vi.fn()
+    })
+    rerender(<OrchestratorStatus />)
+    expect(screen.getByRole('button', { name: 'Service status: Healthy' })).toHaveTextContent('Healthy')
   })
 
   it('links service health rows to their service pages and editors', () => {
