@@ -19,40 +19,43 @@ const statusLabel = (status: AutomationLastStatus) => {
   return 'Failed'
 }
 
-export const WorkflowRunResult = ({
-  status,
-  at,
-  error,
-  workflowId,
-  runId
-}: {
+type WorkflowRunResultProps = {
   status: AutomationLastStatus
   at: string | null
   error: string | null
   workflowId: string
   runId?: string | null
-}) => {
+}
+
+export const WorkflowRunStatus = ({ status }: { status: AutomationLastStatus }) =>
+  status === 'never_run' ? (
+    <span className='text-foreground-muted'>Never run</span>
+  ) : (
+    <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
+  )
+
+export const WorkflowRunDetailsLink = ({ status, error, workflowId, runId }: Omit<WorkflowRunResultProps, 'at'>) => {
+  if (status !== 'failed' || (!runId && !error)) return null
+
   return (
-    <div className='grid justify-items-start gap-1'>
-      {status === 'never_run' ? (
-        <span className='text-foreground-muted'>Never run</span>
-      ) : (
-        <>
-          <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
-          <DateTimeValue
-            value={at}
-            compact
-          />
-        </>
-      )}
-      {status === 'failed' && (runId || error) ? (
-        <ResourceLink
-          href={workflowTraceHref(workflowId, runId)}
-          className='text-sm'
-        >
-          {runId ? 'View failure' : 'Open run history'}
-        </ResourceLink>
-      ) : null}
-    </div>
+    <ResourceLink
+      href={workflowTraceHref(workflowId, runId)}
+      className='text-sm'
+    >
+      {runId ? 'View failure' : 'Open run history'}
+    </ResourceLink>
   )
 }
+
+export const WorkflowRunResult = ({ at, ...run }: WorkflowRunResultProps) => (
+  <div className='grid justify-items-start gap-1'>
+    <WorkflowRunStatus status={run.status} />
+    {run.status !== 'never_run' ? (
+      <DateTimeValue
+        value={at}
+        compact
+      />
+    ) : null}
+    <WorkflowRunDetailsLink {...run} />
+  </div>
+)

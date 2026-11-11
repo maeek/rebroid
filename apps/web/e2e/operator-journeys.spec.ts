@@ -78,6 +78,29 @@ for (const width of [390, 1440]) {
   })
 }
 
+test('workflow rows keep the latest run and failure action on one line', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=workflows')
+
+  const table = page.getByRole('table')
+  const row = table.getByRole('row').filter({ hasText: 'Daily inventory check' })
+  await expect(table.getByRole('columnheader', { name: 'Run status' })).toBeVisible()
+  await expect(row.getByRole('cell', { name: 'Failed', exact: true })).toBeVisible()
+  const failure = row.getByRole('link', { name: 'View failure' })
+  const timestamp = row.locator('time')
+  await expect(failure).toHaveAttribute('href', '/automations/preview-workflow/traces?run=preview-run')
+  const date = (await timestamp.boundingBox())!
+  const link = (await failure.boundingBox())!
+  expect(link.x).toBeGreaterThan(date.x + date.width)
+  expect(Math.abs(link.y + link.height / 2 - date.y - date.height / 2)).toBeLessThan(2)
+  expect((await row.boundingBox())!.height).toBeLessThanOrEqual(62)
+
+  await page.setViewportSize({ width: 390, height: 800 })
+  await failure.scrollIntoViewIfNeeded()
+  await expect(failure).toBeInViewport()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+})
+
 test('failed execution has a full-page trace with a summary panel, steps, and events', async ({ page }) => {
   await page.route('**/api/bff/automations/runs/**/events*', route =>
     route.fulfill({ json: { ok: true, requestId: 'preview', data: { events: [], streamUrl: '' } } })

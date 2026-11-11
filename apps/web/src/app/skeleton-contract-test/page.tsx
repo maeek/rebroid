@@ -140,7 +140,15 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
         initialApplications={[applicationPreview]}
         initialTriggers={[previewTrigger]}
         automationsPage={{
-          items: [previewWorkflow],
+          items: [
+            {
+              ...previewWorkflow,
+              tags: [{ name: 'Inventory', color: '#2563eb' }],
+              lastStatus: 'failed',
+              lastRunAt: '2026-11-07T10:00:00Z',
+              lastRunId: 'preview-run'
+            }
+          ],
           total: 1,
           page: 1,
           pageSize: 20,

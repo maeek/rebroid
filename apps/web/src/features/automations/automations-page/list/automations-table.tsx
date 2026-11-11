@@ -11,10 +11,11 @@ import { serializeSortParam } from '@/shared/model/search-params'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { sortFromSearchParam } from '../shared/grid-query-utils'
-import { WorkflowRunResult } from '../shared/workflow-run-result'
+import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
 import {
   automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
@@ -104,22 +105,25 @@ export function AutomationsTable({
         id: 'name',
         accessorFn: automation => automation.name,
         header: 'Workflow',
-        size: 320,
-        meta: { label: 'Workflow', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
+        size: 304,
+        meta: { label: 'Workflow', skeleton: { kind: 'text' } },
         cell: ({ row }) => {
           const href = `/automations/${row.original.id}`
           return (
             <div className='grid gap-1'>
-              <ResourceLink
-                href={href}
-                className='font-medium'
-              >
-                {row.original.name}
-              </ResourceLink>
+              <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+                <ResourceLink
+                  href={href}
+                  className='max-w-full truncate font-medium'
+                  title={row.original.name}
+                >
+                  {row.original.name}
+                </ResourceLink>
+                <WorkflowTags tags={row.original.tags} />
+              </div>
               {row.original.description ? (
                 <span className='line-clamp-1 text-xs text-foreground-muted'>{row.original.description}</span>
               ) : null}
-              <WorkflowTags tags={row.original.tags} />
             </div>
           )
         }
@@ -133,7 +137,7 @@ export function AutomationsTable({
         cell: ({ row }) => {
           const appIds = Array.from(automationAppIds.get(row.original.id) ?? [])
           return (
-            <div className='grid gap-1 text-sm'>
+            <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-sm'>
               {appIds.length === 0 ? (
                 <span className='text-foreground-muted'>—</span>
               ) : (
@@ -141,6 +145,8 @@ export function AutomationsTable({
                   <ResourceLink
                     key={id}
                     href={`/app/${encodeURIComponent(id)}`}
+                    className='max-w-full truncate'
+                    title={appNameById.get(id) ?? id}
                   >
                     {appNameById.get(id) ?? id}
                   </ResourceLink>
@@ -153,7 +159,7 @@ export function AutomationsTable({
       {
         id: 'steps',
         header: 'Steps',
-        size: 112,
+        size: 96,
         enableSorting: false,
         meta: { label: 'Steps', skeleton: { kind: 'text', width: 'w-20' } },
         cell: ({ row }) => {
@@ -166,19 +172,33 @@ export function AutomationsTable({
         }
       },
       {
+        id: 'runStatus',
+        header: 'Run status',
+        size: 104,
+        enableSorting: false,
+        meta: { label: 'Run status', skeleton: { kind: 'badge' } },
+        cell: ({ row }) => <WorkflowRunStatus status={row.original.lastStatus} />
+      },
+      {
         id: 'lastRunAt',
         accessorFn: automation => automation.lastRunAt ?? '',
         header: 'Last run',
-        size: 176,
-        meta: { label: 'Last run', skeleton: { kind: 'stacked' } },
+        size: 272,
+        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-28' } },
         cell: ({ row }) => (
-          <WorkflowRunResult
-            status={row.original.lastStatus}
-            at={row.original.lastRunAt}
-            error={row.original.lastError}
-            workflowId={row.original.id}
-            runId={row.original.lastRunId}
-          />
+          <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
+            <DateTimeValue
+              value={row.original.lastRunAt}
+              compact
+              className='whitespace-nowrap'
+            />
+            <WorkflowRunDetailsLink
+              status={row.original.lastStatus}
+              error={row.original.lastError}
+              workflowId={row.original.id}
+              runId={row.original.lastRunId}
+            />
+          </div>
         )
       }
     ],

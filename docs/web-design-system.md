@@ -337,8 +337,9 @@ navigation, including their loading states. Preserve unsaved-change guards on th
 Use the shared searchable action catalog with FormField associations and Select for fixed action choices.
 Trigger dialogs group identity, workflow/target/profile, and schedule without nested panel surfaces. Use side-by-side
 groups on wide screens and stack them on narrow screens. Keep footer actions visible while the form scrolls, and
-retain disabled/pending behavior. Workflow and trigger grids show tags with the name
-and one last-run result. A recorded failure links directly to its full-page trace with Summary, Steps, and Events.
+retain disabled/pending behavior. Workflow and trigger grids show tags with the name.
+The Workflows grid uses separate Run status and Last run columns, with the trace link beside the timestamp.
+A recorded failure links directly to its full-page trace with Summary, Steps, and Events.
 Use the viewer's titled summary panel for run metadata and expose the run ID and any recorded request ID.
 Use ScheduleValue and DateTimeValue for recurrence and time presentation. Related workflow and app names are
 ResourceLinks. Run history preserves the `?run=` selection contract.
