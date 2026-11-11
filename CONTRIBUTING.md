@@ -89,6 +89,12 @@ package admission, dead code, and production builds:
 pnpm check
 ```
 
+With the OCR test dependencies and a container engine with Compose installed, run
+`pnpm test:backend-services` for OCR, resolved Compose wiring, and the GApps worker fixture.
+The checks are also available individually as `pnpm test:ocr`, `pnpm test:compose`, and
+`pnpm test:gapps-patcher`. Set `CONTAINER_ENGINE` to select the engine executable and
+`OCR_TEST_PYTHON` to select the Python interpreter from your OCR test environment.
+
 When an API changes, update its DTO/controller, run `pnpm openapi:generate`, and include generated
 contracts. Never edit generated `schema.ts` files by hand. Use `pnpm openapi:check` and
 `pnpm boundaries` to verify contracts and imports.

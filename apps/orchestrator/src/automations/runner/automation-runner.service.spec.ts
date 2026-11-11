@@ -42,6 +42,9 @@ const createService = (
   } as unknown as AutomationRunsRepository;
   const events = {
     emit: jest.fn().mockResolvedValue(undefined),
+    transitionRun: jest.fn((id, expectedStatuses, patch) =>
+      runs.transition(id, expectedStatuses, patch),
+    ),
     ...overrides.events,
   } as unknown as AutomationRunEventBus;
   const ephemeral = {
@@ -309,7 +312,10 @@ describe('AutomationRunnerService', () => {
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Canceled }),
     );
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      run.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Canceled }),
       expect.objectContaining({ type: 'run.canceled' }),
     );
 
@@ -502,8 +508,11 @@ describe('AutomationRunnerService', () => {
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
     );
-    expect(events.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ runId: 'run-1', type: 'run.failed' }),
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      run.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Failed }),
+      expect.objectContaining({ type: 'run.failed' }),
     );
   });
 });

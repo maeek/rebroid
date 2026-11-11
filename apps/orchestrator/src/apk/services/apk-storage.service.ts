@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
@@ -13,11 +13,25 @@ import {
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { UploadedApk } from '../entities/uploaded-apk.entity';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 
 @Injectable()
 export class ApkStorageService {
+  private readonly logger = new Logger(ApkStorageService.name);
+  private readonly pending = new Map<string, Promise<unknown>>();
+  private readonly activeUploads = new Set<string>();
+
+  async withHash<T>(sha256: string, operation: () => Promise<T>): Promise<T> {
+    const previous = this.pending.get(sha256) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(operation);
+    this.pending.set(sha256, current);
+    try {
+      return await current;
+    } finally {
+      if (this.pending.get(sha256) === current) this.pending.delete(sha256);
+    }
+  }
+
   constructor(
     private readonly uploadedApks: UploadedApksRepository,
     private readonly config: ConfigService,
@@ -32,17 +46,31 @@ export class ApkStorageService {
     const apkDir = join(uploadsDir, 'apks');
     await mkdir(apkDir, { recursive: true });
     const filePath = join(apkDir, `${sha256}.apk`);
-    await writeFile(filePath, content, { flag: 'wx' }).catch(
-      (error: NodeJS.ErrnoException) => {
-        if (error.code !== 'EEXIST') {
-          throw error;
-        }
-      },
+    await this.withHash(sha256, () =>
+      writeFile(filePath, content, { flag: 'wx' }).catch(
+        (error: NodeJS.ErrnoException) => {
+          if (error.code !== 'EEXIST') {
+            throw error;
+          }
+        },
+      ),
     );
     return filePath;
   }
 
-  async persistApkStream(stream: Readable, maxBytes: number) {
+  persistApkStream(stream: Readable, maxBytes: number) {
+    return this.withPersistedApk(stream, maxBytes, async (stored) => stored);
+  }
+
+  async withPersistedApk<T>(
+    stream: Readable,
+    maxBytes: number,
+    operation: (stored: {
+      filePath: string;
+      sha256: string;
+      sizeBytes: number;
+    }) => Promise<T>,
+  ): Promise<T> {
     const apkDir = await this.apkDirectory();
     const temporaryPath = join(apkDir, `.${randomUUID()}.upload`);
     const hash = createHash('sha256');
@@ -59,6 +87,7 @@ export class ApkStorageService {
       },
     });
 
+    this.activeUploads.add(temporaryPath);
     try {
       await pipeline(
         stream,
@@ -67,38 +96,21 @@ export class ApkStorageService {
       );
       const sha256 = hash.digest('hex');
       const filePath = join(apkDir, `${sha256}.apk`);
-      await link(temporaryPath, filePath).catch(
-        async (error: NodeJS.ErrnoException) => {
-          if (error.code !== 'EEXIST') {
-            throw error;
-          }
-          await unlink(temporaryPath);
-        },
-      );
+      return await this.withHash(sha256, async () => {
+        await link(temporaryPath, filePath).catch(
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== 'EEXIST') throw error;
+          },
+        );
+        return operation({ filePath, sha256, sizeBytes });
+      });
+    } finally {
+      this.activeUploads.delete(temporaryPath);
       await unlink(temporaryPath).catch(() => undefined);
-      return { filePath, sha256, sizeBytes };
-    } catch (error) {
-      await unlink(temporaryPath).catch(() => undefined);
-      throw error;
     }
   }
 
-  /**
-   * Deletes the underlying APK file only after the last database reference is gone.
-   */
-  async removeSharedFileIfUnused(upload: UploadedApk) {
-    const remaining = await this.uploadedApks.countSameShaExcluding(
-      upload.sha256,
-      upload.id,
-    );
-    if (remaining > 0) {
-      return false;
-    }
-
-    await unlink(upload.filePath).catch(() => undefined);
-    return true;
-  }
-
+  /** Called with the hash lock held while catalog references are changed. */
   async removeSharedFileIfUnreferenced(upload: {
     sha256: string;
     filePath: string;
@@ -108,8 +120,7 @@ export class ApkStorageService {
       return false;
     }
 
-    await unlink(upload.filePath).catch(() => undefined);
-    return true;
+    return this.removeFile(upload.filePath);
   }
 
   async cleanupOrphanedFiles() {
@@ -121,17 +132,44 @@ export class ApkStorageService {
       if (
         (!name.endsWith('.apk') || referenced.has(name)) &&
         !name.endsWith('.upload')
-      ) {
+      )
         continue;
-      }
       const path = join(apkDir, name);
-      if ((await stat(path)).mtimeMs > cutoff) {
-        continue;
-      }
-      await unlink(path);
-      removed += 1;
+      const deleteIfOrphaned = async () => {
+        if (this.activeUploads.has(path)) return false;
+        const metadata = await stat(path).catch(
+          (error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error;
+            return null;
+          },
+        );
+        if (!metadata || metadata.mtimeMs > cutoff) return false;
+        if (name.endsWith('.apk')) {
+          const sha256 = name.slice(0, -4);
+          if (await this.uploadedApks.countBySha256(sha256)) return false;
+        }
+        return this.removeFile(path);
+      };
+      const deleted = name.endsWith('.apk')
+        ? await this.withHash(name.slice(0, -4), deleteIfOrphaned)
+        : await deleteIfOrphaned();
+      if (deleted) removed += 1;
     }
     return removed;
+  }
+
+  private async removeFile(path: string) {
+    try {
+      await unlink(path);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.logger.warn(
+          `Could not remove an unreferenced APK file: ${String(error)}`,
+        );
+      }
+      return false;
+    }
   }
 
   private async apkDirectory() {

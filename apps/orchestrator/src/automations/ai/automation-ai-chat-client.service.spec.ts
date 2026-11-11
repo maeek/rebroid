@@ -102,6 +102,32 @@ describe('AutomationAiChatClientService', () => {
     expect(deltas.join('')).toBe('Open settings');
   });
 
+  it.each(['controller', 'planner'] as const)(
+    'attributes %s requests and failures to the supplied role',
+    async (role) => {
+      const finish = jest.fn();
+      const metrics = { beginAiProviderRequest: jest.fn(() => finish) };
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(new Response(streamFromText(['data: [DONE]\n\n'])));
+      const client = new AutomationAiChatClientService(metrics as never);
+      const request = {
+        provider,
+        model,
+        messages: [],
+        tools: [],
+        deadline: Date.now() + 10_000,
+        role,
+      };
+      await client.chat(request);
+      expect(metrics.beginAiProviderRequest).toHaveBeenCalledWith('chat', role);
+      expect(finish).toHaveBeenLastCalledWith('success');
+      global.fetch = jest.fn().mockRejectedValue(new Error('unavailable'));
+      await expect(client.chat(request)).rejects.toThrow('unavailable');
+      expect(finish).toHaveBeenLastCalledWith('error');
+    },
+  );
+
   it('raises bounded provider errors', async () => {
     jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     global.fetch = jest.fn().mockResolvedValue(

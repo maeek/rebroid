@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { userService } from '@/server/auth/user'
+import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { assertViewerGrantCurrent } from './viewer-grant-access'
+vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingViewerRevocation: vi.fn() }))
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById: vi.fn() } }))
 vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeUserViewerSessions: vi.fn() }))
 const grant = { ownerUserId: 'user', role: 'user', permissions: { 'applications:control-viewer': true } } as Parameters<
@@ -25,5 +27,13 @@ describe('viewer grant revocation races', () => {
     } as never)
     await expect(assertViewerGrantCurrent(grant)).resolves.toBeUndefined()
     expect(revokeUserViewerSessions).not.toHaveBeenCalled()
+  })
+  it('withholds new grants while a committed revocation is pending', async () => {
+    vi.mocked(userService.getUserById).mockResolvedValue({
+      role: 'user',
+      effectivePermissions: grant.permissions
+    } as never)
+    vi.mocked(hasPendingViewerRevocation).mockReturnValue(true)
+    await expect(assertViewerGrantCurrent(grant)).rejects.toThrow('Viewer access is being updated')
   })
 })

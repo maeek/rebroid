@@ -287,7 +287,7 @@ export class AiProviderHealthService {
       provider,
       'models',
       'provider',
-      async (response): Promise<unknown> => response.json(),
+      (response) => readProviderJson(response, { strict: true }),
     );
     if (!response.ok) {
       throw new Error(`Provider returned HTTP ${response.status}.`);

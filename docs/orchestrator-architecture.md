@@ -60,6 +60,8 @@ and guarded progress, handoff, and completion apply only while the reservation s
   preserving existing rules for unresolved runtimes. If retries are exhausted, recovery rechecks
   uncertain runtimes and attempts a stop only after confirming ownership, live state, and the same
   saved policy revision.
+  Administrative reconciliation uses the same completeness check. Runtime teardown retains the
+  container's firewall policy until Docker confirms removal.
 - **Viewer policy refresh** serializes with app policy changes and reads the latest saved policy
   for the verified runtime. The agent accepts viewer refreshes only for the same enabled policy
   revision and container. Configuration writes advance the revision, and the agent remembers it
@@ -68,6 +70,9 @@ and guarded progress, handoff, and completion apply only while the reservation s
   same activation path. It keeps profile volumes and owns its reservation through APK installation.
   Interrupted recreation is reported as an error so the operator can retry.
 - **APK installation** receives a fresh reservation through a guarded handoff during Create or Start.
+- **Profiles** retain persistent identities when temporary history rolls over. A new persistent name
+  must resolve to unused storage. Existing names that share a volume retain access. Deletion preserves
+  any volume still referenced by another saved or active persistent profile.
 - **Stop** discards queued work and waits for in-flight runtime work to settle before looking up and stopping the
   container. Cancellation releases the worker's wait on a shared image pull.
 - **Remove** drains existing work before reserving and performing bounded cleanup of runtime, network, volume, and
@@ -79,8 +84,8 @@ Normal list/get operations read stored state only. Docker reconciliation is an e
 Viewer activity and policy observations update only their own fields and are scoped to the observed
 runtime. The web console uses lifecycle acknowledgements for immediate feedback and follows the
 application state to observe queued removal and startup completion.
-After a removal acknowledgement, the web service confirms deletion in a bounded background check
-before removing icon and recent-app metadata. An unconfirmed removal retains that metadata.
+The web service records metadata cleanup before requesting app removal. A bounded worker confirms
+deletion before removing icon and recent-app metadata and retries pending work after a restart.
 The owning lifecycle services and file-placement rules are listed in [AGENTS.md](../AGENTS.md).
 
 ## Workflow execution
@@ -97,7 +102,10 @@ These are correctness guarantees:
 - Only expected-status transitions may update a run; terminal state is never overwritten.
 - One target cannot have competing queued or running automation runs.
 - Event sequence allocation and insertion happen in the same transaction, backed by a unique run/sequence index.
-- Live listeners subscribe before replay, then buffer and deduplicate the handoff.
+  Terminal status commits with its event. Subscribers receive it after commit.
+- Live listeners subscribe before replay. Replay reads bounded pages through a fixed sequence, then sends
+  buffered live events in order and skips duplicates.
+- Step results are appended in execution order and assembled for run reads.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
@@ -126,7 +134,8 @@ when the command response fails. If observation fails, the run reports a blocked
 
 Raw ADB shell is not a default capability. Approved escalation validates an allowlisted read-only
 command for one follow-up run. Provider streaming adapters preserve public results and usage
-without storing hidden reasoning text.
+without storing hidden reasoning text. Provider reads enforce byte and frame limits through response
+consumption. OCR validates the success envelope and deployment language before reporting detections.
 
 The [AI automation README](../apps/orchestrator/src/automations/ai/README.md) covers usage,
 decision kinds, provider/perception boundaries, and the implementation map.
@@ -138,11 +147,19 @@ verified revision-addressed caches, bounded extraction, and final image validati
 running jobs fail rather than resume.
 The Docker image runtime owns build stream errors, progress, and cancellation for custom, GApps,
 and display sidecar image builds. Each caller still owns its context, validation, and job state.
+The Docker worker adapter holds the GApps slot through cancellation and bounded worker cleanup.
+APK storage serializes publication, catalog writes, and orphan removal for each content hash.
 
 Settings persistence normalizes defaults; separate services own provider CRUD, connectivity checks,
 and downloads. Transport protocol stays independent from detected server flavor.
 Runtime Restore resets only the default image, registry, inactivity timeout, APK upload limit, and
 optional service connections. Settings editors use the saved values returned by their writes.
+Feature Restore uses the same deployment-aware defaults as first boot.
+
+Maintenance schedules reserve execution before loading the task. Completion updates result fields and
+recalculates the next run against the latest schedule. Configuration edits and removal can complete
+during execution, and a late result preserves those changes. Persistence failures release the execution
+reservation so a later manual run or cron tick can retry.
 
 For local commands and verification, use the [contribution guide](../CONTRIBUTING.md).
 API changes require regenerated contracts through `pnpm openapi:generate`.

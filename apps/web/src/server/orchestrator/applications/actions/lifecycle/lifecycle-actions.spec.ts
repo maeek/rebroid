@@ -1,6 +1,13 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { after } from 'next/server'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cloneStoredAppIcon, removeStoredAppIcon } from '@/server/app-icons/store'
+import { runDueWebMaintenance } from '@/server/maintenance/web-maintenance'
+import { resetDatabaseForTests } from '@/server/persistence/database'
+import { listRecentApplications, rememberRecentApplication } from '@/server/persistence/recent-applications-repository'
+import { listDueWebMaintenance } from '@/server/persistence/web-maintenance-repository'
 import { getCurrentUserContext } from '../../../current-user'
 import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
@@ -15,9 +22,7 @@ import type { AndroidApplication } from '@/shared/contracts/application'
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('next/server', () => ({ after: vi.fn() }))
-vi.mock('node:timers/promises', () => ({ setTimeout: vi.fn() }))
 vi.mock('@/server/app-icons/store', () => ({ cloneStoredAppIcon: vi.fn(), removeStoredAppIcon: vi.fn() }))
-vi.mock('@/server/recent-apps/store', () => ({ forgetStoredRecentApp: vi.fn() }))
 vi.mock('../../../current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
 vi.mock('../../catalog-client', () => ({
@@ -30,7 +35,11 @@ vi.mock('../../lifecycle-client', () => ({
 const id = '98a530d6-a45d-466a-9cb4-c023067c4971'
 
 describe('application lifecycle acknowledgements', () => {
-  beforeEach(() => {
+  let directory: string
+
+  beforeEach(async () => {
+    directory = await mkdtemp(join(tmpdir(), 'rebroid-web-delete-'))
+    vi.stubEnv('WEB_DATABASE_PATH', join(directory, 'state.sqlite'))
     vi.resetAllMocks()
     vi.mocked(getCurrentUserContext).mockResolvedValue({
       ownerUserId: 'owner',
@@ -45,6 +54,12 @@ describe('application lifecycle acknowledgements', () => {
         ownerUserId: 'owner',
         runtime: { image: 'fixture', resources: {}, inactivityTimeoutSeconds: null }
       } as unknown as AndroidApplication)
+  })
+
+  afterEach(async () => {
+    resetDatabaseForTests()
+    vi.unstubAllEnvs()
+    await rm(directory, { recursive: true, force: true })
   })
 
   it.each([
@@ -69,8 +84,10 @@ describe('application lifecycle acknowledgements', () => {
     }
   )
 
-  it('acknowledges queued administrator deletion and cleans up only after the app is gone', async () => {
+  it('resumes metadata cleanup from disk after queued deletion outlives the request', async () => {
     const app = { id, ownerUserId: 'other-owner' } as AndroidApplication
+    rememberRecentApplication('owner', id)
+    rememberRecentApplication('other-owner', id)
     vi.mocked(orchestratorAppCatalogClient.getApplication)
       .mockReset()
       .mockResolvedValueOnce(app)
@@ -95,7 +112,13 @@ describe('application lifecycle acknowledgements', () => {
     const callback = vi.mocked(after).mock.calls[0]?.[0]
     if (typeof callback !== 'function') throw new Error('Expected deferred cleanup')
     await callback()
+    expect(removeStoredAppIcon).not.toHaveBeenCalled()
+    resetDatabaseForTests()
+    await runDueWebMaintenance(Date.now() + 120_000)
     expect(removeStoredAppIcon).toHaveBeenCalledExactlyOnceWith(id)
+    expect(listRecentApplications('owner')).toEqual([])
+    expect(listRecentApplications('other-owner')).toEqual([])
+    expect(listDueWebMaintenance(Date.now() + 120_000, 10)).toEqual([])
   })
 
   it('keeps the icon when deletion cannot be confirmed', async () => {
@@ -113,6 +136,18 @@ describe('application lifecycle acknowledgements', () => {
     const callback = vi.mocked(after).mock.calls[0]?.[0]
     if (typeof callback !== 'function') throw new Error('Expected deferred cleanup')
     await callback()
+    expect(removeStoredAppIcon).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { status: 403, retained: false },
+    { status: 504, retained: true }
+  ])('retains deletion intent only when a $status command result is ambiguous', async ({ status, retained }) => {
+    vi.mocked(orchestratorAppCatalogClient.deleteApplication).mockRejectedValue(
+      new OrchestratorRequestError('Delete not acknowledged', status)
+    )
+    await expect(requestApplicationDeletionAction(id)).resolves.toMatchObject({ ok: false })
+    expect(listDueWebMaintenance(Date.now() + 120_000, 10)).toHaveLength(retained ? 1 : 0)
     expect(removeStoredAppIcon).not.toHaveBeenCalled()
   })
 

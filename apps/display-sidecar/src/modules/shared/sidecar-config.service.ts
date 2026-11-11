@@ -86,7 +86,12 @@ export class SidecarConfigService {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-  readonly sharedSecret = this.readSecret();
+  private loadedSharedSecret = "";
+
+  get sharedSecret() {
+    this.loadedSharedSecret ||= this.readSecret();
+    return this.loadedSharedSecret;
+  }
   readonly allowUnauthenticatedInternalApi =
     environment.DISPLAY_SIDECAR_ALLOW_UNAUTHENTICATED_INTERNAL_API === "true";
   readonly enableApiDocs =
@@ -125,7 +130,12 @@ export class SidecarConfigService {
     ].find((candidate) => candidate && existsSync(candidate));
 
     if (filePath) {
-      return readFileSync(filePath, "utf8").trim();
+      try {
+        return readFileSync(filePath, "utf8").trim();
+      } catch {
+        // The orchestrator may still be publishing the shared file.
+        return "";
+      }
     }
 
     return "";

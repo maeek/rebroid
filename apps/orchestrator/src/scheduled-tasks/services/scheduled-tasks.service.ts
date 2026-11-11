@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -24,12 +25,15 @@ import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
 import { ScheduledTaskPredefinedSeederService } from './scheduled-task-predefined-seeder.service';
 import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
+import { getErrorMessage } from '../../common/error-message';
 
 const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
 @Injectable()
 export class ScheduledTasksService implements OnModuleInit {
+  private readonly logger = new Logger(ScheduledTasksService.name);
+
   constructor(
     private readonly tasks: ScheduledTasksRepository,
     private readonly actions: ScheduledTaskActionsService,
@@ -109,7 +113,11 @@ export class ScheduledTasksService implements OnModuleInit {
     }
     task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
 
-    const saved = await this.tasks.save(task);
+    const updated = await this.tasks.updateConfiguration(task);
+    if (!updated.affected) {
+      throw new NotFoundException(`Scheduled task "${id}" was not found.`);
+    }
+    const saved = await this.getEntity(id);
     this.registerTask(saved);
     return this.toDto(saved);
   }
@@ -141,10 +149,13 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   private registerTask(task: ScheduledTask) {
-    this.cronRegistry.registerTask(
-      task,
-      () => void this.runner.runTask(task.id),
-    );
+    this.cronRegistry.registerTask(task, () => {
+      void this.runner.runTask(task.id, 'cron').catch((error: unknown) => {
+        this.logger.error(
+          `Could not execute scheduled task "${task.id}": ${getErrorMessage(error)}`,
+        );
+      });
+    });
   }
 
   private toDto(task: ScheduledTask): ScheduledTaskDto {

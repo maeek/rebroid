@@ -1,15 +1,16 @@
 import { chmodSync, mkdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
-import { firewallAgentConfig } from "./config";
+import { createFirewallAgentConfig } from "./config";
 import { detectAdapter } from "./firewall";
 import { FirewallPolicyCommands } from "./policy-commands";
 import { FirewallPolicyStore } from "./policy-store";
 import { createFirewallAgentServer } from "./server";
 
-const { socketPath, statePath, secret } = firewallAgentConfig;
+const { socketPath, statePath, getSecret, adapter } =
+  createFirewallAgentConfig();
 const recovery = FirewallPolicyCommands.restore(
   new FirewallPolicyStore(statePath),
-  () => detectAdapter(firewallAgentConfig.adapter),
+  () => detectAdapter(adapter),
 );
 
 if (!recovery.commands) {
@@ -19,7 +20,7 @@ if (!recovery.commands) {
   );
 }
 
-const server = createFirewallAgentServer({ secret, recovery });
+const server = createFirewallAgentServer({ getSecret, recovery });
 
 mkdirSync(dirname(socketPath), { recursive: true });
 rmSync(socketPath, { force: true });

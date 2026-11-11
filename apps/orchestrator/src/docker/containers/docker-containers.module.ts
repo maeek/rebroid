@@ -13,9 +13,14 @@ import { DOCKER_CONTAINER_LIFECYCLE } from '../contracts/docker-container-lifecy
 import { DOCKER_CONTAINER_PROVISIONING } from '../contracts/docker-container-provisioning.port';
 import { DOCKER_PLATFORM_CONTAINERS } from '../contracts/docker-platform-containers.port';
 
+import { DOCKER_GAPPS_WORKER } from '../contracts/docker-gapps-worker.port';
+import { DockerGappsWorkerService } from './services/docker-gapps-worker.service';
+
 @Module({
   imports: [DockerEngineModule, DockerImagesModule, DockerResourcesModule],
   providers: [
+    DockerGappsWorkerService,
+    { provide: DOCKER_GAPPS_WORKER, useExisting: DockerGappsWorkerService },
     DockerContainerArchiveService,
     DockerContainerExecService,
     DockerContainerLifecycleService,
@@ -40,6 +45,7 @@ import { DOCKER_PLATFORM_CONTAINERS } from '../contracts/docker-platform-contain
     },
   ],
   exports: [
+    DOCKER_GAPPS_WORKER,
     DockerContainerArchiveService,
     DockerContainerExecService,
     DockerContainerLifecycleService,

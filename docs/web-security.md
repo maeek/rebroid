@@ -55,10 +55,11 @@ checks startup permission and quotas, including queued automation target reserva
 Scheduled runs therefore cannot retain permissions from the time their trigger was created.
 
 Administrative user/group edits, disabling, and deletion revoke the user's existing display sessions
-before and after applying the access change. Viewer grants are rechecked after session creation
-to reject requests that raced with revocation. If display session revocation fails, the account action fails
-and can be retried. Viewer and event-stream tokens must never appear in request logs; edge and
-service request logging omit query strings.
+before and after applying the access change. Group changes use one session inventory per pass.
+A failed pre-commit revocation blocks the account change. Once the change commits, its pending
+revocation survives a restart and retries in the background. New viewer grants wait for pending
+revocation to clear. The web service checks authorization again after creating a session to catch
+changes that raced with the grant. Edge and service request logs omit query strings to protect tokens.
 
 Workflow inputs must not override the session owner or supply alternate unchecked definitions.
 Resource quotas apply to effective create defaults and reject unlimited update values under finite

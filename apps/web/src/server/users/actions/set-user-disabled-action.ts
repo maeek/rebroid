@@ -3,16 +3,16 @@
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { userService } from '@/server/auth/user'
-import { revokeUserViewerSessions } from '../revoke-viewer-sessions'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
+import { commitWithViewerRevocation } from '../viewer-revocation-mutation'
 
 export const setUserDisabledAction = async (id: string, disabled: boolean) =>
   runSafeAction(
-    async () => {
+    async requestId => {
       const admin = await requireAdminUser()
-      await revokeUserViewerSessions(id)
-      const user = await userService.setUserDisabled(id, disabled)
-      await revokeUserViewerSessions(id)
+      const { value: user, viewerRevocation } = await commitWithViewerRevocation(requestId, prepare =>
+        userService.setUserDisabled(id, disabled, prepare)
+      )
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,
@@ -20,7 +20,8 @@ export const setUserDisabledAction = async (id: string, disabled: boolean) =>
         action: disabled ? 'user.disable' : 'user.enable',
         resourceType: 'user',
         resourceId: user.id,
-        resourceLabel: user.name || user.username
+        resourceLabel: user.name || user.username,
+        details: { viewerRevocation }
       })
       revalidateUsersPage()
       return user

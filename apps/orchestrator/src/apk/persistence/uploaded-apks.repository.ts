@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 
 @Injectable()
@@ -47,10 +47,6 @@ export class UploadedApksRepository {
     return this.uploadedApks.find({
       where: owner ? { ownerUserId: owner } : {},
     });
-  }
-
-  countSameShaExcluding(sha256: string, id: string) {
-    return this.uploadedApks.countBy({ sha256, id: Not(id) });
   }
 
   countBySha256(sha256: string) {

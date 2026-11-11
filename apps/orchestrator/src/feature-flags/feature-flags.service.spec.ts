@@ -149,6 +149,29 @@ describe('FeatureFlagsService', () => {
     expect(service.isEnabled('feature.ocr')).toBe(true);
   });
 
+  it('resets unsupported runtime features to disabled and retains revision guards', async () => {
+    const store = new SettingsStoreStub(settings());
+    const unsupportedConfig = { get: () => undefined };
+    const service = new FeatureFlagsService(
+      store as never,
+      unsupportedConfig as never,
+    );
+    await service.onModuleInit();
+    const reset = await service.reset(0);
+    expect(reset.revision).toBe(1);
+    for (const key of ['feature.ocr', 'feature.firewall'] as const) {
+      expect(service.getState(key)).toMatchObject({
+        enabled: false,
+        supported: false,
+        effective: false,
+      });
+    }
+    expect((await service.reset(1)).revision).toBe(1);
+    await expect(service.reset(0)).rejects.toMatchObject({
+      response: { code: 'feature_revision_conflict' },
+    });
+  });
+
   it('does not advance the revision for a no-op update', async () => {
     const store = new SettingsStoreStub(settings());
     const service = new FeatureFlagsService(store as never, config as never);

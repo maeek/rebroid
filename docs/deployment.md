@@ -35,6 +35,11 @@ docker compose -f deploy/compose.yaml exec web cat /app/data/initial-admin-passw
 
 The generated password is stored in a protected file and never printed to logs.
 
+The test stack in `deploy/compose.test.yaml` uses separate state volumes and publishes HTTPS on
+port `3001` and WebRTC on UDP ports `40101–40201` by default. Override the test media range with
+`TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE`. Run `pnpm test:compose` to check internal routing, shared secret
+mounts, and UDP publication in both resolved configurations.
+
 ## Configuration
 
 Most runtime defaults, APK limits, inactivity timeouts, and maintenance settings are managed in the UI.

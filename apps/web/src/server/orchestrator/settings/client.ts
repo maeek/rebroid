@@ -1,4 +1,4 @@
-import { emptyRequest, jsonRequest } from '../request'
+import { emptyRequest, jsonRequest, requestVoid } from '../request'
 import type {
   AutomationAiModelCatalogProvider,
   AutomationAiProvider,
@@ -54,7 +54,7 @@ export const orchestratorSettingsClient = {
   },
 
   deleteAiProvider(providerId: string) {
-    return emptyRequest<void>(`/settings/ai-providers/${encodeURIComponent(providerId)}`, { method: 'DELETE' })
+    return requestVoid(`/settings/ai-providers/${encodeURIComponent(providerId)}`, { method: 'DELETE' })
   },
 
   checkAiProviderHealth(providerId: string, modelId?: string, role?: 'controller' | 'planner' | 'vision') {
@@ -104,7 +104,7 @@ export const orchestratorSettingsClient = {
   },
 
   deleteAiProviderModel(providerId: string, modelId: string) {
-    return emptyRequest<void>(
+    return requestVoid(
       `/settings/ai-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}`,
       { method: 'DELETE' }
     )

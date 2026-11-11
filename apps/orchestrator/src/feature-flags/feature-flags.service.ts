@@ -13,6 +13,7 @@ import type {
   UpdateFeatureFlagsDto,
 } from './dto/feature-flags.dto';
 import {
+  defaultRuntimeFeatureFlagValues,
   featureFlagDefinitions,
   isFeatureFlagKey,
   type FeatureFlagDefinition,
@@ -191,13 +192,16 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   }
 
   reset(revision: number) {
+    const defaults = defaultRuntimeFeatureFlagValues((key) =>
+      this.config.get(key),
+    );
     return this.update({
       revision,
       changes: featureFlagDefinitions
         .filter((definition) => definition.control === 'runtime')
         .map((definition) => ({
           key: definition.key,
-          enabled: definition.defaultEnabled,
+          enabled: defaults[definition.key] ?? false,
         })),
     });
   }

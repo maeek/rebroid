@@ -43,6 +43,27 @@ describe('android apps profile history utils', () => {
     ]);
   });
 
+  it('keeps persistent identities when temporary history rolls over', () => {
+    const persistent = {
+      mode: ApplicationProfileMode.Persistent,
+      name: 'work',
+    };
+    const temporary = Array.from({ length: 25 }, (_, index) => ({
+      mode: ApplicationProfileMode.Temporary,
+      name: `temporary-${index}`,
+    }));
+    const saved = parseSavedProfiles(
+      rememberSavedProfile(JSON.stringify([...temporary, persistent]), {
+        mode: ApplicationProfileMode.Persistent,
+        name: 'new',
+      }),
+    );
+    expect(saved).toContainEqual(persistent);
+    expect(
+      saved.filter(({ mode }) => mode === ApplicationProfileMode.Temporary),
+    ).toHaveLength(24);
+  });
+
   it('forgets a saved persistent profile by trimmed name', () => {
     const raw = JSON.stringify([
       { mode: ApplicationProfileMode.Persistent, name: 'default' },

@@ -20,32 +20,42 @@ export class ScheduledTaskRunnerService {
     private readonly registry: ScheduledTaskCronRegistryService,
   ) {}
 
-  async runTask(id: string) {
+  async runTask(id: string, trigger: 'manual' | 'cron' = 'manual') {
     if (this.runningTasks.has(id)) {
-      return;
-    }
-
-    const task = await this.tasks.findById(id);
-    if (!task) {
-      this.registry.unregisterTask(id);
       return;
     }
 
     this.runningTasks.add(id);
     try {
-      await this.actions.run(task.actionType, this.parsePayload(task));
-      task.lastStatus = ScheduledTaskLastStatus.Success;
-      task.lastError = null;
-    } catch (error) {
-      task.lastStatus = ScheduledTaskLastStatus.Failed;
-      task.lastError = getErrorMessage(error);
-      this.logger.warn(
-        `Scheduled task "${task.name}" failed: ${task.lastError}`,
-      );
+      const task = await this.tasks.findById(id);
+      if (!task) {
+        this.registry.unregisterTask(id);
+        return;
+      }
+      if (trigger === 'cron' && !task.enabled) return;
+
+      let lastStatus = ScheduledTaskLastStatus.Success;
+      let lastError: string | null = null;
+      try {
+        await this.actions.run(task.actionType, this.parsePayload(task));
+      } catch (error) {
+        lastStatus = ScheduledTaskLastStatus.Failed;
+        lastError = getErrorMessage(error);
+        this.logger.warn(`Scheduled task "${task.name}" failed: ${lastError}`);
+      }
+      await this.tasks.recordRunResult(id, {
+        lastStatus,
+        lastError,
+        lastRunAt: new Date(),
+      });
+      const current = await this.tasks.findById(id);
+      if (current) {
+        await this.tasks.updateNextRun(
+          current,
+          current.enabled ? nextCronRun(current.cronExpression) : null,
+        );
+      }
     } finally {
-      task.lastRunAt = new Date();
-      task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
-      await this.tasks.save(task);
       this.runningTasks.delete(id);
     }
   }

@@ -8,6 +8,7 @@ import { AutomationRunEventStreamService } from './automation-run-event-stream.s
 type StreamHandler = (
   socket: EventEmitter & {
     readyState: number;
+    bufferedAmount: number;
     send: jest.Mock;
     close: jest.Mock;
   },
@@ -30,6 +31,7 @@ const registerHandler = async (service: AutomationRunEventStreamService) => {
 const createSocket = () =>
   Object.assign(new EventEmitter(), {
     readyState: 1,
+    bufferedAmount: 0,
     send: jest.fn(),
     close: jest.fn(),
   });
@@ -159,6 +161,35 @@ describe('AutomationRunEventStreamService', () => {
     resolveSubscription(unsubscribe);
     await setup;
     expect(unsubscribe).toHaveBeenCalledTimes(2);
+  });
+
+  it('aborts replay and closes a slow socket so it can reconnect from its last cursor', async () => {
+    const unsubscribe = jest.fn();
+    const events = {
+      subscribeWithReplay: jest.fn(
+        async (
+          _owner: string,
+          _run: string,
+          _after: number,
+          listener: (value: object) => void,
+          signal: AbortSignal,
+        ) => {
+          listener({ sequence: 2 });
+          expect(signal.aborted).toBe(true);
+          return unsubscribe;
+        },
+      ),
+    };
+    const service = new AutomationRunEventStreamService(events as never);
+    const handler = await registerHandler(service);
+    const { token } = service.createSubscribeToken('owner-1', 'run-1');
+    const socket = createSocket();
+    socket.bufferedAmount = 2 * 1024 * 1024;
+    await handler(socket, { url: `/?token=${token}&after=1` });
+
+    expect(socket.send).not.toHaveBeenCalled();
+    expect(socket.close).toHaveBeenCalledWith(1013, expect.any(String));
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   it('rejects incomplete token records', () => {

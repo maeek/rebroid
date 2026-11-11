@@ -220,6 +220,7 @@ export class AutomationAiYamlDraftService {
 
     void this.chatClient
       .chat({
+        role: 'planner',
         provider,
         model,
         messages,

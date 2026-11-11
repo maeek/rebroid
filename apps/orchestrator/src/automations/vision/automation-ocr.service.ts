@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
 import { createDetection, type VisionDetection } from './vision-observation';
 import { OrchestratorSettingsStore } from '../../settings/orchestrator-settings-store';
@@ -10,29 +11,36 @@ import type {
 } from './automation-ocr.port';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 
-interface OcrSidecarDetection {
-  id?: string;
-  text?: string;
-  label?: string;
-  confidence?: number;
-  bounds?: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  };
-}
+const normalizedCoordinate = z.number().finite().min(0).max(1);
+const ocrSuccessSchema = z.object({
+  status: z.literal('available'),
+  detections: z.array(
+    z
+      .object({
+        id: z.string().optional(),
+        text: z.string().optional(),
+        label: z.string().optional(),
+        confidence: normalizedCoordinate.optional(),
+        bounds: z.object({
+          left: normalizedCoordinate,
+          top: normalizedCoordinate,
+          width: normalizedCoordinate,
+          height: normalizedCoordinate,
+        }),
+      })
+      .refine((detection) =>
+        Boolean((detection.label ?? detection.text)?.trim()),
+      ),
+  ),
+  elapsedMs: z.number().finite().nonnegative().optional(),
+  engine: z.string().optional(),
+  model: z.string().optional(),
+  language: z.string().optional(),
+  preprocessingMode: z.string().optional(),
+  preprocessingAttempts: z.unknown().optional(),
+});
 
-interface OcrSidecarResponse {
-  status?: string;
-  detections?: OcrSidecarDetection[];
-  elapsedMs?: number;
-  engine?: string;
-  model?: string;
-  language?: string;
-  preprocessingMode?: string;
-  preprocessingAttempts?: OcrPreprocessingAttempt[];
-}
+type OcrSidecarResponse = z.infer<typeof ocrSuccessSchema>;
 
 @Injectable()
 export class AutomationOcrService implements AutomationOcrPort {
@@ -89,7 +97,19 @@ export class AutomationOcrService implements AutomationOcrPort {
           ),
         };
       }
-      return this.normalizePayload(payload);
+      const success = ocrSuccessSchema.safeParse(payload);
+      if (
+        !success.success ||
+        (success.data.language !== undefined &&
+          success.data.language !== settings.language)
+      ) {
+        return {
+          status: 'failed',
+          detections: [],
+          error: 'OCR sidecar returned an invalid response.',
+        };
+      }
+      return this.normalizePayload(success.data);
     } catch (error) {
       return {
         status: 'failed',
@@ -106,7 +126,7 @@ export class AutomationOcrService implements AutomationOcrPort {
   }
 
   private parsePayload(text: string):
-    | (OcrSidecarResponse & {
+    | (Partial<OcrSidecarResponse> & {
         detail?: { message?: string; attempts?: unknown } | string;
         message?: string;
       })

@@ -1,3 +1,4 @@
+import { maximumProviderJsonBytes } from '../common/ai-provider-http';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import type { AutomationAiProvider } from './contracts/ai-provider';
 
@@ -40,6 +41,31 @@ describe('AiProviderHealthService', () => {
   afterEach(() => {
     global.fetch = originalFetch;
     jest.restoreAllMocks();
+  });
+
+  it('reports invalid JSON when listing remote models', async () => {
+    global.fetch = jest.fn().mockResolvedValue(new Response('invalid JSON'));
+
+    await expect(
+      new AiProviderHealthService().listRemoteModels(provider()),
+    ).rejects.toThrow('Provider returned malformed JSON.');
+  });
+
+  it('cancels an oversized remote model list', async () => {
+    const cancel = jest.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(maximumProviderJsonBytes + 1));
+      },
+      cancel,
+    });
+    global.fetch = jest.fn().mockResolvedValue(new Response(body));
+
+    await expect(
+      new AiProviderHealthService().listRemoteModels(provider()),
+    ).rejects.toThrow('JSON body size');
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(body.locked).toBe(false);
   });
 
   it('checks connectivity for disabled providers', async () => {

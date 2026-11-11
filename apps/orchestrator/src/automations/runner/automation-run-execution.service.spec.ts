@@ -67,7 +67,13 @@ const createExecution = ({
     findById: jest.fn().mockResolvedValue(queuedRun),
     transition: jest.fn(),
   };
-  const events = { emit: jest.fn().mockResolvedValue(undefined) };
+  const events = {
+    emit: jest.fn().mockResolvedValue(undefined),
+    transitionRun: jest.fn(),
+  };
+  events.transitionRun.mockImplementation((id, expectedStatuses, patch) =>
+    runs.transition(id, expectedStatuses, patch),
+  );
   const ephemeral = { delete: jest.fn() };
   const service = new AutomationRunExecutionService(
     runs as never,
@@ -267,7 +273,10 @@ describe('AutomationRunExecutionService', () => {
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
     );
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Failed }),
       expect.objectContaining({
         type: 'run.failed',
         data: {
@@ -300,7 +309,10 @@ describe('AutomationRunExecutionService', () => {
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
     );
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Failed }),
       expect.objectContaining({ type: 'run.failed' }),
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
@@ -345,7 +357,10 @@ describe('AutomationRunExecutionService', () => {
 
     await service.execute(runInput());
 
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Success }),
       expect.objectContaining({ type: 'run.completed' }),
     );
   });
@@ -361,7 +376,10 @@ describe('AutomationRunExecutionService', () => {
 
     await service.execute(runInput());
 
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+      expect.objectContaining({ status: AutomationRunStatus.Failed }),
       expect.objectContaining({ type: 'run.failed' }),
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(queuedRun.automationId);
@@ -420,7 +438,10 @@ describe('AutomationRunExecutionService', () => {
       abortSignal: controller.signal,
     });
 
-    expect(events.emit).toHaveBeenCalledWith(
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      [AutomationRunStatus.Running],
+      expect.objectContaining({ status: scenario.status }),
       expect.objectContaining({ type: scenario.event }),
     );
   });

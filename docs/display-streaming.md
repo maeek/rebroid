@@ -50,6 +50,8 @@ Every internal media sink uses this big-endian envelope:
 
 Video payloads are complete H.264 Annex-B access units; codec configuration is a separate frame.
 Audio payloads contain one Opus packet. TypeScript, Go, and browser consumers validate envelopes.
+The TypeScript encoder and Go decoder verify the same binary fixture, including unsigned
+timestamps and configuration, keyframe, and discontinuity flags.
 
 ## Source and recovery invariants
 

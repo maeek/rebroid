@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
+import type { AutomationStepResult } from '../runner/automation-runner.types';
+import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { Automation } from '../entities/automation.entity';
 import {
   AutomationRun,
@@ -12,33 +14,36 @@ export class AutomationRunsRepository {
   constructor(
     @InjectRepository(AutomationRun)
     private readonly runs: Repository<AutomationRun>,
+    private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
   ) {}
 
   create(values: Partial<AutomationRun>) {
-    return this.runs.create(values);
+    const run = this.runs.create(values);
+    run.stepResultsJson = '[]';
+    return run;
   }
 
   save(run: AutomationRun) {
-    return this.runs.save(run);
+    return this.queue.run(() => this.runs.save(run));
   }
 
   findById(id: string) {
     return this.runs.findOneBy({ id });
   }
 
-  async transition(
+  transition(
     id: string,
     expectedStatuses: AutomationRunStatus[],
     patch: Partial<AutomationRun>,
   ) {
-    const result = await this.runs.update(
-      { id, status: In(expectedStatuses) },
-      patch,
-    );
-    if (!result.affected) {
-      return null;
-    }
-    return this.runs.findOneBy({ id });
+    return this.queue.run(async () => {
+      const result = await this.runs.update(
+        { id, status: In(expectedStatuses) },
+        patch,
+      );
+      if (!result.affected) return null;
+      return this.runs.findOneBy({ id });
+    });
   }
 
   listAllActive() {
@@ -51,10 +56,27 @@ export class AutomationRunsRepository {
     });
   }
 
-  updateProgress(id: string, stepResultsJson: string, error: string | null) {
-    return this.runs.update(
-      { id, status: AutomationRunStatus.Running },
-      { stepResultsJson, error },
+  appendStepResults(
+    id: string,
+    firstSequence: number,
+    results: AutomationStepResult[],
+    error: string | null,
+  ) {
+    return this.queue.run(() =>
+      this.runs.manager.transaction(async (manager) => {
+        const updated = await manager
+          .getRepository(AutomationRun)
+          .update({ id, status: AutomationRunStatus.Running }, { error });
+        if (!updated.affected) return false;
+        for (const [index, result] of results.entries()) {
+          await manager.query(
+            `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
+             VALUES (?, ?, ?)`,
+            [id, firstSequence + index, JSON.stringify(result)],
+          );
+        }
+        return true;
+      }),
     );
   }
 
@@ -248,6 +270,6 @@ export class AutomationRunsRepository {
     if (ids.length === 0) {
       return;
     }
-    await this.runs.delete({ ownerUserId, id: In(ids) });
+    await this.queue.run(() => this.runs.delete({ ownerUserId, id: In(ids) }));
   }
 }

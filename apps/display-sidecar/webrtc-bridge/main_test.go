@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -25,20 +27,28 @@ func encodedMediaFrame(kind uint8, sequence uint32, pts uint64, flags uint16, pa
 	return out
 }
 
-func TestReadMediaFrame(t *testing.T) {
-	payload := []byte{0x00, 0x00, 0x00, 0x01, 0x65}
-	frame, err := readMediaFrame(
-		bytes.NewReader(encodedMediaFrame(mediaKindVideo, 7, 42_000, mediaFlagKey|mediaFlagGap, payload)),
-		mediaKindVideo,
-	)
+func TestReadSharedMediaFrames(t *testing.T) {
+	fixture, err := os.ReadFile("testdata/rbd1-frames.bin")
 	if err != nil {
-		t.Fatalf("expected RBD1 frame, got %v", err)
+		t.Fatal(err)
 	}
-	if frame.sequence != 7 || frame.timestampUs != 42_000 || !frame.keyFrame || !frame.discontinuity {
-		t.Fatalf("unexpected frame metadata: %+v", frame)
+	reader := bytes.NewReader(fixture)
+	expected := []mediaFrame{
+		{kind: 1, sequence: 0x01020304, config: true, data: []byte{0, 0, 0, 1, 0x67}},
+		{kind: 1, sequence: 0x01020305, timestampUs: 1<<63 + 42, keyFrame: true, discontinuity: true, data: []byte{0, 0, 0, 1, 0x65}},
+		{kind: 2, sequence: 0xffffffff, timestampUs: 42_000, keyFrame: true, data: []byte{0xf8, 0xff, 0xfe}},
 	}
-	if !bytes.Equal(frame.data, payload) {
-		t.Fatalf("expected payload %x, got %x", payload, frame.data)
+	for i, want := range expected {
+		frame, err := readMediaFrame(reader, want.kind)
+		if err != nil {
+			t.Fatalf("read shared RBD1 frame %d: %v", i, err)
+		}
+		if !reflect.DeepEqual(frame, want) {
+			t.Fatalf("frame %d: got %+v, want %+v", i, frame, want)
+		}
+	}
+	if reader.Len() != 0 {
+		t.Fatalf("shared RBD1 fixture has %d unread bytes", reader.Len())
 	}
 }
 

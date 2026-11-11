@@ -27,6 +27,7 @@ export class AutomationAiSuggestionsService {
         'planner',
       );
       const response = await this.chatClient.chat({
+        role: 'planner',
         provider,
         model,
         messages: suggestionMessages(dto),

@@ -122,6 +122,7 @@ export class DockerOperationExecutor {
     docker: Dockerode,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs = this.longOperationTimeoutMs,
+    options?: { waitForCleanup?: boolean },
   ) {
     this.pendingLongOperations += 1;
     this.metrics.queueDockerOperation('long', 1);
@@ -131,9 +132,10 @@ export class DockerOperationExecutor {
         return this.observe('long', operationName, description, async () => {
           const controller = new AbortController();
           let timeout: ReturnType<typeof setTimeout> | undefined;
+          const pending = operation(docker, controller.signal);
           try {
             return await Promise.race([
-              operation(docker, controller.signal),
+              pending,
               new Promise<never>((_, reject) => {
                 timeout = setTimeout(() => {
                   reject(
@@ -145,6 +147,7 @@ export class DockerOperationExecutor {
             ]);
           } finally {
             if (timeout) clearTimeout(timeout);
+            if (options?.waitForCleanup) await pending.catch(() => undefined);
           }
         });
       });

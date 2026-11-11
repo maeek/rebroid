@@ -34,6 +34,26 @@ describe('OrchestratorSettingsStore', () => {
     await rm(directory, { recursive: true, force: true });
   });
 
+  it('starts optional runtime features disabled when their deployment support is absent', () => {
+    const unsupportedStore = new OrchestratorSettingsStore(
+      new ConfigService({
+        app: {
+          container: { image: 'rebroid:test' },
+          redroid: {
+            defaultInactivityTimeoutSeconds: 900,
+            maxApkUploadSizeMb: 64,
+          },
+        },
+      }),
+    );
+    expect(unsupportedStore.defaults().featureFlags.values).toMatchObject({
+      'feature.ocr': false,
+      'feature.firewall': false,
+      'feature.workflows': true,
+      'feature.ai': false,
+    });
+  });
+
   it('serializes concurrent read-modify-write updates without losing fields', async () => {
     await Promise.all([
       store.updateSettings((current) => ({

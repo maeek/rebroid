@@ -1,7 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { FirewallPolicy, validatePolicies, validatePolicy } from "./firewall";
-import type { FirewallPolicyRecovery } from "./policy-commands";
+import {
+  firewallRecoveryPendingMessage,
+  FirewallPolicyRecoveryPendingError,
+  type FirewallPolicyRecovery,
+} from "./policy-commands";
 
 const maximumBodyBytes = 128 * 1024;
 const isNonnegativeInteger = (value: string) =>
@@ -15,10 +19,11 @@ const json = (response: ServerResponse, status: number, body: unknown) => {
   response.end(JSON.stringify(body));
 };
 
-const authorized = (request: IncomingMessage, secret: string) => {
-  if (!secret) return false;
+const authorized = (request: IncomingMessage, getSecret: () => string) => {
   const provided = request.headers["x-firewall-agent-secret"];
   if (typeof provided !== "string") return false;
+  const secret = getSecret();
+  if (!secret) return false;
   const expectedBuffer = Buffer.from(secret);
   const actualBuffer = Buffer.from(provided);
   return (
@@ -62,40 +67,40 @@ export const readJsonBody = (request: IncomingMessage) =>
   });
 
 interface FirewallAgentServerOptions {
-  secret: string;
+  getSecret: () => string;
   recovery: FirewallPolicyRecovery;
 }
 
 export const createFirewallAgentServer = ({
-  secret,
+  getSecret,
   recovery,
 }: FirewallAgentServerOptions) => {
   const { commands, adapterName } = recovery;
-  const startupErrors: string[] = [];
-  if (!secret) {
-    startupErrors.push(
-      "Firewall agent shared secret is not configured; policy operations are disabled.",
-    );
-  }
-  if (!commands) {
-    startupErrors.push(
-      recovery.error instanceof Error
-        ? `Firewall backend is unavailable: ${recovery.error.message}`
-        : "Firewall backend is unavailable.",
-    );
-  }
-  const startupError = startupErrors.join(" ");
+  const startupError = commands
+    ? ""
+    : recovery.error instanceof Error
+      ? `Firewall backend is unavailable: ${recovery.error.message}`
+      : "Firewall backend is unavailable.";
   const server = createServer(async (request, response) => {
     if (request.url === "/v1/health" && request.method === "GET") {
-      json(response, startupError ? 503 : 200, {
-        ok: !startupError,
-        status: startupError ? "unhealthy" : "healthy",
+      const error = [
+        getSecret()
+          ? ""
+          : "Firewall agent shared secret is not configured; policy operations are disabled.",
+        startupError,
+        commands?.recoveryPending ? firewallRecoveryPendingMessage : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      json(response, error ? 503 : 200, {
+        ok: !error,
+        status: error ? "unhealthy" : "healthy",
         adapter: adapterName ?? null,
-        message: startupError || "Firewall agent is ready.",
+        message: error || "Firewall agent is ready.",
       });
       return;
     }
-    if (!authorized(request, secret)) {
+    if (!authorized(request, getSecret)) {
       json(response, 401, { message: "Unauthorized." });
       return;
     }
@@ -207,6 +212,11 @@ export const createFirewallAgentServer = ({
       }
       json(response, 405, { message: "Method not allowed." });
     } catch (error) {
+      if (error instanceof FirewallPolicyRecoveryPendingError) {
+        console.error(error);
+        json(response, 503, { message: error.message });
+        return;
+      }
       if (error instanceof RequestBodyTooLargeError) {
         json(response, 413, { message: error.message });
         return;

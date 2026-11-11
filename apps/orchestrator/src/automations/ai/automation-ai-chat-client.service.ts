@@ -45,6 +45,7 @@ export class AutomationAiChatClientService {
     abortSignal,
     onContentDelta,
     responseFormat,
+    role = 'controller',
   }: {
     provider: AutomationAiProvider;
     model: AutomationAiProviderModel;
@@ -54,11 +55,9 @@ export class AutomationAiChatClientService {
     abortSignal?: AbortSignal;
     onContentDelta?: (delta: string) => Promise<void>;
     responseFormat?: ChatResponseFormat;
+    role?: 'controller' | 'planner';
   }): Promise<AutomationAiChatResponse> {
-    const finishMetrics = this.metrics.beginAiProviderRequest(
-      'chat',
-      'controller',
-    );
+    const finishMetrics = this.metrics.beginAiProviderRequest('chat', role);
     try {
       const result = await withProviderChatResponse(
         { provider, model, messages, responseFormat, tools, stream: true },

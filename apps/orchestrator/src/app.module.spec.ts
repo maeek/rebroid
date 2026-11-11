@@ -131,7 +131,9 @@ describe('AppModule', () => {
         const table = await schemaQueryRunner.getTable(entity.tableName);
         expect(table?.columns.map((column) => column.name)).toEqual(
           expect.arrayContaining(
-            entity.columns.map((column) => column.databaseName),
+            entity.columns
+              .filter((column) => !column.isVirtualProperty)
+              .map((column) => column.databaseName),
           ),
         );
       }

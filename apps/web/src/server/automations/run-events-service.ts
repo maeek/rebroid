@@ -12,7 +12,8 @@ export const readAutomationRunEvents = async (runId: string, after: number) => {
     orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, after),
     orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
   ])
-  const query = new URLSearchParams({ token: token.token, after: String(after) })
+  const streamAfter = events.at(-1)?.sequence ?? after
+  const query = new URLSearchParams({ token: token.token, after: String(streamAfter) })
   const requestHeaders = await headers()
   const isHttps =
     requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim() === 'https' ||
@@ -29,7 +30,7 @@ export const readAutomationRunEvents = async (runId: string, after: number) => {
     ? new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin)
     : new URL(getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, { secure: isHttps }))
   streamUrl.protocol = isHttps ? 'wss:' : 'ws:'
-  return { events, streamUrl: streamUrl.toString() }
+  return { events, hasMore: events.length === 1_000, streamUrl: streamUrl.toString() }
 }
 
 export const cancelAutomationRun = async (runId: string) => {

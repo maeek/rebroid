@@ -18,6 +18,38 @@ export class ScheduledTasksRepository {
     return this.tasks.save(task);
   }
 
+  updateConfiguration(task: ScheduledTask) {
+    return this.tasks.update(task.id, {
+      name: task.name,
+      enabled: task.enabled,
+      cronExpression: task.cronExpression,
+      actionType: task.actionType,
+      payloadJson: task.payloadJson,
+      nextRunAt: task.nextRunAt,
+    });
+  }
+
+  recordRunResult(
+    id: string,
+    result: Pick<ScheduledTask, 'lastStatus' | 'lastError' | 'lastRunAt'>,
+  ) {
+    return this.tasks.update(id, result);
+  }
+
+  updateNextRun(
+    task: Pick<ScheduledTask, 'id' | 'enabled' | 'cronExpression'>,
+    nextRunAt: Date | null,
+  ) {
+    return this.tasks.update(
+      {
+        id: task.id,
+        enabled: task.enabled,
+        cronExpression: task.cronExpression,
+      },
+      { nextRunAt },
+    );
+  }
+
   remove(task: ScheduledTask) {
     return this.tasks.remove(task);
   }

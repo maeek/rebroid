@@ -40,3 +40,7 @@ export const forgetRecentApplication = (userId: string, applicationId: string) =
     .run(userId, applicationId)
   return listRecentApplications(userId)
 }
+
+export const forgetDeletedApplication = (applicationId: string) => {
+  getDatabase().prepare('DELETE FROM recent_applications WHERE application_id = ?').run(applicationId)
+}

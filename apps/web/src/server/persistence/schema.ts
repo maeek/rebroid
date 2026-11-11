@@ -1,4 +1,4 @@
-export const webSchemaVersion = 2
+export const webSchemaVersion = 3
 
 export const freshWebSchema = `
   CREATE TABLE groups (
@@ -93,6 +93,21 @@ export const freshWebSchema = `
     expires_at INTEGER NOT NULL
   );
 
+  CREATE TABLE web_maintenance_jobs (
+    id TEXT PRIMARY KEY NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('viewer-revocation', 'app-deletion')),
+    application_id TEXT UNIQUE,
+    user_ids_json TEXT,
+    request_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    next_attempt_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    CHECK ((kind = 'viewer-revocation' AND user_ids_json IS NOT NULL AND application_id IS NULL) OR
+           (kind = 'app-deletion' AND application_id IS NOT NULL AND user_ids_json IS NULL))
+  );
+
+  CREATE INDEX web_maintenance_jobs_due ON web_maintenance_jobs(next_attempt_at, id);
+  CREATE INDEX recent_applications_application_id ON recent_applications(application_id);
   CREATE INDEX recent_applications_user_opened_at
     ON recent_applications(user_id, opened_at DESC);
   CREATE INDEX audit_events_created_at ON audit_events(created_at DESC);

@@ -1,7 +1,8 @@
-import { readUsersFileFromDatabase, replaceUsersFile } from '@/server/persistence/users-repository'
+import { readUsersFileFromDatabase, writeUsersFileToDatabase } from '@/server/persistence/users-repository'
 import { hashPassword } from './password-hashing'
 import { normalizeGroups, normalizeUser, nowIso } from './user-model'
 import type { StoredUser, UsersFile } from './user-model'
+import type { ViewerRevocationJob } from '@/server/persistence/web-maintenance-repository'
 
 let usersMutationQueue = Promise.resolve()
 
@@ -47,19 +48,21 @@ export const readUsersFile = async (): Promise<UsersFile> => {
   }
 
   const initial = await normalizeUsersFile({})
-  await writeUsersFile(initial)
+  writeUsersFileToDatabase(initial)
   return initial
 }
 
-const writeUsersFile = (file: UsersFile) => {
-  return Promise.resolve(replaceUsersFile(file))
-}
+export type PrepareViewerRevocation = (userIds: readonly string[]) => Promise<ViewerRevocationJob | undefined>
 
-export const mutateUsersFile = async <Result>(mutation: (file: UsersFile) => Promise<Result> | Result) => {
+export const mutateUsersFile = async <Result>(
+  mutation: (file: UsersFile) => Promise<Result> | Result,
+  prepareRevocation?: (file: UsersFile) => Promise<ViewerRevocationJob | undefined>
+) => {
   const pending = usersMutationQueue.then(async () => {
     const file = await readUsersFile()
+    const revocation = await prepareRevocation?.(file)
     const result = await mutation(file)
-    await writeUsersFile(file)
+    writeUsersFileToDatabase(file, revocation)
     return result
   })
   usersMutationQueue = pending.then(

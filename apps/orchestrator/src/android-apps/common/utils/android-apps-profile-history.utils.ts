@@ -43,17 +43,16 @@ export const rememberSavedProfile = (
   const name = profile.name.trim() || 'default';
   const profiles = [{ mode: profile.mode, name }, ...parseSavedProfiles(raw)];
   const seen = new Set<string>();
+  let temporaryProfiles = 0;
   return JSON.stringify(
-    profiles
-      .filter((item) => {
-        const key = `${item.mode}:${item.name}`;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 24),
+    profiles.filter((item) => {
+      const key = `${item.mode}:${item.name}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      if (item.mode === ApplicationProfileMode.Persistent) return true;
+      temporaryProfiles += 1;
+      return temporaryProfiles <= 24;
+    }),
   );
 };
 

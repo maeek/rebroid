@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      WEB_INTERNAL_URL: http://web:3101
+      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:14.0.0-latest}
       REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
       REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
@@ -42,7 +44,6 @@ services:
       - NET_ADMIN
     environment:
       FIREWALL_AGENT_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      FIREWALL_AGENT_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
     volumes:
       - shared-test-secrets:/app/secrets:ro
       - firewall-agent-test-run:/run/rebroid-firewall
@@ -63,7 +64,6 @@ services:
     environment:
       NODE_ENV: production
       ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
       SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
       ORCHESTRATOR_API_URL: http://orchestrator:4100
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
@@ -109,11 +109,13 @@ services:
     restart: unless-stopped
     environment:
       DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      ORCHESTRATOR_SHARED_SECRET_FILE: /app/secrets/orchestrator-secret
+      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
+      DISPLAY_WEBRTC_UDP_PORT_RANGE: ${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}
+      DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
     expose:
       - "8000"
+    ports:
+      - "${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}:${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}/udp"
     volumes:
       - shared-test-secrets:/app/secrets
     networks:

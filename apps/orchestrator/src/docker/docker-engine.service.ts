@@ -116,6 +116,7 @@ export class DockerEngineService implements DockerEnginePort {
     description: string,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs?: number,
+    options?: { waitForCleanup?: boolean },
   ) {
     return this.executor.longOperation(
       operationName,
@@ -123,6 +124,7 @@ export class DockerEngineService implements DockerEnginePort {
       this.streamDocker,
       operation,
       timeoutMs,
+      options,
     );
   }
 

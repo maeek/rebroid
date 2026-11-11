@@ -4,6 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { readProviderJson } from '../common/ai-provider-http';
+import { readProviderStreamFrames } from '../common/ai-provider-stream';
 import {
   normalizeAiModel,
   normalizeDefaultModel,
@@ -122,7 +124,7 @@ export class AiProviderModelDownloadService {
         },
       );
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as {
+        const body = (await readProviderJson(response)) as {
           error?: unknown;
           message?: unknown;
         } | null;
@@ -165,28 +167,8 @@ export class AiProviderModelDownloadService {
     downloadId: string,
     body: ReadableStream<Uint8Array>,
   ) {
-    const decoder = new TextDecoder();
-    const reader = body.getReader();
-    let buffer = '';
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          this.updateDownloadFromOllamaEvent(downloadId, line);
-        }
-      }
-      const final = `${buffer}${decoder.decode()}`.trim();
-      if (final) {
-        this.updateDownloadFromOllamaEvent(downloadId, final);
-      }
-    } finally {
-      reader.releaseLock();
+    for await (const line of readProviderStreamFrames(body, 'ollama-ndjson')) {
+      this.updateDownloadFromOllamaEvent(downloadId, line);
     }
   }
 

@@ -1,40 +1,46 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 import {
+  audioMediaFrame,
   encodeRebroidMediaFrame,
-  REBROID_MEDIA_HEADER_BYTES,
-  rebroidMediaFlag,
-  rebroidMediaKind,
   videoMediaFrame,
 } from "./scrcpy-media-frame";
 
-test("encodes an RBD1 video frame with unsigned timestamp and flags", () => {
-  const payload = Buffer.from([1, 2, 3]);
-  const encoded = encodeRebroidMediaFrame(
+test("encodes the RBD1 frames shared with the Go bridge", () => {
+  const fixture = readFileSync(
+    join(__dirname, "../../../webrtc-bridge/testdata/rbd1-frames.bin"),
+  );
+  const frames = [
     videoMediaFrame(
       {
-        data: payload,
+        data: Buffer.from([0, 0, 0, 1, 0x67]),
+        timestampUs: 0n,
+        config: true,
+        keyFrame: false,
+      },
+      0x01020304,
+    ),
+    videoMediaFrame(
+      {
+        data: Buffer.from([0, 0, 0, 1, 0x65]),
         timestampUs: (1n << 63n) + 42n,
         config: false,
         keyFrame: true,
       },
-      17,
+      0x01020305,
       true,
     ),
-  );
+    audioMediaFrame(
+      {
+        data: Buffer.from([0xf8, 0xff, 0xfe]),
+        timestampUs: 42_000n,
+        config: false,
+      },
+      0xffffffff,
+    ),
+  ];
 
-  assert.equal(encoded.subarray(0, 4).toString("ascii"), "RBD1");
-  assert.equal(encoded.readUInt8(4), 1);
-  assert.equal(encoded.readUInt8(5), rebroidMediaKind.video);
-  assert.equal(
-    encoded.readUInt16BE(6),
-    rebroidMediaFlag.keyFrame | rebroidMediaFlag.discontinuity,
-  );
-  assert.equal(encoded.readUInt32BE(8), 17);
-  assert.equal(encoded.readBigUInt64BE(12), (1n << 63n) + 42n);
-  assert.equal(encoded.readUInt32BE(20), payload.byteLength);
-  assert.deepEqual(
-    [...encoded.subarray(REBROID_MEDIA_HEADER_BYTES)],
-    [1, 2, 3],
-  );
+  assert.deepEqual(Buffer.concat(frames.map(encodeRebroidMediaFrame)), fixture);
 });

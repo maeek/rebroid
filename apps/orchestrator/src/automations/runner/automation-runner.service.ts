@@ -49,23 +49,18 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
+    const message = 'Automation stopped because the orchestrator restarted.';
     for (const run of await this.runs.listAllActive()) {
-      const failed = await this.runs.transition(
+      await this.events.transitionRun(
         run.id,
         [AutomationRunStatus.Queued, AutomationRunStatus.Running],
         {
           status: AutomationRunStatus.Failed,
           completedAt: new Date(),
-          error: 'Automation stopped because the orchestrator restarted.',
+          error: message,
         },
+        { type: 'run.failed', message },
       );
-      if (!failed) continue;
-      await this.events.emit({
-        runId: failed.id,
-        ownerUserId: failed.ownerUserId,
-        type: 'run.failed',
-        message: failed.error ?? 'Automation stopped after restart.',
-      });
     }
   }
 
@@ -132,7 +127,6 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
           createdAt: new Date(),
           startedAt: null,
           completedAt: null,
-          stepResultsJson: '[]',
           error: null,
           lastEventSequence: 0,
         }),
@@ -167,11 +161,17 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         });
       }
     } catch (error) {
-      await this.runs.transition(run.id, [AutomationRunStatus.Queued], {
-        status: AutomationRunStatus.Failed,
-        completedAt: new Date(),
-        error: error instanceof Error ? error.message : String(error),
-      });
+      const message = error instanceof Error ? error.message : String(error);
+      await this.events.transitionRun(
+        run.id,
+        [AutomationRunStatus.Queued],
+        {
+          status: AutomationRunStatus.Failed,
+          completedAt: new Date(),
+          error: message,
+        },
+        { type: 'run.failed', message },
+      );
       this.metrics.automationRunFinished(
         trigger,
         AutomationRunStatus.Failed,
@@ -203,7 +203,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         // Keep the run's reservation until Android has finished admitting the start.
         await active.pendingTargetStart.catch(() => undefined);
       }
-      const canceled = await this.runs.transition(
+      const canceled = await this.events.transitionRun(
         run.id,
         [AutomationRunStatus.Queued, AutomationRunStatus.Running],
         {
@@ -211,6 +211,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
           completedAt: new Date(),
           error: 'Canceled by user.',
         },
+        { type: 'run.canceled', message: 'Automation canceled.' },
       );
       if (!canceled) {
         return (await this.runs.findByOwnerAndId(ownerUserId, runId)) ?? run;
@@ -220,12 +221,6 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         canceled.status,
         canceled.startedAt,
       );
-      await this.events.emit({
-        runId: canceled.id,
-        ownerUserId: canceled.ownerUserId,
-        type: 'run.canceled',
-        message: 'Automation canceled.',
-      });
       return canceled;
     } finally {
       if (!alreadyTracked && this.activeRuns.get(run.id) === active) {

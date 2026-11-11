@@ -8,6 +8,7 @@ import { AutomationRunEventsRepository } from './automation-run-events.repositor
 import { AutomationRunsRepository } from './automation-runs.repository';
 import { AutomationTriggersRepository } from './automation-triggers.repository';
 import { AutomationsRepository } from './automations.repository';
+import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsModule } from '../../metrics/metrics.module';
 
 @Module({
@@ -21,6 +22,7 @@ import { MetricsModule } from '../../metrics/metrics.module';
     MetricsModule,
   ],
   providers: [
+    AutomationPersistenceQueue,
     AutomationsRepository,
     AutomationRunEventsRepository,
     AutomationRunsRepository,

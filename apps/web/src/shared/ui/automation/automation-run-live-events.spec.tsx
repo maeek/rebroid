@@ -64,6 +64,24 @@ describe('AutomationRunLiveEvents', () => {
     expect(screen.queryByText('Waiting for activity')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
   })
+  it('reads every page of a recorded run using the last delivered sequence', async () => {
+    vi.mocked(getBff)
+      .mockResolvedValueOnce({
+        events: [{ ...failedEvent, sequence: 1000, type: 'step.completed', message: 'First page step' }],
+        hasMore: true,
+        streamUrl: 'ws://example.test/events'
+      })
+      .mockResolvedValueOnce({
+        events: [{ ...failedEvent, id: 'event_terminal', sequence: 1001 }],
+        hasMore: false,
+        streamUrl: 'ws://example.test/events'
+      })
+    render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
+
+    expect(await screen.findByText(failedEvent.message)).toBeTruthy()
+    expect(screen.getByText('First page step')).toBeTruthy()
+    expect(getBff).toHaveBeenLastCalledWith(`/api/bff/automations/runs/${run.id}/events?after=1000`)
+  })
   it('preserves the recorded terminal status while replaying earlier events', async () => {
     vi.mocked(getBff).mockResolvedValue({
       events: [{ ...failedEvent, type: 'run.started', message: 'Earlier start event' }],

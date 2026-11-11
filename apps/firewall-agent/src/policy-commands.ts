@@ -9,7 +9,22 @@ export type FirewallPolicyRecovery =
   | { commands: FirewallPolicyCommands; adapterName: string }
   | { commands?: never; adapterName?: string; error: unknown };
 
+export const firewallRecoveryPendingMessage =
+  "Firewall rules could not be restored from committed policy state.";
+
+export class FirewallPolicyRecoveryPendingError extends Error {
+  constructor(cause: unknown) {
+    super(firewallRecoveryPendingMessage, { cause });
+  }
+}
+
 export class FirewallPolicyCommands {
+  private needsRecovery = false;
+
+  get recoveryPending() {
+    return this.needsRecovery;
+  }
+
   private constructor(
     private readonly adapter: FirewallAdapter,
     private readonly store: FirewallPolicyStore,
@@ -35,6 +50,7 @@ export class FirewallPolicyCommands {
   }
 
   reconcile(desired: Map<string, FirewallPolicy>, startedAt?: number) {
+    this.recoverIfNeeded();
     const state = this.store.snapshot();
     if (
       startedAt !== undefined &&
@@ -97,6 +113,7 @@ export class FirewallPolicyCommands {
   }
 
   apply(policy: FirewallPolicy) {
+    this.recoverIfNeeded();
     const state = this.store.snapshot();
     const id = policy.applicationId;
     const existing = state.policies.get(id);
@@ -125,6 +142,7 @@ export class FirewallPolicyCommands {
   }
 
   refresh(policy: FirewallPolicy) {
+    this.recoverIfNeeded();
     const existing = this.store.snapshot().policies.get(policy.applicationId);
     if (
       !policy.enabled ||
@@ -146,6 +164,7 @@ export class FirewallPolicyCommands {
     generation?: number,
     revision?: number,
   ) {
+    this.recoverIfNeeded();
     const state = this.store.snapshot();
     const existing = state.policies.get(id);
     if (
@@ -190,6 +209,16 @@ export class FirewallPolicyCommands {
     return "applied";
   }
 
+  private recoverIfNeeded() {
+    if (!this.needsRecovery) return;
+    try {
+      this.adapter.reconcile(this.store.snapshot().policies);
+      this.needsRecovery = false;
+    } catch (error) {
+      throw new FirewallPolicyRecoveryPendingError(error);
+    }
+  }
+
   private commit(next: FirewallPolicyState, install: () => void) {
     let installed = false;
     try {
@@ -202,6 +231,7 @@ export class FirewallPolicyCommands {
         try {
           this.adapter.reconcile(this.store.snapshot().policies);
         } catch (rollbackError) {
+          this.needsRecovery = true;
           throw new AggregateError(
             [error, rollbackError],
             "Could not persist the firewall update or restore the previous rules.",

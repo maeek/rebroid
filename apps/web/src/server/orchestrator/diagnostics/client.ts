@@ -39,13 +39,14 @@ export const orchestratorDiagnosticsClient = {
     )
   },
 
-  listDisplaySidecarSessions() {
-    return emptyRequest<DisplaySidecarSession[]>('/platform/display-sidecar/sessions')
+  listDisplaySidecarSessions(signal?: AbortSignal) {
+    return emptyRequest<DisplaySidecarSession[]>('/platform/display-sidecar/sessions', { signal })
   },
 
-  releaseDisplaySidecarSession(id: string) {
+  releaseDisplaySidecarSession(id: string, signal?: AbortSignal) {
     return emptyRequest<DisplaySidecarSession>(`/platform/display-sidecar/sessions/${encodeURIComponent(id)}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      signal
     })
   },
 

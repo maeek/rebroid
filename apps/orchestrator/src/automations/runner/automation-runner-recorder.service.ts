@@ -13,6 +13,7 @@ import { AutomationStepResult } from './automation-runner.types';
 interface StepRecorderState {
   runId: string;
   results: AutomationStepResult[];
+  persistedResultCount?: number;
   outputsByStepId: Map<string, Record<string, unknown> | null>;
 }
 
@@ -71,7 +72,7 @@ export class AutomationRunnerRecorderService {
         output,
       ),
     );
-    await this.saveRunResults(run, state.results);
+    await this.saveRunResults(run, state);
     await this.events.emit({
       runId: state.runId,
       ownerUserId: run.ownerUserId,
@@ -109,7 +110,7 @@ export class AutomationRunnerRecorderService {
       ),
     );
     run.error = message;
-    await this.saveRunResults(run, state.results);
+    await this.saveRunResults(run, state);
     if (!emitEvent) {
       return;
     }
@@ -148,7 +149,7 @@ export class AutomationRunnerRecorderService {
         result,
       ),
     );
-    await this.saveRunResults(run, state.results);
+    await this.saveRunResults(run, state);
     await this.events.emit({
       runId: state.runId,
       ownerUserId: run.ownerUserId,
@@ -160,8 +161,14 @@ export class AutomationRunnerRecorderService {
     });
   }
 
-  async saveRunResults(run: AutomationRun, results: AutomationStepResult[]) {
-    run.stepResultsJson = JSON.stringify(results);
-    await this.runs.updateProgress(run.id, run.stepResultsJson, run.error);
+  private async saveRunResults(run: AutomationRun, state: StepRecorderState) {
+    const persisted = state.persistedResultCount ?? 0;
+    const saved = await this.runs.appendStepResults(
+      run.id,
+      persisted + 1,
+      state.results.slice(persisted),
+      run.error,
+    );
+    if (saved) state.persistedResultCount = state.results.length;
   }
 }

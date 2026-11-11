@@ -1,3 +1,4 @@
+import { ProviderResponseLimitError } from './ai-provider-http';
 import {
   providerProtocol,
   type ChatMessage,
@@ -10,6 +11,14 @@ export const providerStreamFormat = (
   providerProtocol(provider) === 'ollama-native-chat'
     ? ('ollama-ndjson' as const)
     : ('openai-sse' as const);
+
+export const providerStreamLimits = {
+  responseBytes: 32 * 1024 * 1024,
+  frameCharacters: 4 * 1024 * 1024,
+  contentCharacters: 8 * 1024 * 1024,
+  toolCalls: 128,
+  toolArgumentsCharacters: 2 * 1024 * 1024,
+} as const;
 
 type ChatStreamFormat = 'openai-sse' | 'ollama-ndjson';
 
@@ -77,7 +86,9 @@ export const consumeChatCompletionStream = async ({
   let usage: ChatCompletionUsage | undefined;
   let timings: ChatCompletionTimings | undefined;
 
-  for await (const event of parseChatEvents(body, format)) {
+  for await (const frame of readProviderStreamFrames(body, format)) {
+    const event = format === 'openai-sse' ? eventData(frame) : frame.trim();
+    if (!event) continue;
     if (event === '[DONE]') break;
     const parsed = parseJsonObject(event);
     if (!parsed) continue;
@@ -87,6 +98,12 @@ export const consumeChatCompletionStream = async ({
         : parseOpenAiUpdate(parsed);
     if (!update) continue;
 
+    if (
+      content.length + update.contentDelta.length >
+      providerStreamLimits.contentCharacters
+    ) {
+      throw new ProviderResponseLimitError('assistant content size');
+    }
     if (update.contentDelta) content += update.contentDelta;
     if (update.reasoningDelta) reasoningPresent = true;
     if (update.finishReason) finishReason = update.finishReason;
@@ -189,31 +206,46 @@ const parseOllamaUpdate = (
   };
 };
 
-const parseChatEvents = async function* (
+export async function* readProviderStreamFrames(
   body: ReadableStream<Uint8Array>,
   format: ChatStreamFormat,
 ) {
   const separator = format === 'openai-sse' ? /\r?\n\r?\n/ : /\r?\n/;
+  const separatorPrefix = format === 'openai-sse' ? /(?:\r?\n\r?|\r)$/ : /\r$/;
   const decoder = new TextDecoder();
   const reader = body.getReader();
   let buffer = '';
+  let bytes = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
+      bytes += value?.byteLength ?? 0;
+      if (bytes > providerStreamLimits.responseBytes) {
+        throw new ProviderResponseLimitError('stream body size');
+      }
       buffer += decoder.decode(value, { stream: !done });
       const frames = buffer.split(separator);
-      if (!done) buffer = frames.pop() ?? '';
+      buffer = done ? '' : (frames.pop() ?? '');
       for (const frame of frames) {
-        const data = format === 'openai-sse' ? eventData(frame) : frame.trim();
-        if (data) yield data;
+        if (frame.length > providerStreamLimits.frameCharacters) {
+          throw new ProviderResponseLimitError('stream frame size');
+        }
+        if (!done || frame.trim()) yield frame;
       }
       if (done) return;
+      if (
+        buffer.length > providerStreamLimits.frameCharacters &&
+        buffer.length - (buffer.match(separatorPrefix)?.[0].length ?? 0) >
+          providerStreamLimits.frameCharacters
+      ) {
+        throw new ProviderResponseLimitError('stream frame size');
+      }
     }
   } finally {
     void reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
-};
+}
 
 const eventData = (event: string) => {
   const lines = event
@@ -249,7 +281,15 @@ const parseToolCallDeltas = (value: unknown): ChatToolCallDelta[] => {
   for (const item of value) {
     const record = objectValue(item);
     if (!record) continue;
-    const index = numberValue(record.index) ?? output.length;
+    const index = record.index === undefined ? output.length : record.index;
+    if (
+      typeof index !== 'number' ||
+      !Number.isSafeInteger(index) ||
+      index < 0 ||
+      index >= providerStreamLimits.toolCalls
+    ) {
+      throw new ProviderResponseLimitError('tool call index');
+    }
     const functionRecord = objectValue(record.function);
     output.push({
       index,
@@ -340,13 +380,17 @@ const mergeToolCallDeltas = (
         type: 'function',
         function: { name: '', arguments: '' },
       } satisfies PendingToolCall);
+    const argumentsText =
+      current.function.arguments + (delta.function?.arguments ?? '');
+    if (argumentsText.length > providerStreamLimits.toolArgumentsCharacters) {
+      throw new ProviderResponseLimitError('tool arguments size');
+    }
     pendingToolCalls.set(delta.index, {
       id: delta.id ?? current.id,
       type: delta.type ?? current.type,
       function: {
         name: delta.function?.name ?? current.function.name,
-        arguments:
-          current.function.arguments + (delta.function?.arguments ?? ''),
+        arguments: argumentsText,
       },
     });
   }

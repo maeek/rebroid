@@ -141,3 +141,17 @@ const knownKeys = new Set<string>(featureFlagKeys);
 
 export const isFeatureFlagKey = (value: string): value is FeatureFlagKey =>
   knownKeys.has(value);
+
+export const defaultRuntimeFeatureFlagValues = (
+  getSupportConfig: (key: string) => unknown,
+): Partial<Record<FeatureFlagKey, boolean>> =>
+  Object.fromEntries(
+    featureFlagDefinitions
+      .filter((definition) => definition.control === 'runtime')
+      .map((definition) => [
+        definition.key,
+        definition.defaultEnabled &&
+          (!definition.supportConfigKey ||
+            Boolean(getSupportConfig(definition.supportConfigKey))),
+      ]),
+  );

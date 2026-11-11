@@ -44,7 +44,7 @@ export class ApkCatalogService implements ApkCatalogPort {
         ),
       canceledError: () => new ConflictException('APK upload was cancelled.'),
       consume: (stream, originalName, limitExceeded) =>
-        this.storage.persistApkStream(stream, maxBytes).then(async (stored) => {
+        this.storage.withPersistedApk(stream, maxBytes, async (stored) => {
           if (limitExceeded()) {
             await this.storage.removeSharedFileIfUnreferenced(stored);
             throw new PayloadTooLargeException(
@@ -155,6 +155,13 @@ export class ApkCatalogService implements ApkCatalogPort {
    */
   async cloneForOwner(id: string, ownerUserId?: string | null) {
     const source = await this.get(id);
+    return this.storage.withHash(source.sha256, () =>
+      this.cloneStoredForOwner(id, ownerUserId),
+    );
+  }
+
+  private async cloneStoredForOwner(id: string, ownerUserId?: string | null) {
+    const source = await this.get(id);
     const owner = ownerUserId?.trim() || null;
     const existing = await this.uploadedApks.findBySha256ForOwner(
       source.sha256,
@@ -188,17 +195,20 @@ export class ApkCatalogService implements ApkCatalogPort {
    */
   async remove(id: string) {
     const uploaded = await this.get(id);
-    const inUseCount =
-      await this.applicationReferences.countUsingUploadedApk(id);
-    if (inUseCount > 0) {
-      throw new ConflictException(
-        'Uploaded APK is used by one or more Android applications.',
-      );
-    }
-
-    await this.uploadedApks.remove(uploaded);
-    await this.storage.removeSharedFileIfUnused(uploaded);
-    return uploaded;
+    return this.storage.withHash(uploaded.sha256, async () => {
+      const current = await this.get(id);
+      const inUseCount =
+        await this.applicationReferences.countUsingUploadedApk(id);
+      if (inUseCount > 0) {
+        throw new ConflictException(
+          'Uploaded APK is used by one or more Android applications.',
+        );
+      }
+      const deleted = { ...current };
+      await this.uploadedApks.remove(current);
+      await this.storage.removeSharedFileIfUnreferenced(deleted);
+      return deleted;
+    });
   }
 
   /**
@@ -206,27 +216,29 @@ export class ApkCatalogService implements ApkCatalogPort {
    */
   async cleanupUnused(ownerUserId?: string | null) {
     const uploads = await this.uploadedApks.listForCleanup(ownerUserId);
-    const ids = uploads.map((upload) => upload.id);
-    if (ids.length === 0) {
-      return {
-        deletedRecords: 0,
-        removedFiles: await this.storage.cleanupOrphanedFiles(),
-      };
-    }
-
     const usedIds =
-      await this.applicationReferences.findReferencedUploadedApkIds(ids);
-    const unused = uploads.filter((upload) => !usedIds.has(upload.id));
-
+      uploads.length > 0
+        ? await this.applicationReferences.findReferencedUploadedApkIds(
+            uploads.map(({ id }) => id),
+          )
+        : new Set<string>();
     let removedFiles = 0;
-    for (const upload of unused) {
-      await this.uploadedApks.remove(upload);
-      if (await this.storage.removeSharedFileIfUnused(upload)) {
-        removedFiles += 1;
-      }
+    let deletedRecords = 0;
+    for (const upload of uploads) {
+      if (usedIds.has(upload.id)) continue;
+      await this.storage.withHash(upload.sha256, async () => {
+        const current = await this.uploadedApks.findById(upload.id);
+        if (!current) return;
+        if (await this.applicationReferences.countUsingUploadedApk(current.id))
+          return;
+        await this.uploadedApks.remove(current);
+        deletedRecords += 1;
+        if (await this.storage.removeSharedFileIfUnreferenced(current))
+          removedFiles += 1;
+      });
     }
 
     removedFiles += await this.storage.cleanupOrphanedFiles();
-    return { deletedRecords: unused.length, removedFiles };
+    return { deletedRecords, removedFiles };
   }
 }

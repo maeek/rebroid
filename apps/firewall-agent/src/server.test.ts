@@ -5,6 +5,7 @@ import { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
+import { createFirewallAgentConfig } from "./config";
 import type { FirewallAdapter, FirewallPolicy } from "./firewall";
 import { FirewallPolicyCommands } from "./policy-commands";
 import { FirewallPolicyStore } from "./policy-store";
@@ -53,10 +54,10 @@ test("startup recovery reinstalls saved policies without rewriting legacy state"
 function startTestServer(
   store: FirewallPolicyStore,
   backend = adapter,
-  secret = "secret",
+  getSecret = () => "secret",
 ) {
   return createFirewallAgentServer({
-    secret,
+    getSecret,
     recovery: FirewallPolicyCommands.restore(store, () => backend),
   });
 }
@@ -120,10 +121,15 @@ test("server reports failed recovery and rejects authenticated policy commands",
   });
 });
 
-test("server restores saved rules with a missing secret and rejects live commands", async (context) => {
+test("server restores saved rules before the generated shared secret is available", async (context) => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
   const statePath = join(directory, "policies.json");
+  const secretPath = join(directory, "shared-secret");
+  const { getSecret } = createFirewallAgentConfig({
+    FIREWALL_AGENT_SHARED_SECRET: "",
+    FIREWALL_AGENT_SHARED_SECRET_FILE: secretPath,
+  });
   const policy: FirewallPolicy = {
     applicationId: "app-1",
     containerId: "container-1",
@@ -142,7 +148,7 @@ test("server restores saved rules with a missing secret and rejects live command
         installed.push(...policies.values());
       },
     },
-    "",
+    getSecret,
   );
 
   assert.deepEqual(installed, [policy]);
@@ -161,6 +167,24 @@ test("server restores saved rules with a missing secret and rejects live command
     401,
   );
   assert.deepEqual(installed, [policy]);
+
+  writeFileSync(secretPath, "");
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    401,
+  );
+  writeFileSync(secretPath, "secret\n");
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    200,
+  );
+
+  rmSync(secretPath);
+  assert.equal((await requestAgent(server, "GET", "/v1/health")).status, 200);
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/reconcile", { policies: [] }),
+    200,
+  );
 });
 
 test("viewer refreshes only the installed revision of the same enabled runtime", async (context) => {
@@ -350,6 +374,120 @@ test("an unrelated firewall write uses the last committed policies after a rejec
       ["app-2", other],
     ]),
   );
+});
+
+function failPolicyPersistence(
+  ...[, install]: Parameters<FirewallPolicyStore["save"]>
+): never {
+  install?.();
+  throw new Error("rename failed");
+}
+
+test("policy persistence failure with successful rollback keeps health ready", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  context.mock.method(console, "error", () => undefined);
+  const store = new FirewallPolicyStore(join(directory, "policies.json"));
+  let installed = new Map<string, FirewallPolicy>();
+  const server = startTestServer(store, {
+    ...adapter,
+    apply(_policy, policies) {
+      installed = new Map(policies);
+    },
+    reconcile(policies) {
+      installed = new Map(policies);
+    },
+  });
+  context.mock.method(store, "save", failPolicyPersistence, { times: 1 });
+
+  const policy: FirewallPolicy = {
+    applicationId: "app-1",
+    containerId: "runtime-1",
+    containerIp: "10.0.0.2",
+    enabled: true,
+    allowCidrs: [],
+    generation: 10,
+    revision: 1,
+  };
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/policies/app-1", policy),
+    500,
+  );
+  assert.equal(installed.size, 0);
+  assert.equal(store.snapshot().policies.size, 0);
+  assert.equal((await requestAgent(server, "GET", "/v1/health")).status, 200);
+});
+
+test("failed policy rollback degrades health until committed rules can be restored", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  context.mock.method(console, "error", () => undefined);
+  const statePath = join(directory, "policies.json");
+  const store = new FirewallPolicyStore(statePath);
+  let installed = new Map<string, FirewallPolicy>();
+  let recoveryAvailable = true;
+  const recoveryAttempts: Map<string, FirewallPolicy>[] = [];
+  const server = startTestServer(store, {
+    ...adapter,
+    apply(_policy, policies) {
+      installed = new Map(policies);
+    },
+    reconcile(policies) {
+      recoveryAttempts.push(new Map(policies));
+      if (!recoveryAvailable) throw new Error("host rejected recovery");
+      installed = new Map(policies);
+    },
+  });
+  const committed: FirewallPolicy = {
+    applicationId: "app-1",
+    containerId: "runtime-1",
+    containerIp: "10.0.0.2",
+    enabled: true,
+    allowCidrs: [],
+    generation: 10,
+    revision: 1,
+  };
+  const candidate = {
+    ...committed,
+    allowCidrs: ["10.0.0.0/8"],
+    generation: 20,
+    revision: 2,
+  };
+  const path = "/v1/policies/app-1";
+  assert.equal(await requestPolicy(server, "PUT", path, committed), 200);
+  const saved = readFileSync(statePath, "utf8");
+
+  context.mock.method(store, "save", failPolicyPersistence, { times: 1 });
+  recoveryAvailable = false;
+  assert.equal(await requestPolicy(server, "PUT", path, candidate), 500);
+  assert.deepEqual(installed.get("app-1"), candidate);
+  assert.equal(readFileSync(statePath, "utf8"), saved);
+  assert.deepEqual(await requestAgent(server, "GET", "/v1/health"), {
+    status: 503,
+    body: {
+      ok: false,
+      status: "unhealthy",
+      adapter: "test",
+      message:
+        "Firewall rules could not be restored from committed policy state.",
+    },
+  });
+  assert.equal(recoveryAttempts.length, 2);
+
+  const retry = { ...committed, generation: 15 };
+  assert.equal(await requestPolicy(server, "PUT", path, retry), 503);
+  assert.equal(readFileSync(statePath, "utf8"), saved);
+  assert.deepEqual(installed.get("app-1"), candidate);
+
+  recoveryAvailable = true;
+  assert.equal(await requestPolicy(server, "PUT", path, retry), 200);
+  assert.equal(recoveryAttempts.length, 4);
+  for (const policies of recoveryAttempts.slice(1)) {
+    assert.deepEqual(policies.get("app-1"), committed);
+  }
+  assert.deepEqual(installed.get("app-1"), retry);
+  assert.deepEqual(store.snapshot().policies.get("app-1"), retry);
+  assert.equal((await requestAgent(server, "GET", "/v1/health")).status, 200);
 });
 
 test("a viewer refresh cannot use a rejected individual firewall write", async (context) => {

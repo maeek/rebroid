@@ -34,3 +34,72 @@ describe('disabled firewall policy enforcement', () => {
     },
   );
 });
+
+describe('manual firewall reconciliation completeness', () => {
+  const app = (id: string): NetworkPolicyTarget => ({
+    id,
+    containerId: `container-${id}`,
+    networkName: `network-${id}`,
+    networkPolicyEnabled: true,
+    networkPolicyAllowCidrs: '[]',
+    networkPolicyRevision: 1,
+  });
+
+  const setup = () => {
+    const observeStartupRuntime = jest.fn();
+    const agent = {
+      reconcile: jest.fn().mockResolvedValue({ status: 'applied' }),
+      apply: jest.fn().mockResolvedValue({ status: 'applied' }),
+    };
+    const service = new NetworkPolicyService(
+      { get: () => [] } as unknown as ConfigService,
+      { observeStartupRuntime } as unknown as NetworkPolicyRuntimeService,
+      {} as DockerNetworkRuntimePort,
+      { getSidecarIp: async () => null } as unknown as DockerSidecarPort,
+      agent as unknown as FirewallAgentClientService,
+      { isEnabled: () => true } as unknown as FeatureFlagsService,
+    );
+    return { service, agent, observeStartupRuntime };
+  };
+
+  it('retains installed policies when a live runtime address is unavailable', async () => {
+    const { service, agent, observeStartupRuntime } = setup();
+    observeStartupRuntime
+      .mockResolvedValueOnce({ state: 'live', address: null })
+      .mockResolvedValueOnce({ state: 'live', address: '10.1.0.2' });
+
+    await expect(
+      service.reconcile([app('unknown'), app('known')], 123),
+    ).rejects.toThrow('incomplete');
+
+    expect(agent.reconcile).not.toHaveBeenCalled();
+    expect(agent.apply).toHaveBeenCalledWith(
+      'known',
+      expect.objectContaining({
+        containerId: 'container-known',
+        generation: 123,
+        revision: 1,
+      }),
+    );
+  });
+
+  it('retains installed policies when runtime identity cannot be verified', async () => {
+    const { service, agent, observeStartupRuntime } = setup();
+    observeStartupRuntime.mockResolvedValue({
+      state: 'uncertain',
+      reason: 'engine unavailable',
+    });
+    await expect(service.reconcile([app('unknown')], 123)).rejects.toThrow(
+      'incomplete',
+    );
+    expect(agent.reconcile).not.toHaveBeenCalled();
+    expect(agent.apply).not.toHaveBeenCalled();
+  });
+
+  it('prunes a complete snapshot only after observing inactive runtimes', async () => {
+    const { service, agent, observeStartupRuntime } = setup();
+    observeStartupRuntime.mockResolvedValue({ state: 'inactive' });
+    await service.reconcile([app('stopped')], 123);
+    expect(agent.reconcile).toHaveBeenCalledWith([], 123);
+  });
+});

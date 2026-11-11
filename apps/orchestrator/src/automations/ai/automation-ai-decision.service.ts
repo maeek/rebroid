@@ -184,6 +184,7 @@ export class AutomationAiDecisionService {
     const structuredOutput = modelSupportsStructuredOutput(args.model);
     const toolsSupported = modelSupportsTools(args.model);
     const response = await this.chatClient.chat({
+      role: 'planner',
       provider: args.provider,
       model: args.model,
       messages,

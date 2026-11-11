@@ -216,6 +216,11 @@ export class AndroidAppsConfigurationService {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
     await this.assertRuntimeNotRecreating(app);
+    if (this.backgroundJobs.hasWork(id)) {
+      throw new ConflictException(
+        'Wait for the active application job before switching profiles.',
+      );
+    }
     await this.runtimePreparation.switchProfile(app, dto);
     return this.writer.saveAndDecorate(app);
   }

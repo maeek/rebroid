@@ -1,34 +1,41 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, MoreThan, Repository } from 'typeorm';
+import {
+  DataSource,
+  In,
+  MoreThan,
+  Repository,
+  type EntityManager,
+} from 'typeorm';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import type {
   AutomationRunEventInput,
   AutomationRunEventRecord,
 } from '../events/automation-run-events.types';
+import {
+  AutomationRun,
+  AutomationRunStatus,
+} from '../entities/automation-run.entity';
+import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsService } from '../../metrics/metrics.service';
 
 @Injectable()
 export class AutomationRunEventsRepository {
-  private appendTail: Promise<void> = Promise.resolve();
-
   constructor(
     @InjectRepository(AutomationRunEvent)
     private readonly events: Repository<AutomationRunEvent>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly metrics: MetricsService,
+    private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
   ) {}
 
   async append(input: AutomationRunEventInput) {
     const finishMetrics = this.metrics.beginAutomationEventPersistence();
-    const append = this.appendTail.then(
-      () => this.appendInTransaction(input),
-      () => this.appendInTransaction(input),
-    );
-    this.appendTail = append.then(
-      () => undefined,
-      () => undefined,
+    const append = this.queue.run(() =>
+      this.dataSource.transaction((manager) =>
+        this.appendInTransaction(manager, input),
+      ),
     );
     try {
       const event = await append;
@@ -40,40 +47,93 @@ export class AutomationRunEventsRepository {
     }
   }
 
-  private appendInTransaction(input: AutomationRunEventInput) {
-    return this.dataSource.transaction(async (manager) => {
-      const rows = (await manager.query(
-        `UPDATE automation_runs
-         SET lastEventSequence = lastEventSequence + 1
-         WHERE id = ?
-         RETURNING lastEventSequence`,
-        [input.runId],
-      )) as Array<{ lastEventSequence: number }>;
-      const sequence = rows[0]?.lastEventSequence;
-      if (!Number.isInteger(sequence)) {
-        throw new Error(
-          `Cannot append an event for missing automation run "${input.runId}".`,
-        );
-      }
-
-      return manager.getRepository(AutomationRunEvent).save(
-        manager.getRepository(AutomationRunEvent).create({
-          runId: input.runId,
-          ownerUserId: input.ownerUserId,
-          sequence,
-          type: input.type,
-          stepId: input.stepId ?? null,
-          parentStepId: input.parentStepId ?? null,
-          message: input.message ?? '',
-          dataJson: JSON.stringify(input.data ?? {}),
+  async transitionRun(
+    id: string,
+    expectedStatuses: AutomationRunStatus[],
+    patch: {
+      status:
+        | AutomationRunStatus.Success
+        | AutomationRunStatus.Failed
+        | AutomationRunStatus.Canceled;
+      completedAt: Date;
+      error: string | null;
+    },
+    event: Omit<AutomationRunEventInput, 'runId' | 'ownerUserId'>,
+  ) {
+    const finishMetrics = this.metrics.beginAutomationEventPersistence();
+    try {
+      const result = await this.queue.run(() =>
+        this.dataSource.transaction(async (manager) => {
+          const runs = manager.getRepository(AutomationRun);
+          const updated = await runs.update(
+            { id, status: In(expectedStatuses) },
+            patch,
+          );
+          if (!updated.affected) return null;
+          const run = await runs.findOneByOrFail({ id });
+          const record = await this.appendInTransaction(manager, {
+            ...event,
+            runId: id,
+            ownerUserId: run.ownerUserId,
+          });
+          run.lastEventSequence = record.sequence;
+          return { run, event: toRecord(record) };
         }),
       );
+      if (result) finishMetrics('success');
+      return result;
+    } catch (error) {
+      finishMetrics('error');
+      throw error;
+    }
+  }
+
+  private async appendInTransaction(
+    manager: EntityManager,
+    input: AutomationRunEventInput,
+  ) {
+    const rows = (await manager.query(
+      `UPDATE automation_runs
+       SET lastEventSequence = lastEventSequence + 1
+       WHERE id = ?
+       RETURNING lastEventSequence`,
+      [input.runId],
+    )) as Array<{ lastEventSequence: number }>;
+    const sequence = rows[0]?.lastEventSequence;
+    if (!Number.isInteger(sequence)) {
+      throw new Error(
+        `Cannot append an event for missing automation run "${input.runId}".`,
+      );
+    }
+    const events = manager.getRepository(AutomationRunEvent);
+    return events.save(
+      events.create({
+        runId: input.runId,
+        ownerUserId: input.ownerUserId,
+        sequence,
+        type: input.type,
+        stepId: input.stepId ?? null,
+        parentStepId: input.parentStepId ?? null,
+        message: input.message ?? '',
+        dataJson: JSON.stringify(input.data ?? {}),
+      }),
+    );
+  }
+
+  latestSequence(ownerUserId: string, runId: string) {
+    return this.queue.run(async () => {
+      const event = await this.events.findOne({
+        where: { ownerUserId, runId },
+        order: { sequence: 'DESC' },
+        select: { sequence: true },
+      });
+      return event?.sequence ?? 0;
     });
   }
 
-  async listForRun(ownerUserId: string, runId: string, after = 0) {
-    return (
-      await this.events.find({
+  listForRun(ownerUserId: string, runId: string, after = 0) {
+    return this.queue.run(async () => {
+      const rows = await this.events.find({
         where: {
           ownerUserId,
           runId,
@@ -81,8 +141,9 @@ export class AutomationRunEventsRepository {
         },
         order: { sequence: 'ASC' },
         take: 1000,
-      })
-    ).map(toRecord);
+      });
+      return rows.map(toRecord);
+    });
   }
 
   async findFailureRequestId(ownerUserId: string, runId: string) {
@@ -150,7 +211,9 @@ export class AutomationRunEventsRepository {
     if (runIds.length === 0) {
       return;
     }
-    await this.events.delete({ ownerUserId, runId: In(runIds) });
+    await this.queue.run(() =>
+      this.events.delete({ ownerUserId, runId: In(runIds) }),
+    );
   }
 }
 

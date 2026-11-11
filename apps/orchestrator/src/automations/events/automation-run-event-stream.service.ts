@@ -18,6 +18,7 @@ interface SubscribeToken {
 
 const subscribeTokenTtlMs = 60_000;
 const maxSubscribeTokens = 10_000;
+const maxPendingSocketBytes = 1024 * 1024;
 
 @Injectable()
 export class AutomationRunEventStreamService {
@@ -61,16 +62,26 @@ export class AutomationRunEventStreamService {
             Date.now() < subscription.expiresAt &&
             socket.readyState === 1
           ) {
+            if (socket.bufferedAmount > maxPendingSocketBytes) {
+              cleanup();
+              socket.close(
+                1013,
+                'Automation event stream consumer is too slow.',
+              );
+              return;
+            }
             socket.send(JSON.stringify(payload));
           }
         };
 
+        const replay = new AbortController();
         let unsubscribe: (() => void) | null = null;
         let heartbeat: NodeJS.Timeout | null = null;
         let cleanedUp = false;
         const cleanup = () => {
           if (cleanedUp) return;
           cleanedUp = true;
+          replay.abort();
           clearTimeout(expiry);
           if (heartbeat) clearInterval(heartbeat);
           unsubscribe?.();
@@ -95,6 +106,7 @@ export class AutomationRunEventStreamService {
             (event) => {
               send({ type: 'event', event });
             },
+            replay.signal,
           );
           if (cleanedUp) {
             unsubscribe();

@@ -18,6 +18,7 @@ import {
 } from './dto/orchestrator-settings.dto';
 import type { AutomationAiProvider } from './contracts/ai-provider';
 import {
+  defaultRuntimeFeatureFlagValues,
   featureFlagDefinitions,
   type FeatureFlagKey,
 } from '../feature-flags/feature-flag.registry';
@@ -171,14 +172,9 @@ export class OrchestratorSettingsStore {
   }
 
   private defaultFeatureFlags(): PersistedFeatureFlags {
-    const values: Partial<Record<FeatureFlagKey, boolean>> = {};
-    for (const definition of featureFlagDefinitions) {
-      if (definition.control !== 'runtime') continue;
-      const deploymentSupported =
-        definition.key !== 'feature.ocr' ||
-        Boolean(this.config.get<string>('app.ocr.baseUrl'));
-      values[definition.key] = definition.defaultEnabled && deploymentSupported;
-    }
+    const values = defaultRuntimeFeatureFlagValues((key) =>
+      this.config.get(key),
+    );
     return { revision: 0, values };
   }
 

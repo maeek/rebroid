@@ -22,6 +22,7 @@ describe('AutomationRunEventBus', () => {
       resolveReplay = resolve;
     });
     const repository = {
+      latestSequence: jest.fn().mockResolvedValue(2),
       listForRun: jest.fn().mockReturnValue(replay),
       append: jest.fn().mockResolvedValue(event(2)),
     } as unknown as AutomationRunEventsRepository;
@@ -46,8 +47,44 @@ describe('AutomationRunEventBus', () => {
     unsubscribe();
   });
 
+  it('replays through the initial sequence across pages before handing off live events', async () => {
+    const page = Array.from({ length: 1000 }, (_, index) => event(index + 1));
+    const repository = {
+      latestSequence: jest.fn().mockResolvedValue(1002),
+      listForRun: jest.fn(),
+      append: jest.fn().mockResolvedValue(event(1003)),
+    };
+    const bus = new AutomationRunEventBus(repository as never);
+    repository.listForRun
+      .mockResolvedValueOnce(page)
+      .mockImplementationOnce(async () => {
+        await bus.emit({
+          runId: 'run-1',
+          ownerUserId: 'owner-1',
+          type: 'run.started',
+        });
+        return [event(1001), event(1002), event(1003)];
+      });
+    const received: number[] = [];
+    const unsubscribe = await bus.subscribeWithReplay(
+      'owner-1',
+      'run-1',
+      0,
+      (record) => received.push(record.sequence),
+    );
+    expect(repository.listForRun.mock.calls).toEqual([
+      ['owner-1', 'run-1', 0],
+      ['owner-1', 'run-1', 1000],
+    ]);
+    expect(received).toEqual(
+      Array.from({ length: 1003 }, (_, index) => index + 1),
+    );
+    unsubscribe();
+  });
+
   it('delegates reads/deletes and filters live events by owner', async () => {
     const repository = {
+      latestSequence: jest.fn().mockResolvedValue(0),
       listForRun: jest.fn().mockResolvedValue([]),
       deleteForRuns: jest.fn().mockResolvedValue(undefined),
       append: jest

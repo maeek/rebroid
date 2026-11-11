@@ -31,8 +31,13 @@ export class OrchestratorRequestError extends Error {
   }
 }
 
-const parseResponseError = async (response: Response, requestId: string) => {
-  const body: unknown = await response.json().catch(() => null)
+const parseResponseError = (response: Response, text: string, requestId: string) => {
+  let body: unknown
+  try {
+    body = JSON.parse(text) as unknown
+  } catch {
+    body = null
+  }
   const details = body && typeof body === 'object' ? (body as Record<string, unknown>) : {}
   return new OrchestratorRequestError(getErrorMessage(body, response.statusText), response.status, requestId, {
     code: typeof details.code === 'string' ? details.code : undefined,
@@ -76,84 +81,90 @@ const defaultHeadersFor = (init: RequestInit | undefined, requestId: string) => 
 
   return {
     accept: 'application/json',
-    'x-request-id': requestId,
     ...(shouldSendJsonContentType ? { 'content-type': 'application/json' } : {}),
-    ...init?.headers,
+    ...Object.fromEntries(new Headers(init?.headers)),
+    'x-request-id': requestId,
     ...(orchestratorSharedSecret ? { [secretHeaderName]: orchestratorSharedSecret } : {})
   }
 }
 
-export async function request<T>(path: string, init?: OrchestratorRequestInit, parser?: RuntimeParser<T>): Promise<T> {
+const errorHasTimedOut = (error: unknown) => error instanceof Error && error.name === 'TimeoutError'
+
+const transportError = (error: unknown, path: string, method: string, requestId: string, signal: AbortSignal) => {
+  logger.error('orchestrator.request_failed', {
+    requestId,
+    path: path.split('?')[0],
+    method,
+    errorName: error instanceof Error ? error.name : 'UnknownError'
+  })
+  return new OrchestratorRequestError(
+    `Orchestrator request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+    errorHasTimedOut(error) || errorHasTimedOut(signal.reason) ? 504 : 502,
+    requestId
+  )
+}
+
+const fetchResponse = async (path: string, init?: OrchestratorRequestInit) => {
   const requestId = await getRequestId(new Headers(init?.headers).get('x-request-id'))
   const { timeoutMs = defaultTimeoutMs(init?.method), ...requestInit } = init ?? {}
+  const method = requestInit.method ?? 'GET'
+  const signal = deadlineSignal(requestInit.signal, timeoutMs)
   let response: Response
   try {
     response = await fetch(getOrchestratorApiUrl(path), {
       ...requestInit,
       cache: 'no-store',
       headers: defaultHeadersFor(requestInit, requestId),
-      signal: deadlineSignal(requestInit.signal, timeoutMs)
+      signal
     })
   } catch (error) {
-    logger.error('orchestrator.request_failed', {
-      requestId,
-      path,
-      method: requestInit.method ?? 'GET',
-      errorName: error instanceof Error ? error.name : 'UnknownError'
-    })
-    throw new OrchestratorRequestError(
-      `Orchestrator request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-      error instanceof Error && error.name === 'TimeoutError' ? 504 : 502,
-      requestId
-    )
+    throw transportError(error, path, method, requestId, signal)
   }
 
   if (!response.ok) {
-    throw await parseResponseError(response, requestId)
+    const body = await readResponseBody(response, path, method, requestId, signal)
+    throw parseResponseError(response, body, requestId)
   }
+  return { response, requestId, method, signal }
+}
 
-  if (response.status === 204) return undefined as T
-
-  const text = await response.text()
-  if (!text.trim()) return undefined as T
-
+const readResponseBody = async (
+  response: Response,
+  path: string,
+  method: string,
+  requestId: string,
+  signal: AbortSignal
+) => {
   try {
-    return parseRuntimeValue(JSON.parse(text) as unknown, parser)
+    return await response.text()
+  } catch (error) {
+    throw transportError(error, path, method, requestId, signal)
+  }
+}
+
+export async function request<T>(path: string, init?: OrchestratorRequestInit, parser?: RuntimeParser<T>): Promise<T> {
+  const { response, requestId, method, signal } = await fetchResponse(path, init)
+  const body = await readResponseBody(response, path, method, requestId, signal)
+  try {
+    return parseRuntimeValue(JSON.parse(body) as unknown, parser)
   } catch (error) {
     logger.error('orchestrator.invalid_response', {
       requestId,
-      path,
-      method: requestInit.method ?? 'GET',
+      path: path.split('?')[0],
+      method,
       errorName: error instanceof Error ? error.name : 'UnknownError'
     })
     throw new OrchestratorRequestError('The orchestrator returned an invalid response.', 502, requestId)
   }
 }
 
+export async function requestVoid(path: string, init?: OrchestratorRequestInit): Promise<void> {
+  const { response, requestId, method, signal } = await fetchResponse(path, init)
+  await readResponseBody(response, path, method, requestId, signal)
+}
+
 export async function responseRequest(path: string, init?: OrchestratorRequestInit): Promise<Response> {
-  const requestId = await getRequestId(new Headers(init?.headers).get('x-request-id'))
-  const { timeoutMs = defaultTimeoutMs(init?.method), ...requestInit } = init ?? {}
-  let response: Response
-  try {
-    response = await fetch(getOrchestratorApiUrl(path), {
-      ...requestInit,
-      cache: 'no-store',
-      headers: defaultHeadersFor(requestInit, requestId),
-      signal: deadlineSignal(requestInit.signal, timeoutMs)
-    })
-  } catch (error) {
-    throw new OrchestratorRequestError(
-      `Orchestrator request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-      error instanceof Error && error.name === 'TimeoutError' ? 504 : 502,
-      requestId
-    )
-  }
-
-  if (!response.ok) {
-    throw await parseResponseError(response, requestId)
-  }
-
-  return response
+  return (await fetchResponse(path, init)).response
 }
 
 export const emptyRequest = <T>(path: string, init?: Omit<RequestInit, 'body'>) => request<T>(path, init)

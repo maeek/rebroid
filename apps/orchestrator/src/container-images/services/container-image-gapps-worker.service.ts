@@ -2,15 +2,15 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createWriteStream } from 'node:fs';
 import { rm } from 'node:fs/promises';
-import type Dockerode from 'dockerode';
+import { posix } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { getErrorMessage } from '../../common/error-message';
 import {
-  DOCKER_ENGINE,
-  type DockerEnginePort,
-} from '../../docker/contracts/docker-engine.port';
+  DOCKER_GAPPS_WORKER,
+  type DockerGappsWorkerPort,
+} from '../../docker/contracts/docker-gapps-worker.port';
 import {
   DOCKER_IMAGE_RUNTIME,
   type DockerImageRuntimePort,
@@ -20,25 +20,18 @@ import { ContainerImageBuildArchiveService } from './container-image-build-archi
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
 import { ContainerImageGappsCacheService } from './container-image-gapps-cache.service';
 
-type ActiveWorker = {
-  cancelled: boolean;
-  container?: Dockerode.Container;
-  logStream?: Readable;
-};
-
 const maxPackageBytes = 2 * 1024 ** 3;
-const workerTimeoutMs = 3 * 60 * 60 * 1000;
 const workerImageVersion = '1';
 
 @Injectable()
 export class ContainerImageGappsWorkerService {
   private readonly logger = new Logger(ContainerImageGappsWorkerService.name);
-  private readonly active = new Map<string, ActiveWorker>();
   private workerImagePromise?: Promise<void>;
 
   constructor(
     private readonly config: ConfigService,
-    @Inject(DOCKER_ENGINE) private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_GAPPS_WORKER)
+    private readonly worker: DockerGappsWorkerPort,
     @Inject(DOCKER_IMAGE_RUNTIME)
     private readonly images: DockerImageRuntimePort,
     private readonly archive: ContainerImageBuildArchiveService,
@@ -50,103 +43,51 @@ export class ContainerImageGappsWorkerService {
     jobId: string,
     preset: GappsBuildPresetDto,
     revision: string,
+    signal: AbortSignal,
   ) {
-    const active: ActiveWorker = { cancelled: false };
-    this.active.set(jobId, active);
     let temporaryPath: string | null = null;
     let completed = false;
 
     try {
-      await this.ensureWorkerImage();
-      if (active.cancelled) throw new Error('GApps build cancelled.');
+      signal.throwIfAborted();
+      await this.ensureWorkerImage(signal);
+      signal.throwIfAborted();
       const packageDestination = await this.cache.createTemporaryPath(jobId);
       temporaryPath = packageDestination;
       await rm(packageDestination, { force: true });
-      await this.engine.longOperation(
-        'container_image_gapps_worker',
-        `Build MindTheGapps package for Android ${preset.androidVersion}`,
-        async (docker, signal) => {
-          const container = await docker.createContainer({
-            Image: this.config.getOrThrow<string>('app.gappsPatcher.image'),
-            Env: [
-              `SOURCE_REPOSITORY=${preset.sourceRepository}`,
-              `SOURCE_REVISION=${revision}`,
-            ],
-            Tty: true,
-            NetworkDisabled: false,
-            HostConfig: {
-              AutoRemove: false,
-              CapDrop: ['ALL'],
-              SecurityOpt: ['no-new-privileges:true'],
-              Memory: 3 * 1024 ** 3,
-              NanoCpus: 2_000_000_000,
-              PidsLimit: 512,
-            },
-            Labels: {
-              'com.rebroid.managed': 'true',
-              'com.rebroid.component': 'gapps-patch-worker',
-              'com.rebroid.image-build-job': jobId,
-            },
-          });
-          active.container = container;
-          if (active.cancelled) {
-            await container.remove({ force: true });
-            throw new Error('GApps build cancelled.');
-          }
-          const abort = () => void container.kill().catch(() => undefined);
-          signal.addEventListener('abort', abort, { once: true });
-          await container.start();
-          const logs = (await container.logs({
-            follow: true,
-            stdout: true,
-            stderr: true,
-          })) as unknown as Readable;
-          active.logStream = logs;
-          logs.on('data', (chunk: Buffer) => {
-            const message = chunk.toString('utf8').trim();
-            if (message) void this.jobs.appendLog(jobId, message);
-          });
-          const result = await container.wait();
-          signal.removeEventListener('abort', abort);
-          logs.destroy();
-          if (result.StatusCode !== 0) {
-            throw new Error(
-              `GApps patch worker exited with status ${result.StatusCode}.`,
+      await this.worker.run({
+        image: this.config.getOrThrow<string>('app.gappsPatcher.image'),
+        jobId,
+        sourceRepository: preset.sourceRepository,
+        sourceRevision: revision,
+        signal,
+        onLog: (message) => {
+          void this.jobs.appendLog(jobId, message).catch((error) => {
+            this.logger.warn(
+              `Could not save GApps worker log: ${getErrorMessage(error)}`,
             );
-          }
-          const output = (await container.getArchive({
-            path: '/output/package.zip',
-          })) as unknown as Readable;
-          await this.extractPackageFromDockerArchive(
-            output,
-            packageDestination,
-          );
+          });
         },
-        workerTimeoutMs,
-      );
+        consumeArchive: (source, signal) =>
+          this.extractPackageFromDockerArchive(
+            source,
+            packageDestination,
+            signal,
+          ),
+      });
+      signal.throwIfAborted();
       completed = true;
       return packageDestination;
     } finally {
-      const worker = this.active.get(jobId);
-      worker?.logStream?.destroy();
-      await worker?.container?.remove({ force: true }).catch(() => undefined);
       if (!completed && temporaryPath) {
         await this.cache.removeTemporary(temporaryPath);
       }
-      this.active.delete(jobId);
     }
   }
 
-  async cancel(jobId: string) {
-    const worker = this.active.get(jobId);
-    if (worker) worker.cancelled = true;
-    worker?.logStream?.destroy(new Error('GApps build cancelled.'));
-    await worker?.container?.kill().catch(() => undefined);
-  }
-
-  private ensureWorkerImage() {
+  private ensureWorkerImage(signal: AbortSignal) {
     if (!this.workerImagePromise) {
-      this.workerImagePromise = this.buildWorkerImage().catch((error) => {
+      this.workerImagePromise = this.buildWorkerImage(signal).catch((error) => {
         this.workerImagePromise = undefined;
         throw error;
       });
@@ -154,22 +95,18 @@ export class ContainerImageGappsWorkerService {
     return this.workerImagePromise;
   }
 
-  private async buildWorkerImage() {
+  private async buildWorkerImage(signal: AbortSignal) {
     const image = this.config.getOrThrow<string>('app.gappsPatcher.image');
-    try {
-      const inspect = await this.engine.docker.getImage(image).inspect();
+    if (await this.images.imageExists(image)) {
+      const inspect = await this.images.inspectImage(image);
       if (
         inspect.Config?.Labels?.['com.rebroid.gapps-patcher.version'] ===
         workerImageVersion
-      ) {
+      )
         return;
-      }
-    } catch (error) {
-      if (!this.engine.isDockerNotFound(error)) {
-        throw error;
-      }
     }
 
+    signal.throwIfAborted();
     const context = this.archive.createFilesystemTar(
       this.config.getOrThrow<string>('app.gappsPatcher.buildContext'),
     );
@@ -179,51 +116,51 @@ export class ContainerImageGappsWorkerService {
       operationName: 'container_image_gapps_worker_image',
       description: 'Build isolated GApps patch worker image',
       timeoutMs: 15 * 60 * 1000,
+      signal,
       onProgress: (message) => this.logger.debug(message),
     });
   }
 
-  private extractPackageFromDockerArchive(
+  private async extractPackageFromDockerArchive(
     source: Readable,
     destination: string,
+    signal: AbortSignal,
   ) {
-    return new Promise<void>((resolve, reject) => {
-      const extract = tar.extract();
-      let found = false;
-      let settled = false;
-      const fail = (error: unknown) => {
-        if (settled) return;
-        settled = true;
-        reject(new Error(getErrorMessage(error)));
-      };
-      extract.on('entry', (header, entry, next) => {
-        if (found || !header.name.endsWith('package.zip')) {
-          entry.resume();
-          entry.on('end', next);
-          return;
-        }
-        if ((header.size ?? 0) > maxPackageBytes) {
-          entry.resume();
-          fail(new Error('Generated GApps package exceeds 2 GB.'));
-          return;
-        }
-        found = true;
-        pipeline(entry, createWriteStream(destination, { flags: 'wx' }))
-          .then(() => next())
-          .catch(fail);
-      });
-      extract.on('error', fail);
-      source.on('error', fail);
-      extract.on('finish', () => {
-        if (settled) return;
-        if (!found) {
-          fail(new Error('GApps patch worker did not return a package.'));
-          return;
-        }
-        settled = true;
-        resolve();
-      });
-      source.pipe(extract);
+    signal.throwIfAborted();
+    const extract = tar.extract();
+    let writing: Promise<void> | undefined;
+    extract.on('entry', (header, entry, next) => {
+      if (writing || posix.basename(header.name) !== 'package.zip') {
+        entry.on('end', next);
+        entry.resume();
+        return;
+      }
+      if (header.type !== 'file') {
+        extract.destroy(
+          new Error('Generated GApps package is not a regular file.'),
+        );
+        return;
+      }
+      if ((header.size ?? 0) > maxPackageBytes) {
+        extract.destroy(new Error('Generated GApps package exceeds 2 GB.'));
+        return;
+      }
+      writing = pipeline(
+        entry,
+        createWriteStream(destination, { flags: 'wx' }),
+        { signal },
+      );
+      void writing.then(
+        () => next(),
+        (error: Error) => next(error),
+      );
     });
+    try {
+      await pipeline(source, extract, { signal });
+      if (!writing)
+        throw new Error('GApps patch worker did not return a package.');
+    } finally {
+      await writing?.catch(() => undefined);
+    }
   }
 }

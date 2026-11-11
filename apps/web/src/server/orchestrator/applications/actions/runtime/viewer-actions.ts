@@ -6,7 +6,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { requireFeature } from '../../../features'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
-import { assertViewerGrantCurrent } from '../../viewer-grant-access'
+import { assertViewerGrantCurrent, assertViewerRevocationComplete } from '../../viewer-grant-access'
 import {
   assertCanUseOwnedApplicationRuntime,
   ownedRuntimeControlMessage,
@@ -16,6 +16,7 @@ import type { ApplicationViewerControlCommand } from '@/shared/contracts/applica
 
 export const getScrcpySessionAction = async (id: string) => {
   const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
+  assertViewerRevocationComplete(user.ownerUserId)
   const session = await orchestratorAppViewerClient.getScrcpySession(id, {
     control: user.role === 'admin' || hasPermission(user.permissions, 'applications:control-viewer'),
     clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard'),
@@ -62,6 +63,7 @@ export const createApplicationVirtualDisplayAction = async (id: string) => {
     })
   }
 
+  assertViewerRevocationComplete(user.ownerUserId)
   const session = await orchestratorAppViewerClient.createVirtualDisplay(id, {
     control: true,
     clipboard: user.role === 'admin' || hasPermission(user.permissions, 'applications:sync-clipboard'),

@@ -1,6 +1,8 @@
+import { isDeepStrictEqual } from 'node:util'
 import 'server-only'
 import { z } from 'zod'
 import { getDatabase } from './database'
+import { enqueueWebMaintenance, type ViewerRevocationJob } from './web-maintenance-repository'
 import type { StoredUser, UsersFile } from '@/server/auth/user-model'
 import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
@@ -98,22 +100,30 @@ export const readUsersFileFromDatabase = (): UsersFile | null => {
   return { users, groups }
 }
 
-export const replaceUsersFile = (file: UsersFile) => {
+export const writeUsersFileToDatabase = (file: UsersFile, revocation?: ViewerRevocationJob) => {
   const client = getDatabase()
   client.transaction(() => {
-    client.prepare('DELETE FROM group_memberships').run()
-    client.prepare('DELETE FROM users').run()
-    client.prepare('DELETE FROM groups').run()
+    const previous = readUsersFileFromDatabase()
+    const groups = new Map(file.groups.map(group => [group.id, group]))
+    const users = new Map(file.users.map(user => [user.id, user]))
+    const previousGroups = new Map(previous?.groups.map(group => [group.id, group]))
+    const previousUsers = new Map(previous?.users.map(user => [user.id, user]))
+    const deleteUser = client.prepare('DELETE FROM users WHERE id = ?')
+    const deleteGroup = client.prepare('DELETE FROM groups WHERE id = ?')
+    for (const id of previousUsers.keys()) if (!users.has(id)) deleteUser.run(id)
+    for (const id of previousGroups.keys()) if (!groups.has(id)) deleteGroup.run(id)
 
     const insertGroup = client.prepare(
-      'INSERT INTO groups (id, name, description, role, permissions_json, quotas_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO groups (id, name, description, role, permissions_json, quotas_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET name = excluded.name, description = excluded.description, role = excluded.role, permissions_json = excluded.permissions_json, quotas_json = excluded.quotas_json, created_at = excluded.created_at, updated_at = excluded.updated_at'
     )
     const insertUser = client.prepare(
-      'INSERT INTO users (id, username, name, role, disabled, password_change_required, session_version, avatar_data_url, accent_color, permission_overrides_json, quotas_json, password_hash, mfa_secret_encrypted, mfa_recovery_codes_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO users (id, username, name, role, disabled, password_change_required, session_version, avatar_data_url, accent_color, permission_overrides_json, quotas_json, password_hash, mfa_secret_encrypted, mfa_recovery_codes_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET username = excluded.username, name = excluded.name, role = excluded.role, disabled = excluded.disabled, password_change_required = excluded.password_change_required, session_version = excluded.session_version, avatar_data_url = excluded.avatar_data_url, accent_color = excluded.accent_color, permission_overrides_json = excluded.permission_overrides_json, quotas_json = excluded.quotas_json, password_hash = excluded.password_hash, mfa_secret_encrypted = excluded.mfa_secret_encrypted, mfa_recovery_codes_json = excluded.mfa_recovery_codes_json, created_at = excluded.created_at, updated_at = excluded.updated_at'
     )
     const insertMembership = client.prepare('INSERT INTO group_memberships (user_id, group_id) VALUES (?, ?)')
+    const deleteMembership = client.prepare('DELETE FROM group_memberships WHERE user_id = ? AND group_id = ?')
 
-    for (const group of file.groups) {
+    for (const group of groups.values()) {
+      if (isDeepStrictEqual(previousGroups.get(group.id), group)) continue
       insertGroup.run(
         group.id,
         group.name,
@@ -125,26 +135,33 @@ export const replaceUsersFile = (file: UsersFile) => {
         group.updatedAt
       )
     }
-    for (const user of file.users) {
-      insertUser.run(
-        user.id,
-        user.username,
-        user.name,
-        user.role,
-        user.disabled ? 1 : 0,
-        user.passwordChangeRequired ? 1 : 0,
-        user.sessionVersion,
-        user.avatarDataUrl,
-        user.accentColor,
-        JSON.stringify(user.permissionOverrides),
-        JSON.stringify(user.quotas),
-        user.passwordHash,
-        user.mfaSecretEncrypted,
-        JSON.stringify(user.mfaRecoveryCodeHashes),
-        user.createdAt,
-        user.updatedAt
-      )
-      for (const groupId of user.groupIds) insertMembership.run(user.id, groupId)
+    for (const user of users.values()) {
+      const { groupIds, ...account } = user
+      const { groupIds: oldGroupIds, ...oldAccount } = previousUsers.get(user.id) ?? {}
+      if (!isDeepStrictEqual(oldAccount, account))
+        insertUser.run(
+          user.id,
+          user.username,
+          user.name,
+          user.role,
+          user.disabled ? 1 : 0,
+          user.passwordChangeRequired ? 1 : 0,
+          user.sessionVersion,
+          user.avatarDataUrl,
+          user.accentColor,
+          JSON.stringify(user.permissionOverrides),
+          JSON.stringify(user.quotas),
+          user.passwordHash,
+          user.mfaSecretEncrypted,
+          JSON.stringify(user.mfaRecoveryCodeHashes),
+          user.createdAt,
+          user.updatedAt
+        )
+      const previousMemberships = new Set(oldGroupIds)
+      const memberships = new Set(groupIds)
+      for (const groupId of previousMemberships) if (!memberships.has(groupId)) deleteMembership.run(user.id, groupId)
+      for (const groupId of memberships) if (!previousMemberships.has(groupId)) insertMembership.run(user.id, groupId)
     }
+    if (revocation) enqueueWebMaintenance(revocation)
   })()
 }

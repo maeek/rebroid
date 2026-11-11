@@ -5,7 +5,6 @@ import {
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
-import type Dockerode from 'dockerode';
 import { getErrorMessage } from '../../common/error-message';
 import {
   DOCKER_IMAGE_RUNTIME_METADATA,
@@ -107,7 +106,6 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     const active = this.active.get(id);
     if (active) {
       active.abort(new Error('GApps image build cancelled.'));
-      await this.worker.cancel(id);
     }
     const cancelled = await this.jobs.markCancelled(job);
     this.scheduleDrain();
@@ -197,7 +195,12 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
           cacheState: 'miss',
         });
         active.signal.throwIfAborted();
-        temporaryPackage = await this.worker.buildPackage(id, preset, revision);
+        temporaryPackage = await this.worker.buildPackage(
+          id,
+          preset,
+          revision,
+          active.signal,
+        );
         const packageSha256 =
           await this.cache.calculateSha256(temporaryPackage);
         await this.jobs.updateGappsDetails(job, {
@@ -313,7 +316,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
   private validateImage(
     targetImage: string,
     androidVersion: SupportedGappsAndroidVersion,
-    inspect: Dockerode.ImageInspectInfo,
+    inspect: Awaited<ReturnType<DockerImageRuntimePort['inspectImage']>>,
   ) {
     if (!inspect.RepoTags?.includes(targetImage)) {
       throw new Error(`Built image is missing expected tag ${targetImage}.`);

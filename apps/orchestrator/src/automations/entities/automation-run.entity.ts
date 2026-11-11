@@ -4,6 +4,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  VirtualColumn,
 } from 'typeorm';
 
 export enum AutomationRunStatus {
@@ -56,7 +57,13 @@ export class AutomationRun {
   @Column({ type: 'datetime', nullable: true })
   completedAt!: Date | null;
 
-  @Column({ type: 'text', nullable: false, default: "'[]'" })
+  @VirtualColumn({
+    type: 'text',
+    query: (alias) =>
+      `SELECT COALESCE(json_group_array(json(result.resultJson)), '[]')
+       FROM (SELECT resultJson FROM automation_run_step_results
+             WHERE runId = ${alias}."id" ORDER BY sequence) result`,
+  })
   stepResultsJson!: string;
 
   @Column({ type: 'text', nullable: true })

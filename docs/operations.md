@@ -16,10 +16,13 @@ Use the internal service network or a local development listener for the other c
 | Orchestrator    | `/api/v1/diagnostics` and `/api/v1/diagnostics/summary` | Authenticated full and shallow diagnostics.          |
 | Orchestrator    | `/api/v1/metrics` and `/api/v1/metrics/docker`          | Authenticated metrics and Docker access diagnostics. |
 | Display sidecar | `/health/live` and `/health/ready`                      | Process health.                                      |
+| Firewall agent  | `/v1/health` on the private Unix socket                 | Committed firewall policy readiness.                 |
 | OCR sidecar     | `/health/live` and `/health`                            | Liveness and model readiness.                        |
 
 Docker health checks use liveness, so an optional downstream outage does not restart a healthy process.
 OCR readiness stays false until its model has warmed up.
+If a firewall update cannot be saved and rollback also fails, firewall health reports the
+recovery failure. The next authenticated policy command first restores the committed rules.
 
 ## Docker troubleshooting
 

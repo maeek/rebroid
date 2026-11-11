@@ -181,11 +181,11 @@ export function AutomationRunLiveEvents({
     }
 
     const appendEvents = (nextEvents: AutomationRunEvent[]) => {
+      for (const event of nextEvents) lastSequenceRef.current = Math.max(lastSequenceRef.current, event.sequence)
       setEvents(current => {
         const byId = new Map(current.map(event => [event.id, event]))
         for (const event of nextEvents) {
           byId.set(event.id, event)
-          lastSequenceRef.current = Math.max(lastSequenceRef.current, event.sequence)
         }
         return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
       })
@@ -198,15 +198,23 @@ export function AutomationRunLiveEvents({
 
     const connect = async () => {
       try {
-        const live = await getBff<{ events: AutomationRunEvent[]; streamUrl: string }>(
-          `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${lastSequenceRef.current}`
-        )
+        let streamUrl = ''
+        let hasMore = true
+        while (hasMore && !closed) {
+          const after = lastSequenceRef.current
+          const live = await getBff<{ events: AutomationRunEvent[]; hasMore?: boolean; streamUrl: string }>(
+            `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${after}`
+          )
+          if (closed) return
+          setStreamError(null)
+          appendEvents(live.events)
+          streamUrl = live.streamUrl
+          hasMore = live.hasMore === true && lastSequenceRef.current > after && !activeStatuses.has(statusRef.current)
+        }
         if (closed) return
-        setStreamError(null)
-        appendEvents(live.events)
         setHasLoadedEvents(true)
         if (!activeStatuses.has(statusRef.current)) return
-        socket = new WebSocket(live.streamUrl)
+        socket = new WebSocket(streamUrl)
         socket.onmessage = message => {
           if (closed) return
           try {

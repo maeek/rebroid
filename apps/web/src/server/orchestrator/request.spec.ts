@@ -37,9 +37,50 @@ describe('orchestrator request helpers', () => {
   it('handles no-content successful responses', async () => {
     const fetchMock: MockedFunction<typeof fetch> = vi.fn(() => Promise.resolve(noContentResponse()))
     global.fetch = fetchMock
-    const { emptyRequest } = await import('./request')
+    const { requestVoid } = await import('./request')
 
-    await expect(emptyRequest('/settings/ai-providers/local-ollama', { method: 'DELETE' })).resolves.toBeUndefined()
+    await expect(requestVoid('/settings/ai-providers/local-ollama', { method: 'DELETE' })).resolves.toBeUndefined()
+  })
+
+  it.each([noContentResponse(), new Response('  ')])('rejects an empty required JSON response', async response => {
+    vi.mocked(global.fetch).mockResolvedValue(response)
+    const { request } = await import('./request')
+
+    await expect(request('/apps', { headers: new Headers({ 'x-request-id': 'required-json' }) })).rejects.toMatchObject(
+      {
+        status: 502,
+        requestId: 'required-json'
+      }
+    )
+  })
+
+  it('uses the response parser before returning data', async () => {
+    const { request } = await import('./request')
+    const parser = vi.fn(() => {
+      throw new Error('Malformed DTO')
+    })
+
+    await expect(request('/apps', undefined, parser)).rejects.toMatchObject({ status: 502 })
+    expect(parser).toHaveBeenCalledWith({ ok: true })
+  })
+
+  it('maps a timeout while reading the body to an upstream timeout with the request ID', async () => {
+    const deadline = new AbortController()
+    const body = new ReadableStream({
+      start(controller) {
+        deadline.signal.addEventListener('abort', () => controller.error(new DOMException('Stopped', 'AbortError')))
+      }
+    })
+    vi.mocked(global.fetch).mockResolvedValue(new Response(body))
+    const { request } = await import('./request')
+    const pending = request('/apps', { signal: deadline.signal, headers: { 'x-request-id': 'body-timeout' } })
+    deadline.abort(new DOMException('Timed out', 'TimeoutError'))
+
+    await expect(pending).rejects.toMatchObject({
+      name: 'OrchestratorRequestError',
+      status: 504,
+      requestId: 'body-timeout'
+    })
   })
 
   it('does not send JSON content-type for bodyless POST requests', async () => {

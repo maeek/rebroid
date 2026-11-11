@@ -18,6 +18,7 @@ import {
 import { consumePersistentRateLimit, getAuthEpoch } from './auth-security-repository'
 import { createAutomationDraft, consumeAutomationDraft } from './automation-drafts-repository'
 import { getDatabase, resetDatabaseForTests } from './database'
+import { getMfaSetup, saveMfaSetup } from './mfa-setup-repository'
 import {
   forgetRecentApplication,
   listRecentApplications,
@@ -54,6 +55,7 @@ describe('fresh web database', () => {
       'mfa_setup_tokens',
       'recent_applications',
       'users',
+      'web_maintenance_jobs',
       'web_settings'
     ])
   })
@@ -61,7 +63,7 @@ describe('fresh web database', () => {
   it('refuses an incompatible schema instead of upgrading it', () => {
     const path = process.env.WEB_DATABASE_PATH as string
     const legacy = new Database(path)
-    legacy.exec('CREATE TABLE legacy_state (value TEXT); PRAGMA user_version = 1;')
+    legacy.exec('CREATE TABLE legacy_state (value TEXT); PRAGMA user_version = 2;')
     legacy.close()
 
     expect(() => getDatabase()).toThrow('pnpm reset:all-state -- --execute')
@@ -92,6 +94,31 @@ describe('fresh web database', () => {
     expect(consumeAutomationDraft('another-user', draft.token)).toBeNull()
     expect(consumeAutomationDraft(owner.id, draft.token)).toMatchObject({ yaml: 'name: draft', sourceRunId: 'run-1' })
     expect(consumeAutomationDraft(owner.id, draft.token)).toBeNull()
+  })
+
+  it('keeps drafts and MFA setup for retained accounts while cascading actual deletions', async () => {
+    const first = await userService.createUser({ username: 'first', password: 'original-password' })
+    const second = await userService.createUser({ username: 'second', password: 'original-password' })
+    const group = await userService.createGroup({ name: 'Extra group' })
+    const firstDraft = createAutomationDraft(first.id, 'name: first')
+    const secondDraft = createAutomationDraft(second.id, 'name: second')
+    saveMfaSetup(first.id, 'first-setup')
+    saveMfaSetup(second.id, 'second-setup')
+
+    await userService.updateUser(first.id, { groupIds: [group.id] })
+    await userService.updateGroup(group.id, { name: 'Renamed group' })
+    await userService.deleteGroup(group.id)
+    expect(getMfaSetup(first.id)).toBe('first-setup')
+    expect(getMfaSetup(second.id)).toBe('second-setup')
+    expect(consumeAutomationDraft(first.id, firstDraft.token)).toMatchObject({ yaml: 'name: first' })
+
+    await userService.deleteUser(first.id)
+    expect(getMfaSetup(first.id)).toBeNull()
+    expect(getMfaSetup(second.id)).toBe('second-setup')
+    expect(consumeAutomationDraft(second.id, secondDraft.token)).toMatchObject({ yaml: 'name: second' })
+    expect(
+      getDatabase().prepare('SELECT 1 FROM automation_drafts WHERE token = ?').get(firstDraft.token)
+    ).toBeUndefined()
   })
 
   it('lists and prunes audit events', () => {

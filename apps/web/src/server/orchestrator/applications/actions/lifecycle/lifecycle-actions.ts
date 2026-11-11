@@ -1,8 +1,11 @@
 'use server'
 
+import { after } from 'next/server'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { runWebMaintenance } from '@/server/maintenance/web-maintenance'
+import { logger } from '@/server/observability/logger'
 import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
@@ -18,7 +21,7 @@ import {
   getAccessibleApplication,
   ownedRuntimeControlMessage
 } from '../common/action-helpers'
-import { scheduleApplicationDeletionCleanup } from './deletion-cleanup'
+import { requestTrackedApplicationDeletion } from './deletion-cleanup'
 import type { ApplicationPowerAcknowledgement, SwitchApplicationProfileInput } from '@/shared/contracts/application'
 
 const assertValidApplicationId = (id: string) => {
@@ -174,7 +177,16 @@ export const requestApplicationDeletionAction = async (id: string, removeData = 
           status: 403
         })
       }
-      const acknowledgement = await orchestratorAppCatalogClient.deleteApplication(id, removeData)
+      const { acknowledgement, jobId } = await requestTrackedApplicationDeletion(id, removeData, requestId)
+      if (jobId) {
+        try {
+          after(async () => {
+            await runWebMaintenance(jobId)
+          })
+        } catch {
+          logger.warn('application.delete_cleanup_deferred', { requestId, applicationId: id })
+        }
+      }
       recordAuditEvent({
         actorUserId: user.ownerUserId,
         actorLabel: user.ownerUserId,
@@ -184,7 +196,6 @@ export const requestApplicationDeletionAction = async (id: string, removeData = 
         resourceId: id,
         details: { removeData }
       })
-      scheduleApplicationDeletionCleanup({ ...acknowledgement, id }, user.ownerUserId, requestId)
       revalidateApplicationList()
       revalidateApplicationDetail(id)
       return acknowledgement

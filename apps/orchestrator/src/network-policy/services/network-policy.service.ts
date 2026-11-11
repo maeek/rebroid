@@ -1,4 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { FirewallAgentPolicy } from '@rebroid/firewall-policy-core/policy';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +37,7 @@ import { mapWithConcurrency } from '../../common/map-with-concurrency';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import { NetworkPolicyRuntimeService } from './network-policy-runtime.service';
 
-type StartupPolicyObservation =
+type RuntimePolicyObservation =
   | { state: 'inactive' }
   | { state: 'uncertain'; app: RestrictedRuntimePolicyTarget }
   | {
@@ -126,22 +131,23 @@ export class NetworkPolicyService {
 
   async reconcile(apps: NetworkPolicyTarget[], startedAt: number) {
     if (!this.features.isEnabled('feature.firewall')) return;
-    const policies = (
-      await mapWithConcurrency(
-        apps.filter((app) => app.containerId && app.networkPolicyEnabled),
-        POLICY_CONCURRENCY,
-        async (app) => {
-          const policy = await this.resolvePolicy(app, startedAt);
-          return policy
-            ? { applicationId: app.id, ...policy.agentPolicy }
-            : null;
-        },
-      )
-    ).filter((policy): policy is NonNullable<typeof policy> => Boolean(policy));
-    await this.agent.reconcile(policies, startedAt);
+    const targets = apps.filter(
+      (app): app is RestrictedRuntimePolicyTarget =>
+        Boolean(app.containerId) && app.networkPolicyEnabled,
+    );
+    const result = await this.reconcileRestrictedRuntimes(targets, startedAt);
+    if (!result.complete) {
+      throw new ServiceUnavailableException(
+        'Firewall reconciliation is incomplete. Existing rules were retained for unverified runtimes.',
+      );
+    }
   }
 
-  async restoreAtStartup(
+  restoreAtStartup(apps: RestrictedRuntimePolicyTarget[], startedAt: number) {
+    return this.reconcileRestrictedRuntimes(apps, startedAt);
+  }
+
+  private async reconcileRestrictedRuntimes(
     apps: RestrictedRuntimePolicyTarget[],
     startedAt: number,
   ): Promise<{
@@ -154,7 +160,7 @@ export class NetworkPolicyService {
     const observations = await mapWithConcurrency(
       apps,
       POLICY_CONCURRENCY,
-      (app) => this.prepareStartupPolicy(app, startedAt),
+      (app) => this.prepareRuntimePolicy(app, startedAt),
     );
     const live = observations.filter(
       (observation) => observation.state === 'live',
@@ -171,13 +177,13 @@ export class NetworkPolicyService {
         const response = await this.agent.reconcile(ready, startedAt);
         if (response.status !== 'applied') {
           throw new Error(
-            'The firewall agent did not acknowledge the startup snapshot.',
+            'The firewall agent did not acknowledge the reconciliation snapshot.',
           );
         }
         return { complete: true, unverified: [] };
       } catch (error) {
         this.logger.warn(
-          `Could not restore the firewall snapshot: ${getErrorMessage(error)}`,
+          `Could not apply the firewall snapshot: ${getErrorMessage(error)}`,
         );
       }
     }
@@ -195,7 +201,7 @@ export class NetworkPolicyService {
           return null;
         } catch (error) {
           this.logger.warn(
-            `Could not restore firewall policy for ${app.id}: ${getErrorMessage(error)}`,
+            `Could not apply firewall policy for ${app.id}: ${getErrorMessage(error)}`,
           );
           return app;
         }
@@ -207,14 +213,14 @@ export class NetworkPolicyService {
     };
   }
 
-  private async prepareStartupPolicy(
+  private async prepareRuntimePolicy(
     app: RestrictedRuntimePolicyTarget,
     generation: number,
-  ): Promise<StartupPolicyObservation> {
+  ): Promise<RuntimePolicyObservation> {
     const runtime = await this.runtimes.observeStartupRuntime(app);
     if (runtime.state === 'uncertain') {
       this.logger.warn(
-        `Could not verify runtime for firewall recovery (${app.id}): ${runtime.reason}`,
+        `Could not verify runtime for firewall reconciliation (${app.id}): ${runtime.reason}`,
       );
       return { state: 'uncertain', app };
     }
@@ -236,7 +242,7 @@ export class NetworkPolicyService {
       }
     } else {
       this.logger.warn(
-        `No runtime IPv4 address for firewall recovery (${app.id}).`,
+        `No runtime IPv4 address for firewall reconciliation (${app.id}).`,
       );
     }
     return { state: 'live', app, policy: null };

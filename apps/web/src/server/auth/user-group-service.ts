@@ -3,43 +3,55 @@ import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultUserPermissions, fullPermissions, mergeQuotas, unlimitedQuota } from '@/shared/permissions/permissions'
 import { nowIso } from './user-model'
-import { mutateUsersFile } from './user-store'
+import { mutateUsersFile, type PrepareViewerRevocation } from './user-store'
+import type { UsersFile } from './user-model'
 import type { UserGroup, UserRole } from '@/shared/contracts/auth-user'
 import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
+
+const prepareGroupRevocation = (id: string, prepareRevocation?: PrepareViewerRevocation) =>
+  prepareRevocation &&
+  ((file: UsersFile) => prepareRevocation(file.users.filter(user => user.groupIds.includes(id)).map(user => user.id)))
 
 const updateGroup = async (
   id: string,
   input: Partial<Omit<UserGroup, 'id' | 'createdAt' | 'updatedAt' | 'quotas'>> & {
     quotas?: Partial<ResourceQuota>
-  }
+  },
+  prepareRevocation?: PrepareViewerRevocation
 ) =>
-  mutateUsersFile(file => {
-    const group = file.groups.find(item => item.id === id)
-    if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
-    if (input.name !== undefined) group.name = input.name.trim() || group.name
-    if (input.description !== undefined) group.description = input.description.trim()
-    if (input.role !== undefined) group.role = input.role
-    if (input.permissions !== undefined)
-      group.permissions = group.role === 'admin' ? fullPermissions : input.permissions
-    if (input.quotas !== undefined) group.quotas = group.role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas)
-    group.updatedAt = nowIso()
-    return group
-  })
+  mutateUsersFile(
+    file => {
+      const group = file.groups.find(item => item.id === id)
+      if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
+      if (input.name !== undefined) group.name = input.name.trim() || group.name
+      if (input.description !== undefined) group.description = input.description.trim()
+      if (input.role !== undefined) group.role = input.role
+      if (input.permissions !== undefined)
+        group.permissions = group.role === 'admin' ? fullPermissions : input.permissions
+      if (input.quotas !== undefined) group.quotas = group.role === 'admin' ? unlimitedQuota : mergeQuotas(input.quotas)
+      group.updatedAt = nowIso()
+      return group
+    },
+    prepareGroupRevocation(id, prepareRevocation)
+  )
 
-const deleteGroup = async (id: string) =>
-  mutateUsersFile(file => {
-    const group = file.groups.find(item => item.id === id)
-    if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
-    if (file.groups.length < 2) {
-      throw new PublicActionError('Cannot remove the last user group.', { code: 'conflict', status: 409 })
-    }
-    file.groups = file.groups.filter(item => item.id !== id)
-    for (const user of file.users) {
-      user.groupIds = user.groupIds.filter(groupId => groupId !== id)
-      user.updatedAt = nowIso()
-    }
-    return group
-  })
+const deleteGroup = async (id: string, prepareRevocation?: PrepareViewerRevocation) =>
+  mutateUsersFile(
+    file => {
+      const group = file.groups.find(item => item.id === id)
+      if (!group) throw new PublicActionError('Group not found.', { code: 'not_found', status: 404 })
+      if (file.groups.length < 2) {
+        throw new PublicActionError('Cannot remove the last user group.', { code: 'conflict', status: 409 })
+      }
+      file.groups = file.groups.filter(item => item.id !== id)
+      for (const user of file.users) {
+        user.groupIds = user.groupIds.filter(groupId => groupId !== id)
+        user.updatedAt = nowIso()
+      }
+      return group
+    },
+    prepareGroupRevocation(id, prepareRevocation)
+  )
 
 const createGroup = async (input: {
   name: string

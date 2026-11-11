@@ -98,14 +98,48 @@ export async function withProviderResponse<T>(
   }
 }
 
+export class ProviderResponseLimitError extends Error {
+  constructor(limit: string) {
+    super(`Provider response exceeds the ${limit} limit.`);
+    this.name = 'ProviderResponseLimitError';
+  }
+}
+
+export const maximumProviderJsonBytes = 16 * 1024 * 1024;
+
 export const readProviderJson = async (
   response: Response,
+  { strict = false }: { strict?: boolean } = {},
 ): Promise<unknown> => {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    if (strict) throw new SyntaxError('Provider returned an empty JSON body.');
+    return null;
+  }
+  const decoder = new TextDecoder();
+  let text = '';
+  let bytes = 0;
   try {
-    return await response.json();
-  } catch (error) {
-    if (error instanceof SyntaxError) return null;
-    throw error;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maximumProviderJsonBytes) {
+        throw new ProviderResponseLimitError('JSON body size');
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+    try {
+      return JSON.parse(text) as unknown;
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) throw error;
+    }
+    if (strict) throw new SyntaxError('Provider returned malformed JSON.');
+    return null;
+  } finally {
+    void reader.cancel().catch(() => undefined);
+    reader.releaseLock();
   }
 };
 

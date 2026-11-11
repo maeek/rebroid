@@ -1,9 +1,19 @@
 import 'server-only'
 import { userService } from '@/server/auth/user'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { CurrentUserContext } from './actions/common/action-helpers'
+
+export const assertViewerRevocationComplete = (userId: string) => {
+  if (hasPendingViewerRevocation(userId)) {
+    throw new PublicActionError('Viewer access is being updated. Try again shortly.', {
+      code: 'upstream_unavailable',
+      status: 503
+    })
+  }
+}
 
 export const assertViewerGrantCurrent = async (user: CurrentUserContext) => {
   const account = await userService.getUserById(user.ownerUserId)
@@ -28,4 +38,5 @@ export const assertViewerGrantCurrent = async (user: CurrentUserContext) => {
       status: 403
     })
   }
+  assertViewerRevocationComplete(user.ownerUserId)
 }
