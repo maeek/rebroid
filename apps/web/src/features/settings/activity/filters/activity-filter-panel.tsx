@@ -93,7 +93,7 @@ export const ActivityFilterPanel = () => {
           </SelectContent>
         </Select>
       </ActivityFilterField>
-      <div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-1'>
+      <div className='grid gap-x-form-column gap-y-3 sm:grid-cols-2 lg:grid-cols-1'>
         <ActivityFilterField label='From (UTC)'>
           <Input
             type='date'

@@ -28,12 +28,7 @@ export const AiProvidersPageLayout = ({
       breadcrumbRefresh={breadcrumbRefresh}
     />
     <PageContent>
-      <Section
-        surface='panel'
-        title='Automation assistance'
-      >
-        {suggestions}
-      </Section>
+      <Section surface='panel'>{suggestions}</Section>
       {providers}
     </PageContent>
   </StandardPage>

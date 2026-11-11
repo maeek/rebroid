@@ -23,7 +23,7 @@ export function AutomationDetailsSection({
       title='Workflow details'
       className={cn('min-w-0', className)}
     >
-      <div className='grid min-w-0 items-start gap-4 md:grid-cols-2'>
+      <div className='grid min-w-0 items-start gap-x-form-column gap-y-4 md:grid-cols-2'>
         <FormField
           controlId='automation-name'
           label='Name'

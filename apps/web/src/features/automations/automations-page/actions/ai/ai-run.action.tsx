@@ -139,7 +139,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           Defaults follow your group permissions. Edit the list to choose specific capabilities.
         </p>
       </div>
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-4'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-4'>
         <NumberField
           label='Max actions'
           value={numberValue(input, 'maxActions', 20)}

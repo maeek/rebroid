@@ -25,7 +25,7 @@ export function AutomationLiteralValueEditor({
   const kind = resolveLiteralKind(value)
 
   return (
-    <div className='grid gap-3 md:grid-cols-[9rem_minmax(0,1fr)]'>
+    <div className='grid gap-x-form-column gap-y-3 md:grid-cols-[9rem_minmax(0,1fr)]'>
       <FormField
         controlId={`${id}-type`}
         label='Type'

@@ -85,7 +85,7 @@ export function AutomationTriggerFormDialog({
             <div className='scrollbar-thin -mx-2 min-h-0 grow overflow-y-auto px-2 py-1'>
               <fieldset
                 disabled={saving}
-                className='grid min-w-0 items-start gap-6 lg:grid-cols-2 xl:grid-cols-3'
+                className='grid min-w-0 items-start gap-x-form-column gap-y-6 lg:grid-cols-2 xl:grid-cols-3'
               >
                 <fieldset className='grid min-w-0 gap-4'>
                   <legend className='mb-4 text-sm font-medium'>Trigger details</legend>
@@ -200,7 +200,7 @@ export function AutomationTriggerFormDialog({
                     />
                   </FormField>
                 </fieldset>
-                <div className='grid min-w-0 gap-4 lg:col-span-2 lg:grid-cols-2 xl:col-span-1 xl:grid-cols-1'>
+                <div className='grid min-w-0 gap-x-form-column gap-y-4 lg:col-span-2 lg:grid-cols-2 xl:col-span-1 xl:grid-cols-1'>
                   <ScheduleEditor
                     schedule={form.schedule}
                     onScheduleChange={patch =>

@@ -169,7 +169,7 @@ function ConditionRow({
   return (
     <div className='grid min-w-0 gap-4 rounded-control bg-control/25 p-3'>
       <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
-        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-3'>
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-3'>
           {condition.value.source === 'literal' ? (
             <FormField
               label='Value'

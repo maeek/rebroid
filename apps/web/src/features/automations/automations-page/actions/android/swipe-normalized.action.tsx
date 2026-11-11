@@ -32,7 +32,7 @@ export const swipeNormalizedAction: AutomationActionDefinition = {
     const end = pointValue(input, 'end', { x: 0.5, y: 0.2 })
     return (
       <div className='grid gap-4'>
-        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
           <NumberField
             label='Start X'
             value={start.x}
@@ -44,7 +44,7 @@ export const swipeNormalizedAction: AutomationActionDefinition = {
             onChange={y => patchInput({ start: { ...start, y } })}
           />
         </div>
-        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
           <NumberField
             label='End X'
             value={end.x}

@@ -97,7 +97,7 @@ export const GeneralSettingsContent = ({
         surface='plain'
         title='Security'
       >
-        <div className='grid min-w-0 gap-x-8 gap-y-6 lg:grid-cols-2'>
+        <div className='grid min-w-0 gap-x-form-column gap-y-6 lg:grid-cols-2'>
           <AccountMfaSettings
             initialEnabled={user.mfaEnabled}
             loading={loading}

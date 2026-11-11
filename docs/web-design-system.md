@@ -281,7 +281,8 @@ StandardPage. Dialogs opt into compact form geometry with `data-editor-dialog` a
 Standard sections use the rounded, opaque semantic surface-editor panel (soft neutral gray in light,
 slightly raised charcoal in dark, and near-black in OLED) with the heading inside,
 24px outer padding (16px on mobile), and no row dividers. Keep 24px between sections and
-16px between fields. FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
+16px between stacked fields. Use `gap-x-form-column` (32px) between side-by-side fields or field groups within a section.
+FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
 
 Create app keeps the draft on submission failure and focuses a persistent notice above the form.
 The notice explains the next step and shows the request ID for server failures. Use structured

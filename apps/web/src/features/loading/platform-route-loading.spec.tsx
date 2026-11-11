@@ -80,7 +80,6 @@ describe('platform destination loading states', () => {
       } else {
         expect(screen.getByRole('heading', { name: 'Models' })).toBeVisible()
       }
-      expect(screen.queryByRole('heading', { name: 'Automation assistance' })).toBeNull()
       expect(screen.queryByRole('searchbox', { name: 'Search AI providers' })).toBeNull()
     }
   )

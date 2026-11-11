@@ -17,7 +17,7 @@ export const ProviderConnectionFields = ({
 
   return (
     <div className='grid gap-6'>
-      <div className='grid gap-6 sm:grid-cols-2'>
+      <div className='grid gap-x-form-column gap-y-6 sm:grid-cols-2'>
         <FormField
           controlId={`${idPrefix}-label`}
           label='Name'
@@ -106,7 +106,7 @@ export const ProviderConnectionFields = ({
         description='Configure compatibility with the server hosting your models.'
         collapsible
       >
-        <div className='grid gap-6 sm:grid-cols-2'>
+        <div className='grid gap-x-form-column gap-y-6 sm:grid-cols-2'>
           <FormField
             controlId={`${idPrefix}-protocol`}
             label='Transport protocol'

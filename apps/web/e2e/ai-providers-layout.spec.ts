@@ -40,6 +40,7 @@ for (const width of [390, 768, 1440, 2048]) {
         await expect(page.getByRole('button', { name: 'Add provider', exact: true })).toBeFocused()
       }
       if (view === 'models') {
+        await expect(page.getByRole('region', { name: 'Models', exact: true })).toHaveAttribute('data-surface', 'plain')
         await expect(
           page.getByRole('navigation', { name: 'AI provider navigation' }).getByRole('link', { name: 'Connection' })
         ).toHaveAttribute('href', '/platform/ai/local-models?view=connection')
@@ -66,8 +67,18 @@ for (const width of [390, 768, 1440, 2048]) {
         await page.getByRole('button', { name: 'Device controller', exact: true }).click()
         await expect(page.getByRole('dialog').getByRole('checkbox', { name: /^Device control/ })).toBeDisabled()
         await page.getByRole('dialog').getByRole('button', { name: 'Generation settings' }).click()
-        await expect(page.getByRole('dialog').getByLabel('Temperature')).toBeVisible()
-        await page.getByRole('dialog').getByRole('button', { name: 'Done' }).click()
+        const settings = page.getByRole('dialog', { name: 'Model settings' })
+        const temperature = settings.getByRole('spinbutton', { name: 'Temperature' })
+        const done = settings.getByRole('button', { name: 'Done' })
+        if (width >= 1440) {
+          const bounds = await settings.boundingBox()
+          expect(bounds!.width).toBeGreaterThanOrEqual(800)
+        }
+        await expect(done).toBeInViewport({ ratio: 1 })
+        await temperature.fill('0.7')
+        await expect(temperature).toHaveValue('0.7')
+        await expect(done).toBeInViewport({ ratio: 1 })
+        await done.click()
         await expect(page.getByRole('button', { name: 'Device controller', exact: true })).toBeFocused()
       }
       if (view === 'connection') {
@@ -89,6 +100,9 @@ test('provider loading views reuse the ready grid columns', async ({ page }) => 
   await page.setViewportSize({ width: 1440, height: 1100 })
   for (const view of ['list', 'models']) {
     await page.goto(`/skeleton-contract-test?editor=ai-${view}-loading`)
+    if (view === 'models') {
+      await expect(page.getByRole('region', { name: 'Models', exact: true })).toHaveAttribute('data-surface', 'plain')
+    }
     const headers = await page.getByRole('columnheader').allTextContents()
     const table = await page.getByRole('table').boundingBox()
     await page.goto(`/skeleton-contract-test?editor=ai-${view}`)

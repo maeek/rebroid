@@ -46,9 +46,9 @@ export const ProviderModelSettingsDialog = ({
     >
       <DialogContent
         data-editor-dialog=''
-        className='max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl'
+        className='flex flex-col overflow-hidden p-4 sm:max-w-3xl sm:p-6 lg:max-w-4xl'
       >
-        <DialogHeader>
+        <DialogHeader className='shrink-0 pr-6'>
           <DialogTitle className='flex items-center gap-2'>
             <GradientSparklesIcon className='size-5' />
             Model settings
@@ -58,22 +58,24 @@ export const ProviderModelSettingsDialog = ({
           </DialogDescription>
         </DialogHeader>
         {model ? (
-          <div className='grid gap-6'>
-            <p className='break-all font-mono text-xs text-foreground-muted'>{model.id}</p>
-            <FormField
-              controlId='provider-model-display-name'
-              label='Display name'
-              layout='vertical'
-            >
-              <Input
-                value={model.label}
-                onChange={event => onChange(model.index, { label: event.target.value })}
+          <div className='scrollbar-thin grid min-h-0 min-w-0 content-start gap-6 overflow-y-auto px-1 py-1'>
+            <div className='grid items-start gap-x-form-column gap-y-4 md:grid-cols-2'>
+              <FormField
+                controlId='provider-model-display-name'
+                label='Display name'
+                description={<span className='font-mono wrap-anywhere'>{model.id}</span>}
+                layout='vertical'
+              >
+                <Input
+                  value={model.label}
+                  onChange={event => onChange(model.index, { label: event.target.value })}
+                />
+              </FormField>
+              <ProviderModelPurposes
+                roles={model.roles}
+                onChange={roles => onChange(model.index, { roles })}
               />
-            </FormField>
-            <ProviderModelPurposes
-              roles={model.roles}
-              onChange={roles => onChange(model.index, { roles })}
-            />
+            </div>
             <Section
               surface='plain'
               title='Generation settings'
@@ -92,7 +94,7 @@ export const ProviderModelSettingsDialog = ({
                   onChange={event => updateSettings({ systemPrompt: event.target.value || null })}
                 />
               </FormField>
-              <div className='grid gap-4 sm:grid-cols-2'>
+              <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
                 <FormField
                   controlId='provider-model-thinking-mode'
                   label='Thinking mode'
@@ -205,7 +207,7 @@ export const ProviderModelSettingsDialog = ({
             </Section>
           </div>
         ) : null}
-        <DialogFooter>
+        <DialogFooter className='shrink-0'>
           <DialogClose asChild>
             <Button type='button'>Done</Button>
           </DialogClose>

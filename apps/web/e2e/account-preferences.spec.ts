@@ -133,6 +133,33 @@ test('personal preferences apply immediately or have their own save action', asy
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
 })
 
+test('preferences use a consistent form column gap and stack fields on narrow screens', async ({ page }, testInfo) => {
+  const narrow = testInfo.project.name === 'mobile-chromium'
+  await page.setViewportSize({ width: narrow ? 390 : 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=general-member')
+
+  const password = page.getByRole('region', { name: 'Change password', exact: true })
+  const mfa = page.getByRole('region', { name: 'Multi-factor authentication', exact: true })
+  const pairs = [
+    [page.getByRole('combobox', { name: 'Theme' }), page.getByRole('combobox', { name: 'Viewer layout' })],
+    [mfa, password],
+    [password.getByLabel('New password', { exact: true }), password.getByLabel('Confirm new password', { exact: true })]
+  ]
+
+  for (const [first, second] of pairs) {
+    await expect(first).toBeVisible()
+    await expect(second).toBeVisible()
+    const firstBox = (await first.boundingBox())!
+    const secondBox = (await second.boundingBox())!
+    if (narrow) {
+      expect(secondBox.x).toBeCloseTo(firstBox.x, 0)
+      expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height)
+    } else {
+      expect(secondBox.x - firstBox.x - firstBox.width).toBeCloseTo(32, 0)
+    }
+  }
+})
+
 test('shared defaults have a scoped save and confirmed restore', async ({ page }) => {
   await page.goto('/skeleton-contract-test?editor=general')
   const defaults = page.getByRole('region', { name: 'Console defaults' })

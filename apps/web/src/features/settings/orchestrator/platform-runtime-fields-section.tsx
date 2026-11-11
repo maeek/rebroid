@@ -89,7 +89,7 @@ export const PlatformRuntimeFieldsSection = ({
         description='Session behavior, APK uploads, and app data.'
         contentClassName='gap-6'
       >
-        <div className='grid min-w-0 gap-4 @min-[30rem]/behavior:grid-cols-2'>
+        <div className='grid min-w-0 gap-x-form-column gap-y-4 @min-[30rem]/behavior:grid-cols-2'>
           <FormField
             label='Default inactivity timeout'
             controlId='runtime-inactivity-timeout'

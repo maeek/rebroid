@@ -27,7 +27,7 @@ export const OcrServiceFields = ({
       description='Control image preprocessing and text recognition.'
     >
       <FieldsBoundary>
-        <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
+        <div className='grid gap-x-form-column gap-y-4 md:grid-cols-2 xl:grid-cols-3'>
           <FormField
             layout='vertical'
             label='Max image size'

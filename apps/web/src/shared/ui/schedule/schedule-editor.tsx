@@ -19,7 +19,7 @@ export const ScheduleEditor = ({
 }) => (
   <fieldset className='grid min-w-0 gap-4'>
     <legend className='mb-4 text-sm font-medium text-foreground'>Schedule</legend>
-    <div className='grid min-w-0 gap-4 sm:grid-cols-2'>
+    <div className='grid min-w-0 gap-x-form-column gap-y-4 sm:grid-cols-2'>
       <FormField
         label='Frequency'
         layout='vertical'

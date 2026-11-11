@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
+import { EditorFormContext } from '@/components/ui/editor-form-context'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -138,11 +139,12 @@ export const ProviderModelsGrid = ({
     `${model.id} ${model.label} ${modelPurposeText(model.roles)}`.toLowerCase().includes(search.trim().toLowerCase())
   )
 
-  return (
+  const section = (
     <Section
       surface='plain'
       title='Models'
       description='Choose a model name to manage its purposes and generation settings. Enable, disable, and remove changes apply when you save.'
+      contentClassName='gap-4'
       actions={
         <Button
           type='button'
@@ -160,6 +162,7 @@ export const ProviderModelsGrid = ({
         </p>
       ) : null}
       <DataGridWorkspace
+        disabled={loading}
         search={searchDraft}
         searchPlaceholder='Search models or purposes'
         onSearchChange={setSearchDraft}
@@ -273,4 +276,6 @@ export const ProviderModelsGrid = ({
       />
     </Section>
   )
+
+  return <EditorFormContext.Provider value={false}>{section}</EditorFormContext.Provider>
 }

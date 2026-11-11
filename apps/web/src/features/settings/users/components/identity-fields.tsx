@@ -25,7 +25,7 @@ export const UserAccountSections = ({
       title='Identity'
       surface='plain'
     >
-      <div className='grid gap-4 sm:grid-cols-2'>
+      <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
         <FormField
           layout='vertical'
           label='Username'
@@ -112,7 +112,7 @@ export const GroupDetailsSections = ({
       title='Group details'
       surface='plain'
     >
-      <div className='grid gap-4 sm:grid-cols-2'>
+      <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
         <FormField
           layout='vertical'
           label='Name'

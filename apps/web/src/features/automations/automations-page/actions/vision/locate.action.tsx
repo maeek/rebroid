@@ -21,7 +21,7 @@ export const visionLocateAction: AutomationActionDefinition = {
         value={stringInputValue(input, 'query')}
         onChange={query => patchInput({ query })}
       />
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
         <NumberField
           label='Threshold'
           value={numberInputValue(input, 'threshold', 0.5)}

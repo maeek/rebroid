@@ -419,6 +419,7 @@
   --shadow-panel: var(--elevation-panel);
   --shadow-floating: var(--elevation-floating);
   --shadow-emphasis: var(--elevation-emphasis);
+  --spacing-form-column: 2rem;
 }
 
 @layer base {

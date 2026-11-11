@@ -16,7 +16,7 @@ export const tapNormalizedAction: AutomationActionDefinition = {
   }),
   summary: input => `x: ${unitValue(input, 'x', 0.5)}, y: ${unitValue(input, 'y', 0.5)}`,
   renderEditor: ({ input, patchInput }) => (
-    <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-3'>
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
       <NumberField
         label='X'
         value={unitValue(input, 'x', 0.5)}

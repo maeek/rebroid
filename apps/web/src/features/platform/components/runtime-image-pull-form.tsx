@@ -66,7 +66,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
           {failure.requestId ? <p>Request ID {failure.requestId}</p> : null}
         </Notice>
       ) : null}
-      <div className='grid gap-4 md:grid-cols-[minmax(13rem,1fr)_minmax(0,3fr)]'>
+      <div className='grid gap-x-form-column gap-y-4 md:grid-cols-[minmax(13rem,1fr)_minmax(0,3fr)]'>
         <FormField
           label='Registry'
           layout='vertical'

@@ -21,7 +21,7 @@ export const ProviderModelDefaults = ({
     title='Defaults by purpose'
     description='Used within this provider when an automation does not select a specific model. Save to apply changes.'
   >
-    <div className='grid gap-6 lg:grid-cols-3'>
+    <div className='grid gap-x-form-column gap-y-6 lg:grid-cols-3'>
       {modelPurposes.map(({ role, label, description }) => {
         const available = models.filter(model => model.enabled && model.roles.includes(role))
         return (
