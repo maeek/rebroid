@@ -63,6 +63,7 @@ const createService = (
       ephemeral,
       execution,
       new MetricsService(),
+      { assertEnabled: jest.fn() } as never,
     ),
   };
 };

@@ -1,3 +1,4 @@
+import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 import { AutomationRunAuthorizationService } from './automation-run-authorization.service';
 import { Module } from '@nestjs/common';
 import { AndroidAppsModule } from '../../android-apps/android-apps.module';
@@ -17,6 +18,7 @@ import { EphemeralAutomationRegistryService } from './ephemeral-automation-regis
 
 @Module({
   imports: [
+    FeatureFlagsModule,
     AndroidAppsModule,
     MetricsModule,
     AutomationAiModule,

@@ -1,23 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCurrentUserContext } from '../../../current-user'
-import { requireFeature } from '../../../features'
+import { loadFeatureFlags, requireFeature } from '../../../features'
 import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
+import { enforceResourceQuotas } from '../../safety'
 import { submitCreateApplicationAction } from './create-update-actions'
 import {
   applyNetworkPolicyAction,
   reconcileNetworkPoliciesAction,
   updateNetworkPolicyAction
 } from './network-policy-actions'
-import type { PermissionMap } from '@/shared/permissions/permissions'
+import type { PermissionMap, ResourceQuota } from '@/shared/permissions/permissions'
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('../../../current-user', () => ({
   getCurrentUserContext: vi.fn(),
   getCurrentOwnerUserId: () => Promise.resolve('owner-1')
 }))
-vi.mock('../../../features', () => ({ requireFeature: vi.fn() }))
+vi.mock('../../../features', () => ({ loadFeatureFlags: vi.fn().mockResolvedValue(null), requireFeature: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
 vi.mock('../../catalog-client', () => ({
   orchestratorAppCatalogClient: { getApplication: vi.fn(), createApplication: vi.fn() }
@@ -37,11 +38,15 @@ vi.mock('../../safety', () => ({
   enforceSessionQuota: vi.fn()
 }))
 
-const user = (permissions: PermissionMap = {}, role: 'admin' | 'user' = 'user') => ({
+const user = (
+  permissions: PermissionMap = {},
+  role: 'admin' | 'user' = 'user',
+  quotas: ResourceQuota = { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
+) => ({
   ownerUserId: 'owner-1',
   role,
   permissions,
-  quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
+  quotas
 })
 
 describe('network policy actions', () => {
@@ -149,6 +154,50 @@ describe('network policy actions', () => {
     )
     expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
     expect(requireFeature).not.toHaveBeenCalled()
+  })
+
+  it('skips web quota checks while preserving the configured limit for transactional admission', async () => {
+    const actor = user({}, 'admin', { maxOpenApps: 0, maxCpuCpus: 1, maxMemoryMb: 512, maxSessionSeconds: 60 })
+    vi.mocked(getCurrentUserContext).mockResolvedValue(actor)
+    vi.mocked(loadFeatureFlags).mockResolvedValueOnce({
+      revision: 1,
+      features: [
+        {
+          key: 'feature.resource-quota',
+          owner: 'android-apps',
+          description: 'Per-user resource quotas.',
+          revision: 1,
+          control: 'runtime',
+          mutable: true,
+          enabled: false,
+          supported: true,
+          effective: false,
+          syncStatus: 'applied',
+          disablePolicy: 'block_new',
+          lifecycle: 'permanent',
+          removalCondition: null,
+          dependencies: [],
+          conflicts: []
+        }
+      ]
+    })
+    const id = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
+    vi.mocked(orchestratorAppCatalogClient.createApplication).mockResolvedValue({
+      id,
+      name: 'Test app'
+    } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.createApplication>>)
+    const result = await submitCreateApplicationAction({ name: 'Test app' })
+    expect(result).toMatchObject({ ok: true, data: { id } })
+    expect(enforceResourceQuotas).toHaveBeenCalledWith(
+      { name: 'Test app' },
+      { maxOpenApps: null, maxCpuCpus: null, maxMemoryMb: null, maxSessionSeconds: null }
+    )
+    expect(orchestratorAppCatalogClient.createApplication).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Test app' }),
+      result.requestId,
+      0,
+      actor
+    )
   })
 
   it('treats an acknowledgement with no app ID as unconfirmed', async () => {

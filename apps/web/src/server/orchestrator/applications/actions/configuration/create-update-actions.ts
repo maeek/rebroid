@@ -16,6 +16,7 @@ import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-u
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
+import { getEnforcedResourceQuota } from '../../resource-quota'
 import {
   applyCreateResourceQuotas,
   enforceResourceQuotas,
@@ -122,8 +123,9 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
   assertCanChangeResources(user, input)
   assertCanChangeSessionLimit(user, input)
   assertCanChangeContainerArgs(user, input)
-  enforceResourceQuotas(input, user.quotas)
-  enforceSessionQuota(input, user.quotas)
+  const quotas = await getEnforcedResourceQuota(user.quotas)
+  enforceResourceQuotas(input, quotas)
+  enforceSessionQuota(input, quotas)
   const command = await orchestratorAppCatalogClient.updateApplication(id, input)
   recordAuditEvent({
     actorUserId: user.ownerUserId,
@@ -156,15 +158,16 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
       assertCanChangeSessionLimit(user, input)
       assertCanChangeContainerArgs(user, input)
       assertCanConfigureCreateNetworkPolicy(user, input)
-      enforceResourceQuotas(input, user.quotas)
-      enforceSessionQuota(input, user.quotas)
-      await assertCanOpenApplicationSlot(user)
+      const quotas = await getEnforcedResourceQuota(user.quotas)
+      enforceResourceQuotas(input, quotas)
+      enforceSessionQuota(input, quotas)
+      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps)
       const ownerUserId = await getCurrentOwnerUserId()
       const containerImage = input.containerImage?.trim()
       const command = await orchestratorAppCatalogClient
         .createApplication(
           {
-            ...applyCreateResourceQuotas(input, user.quotas),
+            ...applyCreateResourceQuotas(input, quotas),
             ownerUserId,
             containerArgs: containerImage
               ? applyRedroidDefaultContainerArgs(containerImage, input.containerArgs ?? '') || undefined

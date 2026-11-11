@@ -32,18 +32,22 @@ export const assertCanUseOwnedApplicationRuntime = async (id: string, message: s
   return { app, user }
 }
 
-export const assertCanOpenApplicationSlot = async (user: CurrentUserContext, candidateId?: string) => {
-  if (user.quotas.maxOpenApps === null) {
+export const assertCanOpenApplicationSlot = async (
+  ownerUserId: string,
+  maxOpenApps: number | null,
+  candidateId?: string
+) => {
+  if (maxOpenApps === null) {
     return
   }
 
-  const apps = await orchestratorAppCatalogClient.listApplications(user.ownerUserId)
+  const apps = await orchestratorAppCatalogClient.listApplications(ownerUserId)
   const openApps = apps.filter(app => ['running', 'provisioning'].includes(app.status.currentStatus))
   const candidateIsAlreadyOpen = candidateId ? openApps.some(app => app.id === candidateId) : false
 
-  if (!candidateIsAlreadyOpen && openApps.length >= user.quotas.maxOpenApps) {
+  if (!candidateIsAlreadyOpen && openApps.length >= maxOpenApps) {
     throw new PublicActionError(
-      `Open app limit reached (${openApps.length}/${user.quotas.maxOpenApps}). Stop an app before starting another.`,
+      `Open app limit reached (${openApps.length}/${maxOpenApps}). Stop an app before starting another.`,
       { code: 'conflict', status: 409 }
     )
   }

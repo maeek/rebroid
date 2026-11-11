@@ -14,11 +14,14 @@ export const viewerStreamMetricsMessageType =
 export function readViewerConfig(): ViewerConfig {
   const params = new URLSearchParams(location.search);
   const sessionId = params.get("sessionId");
+  const useWebsocket =
+    document.body.dataset.webrtcDisabled === "true" ||
+    params.get("transport") === "websocket";
   return {
     params,
     sessionId,
     token: params.get("token"),
-    transport: params.get("transport") === "websocket" ? "websocket" : "webrtc",
+    transport: useWebsocket ? "websocket" : "webrtc",
     audio: params.get("audio") === "1",
     streamDefaults: {
       codec: "h264",

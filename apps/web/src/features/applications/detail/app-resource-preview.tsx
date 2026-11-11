@@ -17,7 +17,7 @@ import { fullPermissions } from '@/shared/permissions/permissions'
 import { AppDeviceLayout } from './app-device-layout'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
-import { previewApp } from './app-resource-preview-data'
+import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
 import { ApplicationViewerContext } from './application-viewer-context'
@@ -44,8 +44,16 @@ const previewDisplay = {
   ]
 }
 
+type AppResourcePreviewProps = { activity?: ReactNode; agent?: boolean }
+
+export const AppResourcePreview = (props: AppResourcePreviewProps) => (
+  <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
+    <AppResourcePreviewContent {...props} />
+  </FeatureFlagsProvider>
+)
+
 /** Static context keeps the gated visual fixture free of authenticated background requests. */
-export const AppResourcePreview = ({ activity, agent = false }: { activity?: ReactNode; agent?: boolean }) => {
+const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePreviewProps) => {
   const [queryClient] = useState(() => {
     const client = new QueryClient({
       defaultOptions: { queries: { staleTime: Infinity, refetchOnWindowFocus: false } }
@@ -111,15 +119,13 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
             }
             viewer={
               previewLiveViewer ? (
-                <FeatureFlagsProvider manifest={{ revision: 1, features: [] }}>
-                  <DisplayViewerProvider value={previewDisplay}>
-                    <DisplayViewerShell
-                      className='h-[var(--app-viewer-height)]'
-                      clipboard={<ViewerClipboard appId={previewApp.id} />}
-                      miniPlayerEnabled
-                    />
-                  </DisplayViewerProvider>
-                </FeatureFlagsProvider>
+                <DisplayViewerProvider value={previewDisplay}>
+                  <DisplayViewerShell
+                    className='h-[var(--app-viewer-height)]'
+                    clipboard={<ViewerClipboard appId={previewApp.id} />}
+                    miniPlayerEnabled
+                  />
+                </DisplayViewerProvider>
               ) : (
                 <AppViewerPane placement='top' />
               )

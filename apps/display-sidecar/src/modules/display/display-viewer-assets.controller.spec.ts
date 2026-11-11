@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { Readable } from "node:stream";
+import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import test from "node:test";
 import type { FastifyReply } from "fastify";
 import { DisplayViewerAssetsController } from "./display-viewer-assets.controller";
@@ -21,13 +21,14 @@ test("serves the viewer document with its anti-framing policy", async () => {
     },
   } as unknown as FastifyReply;
 
-  await new DisplayViewerAssetsController().viewer(response);
+  await new DisplayViewerAssetsController(new SidecarFeatureService()).viewer(
+    response,
+  );
 
   assert.equal(
     headers.get("Content-Security-Policy"),
     "frame-ancestors 'self'; object-src 'none'; base-uri 'none'",
   );
-  if (payload instanceof Readable) {
-    payload.destroy();
-  }
+  assert.equal(headers.get("Cache-Control"), "no-store");
+  assert.match(String(payload), /data-webrtc-disabled="true"/);
 });

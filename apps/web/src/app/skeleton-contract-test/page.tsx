@@ -4,6 +4,7 @@ import { CreateAppPageLoading } from '@/features/applications/create/create-app-
 import { CreateAppPreview } from '@/features/applications/create/create-app-preview'
 import { AppPageSkeleton, AppProfilesPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import { AppResourcePreview } from '@/features/applications/detail/app-resource-preview'
+import { appResourcePreviewFeatures } from '@/features/applications/detail/app-resource-preview-data'
 import { AppsGalleryPreview } from '@/features/applications/list/apps-gallery-preview'
 import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
 import {
@@ -60,6 +61,7 @@ import {
   GroupEditPageSkeleton
 } from '@/features/settings/users/user-page-skeletons'
 import { ConsoleShellPreview } from '@/features/shell/components/console-shell-preview'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
@@ -117,7 +119,9 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'app-resource-loading')
     return (
       <main className='min-h-screen bg-background pt-(--console-top-inset)'>
-        <AppPageSkeleton activity={<AppActivityLoading />} />
+        <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
+          <AppPageSkeleton activity={<AppActivityLoading />} />
+        </FeatureFlagsProvider>
       </main>
     )
   if (editor === 'app-profiles-loading')

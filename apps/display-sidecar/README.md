@@ -35,8 +35,9 @@ The image bundles checksum-verified scrcpy 4.0 and the WebRTC bridge. Use the
 
 Internal APIs fail closed without a secret. The unauthenticated development override must remain
 limited to isolated development. Public viewer routes require short-lived session tokens.
-New virtual displays require an enabled, synchronized `feature.display-virtual` snapshot;
-missing or stale state blocks creation.
+New virtual displays and WebRTC offers require enabled, synchronized state for
+`feature.display-virtual` and `feature.display-webrtc` respectively. The viewer uses WebSocket
+when WebRTC is unavailable under the synchronized feature settings.
 
 The process currently runs as root for device and secret-volume access. Changing that requires
 coordinated host/volume permissions, not an isolated image edit. Secrets are mounted at runtime.

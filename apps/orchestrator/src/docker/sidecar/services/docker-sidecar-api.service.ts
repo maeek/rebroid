@@ -123,31 +123,27 @@ export class DockerSidecarApiService
 
   async synchronizeFeatures() {
     const manifest = this.features.getManifest();
-    const displayVirtual = this.features.getState('feature.display-virtual');
+    const displayFeatures = manifest.features.filter(
+      ({ owner }) => owner === 'display',
+    );
     try {
       await this.request('/features', {
         method: 'PUT',
         body: JSON.stringify({
           revision: manifest.revision,
-          features: [
-            {
-              key: displayVirtual.key,
-              effective: displayVirtual.enabled && displayVirtual.supported,
-            },
-          ],
+          features: displayFeatures.map(({ key, enabled, supported }) => ({
+            key,
+            effective: enabled && supported,
+          })),
         }),
       });
-      this.features.markSynchronization(
-        'feature.display-virtual',
-        manifest.revision,
-        'applied',
-      );
+      for (const { key } of displayFeatures) {
+        this.features.markSynchronization(key, manifest.revision, 'applied');
+      }
     } catch (error) {
-      this.features.markSynchronization(
-        'feature.display-virtual',
-        manifest.revision,
-        'failed',
-      );
+      for (const { key } of displayFeatures) {
+        this.features.markSynchronization(key, manifest.revision, 'failed');
+      }
       throw error;
     }
   }

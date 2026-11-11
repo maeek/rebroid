@@ -559,7 +559,7 @@ export interface components {
         };
         DisplayFeatureStateDto: {
             /** @enum {string} */
-            key: "feature.display-virtual";
+            key: "feature.display-virtual" | "feature.display-webrtc";
             effective: boolean;
         };
         DisplayFeatureSnapshotDto: {

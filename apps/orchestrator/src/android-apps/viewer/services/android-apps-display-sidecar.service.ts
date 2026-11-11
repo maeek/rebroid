@@ -78,7 +78,14 @@ export class AndroidAppsDisplaySidecarService {
     capabilities?: string[],
   ): Promise<DisplaySessionDto | null> {
     try {
-      return await this.createSessionForPreparedTarget(app, udid, capabilities);
+      const session = await this.createSessionForPreparedTarget(
+        app,
+        udid,
+        capabilities,
+      );
+      // The sidecar loses its feature snapshot when restarted independently.
+      await this.featureSync.synchronizeFeatures().catch(() => undefined);
+      return session;
     } catch {
       return null;
     }

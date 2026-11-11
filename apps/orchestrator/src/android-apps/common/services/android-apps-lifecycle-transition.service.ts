@@ -1,3 +1,4 @@
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import { ConflictException, Injectable } from '@nestjs/common';
 import pLimit from 'p-limit';
 import { DataSource, In, IsNull, type EntityManager } from 'typeorm';
@@ -67,6 +68,7 @@ export class AndroidAppsLifecycleTransitionService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly logs: AndroidAppsLogService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   hasRecreateJob(applicationId: string) {
@@ -387,7 +389,11 @@ export class AndroidAppsLifecycleTransitionService {
     ownerUserId: string | null,
     maxOpenApps?: number,
   ) {
-    if (maxOpenApps === undefined) return;
+    if (
+      maxOpenApps === undefined ||
+      !this.features.isEnabled('feature.resource-quota')
+    )
+      return;
 
     const openApps = await manager.getRepository(AndroidApplication).countBy([
       { ownerUserId: ownerUserId ?? IsNull(), status: In(openStatuses) },

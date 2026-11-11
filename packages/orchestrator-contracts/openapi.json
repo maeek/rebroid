@@ -6095,7 +6095,11 @@
               "feature.ocr",
               "feature.firewall",
               "feature.image-builder",
-              "feature.display-virtual"
+              "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
             ],
             "example": "feature.ocr"
           },
@@ -6105,7 +6109,8 @@
               "automations",
               "network-policy",
               "container-images",
-              "display"
+              "display",
+              "android-apps"
             ]
           },
           "revision": {
@@ -6177,7 +6182,11 @@
                 "feature.ocr",
                 "feature.firewall",
                 "feature.image-builder",
-                "feature.display-virtual"
+                "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
               ]
             }
           },
@@ -6189,7 +6198,11 @@
                 "feature.ocr",
                 "feature.firewall",
                 "feature.image-builder",
-                "feature.display-virtual"
+                "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
               ]
             }
           }
@@ -6241,7 +6254,11 @@
               "feature.ocr",
               "feature.firewall",
               "feature.image-builder",
-              "feature.display-virtual"
+              "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
             ],
             "example": "feature.ocr"
           },

@@ -7,6 +7,7 @@ import { appResourceHref } from '@/features/applications/detail/app-resource-lin
 import { getApplicationPageData } from '@/features/applications/pages/shared/application-page-data.server'
 import { getRuntimeTools } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-definitions'
 import { loadApplicationActivity } from '@/server/audit/application-activity-query'
+import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { firstSearchParamValue } from '@/shared/model/search-params'
 import type { AuditSearchParams } from '@/shared/contracts/audit'
 
@@ -25,8 +26,14 @@ const ApplicationViewerPageContent = async ({ params, searchParams, loadingActiv
   const result = await getApplicationPageData(slug)
   if (result.failure) return <AppPageFailure failure={result.failure} />
   const { data } = result
-  if (view === 'workspace')
-    redirect(appResourceHref(slug, getRuntimeTools({ permissions: data.permissions })[0]?.id ?? 'overview'))
+  if (view === 'workspace') {
+    const manifest = await loadFeatureFlags()
+    const [tool] = getRuntimeTools({
+      permissions: data.permissions,
+      isFeatureEnabled: key => manifest?.features.some(feature => feature.key === key && feature.effective) === true
+    })
+    redirect(appResourceHref(slug, tool?.id ?? 'overview'))
+  }
   return (
     <AppViewerPage
       key={data.app?.id}

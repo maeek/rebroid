@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { appResourceHref } from '@/features/applications/detail/app-resource-links'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { cn } from '@/lib/utils'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { AiAgentConversationLayout, AiAgentConversationToolbar } from './ai-agent/ai-agent-conversation-layout'
 import { AiAgentTranscript } from './ai-agent/ai-agent-transcript'
@@ -18,12 +19,13 @@ import { AppWorkflowsLoading } from './workflows/app-workflows-section'
 export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
   const router = useRouter()
   const { app, initialSettings, permissions } = useApplicationViewerApp()
-  const available = getRuntimeTools({ permissions }).some(tool => tool.id === toolId)
+  const { isFeatureEnabled } = useFeatureFlags()
+  const available = getRuntimeTools({ permissions, isFeatureEnabled }).some(tool => tool.id === toolId)
   if (!available)
     return (
       <Notice
         title='Tool unavailable'
-        description='You do not have permission to use this tool.'
+        description='This tool is unavailable for your account or disabled by the platform.'
       />
     )
 

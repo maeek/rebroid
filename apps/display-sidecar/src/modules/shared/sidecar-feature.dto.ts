@@ -1,8 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 
+import { displayFeatureKeys } from "./sidecar-feature.service";
+
 export class DisplayFeatureStateDto {
-  @ApiProperty({ enum: ["feature.display-virtual"] })
-  key!: "feature.display-virtual";
+  @ApiProperty({ enum: displayFeatureKeys })
+  key!: (typeof displayFeatureKeys)[number];
 
   @ApiProperty()
   effective!: boolean;

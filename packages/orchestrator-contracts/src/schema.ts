@@ -2051,9 +2051,9 @@ export interface components {
              * @example feature.ocr
              * @enum {string}
              */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual";
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
             /** @enum {string} */
-            owner: "automations" | "network-policy" | "container-images" | "display";
+            owner: "automations" | "network-policy" | "container-images" | "display" | "android-apps";
             /** @example 3 */
             revision: number;
             /** @example OCR-backed automation perception. */
@@ -2075,8 +2075,8 @@ export interface components {
             /** @enum {string} */
             lifecycle: "permanent" | "rollout";
             removalCondition: string | null;
-            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual")[];
-            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual")[];
+            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
+            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
         };
         FeatureFlagManifestDto: {
             /** @example 3 */
@@ -2088,7 +2088,7 @@ export interface components {
              * @example feature.ocr
              * @enum {string}
              */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual";
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
             /** @example false */
             enabled: boolean;
         };

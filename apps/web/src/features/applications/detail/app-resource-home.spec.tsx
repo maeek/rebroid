@@ -1,7 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { render as renderWithProviders, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { AppResourceHome } from './app-resource-home'
-import { previewApp } from './app-resource-preview-data'
+import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
@@ -41,6 +43,13 @@ const setup = (permissions = {}, isForeignOwnedApp = false) => {
     typeof useApplicationViewerApp
   >)
 }
+const render = (node: ReactNode) =>
+  renderWithProviders(node, {
+    wrapper: ({ children }) => (
+      <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>{children}</FeatureFlagsProvider>
+    )
+  })
+
 describe('AppResourceHome', () => {
   it('renders activity composed by the authorized page without owning the audit feature', () => {
     setup()

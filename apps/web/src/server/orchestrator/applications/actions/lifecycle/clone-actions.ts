@@ -9,6 +9,7 @@ import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
+import { getEnforcedResourceQuota } from '../../resource-quota'
 import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
 import { assertCanOpenApplicationSlot, getAccessibleApplication } from '../common/action-helpers'
 
@@ -26,9 +27,10 @@ export const requestApplicationCloneAction = async (id: string) =>
         })
       }
 
-      enforceResourceQuotas(source.runtime.resources, user.quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, user.quotas)
-      await assertCanOpenApplicationSlot(user)
+      const quotas = await getEnforcedResourceQuota(user.quotas)
+      enforceResourceQuotas(source.runtime.resources, quotas)
+      enforceSessionQuota({ inactivityTimeoutSeconds: source.runtime.inactivityTimeoutSeconds }, quotas)
+      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps)
       const command = await orchestratorAppCatalogClient.cloneApplication(
         id,
         {

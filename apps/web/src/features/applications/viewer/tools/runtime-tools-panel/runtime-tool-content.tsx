@@ -1,5 +1,6 @@
 import { draftWorkflowFromAdHocRunAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { suggestAdHocAiPromptsAction } from '@/server/orchestrator/automations/automation-run-actions'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AiAgentToolsSection } from './ai-agent/ai-agent-tools-section'
 import { DownloadsToolsSection } from './files/downloads-tools-section'
@@ -24,6 +25,7 @@ export const RuntimeToolContent = ({
 }) => {
   const sectionClassName = runtimeInlineSectionClassName
 
+  const { isFeatureEnabled } = useFeatureFlags()
   if (toolId === 'files') {
     return (
       <DownloadsToolsSection
@@ -37,7 +39,7 @@ export const RuntimeToolContent = ({
     return (
       <AiAgentToolsSection
         app={app}
-        canSaveWorkflow={hasPermission(permissions, 'automations:manage')}
+        canSaveWorkflow={isFeatureEnabled('feature.workflows') && hasPermission(permissions, 'automations:manage')}
         className={sectionClassName}
         contextualSuggestionsEnabled={initialAiContextualSuggestionsEnabled}
         draftWorkflowFromRun={draftWorkflowFromAdHocRunAction}

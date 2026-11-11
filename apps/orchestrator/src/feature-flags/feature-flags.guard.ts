@@ -10,8 +10,8 @@ import { FeatureFlagsService } from './feature-flags.service';
 
 const requiredFeatureMetadata = Symbol('required-feature');
 
-export const RequiresFeature = (key: FeatureFlagKey) =>
-  SetMetadata(requiredFeatureMetadata, key);
+export const RequiresFeature = (...keys: FeatureFlagKey[]) =>
+  SetMetadata(requiredFeatureMetadata, keys);
 
 @Injectable()
 export class FeatureFlagsGuard implements CanActivate {
@@ -21,11 +21,11 @@ export class FeatureFlagsGuard implements CanActivate {
   ) {}
 
   canActivate(context: ExecutionContext) {
-    const key = this.reflector.getAllAndOverride<FeatureFlagKey>(
+    const keys = this.reflector.getAllAndOverride<FeatureFlagKey[]>(
       requiredFeatureMetadata,
       [context.getHandler(), context.getClass()],
     );
-    if (key) this.features.assertEnabled(key);
+    for (const key of keys ?? []) this.features.assertEnabled(key);
     return true;
   }
 }

@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { getRuntimeTools } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-definitions'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
 import { appResourceHref, appResourceLabels, type AppResourceView } from './app-resource-links'
@@ -39,12 +40,13 @@ export const AppResourceNavigation = ({
   isForeignOwnedApp: boolean
   canViewAuditActivity?: boolean
 }) => {
+  const { isFeatureEnabled } = useFeatureFlags()
   const canDiagnose =
     hasPermission(permissions, 'applications:view-backend-details') ||
     (!isForeignOwnedApp && hasPermission(permissions, 'applications:view-logs'))
   const visibleViews = new Set<AppResourceView>(['overview', 'configuration'])
   if (!isForeignOwnedApp) {
-    for (const tool of getRuntimeTools({ permissions })) visibleViews.add(tool.id)
+    for (const tool of getRuntimeTools({ permissions, isFeatureEnabled })) visibleViews.add(tool.id)
   }
   if (canViewAuditActivity) visibleViews.add('activity')
   if (canDiagnose) visibleViews.add('diagnostics')

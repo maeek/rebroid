@@ -1,3 +1,4 @@
+import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import {
   ConflictException,
   Injectable,
@@ -68,6 +69,7 @@ export class DisplayWebrtcService {
     private readonly scrcpy: ScrcpyService,
     private readonly config: SidecarConfigService,
     private readonly controls: DisplayControlService,
+    private readonly features: SidecarFeatureService,
   ) {}
 
   async createAnswer(options: WebrtcOfferOptions) {
@@ -76,6 +78,7 @@ export class DisplayWebrtcService {
       options.token,
     );
     this.sessions.assertCapability(session, "video");
+    this.features.assertWebrtcEnabled();
     const iceHost = this.resolveIceHost(options.requestHost);
     if (!iceHost) {
       throw new ConflictException("Could not determine WebRTC ICE host.");

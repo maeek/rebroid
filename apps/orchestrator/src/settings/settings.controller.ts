@@ -1,3 +1,4 @@
+import { RequiresFeature } from '../feature-flags/feature-flags.guard';
 import {
   Body,
   Controller,
@@ -56,18 +57,21 @@ export class SettingsController {
     return this.settings.resetSettings();
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai-providers')
   @ApiOkResponse({ type: AutomationAiProviderDto, isArray: true })
   listAiProviders() {
     return this.settings.listAiProviders();
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai-providers')
   @ApiOkResponse({ type: AutomationAiProviderDto })
   createAiProvider(@Body() dto: CreateAutomationAiProviderDto) {
     return this.settings.createAiProvider(dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai-providers/health')
   @ApiOkResponse({ type: AutomationAiProviderHealthDto })
   checkAiProviderCandidateHealth(
@@ -76,6 +80,7 @@ export class SettingsController {
     return this.settings.checkAiProviderCandidateHealth(dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai-providers/:providerId/health')
   @ApiOkResponse({ type: AutomationAiProviderHealthDto })
   checkAiProviderHealth(
@@ -86,12 +91,14 @@ export class SettingsController {
     return this.settings.checkAiProviderHealth(providerId, modelId, role);
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai-providers/:providerId/remote-models')
   @ApiOkResponse({ type: AutomationAiProviderRemoteModelDto, isArray: true })
   listAiProviderRemoteModels(@Param('providerId') providerId: string) {
     return this.settings.listAiProviderRemoteModels(providerId);
   }
 
+  @RequiresFeature('feature.ai')
   @Patch('ai-providers/:providerId')
   @ApiOkResponse({ type: AutomationAiProviderDto })
   updateAiProvider(
@@ -101,6 +108,7 @@ export class SettingsController {
     return this.settings.updateAiProvider(providerId, dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Delete('ai-providers/:providerId')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -108,6 +116,7 @@ export class SettingsController {
     return this.settings.deleteAiProvider(providerId);
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai-providers/:providerId/models')
   @ApiOkResponse({ type: AutomationAiProviderModelDto })
   createAiProviderModel(
@@ -117,6 +126,7 @@ export class SettingsController {
     return this.settings.createAiProviderModel(providerId, dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai-providers/:providerId/models/download')
   @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto })
   downloadAiProviderModel(
@@ -130,6 +140,7 @@ export class SettingsController {
     );
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai-providers/:providerId/models/downloads/:downloadId')
   @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto })
   getAiProviderModelDownload(
@@ -139,6 +150,7 @@ export class SettingsController {
     return this.settings.getAiProviderModelDownload(providerId, downloadId);
   }
 
+  @RequiresFeature('feature.ai')
   @Patch('ai-providers/:providerId/models/:modelId')
   @ApiOkResponse({ type: AutomationAiProviderModelDto })
   updateAiProviderModel(
@@ -149,6 +161,7 @@ export class SettingsController {
     return this.settings.updateAiProviderModel(providerId, modelId, dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Delete('ai-providers/:providerId/models/:modelId')
   @HttpCode(204)
   @ApiNoContentResponse()
@@ -159,6 +172,7 @@ export class SettingsController {
     return this.settings.deleteAiProviderModel(providerId, modelId);
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai-model-catalog')
   @ApiOkResponse({ type: AutomationAiModelCatalogProviderDto, isArray: true })
   listAiModelCatalog() {

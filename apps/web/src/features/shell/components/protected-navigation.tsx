@@ -152,26 +152,28 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
         ))}
       </ul>
 
-      <SectionHeader
-        title='Automations'
-        variant={variant}
-        actionHref='/automations/create'
-        actionLabel='Create workflow'
-        onNavigate={onNavigate}
-      />
-      <ul className={styles.list}>
-        {automationSections.map(({ name, Icon, href }) => (
-          <NavLink
-            key={name}
-            href={href}
-            label={name}
-            Icon={Icon}
-            isActive={isActivePath(href, href === '/automations')}
-            variant={variant}
-            onNavigate={onNavigate}
-          />
-        ))}
-      </ul>
+      <Visible when={isFeatureEnabled('feature.workflows')}>
+        <SectionHeader
+          title='Automations'
+          variant={variant}
+          actionHref='/automations/create'
+          actionLabel='Create workflow'
+          onNavigate={onNavigate}
+        />
+        <ul className={styles.list}>
+          {automationSections.map(({ name, Icon, href }) => (
+            <NavLink
+              key={name}
+              href={href}
+              label={name}
+              Icon={Icon}
+              isActive={isActivePath(href, href === '/automations')}
+              variant={variant}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </ul>
+      </Visible>
 
       <Visible when={isAdmin}>
         <SectionHeader

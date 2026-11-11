@@ -1,4 +1,32 @@
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { FeatureFlagKey, FeatureFlagManifest, FeatureFlagState } from '@/shared/contracts/feature-flags'
+
+const enabledPreviewFeature = (key: FeatureFlagKey, owner: FeatureFlagState['owner']): FeatureFlagState => ({
+  key,
+  owner,
+  description: '',
+  revision: 1,
+  control: 'runtime',
+  mutable: true,
+  enabled: true,
+  supported: true,
+  effective: true,
+  syncStatus: 'applied',
+  disablePolicy: 'block_new',
+  lifecycle: 'permanent',
+  removalCondition: null,
+  dependencies: [],
+  conflicts: []
+})
+
+export const appResourcePreviewFeatures: FeatureFlagManifest = {
+  revision: 1,
+  features: [
+    enabledPreviewFeature('feature.ai', 'automations'),
+    enabledPreviewFeature('feature.workflows', 'automations'),
+    enabledPreviewFeature('feature.display-webrtc', 'display')
+  ]
+}
 
 export const previewApp: AppDefinition = {
   id: 'preview-app',

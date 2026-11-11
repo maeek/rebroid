@@ -80,6 +80,50 @@ describe('AppModule', () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
 
+    const headers = { 'x-orchestrator-secret': 'test-secret' };
+    const aiCatalog = await app.inject({
+      method: 'GET',
+      url: '/api/v1/settings/ai-model-catalog',
+      headers,
+    });
+    expect(aiCatalog.statusCode).toBe(409);
+    expect(aiCatalog.json()).toMatchObject({
+      code: 'feature_disabled',
+      feature: 'feature.ai',
+    });
+
+    const update = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/features',
+      headers,
+      payload: {
+        revision: 0,
+        changes: [
+          { key: 'feature.ai', enabled: true },
+          { key: 'feature.workflows', enabled: false },
+        ],
+      },
+    });
+    expect(update.statusCode).toBe(200);
+    const [enabledAi, disabledWorkflows] = await Promise.all([
+      app.inject({
+        method: 'GET',
+        url: '/api/v1/settings/ai-model-catalog',
+        headers,
+      }),
+      app.inject({
+        method: 'GET',
+        url: '/api/v1/automations?ownerUserId=owner-1',
+        headers,
+      }),
+    ]);
+    expect(enabledAi.statusCode).toBe(200);
+    expect(disabledWorkflows.statusCode).toBe(409);
+    expect(disabledWorkflows.json()).toMatchObject({
+      code: 'feature_disabled',
+      feature: 'feature.workflows',
+    });
+
     const dataSource = app.get(DataSource);
     const schemaQueryRunner = dataSource.createQueryRunner();
     try {

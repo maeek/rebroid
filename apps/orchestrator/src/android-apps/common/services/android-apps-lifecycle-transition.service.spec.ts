@@ -28,9 +28,12 @@ describe('open application admission', () => {
     }).initialize();
     try {
       const apps = database.getRepository(AndroidApplication);
-      const job = new AndroidAppsLifecycleTransitionService(database, {
-        appendLifecycle: jest.fn(),
-      } as never);
+      const quotaEnabled = jest.fn(() => true);
+      const job = new AndroidAppsLifecycleTransitionService(
+        database,
+        { appendLifecycle: jest.fn() } as never,
+        { isEnabled: quotaEnabled } as never,
+      );
       const makeApp = (name: string, ownerUserId = 'owner') =>
         apps.create({
           name,
@@ -87,6 +90,13 @@ describe('open application admission', () => {
       ]);
       expect(await apps.countBy({ ownerUserId: 'owner', ...patch })).toBe(1);
       expect(await apps.countBy({ ownerUserId: 'owner' })).toBe(2);
+      quotaEnabled.mockReturnValue(false);
+      await expect(
+        job.createProvisionJob(
+          Object.assign(makeApp('quota-disabled'), patch),
+          1,
+        ),
+      ).resolves.toMatchObject({ kind: AndroidAppLifecycleJobKind.Provision });
       await expect(
         job.createProvisionJob(
           Object.assign(makeApp('other', 'other'), patch),
@@ -170,6 +180,7 @@ describe('AndroidAppsLifecycleTransitionService', () => {
     const service = new AndroidAppsLifecycleTransitionService(
       dataSource as never,
       logs as never,
+      { isEnabled: () => true } as never,
     );
     return { app, jobs, logs, service };
   };

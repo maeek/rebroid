@@ -1,3 +1,4 @@
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import {
   ConflictException,
   Injectable,
@@ -44,6 +45,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     private readonly ephemeralAutomations: EphemeralAutomationRegistryService,
     private readonly execution: AutomationRunExecutionService,
     private readonly metrics: MetricsService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -72,6 +74,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     trigger: AutomationRunTrigger,
     options: AutomationRunTargetOptions = {},
   ) {
+    this.features.assertEnabled('feature.workflows');
     return this.enqueueRunnable(
       {
         definition: JSON.parse(
@@ -92,6 +95,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     options: AutomationRunTargetOptions = {},
     userMessage?: { prompt: string; clientMessageId?: string },
   ) {
+    this.features.assertEnabled('feature.ai');
     return this.enqueueRunnable(
       this.ephemeralAutomations.create(ownerUserId, definition),
       trigger,

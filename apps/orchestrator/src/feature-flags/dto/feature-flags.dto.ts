@@ -14,6 +14,8 @@ import {
 } from 'class-validator';
 import {
   featureFlagKeys,
+  featureOwners,
+  type FeatureFlagDefinition,
   type FeatureDisablePolicy,
   type FeatureFlagControl,
   type FeatureFlagKey,
@@ -23,10 +25,8 @@ export class FeatureFlagStateDto {
   @ApiProperty({ enum: featureFlagKeys, example: 'feature.ocr' })
   key!: FeatureFlagKey;
 
-  @ApiProperty({
-    enum: ['automations', 'network-policy', 'container-images', 'display'],
-  })
-  owner!: 'automations' | 'network-policy' | 'container-images' | 'display';
+  @ApiProperty({ enum: featureOwners })
+  owner!: FeatureFlagDefinition['owner'];
 
   @ApiProperty({ example: 3, minimum: 0 })
   revision!: number;

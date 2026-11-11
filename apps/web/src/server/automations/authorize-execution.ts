@@ -2,6 +2,7 @@ import 'server-only'
 import { userService } from '@/server/auth/user'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
+import { getEnforcedResourceQuota } from '@/server/orchestrator/applications/resource-quota'
 import { enforceResourceQuotas, enforceSessionQuota } from '@/server/orchestrator/applications/safety'
 import {
   assertAutomationPermission,
@@ -37,9 +38,10 @@ export const authorizeAutomationExecution = async (input: {
     throw new PublicActionError('Application not found.', { code: 'not_found', status: 404 })
   if (input.operation === 'start') {
     assertAutomationPermission(user, 'applications:start')
-    enforceResourceQuotas(app.runtime.resources, user.quotas)
-    enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, user.quotas)
-    const limit = user.quotas.maxOpenApps
+    const quotas = await getEnforcedResourceQuota(user.quotas)
+    enforceResourceQuotas(app.runtime.resources, quotas)
+    enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, quotas)
+    const limit = quotas.maxOpenApps
     if (limit !== null) {
       const [apps, runs] = await Promise.all([
         orchestratorAppCatalogClient.listApplications(account.id),

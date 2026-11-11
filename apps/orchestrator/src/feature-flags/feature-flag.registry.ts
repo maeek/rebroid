@@ -3,6 +3,10 @@ export const featureFlagKeys = [
   'feature.firewall',
   'feature.image-builder',
   'feature.display-virtual',
+  'feature.ai',
+  'feature.workflows',
+  'feature.resource-quota',
+  'feature.display-webrtc',
 ] as const;
 
 export type FeatureFlagKey = (typeof featureFlagKeys)[number];
@@ -10,10 +14,18 @@ export type FeatureFlagControl = 'runtime' | 'deployment';
 export type FeatureDisablePolicy =
   'block_new' | 'drain_active' | 'stop_active' | 'restart_required';
 
+export const featureOwners = [
+  'automations',
+  'network-policy',
+  'container-images',
+  'display',
+  'android-apps',
+] as const;
+
 export interface FeatureFlagDefinition {
   key: FeatureFlagKey;
   description: string;
-  owner: 'automations' | 'network-policy' | 'container-images' | 'display';
+  owner: (typeof featureOwners)[number];
   control: FeatureFlagControl;
   defaultEnabled: boolean;
   disablePolicy: FeatureDisablePolicy;
@@ -69,6 +81,54 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     owner: 'display',
     control: 'runtime',
     defaultEnabled: false,
+    disablePolicy: 'drain_active',
+    lifecycle: 'permanent',
+    removalCondition: null,
+    dependencies: [],
+    conflicts: [],
+  },
+  {
+    key: 'feature.ai',
+    description: 'AI providers, device-agent tasks, and workflow drafting.',
+    owner: 'automations',
+    control: 'runtime',
+    defaultEnabled: false,
+    disablePolicy: 'block_new',
+    lifecycle: 'permanent',
+    removalCondition: null,
+    dependencies: [],
+    conflicts: [],
+  },
+  {
+    key: 'feature.workflows',
+    description: 'Workflow editing, manual runs, and scheduled triggers.',
+    owner: 'automations',
+    control: 'runtime',
+    defaultEnabled: true,
+    disablePolicy: 'drain_active',
+    lifecycle: 'permanent',
+    removalCondition: null,
+    dependencies: [],
+    conflicts: [],
+  },
+  {
+    key: 'feature.resource-quota',
+    description: 'Per-user open app, CPU, memory, and session limits.',
+    owner: 'android-apps',
+    control: 'runtime',
+    defaultEnabled: true,
+    disablePolicy: 'block_new',
+    lifecycle: 'permanent',
+    removalCondition: null,
+    dependencies: [],
+    conflicts: [],
+  },
+  {
+    key: 'feature.display-webrtc',
+    description: 'Live viewer streaming over WebRTC.',
+    owner: 'display',
+    control: 'runtime',
+    defaultEnabled: true,
     disablePolicy: 'drain_active',
     lifecycle: 'permanent',
     removalCondition: null,

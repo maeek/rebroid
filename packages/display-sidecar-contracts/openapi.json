@@ -1611,7 +1611,7 @@
         "properties": {
           "key": {
             "type": "string",
-            "enum": ["feature.display-virtual"]
+            "enum": ["feature.display-virtual", "feature.display-webrtc"]
           },
           "effective": {
             "type": "boolean"

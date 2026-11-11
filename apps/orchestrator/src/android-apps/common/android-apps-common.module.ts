@@ -1,3 +1,4 @@
+import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 import { Module } from '@nestjs/common';
 import { AppConfigModule } from '../../config/app-config.module';
 import { DockerModule } from '../../docker/docker.module';
@@ -16,6 +17,7 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
 
 @Module({
   imports: [
+    FeatureFlagsModule,
     AppConfigModule,
     AndroidAppsPersistenceModule,
     DockerModule,

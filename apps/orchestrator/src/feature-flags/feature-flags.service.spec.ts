@@ -76,6 +76,16 @@ describe('FeatureFlagsService', () => {
     jest.clearAllMocks();
 
     expect(service.isEnabled('feature.ocr')).toBe(true);
+    expect(service.isEnabled('feature.ai')).toBe(false);
+    expect(service.isEnabled('feature.workflows')).toBe(true);
+    expect(service.isEnabled('feature.resource-quota')).toBe(true);
+    expect(service.getState('feature.display-webrtc')).toMatchObject({
+      enabled: true,
+      effective: false,
+      syncStatus: 'pending',
+    });
+    service.markSynchronization('feature.display-webrtc', 0, 'applied');
+    expect(service.isEnabled('feature.display-webrtc')).toBe(true);
     expect(service.getState('feature.display-virtual')).toMatchObject({
       enabled: false,
       disablePolicy: 'drain_active',

@@ -1,7 +1,9 @@
-import { render, screen, within } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { render as renderWithProviders, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { fullPermissions } from '@/shared/permissions/permissions'
-import { previewApp } from './app-resource-preview-data'
+import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
 import { AppWorkspaceContent } from './app-workspace-content'
 import { useApplicationViewerApp } from './application-viewer-context'
 
@@ -10,6 +12,13 @@ vi.mock('@/features/applications/viewer/actions/app-viewer-actions', () => ({ Ap
 vi.mock('@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel', () => ({
   RuntimeToolsPanel: () => <div>Runtime content</div>
 }))
+const render = (node: ReactNode) =>
+  renderWithProviders(node, {
+    wrapper: ({ children }) => (
+      <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>{children}</FeatureFlagsProvider>
+    )
+  })
+
 describe('app tools workspace', () => {
   it('keeps Diagnostics and renders one tools panel at every viewport', () => {
     vi.mocked(useApplicationViewerApp).mockReturnValue({

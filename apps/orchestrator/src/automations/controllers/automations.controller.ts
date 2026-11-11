@@ -1,3 +1,4 @@
+import { RequiresFeature } from '../../feature-flags/feature-flags.guard';
 import { once } from 'node:events';
 import {
   Body,
@@ -71,12 +72,14 @@ export class AutomationsController {
     return this.automations.listCommands();
   }
 
+  @RequiresFeature('feature.workflows')
   @Post('validate-yaml')
   @ApiOkResponse({ type: AutomationValidationDto })
   validateYaml(@Body() dto: ValidateAutomationYamlDto) {
     return this.automations.validateYaml(dto.yaml);
   }
 
+  @RequiresFeature('feature.ai', 'feature.workflows')
   @Post('draft-yaml/stream')
   @ApiOkResponse({
     description: 'Server-sent draft generation events.',
@@ -115,18 +118,21 @@ export class AutomationsController {
     }
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai/runs')
   @ApiCreatedResponse({ type: AutomationRunDto })
   runAdHocAi(@Body() dto: RunAdHocAiAutomationDto) {
     return this.automations.runAdHocAi(dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Post('ai/suggestions')
   @ApiOkResponse({ type: AiPromptSuggestionsDto })
   suggestAdHocAiPrompts(@Body() dto: SuggestAdHocAiPromptsDto) {
     return this.automations.suggestAdHocAiPrompts(dto);
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai/runs')
   @ApiOkResponse({ type: AutomationRunDto, isArray: true })
   listAdHocAiRuns(
@@ -141,6 +147,7 @@ export class AutomationsController {
     );
   }
 
+  @RequiresFeature('feature.ai')
   @Get('ai/run-history')
   @ApiQuery({ name: 'limit', required: false, type: String })
   @ApiOkResponse({ type: AutomationAiRunHistoryDto, isArray: true })
@@ -156,6 +163,7 @@ export class AutomationsController {
     );
   }
 
+  @RequiresFeature('feature.ai')
   @Delete('ai/runs')
   clearAdHocAiRuns(
     @Query('ownerUserId') ownerUserId: string,
@@ -164,24 +172,28 @@ export class AutomationsController {
     return this.automations.clearAdHocAiRuns(ownerUserId, targetApplicationId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get()
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   list(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.list(ownerUserId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('grid')
   @ApiOkResponse({ type: AutomationsGridPageDto })
   listGrid(@Query() query: ListAutomationsGridQueryDto) {
     return this.automations.listGrid(query);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('runnable')
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   listRunnable(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.list(ownerUserId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Post()
   @ApiCreatedResponse({ type: AutomationDto })
   create(@Body() dto: CreateAutomationDto) {
@@ -194,12 +206,14 @@ export class AutomationsController {
     return this.automations.listActiveRuns(query.ownerUserId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('runs/history')
   @ApiOkResponse({ type: ApplicationWorkflowRunPageDto })
   listApplicationWorkflowRuns(@Query() query: ListApplicationWorkflowRunsDto) {
     return this.automations.listApplicationWorkflowRuns(query);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('runs/history/:runId')
   @ApiOkResponse({ type: ApplicationWorkflowRunDto })
   getApplicationWorkflowRun(
@@ -257,24 +271,28 @@ export class AutomationsController {
     return this.automations.createRunEventStreamToken(dto.ownerUserId, runId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('triggers')
   @ApiOkResponse({ type: AutomationTriggerDto, isArray: true })
   listTriggers(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.listTriggers(ownerUserId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('triggers/grid')
   @ApiOkResponse({ type: AutomationTriggersGridPageDto })
   listTriggersGrid(@Query() query: ListAutomationTriggersGridQueryDto) {
     return this.automations.listTriggersGrid(query);
   }
 
+  @RequiresFeature('feature.workflows')
   @Post('triggers')
   @ApiCreatedResponse({ type: AutomationTriggerDto })
   createTrigger(@Body() dto: CreateAutomationTriggerDto) {
     return this.automations.createTrigger(dto);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get('triggers/:triggerId')
   @ApiOkResponse({ type: AutomationTriggerDto })
   getTrigger(
@@ -284,6 +302,7 @@ export class AutomationsController {
     return this.automations.getTrigger(ownerUserId, triggerId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Patch('triggers/:triggerId')
   @ApiOkResponse({ type: AutomationTriggerDto })
   updateTrigger(
@@ -294,6 +313,7 @@ export class AutomationsController {
     return this.automations.updateTrigger(ownerUserId, triggerId, dto);
   }
 
+  @RequiresFeature('feature.workflows')
   @Delete('triggers/:triggerId')
   @ApiOkResponse({ type: AutomationTriggerDto })
   removeTrigger(
@@ -303,6 +323,7 @@ export class AutomationsController {
     return this.automations.removeTrigger(ownerUserId, triggerId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Post('triggers/:triggerId/runs')
   @ApiCreatedResponse({ type: AutomationRunDto })
   runTrigger(
@@ -312,12 +333,14 @@ export class AutomationsController {
     return this.automations.runTrigger(dto.ownerUserId, triggerId);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get(':id')
   @ApiOkResponse({ type: AutomationDto })
   get(@Param('id') id: string, @Query('ownerUserId') ownerUserId: string) {
     return this.automations.get(ownerUserId, id);
   }
 
+  @RequiresFeature('feature.workflows')
   @Patch(':id')
   @ApiOkResponse({ type: AutomationDto })
   update(
@@ -328,18 +351,21 @@ export class AutomationsController {
     return this.automations.update(ownerUserId, id, dto);
   }
 
+  @RequiresFeature('feature.workflows')
   @Delete(':id')
   @ApiOkResponse({ type: AutomationDto })
   remove(@Param('id') id: string, @Query('ownerUserId') ownerUserId: string) {
     return this.automations.remove(ownerUserId, id);
   }
 
+  @RequiresFeature('feature.workflows')
   @Post(':id/runs')
   @ApiCreatedResponse({ type: AutomationRunDto })
   run(@Param('id') id: string, @Body() dto: RunAutomationDto) {
     return this.automations.run(dto.ownerUserId, id, dto);
   }
 
+  @RequiresFeature('feature.workflows')
   @Get(':id/runs')
   @ApiOkResponse({ type: AutomationRunDto, isArray: true })
   listRuns(

@@ -6,6 +6,7 @@ import test from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { ScrcpySourceStream } from "../scrcpy/scrcpy-source-stream";
 import type { ScrcpyStreamOptions } from "../scrcpy/scrcpy.types";
+import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 
 const offer = {
@@ -16,8 +17,16 @@ const offer = {
   audio: false,
 };
 
-const setup = (scrcpy: object, config = {}) =>
-  new DisplayWebrtcService(
+const setup = (scrcpy: object, config = {}, webrtcEnabled = true) => {
+  const features = new SidecarFeatureService();
+  features.apply({
+    revision: 0,
+    features: [
+      { key: "feature.display-virtual", effective: false },
+      { key: "feature.display-webrtc", effective: webrtcEnabled },
+    ],
+  });
+  return new DisplayWebrtcService(
     {
       assertStreamToken: () => ({ udid: "fixture" }),
       assertCapability: () => undefined,
@@ -25,7 +34,17 @@ const setup = (scrcpy: object, config = {}) =>
     scrcpy as never,
     config as never,
     {} as never,
+    features,
   );
+};
+
+test("disabled WebRTC rejects offers before probing or attaching a source", async () => {
+  const service = setup({}, {}, false);
+  await assert.rejects(
+    service.createAnswer(offer),
+    /WebRTC streaming is disabled/,
+  );
+});
 
 const deferred = () => {
   let resolve!: () => void;

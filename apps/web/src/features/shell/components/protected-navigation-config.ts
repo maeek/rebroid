@@ -57,7 +57,7 @@ export const platformSections: NavigationItem[] = [
   { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
   { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' },
-  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai' }
+  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' }
 ]
 
 export const runtimeSections: NavigationItem[] = [

@@ -1,3 +1,4 @@
+import { FeatureDisabledException } from '../../feature-flags/feature-flags.service';
 import {
   Injectable,
   Logger,
@@ -301,10 +302,12 @@ export class AutomationTriggersService implements OnModuleInit {
           trigger.triggerType,
           this.triggerScheduler.parseScheduleConfig(trigger),
         ),
-        {
-          at: attemptedAt,
-          message: error instanceof Error ? error.message : String(error),
-        },
+        error instanceof FeatureDisabledException
+          ? undefined
+          : {
+              at: attemptedAt,
+              message: error instanceof Error ? error.message : String(error),
+            },
       );
     }
   }

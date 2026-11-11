@@ -54,6 +54,29 @@ export const servicesPreviewManifest = (all = false): FeatureFlagManifest => ({
       enabled: false,
       effective: false,
       syncStatus: 'failed' as const
+    },
+    {
+      ...previewFeature('feature.ai'),
+      owner: 'automations',
+      description: 'AI providers, device-agent tasks, and workflow drafting.',
+      enabled: false,
+      effective: false
+    },
+    {
+      ...previewFeature('feature.workflows'),
+      owner: 'automations',
+      description: 'Workflow editing, manual runs, and scheduled triggers.',
+      disablePolicy: 'drain_active'
+    },
+    {
+      ...previewFeature('feature.resource-quota'),
+      owner: 'android-apps',
+      description: 'Per-user open app, CPU, memory, and session limits.'
+    },
+    {
+      ...previewFeature('feature.display-webrtc'),
+      description: 'Live viewer streaming over WebRTC.',
+      disablePolicy: 'drain_active'
     }
   ]
 })

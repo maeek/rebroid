@@ -70,6 +70,7 @@ describe('Android application power commands', () => {
       const transitions = new AndroidAppsLifecycleTransitionService(
         db,
         logs as never,
+        { isEnabled: () => true } as never,
       );
       const tracker = new AndroidAppsProvisioningTrackerService();
       const cancel = tracker.cancel.bind(tracker);

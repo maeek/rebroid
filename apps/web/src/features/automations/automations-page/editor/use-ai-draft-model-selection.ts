@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listAutomationAiModelCatalogAction } from '@/server/orchestrator/settings/actions'
 import { selectCatalogModel } from '@/shared/model/ai-model-catalog'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { selectAiDraftProviderAndModel } from './ai-draft-model-selection-utils'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 export const useAiDraftModelSelection = () => {
+  const { isFeatureEnabled } = useFeatureFlags()
+  const aiEnabled = isFeatureEnabled('feature.ai')
   const [catalog, setCatalog] = useState<AutomationAiModelCatalogProvider[]>([])
   const [providerId, setProviderId] = useState('')
   const [modelId, setModelId] = useState('')
@@ -14,6 +17,7 @@ export const useAiDraftModelSelection = () => {
   )
 
   useEffect(() => {
+    if (!aiEnabled) return
     let cancelled = false
     void listAutomationAiModelCatalogAction().then(nextCatalog => {
       if (cancelled) return
@@ -26,10 +30,10 @@ export const useAiDraftModelSelection = () => {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [aiEnabled])
 
   return {
-    canDraftFromPrompt: Boolean(provider && model),
+    canDraftFromPrompt: aiEnabled && Boolean(provider && model),
     catalog,
     model,
     modelId,

@@ -104,7 +104,10 @@ test("virtual displays require a synchronized enabled feature", () => {
   assert.throws(() => service.createVirtualSurface(main.id));
   features.apply({
     revision: 1,
-    features: [{ key: "feature.display-virtual", effective: true }],
+    features: [
+      { key: "feature.display-virtual", effective: true },
+      { key: "feature.display-webrtc", effective: true },
+    ],
   });
   assert.equal(service.createVirtualSurface(main.id).surfaceKind, "virtual");
 });

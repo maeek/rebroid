@@ -9,6 +9,7 @@ import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
+import { getEnforcedResourceQuota } from '../../resource-quota'
 import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
 import {
   assertCanAccessApplication,
@@ -41,9 +42,10 @@ export const requestApplicationStartAction = async (id: string, input?: SwitchAp
           status: 403
         })
       }
-      enforceResourceQuotas(currentApp.runtime.resources, user.quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, user.quotas)
-      await assertCanOpenApplicationSlot(user, id)
+      const quotas = await getEnforcedResourceQuota(user.quotas)
+      enforceResourceQuotas(currentApp.runtime.resources, quotas)
+      enforceSessionQuota({ inactivityTimeoutSeconds: currentApp.runtime.inactivityTimeoutSeconds }, quotas)
+      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps, id)
       const command = await orchestratorAppLifecycleClient.startApplication(id, input, user.quotas.maxOpenApps)
       recordAuditEvent({
         actorUserId: user.ownerUserId,
@@ -115,9 +117,10 @@ export const recreateApplicationAction = async (id: string) =>
           status: 403
         })
       }
-      enforceResourceQuotas(app.runtime.resources, user.quotas)
-      enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, user.quotas)
-      await assertCanOpenApplicationSlot(user, id)
+      const quotas = await getEnforcedResourceQuota(user.quotas)
+      enforceResourceQuotas(app.runtime.resources, quotas)
+      enforceSessionQuota({ inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds }, quotas)
+      await assertCanOpenApplicationSlot(user.ownerUserId, quotas.maxOpenApps, id)
       const command = await orchestratorAppLifecycleClient.recreateApplication(id, user.quotas.maxOpenApps)
       recordAuditEvent({
         actorUserId: user.ownerUserId,

@@ -1,8 +1,18 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { render as renderWithProviders, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceNavigation } from './app-resource-navigation'
+import { appResourcePreviewFeatures } from './app-resource-preview-data'
+
+const render = (node: ReactNode) =>
+  renderWithProviders(node, {
+    wrapper: ({ children }) => (
+      <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>{children}</FeatureFlagsProvider>
+    )
+  })
 
 describe('app resource navigation', () => {
   it('shows audit activity only with administrator access, independently from runtime permissions', () => {

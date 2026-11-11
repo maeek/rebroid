@@ -104,8 +104,16 @@ Pre-release schemas have no in-place upgrade path. Use the documented
 ## Feature configuration
 
 The orchestrator persists feature intent and revision, then publishes an immutable runtime snapshot.
-OCR, firewall, and image-builder checks stay local. Only the virtual-display subset is synchronized
-to the display sidecar; absent, stale, or disabled state blocks new virtual surfaces.
+Administrators manage feature flags under **Platform → Services → Features**.
+The display sidecar receives only the virtual-display and WebRTC settings. Both require enabled,
+synchronized state before admitting new work.
+
+| Feature          | Default | Behavior when disabled                                                                                                                   |
+| ---------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| AI               | Off     | Blocks new provider operations, device-agent tasks, AI workflow steps, and workflow drafting.                                            |
+| Workflows        | On      | Blocks workflow editing and new manual or scheduled runs. Active runs can finish.                                                        |
+| Resource quota   | On      | Suspends per-user open-app, CPU, memory, and session quota enforcement for subsequent operations. Saved quotas apply again when enabled. |
+| WebRTC streaming | On      | New viewer connections use WebSocket. Existing WebRTC connections can finish.                                                            |
 
 Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can
 finish, existing virtual displays drain, and disabling the firewall feature does not remove

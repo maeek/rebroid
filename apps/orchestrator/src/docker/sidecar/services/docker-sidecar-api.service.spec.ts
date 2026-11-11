@@ -38,11 +38,28 @@ describe('DockerSidecarApiService', () => {
       } as never,
       { errorMessage: (error: unknown) => String(error) } as never,
       {
-        getManifest: jest.fn(() => ({ revision: 4 })),
-        getState: jest.fn(() => ({
-          key: 'feature.display-virtual',
-          enabled: true,
-          supported: true,
+        getManifest: jest.fn(() => ({
+          revision: 4,
+          features: [
+            {
+              key: 'feature.display-virtual',
+              owner: 'display',
+              enabled: true,
+              supported: true,
+            },
+            {
+              key: 'feature.display-webrtc',
+              owner: 'display',
+              enabled: false,
+              supported: true,
+            },
+            {
+              key: 'feature.workflows',
+              owner: 'automations',
+              enabled: true,
+              supported: true,
+            },
+          ],
         })),
         markSynchronization: jest.fn(),
       } as never,
@@ -84,7 +101,7 @@ describe('DockerSidecarApiService', () => {
     );
   });
 
-  it('synchronizes only the display-owned feature and revision', async () => {
+  it('synchronizes only display-owned features and the revision', async () => {
     const fetchMock = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ revision: 4, features: [] }), {
         status: 200,
@@ -95,7 +112,10 @@ describe('DockerSidecarApiService', () => {
     await service().synchronizeFeatures();
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       revision: 4,
-      features: [{ key: 'feature.display-virtual', effective: true }],
+      features: [
+        { key: 'feature.display-virtual', effective: true },
+        { key: 'feature.display-webrtc', effective: false },
+      ],
     });
   });
 });

@@ -1,8 +1,9 @@
+import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import { Controller, Get, Param, Res } from "@nestjs/common";
 import { ApiExcludeEndpoint } from "@nestjs/swagger";
 import type { FastifyReply } from "fastify";
 import { createReadStream } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 
 const viewerDirectory = join(__dirname, "viewer");
@@ -15,17 +16,24 @@ const viewerContentSecurityPolicy =
 
 @Controller("viewer/display")
 export class DisplayViewerAssetsController {
+  constructor(private readonly features: SidecarFeatureService) {}
+
   @Get()
   @ApiExcludeEndpoint()
-  viewer(@Res() response: FastifyReply) {
+  async viewer(@Res() response: FastifyReply) {
     response.header("Content-Security-Policy", viewerContentSecurityPolicy);
-    return this.sendFile(
-      response,
-      join(viewerDirectory, "index.html"),
-      "text/html; charset=utf-8",
-      500,
-      "The live display viewer is not available.",
-    );
+    response.header("Cache-Control", "no-store");
+    let html: string;
+    try {
+      html = await readFile(join(viewerDirectory, "index.html"), "utf8");
+    } catch {
+      response.status(500).send("The live display viewer is not available.");
+      return;
+    }
+    if (!this.features.isWebrtcEnabled()) {
+      html = html.replace("<body>", '<body data-webrtc-disabled="true">');
+    }
+    response.type("text/html; charset=utf-8").send(html);
   }
 
   @Get("assets/:file")

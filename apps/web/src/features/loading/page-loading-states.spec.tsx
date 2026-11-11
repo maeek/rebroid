@@ -17,6 +17,7 @@ import { InfrastructureServiceSkeleton } from '@/features/platform/services/infr
 import { ActivityPageSkeleton } from '@/features/settings/activity/activity-page-skeleton'
 import { ProviderEditorSkeleton } from '@/features/settings/orchestrator/ai-providers/ai-provider-page-skeletons'
 import { GroupsPageSkeleton, UsersPageSkeleton } from '@/features/settings/users/user-page-skeletons'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -28,7 +29,7 @@ vi.mock('nextjs-toploader', () => ({ useTopLoader: () => ({ start: vi.fn(), done
 const renderLoading = (node: ReactNode) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      {node}
+      <FeatureFlagsProvider manifest={null}>{node}</FeatureFlagsProvider>
     </QueryClientProvider>
   )
 

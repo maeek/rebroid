@@ -1010,6 +1010,20 @@ export function createWebrtcStream({
         } catch {
           // Keep the bounded HTTP status diagnostic.
         }
+        if (response.status === 409 && code === "feature_disabled") {
+          if (
+            peer === connection &&
+            peerGeneration === currentGeneration &&
+            !lifecycle.isClosing()
+          ) {
+            const url = new URL(location.href);
+            url.searchParams.set("transport", "websocket");
+            location.replace(url.href);
+          } else {
+            connection.close();
+          }
+          return;
+        }
         if (response.status === 404 && code === "display_session_unavailable") {
           throw new WebrtcSessionExpiredError(detail);
         }

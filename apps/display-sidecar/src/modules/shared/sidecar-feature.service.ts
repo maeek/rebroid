@@ -4,28 +4,39 @@ import {
   Injectable,
 } from "@nestjs/common";
 
-export const DISPLAY_FEATURE_KEY = "feature.display-virtual" as const;
+export const displayFeatureKeys = [
+  "feature.display-virtual",
+  "feature.display-webrtc",
+] as const;
+
+type DisplayFeatureKey = (typeof displayFeatureKeys)[number];
 
 export interface SidecarFeatureSnapshot {
   revision: number;
-  features: Array<{ key: typeof DISPLAY_FEATURE_KEY; effective: boolean }>;
+  features: Array<{ key: DisplayFeatureKey; effective: boolean }>;
 }
 
 @Injectable()
 export class SidecarFeatureService {
   private revision = -1;
-  private displayVirtual = false;
+  private enabled = new Set<DisplayFeatureKey>();
 
   apply(snapshot: SidecarFeatureSnapshot) {
-    if (!Number.isSafeInteger(snapshot.revision) || snapshot.revision < 0) {
+    if (!Number.isSafeInteger(snapshot?.revision) || snapshot.revision < 0) {
       throw new BadRequestException(
         "Feature revision must be a non-negative integer.",
       );
     }
+    const features = snapshot.features;
     if (
-      snapshot.features.length !== 1 ||
-      snapshot.features[0]?.key !== DISPLAY_FEATURE_KEY ||
-      typeof snapshot.features[0].effective !== "boolean"
+      !Array.isArray(features) ||
+      features.length !== displayFeatureKeys.length ||
+      !displayFeatureKeys.every((key) =>
+        features.some(
+          (feature) =>
+            feature?.key === key && typeof feature.effective === "boolean",
+        ),
+      )
     ) {
       throw new BadRequestException("The display feature snapshot is invalid.");
     }
@@ -37,26 +48,42 @@ export class SidecarFeatureService {
       });
     }
 
+    this.enabled = new Set(
+      features.filter(({ effective }) => effective).map(({ key }) => key),
+    );
     this.revision = snapshot.revision;
-    this.displayVirtual = snapshot.features[0].effective;
     return this.state();
   }
 
-  state() {
+  state(): SidecarFeatureSnapshot {
     return {
       revision: this.revision,
-      features: [{ key: DISPLAY_FEATURE_KEY, effective: this.displayVirtual }],
+      features: displayFeatureKeys.map((key) => ({
+        key,
+        effective: this.enabled.has(key),
+      })),
     };
   }
 
   assertVirtualDisplayEnabled() {
-    if (this.revision >= 0 && this.displayVirtual) return;
+    this.assertEnabled("feature.display-virtual", "Virtual displays");
+  }
+
+  isWebrtcEnabled() {
+    return this.enabled.has("feature.display-webrtc");
+  }
+
+  assertWebrtcEnabled() {
+    this.assertEnabled("feature.display-webrtc", "WebRTC streaming");
+  }
+
+  private assertEnabled(key: DisplayFeatureKey, label: string) {
+    if (this.enabled.has(key)) return;
     throw new ConflictException({
       statusCode: 409,
       code: "feature_disabled",
-      feature: DISPLAY_FEATURE_KEY,
-      message:
-        "Virtual displays are disabled or feature state is not synchronized.",
+      feature: key,
+      message: `${label} is disabled or feature state is not synchronized.`,
     });
   }
 }

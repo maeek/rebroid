@@ -65,14 +65,15 @@ export class DisplayController {
   @ApiOperation({ summary: "Read display stream and control capabilities." })
   @ApiOkResponse({ type: DisplayCapabilitiesDto })
   capabilities() {
+    const webrtc = this.features.isWebrtcEnabled() ? ["webrtc"] : [];
     return {
       stream: {
-        protocols: ["websocket", "webrtc"],
+        protocols: ["websocket", ...webrtc],
         adapters: ["scrcpy-server-v4-rbd1"],
         codecs: ["h264"],
         audioCodecs: ["opus"],
         defaultCodec: "h264",
-        players: ["webcodecs", "webrtc"],
+        players: ["webcodecs", ...webrtc],
       },
       compatibility: {
         scrcpyVersion: this.scrcpy.serverVersion(),

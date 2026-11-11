@@ -12,6 +12,7 @@ import {
   viewerPlayerDefinitions,
   viewerStreamingPresets
 } from '@/features/applications/viewer/settings/viewer-settings'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
 import { ToolSection } from '../tool-section'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
@@ -160,6 +161,9 @@ export const StreamingToolsSection = ({
   className?: string
   hideHeader?: boolean
 }) => {
+  const { isFeatureEnabled } = useFeatureFlags()
+  const webrtcEnabled = isFeatureEnabled('feature.display-webrtc')
+  const transport = webrtcEnabled ? viewerSettings.transport : 'websocket'
   const playerCapabilities = useMemo(() => getViewerPlayerCapabilities(), [])
   const selectedPlayer = viewerPlayerDefinitions.find(player => player.value === viewerSettings.player)
   const selectedCapability = playerCapabilities[viewerSettings.player]
@@ -188,10 +192,10 @@ export const StreamingToolsSection = ({
         <div className='flex items-center gap-x-2'>
           Streaming
           <Badge
-            variant={viewerSettings.transport === 'webrtc' ? 'success' : 'neutral'}
+            variant={transport === 'webrtc' ? 'success' : 'neutral'}
             className='uppercase tracking-wide px-1.5 py-0.5 text-xs font-medium'
           >
-            {viewerSettings.transport === 'webrtc' ? 'WebRTC' : 'WebSocket'}
+            {transport === 'webrtc' ? 'WebRTC' : 'WebSocket'}
           </Badge>
         </div>
       }
@@ -211,14 +215,15 @@ export const StreamingToolsSection = ({
           label='Transport'
         >
           <Select
-            value={viewerSettings.transport}
+            value={transport}
+            disabled={!webrtcEnabled}
             onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
           >
             <SelectTrigger className='w-full lg:max-w-100'>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='webrtc'>WebRTC</SelectItem>
+              {webrtcEnabled ? <SelectItem value='webrtc'>WebRTC</SelectItem> : null}
               <SelectItem value='websocket'>WebSocket</SelectItem>
             </SelectContent>
           </Select>
