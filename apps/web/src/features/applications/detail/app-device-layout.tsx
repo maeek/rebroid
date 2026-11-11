@@ -25,7 +25,7 @@ export const AppDeviceLayout = ({
   return (
     <div
       className={cn(
-        'app-device-layout grid w-full min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-6 [overflow-anchor:none] [reading-flow:grid-rows]',
+        'app-device-layout grid w-full min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-(--app-device-gap) [overflow-anchor:none] [reading-flow:grid-rows]',
         !stacked &&
           'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,40%)] lg:grid-rows-[auto_minmax(0,1fr)] lg:[reading-flow:normal]',
         contained && !stacked && 'lg:h-(--console-content-height)'

@@ -497,6 +497,10 @@
   min-width: 0;
 }
 
+.app-device-layout {
+  --app-device-gap: calc(var(--spacing) * 6);
+}
+
 .app-device-pane[data-viewer-placement='top'] {
   --app-viewer-height: calc(100svh - 9rem);
 }
@@ -507,13 +511,10 @@
   }
 
   .app-device-pane[data-viewer-placement='top'] {
-    --app-viewer-height: calc(100svh - var(--console-top-inset) - 4.5rem);
-  }
-
-  @media (pointer: coarse) {
-    .app-device-pane[data-viewer-placement='top'] {
-      --app-viewer-height: calc(100svh - var(--console-top-inset) - 5.5rem);
-    }
+    --app-viewer-height: calc(
+      100svh - var(--console-top-inset) - var(--page-header-top-inset) - var(--page-header-control-size) -
+        var(--app-device-gap) - 1rem
+    );
   }
 
   .app-device-pane:not([data-viewer-placement='top']) {
