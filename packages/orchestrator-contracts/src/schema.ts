@@ -2983,7 +2983,6 @@ export interface components {
             visionModelId?: string;
             /** @example msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA */
             clientMessageId?: string;
-            allowedTools?: string[];
             capabilities?: string[];
             /**
              * @default adaptive
@@ -2995,8 +2994,6 @@ export interface components {
              * @enum {string}
              */
             rawShellPolicy: "deny" | "allowlisted";
-            /** @default 20 */
-            maxToolCalls: number;
             /** @default 20 */
             maxActions: number;
             /** @default 120000 */

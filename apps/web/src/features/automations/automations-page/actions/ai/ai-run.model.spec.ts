@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   defaultAiRunInput,
   healthLabel,
-  nextAllowedAiRunTools,
+  nextAiRunCapabilities,
   normalizeAiRunInput,
   selectableAiRunCommands,
   summarizeAiRunInput
@@ -28,9 +28,8 @@ describe('ai run action model', () => {
   it('provides stable defaults and normalizes bounded backend input', () => {
     expect(defaultAiRunInput()).toEqual({
       prompt: 'Inspect the screen and complete the requested task.',
-      maxToolCalls: 20,
-      timeoutMs: 120000,
-      requireFinalAnswer: true
+      maxActions: 20,
+      timeoutMs: 120000
     })
 
     expect(
@@ -39,23 +38,21 @@ describe('ai run action model', () => {
         providerId: 'local',
         modelId: 'qwen',
         visionProviderId: 10,
-        allowedTools: ['android.tap', 7, 'android.swipe'],
-        maxToolCalls: 200,
-        timeoutMs: 100,
-        requireFinalAnswer: false
+        capabilities: ['android.tap', 7, 'android.swipe'],
+        maxActions: 200,
+        timeoutMs: 100
       })
     ).toEqual({
       prompt: 'Inspect the screen and complete the requested task.',
       providerId: 'local',
       modelId: 'qwen',
-      allowedTools: ['android.tap', 'android.swipe'],
-      maxToolCalls: 100,
-      timeoutMs: 1000,
-      requireFinalAnswer: false
+      capabilities: ['android.tap', 'android.swipe'],
+      maxActions: 100,
+      timeoutMs: 1000
     })
   })
 
-  it('summarizes planner, vision, timeout, and tool-call choices', () => {
+  it('summarizes planner, vision, timeout, and action limits', () => {
     expect(
       summarizeAiRunInput({
         prompt: 'Inspect the current display',
@@ -63,24 +60,28 @@ describe('ai run action model', () => {
         modelId: 'planner-model',
         visionProviderId: 'vision-provider',
         visionModelId: 'vision-model',
-        maxToolCalls: 7,
+        maxActions: 7,
         timeoutMs: 45000
       })
     ).toBe(
-      'Inspect the current display · device control planner-provider/planner-model · vision vision-provider/vision-model · 45s · 7 calls'
+      'Inspect the current display · device control planner-provider/planner-model · vision vision-provider/vision-model · 45s · 7 actions'
     )
   })
 
-  it('selects all commands by empty allowlist and stores only partial selections', () => {
+  it('uses the default when every capability is selected and preserves explicit empty selections', () => {
     const commands = selectableAiRunCommands([command('ai.run'), command('android.swipe'), command('android.tap')])
 
     expect(commands.map(item => item.uses)).toEqual(['android.swipe', 'android.tap'])
-    expect(nextAllowedAiRunTools({ allowedTools: [], commands, uses: 'android.tap', enabled: false })).toEqual([
+    expect(nextAiRunCapabilities({ capabilities: undefined, commands, uses: 'android.tap', enabled: false })).toEqual([
       'android.swipe'
     ])
     expect(
-      nextAllowedAiRunTools({ allowedTools: ['android.swipe'], commands, uses: 'android.tap', enabled: true })
+      nextAiRunCapabilities({ capabilities: ['android.swipe'], commands, uses: 'android.tap', enabled: true })
+    ).toBeUndefined()
+    expect(
+      nextAiRunCapabilities({ capabilities: ['android.swipe'], commands, uses: 'android.swipe', enabled: false })
     ).toEqual([])
+    expect(normalizeAiRunInput({ capabilities: [] }).capabilities).toEqual([])
   })
 
   it('labels provider health states for compact UI display', () => {

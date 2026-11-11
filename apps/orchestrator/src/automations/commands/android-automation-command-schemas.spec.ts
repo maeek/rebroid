@@ -1,13 +1,11 @@
 import { swipeNormalizedSchema } from './android-automation-command-schemas';
 
 describe('android automation command schemas', () => {
-  it('normalizes flat swipe coordinates from model tool calls', () => {
+  it('uses start and end points and defaults the swipe duration', () => {
     expect(
       swipeNormalizedSchema.parse({
-        startX: 0.5,
-        startY: 0.9,
-        endX: 0.5,
-        endY: 0.2,
+        start: { x: 0.5, y: 0.9 },
+        end: { x: 0.5, y: 0.2 },
       }),
     ).toEqual({
       start: { x: 0.5, y: 0.9 },
@@ -16,11 +14,11 @@ describe('android automation command schemas', () => {
     });
   });
 
-  it('keeps rejecting malformed normalized swipe arguments', () => {
+  it('rejects flat swipe coordinates', () => {
     expect(() =>
       swipeNormalizedSchema.parse({
         startX: 0.5,
-        startY: 1.2,
+        startY: 0.9,
         endX: 0.5,
         endY: 0.2,
       }),

@@ -13,26 +13,12 @@ interface AiConversationTurn {
 }
 
 const assistantCompletedEventType = 'ai.message.completed'
-const assistantDeltaEventType = 'ai.message.delta'
 
-export const lastAssistantText = (turn: AiConversationTurn) =>
+const lastAssistantText = (turn: AiConversationTurn) =>
   [...turn.events]
     .reverse()
     .find(event => event.type === assistantCompletedEventType)
     ?.message?.trim() ?? ''
-
-export const currentStreamingText = (turn: AiConversationTurn) => {
-  const lastCompletedIndex = turn.events.reduce(
-    (latestIndex, event, index) => (event.type === assistantCompletedEventType ? index : latestIndex),
-    -1
-  )
-  return turn.events
-    .slice(lastCompletedIndex + 1)
-    .filter(event => event.type === assistantDeltaEventType)
-    .map(event => event.message)
-    .join('')
-    .trim()
-}
 
 export const conversationBeforeTurn = (
   turnId: string,

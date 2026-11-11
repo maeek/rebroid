@@ -1,10 +1,9 @@
-import { AiAssistantBlock, AiAssistantMarkdownText, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
+import { AiAssistantBlock, AiAssistantText, AiUserMessage } from '@/shared/ui/ai/ai-message'
 import { buildTimelineItems } from './ai-agent-chat-event-utils'
 import { nonPlanEvents, planForTurn } from './ai-agent-chat-presentation'
 import {
   chatTurnHasFinalResponse,
   chatTurnIsWorking,
-  chatTurnStreamingText,
   chatTurnTitle,
   visibleChatTurnEvents
 } from './ai-agent-chat-turn-model'
@@ -35,7 +34,6 @@ export const ChatTurnView = ({
   const plan = planForTurn(turn)
   const isWorking = chatTurnIsWorking(turn)
   const hasFinalResponse = chatTurnHasFinalResponse(turn)
-  const streamingText = chatTurnStreamingText(turn)
   return (
     <article className='grid min-w-0 gap-5 py-1'>
       <AiUserMessage>{turn.prompt}</AiUserMessage>
@@ -78,12 +76,6 @@ export const ChatTurnView = ({
               )
             )}
           </div>
-        ) : null}
-        {streamingText ? (
-          <AiAssistantMarkdownText
-            text={streamingText}
-            cursor={<span className='ml-0.5 animate-pulse text-primary'>▍</span>}
-          />
         ) : null}
         {isWorking && !hasFinalResponse ? <WorkingIndicator status={turn.status} /> : null}
         {canSaveWorkflow ? (

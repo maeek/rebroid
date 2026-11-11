@@ -201,10 +201,9 @@ const context = (toolExecutor = jest.fn()): AutomationAiHarnessContext => ({
 const input = {
   prompt: 'Open Settings.',
   agentMode: 'controller' as const,
-  maxToolCalls: 4,
+  maxActions: 4,
   timeoutMs: 30_000,
   rawShellPolicy: 'deny' as const,
-  requireFinalAnswer: true,
 };
 
 describe('AutomationAiHarnessService', () => {
@@ -575,7 +574,7 @@ describe('AutomationAiHarnessService', () => {
     });
 
     const result = await service.run(
-      { ...input, maxToolCalls: 1 },
+      { ...input, maxActions: 1 },
       context(toolExecutor),
     );
 

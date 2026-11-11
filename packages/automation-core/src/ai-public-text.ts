@@ -35,14 +35,6 @@ export const normalizePublicAiText = (text: string, maxLength = 4_000) => {
   return truncate(trimmed, maxLength);
 };
 
-export const isPublicPlanText = (text: string) => {
-  const trimmed = text.trim();
-  if (!trimmed) return false;
-  if (parsePublicJsonText(trimmed) !== null) return true;
-  if (jsonLinesToMarkdown(trimmed)) return true;
-  return Boolean(publicPlanLinesToMarkdown(trimmed));
-};
-
 const parsePublicJsonText = (text: string) => {
   const fenced = text.match(fencedJsonPattern);
   const candidate = fenced?.[1]?.trim() ?? text;

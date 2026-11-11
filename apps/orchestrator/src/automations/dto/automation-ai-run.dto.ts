@@ -111,13 +111,6 @@ export class RunAdHocAiAutomationDto {
   @IsArray()
   @IsString({ each: true })
   @MaxLength(120, { each: true })
-  allowedTools?: string[];
-
-  @ApiPropertyOptional({ type: String, isArray: true })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @MaxLength(120, { each: true })
   capabilities?: string[];
 
   @ApiPropertyOptional({
@@ -132,13 +125,6 @@ export class RunAdHocAiAutomationDto {
   @IsOptional()
   @IsIn(['deny', 'allowlisted'])
   rawShellPolicy?: 'deny' | 'allowlisted';
-
-  @ApiPropertyOptional({ default: 20 })
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  maxToolCalls?: number;
 
   @ApiPropertyOptional({ default: 20 })
   @IsOptional()

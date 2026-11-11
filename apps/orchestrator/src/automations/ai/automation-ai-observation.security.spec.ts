@@ -2,11 +2,8 @@ import { strict as assert } from 'node:assert';
 import {
   isImageInputUnsupportedProviderMessage,
   prepareUiXml,
-  sanitizeAiDataForModel,
-  sanitizeAiDataForToolOutput,
   providerErrorDetailFromText,
   sanitizeAiDataForEvent,
-  isDangerousAdbShellCommand,
 } from './automation-ai-observation.utils';
 
 describe('ai observation utilities', () => {
@@ -66,7 +63,7 @@ describe('ai observation utilities', () => {
   });
 
   it('redacts sensitive values deeply nested in model payloads', () => {
-    const redacted = sanitizeAiDataForModel({
+    const redacted = sanitizeAiDataForEvent({
       payload: {
         metadata: {
           token: 'secret-token',
@@ -108,45 +105,5 @@ describe('ai observation utilities', () => {
       String(sanitizeAiDataForEvent('x'.repeat(10_000))).length > 4_000,
       true,
     );
-  });
-
-  it('keeps long tool output text values less aggressively truncated', () => {
-    assert.equal(
-      sanitizeAiDataForToolOutput('x'.repeat(80_000)),
-      'x'.repeat(80_000),
-    );
-    assert.equal(
-      sanitizeAiDataForToolOutput('y'.repeat(120_000)),
-      'y'.repeat(120_000),
-    );
-  });
-
-  it('classifies destructive adb shell commands', () => {
-    assert.equal(
-      isDangerousAdbShellCommand('pm install /sdcard/app.apk'),
-      true,
-    );
-    assert.equal(
-      isDangerousAdbShellCommand('cmd package install-existing com.example'),
-      true,
-    );
-    assert.equal(isDangerousAdbShellCommand('rm -rf /sdcard/Download'), true);
-    assert.equal(isDangerousAdbShellCommand('su -c ls /'), true);
-    assert.equal(isDangerousAdbShellCommand('reboot'), true);
-  });
-
-  it('allows non-destructive adb shell commands', () => {
-    assert.equal(isDangerousAdbShellCommand('pm list packages'), false);
-    assert.equal(
-      isDangerousAdbShellCommand('settings get global hidden_api_policy'),
-      false,
-    );
-    assert.equal(isDangerousAdbShellCommand('wm size'), false);
-    assert.equal(isDangerousAdbShellCommand('ls /sdcard | head -20'), false);
-  });
-
-  it('returns false for empty or whitespace commands', () => {
-    assert.equal(isDangerousAdbShellCommand(''), false);
-    assert.equal(isDangerousAdbShellCommand('   '), false);
   });
 });

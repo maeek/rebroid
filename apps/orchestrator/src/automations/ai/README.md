@@ -47,7 +47,7 @@ The target is selected when the workflow runs. The caller needs `automations:run
 permissions required by the actions it executes. `providerId` and `modelId` can select a specific
 configured controller; otherwise provider selection uses the configured role defaults.
 
-`maxActions` bounds action attempts; when omitted, `maxToolCalls` supplies the limit. The timeout
+`maxActions` bounds action attempts and defaults to 20. The timeout
 bounds the task deadline across provider requests, device commands, and observation. The final
 allowed action leaves one terminal verification turn. Controller turns have their own limit.
 Exhausting the time or turn budget without verification returns a blocked result. Cancellation and provider failures are handled through the surrounding execution path.

@@ -62,7 +62,7 @@ export class AutomationAiHarnessService {
     let outcome: AutomationAiOutcome;
     try {
       context.abortSignal.throwIfAborted();
-      const maxActions = input.maxActions ?? input.maxToolCalls;
+      const maxActions = input.maxActions;
       const { provider, model, capabilities } = await this.start(
         input,
         context,
@@ -318,8 +318,7 @@ export class AutomationAiHarnessService {
         blockedReason: result.blockedReason,
         evidence: {
           actionCount: state?.actions ?? 0,
-          actionLimitReached:
-            (state?.actions ?? 0) >= (input.maxActions ?? input.maxToolCalls),
+          actionLimitReached: (state?.actions ?? 0) >= input.maxActions,
           lastSnapshotId: state?.observation.snapshotId ?? null,
           targetFingerprint: state?.target.fingerprint ?? null,
           verifierFailures:

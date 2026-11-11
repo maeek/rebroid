@@ -75,15 +75,11 @@ export interface AutomationAiRunInput {
   visionProviderId?: string;
   visionModelId?: string;
   clientMessageId?: string;
-  initialScreenshotDataUrl?: string;
-  maxToolCalls: number;
-  maxActions?: number;
+  maxActions: number;
   timeoutMs: number;
-  allowedTools?: string[];
   capabilities?: string[];
   agentMode?: AutomationAiAgentMode;
   rawShellPolicy?: AutomationAiRawShellPolicy;
-  requireFinalAnswer: boolean;
 }
 
 export interface AutomationAiConversationMessage {

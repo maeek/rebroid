@@ -32,8 +32,6 @@ const app: AppDefinition = {
   recreateContainerOnNextStart: false,
   networkPolicyEnabled: false,
   networkPolicyAllowCidrs: [],
-  networkPolicyStatus: null,
-  networkPolicyMessage: null,
   networkPolicyResult: null,
   networkPolicyAppliedAt: null,
   apkOriginalName: null,

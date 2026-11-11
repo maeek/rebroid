@@ -6,9 +6,8 @@ import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/a
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { NumberField, TextareaField } from '../shared/action-fields'
 import {
-  booleanValue,
   defaultAiRunInput,
-  nextAllowedAiRunTools,
+  nextAiRunCapabilities,
   normalizeAiRunInput,
   numberValue,
   selectableAiRunCommands,
@@ -36,7 +35,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const modelId = stringValue(input, 'modelId')
   const visionProviderId = stringValue(input, 'visionProviderId')
   const visionModelId = stringValue(input, 'visionModelId')
-  const allowedTools = stringArrayValue(input, 'allowedTools')
+  const capabilities = Array.isArray(input.capabilities) ? stringArrayValue(input, 'capabilities') : undefined
   const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
   const loadCatalog = useCallback(
     () =>
@@ -65,7 +64,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   })
 
   const toggleTool = (uses: string, enabled: boolean) => {
-    patchInput({ allowedTools: nextAllowedAiRunTools({ allowedTools, commands: selectableCommands, enabled, uses }) })
+    patchInput({ capabilities: nextAiRunCapabilities({ capabilities, commands: selectableCommands, enabled, uses }) })
   }
 
   return (
@@ -95,11 +94,11 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
         onRecheckHealth={() => void modelSelection.recheckHealth()}
       />
       <div className='grid gap-2'>
-        <div className='text-sm font-medium'>Allowed tools</div>
+        <div className='text-sm font-medium'>Allowed capabilities</div>
         <div className='scrollbar-thin max-h-56 overflow-x-hidden overflow-y-auto rounded-control border border-surface-border/70 bg-surface-band/35 p-3'>
           <div className='grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-2'>
             {selectableCommands.map(command => {
-              const checked = allowedTools.length === 0 || allowedTools.includes(command.uses)
+              const checked = capabilities?.includes(command.uses) ?? true
               return (
                 <label
                   htmlFor={`ai-run-tool-${command.uses}`}
@@ -120,13 +119,13 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             })}
           </div>
         </div>
-        <p className='text-xs text-foreground-muted'>All tools are allowed until one tool is unchecked.</p>
+        <p className='text-xs text-foreground-muted'>Clear a capability to restrict what the device agent may use.</p>
       </div>
       <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-4'>
         <NumberField
-          label='Max tool calls'
-          value={numberValue(input, 'maxToolCalls', 20)}
-          onChange={maxToolCalls => patchInput({ maxToolCalls })}
+          label='Max actions'
+          value={numberValue(input, 'maxActions', 20)}
+          onChange={maxActions => patchInput({ maxActions })}
         />
         <NumberField
           label='Timeout'
@@ -134,22 +133,6 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           suffix='ms'
           onChange={timeoutMs => patchInput({ timeoutMs })}
         />
-        <label
-          htmlFor='ai-run-require-final-answer'
-          className='flex items-center justify-between gap-3 rounded-control border border-surface-border/70 bg-surface-band/35 px-3 py-2 min-[42rem]:col-span-full'
-        >
-          <span>
-            <span className='block text-sm font-medium'>Require final answer</span>
-            <span className='block text-xs text-foreground-muted'>
-              Fail when the AI stops without a visible summary.
-            </span>
-          </span>
-          <Checkbox
-            id='ai-run-require-final-answer'
-            checked={booleanValue(input, 'requireFinalAnswer', true)}
-            onCheckedChange={value => patchInput({ requireFinalAnswer: value === true })}
-          />
-        </label>
       </div>
     </div>
   )

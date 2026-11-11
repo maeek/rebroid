@@ -131,11 +131,9 @@ export interface RunAdHocAiAutomationInput extends RunAutomationInput {
   visionProviderId?: string
   visionModelId?: string
   clientMessageId?: string
-  allowedTools?: string[]
   capabilities?: string[]
   agentMode?: 'adaptive' | 'controller' | 'planned'
   rawShellPolicy?: 'deny' | 'allowlisted'
-  maxToolCalls?: number
   maxActions?: number
   timeoutMs?: number
 }
@@ -190,16 +188,12 @@ export type AutomationRunEventType =
   | 'step.progress'
   | 'ai.model.started'
   | 'ai.model.completed'
-  | 'ai.orientation.completed'
   | 'ai.plan.proposed'
   | 'ai.plan.updated'
   | 'ai.action.decided'
   | 'ai.perception.observed'
   | 'ai.perception.summary'
   | 'ai.user.message'
-  | 'ai.screenshot.observed'
-  | 'ai.ui.observed'
-  | 'ai.message.delta'
   | 'ai.message.completed'
   | 'ai.tool.started'
   | 'ai.tool.arguments'

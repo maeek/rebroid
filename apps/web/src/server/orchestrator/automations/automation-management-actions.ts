@@ -68,10 +68,8 @@ const promptFromAdHocRun = ({
         'ai.plan.proposed',
         'ai.plan.updated',
         'ai.action.decided',
-        'ai.ui.observed',
         'ai.perception.summary',
         'ai.perception.observed',
-        'ai.screenshot.observed',
         'step.completed',
         'step.failed'
       ].includes(event.type)

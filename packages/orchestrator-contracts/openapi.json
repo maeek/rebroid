@@ -9162,12 +9162,6 @@
             "type": "string",
             "example": "msg_01HV4Y6N2R2N4SVJ8VJ7HJZJAA"
           },
-          "allowedTools": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "capabilities": {
             "type": "array",
             "items": {
@@ -9190,10 +9184,6 @@
               "allowlisted"
             ],
             "default": "deny"
-          },
-          "maxToolCalls": {
-            "type": "number",
-            "default": 20
           },
           "maxActions": {
             "type": "number",

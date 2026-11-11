@@ -39,9 +39,9 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
     }
   }
   const nestedAiTools = (step: Extract<AutomationDefinitionStep, { uses: string }>) => {
-    const allowedTools = step.with.capabilities ?? step.with.allowedTools
-    if (Array.isArray(allowedTools)) {
-      return allowedTools.filter((uses): uses is string => typeof uses === 'string' && uses !== 'ai.run')
+    const { capabilities } = step.with
+    if (Array.isArray(capabilities)) {
+      return capabilities.filter((uses): uses is string => typeof uses === 'string' && uses !== 'ai.run')
     }
     const safeDefaults = new Set([
       'android.wait',

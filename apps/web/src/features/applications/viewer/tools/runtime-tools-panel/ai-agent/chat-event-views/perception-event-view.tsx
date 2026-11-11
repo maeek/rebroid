@@ -100,7 +100,7 @@ export const PerceptionDisclosure = ({
         <AiToolDetails>
           <ObservationEventDetails
             label={label}
-            values={includeObservationValues ? observationValues(data, { dimensions: true }) : []}
+            values={includeObservationValues ? observationValues(data) : []}
           />
           <UiXmlNote data={data} />
           <OcrNote data={data} />
@@ -141,7 +141,7 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
                 format: 'inline'
               }}
             />
-            {observationValues(item.observed.data, { dimensions: true }).map(value => (
+            {observationValues(item.observed.data).map(value => (
               <ToolEventRow
                 key={value}
                 item={{ key: 'capture', value, format: 'inline' }}

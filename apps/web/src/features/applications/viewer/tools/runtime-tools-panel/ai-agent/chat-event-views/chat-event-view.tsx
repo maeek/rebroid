@@ -2,8 +2,6 @@ import { IconAlertTriangle, IconArrowRight, IconCircleX } from '@tabler/icons-re
 import { AiAssistantMarkdownText, AiAssistantText } from '@/shared/ui/ai/ai-message'
 import { approvalRequestFromEvent } from '../ai-agent-chat-presentation'
 import { ApprovalEventView } from './approval-event-view'
-import { ObservationEventDetails } from './observation-event-details'
-import { observationValues } from './observation-values'
 import { PerceptionDisclosure } from './perception-event-view'
 import { ReasoningEventView } from './reasoning-event-view'
 import type { AutomationRunEvent } from '@/shared/contracts/automation'
@@ -15,23 +13,7 @@ export const ChatEventView = ({
   event: AutomationRunEvent
   onApproveEscalation?: (program: string) => void
 }) => {
-  if (event.type === 'ai.user.message' || event.type === 'ai.message.delta') return null
-  if (event.type === 'ai.screenshot.observed') {
-    return (
-      <ObservationEventDetails
-        label={event.message}
-        values={observationValues(event.data, { dimensions: true, bytes: true })}
-      />
-    )
-  }
-  if (event.type === 'ai.ui.observed') {
-    return (
-      <ObservationEventDetails
-        label={event.message}
-        values={observationValues(event.data, { nodeCount: true, bytes: true })}
-      />
-    )
-  }
+  if (event.type === 'ai.user.message') return null
   if (event.type === 'ai.perception.observed') {
     return (
       <PerceptionDisclosure
@@ -50,7 +32,7 @@ export const ChatEventView = ({
   if (event.type === 'ai.model.completed') {
     return <ReasoningEventView event={event} />
   }
-  if (event.type === 'ai.orientation.completed' || event.type === 'ai.action.decided') {
+  if (event.type === 'ai.action.decided') {
     return (
       <div className='flex items-start gap-2 py-0.5 text-xs text-foreground-muted'>
         <span className='mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-control bg-primary/8 text-primary'>

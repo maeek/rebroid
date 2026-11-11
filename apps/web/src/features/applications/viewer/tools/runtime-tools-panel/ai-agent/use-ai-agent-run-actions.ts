@@ -108,7 +108,7 @@ export const useAiAgentRunActions = ({
               }
             : {}),
           clientMessageId: turn.id,
-          maxToolCalls: 20,
+          maxActions: 20,
           timeoutMs: adHocTimeoutMs,
           rawShellPolicy: turn.rawShellPolicy ?? 'deny',
           startPolicy: 'require-running'

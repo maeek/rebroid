@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { conversationBeforeTurn, currentStreamingText, lastAssistantText } from './ai-agent-conversation'
+import { conversationBeforeTurn } from './ai-agent-conversation'
 
 describe('AI agent conversation', () => {
   it('builds bounded context from completed turns', () => {
@@ -23,19 +23,5 @@ describe('AI agent conversation', () => {
     ] as const
 
     expect(conversationBeforeTurn('suggestions', turns)).toEqual([{ role: 'user', content: 'Open settings' }])
-  })
-
-  it('separates completed and currently streaming assistant text', () => {
-    const turn = {
-      events: [
-        { type: 'ai.message.delta', message: 'draft' },
-        { type: 'ai.message.completed', message: 'Final' },
-        { type: 'ai.message.delta', message: 'Next ' },
-        { type: 'ai.message.delta', message: 'draft' }
-      ]
-    }
-
-    expect(lastAssistantText(turn)).toBe('Final')
-    expect(currentStreamingText(turn)).toBe('Next draft')
   })
 })

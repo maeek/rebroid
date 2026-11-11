@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { isPublicPlanText, normalizePublicAiText } from "./ai-public-text";
+import { normalizePublicAiText } from "./ai-public-text";
 
 describe("public AI text", () => {
   it("normalizes JSON-like model text into markdown", () => {
@@ -25,7 +25,6 @@ describe("public AI text", () => {
       "Next moves: Locate Settings using typed tools",
     ].join("\n");
 
-    assert.equal(isPublicPlanText(plan), true);
     assert.equal(
       normalizePublicAiText(plan),
       [

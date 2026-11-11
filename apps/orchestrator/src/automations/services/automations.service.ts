@@ -141,12 +141,10 @@ export class AutomationsService {
       visionProviderId: dto.visionProviderId,
       visionModelId: dto.visionModelId,
       clientMessageId: dto.clientMessageId,
-      allowedTools: dto.allowedTools,
       capabilities: dto.capabilities,
       agentMode: dto.agentMode,
       rawShellPolicy: dto.rawShellPolicy,
       maxActions: dto.maxActions,
-      maxToolCalls: dto.maxToolCalls,
       timeoutMs: dto.timeoutMs,
     });
     const run = await this.runner.enqueueEphemeral(

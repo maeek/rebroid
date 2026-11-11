@@ -93,9 +93,9 @@ export const routeCapabilities = ({
 }: {
   commands: AutomationCommandDto[];
   goal: string;
-  input: Pick<AutomationAiRunInput, 'allowedTools' | 'capabilities'>;
+  input: Pick<AutomationAiRunInput, 'capabilities'>;
 }) => {
-  const configured = input.capabilities ?? input.allowedTools;
+  const configured = input.capabilities;
   const allowed = configured ? new Set(configured) : safeDefaultCapabilities;
   const terms = new Set(
     goal
@@ -131,10 +131,10 @@ export const capabilityPrompt = (
 };
 
 export const toolAllowedForRun = (
-  input: Pick<AutomationAiRunInput, 'allowedTools' | 'capabilities'>,
+  input: Pick<AutomationAiRunInput, 'capabilities'>,
   uses: string,
 ) => {
-  const configured = input.capabilities ?? input.allowedTools;
+  const configured = input.capabilities;
   return configured ? configured.includes(uses) : safeDefaultTools.has(uses);
 };
 

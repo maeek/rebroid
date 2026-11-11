@@ -20,20 +20,16 @@ const aiRunSchema = z.object({
   visionProviderId: z.string().trim().min(1).max(80).optional(),
   visionModelId: z.string().trim().min(1).max(120).optional(),
   clientMessageId: z.string().trim().min(1).max(120).optional(),
-  initialScreenshotDataUrl: z.string().trim().min(1).optional(),
-  maxToolCalls: z.number().int().min(1).max(100).default(20),
-  maxActions: z.number().int().min(1).max(100).optional(),
+  maxActions: z.number().int().min(1).max(100).default(20),
   timeoutMs: z
     .number()
     .int()
     .min(1_000)
     .max(AUTOMATION_AI_RUN_MAX_TIMEOUT_MS)
     .default(120_000),
-  allowedTools: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
   capabilities: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
   agentMode: z.enum(['adaptive', 'controller', 'planned']).default('adaptive'),
   rawShellPolicy: z.enum(['deny', 'allowlisted']).default('deny'),
-  requireFinalAnswer: z.boolean().default(true),
 });
 
 @Injectable()
@@ -92,11 +88,10 @@ export class AiAutomationCommandsService {
           iconKey: 'sparkles',
           inputDefaults: {
             prompt: 'Inspect the screen and complete the requested task.',
-            maxToolCalls: 20,
+            maxActions: 20,
             agentMode: 'adaptive',
             rawShellPolicy: 'deny',
             timeoutMs: 120000,
-            requireFinalAnswer: true,
           },
           inputFieldOrder: [
             'prompt',
@@ -104,15 +99,13 @@ export class AiAutomationCommandsService {
             'modelId',
             'visionProviderId',
             'visionModelId',
-            'allowedTools',
             'capabilities',
             'agentMode',
             'rawShellPolicy',
-            'maxToolCalls',
+            'maxActions',
             'timeoutMs',
-            'requireFinalAnswer',
           ],
-          yamlSnippetFields: ['prompt', 'maxToolCalls', 'timeoutMs'],
+          yamlSnippetFields: ['prompt', 'maxActions', 'timeoutMs'],
         },
         execute: async (input, context) => {
           if (!context.aiHarness) {

@@ -55,14 +55,8 @@ export const planForTurn = (turn: ChatTurn) => {
   return event ? { event, steps: parseAgentPlan(event.message, turn.status) } : null
 }
 
-export const nonPlanEvents = (events: AutomationRunEvent[]) => {
-  const hasFusedPerception = events.some(event => event.type === 'ai.perception.observed')
-  return events.filter(event => {
-    if (event.type === 'ai.plan.proposed' || event.type === 'ai.plan.updated') return false
-    if (hasFusedPerception && (event.type === 'ai.screenshot.observed' || event.type === 'ai.ui.observed')) return false
-    return true
-  })
-}
+export const nonPlanEvents = (events: AutomationRunEvent[]) =>
+  events.filter(event => event.type !== 'ai.plan.proposed' && event.type !== 'ai.plan.updated')
 
 export const generationSummary = (event: AutomationRunEvent) => {
   if (event.type !== 'ai.model.completed') return null

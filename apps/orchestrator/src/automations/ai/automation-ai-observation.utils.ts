@@ -21,29 +21,9 @@ export const SCREEN_MUTATING_TOOLS = new Set([
   'android.viewerCommand',
 ]);
 
-const DANGEROUS_INSTALL_RE =
-  /\b(?:pm|cmd\s+package)\b[^;\n&|]*\binstall(?:-existing)?\b/;
-const DANGEROUS_RM_RE =
-  /\brm\b[^;\n&|]*\s+[^;\n&|]*\/(?:data|system|sdcard|storage)\b/;
-const DANGEROUS_REBOOT_RE = /\breboot\b/;
-const DANGEROUS_SUPERUSER_RE = /\bsu\b/;
-
-export const isDangerousAdbShellCommand = (commandText: string): boolean => {
-  if (!commandText.trim()) return false;
-  const lowered = commandText.toLowerCase();
-  return (
-    DANGEROUS_INSTALL_RE.test(lowered) ||
-    DANGEROUS_RM_RE.test(lowered) ||
-    DANGEROUS_REBOOT_RE.test(lowered) ||
-    DANGEROUS_SUPERUSER_RE.test(lowered)
-  );
-};
-
 const UI_XML_MAX_CHARS = 80_000;
 const PROVIDER_ERROR_MAX_CHARS = 500;
 const EVENT_STRING_MAX_CHARS = 4_000;
-const TOOL_EVENT_OUTPUT_STRING_MAX_CHARS = 120_000;
-const MODEL_TOOL_STRING_MAX_CHARS = 12_000;
 const SANITIZE_MAX_DEPTH = 4;
 const REDACTED_BINARY = '[redacted binary data]';
 
@@ -90,12 +70,6 @@ export const sanitizeAiText = (
 
 export const sanitizeAiDataForEvent = (value: unknown) =>
   sanitizeAiData(value, EVENT_STRING_MAX_CHARS);
-
-export const sanitizeAiDataForModel = (value: unknown) =>
-  sanitizeAiData(value, MODEL_TOOL_STRING_MAX_CHARS);
-
-export const sanitizeAiDataForToolOutput = (value: unknown) =>
-  sanitizeAiData(value, TOOL_EVENT_OUTPUT_STRING_MAX_CHARS);
 
 export const providerErrorDetailFromText = (text: string) => {
   if (!text.trim()) return '';
