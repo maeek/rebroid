@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { runRouteHandler } from '@/server/http/route-handler'
+import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import {
-  readUiSettings,
   resetGeneralUiSettings,
   resetRuntimeUiSettings,
   saveAiUiSettings,
@@ -53,7 +53,7 @@ const updateSchema = z.discriminatedUnion('operation', [
   z.object({ operation: z.literal('reset-runtime') })
 ])
 
-export const GET = () => runRouteHandler(readUiSettings)
+export const GET = () => runRouteHandler(getServerOrchestratorUiSettings)
 
 export const POST = (request: Request) =>
   runRouteHandler(async () => {

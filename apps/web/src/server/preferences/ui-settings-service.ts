@@ -1,6 +1,6 @@
 import 'server-only'
 import { recordAuditEvent } from '@/server/audit/events'
-import { requireAdmin, getCurrentUser } from '@/server/auth/authorization'
+import { requireAdmin } from '@/server/auth/authorization'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
@@ -25,28 +25,6 @@ const readOptionalRuntimeSettings = () =>
 
 const combineSettings = (web: WebSettingsResponse, orchestrator: OrchestratorSettingsResponse) =>
   normalizeOrchestratorUiSettings(web, orchestrator, getOrchestratorBaseUrl())
-
-export const readUiSettings = async () => {
-  const [user, web, orchestrator] = await Promise.all([
-    getCurrentUser(),
-    getWebSettings().catch(() => defaultWebSettingsResponse),
-    readOptionalRuntimeSettings()
-  ])
-  const settings = combineSettings(web, orchestrator)
-  if (user.role === 'admin') return settings
-
-  return {
-    ...settings,
-    orchestratorApiUrl: '',
-    dockerImageRegistry: null,
-    auditRetentionDays: defaultWebSettingsResponse.auditRetentionDays,
-    passwordMinimumLength: defaultWebSettingsResponse.passwordMinimumLength,
-    services: {
-      ocr: { ...settings.services.ocr, endpoint: null },
-      firewall: { ...settings.services.firewall, endpoint: null }
-    }
-  }
-}
 
 const recordUpdate = (
   admin: Awaited<ReturnType<typeof requireAdmin>>,

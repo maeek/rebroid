@@ -1,5 +1,7 @@
 import { cache } from 'react'
 import { connection } from 'next/server'
+import 'server-only'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { getWebSettings } from '@/server/web-settings/store'
 import {
   defaultRuntimeSettingsResponse,
@@ -12,6 +14,7 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrato
 
 const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSettings> => {
   await connection()
+  const user = await getCurrentUser()
 
   const [webSettings, orchestratorSettings] = await Promise.all([
     getWebSettings().catch(error => {
@@ -24,7 +27,20 @@ const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSe
     })
   ])
 
-  return normalizeOrchestratorUiSettings(webSettings, orchestratorSettings, getOrchestratorBaseUrl())
+  const settings = normalizeOrchestratorUiSettings(webSettings, orchestratorSettings, getOrchestratorBaseUrl())
+  if (user.role === 'admin') return settings
+
+  return {
+    ...settings,
+    orchestratorApiUrl: '',
+    dockerImageRegistry: null,
+    auditRetentionDays: defaultWebSettingsResponse.auditRetentionDays,
+    passwordMinimumLength: defaultWebSettingsResponse.passwordMinimumLength,
+    services: {
+      ocr: { ...settings.services.ocr, endpoint: null },
+      firewall: { ...settings.services.firewall, endpoint: null }
+    }
+  }
 }
 
 export const getServerOrchestratorUiSettings = cache(() => loadServerUiSettings(false))

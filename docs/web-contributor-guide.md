@@ -45,6 +45,8 @@ Ordinary browser requests never call the orchestrator directly. The server clien
 `src/server/orchestrator` owns upstream authentication, deadlines, request IDs, and error translation.
 Operations return the shared result envelope with a request ID, stable error code, and safe public message.
 
+Browser-facing settings use the same audience projection for BFF responses and initial page props.
+Loaders can require live settings or accept defaults during an outage.
 Workflow traces and device-agent chat share run-event replay and WebSocket delivery through the
 authorized BFF. Each view projects the delivered events into its own state.
 
