@@ -80,7 +80,10 @@ describe('AutomationRunLiveEvents', () => {
 
     expect(await screen.findByText(failedEvent.message)).toBeTruthy()
     expect(screen.getByText('First page step')).toBeTruthy()
-    expect(getBff).toHaveBeenLastCalledWith(`/api/bff/automations/runs/${run.id}/events?after=1000`)
+    expect(getBff).toHaveBeenLastCalledWith(
+      `/api/bff/automations/runs/${run.id}/events?after=1000`,
+      expect.any(AbortSignal)
+    )
   })
   it('preserves the recorded terminal status while replaying earlier events', async () => {
     vi.mocked(getBff).mockResolvedValue({

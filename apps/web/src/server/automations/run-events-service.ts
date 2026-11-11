@@ -27,10 +27,9 @@ export const readAutomationRunEvents = async (runId: string, after: number) => {
       ? `https://${forwardedHost}`
       : null
   const streamUrl = browserOrigin
-    ? new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin)
-    : new URL(getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, { secure: isHttps }))
-  streamUrl.protocol = isHttps ? 'wss:' : 'ws:'
-  return { events, hasMore: events.length === 1_000, streamUrl: streamUrl.toString() }
+    ? new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin.replace(/^https:/, 'wss:')).toString()
+    : getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, { secure: isHttps })
+  return { events, hasMore: events.length === 1_000, streamUrl }
 }
 
 export const cancelAutomationRun = async (runId: string) => {

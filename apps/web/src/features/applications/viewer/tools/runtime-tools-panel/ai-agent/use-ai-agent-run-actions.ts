@@ -3,10 +3,10 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import {
   cancelAutomationRunAction,
   clearAdHocAiAutomationRunsAction,
-  listAutomationRunEventsAction,
   runAdHocAiAutomationAction
 } from '@/server/orchestrator/automations/automation-run-actions'
-import { createPromptTurn, findTerminalRunStatus, latestEventSequence } from './ai-agent-chat-session-model'
+import { replayTerminalRunEvents } from '@/shared/model/run-event-delivery'
+import { createPromptTurn } from './ai-agent-chat-session-model'
 import { activeRunStatuses, runStatusToTurnStatus, terminalRunStatuses, type ChatTurn } from './ai-agent-chat-utils'
 import { conversationBeforeTurn, type AutomationAiConversationMessage } from './ai-agent-conversation'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -14,30 +14,6 @@ import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-pro
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 type AppendRunEvents = (runId: string, events: AutomationRunEvent[]) => void
-
-const replayTerminalRunEvents = async ({
-  runId,
-  after,
-  appendRunEvents,
-  isCurrent
-}: {
-  runId: string
-  after: number
-  appendRunEvents: AppendRunEvents
-  isCurrent: () => boolean
-}) => {
-  let cursor = after
-  for (const delay of [0, 250, 750, 2_000]) {
-    if (delay) await new Promise(resolve => setTimeout(resolve, delay))
-    if (!isCurrent()) return
-    const events = await listAutomationRunEventsAction(runId, cursor).catch(() => null)
-    if (!isCurrent()) return
-    if (!events) continue
-    appendRunEvents(runId, events)
-    if (findTerminalRunStatus(events)) return
-    cursor = latestEventSequence(cursor, events)
-  }
-}
 
 export const useAiAgentRunActions = ({
   activeTurn,
@@ -202,8 +178,8 @@ export const useAiAgentRunActions = ({
       if (!isCurrent()) return
       const terminal = terminalRunStatuses.has(canceled.status)
       if (terminal) {
-        // The run transition can become visible before its terminal event is persisted.
-        await replayTerminalRunEvents({ runId, after, appendRunEvents, isCurrent })
+        // Catch up before the terminal status detaches the subscription.
+        await replayTerminalRunEvents({ runId, after, onEvents: events => appendRunEvents(runId, events), isCurrent })
         if (!isCurrent()) return
       }
       setTurns(current =>

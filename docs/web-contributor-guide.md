@@ -45,6 +45,9 @@ Ordinary browser requests never call the orchestrator directly. The server clien
 `src/server/orchestrator` owns upstream authentication, deadlines, request IDs, and error translation.
 Operations return the shared result envelope with a request ID, stable error code, and safe public message.
 
+Workflow traces and device-agent chat share run-event replay and WebSocket delivery through the
+authorized BFF. Each view projects the delivered events into its own state.
+
 Use `getCurrentUser()` before protected operations. Check permission, ownership, and input before
 calling upstream services. Shared permission definitions and quotas live in `src/shared/permissions`;
 they provide vocabulary, not a substitute for server authorization. See [web security](web-security.md).

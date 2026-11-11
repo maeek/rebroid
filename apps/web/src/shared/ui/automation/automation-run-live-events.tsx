@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconActivity, IconChevronRight, IconPlayerStop, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
-import { getBff, sendBff } from '@/lib/http/bff'
+import { sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
+import { subscribeToRunEvents } from '@/shared/model/run-event-delivery'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import {
   AutomationRunStatusBadge,
@@ -151,7 +152,6 @@ export function AutomationRunLiveEvents({
   const [isCanceling, setIsCanceling] = useState(false)
   const [streamError, setStreamError] = useState<string | null>(null)
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
-  const lastSequenceRef = useRef(0)
   const cancelingRunIdRef = useRef<string | null>(null)
   const statusRef = useRef<AutomationRunStatus>(run.status)
   const onStatusChangeRef = useRef(onStatusChange)
@@ -173,10 +173,6 @@ export function AutomationRunLiveEvents({
   }, [run.id, run.status])
 
   useEffect(() => {
-    let closed = false
-    let socket: WebSocket | null = null
-    let reconnectTimer: number | null = null
-    lastSequenceRef.current = 0
     setEvents([])
     setStreamError(null)
     setHasLoadedEvents(false)
@@ -188,12 +184,10 @@ export function AutomationRunLiveEvents({
       if (terminalStatuses.has(status)) {
         cancelingRunIdRef.current = null
         setIsCanceling(false)
-        socket?.close()
       }
     }
 
     const appendEvents = (nextEvents: AutomationRunEvent[]) => {
-      for (const event of nextEvents) lastSequenceRef.current = Math.max(lastSequenceRef.current, event.sequence)
       setEvents(current => {
         const byId = new Map(current.map(event => [event.id, event]))
         for (const event of nextEvents) {
@@ -208,51 +202,19 @@ export function AutomationRunLiveEvents({
       }
     }
 
-    const connect = async () => {
-      try {
-        let streamUrl = ''
-        let hasMore = true
-        while (hasMore && !closed) {
-          const after = lastSequenceRef.current
-          const live = await getBff<{ events: AutomationRunEvent[]; hasMore?: boolean; streamUrl: string }>(
-            `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${after}`
-          )
-          if (closed) return
-          setStreamError(null)
-          appendEvents(live.events)
-          streamUrl = live.streamUrl
-          hasMore = live.hasMore === true && lastSequenceRef.current > after && !activeStatuses.has(statusRef.current)
-        }
-        if (closed) return
+    return subscribeToRunEvents({
+      runId,
+      isLive: () => activeStatuses.has(statusRef.current),
+      onEvents: appendEvents,
+      onReady: () => {
+        setStreamError(null)
         setHasLoadedEvents(true)
-        if (!activeStatuses.has(statusRef.current)) return
-        socket = new WebSocket(streamUrl)
-        socket.onmessage = message => {
-          if (closed) return
-          try {
-            const payload = JSON.parse(String(message.data)) as { type: string; event?: AutomationRunEvent }
-            if (payload.type === 'event' && payload.event) appendEvents([payload.event])
-          } catch {
-            setStreamError('A live event could not be read.')
-          }
-        }
-        socket.onclose = () => {
-          if (!closed && activeStatuses.has(statusRef.current)) {
-            reconnectTimer = window.setTimeout(() => void connect(), 1500)
-          }
-        }
-      } catch {
-        if (!closed)
-          setStreamError(recorded ? 'Could not load recorded events.' : 'Live updates are temporarily unavailable.')
+      },
+      onError: reason => {
+        if (reason === 'invalid-event') setStreamError('A live event could not be read.')
+        else setStreamError(recorded ? 'Could not load recorded events.' : 'Live updates are temporarily unavailable.')
       }
-    }
-
-    void connect()
-    return () => {
-      closed = true
-      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
-      socket?.close()
-    }
+    })
   }, [recorded, runId])
 
   const visibleEvents = useMemo(
@@ -262,9 +224,7 @@ export function AutomationRunLiveEvents({
 
   const cancel = async () => {
     if (isCanceling || cancelingRunIdRef.current === runId || !activeStatuses.has(localStatus)) return
-    const previousStatus = localStatus
     cancelingRunIdRef.current = runId
-    statusRef.current = 'canceled'
     setIsCanceling(true)
     setStreamError(null)
     try {
@@ -277,9 +237,7 @@ export function AutomationRunLiveEvents({
       onStatusChangeRef.current?.(canceledRun.status)
     } catch {
       cancelingRunIdRef.current = null
-      statusRef.current = previousStatus
-      setLocalStatus(previousStatus)
-      setStreamError('The run could not be stopped. Its latest status has been restored.')
+      setStreamError('The run could not be stopped.')
     } finally {
       setIsCanceling(false)
     }

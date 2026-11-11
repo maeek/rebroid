@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getBff } from '@/lib/http/bff'
 import * as actions from '@/server/orchestrator/automations/automation-run-actions'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import * as modelSettings from './use-ai-agent-model-settings'
@@ -9,11 +10,10 @@ import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/autom
 vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
   cancelAutomationRunAction: vi.fn(),
   clearAdHocAiAutomationRunsAction: vi.fn(),
-  createAutomationRunEventStreamUrlAction: vi.fn(),
   listAdHocAiAutomationRunHistoryAction: vi.fn(),
-  listAutomationRunEventsAction: vi.fn(),
   runAdHocAiAutomationAction: vi.fn()
 }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 
 vi.mock('./use-ai-agent-model-settings', () => ({
   useAiAgentModelSettings: vi.fn()
@@ -56,13 +56,14 @@ const userEvent = {
   data: { clientMessageId: 'turn_1' },
   createdAt: '2026-01-01T00:00:00.000Z'
 } satisfies AutomationRunEvent
+const eventPage = (events: AutomationRunEvent[]) => ({ events, hasMore: false, streamUrl: 'ws://localhost/events' })
+const eventPath = (after: number) => `/api/bff/automations/runs/${run.id}/events?after=${after}`
 
 describe('useAiAgentChatSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([{ run, events: [userEvent] }])
-    vi.mocked(actions.listAutomationRunEventsAction).mockResolvedValue([])
-    vi.mocked(actions.createAutomationRunEventStreamUrlAction).mockResolvedValue('ws://localhost/events')
+    vi.mocked(getBff).mockResolvedValue(eventPage([]))
     vi.mocked(modelSettings.useAiAgentModelSettings).mockReturnValue({
       adHocTimeoutMinutes: 5,
       adHocTimeoutMs: 300_000,
@@ -252,13 +253,13 @@ describe('useAiAgentChatSession', () => {
   })
 
   it('replays final transcript events when the cancel response arrives before the stream', async () => {
-    const listEvents = vi.mocked(actions.listAutomationRunEventsAction)
+    const listEvents = vi.mocked(getBff)
     vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([
       { run: { ...run, status: 'running' }, events: [userEvent] }
     ])
     vi.mocked(actions.cancelAutomationRunAction).mockResolvedValue({ ...run, status: 'canceled' })
     const { result } = renderHook(() => useAiAgentChatSession({ app }))
-    await waitFor(() => expect(listEvents).toHaveBeenCalledWith(run.id, 1))
+    await waitFor(() => expect(listEvents).toHaveBeenCalledWith(eventPath(1), expect.any(AbortSignal)))
 
     const assistantEvent = {
       ...userEvent,
@@ -274,13 +275,13 @@ describe('useAiAgentChatSession', () => {
       type: 'run.canceled',
       message: 'Automation canceled.'
     } satisfies AutomationRunEvent
-    listEvents.mockResolvedValueOnce([assistantEvent]).mockResolvedValueOnce([canceledEvent])
+    listEvents.mockResolvedValueOnce(eventPage([assistantEvent])).mockResolvedValueOnce(eventPage([canceledEvent]))
 
     await act(async () => {
       await result.current.cancelRun()
     })
 
-    expect(listEvents).toHaveBeenLastCalledWith(run.id, 2)
+    expect(listEvents).toHaveBeenLastCalledWith(eventPath(2), undefined)
     expect(result.current.activeTurn).toBeNull()
     expect(result.current.turns[0]).toMatchObject({
       status: 'canceled',

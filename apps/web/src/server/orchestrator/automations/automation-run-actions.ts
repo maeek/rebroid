@@ -1,8 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
-import { getOrchestratorBrowserWsUrl } from '@/server/orchestrator/config'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import {
   assertAutomationPermission,
@@ -82,39 +80,6 @@ export const cancelAutomationRunAction = async (runId: string) => {
   revalidatePath('/automations')
   revalidatePath(`/automations/${run.automationId}`)
   return run
-}
-
-export const listAutomationRunEventsAction = async (runId: string, after = 0) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  return orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, after)
-}
-
-export const createAutomationRunEventStreamUrlAction = async (runId: string, after = 0) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
-  const query = new URLSearchParams({ token: token.token, after: String(after) })
-  const requestHeaders = await headers()
-  const isHttpsRequest =
-    requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim() === 'https' ||
-    requestHeaders.get('x-forwarded-ssl') === 'on' ||
-    requestHeaders.get('origin')?.startsWith('https://') === true
-  const origin = requestHeaders.get('origin')
-  const forwardedHost = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
-  const browserOrigin = origin?.startsWith('https://')
-    ? origin
-    : isHttpsRequest && forwardedHost
-      ? `https://${forwardedHost}`
-      : null
-  if (browserOrigin) {
-    const url = new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin)
-    url.protocol = 'wss:'
-    return url.toString()
-  }
-  return getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, {
-    secure: isHttpsRequest
-  })
 }
 
 export const listAdHocAiAutomationRunsAction = async (targetApplicationId: string, limit = 20) => {
