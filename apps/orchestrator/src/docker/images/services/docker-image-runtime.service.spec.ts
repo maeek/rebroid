@@ -9,6 +9,7 @@ function buildFixture() {
   const engineAbort = new AbortController();
   const docker = {
     buildImage: jest.fn().mockResolvedValue(progress),
+    pull: jest.fn().mockResolvedValue(progress),
     modem: new Dockerode().modem,
   };
   const engine = {
@@ -36,6 +37,19 @@ function buildFixture() {
   };
   return { progress, engineAbort, docker, engine, images, request };
 }
+
+describe('DockerImageRuntimeService.pullImage', () => {
+  it('rejects a registry error before marking the image as managed', async () => {
+    const { images, progress } = buildFixture();
+    const onProgress = jest.fn();
+    const pull = images.pullImage('docker.io/library/alpine:3', onProgress);
+    progress.write('{"id":"layer","status":"Downloading","progress":"1/2"}\n');
+    progress.end('{"errorDetail":{"message":"denied: requested access"}}\n');
+
+    await expect(pull).rejects.toThrow('denied: requested access');
+    expect(onProgress).toHaveBeenCalledWith('Downloading 1/2 layer');
+  });
+});
 
 describe('DockerImageRuntimeService.buildImage', () => {
   it.each([

@@ -7,7 +7,7 @@ import type {
   DockerImageRuntimePort,
 } from '../../contracts/docker-image-runtime.port';
 
-type DockerBuildProgress = {
+type DockerImageProgress = {
   stream?: string;
   status?: string;
   progress?: string;
@@ -60,25 +60,34 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
       'image_pull',
       `Pull image ${image}`,
       async (docker, signal) => {
-        const stream = await docker.pull(image, { abortSignal: signal });
+        const stream = (await docker.pull(image, {
+          abortSignal: signal,
+        })) as unknown as Readable;
         await new Promise<void>((resolve, reject) => {
-          const abort = () =>
-            (stream as unknown as Readable).destroy(
-              new Error(`Pull image ${image} aborted.`),
-            );
+          const abort = () => {
+            reject(signal.reason);
+            stream.destroy();
+          };
+          if (signal.aborted) {
+            abort();
+            return;
+          }
           signal.addEventListener('abort', abort, { once: true });
+          let pullError: Error | undefined;
           docker.modem.followProgress(
             stream,
             (error) => {
               signal.removeEventListener('abort', abort);
-              if (error) {
-                reject(error);
+              const failure = error ?? pullError;
+              if (failure) reject(failure);
+              else resolve();
+            },
+            (event: DockerImageProgress) => {
+              const failure = event.errorDetail?.message || event.error;
+              if (failure) {
+                pullError ??= new Error(failure);
                 return;
               }
-
-              resolve();
-            },
-            (event) => {
               if (!onProgress) {
                 return;
               }
@@ -132,7 +141,7 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
                   if (failure) reject(failure);
                   else resolve();
                 },
-                (event: DockerBuildProgress) => {
+                (event: DockerImageProgress) => {
                   const failure = event.errorDetail?.message || event.error;
                   if (failure) {
                     buildError ??= new Error(failure);

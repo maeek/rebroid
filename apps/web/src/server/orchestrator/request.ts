@@ -162,7 +162,7 @@ export const jsonRequest = <T>(
   path: string,
   method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   body: unknown,
-  init?: Omit<RequestInit, 'method' | 'body'>
+  init?: Omit<OrchestratorRequestInit, 'method' | 'body'>
 ) =>
   request<T>(path, {
     ...init,

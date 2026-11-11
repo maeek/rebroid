@@ -18,6 +18,7 @@ import type {
   UpdateContainerImageRecipeInput,
   UpdateRuntimeImageMetadataInput
 } from '@/shared/contracts/platform'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export const orchestratorPlatformClient = {
   listPlatformContainers() {
@@ -39,6 +40,13 @@ export const orchestratorPlatformClient = {
 
   listPlatformImages() {
     return emptyRequest<PlatformImage[]>('/platform/docker/images')
+  },
+
+  pullPlatformImage(input: OrchestratorApiSchemas['PullContainerImageDto']) {
+    return jsonRequest<{ image: string; status: 'pulled' }>('/platform/container-images/pull', 'POST', input, {
+      // Leave time to return a failure before the ingress's five-minute deadline.
+      timeoutMs: 285_000
+    })
   },
 
   getPlatformImage(id: string) {

@@ -9,6 +9,7 @@ import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { RuntimeImagePullForm } from './runtime-image-pull-form'
 import { RuntimeImagesSection } from './runtime-images-section'
 import { createImageColumns } from './runtime-images-table-parts'
 import { RuntimeInventoryLoadingSection } from './runtime-inventory-loading-section'
@@ -31,6 +32,7 @@ export const RuntimeImagesPageClient = ({
       isRefreshing={isRefreshing}
       onRefresh={refresh}
     >
+      <RuntimeImagePullForm onPulled={refresh} />
       <RuntimeImagesSection
         imagesPage={imagesPage}
         gridQuery={gridQuery}
@@ -90,6 +92,7 @@ export const RuntimeImagesPageLoading = () => {
       loading
       onRefresh={() => undefined}
     >
+      <RuntimeImagePullForm loading />
       <RuntimeInventoryLoadingSection
         actionLabels={['Remove selected']}
         columns={columns}

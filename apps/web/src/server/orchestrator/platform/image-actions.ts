@@ -1,10 +1,12 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { requireFeature } from '../features'
 import { requireAdminUser } from '../shared'
 import { orchestratorPlatformClient } from './client'
 import { resolveContainerApplicationNames } from './container-application-names'
+import { resolveManualImageReference } from './manual-image-reference'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformImagesGridPage } from './platform-grid-utils'
 import type {
@@ -33,6 +35,31 @@ export const getPlatformImageAction = async (id: string) => {
   const details = await orchestratorPlatformClient.getPlatformImage(id)
   return { ...details, relatedContainers: await resolveContainerApplicationNames(details.relatedContainers) }
 }
+
+export const pullPlatformImageAction = async (registry: string, draft: string) =>
+  runSafeAction(
+    async () => {
+      const image = resolveManualImageReference(registry, draft)
+      if (!image) {
+        const message =
+          registry === 'custom'
+            ? 'Enter a full image reference such as ghcr.io/owner/image:tag.'
+            : 'Enter a Docker Hub image such as alpine:3 or redroid/redroid:latest.'
+        throw new PublicActionError(message, { code: 'validation', status: 400, fieldErrors: { image: [message] } })
+      }
+
+      return runAuditedPlatformAction({
+        action: 'docker.image.pull',
+        operation: () => orchestratorPlatformClient.pullPlatformImage({ image }),
+        resourceType: 'docker_image',
+        resourceId: image
+      })
+    },
+    {
+      fallbackMessage: 'Could not pull the image. Check the image reference and registry access, then try again.',
+      logLabel: 'pullPlatformImageAction failed'
+    }
+  )
 
 export const removePlatformImageAction = async (id: string, force = false) =>
   runSafeAction(

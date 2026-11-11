@@ -6,6 +6,13 @@ Use the desktop sidebar toggle beside the Rebroid wordmark to reclaim the naviga
 browser remembers the choice. The Images shortcut opens the builder when the feature is available.
 Administrator shortcuts beside Users and Groups open the corresponding creation dialogs.
 
+## Runtime images
+
+Administrators can use **Pull image** above the Images grid to download or update an image from
+Docker Hub. Choose **Other registry** and enter a full reference such as `ghcr.io/owner/image:tag`
+to pull from another registry. Both options use anonymous access. Successful pulls refresh the
+managed image inventory and are recorded in the audit log.
+
 ## App lifecycle
 
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
