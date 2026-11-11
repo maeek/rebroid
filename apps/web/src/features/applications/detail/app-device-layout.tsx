@@ -31,7 +31,7 @@ export const AppDeviceLayout = ({
         contained && !stacked && 'lg:h-(--console-content-height)'
       )}
     >
-      <div className='col-start-1 row-start-1 flex min-w-0 items-center gap-2 px-6 pt-2 max-sm:px-4 lg:pt-1'>
+      <div className='col-start-1 row-start-1 mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) min-w-0 items-center gap-2 px-6 max-sm:px-4'>
         <div className='min-w-0 flex-1'>{breadcrumbs}</div>
         <AppViewerPlacementMenu
           placement={placement}

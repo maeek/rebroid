@@ -13,6 +13,8 @@
   --console-top-inset: 4rem;
   --console-content-height: calc(100dvh - var(--console-top-inset));
   --touch-target-size: 44px;
+  --page-header-top-inset: 0.25rem;
+  --page-header-control-size: 2.25rem;
   --app-viewer-height: calc(100svh - 6rem);
   --viewer-chrome-height: 32px;
   --viewer-rail-width: 32px;
@@ -20,6 +22,7 @@
 
 @media (pointer: coarse) {
   :root {
+    --page-header-control-size: var(--touch-target-size);
     --viewer-rail-width: var(--touch-target-size);
   }
 
@@ -500,6 +503,7 @@
 @media (min-width: 64rem) {
   :root {
     --console-top-inset: 0.5rem;
+    --page-header-top-inset: 0rem;
   }
 
   [data-legacy-sidebar-collapsed] [data-sidebar-pending] {

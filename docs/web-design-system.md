@@ -77,7 +77,8 @@ Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subh
 repeat the page title or active tab. Put page-wide context in `PageHeader.description` and
 keep useful section-specific copy in `Section.description` without adding a heading.
 
-`PageHeader` owns breadcrumbs and the single page title, with one action slot. The top-level Overview
+`PageHeader` owns breadcrumbs and the single page title, with one action slot. Breadcrumbs share the
+same top inset and row height with the viewer, including during loading. The top-level Overview
 omits `section` to render without breadcrumbs or an empty breadcrumb gap. Keep `PageContent`
 a vertical stack; responsive columns belong to a child grid with explicit `minmax()` tracks.
 Do not repeat outer padding or use fractional flex sizing for primary columns.

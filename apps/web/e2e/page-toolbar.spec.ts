@@ -1,5 +1,29 @@
 import { expect, test } from '@playwright/test'
 
+test('breadcrumb position matches the viewer across page headers', async ({ page }) => {
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    const offsets = []
+    for (const editor of ['app-resource', 'services', 'services-loading', 'service-docker', 'workflow']) {
+      await page.goto(`/skeleton-contract-test?editor=${editor}`)
+      const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' })
+      offsets.push(
+        await breadcrumb.evaluate(nav => {
+          const pageTop = nav.closest('header, .app-device-layout')!.getBoundingClientRect().top
+          const { top, height } = nav.getBoundingClientRect()
+          return top + height / 2 - pageTop
+        })
+      )
+      if (width === 1440 && editor === 'services') {
+        const search = (await page.getByRole('searchbox', { name: 'Search services' }).boundingBox())!
+        const trail = (await breadcrumb.boundingBox())!
+        expect(search.y + search.height / 2).toBeCloseTo(trail.y + trail.height / 2)
+      }
+    }
+    expect(new Set(offsets).size, `breadcrumb offsets at ${width}px: ${offsets.join(', ')}`).toBe(1)
+  }
+})
+
 test('loading the next grid page keeps the active search visible', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   for (const [editor, param, label] of [

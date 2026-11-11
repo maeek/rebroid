@@ -36,15 +36,24 @@ export const PageHeader = ({
     typeof lastItem?.label === 'string' && typeof currentLabel === 'string' && lastItem.label === currentLabel
   const breadcrumbTrail = [...(section ? [section] : []), ...trail]
   const showBreadcrumbs = breadcrumbTrail.length > 0
+  const showBreadcrumbRow = showBreadcrumbs || Boolean(breadcrumbRefresh)
   const breadcrumbs = currentAlreadyPresent
     ? [...breadcrumbTrail.slice(0, -1), { label: currentLabel }]
     : [...breadcrumbTrail, { label: currentLabel }]
 
   return (
-    <header className={cn('shrink-0 px-6 py-4 max-sm:px-4', className)}>
+    <header
+      className={cn(
+        'shrink-0 px-6 pb-4 max-sm:px-4',
+        showBreadcrumbRow ? 'pt-(--page-header-top-inset)' : 'pt-4',
+        className
+      )}
+    >
       <div className='grid grid-cols-[minmax(0,1fr)] gap-3'>
-        {showBreadcrumbs || breadcrumbRefresh ? (
-          <div className={cn('flex min-w-0 items-center gap-2', styles.breadcrumbRow)}>
+        {showBreadcrumbRow ? (
+          <div
+            className={cn('flex min-h-(--page-header-control-size) min-w-0 items-center gap-2', styles.breadcrumbRow)}
+          >
             {showBreadcrumbs ? (
               <PageBreadcrumbs
                 className='min-w-0 flex-1 pt-0'

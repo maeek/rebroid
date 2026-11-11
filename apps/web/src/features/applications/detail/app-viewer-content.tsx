@@ -16,6 +16,7 @@ export const AppViewerContent = () => {
     <PageContent className='pr-2'>
       <div className='flex w-full flex-col gap-6'>
         <PageBreadcrumbs
+          className='mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) items-center pt-0'
           items={[{ label: 'Apps', href: '/apps' }, { label: app.name, href: `/app/${app.id}` }, { label: 'Details' }]}
         />
         <AppViewerHeading app={app}>

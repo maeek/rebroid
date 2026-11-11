@@ -1,26 +1,14 @@
 .page {
   position: relative;
   container: page-toolbar / inline-size;
-  --page-toolbar-control-size: 2.25rem;
   --breadcrumb-refresh-space: 0rem;
 }
 
 .page:has(> header .breadcrumbRefresh) {
-  --breadcrumb-refresh-space: calc(var(--page-toolbar-control-size) + 0.5rem);
-}
-
-@media (pointer: coarse) {
-  .page {
-    --page-toolbar-control-size: var(--touch-target-size);
-  }
+  --breadcrumb-refresh-space: calc(var(--page-header-control-size) + 0.5rem);
 }
 
 @container page-toolbar (min-width: 52rem) {
-  /* Both rows use the page header's top and side gutters so the workspace owns the same controls at every width. */
-  .breadcrumbRow {
-    min-block-size: var(--page-toolbar-control-size);
-  }
-
   .breadcrumbRow > nav {
     max-inline-size: 38%;
   }
@@ -31,11 +19,11 @@
 
   .toolbar {
     position: absolute;
-    inset-block-start: 1rem;
+    inset-block-start: var(--page-header-top-inset);
     inset-inline-end: calc(1.5rem + var(--breadcrumb-refresh-space));
     inline-size: max-content;
     max-inline-size: calc(60% - var(--breadcrumb-refresh-space));
-    min-block-size: var(--page-toolbar-control-size);
+    min-block-size: var(--page-header-control-size);
     z-index: 1;
   }
 
@@ -81,13 +69,13 @@
 
   .toolbar [data-slot='search-field'] {
     order: 1;
-    inline-size: var(--page-toolbar-control-size);
+    inline-size: var(--page-header-control-size);
     flex: 0 1 auto;
     transition: inline-size 200ms ease;
   }
 
   .toolbar [data-slot='search-field'] > svg {
-    inset-inline-start: calc((var(--page-toolbar-control-size) - 1rem) / 2);
+    inset-inline-start: calc((var(--page-header-control-size) - 1rem) / 2);
   }
 
   .toolbar [data-slot='search-field']:not(:focus-within, [data-has-value]) input {
