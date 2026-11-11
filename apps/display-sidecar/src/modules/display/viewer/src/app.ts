@@ -161,7 +161,9 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
     return;
   }
   if (message.type === "audio-disabled") {
-    emitAudioDisabled("Audio capture is disabled for this stream.");
+    emitAudioDisabled(
+      typeof message.message === "string" ? message.message : undefined,
+    );
     return;
   }
   if (message.type === "reconnecting") {

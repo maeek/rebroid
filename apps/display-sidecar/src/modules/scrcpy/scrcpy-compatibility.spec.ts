@@ -45,6 +45,22 @@ test("retries Android 15 redroid control setup for known service failures", () =
   );
 });
 
+test("keeps Android audio diagnostics without treating historical logs as a new failure", () => {
+  const probe = parseCompatibilityProbe(
+    "== props ==\nro.build.version.sdk=36\nro.product.brand=redroid",
+    "AudioRecord: capture failed\nAudioFlinger: input unavailable\nunrelated",
+  );
+  assert.equal(probe.diagnostics.length, 2);
+  assert.equal(
+    selectInitialRetryStreamOptions(
+      streamOptions,
+      "ADB connection failed",
+      probe,
+    ).audio,
+    true,
+  );
+});
+
 test("does not downgrade older non-redroid devices", () => {
   const probe = parseCompatibilityProbe(
     "== props ==\nro.build.version.sdk=34\nro.product.brand=google",
@@ -89,10 +105,10 @@ const streamOptions = {
   control: true,
 };
 
-test("retries audio and control without changing the requested video profile", () => {
+test("retries a confirmed audio failure without changing the requested video profile", () => {
   const withoutAudio = selectInitialRetryStreamOptions(
     streamOptions,
-    "audio failed",
+    "invalid audio stream: scrcpy stream configuration failed on the device",
     null,
   );
   assert.equal(withoutAudio.audio, false);
@@ -115,6 +131,46 @@ test("retries audio and control without changing the requested video profile", (
   assert.equal(unchanged.maxSize, 1080);
   assert.equal(unchanged.maxFps, 60);
   assert.equal(unchanged.bitrate, 8_000_000);
+});
+
+test("unrelated startup failures do not disable requested audio", () => {
+  for (const message of [
+    "ADB connection failed",
+    "scrcpy video socket closed during startup.",
+    "Display source was replaced.",
+  ]) {
+    const retry = selectInitialRetryStreamOptions(streamOptions, message, null);
+    assert.equal(retry.audio, true, message);
+    assert.equal(retry.compatibilityMode, undefined, message);
+  }
+});
+
+test("a control failure preserves audio when selecting a compatibility retry", () => {
+  const retry = selectInitialRetryStreamOptions(
+    streamOptions,
+    "InputManagerGlobal failed",
+    null,
+  );
+  assert.equal(retry.audio, true);
+  assert.equal(retry.control, false);
+  assert.equal(retry.compatibilityMode, "stream-control-disabled");
+});
+
+test("virtual surfaces never fall back to default-display ADB controls", () => {
+  for (const surface of [
+    { displayId: 2 },
+    { newDisplay: { width: 1080, height: 1920, dpi: 320 } },
+  ]) {
+    const options = { ...streamOptions, ...surface };
+    assert.equal(
+      selectInitialRetryStreamOptions(
+        options,
+        "InputManagerGlobal failed",
+        null,
+      ),
+      options,
+    );
+  }
 });
 
 test("restart disables audio only after the scrcpy audio configuration marker", () => {

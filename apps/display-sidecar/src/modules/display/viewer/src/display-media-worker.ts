@@ -93,6 +93,7 @@ let renderer: VideoFrameRenderer | null = null;
 let rendererMode: "webcodecs" | "mse" = "webcodecs";
 let audioPort: MessagePort | null = null;
 let audioRequested = false;
+let audioPlaybackDisabled = false;
 let websocketUrl = "";
 let effectiveProfile: ViewerEffectiveProfile | null = null;
 let ws: WebSocket | null = null;
@@ -612,6 +613,28 @@ function localVideoRecovery(reason: string): void {
   requestVideoResync(reason);
 }
 
+function disableAudioPlayback(
+  error: unknown,
+  expectedGeneration: number,
+): void {
+  if (generation !== expectedGeneration || closing || audioPlaybackDisabled)
+    return;
+  audioPlaybackDisabled = true;
+  closeAudioDecoder();
+  audioDiscontinuityPending = true;
+  resetAudioTimeline();
+  scope.postMessage({
+    type: "status",
+    payload: {
+      type: "audio-disabled",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Audio playback failed in this browser.",
+    },
+  });
+}
+
 async function configureAudio(expectedGeneration: number): Promise<boolean> {
   if (generation !== expectedGeneration) {
     return false;
@@ -620,6 +643,11 @@ async function configureAudio(expectedGeneration: number): Promise<boolean> {
     return true;
   }
   closeAudioDecoder();
+  if (typeof AudioDecoder === "undefined") {
+    throw new Error(
+      "This browser does not support live display audio decoding.",
+    );
+  }
   const config: AudioDecoderConfig = {
     codec: "opus",
     sampleRate: 48_000,
@@ -633,7 +661,7 @@ async function configureAudio(expectedGeneration: number): Promise<boolean> {
   if (!support.supported) {
     throw new Error("This browser cannot decode the live display audio.");
   }
-  audioDecoder = new AudioDecoder({
+  const decoder = new AudioDecoder({
     output(audio) {
       const planes: ArrayBuffer[] = [];
       for (let channel = 0; channel < audio.numberOfChannels; channel += 1) {
@@ -656,15 +684,12 @@ async function configureAudio(expectedGeneration: number): Promise<boolean> {
       audioPort?.postMessage(message, planes);
     },
     error(error) {
-      closeAudioDecoder();
-      audioDiscontinuityPending = true;
-      scope.postMessage({
-        type: "status",
-        payload: { type: "audio-disabled", message: error.message },
-      });
+      if (audioDecoder === decoder)
+        disableAudioPlayback(error, expectedGeneration);
     },
   });
-  audioDecoder.configure(config);
+  audioDecoder = decoder;
+  decoder.configure(config);
   return true;
 }
 
@@ -672,7 +697,7 @@ async function decodeAudio(
   frame: ReturnType<typeof parseViewerMediaFrame>,
   expectedGeneration: number,
 ) {
-  if (!audioRequested || !audioPort) {
+  if (!audioRequested || !audioPort || audioPlaybackDisabled) {
     return;
   }
   if (frame.config) {
@@ -730,7 +755,11 @@ async function handleBinary(
   if (frame.kind === "video") {
     await decodeVideo(frame, expectedGeneration);
   } else {
-    await decodeAudio(frame, expectedGeneration);
+    try {
+      await decodeAudio(frame, expectedGeneration);
+    } catch (error) {
+      disableAudioPlayback(error, expectedGeneration);
+    }
   }
 }
 
@@ -885,6 +914,7 @@ function resetConsumerState(): void {
   clearHeartbeatTimer();
   closeVideoDecoder();
   closeAudioDecoder();
+  audioPlaybackDisabled = false;
   resetVideoAdmission();
   hasFrameInGeneration = false;
   lastSequences = new Map();

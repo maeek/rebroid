@@ -13,6 +13,7 @@ const deltaFrame = annexB([0x41, 0x9a, 0x20]);
 const rbd1 = ({
   sequence,
   timestampUs,
+  kind = 1,
   config = false,
   key = false,
   discontinuity = false,
@@ -20,7 +21,7 @@ const rbd1 = ({
 }) => {
   const buffer = new ArrayBuffer(24 + data.byteLength);
   const bytes = new Uint8Array(buffer);
-  bytes.set([0x52, 0x42, 0x44, 0x31, 1, 1]);
+  bytes.set([0x52, 0x42, 0x44, 0x31, 1, kind]);
   const view = new DataView(buffer);
   view.setUint16(6, (config ? 1 : 0) | (key ? 2 : 0) | (discontinuity ? 4 : 0));
   view.setUint32(8, sequence);
@@ -298,3 +299,119 @@ test("an expired WebSocket session stops retrying the stale grant", async (t) =>
     false,
   );
 });
+
+for (const failure of [
+  "none",
+  "missing",
+  "unsupported",
+  "configure",
+  "decode",
+  "callback",
+]) {
+  test(`audio ${failure}: forwards PCM or reports one local failure without reconnecting video`, async (t) => {
+    const posted = [];
+    const audioMessages = [];
+    let supportChecks = 0;
+    class FakeAudioDecoder {
+      static async isConfigSupported(config) {
+        supportChecks += 1;
+        return { supported: failure !== "unsupported", config };
+      }
+      constructor(callbacks) {
+        this.callbacks = callbacks;
+        this.state = "unconfigured";
+        this.decodeQueueSize = 0;
+      }
+      configure() {
+        if (failure === "configure")
+          throw new Error("audio configuration rejected");
+        this.state = "configured";
+      }
+      decode(chunk) {
+        if (failure === "decode") throw new Error("audio packet rejected");
+        if (failure === "callback")
+          this.callbacks.error(new Error("audio decoder stopped"));
+        if (failure === "none")
+          this.callbacks.output({
+            timestamp: chunk.timestamp,
+            sampleRate: 48_000,
+            numberOfChannels: 2,
+            numberOfFrames: 960,
+            copyTo(plane) {
+              plane.fill(0.25);
+            },
+            close() {},
+          });
+      }
+      close() {
+        this.state = "closed";
+      }
+    }
+    globalThis.AudioDecoder =
+      failure === "missing" ? undefined : FakeAudioDecoder;
+    globalThis.EncodedAudioChunk = FakeEncodedVideoChunk;
+    globalThis.WebSocket = FakeWebSocket;
+    globalThis.postMessage = (message) => posted.push(message);
+    globalThis.close = () => undefined;
+    await import(
+      new URL(
+        `../dist/modules/display/viewer/assets/display-media-worker.js?audio-${failure}`,
+        import.meta.url,
+      )
+    );
+    t.after(() => globalThis.onmessage({ data: { type: "close" } }));
+    globalThis.onmessage({
+      data: {
+        type: "init",
+        url: "wss://example.test/rebroid/display/stream",
+        canvas: {},
+        audio: true,
+        audioPort: {
+          postMessage(message) {
+            audioMessages.push(message);
+          },
+          start() {},
+          close() {},
+          addEventListener() {},
+        },
+        renderer: "mse",
+      },
+    });
+    const socket = FakeWebSocket.instances.at(-1);
+    socket.open();
+    for (const sequence of [0, 1]) {
+      socket.emit("message", {
+        data: rbd1({
+          sequence,
+          kind: 2,
+          timestampUs: 20_000 * sequence,
+          data: Uint8Array.from([0xf8, 0xff, 0xfe]),
+        }),
+      });
+      await flush();
+    }
+    assert.deepEqual(socket.closeCalls, []);
+    assert.equal(
+      posted.some(({ type }) => type === "reconnecting"),
+      false,
+    );
+    const failures = posted.filter(
+      ({ payload }) => payload?.type === "audio-disabled",
+    );
+    assert.equal(failures.length, failure === "none" ? 0 : 1);
+    if (failure !== "none") assert.match(failures[0].payload.message, /audio/i);
+    const pcm = audioMessages.filter(({ type }) => type === "pcm");
+    assert.equal(pcm.length, failure === "none" ? 2 : 0);
+    if (failure === "none") {
+      assert.deepEqual(
+        pcm.map(({ timestampUs }) => timestampUs),
+        [0, 20_000],
+      );
+      assert.equal(new Float32Array(pcm[0].planes[0])[0], 0.25);
+    }
+    assert.equal(supportChecks, failure === "missing" ? 0 : 1);
+    socket.emit("message", { data: JSON.stringify({ type: "heartbeat" }) });
+    await flush();
+    assert.deepEqual(socket.closeCalls, []);
+  });
+}

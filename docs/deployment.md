@@ -144,7 +144,8 @@ Live displays admit ReDroid 13–16 with scrcpy 5.0.1. Android 16 video and cont
 reported working; Android 15 and Android 16 audio still require manual verification.
 Android 17 remains gated. See [display compatibility and audio diagnosis](display-streaming.md#diagnostics).
 
-On a supported image, compatibility retries may disable audio capture or use ADB-backed controls.
+On a supported image, confirmed audio failures may disable capture; unrelated startup failures
+preserve the requested audio setting. Main-display compatibility retries may use ADB-backed controls.
 Requested resolution, frame rate, and bitrate are not silently reduced. If the viewer reconnects
 repeatedly, check its compatibility diagnostics and the display-sidecar logs.
 

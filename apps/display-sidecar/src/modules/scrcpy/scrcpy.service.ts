@@ -270,7 +270,10 @@ export class ScrcpyService implements OnModuleDestroy {
           this.logger.debug(
             `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
           );
-          this.sendJson(options.sink, { type: "audio-disabled" });
+          this.sendJson(options.sink, {
+            type: "audio-disabled",
+            message: "Android audio capture failed; continuing with video only.",
+          });
         }
         restartAttempt = result.durationMs > 30_000 ? 0 : restartAttempt + 1;
         const delayMs = this.restartDelayMs(restartAttempt);
@@ -310,7 +313,10 @@ export class ScrcpyService implements OnModuleDestroy {
               `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
             );
             if (audioWasEnabled && !effectiveOptions.audio) {
-              this.sendJson(options.sink, { type: "audio-disabled" });
+              this.sendJson(options.sink, {
+                type: "audio-disabled",
+                message: "Android could not configure the audio stream; continuing with video only.",
+              });
             }
             this.sendCompatibilityStatus(options.sink, effectiveOptions, {
               message: this.compatibilityProbeSummary(diagnostics),
@@ -708,7 +714,10 @@ export class ScrcpyService implements OnModuleDestroy {
       }
       if (options.audio && !audioSocket) {
         this.streamSessions.markAudioDisabled(options.sessionId);
-        this.sendJson(options.sink, { type: "audio-disabled" });
+        this.sendJson(options.sink, {
+          type: "audio-disabled",
+          message: "The scrcpy audio connection could not be established; continuing with video only.",
+        });
       }
       options.onActivity?.();
       if (!ownsSource()) throw new Error("Display source was replaced.");
@@ -807,7 +816,7 @@ export class ScrcpyService implements OnModuleDestroy {
         }
         this.streamSessions.markAudioDisabled(options.sessionId);
         this.logger.debug(`[${logPrefix}] ${reason}; continuing video only`);
-        this.sendJson(options.sink, { type: "audio-disabled" });
+        this.sendJson(options.sink, { type: "audio-disabled", message: reason });
         audioSocket.destroy();
         audioSocket = null;
       };

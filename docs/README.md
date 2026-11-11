@@ -21,7 +21,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | [Operator console](operator-console.md) | Sidebar and app navigation, image pulls, live viewer, device files, app recovery, and workflow runs. |
 | [Web design system](web-design-system.md)                          | Shared layouts, tokens, controls, loading states, and illustrated outage feedback.       |
 | [Web security](web-security.md)                                    | Sessions, MFA, execution authorization, viewer revocation, and public error handling.                 |
-| [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, recovery, and manual verification.                |
+| [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, audio diagnosis, recovery, and manual verification. |
 
 For vulnerability reports, use the [security policy](../SECURITY.md).
 Third-party artifacts are listed in [third-party notices](../THIRD_PARTY_NOTICES.md).

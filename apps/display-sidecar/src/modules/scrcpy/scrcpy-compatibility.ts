@@ -11,7 +11,7 @@ export const compatibilityProbeServices = [
 ] as const;
 
 export const displayDiagnosticPattern =
-  /scrcpy|MediaCodec|ACodec|CCodec|OMX|SoftAVC|VirtualDisplay|BufferQueue|Surface|surfaceflinger|gralloc|ashmem|RenderEngine|hwservicemanager|adbd|InputManagerGlobal|KeyCharacterMap|IDisplayWindowListener|Can't find service/i;
+  /scrcpy|MediaCodec|ACodec|CCodec|OMX|SoftAVC|AudioRecord|AudioFlinger|AudioPolicy|opus|VirtualDisplay|BufferQueue|Surface|surfaceflinger|gralloc|ashmem|RenderEngine|hwservicemanager|adbd|InputManagerGlobal|KeyCharacterMap|IDisplayWindowListener|Can't find service/i;
 
 export interface ScrcpyCompatibilityProbe {
   androidRelease: string;
@@ -117,7 +117,7 @@ export const selectInitialRetryStreamOptions = (
   errorMessage: string,
   probe: ScrcpyCompatibilityProbe | null,
 ) => {
-  if (options.audio) {
+  if (options.audio && errorMessage === audioConfigurationFailureReason) {
     return {
       ...options,
       audio: false,
@@ -126,6 +126,8 @@ export const selectInitialRetryStreamOptions = (
   }
   if (
     options.control !== false &&
+    !options.newDisplay &&
+    (options.displayId === undefined || options.displayId === 0) &&
     shouldRetryWithoutStreamControl(errorMessage, probe)
   ) {
     return {

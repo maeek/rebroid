@@ -135,6 +135,30 @@ compatible wire format, not the bundled release; `scrcpyVersion` reports the rel
 Android 13–16 are admitted. Android 16 video/control has been reported working; Android 15
 and Android 16 audio still need the manual matrix below. Android 17 remains gated.
 
+### Audio failures
+
+Enabling audio requests Opus capture using scrcpy's default `output` source (remote submix).
+The viewer toggle does not establish that Android capture or browser playback succeeded.
+The sidecar preserves the audio failure reason in its `audio-disabled` status; both viewer
+transports display it. A missing audio connection, Android's disabled-stream marker, and
+an invalid/configuration-failed audio stream are different failures. Android `AudioRecord`,
+`AudioFlinger`, `AudioPolicy`, and Opus messages are retained by the compatibility log filter.
+
+An unrelated initial ADB/video/control failure must not disable requested audio. Confirmed
+source audio failures remain cached for the session. Opening an explicit video-only source
+or releasing the session clears that cache. Browser audio-decoder failures disable only
+that consumer's audio playback and report once per connection; video remains connected.
+
+For diagnosis, retain the exact viewer message, transport/browser, effective scrcpy version,
+Android image, and administrator-side logs. A scrcpy codec marker alone cannot distinguish
+an Android audio-policy failure from a missing encoder. Upstream documents the capture and
+encoder requirements in its [audio guide](https://github.com/Genymobile/scrcpy/blob/v5.0.1/doc/audio.md).
+Its direct audio-capture implementation is unchanged from 4.0 to 5.0.1, so upgrading alone
+is not evidence that a device capture failure is resolved. The audio fixes here have automated
+coverage; audible playback still requires the manual verification below.
+
+### Stream metrics
+
 The viewer reports `ViewerStreamMetricsV4` once per second. Compare stages rather than relying
 on one FPS value:
 
@@ -167,7 +191,7 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 | --------------- | ------------------------------------------------------------------------- |
 | Android         | ReDroid 13, 14, 15, and 16; 17+ must fail clearly as unsupported.         |
 | Transport       | WebRTC and WebSocket; Chromium and Firefox.                               |
-| Media           | Video with audio enabled and disabled.                                    |
+| Media           | Video with audio enabled/disabled; audible app output, toggle/reopen, and explicit failure reasons. |
 | Controls        | Touch, keyboard, actions, clipboard, and ADB fallback.                    |
 | Connections     | Direct, forward, and reverse tunnels, fallback, repeated create/release.   |
 | Recovery        | Disconnect, retry, reconnect, expiry, shutdown, and final cleanup.        |
