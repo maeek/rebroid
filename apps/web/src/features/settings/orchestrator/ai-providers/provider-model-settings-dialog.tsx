@@ -63,8 +63,8 @@ export const ProviderModelSettingsDialog = ({
               <FormField
                 controlId='provider-model-display-name'
                 label='Display name'
-                description={<span className='font-mono wrap-anywhere'>{model.id}</span>}
                 layout='vertical'
+                description={<span className='font-mono wrap-anywhere'>{model.id}</span>}
               >
                 <Input
                   value={model.label}
