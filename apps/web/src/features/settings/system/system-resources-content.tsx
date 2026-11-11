@@ -51,7 +51,6 @@ export const SystemResourcesContent = ({
           actions={[
             {
               label: 'Try again',
-              variant: 'primary',
               pending: isRefreshingSystem || isRefreshingResources,
               pendingLabel: 'Retrying…',
               onClick: () => {
@@ -83,6 +82,7 @@ export const SystemResourcesContent = ({
                   }
                   actions={
                     <MutationButton
+                      variant='ghost'
                       pending={isRefreshingSystem}
                       pendingLabel='Retrying…'
                       onClick={() => void refreshSystem()}

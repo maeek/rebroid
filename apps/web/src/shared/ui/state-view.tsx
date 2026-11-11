@@ -41,6 +41,7 @@ const defaultIcon = (kind: StateViewKind) => {
 }
 
 const renderAction = (action: StateViewAction, fallbackVariant: 'primary' | 'secondary') => {
+  const retry = action.label === 'Try again' || action.label === 'Retry'
   const content = (
     <>
       {action.icon ??
@@ -63,7 +64,7 @@ const renderAction = (action: StateViewAction, fallbackVariant: 'primary' | 'sec
   return (
     <MutationButton
       type='button'
-      variant={action.variant ?? fallbackVariant}
+      variant={action.variant ?? (retry ? 'ghost' : fallbackVariant)}
       onClick={action.onClick}
       pending={action.pending}
       pendingLabel={action.pendingLabel}

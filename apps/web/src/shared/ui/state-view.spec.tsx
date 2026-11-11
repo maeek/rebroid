@@ -28,7 +28,9 @@ describe('StateView', () => {
       />
     )
     expect(screen.getByRole('alert')).toHaveTextContent('Reference: request-123')
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    const button = screen.getByRole('button', { name: 'Try again' })
+    expect(button).toHaveClass('border-transparent', 'hover:bg-accent')
+    fireEvent.click(button)
     expect(retry).toHaveBeenCalledOnce()
   })
 

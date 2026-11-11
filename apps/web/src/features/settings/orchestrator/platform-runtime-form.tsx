@@ -110,6 +110,7 @@ export const PlatformRuntimeForm = ({
           description='Your draft is kept. Settings and maintenance will be available when the runtime service responds.'
           actions={
             <MutationButton
+              variant='ghost'
               pending={refreshing}
               pendingLabel='Retrying…'
               onClick={() => startRefresh(() => router.refresh())}

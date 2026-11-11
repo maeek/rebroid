@@ -134,7 +134,6 @@ export const AppPageFailure = ({ failure = { kind: 'not-found' } }: { failure?: 
           ? [
               {
                 label: 'Try again',
-                variant: 'primary' as const,
                 pending,
                 pendingLabel: 'Retrying…',
                 onClick: () => startTransition(() => router.refresh())

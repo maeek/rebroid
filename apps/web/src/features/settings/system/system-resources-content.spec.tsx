@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SystemResourcesContent } from './system-resources-content'
+import type { SystemResources } from '@/shared/contracts/system-resources'
 import type { SystemStats } from '@/shared/contracts/system-stats'
 
 vi.mock('./system-resource-charts', () => ({ SystemResourceCharts: () => <div>Host charts</div> }))
@@ -32,5 +33,35 @@ describe('resource outage scope', () => {
     expect(screen.getByText('Host charts')).toBeVisible()
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     expect(screen.getByText('Orchestrator resources unavailable')).toBeVisible()
+  })
+
+  it('uses the same ghost style for a pending host retry and an idle container retry', () => {
+    const resources: SystemResources = {
+      hostMemoryBytes: null,
+      hostCpuCores: null,
+      dockerRootAvailableBytes: null,
+      containersTotal: 0,
+      containersRunning: 0,
+      containersStopped: 0,
+      managedContainersCpuUsagePercent: 0,
+      managedContainersMemoryUsageBytes: 0,
+      containerStatsCollectedAt: null,
+      containers: []
+    }
+    render(
+      <SystemResourcesContent
+        resources={resources}
+        systemError
+        resourcesError
+        isRefreshingSystem
+      />
+    )
+    const hostRetry = screen.getByRole('button', { name: 'Retrying…' })
+    const containerRetry = screen.getByRole('button', { name: 'Try again' })
+    expect(hostRetry).toHaveClass('border-transparent', 'hover:bg-accent')
+    expect(containerRetry).toHaveClass('border-transparent', 'hover:bg-accent')
+    expect(hostRetry).toBeDisabled()
+    expect(hostRetry).toHaveAttribute('aria-busy', 'true')
+    expect(containerRetry).toBeEnabled()
   })
 })

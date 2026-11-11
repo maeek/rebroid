@@ -32,7 +32,6 @@ export const PageLoadFailure = ({
           ? [
               {
                 label: 'Try again',
-                variant: 'primary' as const,
                 pending,
                 pendingLabel: 'Retrying…',
                 onClick: () => startTransition(() => router.refresh())

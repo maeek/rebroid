@@ -14,7 +14,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
           description='Something interrupted the request. Try again, or return to Overview to check the platform’s status.'
           requestId={error.digest}
           actions={[
-            { label: 'Try again', onClick: reset, variant: 'primary' },
+            { label: 'Try again', onClick: reset },
             { label: 'Go to overview', href: '/platform' }
           ]}
         />

@@ -98,7 +98,7 @@ export const DockerOperationLimitsSection = ({
             actions={
               <MutationButton
                 type='button'
-                variant='secondary'
+                variant='ghost'
                 pending={isValidating}
                 pendingLabel='Retrying…'
                 onClick={() => void mutate()}
