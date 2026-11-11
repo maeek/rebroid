@@ -32,7 +32,6 @@ import {
   CreateAutomationTriggerDto,
   UpdateAutomationTriggerDto,
 } from '../dto/automation-trigger.dto';
-import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationRun,
   AutomationRunStatus,
@@ -92,9 +91,6 @@ export class AutomationsService {
       name: definition.metadata.name,
       description: definition.metadata.description ?? null,
       definitionJson: JSON.stringify(definition),
-      lastStatus: AutomationLastStatus.NeverRun,
-      lastRunAt: null,
-      lastError: null,
     });
     return this.mapper.automation(await this.automations.save(automation));
   }

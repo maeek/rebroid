@@ -1,7 +1,6 @@
-import { NetworkPolicyRevision1800000002000 } from '../../../database/migrations/1800000002000-network-policy-revision';
 import { ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { InitializeSqliteSchema1800000000000 } from '../../../database/migrations/1800000000000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000005000 } from '../../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import {
   AndroidApplicationLifecycleStage,
@@ -20,10 +19,7 @@ describe('open application admission', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],
-      migrations: [
-        InitializeSqliteSchema1800000000000,
-        NetworkPolicyRevision1800000002000,
-      ],
+      migrations: [InitializeSqliteSchema1800000005000],
       migrationsRun: true,
     }).initialize();
     try {

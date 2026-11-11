@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, LessThanOrEqual, Repository } from 'typeorm';
-import { AutomationLastStatus } from '../entities/automation.entity';
 import {
   AutomationTrigger,
   AutomationTriggerType,
@@ -76,8 +75,7 @@ export class AutomationTriggersRepository {
       {
         nextRunAt,
         lastEnqueueFailureAt: failure.at,
-        lastStatus: AutomationLastStatus.Failed,
-        lastError: failure.message,
+        lastEnqueueError: failure.message,
       },
     );
   }

@@ -11,10 +11,7 @@ import {
   ListAutomationTriggersGridQueryDto,
   UpdateAutomationTriggerDto,
 } from '../dto/automation-trigger.dto';
-import {
-  Automation,
-  AutomationLastStatus,
-} from '../entities/automation.entity';
+import { Automation } from '../entities/automation.entity';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';
 import { AutomationsRepository } from '../persistence/automations.repository';
@@ -134,9 +131,6 @@ export class AutomationTriggersService implements OnModuleInit {
       tagsJson: stringifyTags(dto.tags),
       triggerType: dto.triggerType,
       triggerConfigJson: JSON.stringify(triggerConfig),
-      lastStatus: AutomationLastStatus.NeverRun,
-      lastRunAt: null,
-      lastError: null,
       nextRunAt:
         dto.enabled === false
           ? null

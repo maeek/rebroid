@@ -5,7 +5,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { AutomationLastStatus } from './automation.entity';
 
 export enum AutomationTriggerType {
   Schedule = 'schedule',
@@ -57,19 +56,13 @@ export class AutomationTrigger {
   triggerConfigJson!: string;
 
   @Column({ type: 'datetime', nullable: true })
-  lastRunAt!: Date | null;
-
-  @Column({ type: 'datetime', nullable: true })
   nextRunAt!: Date | null;
 
   @Column({ type: 'datetime', nullable: true })
   lastEnqueueFailureAt!: Date | null;
 
-  @Column({ default: AutomationLastStatus.NeverRun })
-  lastStatus!: AutomationLastStatus;
-
   @Column({ type: 'text', nullable: true })
-  lastError!: string | null;
+  lastEnqueueError!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;

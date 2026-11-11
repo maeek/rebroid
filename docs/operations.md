@@ -60,10 +60,9 @@ df -i /var/lib/docker
 
 ## Stored state
 
-The orchestrator applies its registered SQLite migrations at startup. The workflow step results
-migration preserves existing results in their original order. Web schema changes and unsupported
-database layouts still require a state reset. The commands below delete data when `--execute` is
-supplied. Preview the reported paths and resources first.
+The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema
+changes require a clean database. The commands below delete data when `--execute` is supplied.
+Preview the reported paths and resources first.
 
 ### Orchestrator reset
 

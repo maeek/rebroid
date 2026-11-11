@@ -1,6 +1,5 @@
-import { NetworkPolicyRevision1800000002000 } from '../../database/migrations/1800000002000-network-policy-revision';
 import { DataSource, type Repository } from 'typeorm';
-import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
+import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../android-application.entity';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import { AndroidApplicationsRepository } from './android-applications.repository';
@@ -75,10 +74,7 @@ describe('Android application runtime observations', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication],
-      migrations: [
-        InitializeSqliteSchema1800000000000,
-        NetworkPolicyRevision1800000002000,
-      ],
+      migrations: [InitializeSqliteSchema1800000005000],
       migrationsRun: true,
     }).initialize();
     apps = database.getRepository(AndroidApplication);

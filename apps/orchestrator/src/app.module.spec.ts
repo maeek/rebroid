@@ -8,10 +8,7 @@ import { DataSource } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 import { AutomationRunEventsRepository } from './automations/persistence/automation-run-events.repository';
 import { AutomationRunsRepository } from './automations/persistence/automation-runs.repository';
-import { InitializeSqliteSchema1800000000000 } from './database/migrations/1800000000000-initialize-sqlite-schema';
-import { WorkflowRunSummaries1800000001000 } from './database/migrations/1800000001000-workflow-run-summaries';
-import { NetworkPolicyRevision1800000002000 } from './database/migrations/1800000002000-network-policy-revision';
-import { ApplicationWorkflowHistory1800000003000 } from './database/migrations/1800000003000-application-workflow-history';
+import { InitializeSqliteSchema1800000005000 } from './database/migrations/1800000005000-initialize-sqlite-schema';
 import {
   configureFastifyPlatform,
   createFastifyAdapter,
@@ -62,34 +59,35 @@ describe('AppModule', () => {
     await rm(temporaryDirectory, { recursive: true, force: true });
   });
 
-  it('upgrades stored workflow results before recovering an interrupted run', async () => {
+  it('preserves stored workflow results when recovering an interrupted run', async () => {
     const results = [{ stepId: 'first' }, { stepId: 'second' }];
-    const legacy = await new DataSource({
+    const database = await new DataSource({
       type: 'better-sqlite3',
       database: join(temporaryDirectory, 'orchestrator.sqlite'),
-      migrations: [
-        InitializeSqliteSchema1800000000000,
-        WorkflowRunSummaries1800000001000,
-        NetworkPolicyRevision1800000002000,
-        ApplicationWorkflowHistory1800000003000,
-      ],
+      migrations: [InitializeSqliteSchema1800000005000],
       migrationsRun: true,
     }).initialize();
     try {
-      await legacy.query(
+      await database.query(
         `INSERT INTO automation_runs
            (id, automationId, ownerUserId, targetApplicationId, trigger, status,
-            stepResultsJson, lastEventSequence)
-         VALUES ('run', 'workflow', 'owner', 'app', 'manual', 'running', ?, 1)`,
-        [JSON.stringify(results)],
+            lastEventSequence)
+         VALUES ('run', 'workflow', 'owner', 'app', 'manual', 'running', 1)`,
       );
-      await legacy.query(
+      for (const [index, result] of results.entries()) {
+        await database.query(
+          `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
+           VALUES ('run', ?, ?)`,
+          [index + 1, JSON.stringify(result)],
+        );
+      }
+      await database.query(
         `INSERT INTO automation_run_events
            (id, runId, ownerUserId, sequence, type, message)
          VALUES ('started', 'run', 'owner', 1, 'run.started', 'Started')`,
       );
     } finally {
-      await legacy.destroy();
+      await database.destroy();
     }
 
     const moduleRef = await Test.createTestingModule({

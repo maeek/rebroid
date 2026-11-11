@@ -32,7 +32,7 @@ export class AutomationsDtoMapper {
       tags: definition.metadata.tags ?? [],
       definition,
       yaml: this.definitions.toYaml(definition),
-      ...runSummary(automation, latestRun),
+      ...runSummary(latestRun),
       createdAt: toIso(automation.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(automation.updatedAt) ?? new Date().toISOString(),
     };
@@ -75,7 +75,7 @@ export class AutomationsDtoMapper {
       tags: parseAutomationTagsJson(trigger.tagsJson),
       triggerType: trigger.triggerType,
       triggerConfig: this.triggerConfig(trigger),
-      ...runSummary(trigger, latestRun, trigger.lastEnqueueFailureAt),
+      ...runSummary(latestRun, trigger),
       nextRunAt: toIso(trigger.nextRunAt),
       createdAt: toIso(trigger.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(trigger.updatedAt) ?? new Date().toISOString(),
@@ -91,26 +91,33 @@ const toIso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
 const runSummary = (
-  resource: Pick<Automation, 'lastStatus' | 'lastRunAt' | 'lastError'>,
   run?: AutomationRun,
-  lastEnqueueFailureAt?: Date | null,
+  trigger?: Pick<
+    AutomationTrigger,
+    'lastEnqueueFailureAt' | 'lastEnqueueError'
+  >,
 ) => {
-  if (!run)
-    return {
-      lastRunId: null,
-      lastRunAt: toIso(resource.lastRunAt),
-      lastStatus: resource.lastStatus,
-      lastError: resource.lastError,
-    };
-
-  const lastRunAt = toIso(run.completedAt ?? run.startedAt ?? run.createdAt);
-  if (lastEnqueueFailureAt && lastEnqueueFailureAt > run.createdAt)
+  const lastRunAt = run
+    ? toIso(run.completedAt ?? run.startedAt ?? run.createdAt)
+    : null;
+  if (
+    trigger?.lastEnqueueFailureAt &&
+    (!run || trigger.lastEnqueueFailureAt > run.createdAt)
+  )
     return {
       lastRunId: null,
       lastRunAt,
       lastStatus: AutomationLastStatus.Failed,
-      lastError: resource.lastError,
+      lastError: trigger.lastEnqueueError,
     };
+  if (!run)
+    return {
+      lastRunId: null,
+      lastRunAt,
+      lastStatus: AutomationLastStatus.NeverRun,
+      lastError: null,
+    };
+
   let lastStatus = AutomationLastStatus.Running;
   if (run.status === AutomationRunStatus.Success)
     lastStatus = AutomationLastStatus.Success;

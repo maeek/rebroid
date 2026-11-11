@@ -30,15 +30,6 @@ export class Automation {
   @Column({ type: 'text' })
   definitionJson!: string;
 
-  @Column({ type: 'datetime', nullable: true })
-  lastRunAt!: Date | null;
-
-  @Column({ default: AutomationLastStatus.NeverRun })
-  lastStatus!: AutomationLastStatus;
-
-  @Column({ type: 'text', nullable: true })
-  lastError!: string | null;
-
   @CreateDateColumn()
   createdAt!: Date;
 

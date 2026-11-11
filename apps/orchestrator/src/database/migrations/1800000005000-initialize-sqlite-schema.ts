@@ -4,8 +4,8 @@ import {
   dropRuntimeImageSchema,
 } from '../create-runtime-image-schema';
 
-export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
-  name = 'InitializeSqliteSchema1800000000000';
+export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
+  name = 'InitializeSqliteSchema1800000005000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     if (
@@ -13,7 +13,7 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
       (await queryRunner.hasTable('uploaded_apks'))
     ) {
       throw new Error(
-        'Unsupported orchestrator database schema. Reset stored state with "docker compose -f deploy/compose.yaml down -v" before starting Rebroid.',
+        'Unsupported orchestrator database schema. See the orchestrator state reset procedure in docs/operations.md.',
       );
     }
 
@@ -38,6 +38,12 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'statusMessage', type: 'text', isNullable: true },
           { name: 'containerImage', type: 'varchar', isNullable: false },
+          {
+            name: 'runtimeKind',
+            type: 'varchar',
+            isNullable: false,
+            default: "'generic'",
+          },
           { name: 'containerName', type: 'varchar', isNullable: false },
           { name: 'containerId', type: 'text', isNullable: true },
           { name: 'networkName', type: 'varchar', isNullable: false },
@@ -81,6 +87,12 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
             type: 'text',
             isNullable: false,
             default: "'[]'",
+          },
+          {
+            name: 'networkPolicyRevision',
+            type: 'integer',
+            isNullable: false,
+            default: '0',
           },
           { name: 'networkPolicyStatus', type: 'text', isNullable: true },
           { name: 'networkPolicyMessage', type: 'text', isNullable: true },
@@ -291,14 +303,6 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           { name: 'name', type: 'varchar', isNullable: false },
           { name: 'description', type: 'text', isNullable: true },
           { name: 'definitionJson', type: 'text', isNullable: false },
-          { name: 'lastRunAt', type: 'datetime', isNullable: true },
-          {
-            name: 'lastStatus',
-            type: 'varchar',
-            isNullable: false,
-            default: "'never_run'",
-          },
-          { name: 'lastError', type: 'text', isNullable: true },
           {
             name: 'createdAt',
             type: 'datetime',
@@ -335,12 +339,6 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'startedAt', type: 'datetime', isNullable: true },
           { name: 'completedAt', type: 'datetime', isNullable: true },
-          {
-            name: 'stepResultsJson',
-            type: 'text',
-            isNullable: false,
-            default: "'[]'",
-          },
           { name: 'error', type: 'text', isNullable: true },
           {
             name: 'lastEventSequence',
@@ -362,6 +360,15 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
         ],
       }),
+    );
+
+    await queryRunner.query(
+      `CREATE TABLE automation_run_step_results (
+         runId varchar NOT NULL REFERENCES automation_runs(id) ON DELETE CASCADE,
+         sequence integer NOT NULL,
+         resultJson text NOT NULL,
+         PRIMARY KEY (runId, sequence)
+       )`,
     );
 
     await queryRunner.createTable(
@@ -418,15 +425,9 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
           },
           { name: 'triggerType', type: 'varchar', isNullable: false },
           { name: 'triggerConfigJson', type: 'text', isNullable: false },
-          { name: 'lastRunAt', type: 'datetime', isNullable: true },
+          { name: 'lastEnqueueFailureAt', type: 'datetime', isNullable: true },
           { name: 'nextRunAt', type: 'datetime', isNullable: true },
-          {
-            name: 'lastStatus',
-            type: 'varchar',
-            isNullable: false,
-            default: "'never_run'",
-          },
-          { name: 'lastError', type: 'text', isNullable: true },
+          { name: 'lastEnqueueError', type: 'text', isNullable: true },
           {
             name: 'createdAt',
             type: 'datetime',
@@ -510,6 +511,21 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
       [
         'automation_runs',
         new TableIndex({
+          name: 'automation_runs_owner_trigger_created_idx',
+          columnNames: ['ownerUserId', 'automationTriggerId', 'createdAt'],
+          where: 'automationTriggerId IS NOT NULL',
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
+          name: 'automation_runs_owner_target_created_idx',
+          columnNames: ['ownerUserId', 'targetApplicationId', 'createdAt'],
+        }),
+      ],
+      [
+        'automation_runs',
+        new TableIndex({
           name: 'automation_runs_owner_status_created_idx',
           columnNames: ['ownerUserId', 'status', 'createdAt'],
         }),
@@ -568,37 +584,14 @@ export class InitializeSqliteSchema1800000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await dropRuntimeImageSchema(queryRunner);
-
-    if (await queryRunner.hasTable('automation_run_events')) {
-      await queryRunner.dropTable('automation_run_events');
-    }
-
-    if (await queryRunner.hasTable('automation_triggers')) {
-      await queryRunner.dropTable('automation_triggers');
-    }
-
-    if (await queryRunner.hasTable('automation_runs')) {
-      await queryRunner.dropTable('automation_runs');
-    }
-
-    if (await queryRunner.hasTable('automations')) {
-      await queryRunner.dropTable('automations');
-    }
-
-    if (await queryRunner.hasTable('scheduled_tasks')) {
-      await queryRunner.dropTable('scheduled_tasks');
-    }
-
-    if (await queryRunner.hasTable('android_app_lifecycle_jobs')) {
-      await queryRunner.dropTable('android_app_lifecycle_jobs');
-    }
-
-    if (await queryRunner.hasTable('uploaded_apks')) {
-      await queryRunner.dropTable('uploaded_apks');
-    }
-
-    if (await queryRunner.hasTable('android_applications')) {
-      await queryRunner.dropTable('android_applications');
-    }
+    await queryRunner.dropTable('automation_run_events');
+    await queryRunner.dropTable('automation_run_step_results');
+    await queryRunner.dropTable('automation_triggers');
+    await queryRunner.dropTable('automation_runs');
+    await queryRunner.dropTable('automations');
+    await queryRunner.dropTable('scheduled_tasks');
+    await queryRunner.dropTable('android_app_lifecycle_jobs');
+    await queryRunner.dropTable('uploaded_apks');
+    await queryRunner.dropTable('android_applications');
   }
 }

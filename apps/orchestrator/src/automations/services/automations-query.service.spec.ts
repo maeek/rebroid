@@ -1,7 +1,5 @@
 import { DataSource } from 'typeorm';
-import { WorkflowRunSummaries1800000001000 } from '../../database/migrations/1800000001000-workflow-run-summaries';
-import { InitializeSqliteSchema1800000000000 } from '../../database/migrations/1800000000000-initialize-sqlite-schema';
-import { AutomationRunStepResults1800000004000 } from '../../database/migrations/1800000004000-automation-run-step-results';
+import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import {
   Automation,
@@ -33,11 +31,7 @@ describe('workflow run summaries', () => {
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [Automation, AutomationRun, AutomationTrigger],
-      migrations: [
-        InitializeSqliteSchema1800000000000,
-        WorkflowRunSummaries1800000001000,
-        AutomationRunStepResults1800000004000,
-      ],
+      migrations: [InitializeSqliteSchema1800000005000],
       migrationsRun: true,
     }).initialize();
     runs = new AutomationRunsRepository(db.getRepository(AutomationRun));
@@ -52,8 +46,6 @@ describe('workflow run summaries', () => {
       ownerUserId: 'owner',
       name: 'Check inventory',
       definitionJson: '{"metadata":{}}',
-      lastStatus: AutomationLastStatus.Running,
-      lastRunAt: new Date('2026-01-01T00:00:00Z'),
     });
   });
 
@@ -62,6 +54,13 @@ describe('workflow run summaries', () => {
   });
 
   it('shows a failed run before any steps start, even after an older run completes', async () => {
+    await expect(queries.get('owner', 'workflow')).resolves.toMatchObject({
+      lastRunId: null,
+      lastRunAt: null,
+      lastStatus: AutomationLastStatus.NeverRun,
+      lastError: null,
+    });
+
     const enqueue = (targetApplicationId: string) =>
       runs.save(
         runs.create({
@@ -144,6 +143,17 @@ describe('workflow run summaries', () => {
           stepResultsJson: '[]',
         }),
       );
+    await triggers.updateSchedule(trigger, new Date('2026-01-02T00:00:00Z'), {
+      at: new Date('2026-01-01T00:00:00Z'),
+      message: 'First enqueue rejected.',
+    });
+    await expect(service.get('owner', trigger.id)).resolves.toMatchObject({
+      lastRunId: null,
+      lastRunAt: null,
+      lastStatus: AutomationLastStatus.Failed,
+      lastError: 'First enqueue rejected.',
+    });
+
     const oldRun = await enqueue('2026-01-02T00:00:00Z');
     await runs.transition(oldRun.id, [AutomationRunStatus.Queued], {
       status: AutomationRunStatus.Success,
