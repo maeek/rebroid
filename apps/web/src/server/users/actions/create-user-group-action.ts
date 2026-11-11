@@ -8,9 +8,9 @@ import type { CreateUserGroupInput } from '@/shared/contracts/auth-user'
 
 export const createUserGroupAction = async (input: CreateUserGroupInput) =>
   runSafeAction(
-    async () => {
+    async requestId => {
       const admin = await requireAdminUser()
-      const group = await userService.createGroup(input)
+      const group = await userService.createGroup(input, { identity: admin.identity, requestId })
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,

@@ -1,4 +1,5 @@
 import { Body, Controller, Param, Post, Req } from "@nestjs/common";
+import type { IncomingHttpHeaders } from "node:http";
 import {
   ApiBody,
   ApiOkResponse,
@@ -8,34 +9,38 @@ import {
 } from "@nestjs/swagger";
 import {
   DisplayCommandResultDto,
+  DisplayActionDto,
   DisplayKeyboardDto,
   DisplayTouchDto,
   DisplayWebrtcAnswerDto,
   DisplayWebrtcOfferDto,
-  PublicDisplayActionDto,
 } from "./display.dto";
 import { DisplayControlService } from "./display-control.service";
-import { DisplaySessionService } from "./display-session.service";
+import { DisplayViewerAccessService } from "./display-viewer-access.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 
 @ApiTags("display-public")
 @Controller("rebroid/display/public/sessions/:id")
 export class DisplayPublicController {
   constructor(
-    private readonly sessions: DisplaySessionService,
+    private readonly access: DisplayViewerAccessService,
     private readonly controls: DisplayControlService,
     private readonly webrtc: DisplayWebrtcService,
   ) {}
 
   @Post("actions")
   @ApiOperation({
-    summary: "Execute a viewer control action using a display session token.",
+    summary: "Execute an action for the signed-in owner of a display session.",
   })
   @ApiParam({ name: "id", description: "Display session id." })
-  @ApiBody({ type: PublicDisplayActionDto })
+  @ApiBody({ type: DisplayActionDto })
   @ApiOkResponse({ type: DisplayCommandResultDto })
-  async action(@Param("id") id: string, @Body() body: PublicDisplayActionDto) {
-    this.sessions.assertStreamToken(id, body.token ?? null);
+  async action(
+    @Param("id") id: string,
+    @Body() body: DisplayActionDto,
+    @Req() request: { headers: IncomingHttpHeaders },
+  ) {
+    await this.access.admit(id, request.headers);
     return {
       ok: true,
       ...(await this.controls.execute(id, {
@@ -47,7 +52,8 @@ export class DisplayPublicController {
 
   @Post("webrtc/offer")
   @ApiOperation({
-    summary: "Create a WebRTC display answer using a display session token.",
+    summary:
+      "Create a WebRTC answer for the signed-in owner of a display session.",
   })
   @ApiParam({ name: "id", description: "Display session id." })
   @ApiBody({ type: DisplayWebrtcOfferDto })
@@ -55,20 +61,12 @@ export class DisplayPublicController {
   publicWebrtcOffer(
     @Param("id") id: string,
     @Body() body: DisplayWebrtcOfferDto,
-    @Req() request: { headers: Record<string, string | string[] | undefined> },
+    @Req() request: { headers: IncomingHttpHeaders },
   ) {
-    const hostHeader =
-      request.headers["x-rebroid-viewer-host"] ??
-      request.headers["x-forwarded-host"] ??
-      request.headers.host;
-    const requestHost = Array.isArray(hostHeader)
-      ? (hostHeader[0] ?? null)
-      : (hostHeader ?? null);
     return this.webrtc.createAnswer({
       sessionId: id,
-      token: body.token ?? null,
+      headers: request.headers,
       sdp: body.sdp,
-      requestHost,
       bitrate: body.bitrate,
       maxFps: body.maxFps,
       maxSize: body.maxSize,
@@ -79,13 +77,18 @@ export class DisplayPublicController {
 
   @Post("keyboard")
   @ApiOperation({
-    summary: "Send a browser keyboard event using a display session token.",
+    summary:
+      "Send a keyboard event for the signed-in owner of a display session.",
   })
   @ApiParam({ name: "id", description: "Display session id." })
   @ApiBody({ type: DisplayKeyboardDto })
   @ApiOkResponse({ type: DisplayCommandResultDto })
-  async keyboard(@Param("id") id: string, @Body() body: DisplayKeyboardDto) {
-    this.sessions.assertStreamToken(id, body.token ?? null);
+  async keyboard(
+    @Param("id") id: string,
+    @Body() body: DisplayKeyboardDto,
+    @Req() request: { headers: IncomingHttpHeaders },
+  ) {
+    await this.access.admit(id, request.headers);
     return {
       ok: true,
       ...(await this.controls.execute(id, { ...body, type: "keyboard" })),
@@ -94,13 +97,17 @@ export class DisplayPublicController {
 
   @Post("touch")
   @ApiOperation({
-    summary: "Send a tap or swipe event using a display session token.",
+    summary: "Send a touch event for the signed-in owner of a display session.",
   })
   @ApiParam({ name: "id", description: "Display session id." })
   @ApiBody({ type: DisplayTouchDto })
   @ApiOkResponse({ type: DisplayCommandResultDto })
-  async touch(@Param("id") id: string, @Body() body: DisplayTouchDto) {
-    this.sessions.assertStreamToken(id, body.token ?? null);
+  async touch(
+    @Param("id") id: string,
+    @Body() body: DisplayTouchDto,
+    @Req() request: { headers: IncomingHttpHeaders },
+  ) {
+    await this.access.admit(id, request.headers);
     return {
       ok: true,
       ...(await this.controls.execute(id, { ...body, type: "touch" })),

@@ -3,10 +3,9 @@
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { requireFeature } from '../../../features'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
-import { assertViewerGrantCurrent, assertViewerRevocationComplete } from '../../viewer-grant-access'
+import { issueViewerGrant } from '../../viewer-grant-access'
 import {
   assertCanUseOwnedApplicationRuntime,
   ownedRuntimeControlMessage,
@@ -15,15 +14,10 @@ import {
 import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const getScrcpySessionAction = async (id: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  assertViewerRevocationComplete(user.ownerUserId)
-  const session = await orchestratorAppViewerClient.getScrcpySession(id, {
-    control: hasPermission(user.permissions, 'applications:control-viewer'),
-    clipboard: hasPermission(user.permissions, 'applications:sync-clipboard'),
-    screenshot: hasPermission(user.permissions, 'applications:capture-screenshot')
-  })
-  await assertViewerGrantCurrent(user)
-  return sanitizeScrcpySessionForUser(session, user)
+  const { grant, user } = await issueViewerGrant(id, 'main', access =>
+    orchestratorAppViewerClient.getScrcpySession(id, access)
+  )
+  return sanitizeScrcpySessionForUser(grant, user)
 }
 
 export const recordViewerActivityAction = async (id: string) => {
@@ -54,23 +48,10 @@ export const sendApplicationViewerControlAction = async (id: string, command: Ap
 }
 
 export const createApplicationVirtualDisplayAction = async (id: string) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)
-  await requireFeature('feature.display-virtual')
-  if (!hasPermission(user.permissions, 'applications:control-viewer')) {
-    throw new PublicActionError('You do not have permission to add displays for this viewer.', {
-      code: 'forbidden',
-      status: 403
-    })
-  }
-
-  assertViewerRevocationComplete(user.ownerUserId)
-  const session = await orchestratorAppViewerClient.createVirtualDisplay(id, {
-    control: true,
-    clipboard: hasPermission(user.permissions, 'applications:sync-clipboard'),
-    screenshot: hasPermission(user.permissions, 'applications:capture-screenshot')
-  })
-  await assertViewerGrantCurrent(user)
-  return session
+  const { grant } = await issueViewerGrant(id, 'virtual', access =>
+    orchestratorAppViewerClient.createVirtualDisplay(id, access)
+  )
+  return grant
 }
 
 export const releaseApplicationVirtualDisplayAction = async (id: string, surfaceId: string) => {

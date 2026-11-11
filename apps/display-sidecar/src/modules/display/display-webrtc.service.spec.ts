@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { NotFoundException } from "@nestjs/common";
 import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import type { IncomingHttpHeaders } from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
 import { ScrcpySourceStream } from "../scrcpy/scrcpy-source-stream";
 import type { ScrcpyStreamOptions } from "../scrcpy/scrcpy.types";
@@ -11,8 +13,7 @@ import { DisplayWebrtcService } from "./display-webrtc.service";
 
 const offer = {
   sessionId: "display",
-  token: "test-token",
-  requestHost: "rebroid.test",
+  headers: { host: "rebroid.test" },
   sdp: "fixture",
   audio: false,
 };
@@ -28,13 +29,23 @@ const setup = (scrcpy: object, config = {}, webrtcEnabled = true) => {
   });
   return new DisplayWebrtcService(
     {
-      assertStreamToken: () => ({ udid: "fixture" }),
       assertCapability: () => undefined,
     } as never,
     scrcpy as never,
     config as never,
     {} as never,
     features,
+    {
+      admit: async (_id: string, headers: IncomingHttpHeaders) => {
+        if (headers.cookie === "different account") {
+          throw new NotFoundException("Display session not found.");
+        }
+        return {
+          session: { udid: "fixture", capabilities: ["video", "audio"] },
+          watch: () => () => undefined,
+        };
+      },
+    } as never,
   );
 };
 
@@ -56,14 +67,19 @@ const deferred = () => {
 
 test("session release cancels an offer during target preparation", async () => {
   const probe = deferred();
+  const started = deferred();
   let attachments = 0;
   const service = setup({
-    assertTargetSupported: () => probe.promise,
+    assertTargetSupported: () => {
+      started.resolve();
+      return probe.promise;
+    },
     attachStream: () => {
       attachments += 1;
     },
   });
   const pending = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await started.promise;
   service.stopSession(offer.sessionId);
   await pending;
   probe.resolve();
@@ -91,6 +107,14 @@ test("a new offer replaces only its predecessor's bootstrap attachment", async (
   });
   const first = assert.rejects(service.createAnswer(offer), /cancelled/);
   await attached[0]!.promise;
+  await assert.rejects(
+    service.createAnswer({
+      ...offer,
+      headers: { ...offer.headers, cookie: "different account" },
+    }),
+    /Display session not found/,
+  );
+  assert.deepEqual(detached, []);
   const second = assert.rejects(service.createAnswer(offer), /cancelled/);
   await first;
   await attached[1]!.promise;

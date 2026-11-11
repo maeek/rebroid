@@ -1,5 +1,5 @@
 import { viewerCommands } from "@rebroid/android-application-core/viewer-control";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { DisplayFeatureStateDto } from "../shared/sidecar-feature.dto";
 
 export type DisplaySessionStatus =
@@ -36,6 +36,11 @@ export class CreateDisplaySessionDto {
   ownerUserId?: string;
 
   @ApiPropertyOptional({
+    description: "Docker container ID for the viewer grant.",
+  })
+  runtimeId?: string;
+
+  @ApiPropertyOptional({
     example: 900,
     description:
       "Session TTL in seconds. Defaults to DISPLAY_SESSION_TTL_SECONDS.",
@@ -44,7 +49,7 @@ export class CreateDisplaySessionDto {
 
   @ApiPropertyOptional({
     example: ["video", "audio", "control", "clipboard", "screenshot"],
-    description: "Informational capability labels assigned to the session.",
+    description: "Capabilities assigned to the session.",
     type: [String],
   })
   capabilities?: string[];
@@ -109,10 +114,10 @@ export class DisplaySurfaceDto {
   @ApiProperty({ example: "2026-05-25T20:30:10.000Z" })
   lastActivityAt!: string;
 
-  @ApiProperty({ example: "/rebroid/display/stream?sessionId=...&token=..." })
+  @ApiProperty({ example: "/rebroid/display/stream?sessionId=..." })
   streamPath!: string;
 
-  @ApiProperty({ example: "/viewer/display/?sessionId=...&token=..." })
+  @ApiProperty({ example: "/viewer/display?sessionId=..." })
   viewerPath!: string;
 
   @ApiProperty({ example: "/rebroid/display/public/sessions/.../webrtc/offer" })
@@ -131,12 +136,6 @@ export class DisplaySessionDto {
 
   @ApiPropertyOptional({ example: "app_123" })
   appId?: string;
-
-  @ApiProperty({ example: "redroid-13:5555" })
-  udid!: string;
-
-  @ApiPropertyOptional({ example: "user_123" })
-  ownerUserId?: string;
 
   @ApiProperty({ example: "main" })
   surfaceId!: string;
@@ -183,14 +182,50 @@ export class DisplaySessionDto {
   @ApiProperty({ type: DisplaySurfaceDto, isArray: true })
   surfaces!: DisplaySurfaceDto[];
 
-  @ApiProperty({ example: "/rebroid/display/stream?sessionId=...&token=..." })
+  @ApiProperty({ example: "/rebroid/display/stream?sessionId=..." })
   streamPath!: string;
 
-  @ApiProperty({ example: "/viewer/display/?sessionId=...&token=..." })
+  @ApiProperty({ example: "/viewer/display?sessionId=..." })
   viewerPath!: string;
 
   @ApiProperty({ example: "/rebroid/display/public/sessions/.../webrtc/offer" })
   webrtcOfferPath!: string;
+}
+
+export class DisplaySessionInventoryItemDto extends PickType(
+  DisplaySessionDto,
+  [
+    "id",
+    "appId",
+    "status",
+    "createdAt",
+    "lastActivityAt",
+    "expiresAt",
+    "capabilities",
+  ] as const,
+) {
+  @ApiPropertyOptional({ example: "user_123" })
+  ownerUserId?: string;
+}
+
+export class DisplaySessionInventoryDto {
+  @ApiProperty({ type: DisplaySessionInventoryItemDto, isArray: true })
+  items!: DisplaySessionInventoryItemDto[];
+}
+
+export class RevokeDisplaySessionsDto {
+  @ApiProperty({
+    type: "array",
+    minItems: 1,
+    maxItems: 256,
+    items: { type: "string", minLength: 1, maxLength: 200 },
+  })
+  ownerUserIds!: string[];
+}
+
+export class DisplaySessionRevocationDto {
+  @ApiProperty({ minimum: 0 })
+  released!: number;
 }
 
 export class DisplaySessionResponseDto {
@@ -213,23 +248,7 @@ export class DisplayActionDto {
   command?: string;
 }
 
-export class PublicDisplayActionDto extends DisplayActionDto {
-  @ApiPropertyOptional({
-    example: "display-session-token",
-    type: String,
-    nullable: true,
-  })
-  token?: string | null;
-}
-
 export class DisplayWebrtcOfferDto {
-  @ApiPropertyOptional({
-    example: "display-session-token",
-    type: String,
-    nullable: true,
-  })
-  token?: string | null;
-
   @ApiProperty({ example: "v=0\r\n..." })
   sdp!: string;
 
@@ -267,13 +286,6 @@ export class DisplayWebrtcAnswerDto {
 }
 
 export class DisplayKeyboardDto {
-  @ApiPropertyOptional({
-    example: "display-session-token",
-    type: String,
-    nullable: true,
-  })
-  token?: string | null;
-
   @ApiPropertyOptional({ enum: ["keydown", "keyup"], example: "keydown" })
   eventType?: "keydown" | "keyup";
 
@@ -300,13 +312,6 @@ export class DisplayKeyboardDto {
 }
 
 export class DisplayTouchDto {
-  @ApiPropertyOptional({
-    example: "display-session-token",
-    type: String,
-    nullable: true,
-  })
-  token?: string | null;
-
   @ApiPropertyOptional({
     enum: ["tap", "swipe", "pointer"],
     example: "pointer",

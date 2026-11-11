@@ -4,7 +4,6 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { userService } from '@/server/auth/user'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
-import { commitWithViewerRevocation } from '../viewer-revocation-mutation'
 import type { UserGroup } from '@/shared/contracts/auth-user'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
@@ -17,9 +16,10 @@ export const updateUserGroupAction = async (
   return runSafeAction(
     async requestId => {
       const admin = await requireAdminUser()
-      const { value: group, viewerRevocation } = await commitWithViewerRevocation(requestId, prepare =>
-        userService.updateGroup(id, input, prepare)
-      )
+      const { value: group, viewerRevocation } = await userService.updateGroup(id, input, {
+        identity: admin.identity,
+        requestId
+      })
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,

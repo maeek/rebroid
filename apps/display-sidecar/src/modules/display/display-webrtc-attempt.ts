@@ -29,6 +29,7 @@ interface WebrtcAttemptOptions {
   iceHost: string;
   maxFps: number;
   audio: boolean;
+  allowClipboard: boolean;
   iceServers: string[];
   udpPortRange: string;
   assertSourceSupported: () => Promise<void>;
@@ -117,6 +118,7 @@ export class DisplayWebrtcAttempt {
       sink.sendStatus({ type: "audio-disabled", message });
     };
     const sink = new QueuedScrcpyMediaSink({
+      allowClipboard: this.options.allowClipboard,
       isOpen: () => bridge.isOpen(),
       onClose: (listener) => bridge.onClose(listener),
       writeStatus: (payload) => bridge.sendDataChannel(JSON.parse(payload)),

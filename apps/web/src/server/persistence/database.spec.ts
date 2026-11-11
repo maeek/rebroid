@@ -2,8 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { auditEventsToCsv, auditSortFromSearchParams } from '@/server/audit/query'
+import { completeTestAdministratorSetup } from '@/server/auth/test-administrator'
 import { userService } from '@/server/auth/user'
 import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
 import { serializeSortParam } from '@/shared/model/search-params'
@@ -24,6 +25,10 @@ import {
   listRecentApplications,
   rememberRecentApplication
 } from './recent-applications-repository'
+
+vi.mock('@/server/users/revoke-viewer-sessions', () => ({
+  revokeViewerSessionsForUsers: vi.fn().mockResolvedValue(undefined)
+}))
 
 describe('fresh web database', () => {
   let tempDirectory: string
@@ -89,7 +94,8 @@ describe('fresh web database', () => {
   })
 
   it('consumes automation drafts once and only for their owner', async () => {
-    const owner = await userService.createUser({ username: 'owner', password: 'original-password' })
+    const administrator = await completeTestAdministratorSetup()
+    const owner = await userService.createUser({ username: 'owner', password: 'original-password' }, administrator)
     const draft = createAutomationDraft(owner.id, 'name: draft', 'run-1')
     expect(consumeAutomationDraft('another-user', draft.token)).toBeNull()
     expect(consumeAutomationDraft(owner.id, draft.token)).toMatchObject({ yaml: 'name: draft', sourceRunId: 'run-1' })
@@ -97,22 +103,23 @@ describe('fresh web database', () => {
   })
 
   it('keeps drafts and MFA setup for retained accounts while cascading actual deletions', async () => {
-    const first = await userService.createUser({ username: 'first', password: 'original-password' })
-    const second = await userService.createUser({ username: 'second', password: 'original-password' })
-    const group = await userService.createGroup({ name: 'Extra group' })
+    const administrator = await completeTestAdministratorSetup()
+    const first = await userService.createUser({ username: 'first', password: 'original-password' }, administrator)
+    const second = await userService.createUser({ username: 'second', password: 'original-password' }, administrator)
+    const group = await userService.createGroup({ name: 'Extra group' }, administrator)
     const firstDraft = createAutomationDraft(first.id, 'name: first')
     const secondDraft = createAutomationDraft(second.id, 'name: second')
     saveMfaSetup(first.id, 'first-setup')
     saveMfaSetup(second.id, 'second-setup')
 
-    await userService.updateUser(first.id, { groupIds: [group.id] })
-    await userService.updateGroup(group.id, { name: 'Renamed group' })
-    await userService.deleteGroup(group.id)
+    await userService.updateUser(first.id, { groupIds: [group.id] }, administrator)
+    await userService.updateGroup(group.id, { name: 'Renamed group' }, administrator)
+    await userService.deleteGroup(group.id, administrator)
     expect(getMfaSetup(first.id)).toBe('first-setup')
     expect(getMfaSetup(second.id)).toBe('second-setup')
     expect(consumeAutomationDraft(first.id, firstDraft.token)).toMatchObject({ yaml: 'name: first' })
 
-    await userService.deleteUser(first.id)
+    await userService.deleteUser(first.id, administrator)
     expect(getMfaSetup(first.id)).toBeNull()
     expect(getMfaSetup(second.id)).toBe('second-setup')
     expect(consumeAutomationDraft(second.id, secondDraft.token)).toMatchObject({ yaml: 'name: second' })

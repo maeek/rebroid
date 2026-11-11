@@ -12,6 +12,7 @@ export type DisplaySessionStatus =
 export interface DisplaySession {
   id: string;
   appId?: string;
+  runtimeId?: string;
   udid: string;
   ownerUserId?: string;
   surfaceId: string;
@@ -20,7 +21,6 @@ export interface DisplaySession {
   displayId?: number;
   newDisplay?: DisplayNewDisplayConfig;
   status: DisplaySessionStatus;
-  token: string;
   createdAt: string;
   lastActivityAt: string;
   expiresAt: string;
@@ -52,7 +52,7 @@ export interface DisplaySurface {
 }
 
 export interface PublicDisplaySession
-  extends Omit<DisplaySession, "token" | "udid" | "ownerUserId"> {
+  extends Omit<DisplaySession, "udid" | "ownerUserId" | "runtimeId"> {
   surface: DisplaySurface;
   surfaces: DisplaySurface[];
   streamPath: string;
@@ -62,6 +62,7 @@ export interface PublicDisplaySession
 
 export interface CreateDisplaySessionBody {
   appId?: string;
+  runtimeId?: string;
   udid: string;
   ownerUserId?: string;
   ttlSeconds?: number;
@@ -84,24 +85,12 @@ export interface DisplayActionBody {
   command?: string;
 }
 
-export interface PublicDisplayActionBody extends DisplayActionBody {
-  token?: string | null;
-}
-
-export interface DisplayKeyboardBody extends KeyboardControlPayload {
-  token?: string | null;
-}
-
-export interface DisplayTouchBody extends TouchControlPayload {
-  token?: string | null;
-}
-
 export interface DisplayClipboardBody {
   text?: string;
 }
 
 export type DisplayControlRequest =
   | { id?: string; type: "action"; command?: string }
-  | ({ id?: string; type: "keyboard" } & DisplayKeyboardBody)
-  | ({ id?: string; type: "touch" } & DisplayTouchBody)
+  | ({ id?: string; type: "keyboard" } & KeyboardControlPayload)
+  | ({ id?: string; type: "touch" } & TouchControlPayload)
   | { id?: string; type: "clipboard"; text?: string };

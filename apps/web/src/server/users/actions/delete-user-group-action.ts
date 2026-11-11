@@ -4,15 +4,15 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { userService } from '@/server/auth/user'
 import { requireAdminUser, revalidateUsersPage } from '../shared'
-import { commitWithViewerRevocation } from '../viewer-revocation-mutation'
 
 export const deleteUserGroupAction = async (id: string) =>
   runSafeAction(
     async requestId => {
       const admin = await requireAdminUser()
-      const { value: group, viewerRevocation } = await commitWithViewerRevocation(requestId, prepare =>
-        userService.deleteGroup(id, prepare)
-      )
+      const { value: group, viewerRevocation } = await userService.deleteGroup(id, {
+        identity: admin.identity,
+        requestId
+      })
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,

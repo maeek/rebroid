@@ -10,6 +10,7 @@ import { DisplayGateway } from "./display.gateway";
 import { DisplaySessionService } from "./display-session.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 import { DisplaySessionLifecycleService } from "./display-session-lifecycle.service";
+import { DisplayViewerAccessService } from "./display-viewer-access.service";
 
 @Module({
   imports: [AdbModule, ScrcpyModule],
@@ -24,6 +25,7 @@ import { DisplaySessionLifecycleService } from "./display-session-lifecycle.serv
     DisplayGateway,
     DisplaySessionService,
     DisplaySessionLifecycleService,
+    DisplayViewerAccessService,
     DisplayWebrtcService,
   ],
   exports: [DisplaySessionService],

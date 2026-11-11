@@ -100,10 +100,11 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 - The orchestrator owns Android application lifecycle state. The display sidecar owns viewer session state. The firewall agent owns host firewall reconciliation.
 - `deploy/edge` nginx owns public HTTPS ingress. Keep Next.js internal and route
   display viewer/media paths directly to the display sidecar; do not
-  reintroduce a Node media proxy. Short-lived display-session tokens remain the
-  viewer authorization boundary.
+  reintroduce a Node media proxy. Viewer URLs carry session IDs without credentials.
+  Require the current web account, app ownership, runtime identity, and granted capabilities
+  for viewer attachment and control. Close active consumers on revocation or failed reauthorization.
 - The orchestrator `feature-flags` module owns the typed registry, persisted runtime intent, revision, and immutable hot-path snapshot. Sidecars receive only their owned effective subset through authenticated synchronization and never persist platform feature values. Gate coarse use-case boundaries; feature flags do not replace permissions, health, or authentication.
-- The orchestrator enforces `feature.ocr`, `feature.firewall`, `feature.image-builder`, `feature.ai`, `feature.workflows`, and transactional open-app admission for `feature.resource-quota`. Web applies per-user CPU, memory, session, and open-app quota checks using the manifest. Workflows and AI are independently switchable. Preserve cancellation and event access for active runs.
+- The orchestrator enforces `feature.ocr`, `feature.firewall`, `feature.image-builder`, `feature.ai`, `feature.workflows`, and transactional open-app admission for `feature.resource-quota`. Web applies per-user CPU, memory, and session quota checks using the manifest and counts queued target reservations for workflow startup. Workflows and AI are independently switchable. Preserve cancellation and event access for active runs.
 - The display sidecar receives `feature.display-virtual` and `feature.display-webrtc` in one revisioned snapshot. Fail closed for new virtual surfaces and WebRTC offers when their state is absent, stale, or disabled. Use WebSocket for new viewer connections when WebRTC is off.
 - Firewall feature checks must allow saving and applying disabled app policies and creating unrestricted apps. Gate restricted operations on the resulting policy state before persisting; preserve ownership and unrestricted-internet permissions. Disabling the feature leaves existing host rules unchanged.
 - Restricted runtime activation requires an acknowledged forwarding guard on the managed IPv4 subnet before Docker starts the container. Keep the guard through policy installation and do not clear it if stopping an unverified runtime fails.
@@ -306,12 +307,16 @@ Do not move runtime integrations, framework adapters, database access, HTTP cont
 
 - Automation execution must reauthorize current account state, command permissions, target ownership,
   and startup permissions/quotas through the secret-authenticated web internal authorization endpoint
-  before target preparation. Configure `WEB_INTERNAL_URL` for non-Compose deployments; failure is closed.
+  before target preparation. Resolve omitted AI capabilities from the shared defaults and current group
+  permissions. Require that grant at dispatch and validate explicit capabilities separately.
+  Configure `WEB_INTERNAL_URL` for non-Compose deployments. Fail closed if authorization is unavailable.
 - Runtime image name detection is not a publisher trust policy. Keep Redroid-only authorization scoped
   to the official repository, and never log query strings containing viewer or event-stream tokens.
 
 - Nest development Swagger UI must retain explicit compatible `@fastify/static` runtime dependencies
   in both services; bootstrap tests must exercise Swagger assets as well as guarded API routes.
 - Validate viewer control payloads at the shared dispatch boundary, bound WebSocket input, and retain
-  server-owned HTTP action types. Account/group access changes revoke viewer sessions before and
-  after persistence; recheck in-flight viewer grants against fresh account state before returning tokens.
+  server-owned HTTP action types. Administrative account and group commands own viewer revocation.
+  Recheck the administrator inside the mutation queue and validate changes before revoking affected owners.
+  Commit pending revocation with the access change.
+  Recheck the initiating web session and capabilities after minting main or virtual viewer grants.

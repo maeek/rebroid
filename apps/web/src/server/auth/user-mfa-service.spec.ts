@@ -4,8 +4,12 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDatabaseForTests } from '@/server/persistence/database'
 import { saveMfaSetup } from '@/server/persistence/mfa-setup-repository'
+import { revokeViewerSessionsForUsers } from '@/server/users/revoke-viewer-sessions'
 import { encryptMfaSecret } from './mfa-crypto'
+import { completeTestAdministratorSetup } from './test-administrator'
 import { userService } from './user'
+
+vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeViewerSessionsForUsers: vi.fn() }))
 
 describe('user MFA service', () => {
   let tempDirectory: string
@@ -27,7 +31,8 @@ describe('user MFA service', () => {
   })
 
   it('enables MFA, requires a factor, and consumes recovery codes once', async () => {
-    const user = await userService.createUser({ username: 'user', password: 'original-password' })
+    const administrator = await completeTestAdministratorSetup()
+    const user = await userService.createUser({ username: 'user', password: 'original-password' }, administrator)
     await userService.completeRequiredPasswordChange(user.id, 'original-password', 'replacement-password')
     const secret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'
     saveMfaSetup(user.id, encryptMfaSecret(secret))
@@ -35,6 +40,7 @@ describe('user MFA service', () => {
     vi.setSystemTime(59_000)
 
     const { recoveryCodes } = await userService.confirmMfaSetup(user.id, '287082')
+    expect(revokeViewerSessionsForUsers).toHaveBeenLastCalledWith([user.id], expect.any(AbortSignal))
 
     await expect(userService.verifyPrimaryCredentials('user', 'replacement-password')).resolves.toMatchObject({
       mfaRequired: true

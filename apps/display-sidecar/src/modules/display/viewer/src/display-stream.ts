@@ -82,13 +82,12 @@ async function createAudioWorklet(): Promise<{
 
 function websocketUrl(config: ViewerConfig): string {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-  const streamParams = new URLSearchParams(location.search);
-  streamParams.set("sessionId", config.sessionId ?? "");
-  streamParams.set("token", config.token ?? "");
+  const streamParams = new URLSearchParams({
+    sessionId: config.sessionId ?? "",
+    audio: config.audio ? "1" : "0",
+  });
   for (const [key, value] of Object.entries(config.streamDefaults)) {
-    if (!streamParams.has(key)) {
-      streamParams.set(key, value);
-    }
+    streamParams.set(key, config.params.get(key) ?? value);
   }
   return `${protocol}//${location.host}/rebroid/display/stream?${streamParams.toString()}`;
 }
@@ -299,7 +298,7 @@ export function createDisplayStream({
     if (initialized) {
       return;
     }
-    if (!config.sessionId || !config.token) {
+    if (!config.sessionId) {
       ui.showFailure("Open the viewer again from the app page.");
       return;
     }

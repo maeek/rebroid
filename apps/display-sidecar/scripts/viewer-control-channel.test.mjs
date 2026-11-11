@@ -54,23 +54,27 @@ test("a discrete command waits for its own reply and never retries a sent comman
       });
     },
   });
-  t.after(() => Object.assign(globalThis, original));
+  const closeListeners = [];
+  t.after(() => {
+    try {
+      closeListeners.forEach((listener) => listener());
+    } finally {
+      Object.assign(globalThis, original);
+    }
+  });
   const { createControlChannel } = await import(
     new URL(
       "../dist/modules/display/viewer/assets/control-channel.js",
       import.meta.url,
     )
   );
-  const closeListeners = [];
   const channel = createControlChannel({
     sessionId: "session",
-    token: "token",
     lifecycle: {
       isClosing: () => false,
       onClose: (listener) => closeListeners.push(listener),
     },
   });
-  t.after(() => closeListeners.forEach((listener) => listener()));
   const socket = channel.connect();
   let finished = false;
   const sent = channel
@@ -80,6 +84,9 @@ test("a discrete command waits for its own reply and never retries a sent comman
     });
   assert.equal(socket.messages.length, 0);
   socket.open();
+  await Promise.resolve();
+  assert.equal(socket.messages.length, 0);
+  socket.reply({ type: "control-ready" });
   await Promise.resolve();
   assert.equal(socket.messages.length, 1);
   socket.reply({ id: "unrelated", ok: true, executed: true });
@@ -127,6 +134,7 @@ test("a discrete command waits for its own reply and never retries a sent comman
 
   const activeSocket = channel.connect();
   activeSocket.open();
+  activeSocket.reply({ type: "control-ready" });
   const pointer = (eventType) =>
     channel.send({ type: "touch", action: "pointer", eventType }, "touch");
   const pending = [pointer("down")];

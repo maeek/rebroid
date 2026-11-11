@@ -1,8 +1,9 @@
 import { revalidatePath } from 'next/cache'
-import { requireAdmin } from '@/server/auth/authorization'
+import { getCurrentSessionIdentity, requireAdmin } from '@/server/auth/authorization'
 
 export const requireAdminUser = async () => {
-  return requireAdmin()
+  const admin = await requireAdmin()
+  return { ...admin, identity: await getCurrentSessionIdentity() }
 }
 
 export const revalidateUsersPage = () => {

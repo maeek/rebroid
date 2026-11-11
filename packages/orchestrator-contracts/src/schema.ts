@@ -1981,6 +1981,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/display-sidecar/sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke display sessions for the supplied accounts. */
+        post: operations["DockerSidecarController_revokeSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3749,6 +3766,12 @@ export interface components {
             mode: "software" | "host";
             /** @example /dev/dri/renderD128 */
             renderDevice: string | null;
+        };
+        RevokeDockerSidecarSessionsDto: {
+            ownerUserIds: string[];
+        };
+        DockerSidecarSessionRevocationDto: {
+            released: number;
         };
     };
     responses: never;
@@ -7325,6 +7348,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
+                };
+            };
+        };
+    };
+    DockerSidecarController_revokeSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeDockerSidecarSessionsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarSessionRevocationDto"];
                 };
             };
         };

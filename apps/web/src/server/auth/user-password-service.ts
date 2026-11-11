@@ -17,7 +17,7 @@ const changeOwnPassword = async (id: string, currentPassword: string, newPasswor
     user.passwordChangeRequired = false
     user.sessionVersion += 1
     user.updatedAt = nowIso()
-  })
+  }, id)
 
 const completeRequiredPasswordChange = async (id: string, currentPassword: string, newPassword: string) =>
   mutateUsersFile(async file => {

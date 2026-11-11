@@ -920,7 +920,7 @@ export function createWebrtcStream({
   };
 
   async function connectAttempt(): Promise<void> {
-    if (!config.sessionId || !config.token) {
+    if (!config.sessionId) {
       failPermanently("Open the viewer again from the app page.");
       return;
     }
@@ -973,7 +973,6 @@ export function createWebrtcStream({
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            token: config.token,
             sdp: connection.localDescription?.sdp ?? offer.sdp,
             bitrate: Number(
               config.params.get("bitrate") ?? config.streamDefaults.bitrate,

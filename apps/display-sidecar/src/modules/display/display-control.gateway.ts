@@ -2,7 +2,7 @@ import { Logger } from "@nestjs/common";
 import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
 import { RawData, WebSocket } from "ws";
-import { DisplaySessionService } from "./display-session.service";
+import { DisplayViewerAccessService } from "./display-viewer-access.service";
 import type { DisplayControlRequest } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { displayControlError } from "./display-control-response";
@@ -12,31 +12,34 @@ export class DisplayControlGateway implements OnGatewayConnection {
   private readonly logger = new Logger(DisplayControlGateway.name);
 
   constructor(
-    private readonly sessions: DisplaySessionService,
+    private readonly access: DisplayViewerAccessService,
     private readonly controls: DisplayControlService,
   ) {}
 
-  handleConnection(client: WebSocket, request: IncomingMessage) {
-    let sessionId: string;
-
+  async handleConnection(client: WebSocket, request: IncomingMessage) {
     try {
       const url = new URL(request.url ?? "", "http://display-sidecar.local");
-      sessionId = url.searchParams.get("sessionId") ?? "";
-      const token = url.searchParams.get("token");
+      const sessionId = url.searchParams.get("sessionId") ?? "";
       if (!sessionId) {
         client.close(1008, "Missing sessionId");
         return;
       }
 
-      this.sessions.assertStreamToken(sessionId, token);
+      const admission = await this.access.admit(sessionId, request.headers);
+      if (client.readyState !== WebSocket.OPEN) return;
+      const stopWatching = admission.watch(() =>
+        client.close(4404, "Display session not found."),
+      );
+      client.once("close", stopWatching);
+      client.on("message", (raw) => {
+        if (client.readyState === WebSocket.OPEN) {
+          void this.handleMessage(client, sessionId, raw);
+        }
+      });
+      this.send(client, { type: "control-ready" });
     } catch (error) {
       client.close(1008, this.errorMessage(error).slice(0, 120));
-      return;
     }
-
-    client.on("message", (raw) => {
-      void this.handleMessage(client, sessionId, raw);
-    });
   }
 
   private async handleMessage(

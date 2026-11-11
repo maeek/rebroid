@@ -1,9 +1,16 @@
-import { ConflictException, Injectable } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import type { IncomingHttpHeaders } from "node:http";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import type { ScrcpyStreamOptions } from "../scrcpy/scrcpy.types";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import { DisplaySessionService } from "./display-session.service";
+import { DisplayViewerAccessService } from "./display-viewer-access.service";
+import type { DisplaySession } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { resolveDisplayStreamProfile } from "./display-stream-profile";
 import { DisplayWebrtcAttempt } from "./display-webrtc-attempt";
@@ -11,9 +18,8 @@ import { spawnWebrtcBridge } from "./display-webrtc-bridge";
 
 type WebrtcOfferOptions = {
   sessionId: string;
-  token: string | null;
+  headers: IncomingHttpHeaders;
   sdp: string;
-  requestHost: string | null;
   bitrate?: number;
   maxFps?: number;
   maxSize?: number;
@@ -31,24 +37,26 @@ export class DisplayWebrtcService {
     private readonly config: SidecarConfigService,
     private readonly controls: DisplayControlService,
     private readonly features: SidecarFeatureService,
+    private readonly access: DisplayViewerAccessService,
   ) {}
 
   async createAnswer(options: WebrtcOfferOptions) {
-    const { sessionId, sdp, audio } = options;
-    const session = this.sessions.assertStreamToken(sessionId, options.token);
+    const { sessionId, sdp } = options;
+    const admission = await this.access.admit(sessionId, options.headers);
+    const { session } = admission;
     this.sessions.assertCapability(session, "video");
     this.features.assertWebrtcEnabled();
-    const iceHost = this.resolveIceHost(options.requestHost);
+    const iceHost = this.resolveIceHost(options.headers.host);
     if (!iceHost) {
       throw new ConflictException("Could not determine WebRTC ICE host.");
     }
 
     const sourceOptions = this.sourceOptions(options, session);
-    this.stopSession(sessionId);
     const attempt = new DisplayWebrtcAttempt({
       sessionId,
       sdp,
-      audio,
+      audio: sourceOptions.audio,
+      allowClipboard: session.capabilities.includes("clipboard"),
       iceHost,
       maxFps: sourceOptions.maxFps,
       iceServers: this.config.webrtcStunUrls,
@@ -60,10 +68,15 @@ export class DisplayWebrtcService {
       launchBridge: () => spawnWebrtcBridge(this.config.webrtcBridgePath),
       executeControl: (request) => this.controls.execute(sessionId, request),
       onFinish: () => {
+        stopWatching();
         if (this.active.get(sessionId) === attempt)
           this.active.delete(sessionId);
       },
     });
+    const stopWatching = admission.watch(() =>
+      attempt.stop(new NotFoundException("Display session not found.")),
+    );
+    this.stopSession(sessionId);
     this.active.set(sessionId, attempt);
     return attempt.run();
   }
@@ -74,7 +87,7 @@ export class DisplayWebrtcService {
 
   private sourceOptions(
     options: WebrtcOfferOptions,
-    session: ReturnType<DisplaySessionService["assertStreamToken"]>,
+    session: DisplaySession,
   ): Omit<ScrcpyStreamOptions, "sink"> {
     let profile: ReturnType<typeof resolveDisplayStreamProfile>;
     try {
@@ -90,13 +103,13 @@ export class DisplayWebrtcService {
       codec: "h264",
       displayId: session.displayId,
       newDisplay: session.newDisplay,
-      audio: options.audio,
+      audio: options.audio && session.capabilities.includes("audio"),
       ...profile,
       onActivity: () => this.sessions.touch(options.sessionId),
     };
   }
 
-  private resolveIceHost(requestHost: string | null) {
+  private resolveIceHost(requestHost: string | undefined) {
     if (this.config.webrtcIceHostOverride) {
       return this.config.webrtcIceHostOverride;
     }

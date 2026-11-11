@@ -108,6 +108,7 @@ services:
     container_name: rebroid-display-sidecar-test
     restart: unless-stopped
     environment:
+      WEB_INTERNAL_URL: http://web:3101
       DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
       DISPLAY_WEBRTC_UDP_PORT_RANGE: ${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}

@@ -6,7 +6,7 @@ import type { DisplayControlRequest } from "./display.types";
 test("public keyboard and touch routes retain server-owned control types", async () => {
   const calls: DisplayControlRequest[] = [];
   const controller = new DisplayPublicController(
-    { assertStreamToken: () => undefined } as never,
+    { admit: async () => undefined } as never,
     {
       execute: async (_id: string, request: DisplayControlRequest) => {
         calls.push(request);
@@ -15,17 +15,25 @@ test("public keyboard and touch routes retain server-owned control types", async
     } as never,
     {} as never,
   );
-  await controller.keyboard("session", {
-    type: "clipboard",
-    text: "injected",
-    key: "a",
-  } as never);
-  await controller.touch("session", {
-    type: "clipboard",
-    text: "injected",
-    x: 1,
-    y: 1,
-  } as never);
+  await controller.keyboard(
+    "session",
+    {
+      type: "clipboard",
+      text: "injected",
+      key: "a",
+    } as never,
+    { headers: {} },
+  );
+  await controller.touch(
+    "session",
+    {
+      type: "clipboard",
+      text: "injected",
+      x: 1,
+      y: 1,
+    } as never,
+    { headers: {} },
+  );
   assert.deepEqual(
     calls.map((request) => request.type),
     ["keyboard", "touch"],

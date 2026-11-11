@@ -24,8 +24,12 @@ access but never relays media.
 
 The sidecar owns in-memory sessions, expiry, and capacity. A WebRTC offer owns its consumer
 attempt through target preparation, bootstrap, signaling, and detach. Release or replacement
-cancels that attempt. Internal session management requires
-a shared secret; public viewer routes require a short-lived session token. A source supervisor
+cancels that attempt. Internal session management requires a shared secret. Viewer URLs contain a
+session ID. The sidecar uses the same-origin browser session to verify the signed-in owner, active
+container, and capabilities with web before starting WebSocket media, WebRTC, or viewer controls.
+Active transports recheck access every 10 seconds and close on denial or authorization failure.
+Revocation commands close affected transports as soon as the sidecar receives them. Audio and
+Android-to-browser clipboard delivery follow the session's capabilities. A source supervisor
 owns scrcpy for a session/profile. Browser, peer, decoder, or bridge failures detach only that
 consumer. Sources can remain alive for 30 seconds without consumers; release, expiry, profile
 changes, shutdown, or a genuine source failure close them.

@@ -5767,6 +5767,38 @@
           "settings"
         ]
       }
+    },
+    "/api/v1/platform/display-sidecar/sessions/revoke": {
+      "post": {
+        "operationId": "DockerSidecarController_revokeSessions",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeDockerSidecarSessionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerSidecarSessionRevocationDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke display sessions for the supplied accounts.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
     }
   },
   "info": {
@@ -11911,6 +11943,36 @@
         "required": [
           "mode",
           "renderDevice"
+        ]
+      },
+      "RevokeDockerSidecarSessionsDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 256,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "ownerUserIds"
+        ]
+      },
+      "DockerSidecarSessionRevocationDto": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "released"
         ]
       }
     }

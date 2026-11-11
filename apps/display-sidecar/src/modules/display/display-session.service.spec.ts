@@ -128,7 +128,7 @@ test("display sessions keep only canonical capability labels", () => {
   );
 });
 
-test("restricted sessions never disclose higher-capability virtual surface tokens", () => {
+test("restricted sessions never disclose higher-capability virtual surfaces", () => {
   const service = createService();
   const full = service.create({
     udid: "device:5555",
@@ -149,7 +149,7 @@ test("restricted sessions never disclose higher-capability virtual surface token
     restricted.surfaces.some((surface) => surface.sessionId === full.id),
     false,
   );
-  assert.equal(JSON.stringify(restricted).includes(stored.token), false);
+  assert.equal(JSON.stringify(restricted).includes(full.id), false);
 });
 
 test("virtual display reuse cannot upgrade a restricted parent's capabilities", () => {

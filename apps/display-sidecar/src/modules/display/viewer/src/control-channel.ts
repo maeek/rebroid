@@ -7,7 +7,6 @@ import type { ControlChannel, JsonRecord, PageLifecycle } from "./types.js";
 
 type ControlChannelOptions = {
   sessionId: string | null;
-  token: string | null;
   lifecycle: PageLifecycle;
   onMessage?: (message: JsonRecord) => void;
 };
@@ -17,13 +16,14 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export function createControlChannel({
   sessionId,
-  token,
   lifecycle,
   onMessage,
 }: ControlChannelOptions): ControlChannel {
   let keyboardCaptureEnabled = false;
   const pressedKeys = new Set<string>();
   let controlWs: WebSocket | null = null;
+  let authorizedControlWs: WebSocket | null = null;
+  let controlWsReady: Promise<boolean> | null = null;
   let reliableDataChannel: RTCDataChannel | null = null;
   let movementDataChannel: RTCDataChannel | null = null;
   let controlRequestSeq = 0;
@@ -35,11 +35,15 @@ export function createControlChannel({
   let inFlight = 0;
   let pointerReleaseReserved = false;
 
-  const readReply = (data: unknown) => {
+  const readReply = (data: unknown, onReady?: () => void) => {
     if (typeof data !== "string") return;
     try {
       const reply: unknown = JSON.parse(data);
       if (!isRecord(reply)) return;
+      if (reply.type === "control-ready") {
+        onReady?.();
+        return;
+      }
       if (typeof reply.id === "string" && typeof reply.ok === "boolean") {
         pending.get(reply.id)?.(
           reply.ok && reply.executed !== false
@@ -66,14 +70,14 @@ export function createControlChannel({
   });
 
   async function postPublic(path: string, payload: JsonRecord): Promise<void> {
-    if (!sessionId || !token)
+    if (!sessionId)
       throw new Error("No viewer control session is available.");
     const response = await fetch(
       `/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/${path}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...payload, token }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(responseWaitMs),
       },
     );
@@ -89,7 +93,7 @@ export function createControlChannel({
   }
 
   function connectControlWs(): WebSocket | null {
-    if (!sessionId || !token) {
+    if (!sessionId) {
       return null;
     }
 
@@ -102,16 +106,30 @@ export function createControlChannel({
     }
 
     const protocol = location.protocol === "https:" ? "wss:" : "ws:";
-    const controlParams = new URLSearchParams({ sessionId, token });
+    const controlParams = new URLSearchParams({ sessionId });
     controlWs = new WebSocket(
       `${protocol}//${location.host}/rebroid/display/control?${controlParams.toString()}`,
     );
     const socket = controlWs;
-    socket.onclose = () => {
-      if (controlWs === socket) controlWs = null;
-    };
-    socket.onerror = () => undefined;
-    socket.onmessage = (event) => readReply(event.data);
+    controlWsReady = new Promise((resolve) => {
+      const timer = window.setTimeout(() => resolve(false), connectionWaitMs);
+      const finish = (ready: boolean) => {
+        window.clearTimeout(timer);
+        resolve(ready);
+      };
+      socket.onclose = () => {
+        if (controlWs === socket) controlWs = null;
+        if (authorizedControlWs === socket) authorizedControlWs = null;
+        finish(false);
+      };
+      socket.onerror = () => finish(false);
+      const markReady = () => {
+        if (controlWs !== socket) return;
+        authorizedControlWs = socket;
+        finish(true);
+      };
+      socket.onmessage = (event) => readReply(event.data, markReady);
+    });
     return socket;
   }
 
@@ -135,10 +153,10 @@ export function createControlChannel({
           movementDataChannel.send(JSON.stringify(payload));
         }
       } else if (
-        controlWs?.readyState === WebSocket.OPEN &&
-        controlWs.bufferedAmount < 16_384
+        authorizedControlWs?.readyState === WebSocket.OPEN &&
+        authorizedControlWs.bufferedAmount < 16_384
       ) {
-        controlWs.send(JSON.stringify(payload));
+        authorizedControlWs.send(JSON.stringify(payload));
       }
       return;
     }
@@ -166,7 +184,8 @@ export function createControlChannel({
         );
       }
       const ws = connectControlWs();
-      if (ws && (await waitForOpen(ws, WebSocket.OPEN, connectionWaitMs))) {
+      if (ws && (ws === authorizedControlWs || (await controlWsReady)) &&
+          ws.readyState === WebSocket.OPEN) {
         if (lifecycle.isClosing()) throw new Error("The viewer closed.");
         return await sendAndConfirm(id, () => ws.send(JSON.stringify(payload)));
       }

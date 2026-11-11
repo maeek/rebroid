@@ -35,6 +35,7 @@ const environmentSchema = z.object({
   DISPLAY_WEBRTC_STUN_URLS: z.string().optional(),
   DISPLAY_WEBRTC_BRIDGE_PATH: z.string().trim().min(1).optional(),
   DISPLAY_SIDECAR_SHARED_SECRET: z.string().optional(),
+  WEB_INTERNAL_URL: z.url({ protocol: /^https?$/ }).optional(),
   DISPLAY_SIDECAR_SHARED_SECRET_FILE: z.string().trim().min(1).optional(),
   DISPLAY_SIDECAR_ALLOW_UNAUTHENTICATED_INTERNAL_API: z
     .enum(["true", "false"])
@@ -68,6 +69,7 @@ const environment = parseSidecarEnvironment(process.env);
 @Injectable()
 export class SidecarConfigService {
   readonly port = environment.PORT ?? 8000;
+  readonly webInternalUrl = environment.WEB_INTERNAL_URL ?? "http://web:3101";
   readonly sessionTtlSeconds = environment.DISPLAY_SESSION_TTL_SECONDS ?? 900;
   readonly sessionMaxLifetimeSeconds =
     environment.DISPLAY_SESSION_MAX_LIFETIME_SECONDS ?? 3600;

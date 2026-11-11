@@ -10,7 +10,6 @@ test("WebSocket streaming uses the interactive profile when options are omitted"
   const attached: ScrcpyStreamOptions[] = [];
   const gateway = new DisplayGateway(
     {
-      assertStreamToken: () => ({ udid: "fixture" }),
       assertCapability: () => undefined,
     } as never,
     {
@@ -19,6 +18,12 @@ test("WebSocket streaming uses the interactive profile when options are omitted"
         return { closed: Promise.resolve(), detach: () => undefined };
       },
     } as never,
+    {
+      admit: async () => ({
+        session: { udid: "fixture", capabilities: ["video"] },
+        watch: () => () => undefined,
+      }),
+    } as never,
   );
   const client = {
     readyState: WebSocket.OPEN,
@@ -26,10 +31,11 @@ test("WebSocket streaming uses the interactive profile when options are omitted"
     close: () => undefined,
   } as unknown as WebSocket;
   await gateway.handleConnection(client, {
-    url: "/rebroid/display/stream?sessionId=fixture&token=fixture",
+    url: "/rebroid/display/stream?sessionId=fixture&audio=1",
   } as IncomingMessage);
 
   assert.equal(attached.length, 1);
+  assert.equal(attached[0]?.audio, false);
   const { maxSize, maxFps, bitrate, iFrameInterval } = attached[0]!;
   assert.deepEqual(
     { maxSize, maxFps, bitrate, iFrameInterval },
@@ -39,13 +45,14 @@ test("WebSocket streaming uses the interactive profile when options are omitted"
 
 test("WebSocket streaming distinguishes an expired session from transport failure", async () => {
   const gateway = new DisplayGateway(
-    {
-      assertStreamToken: () => {
-        throw new NotFoundException("Display session not found.");
-      },
-    } as never,
+    {} as never,
     {
       attachStream: () => assert.fail("attached with an expired session"),
+    } as never,
+    {
+      admit: () => {
+        throw new NotFoundException("Display session not found.");
+      },
     } as never,
   );
   const closeCodes: number[] = [];
@@ -54,7 +61,7 @@ test("WebSocket streaming distinguishes an expired session from transport failur
     close: (code: number) => closeCodes.push(code),
   } as unknown as WebSocket;
   await gateway.handleConnection(client, {
-    url: "/rebroid/display/stream?sessionId=expired&token=fixture",
+    url: "/rebroid/display/stream?sessionId=expired",
   } as IncomingMessage);
   assert.deepEqual(closeCodes, [4404]);
 });

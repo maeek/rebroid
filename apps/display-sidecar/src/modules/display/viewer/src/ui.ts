@@ -22,6 +22,9 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
   return {
     showStatus,
     showFailure(text: string) {
+      canvas.classList.add("hidden");
+      snapshot.classList.add("hidden");
+      video.classList.add("hidden");
       showStatus(
         text,
         "Live display paused",

@@ -48,6 +48,7 @@ function checkStack({ services }, range) {
   const display = services["display-sidecar"];
   const firewall = services["firewall-agent"];
   assert.equal(orchestrator.environment.WEB_INTERNAL_URL, "http://web:3101");
+  assert.equal(display.environment.WEB_INTERNAL_URL, "http://web:3101");
   assert.equal(
     web.environment?.ORCHESTRATOR_API_URL ?? "http://orchestrator:4100",
     "http://orchestrator:4100",

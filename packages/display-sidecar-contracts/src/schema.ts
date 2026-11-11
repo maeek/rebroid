@@ -343,8 +343,42 @@ export interface paths {
         /** List display sessions known to this sidecar instance. */
         get: operations["DisplayController_listSessions"];
         put?: never;
-        /** Create or reuse a token-scoped display session for an ADB target. */
+        /** Create or reuse an owner-scoped display session for an ADB target. */
         post: operations["DisplayController_createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List display session metadata for administration. */
+        get: operations["DisplayController_listSessionInventory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/rebroid/display/sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke display sessions owned by the supplied accounts. */
+        post: operations["DisplayController_revokeSessions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -481,7 +515,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Execute a viewer control action using a display session token. */
+        /** Execute an action for the signed-in owner of a display session. */
         post: operations["DisplayPublicController_action"];
         delete?: never;
         options?: never;
@@ -498,7 +532,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a WebRTC display answer using a display session token. */
+        /** Create a WebRTC answer for the signed-in owner of a display session. */
         post: operations["DisplayPublicController_publicWebrtcOffer"];
         delete?: never;
         options?: never;
@@ -515,7 +549,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a browser keyboard event using a display session token. */
+        /** Send a keyboard event for the signed-in owner of a display session. */
         post: operations["DisplayPublicController_keyboard"];
         delete?: never;
         options?: never;
@@ -532,7 +566,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Send a tap or swipe event using a display session token. */
+        /** Send a touch event for the signed-in owner of a display session. */
         post: operations["DisplayPublicController_touch"];
         delete?: never;
         options?: never;
@@ -797,13 +831,15 @@ export interface components {
              * @example user_123
              */
             ownerUserId?: string;
+            /** @description Docker container ID for the viewer grant. */
+            runtimeId?: string;
             /**
              * @description Session TTL in seconds. Defaults to DISPLAY_SESSION_TTL_SECONDS.
              * @example 900
              */
             ttlSeconds?: number;
             /**
-             * @description Informational capability labels assigned to the session.
+             * @description Capabilities assigned to the session.
              * @example [
              *       "video",
              *       "audio",
@@ -857,9 +893,9 @@ export interface components {
             createdAt: string;
             /** @example 2026-05-25T20:30:10.000Z */
             lastActivityAt: string;
-            /** @example /rebroid/display/stream?sessionId=...&token=... */
+            /** @example /rebroid/display/stream?sessionId=... */
             streamPath: string;
-            /** @example /viewer/display/?sessionId=...&token=... */
+            /** @example /viewer/display?sessionId=... */
             viewerPath: string;
             /** @example /rebroid/display/public/sessions/.../webrtc/offer */
             webrtcOfferPath: string;
@@ -872,10 +908,6 @@ export interface components {
             id: string;
             /** @example app_123 */
             appId?: string;
-            /** @example redroid-13:5555 */
-            udid: string;
-            /** @example user_123 */
-            ownerUserId?: string;
             /** @example main */
             surfaceId: string;
             /**
@@ -913,9 +945,9 @@ export interface components {
             capabilities: string[];
             surface: components["schemas"]["DisplaySurfaceDto"];
             surfaces: components["schemas"]["DisplaySurfaceDto"][];
-            /** @example /rebroid/display/stream?sessionId=...&token=... */
+            /** @example /rebroid/display/stream?sessionId=... */
             streamPath: string;
-            /** @example /viewer/display/?sessionId=...&token=... */
+            /** @example /viewer/display?sessionId=... */
             viewerPath: string;
             /** @example /rebroid/display/public/sessions/.../webrtc/offer */
             webrtcOfferPath: string;
@@ -925,6 +957,44 @@ export interface components {
         };
         DisplaySessionListResponseDto: {
             items: components["schemas"]["DisplaySessionDto"][];
+        };
+        DisplaySessionInventoryItemDto: {
+            /** @example 7c7270d5-bd2d-4ac2-81f6-1f77be3596b5 */
+            id: string;
+            /** @example app_123 */
+            appId?: string;
+            /**
+             * @example created
+             * @enum {string}
+             */
+            status: "created" | "active" | "released" | "expired";
+            /** @example 2026-05-25T20:30:00.000Z */
+            createdAt: string;
+            /** @example 2026-05-25T20:30:10.000Z */
+            lastActivityAt: string;
+            /** @example 2026-05-25T20:45:10.000Z */
+            expiresAt: string;
+            /**
+             * @example [
+             *       "video",
+             *       "audio",
+             *       "control",
+             *       "clipboard",
+             *       "screenshot"
+             *     ]
+             */
+            capabilities: string[];
+            /** @example user_123 */
+            ownerUserId?: string;
+        };
+        DisplaySessionInventoryDto: {
+            items: components["schemas"]["DisplaySessionInventoryItemDto"][];
+        };
+        RevokeDisplaySessionsDto: {
+            ownerUserIds: string[];
+        };
+        DisplaySessionRevocationDto: {
+            released: number;
         };
         DisplaySurfaceListResponseDto: {
             items: components["schemas"]["DisplaySurfaceDto"][];
@@ -985,18 +1055,7 @@ export interface components {
             /** @example 05-25 20:30:00.000 ... */
             output: string;
         };
-        PublicDisplayActionDto: {
-            /**
-             * @example home
-             * @enum {string}
-             */
-            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
-            /** @example display-session-token */
-            token?: string | null;
-        };
         DisplayWebrtcOfferDto: {
-            /** @example display-session-token */
-            token?: string | null;
             /**
              * @example v=0
              *     ...
@@ -1035,8 +1094,6 @@ export interface components {
             profileLevelId: string;
         };
         DisplayKeyboardDto: {
-            /** @example display-session-token */
-            token?: string | null;
             /**
              * @example keydown
              * @enum {string}
@@ -1058,8 +1115,6 @@ export interface components {
             shiftKey?: boolean;
         };
         DisplayTouchDto: {
-            /** @example display-session-token */
-            token?: string | null;
             /**
              * @example pointer
              * @enum {string}
@@ -1761,6 +1816,52 @@ export interface operations {
             };
         };
     };
+    DisplayController_listSessionInventory: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionInventoryDto"];
+                };
+            };
+        };
+    };
+    DisplayController_revokeSessions: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeDisplaySessionsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionRevocationDto"];
+                };
+            };
+        };
+    };
     DisplayController_getSession: {
         parameters: {
             query?: never;
@@ -2005,7 +2106,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PublicDisplayActionDto"];
+                "application/json": components["schemas"]["DisplayActionDto"];
             };
         };
         responses: {

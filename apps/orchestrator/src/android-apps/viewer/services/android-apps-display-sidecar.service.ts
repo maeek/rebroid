@@ -62,6 +62,7 @@ export class AndroidAppsDisplaySidecarService {
       method: 'POST',
       body: JSON.stringify({
         appId: app.id,
+        runtimeId: app.containerId ?? undefined,
         udid,
         ownerUserId: app.ownerUserId,
         capabilities,

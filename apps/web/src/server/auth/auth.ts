@@ -4,6 +4,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
 import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
+import { revokeViewersOnSignOut } from '@/server/users/viewer-revocation-job'
 import { isAccentColor } from '@/shared/model/theme/accent-color'
 import { clearLoginAccountAttempts, consumeLoginAttempt, loginSourceFromHeaderRecord } from './login-security'
 import { userService } from './user'
@@ -19,6 +20,11 @@ const credentialsSchema = z.object({
 })
 
 export const authOptions: NextAuthOptions = {
+  events: {
+    async signOut({ token }) {
+      if (token?.userId) await revokeViewersOnSignOut(token.userId)
+    }
+  },
   session: {
     strategy: 'jwt'
   },

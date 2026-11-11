@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   DefaultValuePipe,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseBoolPipe,
   Post,
@@ -20,6 +22,10 @@ import {
   DockerSidecarAdminSessionDto,
   DockerSidecarLogTailDto,
 } from '../dto/docker-sidecar-response.dto';
+import {
+  DockerSidecarSessionRevocationDto,
+  RevokeDockerSidecarSessionsDto,
+} from '../dto/docker-sidecar-revocation.dto';
 import { DockerSidecarService } from '../services/docker-sidecar.service';
 
 @ApiTags('platform-display-sidecar')
@@ -65,6 +71,16 @@ export class DockerSidecarController {
   @ApiOkResponse({ type: [DockerSidecarAdminSessionDto] })
   listSessions() {
     return this.sidecar.listDisplaySessions();
+  }
+
+  @Post('sessions/revoke')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Revoke display sessions for the supplied accounts.',
+  })
+  @ApiOkResponse({ type: DockerSidecarSessionRevocationDto })
+  revokeSessions(@Body() dto: RevokeDockerSidecarSessionsDto) {
+    return this.sidecar.revokeDisplaySessions(dto.ownerUserIds);
   }
 
   @Delete('sessions/:id')

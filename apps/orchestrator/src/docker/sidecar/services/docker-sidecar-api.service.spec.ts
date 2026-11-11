@@ -3,7 +3,7 @@ import { DockerSidecarApiService } from './docker-sidecar-api.service';
 
 const session = {
   id: 'session-1',
-  udid: 'redroid:5555',
+  appId: 'app-1',
   surfaceId: 'main',
   surfaceKind: 'main' as const,
   displayName: 'Main display',
@@ -69,19 +69,64 @@ describe('DockerSidecarApiService', () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValue(
-        new Response(JSON.stringify({ items: [session] }), { status: 200 }),
+        Response.json({ items: [{ ...session, ownerUserId: 'owner-1' }] }),
       );
     global.fetch = fetchMock;
 
-    await expect(service().listDisplaySessions()).resolves.toHaveLength(1);
+    await expect(service().listDisplaySessions()).resolves.toEqual([
+      expect.objectContaining({
+        id: 'session-1',
+        applicationId: 'app-1',
+        ownerUserId: 'owner-1',
+      }),
+    ]);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://display.test/rebroid/display/sessions',
+      'http://display.test/rebroid/display/sessions/inventory',
       expect.objectContaining({
         headers: expect.objectContaining({
           'x-rebroid-sidecar-secret': 'internal-secret',
         }),
       }),
     );
+  });
+
+  it('posts owner-scoped revocation and validates the acknowledgement', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(Response.json({ released: 2 }))
+      .mockResolvedValueOnce(Response.json({ released: 'two' }));
+    global.fetch = fetchMock;
+
+    await expect(service().revokeDisplaySessions(['owner-1'])).resolves.toEqual(
+      { released: 2 },
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://display.test/rebroid/display/sessions/revoke',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ ownerUserIds: ['owner-1'] }),
+        headers: expect.objectContaining({
+          'x-rebroid-sidecar-secret': 'internal-secret',
+        }),
+      }),
+    );
+    await expect(
+      service().revokeDisplaySessions(['owner-1']),
+    ).rejects.toBeInstanceOf(BadGatewayException);
+  });
+
+  it('accepts the public projection returned when a single session is released', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(Response.json({ ...session, status: 'released' }));
+
+    await expect(
+      service().releaseDisplaySession(session.id),
+    ).resolves.toMatchObject({
+      id: session.id,
+      applicationId: session.appId,
+      status: 'released',
+    });
   });
 
   it('rejects malformed and non-success responses', async () => {

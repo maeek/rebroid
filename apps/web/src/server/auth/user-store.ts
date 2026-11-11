@@ -1,7 +1,11 @@
 import { readUsersFileFromDatabase, writeUsersFileToDatabase } from '@/server/persistence/users-repository'
+import { revokeViewerSessionsForUsers } from '@/server/users/revoke-viewer-sessions'
+import { createViewerRevocationJob, finishViewerRevocation } from '@/server/users/viewer-revocation-job'
 import { administratorsGroupId } from '@/shared/permissions/effective-access'
 import { hashPassword } from './password-hashing'
+import { assertAdministratorForMutation } from './user-admin-guard'
 import { defaultGroups, nowIso } from './user-model'
+import type { AccountSessionIdentity } from './session-identity'
 import type { StoredUser, UsersFile } from './user-model'
 import type { ViewerRevocationJob } from '@/server/persistence/web-maintenance-repository'
 
@@ -42,22 +46,54 @@ export const readUsersFile = async (): Promise<UsersFile> => {
   return initial
 }
 
-export type PrepareViewerRevocation = (userIds: readonly string[]) => Promise<ViewerRevocationJob | undefined>
+export type AdministratorMutation = {
+  identity: AccountSessionIdentity
+  requestId: string
+}
 
-export const mutateUsersFile = async <Result>(
-  mutation: (file: UsersFile) => Promise<Result> | Result,
-  prepareRevocation?: (file: UsersFile) => Promise<ViewerRevocationJob | undefined>
-) => {
-  const pending = usersMutationQueue.then(async () => {
-    const file = await readUsersFile()
-    const revocation = await prepareRevocation?.(file)
-    const result = await mutation(file)
-    writeUsersFileToDatabase(file, revocation)
-    return result
-  })
+const enqueueUsersMutation = <Result>(mutation: (file: UsersFile) => Promise<Result>) => {
+  const pending = usersMutationQueue.then(async () => mutation(await readUsersFile()))
   usersMutationQueue = pending.then(
     () => undefined,
     () => undefined
   )
   return pending
+}
+
+export const mutateUsersFile = async <Result>(
+  mutation: (file: UsersFile) => Promise<Result> | Result,
+  revokeViewerFor?: string
+) => {
+  const revocation = revokeViewerFor ? createViewerRevocationJob([revokeViewerFor]) : undefined
+  const result = await enqueueUsersMutation(async file => {
+    const value = await mutation(file)
+    writeUsersFileToDatabase(file, revocation)
+    return value
+  })
+  if (revocation) await finishViewerRevocation(revocation)
+  return result
+}
+
+type AdministratorMutationResult<Value> = {
+  value: Value
+  affectedOwners?: readonly string[]
+}
+
+export const mutateAdministratorUsersFile = async <Value>(
+  { identity, requestId }: AdministratorMutation,
+  mutation: (file: UsersFile) => AdministratorMutationResult<Value> | Promise<AdministratorMutationResult<Value>>
+) => {
+  const committed = await enqueueUsersMutation(async file => {
+    assertAdministratorForMutation(file, identity)
+    const { value, affectedOwners } = await mutation(file)
+    let revocation: ViewerRevocationJob | undefined
+    if (affectedOwners?.length) {
+      await revokeViewerSessionsForUsers(affectedOwners, AbortSignal.timeout(20_000))
+      revocation = createViewerRevocationJob(affectedOwners, requestId)
+    }
+    writeUsersFileToDatabase(file, revocation)
+    return { value, revocation }
+  })
+  const complete = !committed.revocation || (await finishViewerRevocation(committed.revocation))
+  return { value: committed.value, viewerRevocation: complete ? ('complete' as const) : ('pending' as const) }
 }

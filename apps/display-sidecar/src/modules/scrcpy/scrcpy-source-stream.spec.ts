@@ -153,6 +153,45 @@ test("a warm consumer skips an oversized cached GOP and starts at the next IDR",
   }
 });
 
+test("clipboard status reaches only the permitted browser consumer", () => {
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  const attach = (allowClipboard: boolean) => {
+    const statuses: string[] = [];
+    const sink = new QueuedScrcpyMediaSink({
+      allowClipboard,
+      isOpen: () => true,
+      onClose: () => undefined,
+      writeStatus: (message) => statuses.push(message),
+      writeVideo: async () => undefined,
+      writeAudio: async () => undefined,
+      close: () => undefined,
+    });
+    return { statuses, sink, attachment: source.attach(sink) };
+  };
+  const allowed = attach(true);
+  const denied = attach(false);
+  try {
+    const clipboard = { type: "clipboard", text: "dummy clipboard value" };
+    const ready = { type: "ready" };
+    source.sendStatus(clipboard);
+    source.sendStatus(ready);
+    assert.deepEqual(allowed.statuses, [
+      JSON.stringify(clipboard),
+      JSON.stringify(ready),
+    ]);
+    assert.deepEqual(denied.statuses, [JSON.stringify(ready)]);
+  } finally {
+    for (const consumer of [allowed, denied]) {
+      consumer.attachment.detach();
+      consumer.sink.close();
+    }
+  }
+});
+
 test("video bootstrap waits for configuration plus IDR and reports the SPS profile", async () => {
   const source = new ScrcpySourceStream(
     () => undefined,

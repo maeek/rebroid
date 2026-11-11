@@ -83,6 +83,7 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     },
   };
   const attempt = new DisplayWebrtcAttempt({
+    allowClipboard: false,
     sessionId: "session",
     sdp: [
       "m=video 9 UDP/TLS/RTP/SAVPF 96",

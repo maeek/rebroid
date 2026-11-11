@@ -9,7 +9,7 @@ export const updateCurrentProfileAction = async (input: { avatarDataUrl: string 
   runSafeAction(
     async () => {
       const user = await getCurrentUser()
-      const updated = await userService.updateUser(user.id, { avatarDataUrl: input.avatarDataUrl })
+      const updated = await userService.updateOwnProfile(user.id, { avatarDataUrl: input.avatarDataUrl })
       revalidatePath('/apps')
       return updated
     },

@@ -100,6 +100,11 @@ The edge validates hosts and overwrites forwarded host, protocol, and client-add
 it does not implicitly trust a proxy's claimed client address.
 
 Viewer assets, WebSocket media, and WebRTC signaling go directly from nginx to the display sidecar.
+The sidecar needs private access to the web backend for viewer authorization. Compose sets
+`WEB_INTERNAL_URL` to `http://web:3101`. A standalone sidecar needs the corresponding web URL
+and the shared service secret. Use the same HTTPS origin for the web console and the browser viewer.
+Deploy web, orchestrator, display sidecar, and edge together when upgrading from token-based viewer
+links. Reopen existing viewers from the app page after the upgrade.
 WebRTC media uses the published UDP range and needs a browser-reachable address. For extra proxy
 layers, enable WebSocket upgrades and disable media buffering. See
 [display proxy configuration](display-streaming.md#reverse-proxies).
@@ -172,7 +177,8 @@ Verify Redroid rendering separately for the exact image and driver combination.
 Saving applies the policy to future runtime starts across managed Redroid applications.
 It does not restart applications or the display sidecar. The orchestrator passes
 the required device mapping to Docker and sets the Redroid renderer and GPU node
-arguments. The policy takes precedence over manually supplied rendering arguments.
+arguments. The app configuration omits those platform-managed rendering arguments.
+Administrators can see the current Docker command under the app's Diagnostics.
 Other container arguments and deployment-supplied device mappings remain in effect.
 The UI-managed mapping applies to Redroid containers. For independent device
 mappings set `REDROID_DEVICES` in the orchestrator's environment through a

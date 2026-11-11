@@ -15,6 +15,7 @@ import type {
 type BinaryWriter = (payload: Buffer) => Promise<void>;
 
 export interface QueuedScrcpyMediaSinkOptions {
+  allowClipboard?: boolean;
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   writeStatus: (payload: string) => void;
@@ -86,6 +87,14 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
   }
 
   sendStatus(payload: unknown): void {
+    if (
+      !this.options.allowClipboard &&
+      payload &&
+      typeof payload === "object" &&
+      "type" in payload &&
+      payload.type === "clipboard"
+    )
+      return;
     if (this.isOpen()) {
       this.options.writeStatus(JSON.stringify(payload));
     }

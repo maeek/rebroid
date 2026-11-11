@@ -36,9 +36,10 @@ const describeHealthProbeFailure = (error: unknown) => {
   return 'Health check could not connect.';
 };
 
-type DisplaySidecarSession = DisplaySidecarApiSchemas['DisplaySessionDto'];
+type DisplaySidecarSession =
+  DisplaySidecarApiSchemas['DisplaySessionInventoryItemDto'];
 type DisplaySidecarSessionListResponse =
-  DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
+  DisplaySidecarApiSchemas['DisplaySessionInventoryDto'];
 
 @Injectable()
 export class DockerSidecarApiService
@@ -63,7 +64,7 @@ export class DockerSidecarApiService
   }
 
   async listDisplaySessions() {
-    const response = await this.request<unknown>('/sessions').catch(
+    const response = await this.request<unknown>('/sessions/inventory').catch(
       (error: unknown) => {
         if (!(error instanceof ConflictException)) throw error;
         throw new BadGatewayException(
@@ -93,6 +94,28 @@ export class DockerSidecarApiService
     return (response as DisplaySidecarSessionListResponse).items.map(
       (session) => this.toAdminDisplaySession(session),
     );
+  }
+
+  async revokeDisplaySessions(ownerUserIds: readonly string[]) {
+    const response = await this.request<
+      Partial<DisplaySidecarApiSchemas['DisplaySessionRevocationDto']>
+    >('/sessions/revoke', {
+      method: 'POST',
+      body: JSON.stringify({ ownerUserIds }),
+    });
+    const released = response?.released;
+    if (
+      typeof released !== 'number' ||
+      !Number.isSafeInteger(released) ||
+      released < 0
+    ) {
+      throw new BadGatewayException({
+        code: 'display_sidecar_invalid_response',
+        message:
+          'Display sidecar returned an invalid revocation acknowledgement.',
+      });
+    }
+    return { released };
   }
 
   async releaseDisplaySession(id: string) {
@@ -225,12 +248,18 @@ export class DockerSidecarApiService
     const session = value as Partial<DisplaySidecarSession>;
     return (
       typeof session.id === 'string' &&
-      typeof session.udid === 'string' &&
-      typeof session.status === 'string' &&
+      (session.appId === undefined || typeof session.appId === 'string') &&
+      (session.ownerUserId === undefined ||
+        typeof session.ownerUserId === 'string') &&
+      (session.status === 'created' ||
+        session.status === 'active' ||
+        session.status === 'released' ||
+        session.status === 'expired') &&
       typeof session.createdAt === 'string' &&
       typeof session.lastActivityAt === 'string' &&
       typeof session.expiresAt === 'string' &&
-      Array.isArray(session.capabilities)
+      Array.isArray(session.capabilities) &&
+      session.capabilities.every((item) => typeof item === 'string')
     );
   }
 }

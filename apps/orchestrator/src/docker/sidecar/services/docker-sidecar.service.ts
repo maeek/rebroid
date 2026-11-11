@@ -294,6 +294,10 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return this.sidecarApi.listDisplaySessions();
   }
 
+  revokeDisplaySessions(ownerUserIds: readonly string[]) {
+    return this.sidecarApi.revokeDisplaySessions(ownerUserIds);
+  }
+
   async releaseDisplaySession(id: string) {
     return this.sidecarApi.releaseDisplaySession(id);
   }
@@ -402,6 +406,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
           name: this.displaySidecarContainerName,
           Env: withHostTimezoneEnv([
             `PORT=${this.displaySidecarPort}`,
+            `WEB_INTERNAL_URL=${this.config.getOrThrow<string>('app.webInternalUrl')}`,
             ...(this.config.get<string>('app.sharedSecret')
               ? [
                   `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,

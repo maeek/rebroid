@@ -188,7 +188,6 @@ document.addEventListener(
 );
 const controlChannel = createControlChannel({
   sessionId: config.sessionId,
-  token: config.token,
   lifecycle,
   onMessage: handleSidecarMessage,
 });

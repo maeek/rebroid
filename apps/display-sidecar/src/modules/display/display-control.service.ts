@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from "@nestjs/common";
 import type { ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 import { AdbService } from "../adb/adb.service";
@@ -43,7 +44,8 @@ export class DisplayControlService {
       }
       if (
         error instanceof BadRequestException ||
-        error instanceof ConflictException
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
       ) {
         throw error;
       }
@@ -118,6 +120,7 @@ export class DisplayControlService {
     if (await handledByStream) {
       return { command, executed: true, transport: "stream-control" as const };
     }
+    this.sessions.get(session.id);
     if (
       session.surfaceKind === "virtual" ||
       this.scrcpy.shouldWaitForStreamControl(session.id)

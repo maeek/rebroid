@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Put,
@@ -33,14 +35,31 @@ import {
   DisplayHealthDto,
   DisplayLogcatDto,
   DisplaySessionDto,
+  DisplaySessionInventoryDto,
+  DisplaySessionRevocationDto,
   DisplaySessionListResponseDto,
   DisplaySessionResponseDto,
   DisplaySurfaceListResponseDto,
+  RevokeDisplaySessionsDto,
 } from "./display.dto";
+import { z } from "zod";
 import { viewerCommands } from "@rebroid/android-application-core/viewer-control";
 import { DisplaySessionService } from "./display-session.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 import { DisplayControlService } from "./display-control.service";
+
+const revokeDisplaySessionsSchema = z.strictObject({
+  ownerUserIds: z
+    .array(
+      z
+        .string()
+        .min(1)
+        .max(200)
+        .refine((id) => id.trim() === id),
+    )
+    .min(1)
+    .max(256),
+});
 
 @Controller()
 @ApiTags("display")
@@ -96,7 +115,7 @@ export class DisplayController {
   @Post("rebroid/display/sessions")
   @ApiOperation({
     summary:
-      "Create or reuse a token-scoped display session for an ADB target.",
+      "Create or reuse an owner-scoped display session for an ADB target.",
   })
   @ApiHeader({
     name: "x-rebroid-sidecar-secret",
@@ -121,6 +140,38 @@ export class DisplayController {
   @ApiOkResponse({ type: DisplaySessionListResponseDto })
   listSessions() {
     return { items: this.sessions.list() };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Get("rebroid/display/sessions/inventory")
+  @ApiOperation({
+    summary: "List display session metadata for administration.",
+  })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiOkResponse({ type: DisplaySessionInventoryDto })
+  listSessionInventory() {
+    return { items: this.sessions.listInventory() };
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Post("rebroid/display/sessions/revoke")
+  @HttpCode(200)
+  @ApiOperation({
+    summary: "Revoke display sessions owned by the supplied accounts.",
+  })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiBody({ type: RevokeDisplaySessionsDto })
+  @ApiOkResponse({ type: DisplaySessionRevocationDto })
+  revokeSessions(@Body() body: unknown) {
+    const result = revokeDisplaySessionsSchema.safeParse(body);
+    if (!result.success) {
+      throw new BadRequestException(
+        "Supply a bounded list of valid owner IDs.",
+      );
+    }
+    return {
+      released: this.sessions.releaseForOwners(result.data.ownerUserIds),
+    };
   }
 
   @UseGuards(SidecarAuthGuard)

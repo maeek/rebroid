@@ -15,7 +15,7 @@ export const updateCurrentAccentColorAction = async (accentColor: AccentColor) =
       }
 
       const user = await getCurrentUser()
-      const updated = await userService.updateUser(user.id, { accentColor })
+      const updated = await userService.updateOwnProfile(user.id, { accentColor })
       revalidatePath('/', 'layout')
       return updated
     },

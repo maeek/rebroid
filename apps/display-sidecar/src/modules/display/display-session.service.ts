@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { randomBytes, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import {
@@ -72,6 +72,7 @@ export class DisplaySessionService {
     const session: DisplaySession = {
       id: randomUUID(),
       appId: body.appId,
+      runtimeId: body.runtimeId,
       udid: body.udid.trim(),
       ownerUserId: body.ownerUserId,
       surfaceId: body.surfaceId ?? MAIN_SURFACE_ID,
@@ -82,7 +83,6 @@ export class DisplaySessionService {
       displayId: this.validDisplayId(body.displayId),
       newDisplay: body.newDisplay,
       status: "created",
-      token: randomBytes(32).toString("base64url"),
       createdAt: now.toISOString(),
       lastActivityAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + ttlSeconds * 1000).toISOString(),
@@ -111,6 +111,7 @@ export class DisplaySessionService {
     const existing = [...this.sessions.values()].filter(
       (session) =>
         session.appId === parent.appId &&
+        session.runtimeId === parent.runtimeId &&
         session.udid === parent.udid &&
         session.ownerUserId === parent.ownerUserId &&
         session.surfaceKind === "virtual",
@@ -129,6 +130,7 @@ export class DisplaySessionService {
 
     return this.create({
       appId: parent.appId,
+      runtimeId: parent.runtimeId,
       udid: parent.udid,
       ownerUserId: parent.ownerUserId,
       capabilities: parent.capabilities,
@@ -144,9 +146,36 @@ export class DisplaySessionService {
     return [...this.sessions.values()].map((session) => this.toPublic(session));
   }
 
-  get(id: string): DisplaySession {
+  listInventory() {
     this.purgeInactiveSessions();
-    const session = this.sessions.get(id);
+    return [...this.sessions.values()].map((session) => ({
+      id: session.id,
+      appId: session.appId,
+      ownerUserId: session.ownerUserId,
+      status: session.status,
+      createdAt: session.createdAt,
+      lastActivityAt: session.lastActivityAt,
+      expiresAt: session.expiresAt,
+      capabilities: session.capabilities,
+    }));
+  }
+
+  releaseForOwners(ownerUserIds: readonly string[]): number {
+    this.purgeInactiveSessions();
+    const owners = new Set(ownerUserIds);
+    const released = [...this.sessions.values()].filter(
+      (session) => session.ownerUserId && owners.has(session.ownerUserId),
+    );
+    for (const session of released) {
+      session.status = "released";
+      this.sessions.delete(session.id);
+    }
+    for (const session of released) this.notifyClosed(session.id);
+    return released.length;
+  }
+
+  get(id: string): DisplaySession {
+    const session = this.find(id);
     if (!session) {
       throw new NotFoundException({
         statusCode: 404,
@@ -155,6 +184,11 @@ export class DisplaySessionService {
       });
     }
     return session;
+  }
+
+  find(id: string): DisplaySession | undefined {
+    this.purgeInactiveSessions();
+    return this.sessions.get(id);
   }
 
   getPublic(id: string): PublicDisplaySession {
@@ -220,17 +254,10 @@ export class DisplaySessionService {
     return released;
   }
 
-  assertStreamToken(id: string, token: string | null): DisplaySession {
-    const session = this.get(id);
-    if (session.token !== token) {
-      throw new BadRequestException("Display session token is invalid.");
-    }
-    if (session.status === "released" || session.status === "expired") {
-      throw new BadRequestException(`Display session is ${session.status}.`);
-    }
+  activate(session: DisplaySession): void {
+    this.get(session.id);
     session.status = "active";
     this.extend(session);
-    return session;
   }
 
   assertCapability(session: DisplaySession, capability: string) {
@@ -265,13 +292,9 @@ export class DisplaySessionService {
       surfaces: this.findActiveSurfaces(session).map((item) =>
         this.toSurface(item),
       ),
-      streamPath: `/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}&token=${encodeURIComponent(
-        session.token,
-      )}`,
-      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}&token=${encodeURIComponent(
-        session.token,
-      )}`,
-      webrtcOfferPath: `/rebroid/display/public/sessions/${encodeURIComponent(session.id)}/webrtc/offer`,
+      streamPath: surface.streamPath,
+      viewerPath: surface.viewerPath,
+      webrtcOfferPath: surface.webrtcOfferPath,
     };
   }
 
@@ -288,6 +311,7 @@ export class DisplaySessionService {
       return (
         session.udid === body.udid &&
         session.appId === body.appId &&
+        session.runtimeId === body.runtimeId &&
         session.ownerUserId === body.ownerUserId &&
         session.surfaceKind === (body.surfaceKind ?? "main") &&
         session.surfaceId === (body.surfaceId ?? MAIN_SURFACE_ID) &&
@@ -350,6 +374,7 @@ export class DisplaySessionService {
 
         return (
           candidate.appId === session.appId &&
+          candidate.runtimeId === session.runtimeId &&
           candidate.udid === session.udid &&
           candidate.ownerUserId === session.ownerUserId &&
           candidate.capabilities.every((capability) =>
@@ -375,12 +400,8 @@ export class DisplaySessionService {
       status: session.status,
       createdAt: session.createdAt,
       lastActivityAt: session.lastActivityAt,
-      streamPath: `/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}&token=${encodeURIComponent(
-        session.token,
-      )}`,
-      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}&token=${encodeURIComponent(
-        session.token,
-      )}`,
+      streamPath: `/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}`,
+      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}`,
       webrtcOfferPath: `/rebroid/display/public/sessions/${encodeURIComponent(session.id)}/webrtc/offer`,
       displayId: session.displayId,
       newDisplay: session.newDisplay,

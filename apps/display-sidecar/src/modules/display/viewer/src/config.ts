@@ -20,7 +20,6 @@ export function readViewerConfig(): ViewerConfig {
   return {
     params,
     sessionId,
-    token: params.get("token"),
     transport: useWebsocket ? "websocket" : "webrtc",
     audio: params.get("audio") === "1",
     streamDefaults: {

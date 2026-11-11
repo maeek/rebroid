@@ -8,9 +8,9 @@ import type { UserEditorInput } from '@/shared/contracts/auth-user'
 
 export const createUserAction = async (input: UserEditorInput & { username: string; password: string }) =>
   runSafeAction(
-    async () => {
+    async requestId => {
       const admin = await requireAdminUser()
-      const user = await userService.createUser(input)
+      const user = await userService.createUser(input, { identity: admin.identity, requestId })
       recordAuditEvent({
         actorUserId: admin.id,
         actorLabel: admin.name || admin.username || admin.id,

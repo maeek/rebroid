@@ -46,7 +46,7 @@ const confirmMfaSetup = async (userId: string, code: string) => {
     user.mfaRecoveryCodeHashes = recoveryCodes.map(recoveryCode => hashRecoveryCode(user.id, recoveryCode))
     user.sessionVersion += 1
     user.updatedAt = nowIso()
-  })
+  }, userId)
   deleteMfaSetup(userId)
   return { recoveryCodes }
 }
@@ -64,6 +64,6 @@ const disableMfa = async (userId: string, currentPassword: string, code: string)
     user.mfaRecoveryCodeHashes = []
     user.sessionVersion += 1
     user.updatedAt = nowIso()
-  })
+  }, userId)
 
 export const userMfaService = { beginMfaSetup, confirmMfaSetup, disableMfa }

@@ -1,36 +1,37 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
 import { getServerAuthSession } from './auth'
 import { requiredPasswordChangePath } from './password-change-routing'
+import { isCurrentAccountSession } from './session-identity'
 import { userService } from './user'
 
-export const getAuthenticatedUser = cache(async () => {
+const getAuthenticatedAccount = cache(async () => {
   const session = await getServerAuthSession()
-  if (!session?.user) {
+  if (!session?.user || typeof session.user.sessionVersion !== 'number' || typeof session.user.authEpoch !== 'string') {
     redirect('/login')
   }
 
-  const user = await userService.getUserById(session.user.id)
-  if (
-    !user ||
-    user.disabled ||
-    user.sessionVersion !== session.user.sessionVersion ||
-    session.user.authEpoch !== getAuthEpoch()
-  ) {
-    redirect('/login')
+  const identity = {
+    userId: session.user.id,
+    sessionVersion: session.user.sessionVersion,
+    authEpoch: session.user.authEpoch
   }
-
-  return user
+  const user = await userService.getUserById(identity.userId)
+  if (!user || !isCurrentAccountSession(user, identity)) redirect('/login')
+  return { user, identity }
 })
 
-export const getCurrentUser = cache(async () => {
-  const user = await getAuthenticatedUser()
-  if (user.passwordChangeRequired) {
-    redirect(requiredPasswordChangePath)
-  }
-  return user
+const getCurrentAccount = cache(async () => {
+  const account = await getAuthenticatedAccount()
+  if (account.user.passwordChangeRequired) redirect(requiredPasswordChangePath)
+  return account
 })
+
+export const getAuthenticatedUser = cache(async () => (await getAuthenticatedAccount()).user)
+
+export const getCurrentUser = cache(async () => (await getCurrentAccount()).user)
+
+export const getCurrentSessionIdentity = async () => (await getCurrentAccount()).identity
 
 export const requireAdmin = async () => {
   const user = await getCurrentUser()

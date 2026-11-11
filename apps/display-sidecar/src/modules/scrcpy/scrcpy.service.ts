@@ -348,7 +348,7 @@ export class ScrcpyService implements OnModuleDestroy {
   }
 
   closeSession(sessionId: string) {
-    this.closeSource(sessionId, 1000, "Display session released");
+    this.closeSource(sessionId, 4404, "Display session not found.");
     this.streamSessions.closeSession(sessionId);
   }
 

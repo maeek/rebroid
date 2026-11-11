@@ -19,7 +19,8 @@ be reported through the [security policy](../SECURITY.md).
 ## Authorization
 
 Accounts inherit permissions and quotas from explicitly assigned groups. Later groups take
-precedence for values they define. Administrators membership grants platform administration,
+precedence for permissions they define. The last assigned group supplies the complete quota
+profile. Administrators membership grants platform administration,
 all application and workflow permissions, and unlimited quotas. The built-in Users group
 is assigned when a new account is created without an explicit group selection. Removing
 the last membership leaves the account without group permissions. At least one enabled
@@ -61,13 +62,27 @@ The request specifies whether preparation intends to attach or start. The web se
 account state, command permissions, target ownership, and profile access. A Start request always
 checks startup permission and quotas, including queued automation target reservations.
 Scheduled runs therefore cannot retain permissions from the time their trigger was created.
+AI steps that omit capabilities receive the permitted defaults from this fresh authorization.
+Explicit capability lists are checked against the current account. Raw shell escalation requires
+its own permission. Deploy web and orchestrator together when updating the authorization exchange.
 
-Administrative user/group edits, disabling, and deletion revoke the user's existing display sessions
-before and after applying the access change. Group changes use one session inventory per pass.
-A failed pre-commit revocation blocks the account change. Once the change commits, its pending
-revocation survives a restart and retries in the background. New viewer grants wait for pending
-revocation to clear. The web service checks authorization again after creating a session to catch
-changes that raced with the grant. Edge and service request logs omit query strings to protect tokens.
+Create, Clone, Start, and Recreate use the orchestrator's transactional open-app admission.
+The web service sends the account's configured limit and translates the quota denial.
+
+Administrative account and group commands recheck the actor when admitted to the mutation queue.
+The web service validates the proposed change before revocation and commits pending revocation
+with the access change. The display sidecar closes sessions for the affected owners through an
+authenticated command. A failed pre-commit revocation blocks the account change. Pending
+revocation survives a restart and retries in the background. Self-service password and MFA changes
+commit the same revocation job with the credential change. Signing out closes the account's active
+viewers across browsers. Other signed-in browsers can open new viewers once revocation completes.
+
+The sidecar authenticates viewer attachments and HTTP controls through the private web
+authorization route. Web checks the browser's current session, app ownership, and the stored
+running container ID. Pending revocation blocks grant creation and attachment. Active transports
+close on revocation or a failed authorization recheck. Viewer URLs contain only a session ID and
+playback settings. nginx blocks the internal viewer authorization and display session management
+routes from public ingress.
 
 Workflow inputs must not override the session owner or supply alternate unchecked definitions.
 Resource quotas apply to effective create defaults and reject unlimited update values under finite
@@ -85,6 +100,7 @@ to a running app fails, the orchestrator stops that runtime.
 Server Actions default to a 4 MB body limit (`NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT`).
 Streaming upload routes retain their separate 512 MB proxy ceiling
 (`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`) and enforce their own authenticated file limits.
+Runtime file access is owner-only. File mutations require both Transfer files and Manage files.
 Runtime file downloads use buffered responses and have a 25 MiB per-file limit.
 
 Viewer control messages are validated at dispatch for allowed types, bounded text, finite coordinates,

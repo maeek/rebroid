@@ -58,8 +58,9 @@ straight to the orchestrator's event WebSocket. The edge strips internal shared-
 
 ## Live display
 
-The web backend authorizes access before a viewer session is created. The orchestrator prepares
-the Android target; the display sidecar owns the session and its short-lived token.
+The web backend checks ownership before a viewer session is created. The orchestrator prepares
+the Android target, and the display sidecar owns the session. The sidecar asks web to verify the
+signed-in owner and current runtime on connection and while the viewer is active.
 
 Viewer assets, WebSocket media, and WebRTC signaling route from the edge to the sidecar.
 WebRTC media travels directly between the sidecar and browser over UDP. Next.js does not relay media.

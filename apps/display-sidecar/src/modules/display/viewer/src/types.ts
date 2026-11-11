@@ -1,7 +1,6 @@
 export type ViewerConfig = {
   params: URLSearchParams;
   sessionId: string | null;
-  token: string | null;
   transport: "webrtc" | "websocket";
   audio: boolean;
   streamDefaults: Record<string, string>;
