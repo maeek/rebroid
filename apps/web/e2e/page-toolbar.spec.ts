@@ -44,8 +44,38 @@ test('loading toolbar keeps its search expanded under the pointer', async ({ pag
   await page.goto('/skeleton-contract-test?editor=services-loading')
   const search = page.getByRole('searchbox', { name: 'Search services' })
   await expect(search).toBeDisabled()
-  await search.hover()
+  await page.locator('[data-slot="search-field"]').hover()
   await expect.poll(async () => (await search.boundingBox())!.width, { timeout: 1500 }).toBeGreaterThan(180)
+})
+
+test('a stationary pointer does not expand search on reload or navigation', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  test.skip(!(await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)))
+  await page.addInitScript(() => {
+    document.addEventListener('transitionrun', event => {
+      const target = event.target
+      if (
+        (event.propertyName === 'width' || event.propertyName === 'inline-size') &&
+        target instanceof HTMLElement &&
+        target.dataset.slot === 'search-field'
+      ) {
+        target.dataset.widthTransitionStarted = ''
+      }
+    })
+  })
+  await page.goto('/skeleton-contract-test?editor=services')
+  const search = page.getByRole('searchbox', { name: 'Search services' })
+  const field = page.locator('[data-slot="search-field"]')
+  await search.hover()
+  await expect.poll(async () => (await search.boundingBox())!.width).toBeGreaterThan(180)
+
+  for (const navigate of [() => page.reload(), () => page.goto('/skeleton-contract-test?editor=services-loading')]) {
+    await navigate()
+    await expect(page.locator('[data-slot="search-field"]:hover')).toBeVisible()
+    await field.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    expect(await field.getAttribute('data-width-transition-started')).toBeNull()
+    await expect(search).toHaveCSS('width', '36px')
+  }
 })
 
 test('wide page search expands from the breadcrumb row and keeps an active query visible', async ({ page }) => {

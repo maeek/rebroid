@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconSearch, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +33,7 @@ export const SearchField = ({
   'aria-describedby': describedBy,
   'aria-invalid': invalid
 }: SearchFieldProps) => {
+  const [pointerHover, setPointerHover] = useState(false)
   const lastCommittedValue = useRef(value)
   const pendingTimeout = useRef<number | null>(null)
 
@@ -63,6 +64,13 @@ export const SearchField = ({
       className={cn('relative w-full', className)}
       data-slot='search-field'
       data-has-value={value ? '' : undefined}
+      data-pointer-hover={pointerHover ? '' : undefined}
+      onPointerMove={event => {
+        // Layout changes can hover a newly mounted field without any pointer movement.
+        if (!pointerHover && event.pointerType !== 'touch') setPointerHover(true)
+      }}
+      onPointerLeave={() => setPointerHover(false)}
+      onPointerCancel={() => setPointerHover(false)}
     >
       <IconSearch
         aria-hidden='true'

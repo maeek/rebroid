@@ -93,32 +93,33 @@
     inline-size: min(20cqi, 20rem);
   }
 
-  /* The loading toolbar preserves the search appearance while its controls are disabled. */
+  /* Let the wrapper receive hover movement while the loading controls are disabled. */
   .toolbar [data-slot='search-field'] > :is(input, button):disabled {
     opacity: 1;
+    pointer-events: none;
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .toolbar [data-slot='search-field']:hover {
+    .toolbar [data-slot='search-field'][data-pointer-hover]:hover {
       inline-size: min(20cqi, 20rem);
     }
 
-    .toolbar [data-slot='search-field']:hover input {
+    .toolbar [data-slot='search-field'][data-pointer-hover]:hover input {
       background-color: hsl(var(--control));
       border-color: hsl(var(--control-border) / 0.35);
       padding-inline-start: 2.25rem;
       padding-inline-end: 0.75rem;
     }
 
-    .toolbar [data-slot='search-field']:hover input:not(:disabled) {
+    .toolbar [data-slot='search-field'][data-pointer-hover]:hover input:not(:disabled) {
       cursor: text;
     }
 
-    .toolbar [data-slot='search-field'][data-has-value]:hover input {
+    .toolbar [data-slot='search-field'][data-pointer-hover][data-has-value]:hover input {
       padding-inline-end: 2.25rem;
     }
 
-    .toolbar [data-slot='search-field']:hover input::placeholder {
+    .toolbar [data-slot='search-field'][data-pointer-hover]:hover input::placeholder {
       color: hsl(var(--foreground-muted));
     }
   }
