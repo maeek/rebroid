@@ -61,14 +61,10 @@ describe('OrchestratorSettingsStore', () => {
       renderDevice: null,
     });
     await Promise.all([
-      settings.updateAndroidRendering({
-        mode: 'host',
-        renderDevice: '/dev/dri/renderD128',
-      }),
-      store.updateSettings((current) => ({
-        ...current,
+      settings.updateSettings({
+        androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
         defaultContainerImage: 'rebroid:first',
-      })),
+      }),
       store.updateSettings((current) => ({
         ...current,
         maxApkUploadSizeMb: 128,
@@ -82,6 +78,10 @@ describe('OrchestratorSettingsStore', () => {
     await expect(settings.readAndroidRendering()).resolves.toEqual({
       mode: 'host',
       renderDevice: '/dev/dri/renderD128',
+    });
+    await expect(settings.getSettings()).resolves.toMatchObject({
+      androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
+      defaultContainerImage: 'rebroid:first',
     });
   });
 
@@ -130,7 +130,10 @@ describe('OrchestratorSettingsStore', () => {
     });
 
     await expect(settings.resetSettings()).resolves.toEqual(
-      store.toPublicSettings(defaults),
+      store.toPublicSettings({
+        ...defaults,
+        androidRendering: configured.androidRendering,
+      }),
     );
     await expect(store.getStoredSettings()).resolves.toEqual({
       ...defaults,
@@ -138,6 +141,23 @@ describe('OrchestratorSettingsStore', () => {
       aiProviders: configured.aiProviders,
       featureFlags: configured.featureFlags,
       dockerOperationLimits: configured.dockerOperationLimits,
+    });
+  });
+
+  it('preserves independent OCR and firewall updates', async () => {
+    const settings = new SettingsService(store, {} as never);
+    const ocr = {
+      ...store.defaults().services.ocr,
+      endpoint: 'http://custom-ocr.test',
+      minConfidence: 0.65,
+    };
+    const firewall = { endpoint: '/run/custom-firewall.sock', timeoutMs: 6000 };
+    await Promise.all([
+      settings.updateSettings({ services: { ocr } }),
+      settings.updateSettings({ services: { firewall } }),
+    ]);
+    await expect(settings.getSettings()).resolves.toMatchObject({
+      services: { ocr, firewall },
     });
   });
 });

@@ -45,6 +45,7 @@ describe('Browser settings reads', () => {
     vi.mocked(getWebSettings).mockResolvedValue({ ...defaultWebSettingsResponse, auditRetentionDays: 41 })
     vi.mocked(orchestratorSettingsClient.getSettings).mockResolvedValue({
       ...defaultRuntimeSettingsResponse,
+      androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
       dockerImageRegistry: 'registry.internal',
       services: {
         ...defaultRuntimeSettingsResponse.services,
@@ -62,6 +63,10 @@ describe('Browser settings reads', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({ ok: true, data: settings })
     expect(settings).toMatchObject({
+      androidRendering:
+        role === 'admin'
+          ? { mode: 'host', renderDevice: '/dev/dri/renderD128' }
+          : defaultRuntimeSettingsResponse.androidRendering,
       orchestratorApiUrl: role === 'admin' ? 'http://orchestrator:4100' : '',
       dockerImageRegistry: role === 'admin' ? 'registry.internal' : null,
       auditRetentionDays: role === 'admin' ? 41 : defaultWebSettingsResponse.auditRetentionDays,
@@ -97,7 +102,10 @@ describe('Browser settings reads', () => {
 describe('Runtime settings BFF validation', () => {
   it.each([
     { services: defaultOrchestratorUiSettings.services },
+    { services: { ocr: defaultOrchestratorUiSettings.services.ocr } },
+    { services: { firewall: defaultOrchestratorUiSettings.services.firewall } },
     { defaultContainerImage: 'local/runtime:latest' },
+    { maxApkUploadSizeMb: 256, androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' } },
     { removeDataOnDelete: false }
   ])('accepts a scoped update %o', async settings => {
     const response = await POST(request(settings))
@@ -108,9 +116,15 @@ describe('Runtime settings BFF validation', () => {
   it.each([
     {},
     { unknown: true },
+    { services: {} },
     { maxApkUploadSizeMb: 0 },
     { maxApkUploadSizeMb: 4097 },
     { defaultContainerImage: '' },
+    { defaultContainerImage: 'https://registry.example/android/redroid:14' },
+    { defaultContainerImage: 'android/redroid:latest invalid' },
+    { androidRendering: null },
+    { androidRendering: { mode: 'host', renderDevice: null } },
+    { androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128:/dev/sda' } },
     {
       services: {
         ocr: { ...defaultOrchestratorUiSettings.services.ocr, timeoutMs: 0 },

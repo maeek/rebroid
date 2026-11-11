@@ -9,6 +9,10 @@ import {
   saveGeneralUiSettings,
   saveRuntimeUiSettings
 } from '@/server/preferences/ui-settings-service'
+import { androidRenderingSettingsSchema } from '@/shared/contracts/android-rendering-settings'
+import { firewallServiceSettingsSchema } from '@/shared/contracts/firewall-service-settings'
+import { ocrServiceSettingsSchema } from '@/shared/contracts/ocr-service-settings'
+import { defaultImageReferenceSchema } from '@/shared/contracts/ui-settings'
 
 const generalSettingsSchema = z.object({
   appListRefreshIntervalSeconds: z.number().int().min(2).max(120),
@@ -21,26 +25,21 @@ const generalSettingsSchema = z.object({
   defaultViewerSoundEnabled: z.boolean()
 })
 
-const optionalServiceSchema = z.object({
-  endpoint: z.string().trim().min(1).nullable(),
-  timeoutMs: z.number().int().positive().max(120_000)
-})
-
 const runtimeSettingsSchema = z
   .object({
-    defaultContainerImage: z.string().trim().min(1).max(512),
+    androidRendering: androidRenderingSettingsSchema,
+    defaultContainerImage: defaultImageReferenceSchema,
     dockerImageRegistry: z.string().trim().min(1).max(2048).nullable(),
     defaultInactivityTimeoutSeconds: z.number().int().nonnegative().max(31_536_000),
     maxApkUploadSizeMb: z.number().int().positive().max(4096),
     removeDataOnDelete: z.boolean().optional(),
-    services: z.object({
-      ocr: optionalServiceSchema.extend({
-        maxImageDimension: z.number().int().positive().max(16_384),
-        minConfidence: z.number().min(0).max(1),
-        language: z.string().trim().min(1).max(16)
-      }),
-      firewall: optionalServiceSchema
-    })
+    services: z
+      .object({
+        ocr: ocrServiceSettingsSchema,
+        firewall: firewallServiceSettingsSchema
+      })
+      .partial()
+      .refine(services => Object.keys(services).length > 0, 'At least one service is required.')
   })
   .partial()
   .refine(settings => Object.keys(settings).length > 0, 'At least one runtime setting is required.')

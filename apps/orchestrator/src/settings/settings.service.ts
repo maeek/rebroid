@@ -65,10 +65,14 @@ export class SettingsService {
    * Merges partial updates through normalization so persisted values always stay in range.
    */
   async updateSettings(dto: UpdateOrchestratorSettingsDto) {
-    const updated = await this.store.updateSettings((current) => {
-      const next = this.store.normalizeSettings({ ...current, ...dto });
-      return next;
-    });
+    const updated = await this.store.updateSettings((current) => ({
+      ...current,
+      ...dto,
+      services: {
+        ocr: dto.services?.ocr ?? current.services.ocr,
+        firewall: dto.services?.firewall ?? current.services.firewall,
+      },
+    }));
     return this.store.toPublicSettings(updated);
   }
 

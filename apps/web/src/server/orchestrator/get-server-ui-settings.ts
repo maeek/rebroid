@@ -32,6 +32,7 @@ const loadServerUiSettings = async (required: boolean): Promise<OrchestratorUiSe
 
   return {
     ...settings,
+    androidRendering: defaultRuntimeSettingsResponse.androidRendering,
     orchestratorApiUrl: '',
     dockerImageRegistry: null,
     auditRetentionDays: defaultWebSettingsResponse.auditRetentionDays,

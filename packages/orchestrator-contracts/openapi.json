@@ -6247,10 +6247,10 @@
                 "feature.firewall",
                 "feature.image-builder",
                 "feature.display-virtual",
-              "feature.ai",
-              "feature.workflows",
-              "feature.resource-quota",
-              "feature.display-webrtc"
+                "feature.ai",
+                "feature.workflows",
+                "feature.resource-quota",
+                "feature.display-webrtc"
               ]
             }
           },
@@ -6263,10 +6263,10 @@
                 "feature.firewall",
                 "feature.image-builder",
                 "feature.display-virtual",
-              "feature.ai",
-              "feature.workflows",
-              "feature.resource-quota",
-              "feature.display-webrtc"
+                "feature.ai",
+                "feature.workflows",
+                "feature.resource-quota",
+                "feature.display-webrtc"
               ]
             }
           }
@@ -6448,6 +6448,9 @@
       "OrchestratorSettingsDto": {
         "type": "object",
         "properties": {
+          "androidRendering": {
+            "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+          },
           "defaultContainerImage": {
             "type": "string",
             "example": "redroid/redroid:14.0.0-latest"
@@ -6484,12 +6487,24 @@
           }
         },
         "required": [
+          "androidRendering",
           "defaultContainerImage",
           "defaultScrcpyTransport",
           "defaultInactivityTimeoutSeconds",
           "maxApkUploadSizeMb",
           "services"
         ]
+      },
+      "UpdateOptionalServicesSettingsDto": {
+        "type": "object",
+        "properties": {
+          "ocr": {
+            "$ref": "#/components/schemas/OcrServiceSettingsDto"
+          },
+          "firewall": {
+            "$ref": "#/components/schemas/OptionalServiceSettingsDto"
+          }
+        }
       },
       "UpdateOrchestratorSettingsDto": {
         "type": "object",
@@ -6525,8 +6540,11 @@
             "minimum": 1,
             "maximum": 512
           },
+          "androidRendering": {
+            "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+          },
           "services": {
-            "$ref": "#/components/schemas/OptionalServicesSettingsDto"
+            "$ref": "#/components/schemas/UpdateOptionalServicesSettingsDto"
           }
         }
       },

@@ -10,7 +10,7 @@ import type {
 import type { CleanupUploadedApksResponse } from '@/shared/contracts/application'
 import type { FeatureFlagManifest, UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
 import type { OrchestratorSettingsResponse } from '@/shared/contracts/ui-settings'
-import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { RuntimeUiSettingsPatch } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const orchestratorSettingsClient = {
   cleanupUploadedApks(ownerUserId?: string) {
@@ -21,7 +21,7 @@ export const orchestratorSettingsClient = {
     return emptyRequest<OrchestratorSettingsResponse>('/settings')
   },
 
-  updateSettings(input: Partial<RuntimeUiSettings>) {
+  updateSettings(input: Omit<RuntimeUiSettingsPatch, 'removeDataOnDelete'>) {
     return jsonRequest<OrchestratorSettingsResponse>('/settings', 'PATCH', input)
   },
 

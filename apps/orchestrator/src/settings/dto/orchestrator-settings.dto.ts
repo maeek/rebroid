@@ -10,12 +10,14 @@ import {
   Max,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   viewerTransport,
   viewerTransports,
   type ViewerTransport,
 } from '@rebroid/android-application-core/viewer-control';
+import { AndroidRenderingSettingsDto } from './android-rendering-settings.dto';
 
 export class OptionalServiceSettingsDto {
   @ApiProperty({
@@ -62,15 +64,20 @@ export class OptionalServicesSettingsDto {
   @ApiProperty({ type: OcrServiceSettingsDto })
   @Type(() => OcrServiceSettingsDto)
   @IsObject()
+  @ValidateNested()
   ocr!: OcrServiceSettingsDto;
 
   @ApiProperty({ type: OptionalServiceSettingsDto })
   @Type(() => OptionalServiceSettingsDto)
   @IsObject()
+  @ValidateNested()
   firewall!: OptionalServiceSettingsDto;
 }
 
 export class OrchestratorSettingsDto {
+  @ApiProperty({ type: AndroidRenderingSettingsDto })
+  androidRendering!: AndroidRenderingSettingsDto;
+
   @ApiProperty({ example: 'redroid/redroid:14.0.0-latest' })
   @IsString()
   @MinLength(3)

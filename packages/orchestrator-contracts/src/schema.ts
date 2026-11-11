@@ -2146,6 +2146,7 @@ export interface components {
             firewall: components["schemas"]["OptionalServiceSettingsDto"];
         };
         OrchestratorSettingsDto: {
+            androidRendering: components["schemas"]["AndroidRenderingSettingsDto"];
             /** @example redroid/redroid:14.0.0-latest */
             defaultContainerImage: string;
             /**
@@ -2167,6 +2168,10 @@ export interface components {
             maxApkUploadSizeMb: number;
             services: components["schemas"]["OptionalServicesSettingsDto"];
         };
+        UpdateOptionalServicesSettingsDto: {
+            ocr?: components["schemas"]["OcrServiceSettingsDto"];
+            firewall?: components["schemas"]["OptionalServiceSettingsDto"];
+        };
         UpdateOrchestratorSettingsDto: {
             /** @example redroid/redroid:14.0.0-latest */
             defaultContainerImage?: string;
@@ -2187,7 +2192,8 @@ export interface components {
             defaultInactivityTimeoutSeconds?: number;
             /** @example 512 */
             maxApkUploadSizeMb?: number;
-            services?: components["schemas"]["OptionalServicesSettingsDto"];
+            androidRendering?: components["schemas"]["AndroidRenderingSettingsDto"];
+            services?: components["schemas"]["UpdateOptionalServicesSettingsDto"];
         };
         AutomationAiProviderModelSettingsDto: {
             systemPrompt?: string | null;

@@ -1,8 +1,10 @@
 import type { ScrcpyTransport } from '@/shared/contracts/application'
 import type { OrchestratorSettingsResponse, WebSettingsResponse } from '@/shared/contracts/ui-settings'
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
+import type { AndroidRenderingSettings } from '@rebroid/android-application-core/redroid-runtime'
 
 export interface OrchestratorUiSettings {
+  androidRendering: AndroidRenderingSettings
   orchestratorApiUrl: string
   defaultContainerImage: string
   dockerImageRegistry: string | null
@@ -72,13 +74,17 @@ export type RuntimeUiSettings = Pick<
   | 'services'
 >
 
-export type RuntimeAdminUiSettings = RuntimeUiSettings & Pick<OrchestratorUiSettings, 'removeDataOnDelete'>
+export type RuntimeAdminUiSettings = RuntimeUiSettings &
+  Pick<OrchestratorUiSettings, 'androidRendering' | 'removeDataOnDelete'>
 
-export type RuntimeUiSettingsPatch = Partial<RuntimeAdminUiSettings>
+export type RuntimeUiSettingsPatch = Partial<Omit<RuntimeAdminUiSettings, 'services'>> & {
+  services?: Partial<OptionalServicesUiSettings>
+}
 
 export type AiUiSettings = Pick<OrchestratorUiSettings, 'aiContextualSuggestionsEnabled'>
 
 export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
+  androidRendering: { mode: 'software', renderDevice: null },
   orchestratorApiUrl: 'http://localhost:4100',
   defaultContainerImage: 'redroid/redroid:14.0.0-latest',
   dockerImageRegistry: null,
@@ -128,6 +134,7 @@ export const defaultWebSettingsResponse: WebSettingsResponse = {
 }
 
 export const defaultRuntimeSettingsResponse: OrchestratorSettingsResponse = {
+  androidRendering: defaultOrchestratorUiSettings.androidRendering,
   defaultContainerImage: defaultOrchestratorUiSettings.defaultContainerImage,
   dockerImageRegistry: defaultOrchestratorUiSettings.dockerImageRegistry,
   defaultScrcpyTransport: defaultOrchestratorUiSettings.scrcpyTransport,
@@ -167,6 +174,7 @@ export const normalizeOrchestratorUiSettings = (
   orchestrator: Partial<OrchestratorSettingsResponse>,
   orchestratorApiUrl = defaultOrchestratorUiSettings.orchestratorApiUrl
 ): OrchestratorUiSettings => ({
+  androidRendering: orchestrator.androidRendering ?? defaultOrchestratorUiSettings.androidRendering,
   orchestratorApiUrl,
   appListRefreshIntervalSeconds:
     Number(web.appListRefreshIntervalSeconds) || defaultOrchestratorUiSettings.appListRefreshIntervalSeconds,

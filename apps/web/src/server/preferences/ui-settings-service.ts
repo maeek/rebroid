@@ -69,6 +69,16 @@ export const saveRuntimeUiSettings = async (settings: RuntimeUiSettingsPatch) =>
   const orchestrator = changesRuntime
     ? await orchestratorSettingsClient.updateSettings(runtimeSettings)
     : await orchestratorSettingsClient.getSettings()
+  if (runtimeSettings.androidRendering) {
+    recordAuditEvent({
+      actorUserId: admin.id,
+      actorLabel: adminLabel(admin),
+      category: 'settings',
+      action: 'settings.android_rendering.update',
+      resourceType: 'android_rendering',
+      details: orchestrator.androidRendering
+    })
+  }
   if (removeDataOnDelete !== undefined) {
     try {
       web = await saveWebSettings({ removeDataOnDelete })

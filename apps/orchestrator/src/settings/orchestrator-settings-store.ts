@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import {
-  isDrmRenderDevice,
-  type AndroidRenderingSettings,
-} from '@rebroid/android-application-core/redroid-runtime';
+import { isDrmRenderDevice } from '@rebroid/android-application-core/redroid-runtime';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
 import { numberInRange } from '../common/number-range';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
@@ -33,7 +30,6 @@ export interface PersistedFeatureFlags {
 }
 
 export type StoredOrchestratorSettings = OrchestratorSettingsDto & {
-  androidRendering: AndroidRenderingSettings;
   aiProviders: AutomationAiProvider[];
   featureFlags: PersistedFeatureFlags;
   dockerOperationLimits?: DockerOperationLimits;
@@ -180,8 +176,6 @@ export class OrchestratorSettingsStore {
     settings: StoredOrchestratorSettings,
   ): OrchestratorSettingsDto {
     const publicSettings = { ...settings };
-    delete (publicSettings as Partial<StoredOrchestratorSettings>)
-      .androidRendering;
     delete (publicSettings as Partial<StoredOrchestratorSettings>).aiProviders;
     delete (publicSettings as Partial<StoredOrchestratorSettings>).featureFlags;
     delete (publicSettings as Partial<StoredOrchestratorSettings>)
@@ -262,6 +256,9 @@ export class OrchestratorSettingsStore {
     defaults: OcrServiceSettingsDto,
   ): OcrServiceSettingsDto {
     const base = this.normalizeOptionalService(value, defaults, 'http');
+    const minConfidence = Number(
+      value?.minConfidence ?? defaults.minConfidence,
+    );
     return {
       ...base,
       maxImageDimension: numberInRange(
@@ -270,12 +267,9 @@ export class OrchestratorSettingsStore {
         320,
         4096,
       ),
-      minConfidence: numberInRange(
-        value?.minConfidence,
-        defaults.minConfidence,
-        0,
-        1,
-      ),
+      minConfidence: Number.isFinite(minConfidence)
+        ? Math.min(1, Math.max(0, minConfidence))
+        : defaults.minConfidence,
       language: value?.language?.trim() || defaults.language,
     };
   }

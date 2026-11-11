@@ -41,9 +41,23 @@ describe('Runtime settings patch scope', () => {
   })
 
   it('updates runtime defaults without replacing service connections', async () => {
-    await saveRuntimeUiSettings({ maxApkUploadSizeMb: 256, removeDataOnDelete: false })
-    expect(orchestratorSettingsClient.updateSettings).toHaveBeenCalledExactlyOnceWith({ maxApkUploadSizeMb: 256 })
+    const androidRendering = { mode: 'host', renderDevice: '/dev/dri/renderD128' } as const
+    vi.mocked(orchestratorSettingsClient.updateSettings).mockResolvedValueOnce({
+      ...defaultRuntimeSettingsResponse,
+      androidRendering,
+      maxApkUploadSizeMb: 256
+    })
+    await expect(
+      saveRuntimeUiSettings({ androidRendering, maxApkUploadSizeMb: 256, removeDataOnDelete: false })
+    ).resolves.toMatchObject({ androidRendering, maxApkUploadSizeMb: 256, removeDataOnDelete: false })
+    expect(orchestratorSettingsClient.updateSettings).toHaveBeenCalledExactlyOnceWith({
+      androidRendering,
+      maxApkUploadSizeMb: 256
+    })
     expect(saveWebSettings).toHaveBeenCalledExactlyOnceWith({ removeDataOnDelete: false })
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'settings.android_rendering.update', details: androidRendering })
+    )
   })
 
   it('saves a web-owned deletion policy without calling the orchestrator update', async () => {
