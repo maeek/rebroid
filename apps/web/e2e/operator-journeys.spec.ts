@@ -78,21 +78,25 @@ for (const width of [390, 1440]) {
   })
 }
 
-test('failed execution exposes step evidence, resource links, and keyboard dismissal', async ({ page }) => {
+test('failed execution has a full-page trace with a summary panel, steps, and events', async ({ page }) => {
   await page.route('**/api/bff/automations/runs/**/events*', route =>
     route.fulfill({ json: { ok: true, requestId: 'preview', data: { events: [], streamUrl: '' } } })
   )
   await page.goto('/skeleton-contract-test?editor=failed-run')
-  const trigger = page.getByRole('button', { name: 'Inspect failed run' })
-  await trigger.click()
-  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Run preview-' })).toBeVisible()
+  const summary = page.getByRole('region', { name: 'Run summary' })
+  await expect(summary).toContainText('preview-authorization-request')
+  await expect(summary.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
+    'href',
+    '/app/preview-app?view=workflows&run=preview-run'
+  )
+  await page.getByRole('tab', { name: 'Steps' }).click()
   await expect(page.getByText('Android boot timed out.')).toBeVisible()
+  await page.getByRole('tab', { name: 'Events' }).click()
   await expect(page.getByText('No recorded events')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Inspect target app' })).toHaveAttribute('href', '/app/preview-app')
+  await page.getByRole('tab', { name: 'Summary' }).click()
   await page.screenshot({ path: `/tmp/rebroid-failed-run-${test.info().project.name}.png`, animations: 'disabled' })
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('dialog')).not.toBeVisible()
-  await expect(trigger).toBeFocused()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
 for (const view of ['overview', 'activity', 'diagnostics']) {
