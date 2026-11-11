@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   ConflictException,
   Injectable,
   OnModuleDestroy,
@@ -62,7 +63,19 @@ export class DockerSidecarApiService
   }
 
   async listDisplaySessions() {
-    const response = await this.request<unknown>('/sessions');
+    const response = await this.request<unknown>('/sessions').catch(
+      (error: unknown) => {
+        if (!(error instanceof ConflictException)) throw error;
+        throw new BadGatewayException(
+          {
+            statusCode: 502,
+            code: 'display_sidecar_unavailable',
+            message: error.message,
+          },
+          { cause: error },
+        );
+      },
+    );
     if (
       !response ||
       typeof response !== 'object' ||
@@ -71,8 +84,8 @@ export class DockerSidecarApiService
         this.isDisplaySession(session),
       )
     ) {
-      throw new ConflictException({
-        statusCode: 409,
+      throw new BadGatewayException({
+        statusCode: 502,
         code: 'display_sidecar_invalid_response',
         message: 'Display sidecar returned a malformed session list.',
       });

@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { BadGatewayException } from '@nestjs/common';
 import { DockerSidecarApiService } from './docker-sidecar-api.service';
 
 const session = {
@@ -90,14 +90,14 @@ describe('DockerSidecarApiService', () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ items: [{}] }), { status: 200 }),
       )
-      .mockResolvedValueOnce(new Response('unavailable', { status: 503 }));
+      .mockResolvedValueOnce(new Response('unauthorized', { status: 401 }));
     const client = service();
 
     await expect(client.listDisplaySessions()).rejects.toMatchObject({
       response: { code: 'display_sidecar_invalid_response' },
     });
     await expect(client.listDisplaySessions()).rejects.toBeInstanceOf(
-      ConflictException,
+      BadGatewayException,
     );
   });
 
