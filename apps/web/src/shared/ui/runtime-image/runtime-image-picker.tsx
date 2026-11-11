@@ -1,4 +1,5 @@
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { defaultImageReferenceSchema } from '@/shared/contracts/ui-settings'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import {
   findPlatformImageByReference,
@@ -10,6 +11,7 @@ type RuntimeImagePickerProps = {
   id?: string
   'aria-describedby'?: string
   'aria-invalid'?: boolean
+  allowCustomReference?: boolean
   images: PlatformImage[]
   value: string
   onChange: (value: string) => void
@@ -35,7 +37,15 @@ const isRuntimeImageCandidate = (image: PlatformImage) => {
   return metadata.runtimeKind === 'redroid' || image.runtimeMetadataSource === 'stored'
 }
 
+const createImageReferenceOption = (query: string) => {
+  const reference = defaultImageReferenceSchema.safeParse(query)
+  return reference.success
+    ? { value: reference.data, label: reference.data, description: 'Use this image reference' }
+    : null
+}
+
 export const RuntimeImagePicker = ({
+  allowCustomReference = false,
   images,
   value,
   onChange,
@@ -58,6 +68,7 @@ export const RuntimeImagePicker = ({
     <SingleSelectCombobox
       {...attributes}
       options={options}
+      createOption={allowCustomReference ? createImageReferenceOption : undefined}
       value={value}
       onValueChange={onChange}
       disabled={disabled}

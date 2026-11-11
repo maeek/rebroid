@@ -1,32 +1,44 @@
+import type { FormEventHandler } from 'react'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { DetailFields } from '@/shared/ui/detail-fields'
-import { ResourceLink } from '@/shared/ui/resource-link'
 import { RuntimeImagePicker } from '@/shared/ui/runtime-image/runtime-image-picker'
+import { AndroidRenderingSection } from './android-rendering-section'
 import type { PlatformImage } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { AndroidRenderingSettings } from '@rebroid/android-application-core/redroid-runtime'
 
 const numberValue = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback)
 
 export const PlatformRuntimeFieldsSection = ({
   images,
   settings,
+  savedRenderingSettings = settings.androidRendering,
+  appliedRenderingSettings,
   onSettingsChange,
+  onSubmit,
   loading = false,
   disabled = false
 }: {
   images: PlatformImage[]
   settings: OrchestratorUiSettings
+  savedRenderingSettings?: AndroidRenderingSettings
+  appliedRenderingSettings?: (AndroidRenderingSettings | null)[] | null
   onSettingsChange: (patch: Partial<OrchestratorUiSettings>) => void
+  onSubmit?: FormEventHandler<HTMLFormElement>
   loading?: boolean
   disabled?: boolean
 }) => (
   <div className='@container/runtime min-w-0'>
-    <div className='grid min-w-0 items-stretch gap-6 @min-[48rem]/runtime:grid-cols-2 @min-[96rem]/runtime:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(16rem,0.75fr)]'>
+    <form
+      id='runtime-defaults-form'
+      aria-label='Runtime defaults'
+      className='grid min-w-0 items-stretch gap-6 @min-[48rem]/runtime:grid-cols-2 @min-[96rem]/runtime:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(16rem,0.85fr)]'
+      onSubmit={onSubmit}
+    >
       <Section
         surface='plain'
         title='Image defaults'
@@ -36,12 +48,14 @@ export const PlatformRuntimeFieldsSection = ({
         <FormField
           label='Default image'
           controlId='runtime-default-image'
+          description='Choose a local image or enter an image reference.'
           layout='vertical'
         >
           {loading ? (
             <Skeleton className='touch-control h-9 w-full' />
           ) : (
             <RuntimeImagePicker
+              allowCustomReference
               images={images}
               value={settings.defaultContainerImage}
               disabled={disabled}
@@ -145,29 +159,14 @@ export const PlatformRuntimeFieldsSection = ({
           )}
         </FormField>
       </Section>
-      <Section
-        surface='plain'
-        title='Connection'
-        description='Managed by your deployment configuration.'
-        className='@min-[48rem]/runtime:col-span-2 @min-[96rem]/runtime:col-span-1'
-        contentClassName='grid gap-6 @min-[48rem]/runtime:grid-cols-2 @min-[96rem]/runtime:grid-cols-1'
-      >
-        <DetailFields
-          loading={loading}
-          fields={[
-            {
-              label: 'API URL',
-              value: settings.orchestratorApiUrl,
-              copyValue: settings.orchestratorApiUrl,
-              code: true,
-              fullWidth: true
-            }
-          ]}
-        />
-        <div className='grid gap-2 text-sm'>
-          <ResourceLink href='/platform/services'>Manage service connections</ResourceLink>
-        </div>
-      </Section>
-    </div>
+      <AndroidRenderingSection
+        settings={settings.androidRendering}
+        savedSettings={savedRenderingSettings}
+        appliedSettings={appliedRenderingSettings}
+        loading={loading}
+        disabled={disabled}
+        onChange={androidRendering => onSettingsChange({ androidRendering })}
+      />
+    </form>
   </div>
 )

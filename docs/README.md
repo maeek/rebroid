@@ -7,7 +7,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | Guide                       | Covers                                                                              |
 | --------------------------- | ----------------------------------------------------------------------------------- |
 | [Deployment](deployment.md) | Host requirements, Compose stacks, [AMD GPU rendering setup](deployment.md#android-gpu-rendering-on-linux), HTTPS, networking, and configuration. |
-| [Operations](operations.md) | Service health, Docker operation limits, troubleshooting, state resets, image builds, and AI providers. |
+| [Operations](operations.md) | Service health, [GPU rendering troubleshooting](operations.md#android-gpu-rendering), Docker operation limits, state resets, image builds, and AI providers. |
 
 ## Understand and contribute
 

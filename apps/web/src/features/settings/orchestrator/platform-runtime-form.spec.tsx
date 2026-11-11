@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from '@/hooks/use-toast'
+import { ActionResultError } from '@/shared/actions/action-result'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import {
   resetOrchestratorUiSettings,
@@ -31,6 +32,7 @@ const renderForm = () =>
     <PlatformRuntimeForm
       images={[]}
       initialSettings={initialSettings}
+      appliedRenderingSettings={[{ mode: 'host', renderDevice: '/dev/dri/renderD128' }, null]}
     />
   )
 beforeEach(() => {
@@ -39,7 +41,7 @@ beforeEach(() => {
 
 describe('Runtime defaults workflow', () => {
   it('retains an existing draft through an outage and resumes editing after recovery', () => {
-    const data = { images: [], initialSettings }
+    const data = { images: [], initialSettings, appliedRenderingSettings: [] }
     const { rerender } = render(<PlatformRuntimePageClient data={data} />)
     const registry = screen.getByLabelText('Image registry')
     fireEvent.change(registry, { target: { value: 'registry.example' } })
@@ -53,14 +55,17 @@ describe('Runtime defaults workflow', () => {
     )
     expect(registry).toHaveValue('registry.example')
     expect(registry).toBeEnabled()
+    expect(screen.getByLabelText('Max APK size')).toHaveValue(128)
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
 
-  it('separates the read-only connection and lets users discard local changes', async () => {
+  it('shows rendering settings in the defaults form and lets users discard local changes', async () => {
     renderForm()
     const registry = await screen.findByLabelText('Image registry')
-    expect(screen.queryByRole('textbox', { name: 'API URL' })).toBeNull()
-    expect(screen.getByText(initialSettings.orchestratorApiUrl)).toBeVisible()
+    const form = screen.getByRole('form', { name: 'Runtime defaults' })
+    const hardware = within(form).getByRole('region', { name: 'Hardware Acceleration' })
+    expect(within(hardware).getByRole('combobox', { name: 'Rendering mode' })).toHaveTextContent('Software (default)')
+    expect(screen.queryByRole('region', { name: 'Connection' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     fireEvent.change(registry, { target: { value: 'registry.example:5000' } })
     expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
@@ -76,20 +81,79 @@ describe('Runtime defaults workflow', () => {
     const limit = await screen.findByLabelText('Max APK size')
     fireEvent.change(limit, { target: { value: '256' } })
     fireEvent.submit(screen.getByRole('form', { name: 'Runtime defaults' }))
-    await waitFor(() =>
-      expect(saveOrchestratorUiSettings).toHaveBeenCalledWith({
-        defaultContainerImage: initialSettings.defaultContainerImage,
-        dockerImageRegistry: null,
-        defaultInactivityTimeoutSeconds: 900,
-        maxApkUploadSizeMb: 256,
-        removeDataOnDelete: false
-      })
-    )
+    await waitFor(() => expect(saveOrchestratorUiSettings).toHaveBeenCalledWith({ maxApkUploadSizeMb: 256 }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled())
     expect(limit).toHaveValue(256)
     fireEvent.change(limit, { target: { value: '300' } })
     fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
     expect(limit).toHaveValue(256)
+  })
+
+  it.each(['click', 'Enter'] as const)('saves a manually entered default image selected with %s', async selection => {
+    const defaultContainerImage = 'registry.example:5000/android/redroid:14'
+    vi.mocked(saveOrchestratorUiSettings).mockResolvedValue({ ...initialSettings, defaultContainerImage })
+    renderForm()
+
+    const image = screen.getByRole('combobox', { name: 'Default image' })
+    fireEvent.click(image)
+    fireEvent.input(image, { target: { value: defaultContainerImage }, inputType: 'insertText' })
+    const option = await screen.findByRole('option', { name: /Use this image reference/ })
+    expect(option).toHaveTextContent(defaultContainerImage)
+    if (selection === 'click') fireEvent.click(option)
+    else fireEvent.keyDown(image, { key: 'Enter' })
+
+    expect(image).toHaveValue(defaultContainerImage)
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveOrchestratorUiSettings).toHaveBeenCalledExactlyOnceWith({ defaultContainerImage }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled())
+  })
+
+  it('validates the GPU device and saves rendering and app defaults in one request', async () => {
+    const androidRendering = { mode: 'host', renderDevice: '/dev/dri/renderD128' } as const
+    vi.mocked(saveOrchestratorUiSettings)
+      .mockRejectedValueOnce(
+        new ActionResultError({
+          message: 'Settings unavailable',
+          code: 'upstream_unavailable',
+          requestId: 'gpu-save-1'
+        })
+      )
+      .mockResolvedValueOnce({ ...initialSettings, androidRendering, maxApkUploadSizeMb: 256 })
+    renderForm()
+    const mode = screen.getByRole('combobox', { name: 'Rendering mode' })
+    const save = screen.getByRole('button', { name: 'Save' })
+    expect(screen.queryByRole('textbox', { name: /GPU render device/ })).toBeNull()
+    expect(screen.getByText(/1 differ from the saved setting and 1 have no recorded configuration/)).toBeVisible()
+
+    fireEvent.click(mode)
+    const host = await screen.findByRole('option', { name: 'Host GPU' })
+    fireEvent.pointerDown(host, { pointerType: 'mouse' })
+    fireEvent.click(host)
+    const device = await screen.findByRole('textbox', { name: /GPU render device/ })
+    expect(save).toBeDisabled()
+    fireEvent.change(device, { target: { value: '/dev/sda' } })
+    expect(device).toHaveAttribute('aria-invalid', 'true')
+    expect(save).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Discard changes' })).toBeEnabled()
+    fireEvent.submit(screen.getByRole('form', { name: 'Runtime defaults' }))
+    expect(saveOrchestratorUiSettings).not.toHaveBeenCalled()
+
+    fireEvent.change(device, { target: { value: androidRendering.renderDevice } })
+    const limit = screen.getByRole('spinbutton', { name: 'Max APK size' })
+    fireEvent.change(limit, { target: { value: '256' } })
+    fireEvent.click(save)
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'danger' })))
+    expect(device).toHaveValue(androidRendering.renderDevice)
+    expect(limit).toHaveValue(256)
+    fireEvent.click(save)
+    await waitFor(() => expect(save).toBeDisabled())
+    expect(saveOrchestratorUiSettings).toHaveBeenNthCalledWith(2, { androidRendering, maxApkUploadSizeMb: 256 })
+    expect(screen.getByText(/0 differ from the saved setting and 1 have no recorded configuration/)).toBeVisible()
+    expect(screen.getByText('Hardware rendering is unverified.')).toBeVisible()
+
+    fireEvent.change(device, { target: { value: '/dev/dri/renderD129' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(device).toHaveValue(androidRendering.renderDevice)
   })
 
   it('retains drafts after failed saves and server revalidation', async () => {
@@ -101,6 +165,7 @@ describe('Runtime defaults workflow', () => {
       <PlatformRuntimeForm
         images={[]}
         initialSettings={{ ...initialSettings, appListRefreshIntervalSeconds: 10 }}
+        appliedRenderingSettings={[]}
       />
     )
     expect(registry).toHaveValue('registry.example')

@@ -151,9 +151,9 @@ Verify Redroid rendering separately for the exact image and driver combination.
    `ls -l /dev/dri/renderD*`. If there is more than one, use
    `ls -l /dev/dri/by-path` and `lspci -k` to match the AMD GPU to its render node.
    If Docker runs in a VM, use the device visible inside that VM.
-2. As a Rebroid administrator, open **Platform → Services → Display sessions**.
-   Under **Android GPU rendering**, choose **Host GPU** and enter the node you
-   identified, such as `/dev/dri/renderD128`. Save the setting. The path must
+2. As a Rebroid administrator, open **Platform settings → Runtime defaults**.
+   Under **Hardware Acceleration**, choose **Host GPU** and enter the node you
+   identified, such as `/dev/dri/renderD128`. Select **Save** at the top of the page. The path must
    name a render node directly under `/dev/dri`.
 3. Try one stock Redroid Android 16 application with a persistent test profile. Stop and start
    it to apply the saved setting. New Redroid runtimes use the setting on creation.

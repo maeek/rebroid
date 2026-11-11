@@ -1,5 +1,6 @@
 import { unstable_rethrow } from 'next/navigation'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { listPlatformImagesAction } from '@/server/orchestrator/platform/image-actions'
 import { getOrchestratorSettingsAction } from '@/server/orchestrator/settings/actions'
@@ -30,7 +31,9 @@ const servicesPreviewHealth: OrchestratorHealth = {
 }
 
 vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn() }))
-vi.mock('@/server/orchestrator/config', () => ({ getOrchestratorBaseUrl: () => 'http://runtime:4100' }))
+vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
+  listApplicationsAction: vi.fn()
+}))
 vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: vi.fn() }))
 vi.mock('@/server/orchestrator/platform/image-actions', () => ({ listPlatformImagesAction: vi.fn() }))
 vi.mock('@/server/orchestrator/settings/actions', () => ({ getOrchestratorSettingsAction: vi.fn() }))
@@ -41,6 +44,7 @@ beforeEach(() => {
   vi.mocked(getWebSettings).mockResolvedValue(defaultWebSettingsResponse)
   vi.mocked(getOrchestratorSettingsAction).mockResolvedValue(defaultRuntimeSettingsResponse)
   vi.mocked(listPlatformImagesAction).mockResolvedValue([])
+  vi.mocked(listApplicationsAction).mockResolvedValue([])
 })
 
 describe('runtime defaults availability', () => {
@@ -70,7 +74,14 @@ describe('runtime defaults availability', () => {
     })
     const data = await getPlatformRuntimePageData()
     expect(data?.initialSettings.maxApkUploadSizeMb).toBe(128)
-    expect(data?.initialSettings.orchestratorApiUrl).toBe('http://runtime:4100')
+    expect(data?.appliedRenderingSettings).toEqual([])
+  })
+
+  it('keeps the defaults available when the runtime inventory cannot be read', async () => {
+    vi.mocked(listApplicationsAction).mockRejectedValueOnce(new Error('inventory unavailable'))
+    const data = await getPlatformRuntimePageData()
+    expect(data?.initialSettings.maxApkUploadSizeMb).toBe(defaultRuntimeSettingsResponse.maxApkUploadSizeMb)
+    expect(data?.appliedRenderingSettings).toBeNull()
   })
 
   it('preserves framework redirects', async () => {

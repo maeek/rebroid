@@ -5,8 +5,13 @@ import { PlatformRuntimeForm } from '../../platform-runtime-form'
 import { PlatformRuntimeUnavailable } from '../../platform-runtime-unavailable'
 import type { PlatformImage } from '@/shared/contracts/platform'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { AndroidRenderingSettings } from '@rebroid/android-application-core/redroid-runtime'
 
-type RuntimePageData = { images: PlatformImage[]; initialSettings: OrchestratorUiSettings }
+type RuntimePageData = {
+  images: PlatformImage[]
+  initialSettings: OrchestratorUiSettings
+  appliedRenderingSettings: (AndroidRenderingSettings | null)[] | null
+}
 
 export const PlatformRuntimePageClient = ({ data }: { data: RuntimePageData | null }) => {
   const [lastData, setLastData] = useState(data)

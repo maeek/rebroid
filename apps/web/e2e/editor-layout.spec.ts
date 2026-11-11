@@ -196,13 +196,13 @@ test('create editor stacks fields inside rounded sections', async ({ page }) => 
   }
 })
 
-test('runtime settings separate defaults, connection, and maintenance workflows', async ({ page }) => {
+test('runtime settings separate defaults, hardware acceleration, and maintenance workflows', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=runtime')
     const imageDefaults = page.getByRole('region', { name: 'Image defaults', exact: true })
     const behavior = page.getByRole('region', { name: 'App behavior', exact: true })
-    const connection = page.getByRole('region', { name: 'Connection', exact: true })
+    const hardware = page.getByRole('region', { name: 'Hardware Acceleration', exact: true })
     const maintenance = page.getByRole('region', { name: 'Maintenance', exact: true })
     const defaultImage = await page.getByRole('combobox', { name: 'Default image', exact: true }).boundingBox()
     const imageRegistry = await page.getByRole('textbox', { name: 'Image registry' }).boundingBox()
@@ -210,8 +210,8 @@ test('runtime settings separate defaults, connection, and maintenance workflows'
     expect(defaultImage!.width).toBe(imageRegistry!.width)
     await expect(imageDefaults).toBeVisible()
     await expect(behavior).toBeVisible()
-    await expect(connection.getByText('http://localhost:4100')).toBeVisible()
-    await expect(page.getByRole('textbox', { name: 'API URL' })).toHaveCount(0)
+    await expect(hardware.getByText('Software (default)')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Connection', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
     await expect(maintenance.getByRole('button', { name: /^Clean up / })).toHaveCount(6)
     const numeric = page.getByRole('spinbutton', { name: 'Default inactivity timeout' })
@@ -231,6 +231,15 @@ test('runtime settings separate defaults, connection, and maintenance workflows'
       })
     }
     const registry = page.getByRole('textbox', { name: 'Image registry' })
+    await hardware.getByRole('combobox', { name: 'Rendering mode' }).click()
+    await page.getByRole('option', { name: 'Host GPU' }).click()
+    const device = hardware.getByRole('textbox', { name: /GPU render device/ })
+    await expect(device).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
+    await device.fill('/dev/dri/renderD128')
+    await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
+    await page.getByRole('button', { name: 'Discard changes' }).click()
+    await expect(device).toHaveCount(0)
     await registry.fill('registry.example:5000')
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeEnabled()
     await page.getByRole('button', { name: 'Discard changes' }).click()
@@ -257,9 +266,13 @@ test('runtime settings separate defaults, connection, and maintenance workflows'
   await page.setViewportSize({ width: 1440, height: 1100 })
   await page.goto('/skeleton-contract-test?editor=runtime-loading')
   const loading = await page.getByRole('region', { name: 'Image defaults', exact: true }).boundingBox()
+  const hardware = page.getByRole('region', { name: 'Hardware Acceleration', exact: true })
+  const hardwareLoading = await hardware.boundingBox()
+  await expect(hardware.locator('#runtime-rendering-mode')).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toBeDisabled()
   await page.goto('/skeleton-contract-test?editor=runtime')
   expect(await page.getByRole('region', { name: 'Image defaults', exact: true }).boundingBox()).toEqual(loading)
+  expect(await hardware.boundingBox()).toEqual(hardwareLoading)
 })
 
 test('icon preview and upload share a row below the field label', async ({ page }) => {

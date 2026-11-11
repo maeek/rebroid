@@ -4,14 +4,14 @@
 
 Use the [Linux GPU setup guide](deployment.md#android-gpu-rendering-on-linux)
 to configure a render node on the Docker host. Saving records a platform setting.
-The **Display sessions** page shows when recorded runtime configuration differs
+The **Hardware Acceleration** section in **Runtime defaults** shows when recorded runtime configuration differs
 from the saved setting and counts older runtimes whose configuration is unknown.
 Neither state verifies GPU activity.
 
 If Start reports a device mapping problem, check that the configured render node
 exists on the Docker daemon's host and that a deployment device mapping does not
 use its container path for another device. If Android fails to boot with GPU
-rendering, select **Software** in **Android GPU rendering**, save, then use the
+rendering, select **Software (default)** under **Hardware Acceleration**, save, then use the
 normal stopped application Start flow. This replaces the runtime when needed and
 keeps persistent profile volumes.
 

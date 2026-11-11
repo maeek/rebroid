@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 type Option = { value: string; label: string; description?: string; keywords?: string[] }
 type Props = {
   options: Option[]
+  createOption?: (query: string) => Option | null
   value: string
   onValueChange: (value: string) => void
   disabled?: boolean
@@ -25,6 +26,7 @@ type Props = {
 
 export const SingleSelectCombobox = ({
   options,
+  createOption,
   value,
   onValueChange,
   disabled,
@@ -32,12 +34,26 @@ export const SingleSelectCombobox = ({
   ...attributes
 }: Props) => {
   const [open, setOpen] = useState(false)
-  const optionsByValue = useMemo(() => new Map(options.map(option => [option.value, option])), [options])
-  const items = useMemo(() => options.map(option => option.value), [options])
+  const [typedValue, setTypedValue] = useState('')
+  const optionsByValue = useMemo(() => {
+    const byValue = new Map(options.map(option => [option.value, option]))
+    const candidate = createOption?.(typedValue.trim())
+    if (candidate && candidate.value !== value && !byValue.has(candidate.value)) {
+      byValue.set(candidate.value, candidate)
+    }
+    return byValue
+  }, [createOption, options, typedValue, value])
+  const items = useMemo(() => [...optionsByValue.keys()], [optionsByValue])
   return (
     <Combobox.Root
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={nextOpen => {
+        setOpen(nextOpen)
+        if (!nextOpen) setTypedValue('')
+      }}
+      onInputValueChange={
+        createOption ? (next, { reason }) => setTypedValue(reason === 'input-change' ? next : '') : undefined
+      }
       items={items}
       value={value}
       disabled={disabled}

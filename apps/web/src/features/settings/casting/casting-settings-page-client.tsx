@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { AndroidRenderingSettings } from './android-rendering-settings'
 import { CastingSidecarSettings } from './casting-sidecar-settings'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
@@ -43,7 +42,6 @@ export const CastingSettingsPageClient = ({
         section={{ label: 'Platform', href: '/platform' }}
         trail={[{ label: 'Services', href: '/platform/services' }]}
         title='Display sessions'
-        description='Configure Android rendering, inspect the display service, and manage viewer sessions.'
         breadcrumbRefresh={
           <PlatformPageRefreshButton
             disabled={loading}
@@ -53,11 +51,6 @@ export const CastingSettingsPageClient = ({
         }
       />
       <PageContent>
-        <AndroidRenderingSettings
-          applications={applications}
-          loading={loading}
-          refreshKey={refreshKey}
-        />
         <CastingSidecarSettings
           loading={loading}
           initialHealth={initialHealth}

@@ -9,29 +9,43 @@ import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/p
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { androidRenderingSettingsSchema } from '@/shared/contracts/android-rendering-settings'
 import {
   resetOrchestratorUiSettings,
   saveOrchestratorUiSettings
 } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformRuntimePageLayout } from './platform-runtime-page-layout'
 import type { PlatformImage } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings, RuntimeAdminUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { OrchestratorUiSettings, RuntimeUiSettingsPatch } from '@/shared/model/settings/orchestrator-ui-settings'
+import type { AndroidRenderingSettings as RenderingSettings } from '@rebroid/android-application-core/redroid-runtime'
 
-const runtimeSettingsInput = (settings: OrchestratorUiSettings): Omit<RuntimeAdminUiSettings, 'services'> => ({
-  defaultContainerImage: settings.defaultContainerImage,
-  dockerImageRegistry: settings.dockerImageRegistry,
-  defaultInactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
-  maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-  removeDataOnDelete: settings.removeDataOnDelete
-})
+const runtimeFields = [
+  'defaultContainerImage',
+  'dockerImageRegistry',
+  'defaultInactivityTimeoutSeconds',
+  'maxApkUploadSizeMb',
+  'removeDataOnDelete',
+  'androidRendering'
+] as const satisfies ReadonlyArray<keyof Omit<RuntimeUiSettingsPatch, 'services'>>
+
+const getRuntimeSettingsPatch = (settings: OrchestratorUiSettings, savedSettings: OrchestratorUiSettings) => {
+  const patch: Pick<RuntimeUiSettingsPatch, (typeof runtimeFields)[number]> = {}
+  const includeChangedField = <Key extends (typeof runtimeFields)[number]>(key: Key) => {
+    if (JSON.stringify(settings[key]) !== JSON.stringify(savedSettings[key])) patch[key] = settings[key]
+  }
+  runtimeFields.forEach(includeChangedField)
+  return patch
+}
 
 export const PlatformRuntimeForm = ({
   images,
   initialSettings,
+  appliedRenderingSettings,
   unavailable = false
 }: {
   images: PlatformImage[]
   initialSettings: OrchestratorUiSettings
+  appliedRenderingSettings: (RenderingSettings | null)[] | null
   unavailable?: boolean
 }) => {
   const router = useRouter()
@@ -41,29 +55,27 @@ export const PlatformRuntimeForm = ({
   const [operation, setOperation] = useState<'save' | 'restore' | null>(null)
   const [restoreOpen, setRestoreOpen] = useState(false)
   const initialSnapshot = useRef(JSON.stringify(initialSettings))
-  const hasChanges =
-    JSON.stringify(runtimeSettingsInput(settings)) !== JSON.stringify(runtimeSettingsInput(savedSettings))
+  const patch = getRuntimeSettingsPatch(settings, savedSettings)
+  const hasChanges = Object.keys(patch).length > 0
+  const renderingValid = androidRenderingSettingsSchema.safeParse(settings.androidRendering).success
   const isBusy = operation !== null || unavailable
 
   useEffect(() => {
     const snapshot = JSON.stringify(initialSettings)
     if (initialSnapshot.current === snapshot) return
     initialSnapshot.current = snapshot
-    setForm(current => {
-      const dirty =
-        JSON.stringify(runtimeSettingsInput(current.settings)) !==
-        JSON.stringify(runtimeSettingsInput(current.savedSettings))
-      return { settings: dirty ? current.settings : initialSettings, savedSettings: initialSettings }
-    })
+    setForm(current => ({
+      settings: { ...initialSettings, ...getRuntimeSettingsPatch(current.settings, current.savedSettings) },
+      savedSettings: initialSettings
+    }))
   }, [initialSettings])
 
   const saveSettings = async () => {
-    if (isBusy || !hasChanges) return
+    if (isBusy || !hasChanges || !renderingValid) return
     setOperation('save')
     try {
-      const saved = await saveOrchestratorUiSettings(runtimeSettingsInput(settings))
-      const next = { ...saved, orchestratorApiUrl: settings.orchestratorApiUrl }
-      setForm({ settings: next, savedSettings: next })
+      const saved = await saveOrchestratorUiSettings(patch)
+      setForm({ settings: saved, savedSettings: saved })
       toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
       toast({
@@ -81,8 +93,7 @@ export const PlatformRuntimeForm = ({
     setOperation('restore')
     try {
       const saved = await resetOrchestratorUiSettings()
-      const next = { ...saved, orchestratorApiUrl: settings.orchestratorApiUrl }
-      setForm({ settings: next, savedSettings: next })
+      setForm({ settings: saved, savedSettings: saved })
       setRestoreOpen(false)
       toast({ title: 'Runtime defaults restored', variant: 'success' })
     } catch (error) {
@@ -101,6 +112,7 @@ export const PlatformRuntimeForm = ({
       isSaving={operation === 'save'}
       disabled={isBusy}
       hasChanges={hasChanges}
+      saveDisabled={!renderingValid}
       onDiscard={() => setForm(current => ({ ...current, settings: current.savedSettings }))}
     >
       {unavailable ? (
@@ -120,21 +132,20 @@ export const PlatformRuntimeForm = ({
           }
         />
       ) : null}
-      <form
-        id='runtime-defaults-form'
-        aria-label='Runtime defaults'
+      <PlatformRuntimeFieldsSection
+        images={images}
+        settings={settings}
+        savedRenderingSettings={savedSettings.androidRendering}
+        appliedRenderingSettings={appliedRenderingSettings}
+        disabled={isBusy}
+        onSettingsChange={changes =>
+          setForm(current => ({ ...current, settings: { ...current.settings, ...changes } }))
+        }
         onSubmit={event => {
           event.preventDefault()
           void saveSettings()
         }}
-      >
-        <PlatformRuntimeFieldsSection
-          images={images}
-          settings={settings}
-          disabled={isBusy}
-          onSettingsChange={patch => setForm(current => ({ ...current, settings: { ...current.settings, ...patch } }))}
-        />
-      </form>
+      />
       <PlatformRuntimeMaintenanceSection
         disabled={isBusy}
         onRestore={() => setRestoreOpen(true)}

@@ -5,17 +5,12 @@ import { PlatformRuntimePageLayout } from './platform-runtime-page-layout'
 
 export const PlatformRuntimePageSkeleton = () => (
   <PlatformRuntimePageLayout>
-    <form
-      id='runtime-defaults-form'
-      aria-label='Runtime defaults'
-    >
-      <PlatformRuntimeFieldsSection
-        images={[]}
-        settings={defaultOrchestratorUiSettings}
-        onSettingsChange={() => {}}
-        loading
-      />
-    </form>
+    <PlatformRuntimeFieldsSection
+      images={[]}
+      settings={defaultOrchestratorUiSettings}
+      onSettingsChange={() => {}}
+      loading
+    />
     <PlatformRuntimeMaintenanceSection loading />
   </PlatformRuntimePageLayout>
 )

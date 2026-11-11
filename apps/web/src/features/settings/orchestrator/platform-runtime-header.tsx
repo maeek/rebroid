@@ -8,12 +8,14 @@ export const PlatformRuntimeHeader = ({
   hasChanges = false,
   onDiscard,
   disabled = false,
+  saveDisabled = false,
   showActions = true
 }: {
   isSaving?: boolean
   hasChanges?: boolean
   onDiscard?: () => void
   disabled?: boolean
+  saveDisabled?: boolean
   showActions?: boolean
 }) => (
   <PageHeader
@@ -33,7 +35,7 @@ export const PlatformRuntimeHeader = ({
           <MutationButton
             pending={isSaving}
             pendingLabel='Saving…'
-            disabled={disabled || !hasChanges}
+            disabled={disabled || saveDisabled || !hasChanges}
             type='submit'
             form='runtime-defaults-form'
           >
