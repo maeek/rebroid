@@ -76,12 +76,12 @@ describe('workflow run summaries', () => {
     const older = await enqueue('app-1');
     const newer = await enqueue('app-2');
 
-    await runs.transition(newer.id, [AutomationRunStatus.Queued], {
+    await db.getRepository(AutomationRun).update(newer.id, {
       status: AutomationRunStatus.Failed,
       error: 'Run authorization was revoked.',
       completedAt: new Date('2026-01-02T00:00:01Z'),
     });
-    await runs.transition(older.id, [AutomationRunStatus.Queued], {
+    await db.getRepository(AutomationRun).update(older.id, {
       status: AutomationRunStatus.Canceled,
       error: 'Canceled by user.',
       completedAt: new Date('2026-01-02T00:00:02Z'),
@@ -155,7 +155,7 @@ describe('workflow run summaries', () => {
     });
 
     const oldRun = await enqueue('2026-01-02T00:00:00Z');
-    await runs.transition(oldRun.id, [AutomationRunStatus.Queued], {
+    await db.getRepository(AutomationRun).update(oldRun.id, {
       status: AutomationRunStatus.Success,
       completedAt: new Date('2026-01-02T00:00:01Z'),
     });

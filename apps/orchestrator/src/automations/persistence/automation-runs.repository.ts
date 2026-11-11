@@ -31,21 +31,6 @@ export class AutomationRunsRepository {
     return this.runs.findOneBy({ id });
   }
 
-  transition(
-    id: string,
-    expectedStatuses: AutomationRunStatus[],
-    patch: Partial<AutomationRun>,
-  ) {
-    return this.queue.run(async () => {
-      const result = await this.runs.update(
-        { id, status: In(expectedStatuses) },
-        patch,
-      );
-      if (!result.affected) return null;
-      return this.runs.findOneBy({ id });
-    });
-  }
-
   listAllActive() {
     return this.runs.find({
       where: [

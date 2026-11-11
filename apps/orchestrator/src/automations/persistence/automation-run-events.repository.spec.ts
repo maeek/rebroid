@@ -70,7 +70,7 @@ it('projects the original prompt and terminal outcome past the first event page'
   }
 });
 
-const createRunPersistence = async () => {
+const createRunPersistence = async (status = AutomationRunStatus.Running) => {
   const db = await new DataSource({
     type: 'better-sqlite3',
     database: ':memory:',
@@ -95,11 +95,78 @@ const createRunPersistence = async () => {
       targetApplicationId: 'app',
       automationId: 'workflow',
       trigger: AutomationRunTrigger.Manual,
-      status: AutomationRunStatus.Running,
+      status,
     }),
   );
   return { db, runs, events, run };
 };
+
+it('commits the start event with the runtime profile and rolls both back on failure', async () => {
+  const { db, runs, events, run } = await createRunPersistence(
+    AutomationRunStatus.Queued,
+  );
+  try {
+    const bus = new AutomationRunEventBus(events);
+    const received = jest.fn();
+    bus.subscribe(run.id, received);
+    const startedAt = new Date();
+    const start = () =>
+      bus.transitionRun(
+        run.id,
+        [AutomationRunStatus.Queued],
+        {
+          status: AutomationRunStatus.Running,
+          startedAt,
+          targetProfileMode: 'persistent',
+          targetProfileName: 'default',
+          error: null,
+        },
+        { type: 'run.started' },
+      );
+    await db.query(`CREATE TRIGGER reject_event BEFORE INSERT ON automation_run_events
+      BEGIN SELECT RAISE(ABORT, 'fixture rejected event'); END`);
+    await expect(start()).rejects.toThrow('fixture rejected event');
+    await expect(runs.findById(run.id)).resolves.toMatchObject({
+      status: AutomationRunStatus.Queued,
+      startedAt: null,
+      targetProfileName: null,
+      lastEventSequence: 0,
+    });
+    expect(received).not.toHaveBeenCalled();
+    await db.query('DROP TRIGGER reject_event');
+
+    const [started, canceled] = await Promise.all([
+      start(),
+      bus.transitionRun(
+        run.id,
+        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+        {
+          status: AutomationRunStatus.Canceled,
+          completedAt: new Date(),
+          error: 'Canceled by user.',
+        },
+        { type: 'run.canceled' },
+      ),
+    ]);
+    expect(started).toMatchObject({
+      status: AutomationRunStatus.Running,
+      startedAt,
+      targetProfileName: 'default',
+      lastEventSequence: 1,
+    });
+    expect(canceled).toMatchObject({
+      status: AutomationRunStatus.Canceled,
+      lastEventSequence: 2,
+    });
+    await expect(start()).resolves.toBeNull();
+    expect(received.mock.calls.map(([event]) => event)).toMatchObject([
+      { type: 'run.started', sequence: 1 },
+      { type: 'run.canceled', sequence: 2 },
+    ]);
+  } finally {
+    await db.destroy();
+  }
+});
 
 it('rolls back a terminal status and sequence when event insertion fails, then publishes only the committed winner', async () => {
   const { db, runs, events, run } = await createRunPersistence();

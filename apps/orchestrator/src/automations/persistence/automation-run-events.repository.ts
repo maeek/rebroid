@@ -19,6 +19,23 @@ import {
 import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsService } from '../../metrics/metrics.service';
 
+type RunTransition =
+  | {
+      status: AutomationRunStatus.Running;
+      targetProfileMode: string;
+      targetProfileName: string;
+      startedAt: Date;
+      error: null;
+    }
+  | {
+      status:
+        | AutomationRunStatus.Success
+        | AutomationRunStatus.Failed
+        | AutomationRunStatus.Canceled;
+      completedAt: Date;
+      error: string | null;
+    };
+
 @Injectable()
 export class AutomationRunEventsRepository {
   constructor(
@@ -50,14 +67,7 @@ export class AutomationRunEventsRepository {
   async transitionRun(
     id: string,
     expectedStatuses: AutomationRunStatus[],
-    patch: {
-      status:
-        | AutomationRunStatus.Success
-        | AutomationRunStatus.Failed
-        | AutomationRunStatus.Canceled;
-      completedAt: Date;
-      error: string | null;
-    },
+    patch: RunTransition,
     event: Omit<AutomationRunEventInput, 'runId' | 'ownerUserId'>,
   ) {
     const finishMetrics = this.metrics.beginAutomationEventPersistence();

@@ -68,7 +68,7 @@ export class AutomationRunExecutionService {
       });
       if (input.abortSignal.aborted) return;
 
-      const run = await this.runs.transition(
+      const run = await this.events.transitionRun(
         queuedRun.id,
         [AutomationRunStatus.Queued],
         {
@@ -78,6 +78,11 @@ export class AutomationRunExecutionService {
           startedAt: new Date(),
           error: null,
         },
+        {
+          type: 'run.started',
+          message: 'Automation started.',
+          data: { automationId: runnable.entity.id },
+        },
       );
       if (
         run?.status !== AutomationRunStatus.Running ||
@@ -86,15 +91,6 @@ export class AutomationRunExecutionService {
         return;
       this.metrics.automationRunStarted();
 
-      await this.events.emit({
-        runId: run.id,
-        ownerUserId: run.ownerUserId,
-        type: 'run.started',
-        message: 'Automation started.',
-        data: { automationId: runnable.entity.id },
-      });
-
-      if (input.abortSignal.aborted) return;
       const results: AutomationStepResult[] = [];
       const state: AutomationExecutionState = {
         app,

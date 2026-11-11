@@ -42,9 +42,7 @@ const createService = (
   } as unknown as AutomationRunsRepository;
   const events = {
     emit: jest.fn().mockResolvedValue(undefined),
-    transitionRun: jest.fn((id, expectedStatuses, patch) =>
-      runs.transition(id, expectedStatuses, patch),
-    ),
+    transitionRun: jest.fn(),
     ...overrides.events,
   } as unknown as AutomationRunEventBus;
   const ephemeral = {
@@ -263,9 +261,11 @@ describe('AutomationRunnerService', () => {
       runs: {
         create: jest.fn().mockReturnValue(queued),
         save: jest.fn().mockResolvedValue(queued),
-        transition,
       },
-      events: { emit: jest.fn().mockRejectedValue('event failed') },
+      events: {
+        emit: jest.fn().mockRejectedValue('event failed'),
+        transitionRun: transition,
+      },
       ephemeral: {
         create: jest.fn().mockReturnValue(runnable),
         delete: jest.fn(),
@@ -287,6 +287,7 @@ describe('AutomationRunnerService', () => {
         status: AutomationRunStatus.Failed,
         error: 'event failed',
       }),
+      expect.objectContaining({ type: 'run.failed' }),
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
   });
@@ -303,15 +304,11 @@ describe('AutomationRunnerService', () => {
       .mockResolvedValueOnce(run)
       .mockResolvedValueOnce(canceled);
     const { service, events } = createService({
-      runs: { findByOwnerAndId, transition },
+      runs: { findByOwnerAndId },
+      events: { transitionRun: transition },
     });
 
     await expect(service.cancel('owner-1', 'run-1')).resolves.toBe(canceled);
-    expect(transition).toHaveBeenCalledWith(
-      run.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-      expect.objectContaining({ status: AutomationRunStatus.Canceled }),
-    );
     expect(events.transitionRun).toHaveBeenCalledWith(
       run.id,
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
@@ -361,8 +358,8 @@ describe('AutomationRunnerService', () => {
           return queued;
         }),
         findByOwnerAndId: jest.fn(() => reserved),
-        transition,
       },
+      events: { transitionRun: transition },
       execution: { execute },
     });
     const enqueue = () =>
@@ -398,13 +395,13 @@ describe('AutomationRunnerService', () => {
         create: jest.fn().mockReturnValue(queued),
         save: jest.fn().mockResolvedValue(queued),
         findByOwnerAndId: jest.fn().mockResolvedValue(queued),
-        transition: jest.fn(async () => {
+      },
+      events: {
+        transitionRun: jest.fn(async () => {
           cancelEntered.resolve();
           await cancelFinished.promise;
           return { ...queued, status: AutomationRunStatus.Canceled };
         }),
-      },
-      events: {
         emit: jest.fn().mockImplementationOnce(() => {
           queuedEventEntered.resolve();
           return queuedEventFinished.promise;
@@ -443,10 +440,8 @@ describe('AutomationRunnerService', () => {
       .mockResolvedValueOnce(run)
       .mockResolvedValueOnce(null);
     const raced = createService({
-      runs: {
-        findByOwnerAndId,
-        transition: jest.fn().mockResolvedValue(null),
-      },
+      runs: { findByOwnerAndId },
+      events: { transitionRun: jest.fn().mockResolvedValue(null) },
     });
     await expect(raced.service.cancel('owner-1', run.id)).resolves.toBe(run);
   });
@@ -497,17 +492,12 @@ describe('AutomationRunnerService', () => {
     const { service, events } = createService({
       runs: {
         listAllActive: jest.fn().mockResolvedValue([run]),
-        transition,
       },
+      events: { transitionRun: transition },
     });
 
     await service.onApplicationBootstrap();
 
-    expect(transition).toHaveBeenCalledWith(
-      'run-1',
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-      expect.objectContaining({ status: AutomationRunStatus.Failed }),
-    );
     expect(events.transitionRun).toHaveBeenCalledWith(
       run.id,
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],

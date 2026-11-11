@@ -102,7 +102,8 @@ These are correctness guarantees:
 - Only expected-status transitions may update a run; terminal state is never overwritten.
 - One target cannot have competing queued or running automation runs.
 - Event sequence allocation and insertion happen in the same transaction, backed by a unique run/sequence index.
-  Terminal status commits with its event. Subscribers receive it after commit.
+  The Running transition and terminal transitions each commit with their corresponding event.
+  Subscribers receive those events after commit.
 - Live listeners subscribe before replay. Replay reads bounded pages through a fixed sequence, then sends
   buffered live events in order and skips duplicates.
 - Step results are appended in execution order and assembled for run reads.
