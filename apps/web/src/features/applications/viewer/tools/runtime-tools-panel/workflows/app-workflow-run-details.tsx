@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IconFileText, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
+import { IconArrowUpRight, IconFileText, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
@@ -58,13 +58,24 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
   return (
     <Section
       title={run.automationName ?? 'Deleted workflow'}
-      description={`Run ${run.id.slice(0, 8)}`}
       surface='plain'
+      headingSpacing='compact'
+      titleClassName='flex-wrap items-center gap-x-3 gap-y-2'
       actions={
         <div className='flex flex-wrap items-center gap-2'>
           <AutomationRunStatusBadge status={stop.isPending ? 'canceling' : run.status} />
           {run.automationName && hasPermission(permissions, 'automations:manage') ? (
-            <ResourceLink href={workflowTraceHref(run.automationId, run.id)}>Open full trace</ResourceLink>
+            <ResourceLink
+              href={workflowTraceHref(run.automationId, run.id)}
+              aria-label='Open full trace'
+              className='touch-control inline-flex items-center gap-1 py-1.5 text-sm font-medium'
+            >
+              Full trace
+              <IconArrowUpRight
+                className='size-3.5'
+                aria-hidden
+              />
+            </ResourceLink>
           ) : null}
           {workflowRunIsActive(run.status) ? (
             <MutationButton
@@ -97,7 +108,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
       <TabsRoot
         value={tab}
         onValueChange={setTab}
-        className='grid min-w-0 gap-4'
+        className='grid min-w-0 gap-3'
       >
         <TabsList
           ariaLabel='Run details'
@@ -119,7 +130,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
         </TabsList>
         <TabsPanel
           value='summary'
-          className='grid min-w-0 gap-4'
+          className='grid min-w-0 gap-3'
         >
           <AppWorkflowRunSummary run={run} />
         </TabsPanel>
@@ -158,6 +169,7 @@ const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
         />
       ) : null}
       <WorkflowRunSummaryPanel
+        compact
         fields={[
           { label: 'Run ID', value: run.id, copyValue: run.id, code: true },
           ...(run.failureRequestId
@@ -203,8 +215,10 @@ export const AppWorkflowRunDetailsLoading = () => (
   <Section
     title='Run details'
     surface='plain'
+    headingSpacing='compact'
   >
     <WorkflowRunSummaryPanel
+      compact
       loading
       fields={['Run ID', 'Created', 'Started', 'Finished', 'Duration', 'Trigger', 'Profile'].map(label => ({
         label,

@@ -53,7 +53,7 @@ export const RuntimeToolPanelLayout = ({ toolId, children }: { toolId: RuntimeTo
       <div
         id={toolId ? `runtime-tool-panel-${toolId}` : undefined}
         aria-label={toolId}
-        className={cn('min-h-0', toolId !== 'ai-agent' && 'py-4', runtimeToolPanelClassName(toolId))}
+        className={cn('min-h-0', toolId === 'files' && 'py-4', runtimeToolPanelClassName(toolId))}
       >
         {children}
       </div>

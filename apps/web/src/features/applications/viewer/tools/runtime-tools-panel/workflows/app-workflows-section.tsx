@@ -41,7 +41,7 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
   }, [runId])
 
   return (
-    <div className='grid min-w-0 gap-4'>
+    <div className='grid min-w-0 gap-3'>
       <div
         ref={historyRef}
         tabIndex={-1}
@@ -71,7 +71,7 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
             ref={backRef}
             variant='ghost'
             size='sm'
-            className='justify-self-start'
+            className='-ml-2 justify-self-start px-2'
             onClick={() => selectRun(null)}
           >
             <IconArrowLeft />
@@ -91,11 +91,11 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
 export function AppWorkflowsLoading() {
   const runId = useSearchParams().get('run')
   return runId ? (
-    <div className='grid min-w-0 gap-4'>
+    <div className='grid min-w-0 gap-3'>
       <Button
         variant='ghost'
         size='sm'
-        className='justify-self-start'
+        className='-ml-2 justify-self-start px-2'
         disabled
       >
         <IconArrowLeft /> Run history

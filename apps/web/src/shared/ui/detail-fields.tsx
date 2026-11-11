@@ -47,11 +47,13 @@ const CopyDiagnosticValue = ({ label, value }: { label: string; value: string })
 export const DetailFields = ({
   title,
   fields,
-  loading = false
+  loading = false,
+  compact = false
 }: {
   title?: string
   fields: DetailField[]
   loading?: boolean
+  compact?: boolean
 }) => (
   <Section
     surface='plain'
@@ -59,7 +61,7 @@ export const DetailFields = ({
     headingLevel={3}
     headingSpacing='compact'
   >
-    <dl className='grid min-w-0 gap-x-6 gap-y-4 sm:grid-cols-2'>
+    <dl className={cn('grid min-w-0 gap-x-6 sm:grid-cols-2', compact ? 'gap-y-2' : 'gap-y-4')}>
       {fields.map(field => (
         <div
           key={field.label}
