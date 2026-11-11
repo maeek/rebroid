@@ -45,6 +45,9 @@ fi
 
 export NODE_ENV="${NODE_ENV:-development}"
 export PORT="${PORT:-4100}"
+export WEB_INTERNAL_URL="${WEB_INTERNAL_URL:-https://127.0.0.1:3000}"
+# Next installs its development CA in the system trust store.
+export NODE_USE_SYSTEM_CA="${NODE_USE_SYSTEM_CA:-1}"
 export ORCHESTRATOR_SHARED_SECRET="${ORCHESTRATOR_SHARED_SECRET:-change-me}"
 export DISPLAY_SIDECAR_INTERNAL_BASE_URL="${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://localhost:8000}"
 export DISPLAY_SIDECAR_AUTO_START="${DISPLAY_SIDECAR_AUTO_START:-false}"

@@ -45,8 +45,9 @@ and CSV exports neutralize spreadsheet formulas. Persistence changes use the
 ## Runtime authorization and revocation
 
 The orchestrator reauthorizes every automation during target preparation through
-`POST /api/internal/automations/authorize` on the web service. `WEB_INTERNAL_URL` defaults to
-`http://localhost:3101` for local development; Compose configures `http://web:3101`.
+`POST /api/internal/automations/authorize` on the web service. The orchestrator dev script
+uses `https://127.0.0.1:3000` and Node's system certificate store to trust the Next.js development
+certificate. Set `WEB_INTERNAL_URL` to match a custom local web listener. Compose uses `http://web:3101`.
 The call uses the shared service secret, a bounded timeout, and fails closed when web is unavailable.
 Public ingress strips this secret. The endpoint does not accept browser sessions as authorization.
 The request specifies whether preparation intends to attach or start. The web service checks current

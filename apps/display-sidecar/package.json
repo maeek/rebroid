@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-viewer.mjs",
-    "dev": "ts-node -r tsconfig-paths/register src/main.ts",
+    "dev": "./dev.sh",
     "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.mjs\"",
     "lint": "tsc --noEmit -p tsconfig.json",
     "start": "node dist/main.js",

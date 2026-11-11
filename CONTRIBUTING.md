@@ -29,8 +29,9 @@ Before starting services:
 
 - Set independent random values for `NEXTAUTH_SECRET` and `MFA_ENCRYPTION_KEY` in the web env file;
   the encryption key needs at least 32 characters. Set `INITIAL_ADMIN_PASSWORD` there as well.
-- Set the same random internal secret as web/orchestrator `ORCHESTRATOR_SHARED_SECRET`, display
-  `DISPLAY_SIDECAR_SHARED_SECRET`, and firewall `FIREWALL_AGENT_SHARED_SECRET`.
+- Set the same random internal secret as web/orchestrator `ORCHESTRATOR_SHARED_SECRET` and firewall
+  `FIREWALL_AGENT_SHARED_SECRET`. The display dev launcher uses the orchestrator secret unless you
+  provide `DISPLAY_SIDECAR_SHARED_SECRET` or `DISPLAY_SIDECAR_SHARED_SECRET_FILE`.
 - Check the orchestrator's engine socket path. `DOCKER_HOST=unix:///var/run/docker.sock` is an explicit
   option; `dev.sh` also checks `DOCKER_SOCKET_PATH` and common local socket locations.
 
