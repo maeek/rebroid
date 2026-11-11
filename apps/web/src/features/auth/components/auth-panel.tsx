@@ -12,10 +12,10 @@ export const AuthPanel = ({
 }) => (
   <Surface
     level='panel'
-    className='grid min-w-0 gap-6 p-5 sm:p-6'
+    className='grid min-w-0 gap-6 p-6 sm:gap-8 sm:p-8'
   >
     <div className='grid gap-1'>
-      <h1 className='text-2xl font-medium'>{title}</h1>
+      <h1 className='text-2xl font-medium tracking-tight sm:text-3xl'>{title}</h1>
       {description ? <div className='text-sm text-foreground-muted'>{description}</div> : null}
     </div>
     {children}

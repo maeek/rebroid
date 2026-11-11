@@ -12,7 +12,7 @@ import { RebroidIcon } from '@/shared/ui/branding/rebroid-icon'
 import styles from '@/shared/ui/branding/rebroid-wordmark.module.css'
 
 export const AuthHeader = ({ originalLogo }: { originalLogo?: boolean }) => (
-  <header className='m-2 flex min-h-12 items-center justify-between gap-2 rounded-panel bg-surface-navigation px-2 py-1 sm:px-3'>
+  <header className='flex min-h-12 items-center justify-between gap-2 py-1'>
     <Link
       href='/login'
       className={cn('touch-control inline-flex h-9 items-center gap-2 rounded-control px-1.5', focusRingClassName)}

@@ -432,14 +432,11 @@
     overflow-x: clip;
     position: relative;
   }
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  input:-webkit-autofill:active {
+  input:is(:autofill, :-webkit-autofill) {
+    /* Cover the browser fill while retaining the control's focus ring. */
+    @apply inset-shadow-[0_0_0_1000px_hsl(var(--control))];
     -webkit-text-fill-color: hsl(var(--foreground));
     caret-color: hsl(var(--foreground));
-    box-shadow: 0 0 0 1000px hsl(var(--control)) inset;
-    transition: background-color 9999s ease-out;
   }
   .root {
     isolation: isolate;

@@ -96,7 +96,9 @@ export default function LoginCard({
   return (
     <AuthPanel
       title={step === 'mfa' ? 'Verify your identity' : 'Sign in'}
-      description={step === 'mfa' ? 'Use your authenticator app or a recovery code.' : undefined}
+      description={
+        step === 'mfa' ? 'Use your authenticator app or a recovery code.' : 'Continue to your Rebroid workspace.'
+      }
     >
       <form
         className='grid gap-5'
@@ -113,6 +115,7 @@ export default function LoginCard({
               label='Username'
             >
               <Input
+                className='h-11'
                 name='username'
                 required
                 autoComplete='username'
@@ -130,6 +133,7 @@ export default function LoginCard({
               label='Password'
             >
               <Input
+                className='h-11'
                 name='password'
                 ref={passwordInput}
                 type='password'
@@ -146,6 +150,7 @@ export default function LoginCard({
             label='Authentication or recovery code'
           >
             <Input
+              className='h-11'
               name='mfa-code'
               required
               inputMode='numeric'
@@ -164,6 +169,7 @@ export default function LoginCard({
         ) : null}
         <div className='grid gap-2'>
           <MutationButton
+            className='h-11'
             type='submit'
             pending={isSubmitting}
             pendingLabel={step === 'mfa' ? 'Verifying…' : 'Signing in…'}

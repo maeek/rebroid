@@ -55,8 +55,13 @@ UI text is at least `text-xs`.
 | Family             | Composition                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------ |
 | Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`; add `PageAside` for split workspaces. |
-| Authentication     | `AuthPage` uses the console wordmark and navigation surface. `AuthPanel` contains the form. |
+| Authentication     | `AuthPage` uses the console wordmark and theme controls. `AuthPanel` contains the form. |
 | Immersive viewer   | `ImmersiveViewerPage` owns full-bleed media and floating controls.                         |
+
+The desktop sign-in page sits toward the top of the viewport, with a product introduction and
+full-page animated brand backdrop that fades behind the form. The animation pauses offscreen and in hidden tabs,
+and shows a still frame for reduced motion. Narrow screens show the introduction and form in
+a single column.
 
 The protected layout owns sidebar offset, `main`, width, and outer gutters. Standard rhythm uses
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
