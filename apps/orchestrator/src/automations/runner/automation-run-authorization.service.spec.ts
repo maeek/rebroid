@@ -28,6 +28,36 @@ describe('automation authorization transport', () => {
     );
   });
 
+  it.each([
+    ['true', true],
+    ['false', false],
+    [null, false],
+  ])(
+    'takes the workflow egress grant from the authenticated web response (%s)',
+    async (header, canUseInternet) => {
+      const headers = new Headers();
+      if (header !== null) headers.set('x-rebroid-allow-broad-egress', header);
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(new Response(null, { status: 204, headers }));
+      const service = new AutomationRunAuthorizationService(
+        new ConfigService({
+          app: { webInternalUrl: 'http://web:3101', sharedSecret: 'secret' },
+        }),
+      );
+      await expect(
+        service.assertAllowed(
+          'owner',
+          { spec: { steps: [] } } as never,
+          'app',
+          {
+            operation: 'attach',
+          },
+        ),
+      ).resolves.toEqual({ canUseInternet, maxOpenApps: undefined });
+    },
+  );
+
   it('keeps the request ID when the web service cannot be reached', async () => {
     const fetch = jest.fn().mockRejectedValue(new TypeError('fetch failed'));
     global.fetch = fetch;

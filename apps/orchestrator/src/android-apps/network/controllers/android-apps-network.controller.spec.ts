@@ -21,7 +21,7 @@ import { AndroidAppsNetworkPolicyService } from '../services/android-apps-networ
 import { AndroidAppsRuntimeNetworkService } from '../services/android-apps-runtime-network.service';
 import { AndroidAppsNetworkController } from './android-apps-network.controller';
 
-describe('application network policy with firewall disabled', () => {
+describe('application network policy', () => {
   let server: NestFastifyApplication;
   let app: AndroidApplication;
   let firewallEnabled: boolean;
@@ -96,6 +96,7 @@ describe('application network policy with firewall disabled', () => {
     const response = await server.inject({
       method: 'PATCH',
       url: '/apps/app-1/network-policy',
+      headers: { 'x-rebroid-allow-broad-egress': 'true' },
       payload: {
         networkPolicyEnabled: false,
         networkPolicyAllowCidrs: ['10.0.0.0/8'],
@@ -141,6 +142,7 @@ describe('application network policy with firewall disabled', () => {
     const response = await server.inject({
       method: 'PATCH',
       url: '/apps/app-1/network-policy',
+      headers: { 'x-rebroid-allow-broad-egress': 'true' },
       payload: { networkPolicyAllowCidrs: ['10.0.0.0/8'] },
     });
     expect(response.statusCode).toBe(200);
@@ -163,6 +165,27 @@ describe('application network policy with firewall disabled', () => {
     }
     expect(reconcilePolicy).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { networkPolicyEnabled: false },
+    { networkPolicyAllowCidrs: ['1.0.0.0/17', '8.0.0.0/17'] },
+  ])(
+    'rejects ungranted broad egress before writing policy (%j)',
+    async (payload) => {
+      firewallEnabled = true;
+      const response = await server.inject({
+        method: 'PATCH',
+        url: '/apps/app-1/network-policy',
+        payload,
+      });
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({
+        code: 'network_egress_forbidden',
+      });
+      expect(save).not.toHaveBeenCalled();
+      expect(reconcilePolicy).not.toHaveBeenCalled();
+    },
+  );
 
   it('retains fail-closed enforcement when firewall is enabled', async () => {
     firewallEnabled = true;

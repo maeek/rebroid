@@ -60,7 +60,7 @@ const createExecution = ({
   getTarget = jest.fn().mockResolvedValue(target),
   start = jest.fn().mockResolvedValue(stoppedTarget),
   executeSteps = jest.fn().mockResolvedValue({ failed: false }),
-  assertAllowed = jest.fn().mockResolvedValue(undefined),
+  assertAllowed = jest.fn().mockResolvedValue({ canUseInternet: false }),
   resolve = jest.fn().mockResolvedValue(runnable),
 } = {}) => {
   const runs = {
@@ -155,7 +155,10 @@ describe('AutomationRunExecutionService', () => {
   });
 
   it('does not start a canceled target after deferred authorization resolves', async () => {
-    const authorization = deferred<number>();
+    const authorization = deferred<{
+      canUseInternet: boolean;
+      maxOpenApps: number;
+    }>();
     const authorizationStarted = deferred<void>();
     const assertAllowed = jest.fn(() => {
       authorizationStarted.resolve();
@@ -174,7 +177,7 @@ describe('AutomationRunExecutionService', () => {
     });
     await authorizationStarted.promise;
     cancellation.abort();
-    authorization.resolve(1);
+    authorization.resolve({ canUseInternet: false, maxOpenApps: 1 });
     await execution;
 
     expect(start).not.toHaveBeenCalled();
@@ -190,7 +193,9 @@ describe('AutomationRunExecutionService', () => {
     const { service, events, start, executeSteps, assertAllowed } =
       createExecution({
         getTarget,
-        assertAllowed: jest.fn().mockResolvedValue(2),
+        assertAllowed: jest
+          .fn()
+          .mockResolvedValue({ canUseInternet: true, maxOpenApps: 2 }),
       });
 
     await service.execute({ ...runInput(), targetOptions: startIfNeeded });

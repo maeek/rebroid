@@ -199,5 +199,5 @@ export interface AndroidAppsAutomationPort {
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
     maxOpenApps?: number,
   ): Promise<AndroidAutomationApplication>;
-  automationAdapters(): AndroidAutomationAdapters;
+  automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters;
 }

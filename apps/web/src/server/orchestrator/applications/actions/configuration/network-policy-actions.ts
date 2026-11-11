@@ -1,12 +1,12 @@
 'use server'
 
-import { allowsBroadInternetAccess } from '@rebroid/firewall-policy-core/policy'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentUserContext } from '../../../current-user'
 import { requireFeature } from '../../../features'
+import { OrchestratorRequestError } from '../../../request'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
@@ -25,16 +25,17 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
           status: 403
         })
       }
-      if (
-        (input.networkPolicyEnabled === false || allowsBroadInternetAccess(input.networkPolicyAllowCidrs ?? [])) &&
-        !hasPermission(user.permissions, 'applications:use-internet')
-      ) {
-        throw new PublicActionError('You do not have permission to allow broad internet access.', {
-          code: 'forbidden',
-          status: 403
+      const command = await orchestratorAppNetworkPolicyClient
+        .updateNetworkPolicy(id, input, hasPermission(user.permissions, 'applications:use-internet'))
+        .catch((error: unknown) => {
+          if (error instanceof OrchestratorRequestError && error.details?.code === 'network_egress_forbidden') {
+            throw new PublicActionError('You do not have permission to allow broad internet access.', {
+              code: 'forbidden',
+              status: 403
+            })
+          }
+          throw error
         })
-      }
-      const command = await orchestratorAppNetworkPolicyClient.updateNetworkPolicy(id, input)
       recordAuditEvent({
         actorUserId: user.ownerUserId,
         actorLabel: user.ownerUserId,

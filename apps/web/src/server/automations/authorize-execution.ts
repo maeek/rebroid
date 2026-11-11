@@ -10,6 +10,7 @@ import {
   assertRunProfilePermission
 } from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
+import { hasPermission } from '@/shared/permissions/permissions'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 export const authorizeAutomationExecution = async (input: {
@@ -55,5 +56,8 @@ export const authorizeAutomationExecution = async (input: {
         throw new PublicActionError('Open application quota exceeded.', { code: 'forbidden', status: 403 })
     }
   }
-  return user.quotas.maxOpenApps
+  return {
+    maxOpenApps: user.quotas.maxOpenApps,
+    canUseInternet: hasPermission(user.permissions, 'applications:use-internet')
+  }
 }

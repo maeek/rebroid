@@ -78,7 +78,8 @@ or clone them when privileged runtime mode is enabled. Uploaded APK assignment r
 application's owner to own the upload.
 
 Unrestricted egress and allowlists covering at least 65,536 distinct IPv4 addresses outside
-RFC 1918 private ranges require internet egress permission. If reapplying a restricted policy
+RFC 1918 private ranges require internet egress permission for manual and workflow updates.
+The orchestrator checks the resulting policy before saving it. If reapplying a restricted policy
 to a running app fails, the orchestrator stops that runtime.
 
 Server Actions default to a 4 MB body limit (`NEXT_SERVER_ACTIONS_BODY_SIZE_LIMIT`).

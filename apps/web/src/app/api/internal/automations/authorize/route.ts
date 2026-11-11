@@ -25,10 +25,15 @@ export const POST = async (request: Request) => {
   const input = inputSchema.safeParse(await request.json().catch(() => null))
   if (!input.success) return new Response(null, { status: 400, headers: { 'x-request-id': requestId } })
   try {
-    const quota = await authorizeAutomationExecution(input.data)
+    const { maxOpenApps, canUseInternet } = await authorizeAutomationExecution(input.data)
     return new Response(null, {
       status: 204,
-      headers: { 'x-request-id': requestId, 'x-rebroid-max-open-apps': 'unlimited', ...openAppQuotaHeaders(quota) }
+      headers: {
+        'x-request-id': requestId,
+        'x-rebroid-max-open-apps': 'unlimited',
+        ...openAppQuotaHeaders(maxOpenApps),
+        'x-rebroid-allow-broad-egress': String(canUseInternet)
+      }
     })
   } catch (error) {
     const denied =

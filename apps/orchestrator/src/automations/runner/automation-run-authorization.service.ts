@@ -86,9 +86,13 @@ export class AutomationRunAuthorizationService {
         response.status,
       );
     }
-    if (target.operation !== 'start') return undefined;
+    const canUseInternet =
+      response.headers.get('x-rebroid-allow-broad-egress') === 'true';
+    if (target.operation !== 'start')
+      return { canUseInternet, maxOpenApps: undefined };
     const quota = response.headers.get('x-rebroid-max-open-apps');
-    if (quota === 'unlimited') return undefined;
+    if (quota === 'unlimited')
+      return { canUseInternet, maxOpenApps: undefined };
     if (
       quota === null ||
       !/^\d+$/.test(quota) ||
@@ -102,7 +106,7 @@ export class AutomationRunAuthorizationService {
         code,
       );
     }
-    return Number(quota);
+    return { canUseInternet, maxOpenApps: Number(quota) };
   }
 }
 

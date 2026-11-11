@@ -1,5 +1,10 @@
-import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
-import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Headers, Param, Patch, Post } from '@nestjs/common';
+import {
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../../common/dto/application-command-result.dto';
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsNetworkPolicyService } from '../services/android-apps-network-policy.service';
@@ -21,6 +26,13 @@ export class AndroidAppsNetworkController {
   }
 
   @Patch('apps/:id/network-policy')
+  @ApiHeader({
+    name: 'x-rebroid-allow-broad-egress',
+    required: false,
+    schema: { type: 'string', enum: ['true', 'false'], default: 'false' },
+    description:
+      'Internet egress permission supplied by the authenticated web service.',
+  })
   @ApiOperation({
     summary: 'Update and reconcile the app container egress allowlist.',
   })
@@ -28,9 +40,14 @@ export class AndroidAppsNetworkController {
   async updateNetworkPolicy(
     @Param('id') id: string,
     @Body() dto: UpdateNetworkPolicyDto,
+    @Headers('x-rebroid-allow-broad-egress') allowBroadEgress?: string,
   ) {
     return ApplicationCommandResultDto.fromEntity(
-      await this.network.updateNetworkPolicy(id, dto),
+      await this.network.updateNetworkPolicy(
+        id,
+        dto,
+        allowBroadEgress === 'true',
+      ),
     );
   }
 

@@ -66,11 +66,14 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
   }
 
   /** Provides the narrow Android runtime capabilities used by automations. */
-  automationAdapters(): AndroidAutomationAdapters {
+  automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters {
     return {
       adb: this.adb,
       display: this.display,
-      networkPolicy: this.network,
+      networkPolicy: {
+        updateNetworkPolicy: (id, input) =>
+          this.network.updateNetworkPolicy(id, input, canUseInternet),
+      },
     };
   }
 
@@ -86,8 +89,9 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
   updateNetworkPolicy(
     id: string,
     dto: UpdateNetworkPolicyDto,
+    canUseInternet: boolean,
   ): Promise<AndroidApplication> {
-    return this.network.updateNetworkPolicy(id, dto);
+    return this.network.updateNetworkPolicy(id, dto, canUseInternet);
   }
 
   /** Reapplies the network policy for an app. */

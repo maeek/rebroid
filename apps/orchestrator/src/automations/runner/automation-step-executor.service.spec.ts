@@ -38,6 +38,7 @@ const createService = ({
 
 const createState = (): AutomationExecutionState => ({
   app: { id: 'app-1', name: 'Demo' } as never,
+  canUseInternet: false,
   runId: 'run-1',
   trigger: AutomationRunTrigger.Manual,
   targetProfileMode: null,

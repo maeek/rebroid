@@ -58,7 +58,7 @@ export class AutomationRunExecutionService {
         return;
       }
 
-      const app = await this.targets.prepareTarget({
+      const { app, canUseInternet } = await this.targets.prepareTarget({
         ownerUserId: queuedRun.ownerUserId,
         targetApplicationId: queuedRun.targetApplicationId,
         definition: runnable.definition,
@@ -94,6 +94,7 @@ export class AutomationRunExecutionService {
       const results: AutomationStepResult[] = [];
       const state: AutomationExecutionState = {
         app,
+        canUseInternet,
         runId: run.id,
         trigger: run.trigger,
         targetProfileMode: run.targetProfileMode,

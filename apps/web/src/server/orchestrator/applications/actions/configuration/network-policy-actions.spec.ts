@@ -102,18 +102,22 @@ describe('network policy actions', () => {
     const input = { networkPolicyEnabled: false, networkPolicyAllowCidrs: [] }
     expect(await updateNetworkPolicyAction('app-1', input)).toMatchObject({ ok: true })
     expect(await applyNetworkPolicyAction('app-1')).toMatchObject({ ok: true })
-    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith('app-1', input)
+    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith('app-1', input, true)
     expect(orchestratorAppNetworkPolicyClient.applyNetworkPolicy).toHaveBeenCalledWith('app-1')
     expect(requireFeature).not.toHaveBeenCalled()
   })
 
-  it('preserves the unrestricted internet permission check', async () => {
+  it('sends the group egress decision and reports a denied update', async () => {
     vi.mocked(getCurrentUserContext).mockResolvedValue(user({ 'applications:configure-egress': true }))
-    await expect(updateNetworkPolicyAction('app-1', { networkPolicyEnabled: false })).resolves.toMatchObject({
+    vi.mocked(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).mockRejectedValueOnce(
+      new OrchestratorRequestError('Denied', 403, 'request', { code: 'network_egress_forbidden' })
+    )
+    const input = { networkPolicyEnabled: false }
+    await expect(updateNetworkPolicyAction('app-1', input)).resolves.toMatchObject({
       ok: false,
       error: { code: 'forbidden', message: 'You do not have permission to allow broad internet access.' }
     })
-    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).not.toHaveBeenCalled()
+    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith('app-1', input, false)
   })
 
   it.each([updateNetworkPolicyAction, applyNetworkPolicyAction])(

@@ -113,6 +113,22 @@ describe('orchestrator OpenAPI domain contract', () => {
     );
   });
 
+  it('documents the trusted egress permission for network policy changes', () => {
+    const operation = document.paths['/api/v1/apps/{id}/network-policy']?.patch;
+    expect(operation?.parameters).toContainEqual(
+      expect.objectContaining({
+        name: 'x-rebroid-allow-broad-egress',
+        in: 'header',
+        required: false,
+        schema: {
+          type: 'string',
+          enum: ['true', 'false'],
+          default: 'false',
+        },
+      }),
+    );
+  });
+
   it.each(['/api/v1/apps', '/api/v1/apps/{id}/clone'])(
     'documents the trusted image grants for %s',
     (path) => {

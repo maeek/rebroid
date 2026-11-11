@@ -1,4 +1,12 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import {
+  allowsBroadInternetAccess,
+  parseAllowCidrs,
+} from '@rebroid/firewall-policy-core/policy';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
@@ -23,19 +31,43 @@ export class AndroidAppsNetworkPolicyService {
   ) {}
 
   /** Saves network policy settings and reapplies them. */
-  updateNetworkPolicy(id: string, dto: UpdateNetworkPolicyDto) {
-    return this.policyGate.run(id, () => this.saveAndApplyPolicy(id, dto));
+  updateNetworkPolicy(
+    id: string,
+    dto: UpdateNetworkPolicyDto,
+    canUseInternet: boolean,
+  ) {
+    return this.policyGate.run(id, () =>
+      this.saveAndApplyPolicy(id, dto, canUseInternet),
+    );
   }
 
-  private async saveAndApplyPolicy(id: string, dto: UpdateNetworkPolicyDto) {
+  private async saveAndApplyPolicy(
+    id: string,
+    dto: UpdateNetworkPolicyDto,
+    canUseInternet: boolean,
+  ) {
     const app = await this.reconciler.reconcileById(id);
-    if (dto.networkPolicyEnabled ?? app.networkPolicyEnabled) {
+    const restricted = dto.networkPolicyEnabled ?? app.networkPolicyEnabled;
+    if (restricted) {
       this.features.assertEnabled('feature.firewall');
     }
     if (
       dto.networkPolicyEnabled !== undefined ||
       dto.networkPolicyAllowCidrs !== undefined
     ) {
+      if (
+        !canUseInternet &&
+        (!restricted ||
+          allowsBroadInternetAccess(
+            dto.networkPolicyAllowCidrs ??
+              parseAllowCidrs(app.networkPolicyAllowCidrs),
+          ))
+      ) {
+        throw new ForbiddenException({
+          code: 'network_egress_forbidden',
+          message: 'You do not have permission to allow broad internet access.',
+        });
+      }
       const saved = await this.writer.saveNetworkPolicyConfiguration(id, {
         ...(dto.networkPolicyEnabled === undefined
           ? {}

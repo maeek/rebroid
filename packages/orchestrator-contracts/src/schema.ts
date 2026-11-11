@@ -4849,7 +4849,10 @@ export interface operations {
     AndroidAppsNetworkController_updateNetworkPolicy: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Internet egress permission supplied by the authenticated web service. */
+                "x-rebroid-allow-broad-egress"?: "true" | "false";
+            };
             path: {
                 id: string;
             };

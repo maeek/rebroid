@@ -117,13 +117,13 @@ export class AutomationStepExecutorService {
         }
         return this.registry.execute(tool.name, tool.arguments, {
           app: state.app,
-          ...this.applications.automationAdapters(),
+          ...this.applications.automationAdapters(state.canUseInternet),
           abortSignal: signal,
         });
       };
       const result = await this.registry.execute(step.uses, step.with, {
         app: state.app,
-        ...this.applications.automationAdapters(),
+        ...this.applications.automationAdapters(state.canUseInternet),
         aiHarness: this.aiHarness,
         runId: state.runId,
         ownerUserId: run.ownerUserId,

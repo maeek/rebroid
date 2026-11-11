@@ -1707,6 +1707,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-rebroid-allow-broad-egress",
+            "required": false,
+            "in": "header",
+            "description": "Internet egress permission supplied by the authenticated web service.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "default": "false"
+            }
           }
         ],
         "requestBody": {
