@@ -130,7 +130,8 @@ export const permissionDefinitions = [
     id: 'applications:manage-files',
     category: 'profiles-observability',
     name: 'Manage files',
-    description: 'Create folders, rename entries, and permanently delete files in live application storage.'
+    description:
+      'Create folders, rename entries, and permanently delete files in live application storage. Requires Transfer files.'
   },
   {
     id: 'applications:sync-clipboard',

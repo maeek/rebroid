@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { IconFolder, IconRobot } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export type RuntimeToolId = 'files' | 'ai-agent' | 'workflows'
@@ -33,7 +34,7 @@ export const getRuntimeTools = ({
   if (isFeatureEnabled('feature.workflows') && hasPermission(permissions, 'automations:run')) {
     tools.push({ id: 'workflows', title: 'Workflows', description: 'Run workflows for this app', Icon: IconRobot })
   }
-  if (hasPermission(permissions, 'applications:transfer-files')) {
+  if (resolveRuntimeFileAccess(permissions).canTransferFiles) {
     tools.push({ id: 'files', title: 'Files', description: 'Manage device files', Icon: IconFolder })
   }
   return tools

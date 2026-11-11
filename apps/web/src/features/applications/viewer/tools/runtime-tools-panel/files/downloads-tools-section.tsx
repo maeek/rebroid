@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
 import { StateView } from '@/shared/ui/state-view'
 import { runtimeDownloadsPath } from './downloads-tools-section-model'
 import { RuntimeFileDialogs } from './runtime-file-dialogs'
@@ -16,11 +16,11 @@ import { useRuntimeFileBrowser } from './use-runtime-file-browser'
 import { useRuntimeFileUploads } from './use-runtime-file-uploads'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
+import type { PermissionMap } from '@/shared/permissions/permissions'
 
 export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition; permissions: PermissionMap }) => {
   const runtimeAvailable = app.status === 'running'
-  const canTransferFiles = hasPermission(permissions, 'applications:transfer-files')
-  const canManageFiles = hasPermission(permissions, 'applications:manage-files')
+  const { canTransferFiles, canManageFiles } = resolveRuntimeFileAccess(permissions)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
   const fileTriggerRef = useRef<HTMLButtonElement>(null)

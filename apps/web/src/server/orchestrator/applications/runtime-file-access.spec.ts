@@ -39,8 +39,16 @@ describe('runtime file access', () => {
       status: 403
     })
 
-    mocks.assertCanUseOwnedApplicationRuntime.mockResolvedValue(context({ 'applications:manage-files': true }))
+    mocks.assertCanUseOwnedApplicationRuntime.mockResolvedValue(
+      context({ 'applications:transfer-files': true, 'applications:manage-files': true })
+    )
     await expect(assertCanManageApplicationFiles('app-1')).resolves.toMatchObject({ app: { id: 'app-1' } })
+  })
+
+  it('denies mutations when the owner has manage-files without file workspace access', async () => {
+    mocks.assertCanUseOwnedApplicationRuntime.mockResolvedValue(context({ 'applications:manage-files': true }))
+
+    await expect(assertCanManageApplicationFiles('app-1')).rejects.toMatchObject({ code: 'forbidden', status: 403 })
   })
 
   it('accepts both file permissions from the administrator group after ownership checking', async () => {
