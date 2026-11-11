@@ -1,3 +1,7 @@
+import {
+  AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER,
+  isDefaultAiCapability,
+} from '@rebroid/automation-core/ai-run';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
@@ -43,6 +47,7 @@ export class AutomationRunAuthorizationService {
           'content-type': 'application/json',
           'x-orchestrator-secret': secret,
           'x-request-id': requestId,
+          [AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER]: '1',
         },
         body: JSON.stringify({
           ownerUserId,
@@ -88,11 +93,28 @@ export class AutomationRunAuthorizationService {
     }
     const canUseInternet =
       response.headers.get('x-rebroid-allow-broad-egress') === 'true';
+    const capabilityHeader = response.headers.get(
+      AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER,
+    );
+    const defaultAiCapabilities = capabilityHeader
+      ? capabilityHeader.split(',')
+      : [];
+    if (!defaultAiCapabilities.every(isDefaultAiCapability)) {
+      throw new AutomationAuthorizationError(
+        'Workflow authorization provided invalid AI capabilities.',
+        requestId,
+        'authorization_invalid_capabilities',
+      );
+    }
+    const permissions = {
+      canUseInternet,
+      ...(capabilityHeader === null ? {} : { defaultAiCapabilities }),
+    };
     if (target.operation !== 'start')
-      return { canUseInternet, maxOpenApps: undefined };
+      return { ...permissions, maxOpenApps: undefined };
     const quota = response.headers.get('x-rebroid-max-open-apps');
     if (quota === 'unlimited')
-      return { canUseInternet, maxOpenApps: undefined };
+      return { ...permissions, maxOpenApps: undefined };
     if (
       quota === null ||
       !/^\d+$/.test(quota) ||
@@ -106,7 +128,7 @@ export class AutomationRunAuthorizationService {
         code,
       );
     }
-    return { canUseInternet, maxOpenApps: Number(quota) };
+    return { ...permissions, maxOpenApps: Number(quota) };
   }
 }
 

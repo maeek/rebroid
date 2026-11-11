@@ -9,6 +9,7 @@ import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-
 import {
   assertAutomationPermission,
   assertDefinitionPermissions,
+  canUseAutomationCommand,
   listPermittedAiTools,
   recordAutomationAudit
 } from './action-helpers'
@@ -18,7 +19,8 @@ import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput 
 export const listAutomationCommandsAction = async () => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.listCommands()
+  const commands = await orchestratorAutomationsClient.listCommands()
+  return commands.map(command => ({ ...command, permitted: canUseAutomationCommand(user, command) }))
 }
 
 export const validateAutomationYamlAction = async (yaml: string) => {

@@ -31,7 +31,7 @@ export const authorizeAutomationExecution = async (input: {
     quotas: account.effectiveQuotas
   }
   assertAutomationPermission(user, 'automations:run')
-  await assertDefinitionPermissions(user, input.definition)
+  const defaultAiCapabilities = await assertDefinitionPermissions(user, input.definition)
   assertRunProfilePermission(user, input)
   const app = await orchestratorAppCatalogClient.getApplication(input.targetApplicationId)
   if (app.ownerUserId !== account.id)
@@ -58,6 +58,7 @@ export const authorizeAutomationExecution = async (input: {
   }
   return {
     maxOpenApps: user.quotas.maxOpenApps,
-    canUseInternet: hasPermission(user.permissions, 'applications:use-internet')
+    canUseInternet: hasPermission(user.permissions, 'applications:use-internet'),
+    ...(defaultAiCapabilities === undefined ? {} : { defaultAiCapabilities })
   }
 }

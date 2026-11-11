@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { NumberField, TextareaField } from '../shared/action-fields'
 import {
+  defaultAiRunCapabilities,
   defaultAiRunInput,
   nextAiRunCapabilities,
   normalizeAiRunInput,
@@ -37,6 +39,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const visionModelId = stringValue(input, 'visionModelId')
   const capabilities = Array.isArray(input.capabilities) ? stringArrayValue(input, 'capabilities') : undefined
   const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
+  const selectedCapabilities = capabilities ?? defaultAiRunCapabilities(selectableCommands)
   const loadCatalog = useCallback(
     () =>
       import('@/server/orchestrator/settings/actions').then(({ listAutomationAiModelCatalogAction }) =>
@@ -94,11 +97,23 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
         onRecheckHealth={() => void modelSelection.recheckHealth()}
       />
       <div className='grid gap-2'>
-        <div className='text-sm font-medium'>Allowed capabilities</div>
+        <div className='flex items-center justify-between gap-2'>
+          <div className='text-sm font-medium'>Allowed capabilities</div>
+          {capabilities !== undefined && (
+            <Button
+              type='button'
+              size='sm'
+              variant='ghost'
+              onClick={() => patchInput({ capabilities: undefined })}
+            >
+              Use defaults
+            </Button>
+          )}
+        </div>
         <div className='scrollbar-thin max-h-56 overflow-x-hidden overflow-y-auto rounded-control border border-surface-border/70 bg-surface-band/35 p-3'>
           <div className='grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-2'>
             {selectableCommands.map(command => {
-              const checked = capabilities?.includes(command.uses) ?? true
+              const checked = selectedCapabilities.includes(command.uses)
               return (
                 <label
                   htmlFor={`ai-run-tool-${command.uses}`}
@@ -108,6 +123,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
                   <Checkbox
                     id={`ai-run-tool-${command.uses}`}
                     checked={checked}
+                    disabled={command.permitted === false && !checked}
                     onCheckedChange={value => toggleTool(command.uses, value === true)}
                   />
                   <span className='min-w-0'>
@@ -119,7 +135,9 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             })}
           </div>
         </div>
-        <p className='text-xs text-foreground-muted'>Clear a capability to restrict what the device agent may use.</p>
+        <p className='text-xs text-foreground-muted'>
+          Defaults follow your group permissions. Edit the list to choose specific capabilities.
+        </p>
       </div>
       <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-4'>
         <NumberField

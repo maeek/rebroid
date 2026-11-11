@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userService } from '@/server/auth/user'
 import { orchestratorAppCatalogClient as apps } from '@/server/orchestrator/applications/catalog-client'
 import { orchestratorAutomationsClient as workflows } from '@/server/orchestrator/automations/client'
+import { defaultUserPermissions } from '@/shared/permissions/permissions'
 import { authorizeAutomationExecution } from './authorize-execution'
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById: vi.fn() } }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
@@ -53,6 +54,36 @@ describe('execution authorization', () => {
       { uses: 'android.wait', requiredPermissions: ['automations:run-adb-shell'] }
     ] as never)
     await expect(authorizeAutomationExecution(input)).rejects.toThrow()
+  })
+  it('authorizes omitted AI defaults against current group permissions and denies explicit restricted tools', async () => {
+    vi.mocked(userService.getUserById).mockResolvedValue({
+      ...account,
+      effectivePermissions: defaultUserPermissions
+    } as never)
+    vi.mocked(workflows.listCommands).mockResolvedValue([
+      { uses: 'ai.run', requiredPermissions: ['automations:run-ai'] },
+      { uses: 'android.wait', requiredPermissions: ['automations:run'] },
+      { uses: 'android.getSetting', requiredPermissions: ['automations:run-adb-shell'] },
+      { uses: 'android.getClipboard', requiredPermissions: ['unknown:permission'] }
+    ] as never)
+    const withAiStep = (options: Record<string, unknown>) => ({
+      ...input,
+      definition: {
+        ...input.definition,
+        spec: { steps: [{ id: 'ai', uses: 'ai.run', with: { prompt: 'Wait', ...options } }] }
+      }
+    })
+
+    await expect(authorizeAutomationExecution(withAiStep({}))).resolves.toMatchObject({
+      defaultAiCapabilities: ['android.wait']
+    })
+    for (const capabilities of [['android.getSetting'], ['android.getClipboard'], ['android.unknown']]) {
+      await expect(authorizeAutomationExecution(withAiStep({ capabilities }))).rejects.toThrow()
+    }
+    await expect(authorizeAutomationExecution(withAiStep({ rawShellPolicy: 'allowlisted' }))).rejects.toThrow()
+    await expect(authorizeAutomationExecution(withAiStep({ capabilities: [] }))).resolves.not.toHaveProperty(
+      'defaultAiCapabilities'
+    )
   })
   it('denies foreign targets', async () => {
     vi.mocked(apps.getApplication).mockResolvedValue({

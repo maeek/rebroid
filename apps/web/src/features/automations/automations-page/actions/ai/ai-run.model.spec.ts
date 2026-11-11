@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  defaultAiRunCapabilities,
   defaultAiRunInput,
   healthLabel,
   nextAiRunCapabilities,
@@ -68,18 +69,33 @@ describe('ai run action model', () => {
     )
   })
 
-  it('uses the default when every capability is selected and preserves explicit empty selections', () => {
-    const commands = selectableAiRunCommands([command('ai.run'), command('android.swipe'), command('android.tap')])
+  it('shows permitted defaults and keeps explicit edits distinct from default selection', () => {
+    const commands = selectableAiRunCommands([
+      command('ai.run'),
+      command('android.adbShell'),
+      command('android.tap'),
+      command('android.tapText'),
+      command('android.wait'),
+      command('android.getClipboard'),
+      command('android.waitForText'),
+      { ...command('android.getSetting'), permitted: false }
+    ])
 
-    expect(commands.map(item => item.uses)).toEqual(['android.swipe', 'android.tap'])
-    expect(nextAiRunCapabilities({ capabilities: undefined, commands, uses: 'android.tap', enabled: false })).toEqual([
-      'android.swipe'
+    expect(commands.map(item => item.uses)).toEqual([
+      'android.getClipboard',
+      'android.getSetting',
+      'android.wait',
+      'android.waitForText'
+    ])
+    expect(defaultAiRunCapabilities(commands)).toEqual(['android.getClipboard', 'android.wait'])
+    expect(nextAiRunCapabilities({ capabilities: undefined, commands, uses: 'android.wait', enabled: false })).toEqual([
+      'android.getClipboard'
     ])
     expect(
-      nextAiRunCapabilities({ capabilities: ['android.swipe'], commands, uses: 'android.tap', enabled: true })
-    ).toBeUndefined()
+      nextAiRunCapabilities({ capabilities: ['android.getClipboard'], commands, uses: 'android.wait', enabled: true })
+    ).toEqual(['android.getClipboard', 'android.wait'])
     expect(
-      nextAiRunCapabilities({ capabilities: ['android.swipe'], commands, uses: 'android.swipe', enabled: false })
+      nextAiRunCapabilities({ capabilities: ['android.wait'], commands, uses: 'android.wait', enabled: false })
     ).toEqual([])
     expect(normalizeAiRunInput({ capabilities: [] }).capabilities).toEqual([])
   })

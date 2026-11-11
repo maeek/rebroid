@@ -1,4 +1,8 @@
-import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run'
+import {
+  AUTOMATION_AI_RUN_MAX_TIMEOUT_MS,
+  isDefaultAiCapability,
+  isSelectableAiCapability
+} from '@rebroid/automation-core/ai-run'
 import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -55,7 +59,14 @@ export const summarizeAiRunInput = (input: Record<string, unknown>) => {
 }
 
 export const selectableAiRunCommands = (commands: AutomationCommand[]) =>
-  commands.filter(command => command.uses !== 'ai.run').sort((left, right) => left.uses.localeCompare(right.uses))
+  commands
+    .filter(command => isSelectableAiCapability(command.uses))
+    .sort((left, right) => left.uses.localeCompare(right.uses))
+
+export const defaultAiRunCapabilities = (commands: AutomationCommand[]) =>
+  commands
+    .filter(command => command.permitted !== false && isDefaultAiCapability(command.uses))
+    .map(command => command.uses)
 
 export const nextAiRunCapabilities = ({
   capabilities,
@@ -68,9 +79,8 @@ export const nextAiRunCapabilities = ({
   enabled: boolean
   uses: string
 }) => {
-  const next = new Set(capabilities ?? commands.map(command => command.uses))
+  const next = new Set(capabilities ?? defaultAiRunCapabilities(commands))
   if (enabled) next.add(uses)
   else next.delete(uses)
-  const selected = Array.from(next)
-  return selected.length === commands.length ? undefined : selected
+  return Array.from(next)
 }

@@ -5,6 +5,7 @@ import { AutomationStepResult } from './automation-runner.types';
 export interface AutomationExecutionState {
   app: AndroidAutomationApplication;
   canUseInternet: boolean;
+  defaultAiCapabilities?: string[];
   runId: string;
   trigger: AutomationRunTrigger;
   targetProfileMode: string | null;

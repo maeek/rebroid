@@ -1,3 +1,4 @@
+import { AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER } from '@rebroid/automation-core/ai-run'
 import { z } from 'zod'
 import { hasInternalSecret } from '@/server/auth/internal-secret'
 import { authorizeAutomationExecution } from '@/server/automations/authorize-execution'
@@ -25,14 +26,20 @@ export const POST = async (request: Request) => {
   const input = inputSchema.safeParse(await request.json().catch(() => null))
   if (!input.success) return new Response(null, { status: 400, headers: { 'x-request-id': requestId } })
   try {
-    const { maxOpenApps, canUseInternet } = await authorizeAutomationExecution(input.data)
+    const { maxOpenApps, canUseInternet, defaultAiCapabilities } = await authorizeAutomationExecution(input.data)
+    if (defaultAiCapabilities !== undefined && request.headers.get(AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER) !== '1') {
+      return new Response(null, { status: 503, headers: { 'x-request-id': requestId } })
+    }
     return new Response(null, {
       status: 204,
       headers: {
         'x-request-id': requestId,
         'x-rebroid-max-open-apps': 'unlimited',
         ...openAppQuotaHeaders(maxOpenApps),
-        'x-rebroid-allow-broad-egress': String(canUseInternet)
+        'x-rebroid-allow-broad-egress': String(canUseInternet),
+        ...(defaultAiCapabilities === undefined
+          ? {}
+          : { [AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER]: defaultAiCapabilities.join(',') })
       }
     })
   } catch (error) {

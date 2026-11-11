@@ -1,5 +1,6 @@
 'use server'
 
+import { isSelectableAiCapability } from '@rebroid/automation-core/ai-run'
 import { revalidatePath } from 'next/cache'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import {
@@ -42,12 +43,9 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
   if (input.startPolicy === 'start-if-needed') assertRunProfilePermission(user, input)
-  const permittedTools = await listPermittedAiTools(user)
   const rawShellRequested = input.rawShellPolicy === 'allowlisted'
-  if (rawShellRequested && !permittedTools.includes('android.adbShell')) {
-    assertAutomationPermission(user, 'automations:run-adb-shell')
-  }
-  const capabilities = permittedTools.filter(uses => uses !== 'android.adbShell')
+  if (rawShellRequested) assertAutomationPermission(user, 'automations:run-adb-shell')
+  const capabilities = (await listPermittedAiTools(user)).filter(isSelectableAiCapability)
   const run = await orchestratorAutomationsClient.runAdHocAi(user.ownerUserId, {
     ...input,
     capabilities,
@@ -69,7 +67,7 @@ export const suggestAdHocAiPromptsAction = async (input: SuggestAdHocAiPromptsIn
   await assertTargetApplication(input.targetApplicationId)
   return orchestratorAutomationsClient.suggestAdHocAiPrompts(user.ownerUserId, {
     ...input,
-    allowedTools: await listPermittedAiTools(user)
+    allowedTools: (await listPermittedAiTools(user)).filter(isSelectableAiCapability)
   })
 }
 

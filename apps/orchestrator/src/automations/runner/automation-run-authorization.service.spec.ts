@@ -1,3 +1,4 @@
+import { AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER } from '@rebroid/automation-core/ai-run';
 import { ConfigService } from '@nestjs/config';
 import { AutomationRunAuthorizationService } from './automation-run-authorization.service';
 
@@ -84,5 +85,40 @@ describe('automation authorization transport', () => {
         }),
       }),
     );
+  });
+
+  it('reads an explicit empty grant and rejects capabilities outside the defaults', async () => {
+    const service = new AutomationRunAuthorizationService(
+      new ConfigService({
+        app: { webInternalUrl: 'http://web:3101', sharedSecret: 'secret' },
+      }),
+    );
+    const authorize = () =>
+      service.assertAllowed('owner', { spec: { steps: [] } } as never, 'app', {
+        operation: 'attach',
+      });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 204,
+          headers: { [AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER]: '' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 204,
+          headers: {
+            [AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER]: 'android.adbShell',
+          },
+        }),
+      );
+
+    await expect(authorize()).resolves.toMatchObject({
+      defaultAiCapabilities: [],
+    });
+    await expect(authorize()).rejects.toMatchObject({
+      code: 'authorization_invalid_capabilities',
+    });
   });
 });

@@ -1,3 +1,7 @@
+import {
+  isDefaultAiCapability,
+  isRoutedAiCapability,
+} from '@rebroid/automation-core/ai-run';
 import { createHash } from 'node:crypto';
 import type { DeviceAgentAction } from './core/device-decision';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
@@ -15,39 +19,6 @@ export interface DeviceTargetSession {
   networkName: string;
   adbPort: number;
 }
-
-const fixedActionUses = new Set([
-  'android.tapNormalized',
-  'android.swipeNormalized',
-  'android.inputText',
-  'android.key',
-  'android.launchPackage',
-  'android.openSystemSettings',
-  'android.expandNotifications',
-  'android.expandQuickSettings',
-  'android.viewerCommand',
-  'android.wait',
-]);
-
-const safeDefaultCapabilities = new Set([
-  'android.listPackages',
-  'android.getSetting',
-  'android.getClipboard',
-]);
-
-const safeDefaultTools = new Set([
-  ...fixedActionUses,
-  ...safeDefaultCapabilities,
-]);
-
-const unroutedCapabilityUses = new Set([
-  ...fixedActionUses,
-  'ai.run',
-  'android.adbShell',
-  // AI taps must resolve through the typed action and its current observation.
-  'android.tap',
-  'android.tapText',
-]);
 
 export const createTargetSession = (
   context: AutomationAiHarnessContext,
@@ -95,8 +66,7 @@ export const routeCapabilities = ({
   goal: string;
   input: Pick<AutomationAiRunInput, 'capabilities'>;
 }) => {
-  const configured = input.capabilities;
-  const allowed = configured ? new Set(configured) : safeDefaultCapabilities;
+  const configured = input.capabilities ? new Set(input.capabilities) : null;
   const terms = new Set(
     goal
       .toLowerCase()
@@ -104,8 +74,12 @@ export const routeCapabilities = ({
       .filter((term) => term.length >= 3),
   );
   return commands
-    .filter((command) => !unroutedCapabilityUses.has(command.uses))
-    .filter((command) => allowed.has(command.uses))
+    .filter((command) => isRoutedAiCapability(command.uses))
+    .filter((command) =>
+      configured
+        ? configured.has(command.uses)
+        : isDefaultAiCapability(command.uses),
+    )
     .map((command) => ({
       ...command,
       score: scoreCapability(command, terms),
@@ -135,7 +109,7 @@ export const toolAllowedForRun = (
   uses: string,
 ) => {
   const configured = input.capabilities;
-  return configured ? configured.includes(uses) : safeDefaultTools.has(uses);
+  return configured ? configured.includes(uses) : isDefaultAiCapability(uses);
 };
 
 export const resolveActionTool = ({
@@ -287,7 +261,7 @@ const scoreCapability = (command: AutomationCommandDto, terms: Set<string>) => {
     `${command.uses} ${command.label} ${command.description}`.toLowerCase();
   return [...terms].reduce(
     (score, term) => score + (haystack.includes(term) ? 1 : 0),
-    safeDefaultCapabilities.has(command.uses) ? 0.25 : 0,
+    isDefaultAiCapability(command.uses) ? 0.25 : 0,
   );
 };
 

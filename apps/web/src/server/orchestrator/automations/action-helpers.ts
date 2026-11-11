@@ -1,3 +1,4 @@
+import { isDefaultAiCapability } from '@rebroid/automation-core/ai-run'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
@@ -7,7 +8,7 @@ import {
   ownedRuntimeControlMessage
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
-import type { RunAutomationInput, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
+import type { AutomationCommand, RunAutomationInput, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
 import type { AutomationDefinition, AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
 export type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
@@ -21,9 +22,18 @@ export const assertAutomationPermission = (user: CurrentAutomationUser, permissi
 const commandPermissionIsKnown = (permission: string): permission is PermissionId =>
   allPermissionIds.some(candidate => candidate === permission)
 
+export const canUseAutomationCommand = (
+  user: CurrentAutomationUser,
+  command: Pick<AutomationCommand, 'requiredPermissions'>
+) =>
+  command.requiredPermissions.every(
+    permission => commandPermissionIsKnown(permission) && hasPermission(user.permissions, permission)
+  )
+
 export const assertDefinitionPermissions = async (user: CurrentAutomationUser, definition: AutomationDefinition) => {
   const commands = await orchestratorAutomationsClient.listCommands()
   const commandByUses = new Map(commands.map(command => [command.uses, command]))
+  let defaultAiCapabilities: string[] | undefined
   const assertCommandPermissions = (uses: string) => {
     const command = commandByUses.get(uses)
     if (!command) {
@@ -37,28 +47,6 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
       }
       assertAutomationPermission(user, permission)
     }
-  }
-  const nestedAiTools = (step: Extract<AutomationDefinitionStep, { uses: string }>) => {
-    const { capabilities } = step.with
-    if (Array.isArray(capabilities)) {
-      return capabilities.filter((uses): uses is string => typeof uses === 'string' && uses !== 'ai.run')
-    }
-    const safeDefaults = new Set([
-      'android.wait',
-      'android.viewerCommand',
-      'android.expandNotifications',
-      'android.expandQuickSettings',
-      'android.openSystemSettings',
-      'android.launchPackage',
-      'android.listPackages',
-      'android.getSetting',
-      'android.tapNormalized',
-      'android.swipeNormalized',
-      'android.inputText',
-      'android.key',
-      'android.getClipboard'
-    ])
-    return commands.filter(command => safeDefaults.has(command.uses)).map(command => command.uses)
   }
   const assertStep = (step: AutomationDefinitionStep) => {
     if (!('uses' in step)) {
@@ -78,23 +66,28 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
     assertCommandPermissions(step.uses)
     if (step.uses === 'ai.run') {
       if (step.with.rawShellPolicy === 'allowlisted') assertAutomationPermission(user, 'automations:run-adb-shell')
-      for (const uses of nestedAiTools(step)) {
-        assertCommandPermissions(uses)
+      const { capabilities } = step.with
+      if (capabilities === undefined) {
+        defaultAiCapabilities ??= commands
+          .filter(command => isDefaultAiCapability(command.uses) && canUseAutomationCommand(user, command))
+          .map(command => command.uses)
+        return
       }
+      if (!Array.isArray(capabilities) || !capabilities.every(uses => typeof uses === 'string')) {
+        throw new PublicActionError('AI capabilities must be a list of command names.', { code: 'validation' })
+      }
+      capabilities.forEach(uses => assertCommandPermissions(uses.trim()))
     }
   }
   definition.spec.steps.forEach(assertStep)
+  return defaultAiCapabilities
 }
 
 export const listPermittedAiTools = async (user: CurrentAutomationUser) => {
   const commands = await orchestratorAutomationsClient.listCommands()
   return commands
     .filter(command => command.uses !== 'ai.run')
-    .filter(command =>
-      command.requiredPermissions.every(
-        permission => commandPermissionIsKnown(permission) && hasPermission(user.permissions, permission)
-      )
-    )
+    .filter(command => canUseAutomationCommand(user, command))
     .map(command => command.uses)
 }
 

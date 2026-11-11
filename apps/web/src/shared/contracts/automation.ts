@@ -75,6 +75,7 @@ export interface AutomationCommand {
   label: string
   description: string
   requiredPermissions: string[]
+  permitted?: boolean
   inputSchema: Record<string, unknown>
   outputs: AutomationCommandOutput[]
   editor: AutomationCommandEditorMetadata

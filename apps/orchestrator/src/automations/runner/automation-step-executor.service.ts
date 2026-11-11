@@ -121,7 +121,19 @@ export class AutomationStepExecutorService {
           abortSignal: signal,
         });
       };
-      const result = await this.registry.execute(step.uses, step.with, {
+      let commandInput = step.with;
+      if (step.uses === 'ai.run' && step.with.capabilities === undefined) {
+        if (state.defaultAiCapabilities === undefined) {
+          throw new ConflictException(
+            'Workflow authorization did not provide default AI capabilities.',
+          );
+        }
+        commandInput = {
+          ...step.with,
+          capabilities: state.defaultAiCapabilities,
+        };
+      }
+      const result = await this.registry.execute(step.uses, commandInput, {
         app: state.app,
         ...this.applications.automationAdapters(state.canUseInternet),
         aiHarness: this.aiHarness,

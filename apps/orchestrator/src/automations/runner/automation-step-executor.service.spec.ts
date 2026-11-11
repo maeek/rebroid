@@ -120,4 +120,50 @@ describe('AutomationStepExecutorService', () => {
       { summary: 'Tapped.', data: { touched: true } },
     );
   });
+
+  it('dispatches fresh AI defaults and preserves explicit capability lists', async () => {
+    const registryExecute = jest.fn().mockResolvedValue({ summary: 'Done.' });
+    const { service } = createService({ registryExecute });
+    const state = { ...createState(), defaultAiCapabilities: ['android.wait'] };
+    const prompt = 'Wait for the device';
+    await expect(
+      service.executeSteps(
+        [
+          { id: 'default-ai', uses: 'ai.run', with: { prompt } },
+          {
+            id: 'explicit-ai',
+            uses: 'ai.run',
+            with: { prompt, capabilities: [] },
+          },
+        ],
+        state,
+        createRun(),
+        { path: 'steps', isRunCanceled: () => false },
+      ),
+    ).resolves.toEqual({ failed: false, stopped: false });
+    expect(registryExecute).toHaveBeenNthCalledWith(
+      1,
+      'ai.run',
+      { prompt, capabilities: ['android.wait'] },
+      expect.any(Object),
+    );
+    expect(registryExecute).toHaveBeenNthCalledWith(
+      2,
+      'ai.run',
+      { prompt, capabilities: [] },
+      expect.any(Object),
+    );
+  });
+
+  it('fails closed when an omitted capability list has no grant', async () => {
+    const { service, registryExecute } = createService();
+    const step = { id: 'default-ai', uses: 'ai.run', with: { prompt: 'Wait' } };
+    await expect(
+      service.executeSteps([step], createState(), createRun(), {
+        path: 'steps',
+        isRunCanceled: () => false,
+      }),
+    ).resolves.toEqual({ failed: true, stopped: false });
+    expect(registryExecute).not.toHaveBeenCalled();
+  });
 });

@@ -77,7 +77,7 @@ export class AutomationRunnerTargetService {
         !matchesProfile(initial, profile))
         ? profile
         : undefined;
-    const { canUseInternet, maxOpenApps } =
+    const { maxOpenApps, ...permissions } =
       await this.authorization.assertAllowed(
         ownerUserId,
         definition,
@@ -98,7 +98,7 @@ export class AutomationRunnerTargetService {
     const current = await this.apps.get(targetApplicationId);
     abortSignal.throwIfAborted();
     if (current.status === AndroidApplicationStatus.Running) {
-      return { app: this.assertProfile(current, profile), canUseInternet };
+      return { app: this.assertProfile(current, profile), ...permissions };
     }
     if (!startRequested) {
       throw new ConflictException(
@@ -118,7 +118,7 @@ export class AutomationRunnerTargetService {
       targetApplicationId,
       abortSignal,
     );
-    return { app: this.assertProfile(app, profile), canUseInternet };
+    return { app: this.assertProfile(app, profile), ...permissions };
   }
 
   private assertProfile(

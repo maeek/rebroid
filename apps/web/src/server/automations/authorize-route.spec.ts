@@ -1,3 +1,4 @@
+import { AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER } from '@rebroid/automation-core/ai-run'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/internal/automations/authorize/route'
 import { PublicActionError } from '@/server/errors/public-action-error'
@@ -54,4 +55,31 @@ describe('private execution authorization endpoint', () => {
     expect(response.status).toBe(400)
     expect(authorizeAutomationExecution).not.toHaveBeenCalled()
   })
+  it.each([{ capabilities: [] }, { capabilities: ['android.wait'] }])(
+    'requires support for authorized AI defaults (%j)',
+    async ({ capabilities }) => {
+      vi.stubEnv('ORCHESTRATOR_SHARED_SECRET', 'secret')
+      vi.mocked(authorizeAutomationExecution).mockResolvedValue({
+        maxOpenApps: null,
+        canUseInternet: false,
+        defaultAiCapabilities: capabilities
+      })
+      const request = (headers: Record<string, string>) =>
+        new Request('http://web/api/internal/automations/authorize', {
+          method: 'POST',
+          headers: { 'x-orchestrator-secret': 'secret', ...headers },
+          body: JSON.stringify({
+            ownerUserId: 'u',
+            targetApplicationId: 'a',
+            definition: { spec: { steps: [] } },
+            operation: 'attach'
+          })
+        })
+
+      expect((await POST(request({}))).status).toBe(503)
+      const response = await POST(request({ [AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER]: '1' }))
+      expect(response.status).toBe(204)
+      expect(response.headers.get(AUTOMATION_AI_DEFAULT_CAPABILITIES_HEADER)).toBe(capabilities.join(','))
+    }
+  )
 })
