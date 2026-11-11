@@ -7,6 +7,11 @@ import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.fa
 import { AutomationAiSuggestionsService } from '../ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
+import type {
+  ApplicationWorkflowRunDto,
+  ApplicationWorkflowRunPageDto,
+  ListApplicationWorkflowRunsDto,
+} from '../dto/application-workflow-history.dto';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
 import {
@@ -29,6 +34,7 @@ import {
 } from '../dto/automation-trigger.dto';
 import { AutomationLastStatus } from '../entities/automation.entity';
 import {
+  AutomationRun,
   AutomationRunStatus,
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
@@ -155,10 +161,13 @@ export class AutomationsService {
         targetApplicationId: dto.targetApplicationId,
         targetProfileMode: dto.profileMode,
         targetProfileName: dto.profileName?.trim() || null,
+        currentProfileOnly:
+          dto.startPolicy !== AutomationStartPolicy.StartIfNeeded,
         startPolicy: toAutomationRunStartPolicy(
           dto.startPolicy ?? AutomationStartPolicy.RequireRunning,
         ),
       },
+      { prompt: dto.prompt.trim(), clientMessageId: dto.clientMessageId },
     );
     return this.mapper.run(run);
   }
@@ -187,6 +196,29 @@ export class AutomationsService {
         limit,
       )
     ).map((run) => this.mapper.run(run));
+  }
+
+  async listAdHocAiRunHistory(
+    ownerUserId: string,
+    targetApplicationId: string,
+    limit?: number,
+  ) {
+    const runs = await this.listAdHocAiRuns(
+      ownerUserId,
+      targetApplicationId,
+      limit,
+    );
+    const events = await this.events.listConversationEvents(
+      ownerUserId.trim(),
+      runs.map((run) => run.id),
+    );
+    const byRun = new Map<string, AutomationRunEventDto[]>();
+    for (const event of events) {
+      const group = byRun.get(event.runId);
+      if (group) group.push(event);
+      else byRun.set(event.runId, [event]);
+    }
+    return runs.map((run) => ({ run, events: byRun.get(run.id) ?? [] }));
   }
 
   async clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {
@@ -246,12 +278,84 @@ export class AutomationsService {
     );
   }
 
+  async listApplicationWorkflowRuns({
+    ownerUserId,
+    targetApplicationId,
+    page = 0,
+    pageSize = 25,
+    q = '',
+  }: ListApplicationWorkflowRunsDto): Promise<ApplicationWorkflowRunPageDto> {
+    await this.targetApplications.assertOwnerAccess(
+      ownerUserId,
+      targetApplicationId,
+    );
+    const { items, total } = await this.runs.listApplicationWorkflows(
+      ownerUserId,
+      targetApplicationId,
+      page,
+      pageSize,
+      q.trim(),
+    );
+    return {
+      items: items.map(({ run, automationName }) => ({
+        id: run.id,
+        automationId: run.automationId,
+        automationName,
+        status: run.status,
+        trigger: run.trigger,
+        createdAt: run.createdAt.toISOString(),
+        startedAt: run.startedAt?.toISOString() ?? null,
+        completedAt: run.completedAt?.toISOString() ?? null,
+      })),
+      total,
+      pageSize,
+    };
+  }
+
+  async getApplicationWorkflowRun(
+    ownerUserId: string,
+    targetApplicationId: string,
+    runId: string,
+  ): Promise<ApplicationWorkflowRunDto> {
+    await this.targetApplications.assertOwnerAccess(
+      ownerUserId,
+      targetApplicationId,
+    );
+    const record = await this.runs.findApplicationWorkflow(
+      ownerUserId,
+      targetApplicationId,
+      runId,
+    );
+    if (!record)
+      throw new NotFoundException(
+        'Workflow run was not found for this application.',
+      );
+    return {
+      ...(await this.runDetails(record.run)),
+      automationName: record.automationName,
+    };
+  }
+
   async getRun(ownerUserId: string, id: string) {
+    return this.runDetails(await this.getOwnedRun(ownerUserId, id));
+  }
+
+  private async runDetails(run: AutomationRun) {
+    const result = this.mapper.run(run);
+    if (run.status !== AutomationRunStatus.Failed) return result;
+    const failureRequestId = await this.events.findFailureRequestId(
+      run.ownerUserId,
+      run.id,
+    );
+    return { ...result, failureRequestId };
+  }
+
+  private async getOwnedRun(ownerUserId: string, id: string) {
     const run = await this.runs.findByOwnerAndId(ownerUserId, id);
     if (!run) {
       throw new NotFoundException(`Automation run "${id}" was not found.`);
     }
-    return this.mapper.run(run);
+    return run;
   }
 
   async cancelRun(ownerUserId: string, id: string) {
@@ -262,16 +366,19 @@ export class AutomationsService {
     ownerUserId: string,
     runId: string,
     after?: number,
+    view?: string,
   ): Promise<AutomationRunEventDto[]> {
-    await this.getRun(ownerUserId, runId);
-    return this.events.list(ownerUserId, runId, after);
+    await this.getOwnedRun(ownerUserId, runId);
+    return view === 'conversation'
+      ? this.events.listConversationEvents(ownerUserId, [runId])
+      : this.events.list(ownerUserId, runId, after);
   }
 
   async createRunEventStreamToken(
     ownerUserId: string,
     runId: string,
   ): Promise<AutomationRunEventStreamTokenDto> {
-    await this.getRun(ownerUserId, runId);
+    await this.getOwnedRun(ownerUserId, runId);
     return this.eventStream.createSubscribeToken(ownerUserId, runId);
   }
 

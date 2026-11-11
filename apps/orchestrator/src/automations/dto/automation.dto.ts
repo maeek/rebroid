@@ -1,3 +1,4 @@
+import { AUTOMATION_DRAFT_PROMPT_MAX_LENGTH } from '@rebroid/automation-core/yaml-draft';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -70,7 +71,7 @@ export class DraftAutomationYamlDto {
   })
   @IsString()
   @MinLength(1)
-  @MaxLength(12000)
+  @MaxLength(AUTOMATION_DRAFT_PROMPT_MAX_LENGTH)
   prompt!: string;
 
   @ApiPropertyOptional({ example: 'local-ollama' })
@@ -202,6 +203,9 @@ export class AutomationDto {
 
   @ApiProperty({ type: String, nullable: true })
   lastRunAt!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  lastRunId!: string | null;
 
   @ApiProperty({ enum: AutomationLastStatus })
   lastStatus!: AutomationLastStatus;

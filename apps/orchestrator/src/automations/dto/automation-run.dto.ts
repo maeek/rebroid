@@ -1,3 +1,4 @@
+import { AutomationRunEventDto } from './automation-run-event.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -149,6 +150,19 @@ export class AutomationRunDto {
   @ApiProperty()
   createdAt!: string;
 
+  @ApiPropertyOptional({
+    description: 'Request ID recorded for a failed service request.',
+  })
+  failureRequestId?: string;
+
   @ApiProperty()
   updatedAt!: string;
+}
+
+export class AutomationAiRunHistoryDto {
+  @ApiProperty({ type: AutomationRunDto })
+  run!: AutomationRunDto;
+
+  @ApiProperty({ type: AutomationRunEventDto, isArray: true })
+  events!: AutomationRunEventDto[];
 }

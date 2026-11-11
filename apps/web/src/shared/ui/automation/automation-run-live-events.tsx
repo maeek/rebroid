@@ -1,14 +1,19 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconActivity, IconPlayerStop, IconRobot } from '@tabler/icons-react'
+import { IconActivity, IconChevronRight, IconPlayerStop, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Notice } from '@/components/ui/notice'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
+import { workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import {
   AutomationRunStatusBadge,
   type AutomationRunDisplayStatus
 } from '@/shared/ui/automation/automation-run-status-badge'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
+import { JsonViewer } from '@/shared/ui/json-viewer'
+import { StateView } from '@/shared/ui/state-view'
 import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation'
 
 const activeStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
@@ -57,7 +62,58 @@ const eventLabel = (event: AutomationRunEvent) => {
   return event.message || event.type
 }
 
-const runTimeLabel = (run: AutomationRun) =>
+const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; startedAt: string | null }) => {
+  const [open, setOpen] = useState(false)
+  const label = event.type === 'run.failed' ? workflowRunFailureMessage(event.message, startedAt) : eventLabel(event)
+  return (
+    <details
+      className='group border-b border-surface-border/50'
+      onToggle={change => setOpen(change.currentTarget.open)}
+    >
+      <summary className='flex cursor-pointer items-start gap-2 rounded-control px-2 py-2 text-sm hover:bg-control/35 focus-visible:outline-ring'>
+        <IconChevronRight
+          aria-hidden
+          className='mt-0.5 size-4 shrink-0 group-open:rotate-90'
+        />
+        <span
+          className={cn('mt-1.5 size-2 shrink-0 rounded-full', eventPresentation(event.type).marker)}
+          aria-hidden
+        />
+        <span className='min-w-0 flex-1 [overflow-wrap:anywhere]'>{label}</span>
+        <span className='hidden shrink-0 sm:inline'>
+          <DateTimeValue
+            value={event.createdAt}
+            compact
+            showSeconds
+          />
+        </span>
+      </summary>
+      {open ? (
+        <div className='grid gap-2 px-4 pb-3'>
+          <div className='flex flex-wrap items-center gap-2 text-xs text-foreground-muted'>
+            <code>{event.type}</code>
+            {event.stepId ? <span>Step {event.stepId}</span> : null}
+            <span className='sm:hidden'>
+              <DateTimeValue
+                value={event.createdAt}
+                compact
+                showSeconds
+              />
+            </span>
+          </div>
+          {Object.keys(event.data).length ? (
+            <JsonViewer
+              value={event.data}
+              title='Event data'
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </details>
+  )
+}
+
+const runTimeLabel = (run: Pick<AutomationRun, 'startedAt' | 'createdAt'>) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short'
@@ -68,23 +124,28 @@ export function AutomationRunLiveEvents({
   compact = false,
   showHeader = true,
   allowCancel = true,
+  presentation = 'panel',
   onStatusChange
 }: {
-  run: AutomationRun
+  run: Pick<AutomationRun, 'id' | 'status' | 'trigger' | 'startedAt' | 'createdAt'>
   compact?: boolean
   showHeader?: boolean
   allowCancel?: boolean
+  presentation?: 'panel' | 'flat'
   onStatusChange?: (status: AutomationRun['status']) => void
 }) {
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
   const [localStatus, setLocalStatus] = useState<AutomationRunStatus>(run.status)
   const [isCanceling, setIsCanceling] = useState(false)
   const [streamError, setStreamError] = useState<string | null>(null)
+  const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
   const lastSequenceRef = useRef(0)
   const cancelingRunIdRef = useRef<string | null>(null)
   const statusRef = useRef<AutomationRunStatus>(run.status)
   const onStatusChangeRef = useRef(onStatusChange)
   const runId = run.id
+  const flat = presentation === 'flat'
+  const recorded = flat && terminalStatuses.has(run.status)
 
   useEffect(() => {
     onStatusChangeRef.current = onStatusChange
@@ -106,6 +167,7 @@ export function AutomationRunLiveEvents({
     lastSequenceRef.current = 0
     setEvents([])
     setStreamError(null)
+    setHasLoadedEvents(false)
 
     const applyStatus = (status: AutomationRunStatus) => {
       statusRef.current = status
@@ -139,10 +201,14 @@ export function AutomationRunLiveEvents({
         const live = await getBff<{ events: AutomationRunEvent[]; streamUrl: string }>(
           `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${lastSequenceRef.current}`
         )
+        if (closed) return
+        setStreamError(null)
         appendEvents(live.events)
-        if (closed || !activeStatuses.has(statusRef.current)) return
+        setHasLoadedEvents(true)
+        if (!activeStatuses.has(statusRef.current)) return
         socket = new WebSocket(live.streamUrl)
         socket.onmessage = message => {
+          if (closed) return
           try {
             const payload = JSON.parse(String(message.data)) as { type: string; event?: AutomationRunEvent }
             if (payload.type === 'event' && payload.event) appendEvents([payload.event])
@@ -156,7 +222,8 @@ export function AutomationRunLiveEvents({
           }
         }
       } catch {
-        if (!closed) setStreamError('Live updates are temporarily unavailable.')
+        if (!closed)
+          setStreamError(recorded ? 'Could not load recorded events.' : 'Live updates are temporarily unavailable.')
       }
     }
 
@@ -166,11 +233,11 @@ export function AutomationRunLiveEvents({
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer)
       socket?.close()
     }
-  }, [runId])
+  }, [recorded, runId])
 
   const visibleEvents = useMemo(
-    () => events.filter(event => event.type !== 'heartbeat' && event.message.trim().length > 0),
-    [events]
+    () => events.filter(event => event.type !== 'heartbeat' && (flat || event.message.trim().length > 0)),
+    [events, flat]
   )
 
   const cancel = async () => {
@@ -200,9 +267,16 @@ export function AutomationRunLiveEvents({
 
   const displayStatus: AutomationRunDisplayStatus = isCanceling ? 'canceling' : localStatus
   const canCancel = allowCancel && activeStatuses.has(localStatus)
+  const waitingForEvents = !hasLoadedEvents || activeStatuses.has(localStatus)
 
   return (
-    <div className='grid min-h-0 overflow-hidden rounded-panel border border-surface-border/60 bg-surface-panel/45 shadow-[0_18px_48px_-38px_rgba(0,0,0,0.75)]'>
+    <div
+      className={cn(
+        'grid min-h-0',
+        !flat &&
+          'overflow-hidden rounded-panel border border-surface-border/60 bg-surface-panel/45 shadow-[0_18px_48px_-38px_rgba(0,0,0,0.75)]'
+      )}
+    >
       {showHeader ? (
         <div className='flex flex-wrap items-center justify-between gap-3 border-b border-surface-border/50 bg-surface-band/24 px-4 py-3'>
           <div className='flex min-w-0 items-center gap-3'>
@@ -241,9 +315,23 @@ export function AutomationRunLiveEvents({
         role='log'
         aria-label={`Events for run ${runId.slice(0, 8)}`}
         aria-live='polite'
-        className={cn('grid gap-1.5 overflow-auto p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')}
+        className={
+          flat ? 'grid min-w-0' : cn('grid gap-1.5 overflow-auto p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')
+        }
       >
-        {visibleEvents.length === 0 ? (
+        {flat && !streamError && visibleEvents.length === 0 ? (
+          <StateView
+            scope='section'
+            kind={waitingForEvents ? 'loading' : 'empty'}
+            title={waitingForEvents ? 'Waiting for events' : 'No recorded events'}
+            description={
+              activeStatuses.has(localStatus)
+                ? 'Events will appear as the workflow runs.'
+                : 'Use Summary to inspect the run outcome.'
+            }
+          />
+        ) : null}
+        {!flat && visibleEvents.length === 0 ? (
           <div className='flex min-h-28 flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/15 text-center'>
             <span className='flex size-8 items-center justify-center rounded-full bg-primary/8 text-primary'>
               <IconActivity className={cn('size-4', activeStatuses.has(localStatus) && 'animate-pulse')} />
@@ -259,27 +347,40 @@ export function AutomationRunLiveEvents({
               </p>
             </div>
           </div>
-        ) : (
-          visibleEvents.map(event => {
-            const presentation = eventPresentation(event.type)
-            return (
-              <div
+        ) : null}
+        {flat
+          ? visibleEvents.map(event => (
+              <ExpandableRunEvent
                 key={event.id}
-                className={cn(
-                  'grid grid-cols-[2.25rem_0.5rem_minmax(0,1fr)] items-start gap-2 rounded-panel border px-2.5 py-2 text-xs transition-colors',
-                  presentation.row
-                )}
-              >
-                <span className='pt-px text-right font-mono text-xs text-foreground-muted/75'>
-                  {String(event.sequence).padStart(3, '0')}
-                </span>
-                <span className={cn('mt-1 size-1.5 rounded-full', presentation.marker)} />
-                <span className='min-w-0 leading-5 break-words'>{eventLabel(event)}</span>
-              </div>
-            )
-          })
-        )}
-        {streamError ? (
+                event={event}
+                startedAt={run.startedAt}
+              />
+            ))
+          : visibleEvents.map(event => {
+              const rowStyle = eventPresentation(event.type)
+              return (
+                <div
+                  key={event.id}
+                  className={cn(
+                    'grid grid-cols-[2.25rem_0.5rem_minmax(0,1fr)] items-start gap-2 rounded-panel border px-2.5 py-2 text-xs transition-colors',
+                    rowStyle.row
+                  )}
+                >
+                  <span className='pt-px text-right font-mono text-xs text-foreground-muted/75'>
+                    {String(event.sequence).padStart(3, '0')}
+                  </span>
+                  <span className={cn('mt-1 size-1.5 rounded-full', rowStyle.marker)} />
+                  <span className='min-w-0 leading-5 break-words'>{eventLabel(event)}</span>
+                </div>
+              )
+            })}
+        {streamError && flat ? (
+          <Notice
+            tone='warning'
+            description={streamError}
+          />
+        ) : null}
+        {streamError && !flat ? (
           <div className='rounded-panel border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
             {streamError}
           </div>

@@ -85,6 +85,67 @@ export class AutomationRunEventsRepository {
     ).map(toRecord);
   }
 
+  async findFailureRequestId(ownerUserId: string, runId: string) {
+    const failure = await this.events.findOne({
+      where: { ownerUserId, runId, type: 'run.failed' },
+      order: { sequence: 'DESC' },
+    });
+    if (!failure) return undefined;
+    const { requestId } = toRecord(failure).data;
+    return typeof requestId === 'string' &&
+      /^[a-zA-Z0-9._:-]{1,128}$/.test(requestId)
+      ? requestId
+      : undefined;
+  }
+
+  async listConversationEvents(ownerUserId: string, runIds: string[]) {
+    if (!runIds.length) return [];
+    const query = this.events.createQueryBuilder('event');
+    const recent = query
+      .subQuery()
+      .select('recent.id')
+      .from(
+        (ranked) =>
+          ranked
+            .select('candidate.id', 'id')
+            .addSelect('candidate.type', 'type')
+            .addSelect(
+              'ROW_NUMBER() OVER (PARTITION BY candidate.runId, candidate.type ORDER BY candidate.sequence DESC)',
+              'typeRank',
+            )
+            .addSelect(
+              'ROW_NUMBER() OVER (PARTITION BY candidate.runId ORDER BY candidate.sequence DESC)',
+              'rank',
+            )
+            .from(AutomationRunEvent, 'candidate')
+            .where(
+              'candidate.ownerUserId = :ownerUserId AND candidate.runId IN (:...runIds)',
+            ),
+        'recent',
+      )
+      .where(
+        'recent.rank <= 80 OR (recent.type IN (:...summaryTypes) AND recent.typeRank = 1)',
+      )
+      .getQuery();
+    const rows = await query
+      .where(
+        'event.ownerUserId = :ownerUserId AND event.runId IN (:...runIds)',
+        { ownerUserId, runIds },
+      )
+      .andWhere(`event.id IN ${recent}`, {
+        summaryTypes: [
+          'ai.user.message',
+          'ai.message.completed',
+          'run.completed',
+          'run.failed',
+          'run.canceled',
+        ],
+      })
+      .orderBy('event.sequence', 'ASC')
+      .getMany();
+    return rows.map(toRecord);
+  }
+
   async deleteForRuns(ownerUserId: string, runIds: string[]) {
     if (runIds.length === 0) {
       return;

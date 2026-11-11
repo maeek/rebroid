@@ -205,6 +205,9 @@ export class AutomationTriggerDto {
   lastRunAt!: string | null;
 
   @ApiProperty({ type: String, nullable: true })
+  lastRunId!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
   nextRunAt!: string | null;
 
   @ApiProperty({ enum: AutomationLastStatus })

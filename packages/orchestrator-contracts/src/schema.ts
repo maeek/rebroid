@@ -1917,6 +1917,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/automations/ai/run-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listAdHocAiRunHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listApplicationWorkflowRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/history/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_getApplicationWorkflowRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2986,6 +3034,8 @@ export interface components {
             stepResults: components["schemas"]["AutomationStepResultDto"][];
             error: string | null;
             createdAt: string;
+            /** @description Request ID recorded for a failed service request. */
+            failureRequestId?: string;
             updatedAt: string;
         };
         AiPromptSuggestionContextEventDto: {
@@ -3035,6 +3085,7 @@ export interface components {
             definition: components["schemas"]["AutomationDefinitionDto"];
             yaml: string;
             lastRunAt: string | null;
+            lastRunId: string | null;
             /** @enum {string} */
             lastStatus: "never_run" | "success" | "failed" | "running";
             lastError: string | null;
@@ -3090,6 +3141,7 @@ export interface components {
             triggerType: "schedule" | "webhook" | "event";
             triggerConfig: Record<string, never>;
             lastRunAt: string | null;
+            lastRunId: string | null;
             nextRunAt: string | null;
             /** @enum {string} */
             lastStatus: "never_run" | "success" | "failed" | "running";
@@ -3626,6 +3678,49 @@ export interface components {
             maxConcurrentLongOperations: number;
             slowRequestWarningMs: number;
             longOperationTimeoutMs: number;
+        };
+        AutomationAiRunHistoryDto: {
+            run: components["schemas"]["AutomationRunDto"];
+            events: components["schemas"]["AutomationRunEventDto"][];
+        };
+        ApplicationWorkflowRunDto: {
+            id: string;
+            automationId: string;
+            automationTriggerId: string | null;
+            ownerUserId: string;
+            targetApplicationId: string;
+            targetProfileMode: string | null;
+            targetProfileName: string | null;
+            /** @enum {string} */
+            trigger: "manual" | "schedule" | "webhook" | "event";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            stepResults: components["schemas"]["AutomationStepResultDto"][];
+            error: string | null;
+            createdAt: string;
+            /** @description Request ID recorded for a failed service request. */
+            failureRequestId?: string;
+            updatedAt: string;
+            automationName: string | null;
+        };
+        ApplicationWorkflowRunRowDto: {
+            id: string;
+            automationId: string;
+            /** @enum {string} */
+            trigger: "manual" | "schedule" | "webhook" | "event";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            createdAt: string;
+            automationName: string | null;
+        };
+        ApplicationWorkflowRunPageDto: {
+            items: components["schemas"]["ApplicationWorkflowRunRowDto"][];
+            total: number;
+            pageSize: number;
         };
     };
     responses: never;
@@ -5697,6 +5792,7 @@ export interface operations {
             query: {
                 ownerUserId: string;
                 after: string;
+                view?: "conversation";
             };
             header?: never;
             path: {
@@ -7084,6 +7180,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockerOperationLimitsDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listAdHocAiRunHistory: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationAiRunHistoryDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_listApplicationWorkflowRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+                page?: number;
+                pageSize?: number;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationWorkflowRunPageDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_getApplicationWorkflowRun: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationWorkflowRunDto"];
                 };
             };
         };

@@ -19,7 +19,7 @@ import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
 import { previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
-import { AppWorkspaceLayout } from './app-workspace-content'
+import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
 import { ApplicationViewerContext } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
@@ -69,7 +69,9 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
   const previewLiveViewer = search.get('viewer') === 'preview'
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
-  const breadcrumbView = showAgent ? 'ai-agent' : selected === 'configuration' || selected === 'files' ? selected : view
+  const workspaceView =
+    selected === 'configuration' || selected === 'files' || selected === 'workflows' ? selected : view
+  const breadcrumbView = showAgent ? 'ai-agent' : workspaceView
   return (
     <QueryClientProvider client={queryClient}>
       <ApplicationViewerContext.Provider
@@ -132,6 +134,8 @@ export const AppResourcePreview = ({ activity, agent = false }: { activity?: Rea
               </AppWorkspaceLayout>
             ) : selected === 'configuration' ? (
               <AppManage />
+            ) : selected === 'workflows' ? (
+              <AppWorkspaceContent toolId='workflows' />
             ) : selected === 'files' ? (
               <AppWorkspaceLayout toolId='files'>
                 <RuntimeToolPanelLayout toolId='files'>

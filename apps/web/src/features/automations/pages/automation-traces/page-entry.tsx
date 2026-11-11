@@ -29,6 +29,7 @@ export async function AutomationTracesPageEntry({
           applications={applications}
           automation={automation}
           runs={runs}
+          selectedRunId={query?.run}
         />
       )}
     </OrchestratorPageBoundary>

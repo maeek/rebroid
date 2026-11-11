@@ -9,6 +9,7 @@ export interface AutomationRunTargetOptions {
   targetProfileName?: string | null;
   automationTriggerId?: string | null;
   startPolicy?: AutomationRunStartPolicy;
+  currentProfileOnly?: boolean;
 }
 
 export type AdmitAutomationTargetStart = (

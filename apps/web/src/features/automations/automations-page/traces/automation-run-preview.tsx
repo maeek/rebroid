@@ -1,7 +1,6 @@
-'use client'
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { AutomationRunInspector } from './automation-run-inspector'
+import { applicationPreview } from '@/shared/testing/application-preview'
+import { previewWorkflow } from '@/shared/testing/automation-preview'
+import { AutomationTracesPage } from './automation-traces-page'
 import type { AutomationRun } from '@/shared/contracts/automation'
 const run: AutomationRun = {
   id: 'preview-run',
@@ -18,6 +17,7 @@ const run: AutomationRun = {
   createdAt: '2026-11-07T10:00:00Z',
   updatedAt: '2026-11-07T10:01:00Z',
   error: 'Target app did not finish starting.',
+  failureRequestId: 'preview-authorization-request',
   stepResults: [
     {
       stepId: 'launch',
@@ -30,16 +30,11 @@ const run: AutomationRun = {
     }
   ]
 }
-export const AutomationRunPreview = () => {
-  const [open, setOpen] = useState(false)
-  return (
-    <main className='p-6'>
-      <Button onClick={() => setOpen(true)}>Inspect failed run</Button>
-      <AutomationRunInspector
-        run={open ? run : null}
-        targetName='Inventory worker'
-        onClose={() => setOpen(false)}
-      />
-    </main>
-  )
-}
+export const AutomationRunPreview = () => (
+  <AutomationTracesPage
+    applications={[applicationPreview]}
+    automation={previewWorkflow}
+    runs={[run]}
+    selectedRunId={run.id}
+  />
+)

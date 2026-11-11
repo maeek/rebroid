@@ -16,6 +16,7 @@ export interface Automation {
   definition: AutomationDefinition
   yaml: string
   lastRunAt: string | null
+  lastRunId?: string | null
   lastStatus: AutomationLastStatus
   lastError: string | null
   createdAt: string
@@ -104,6 +105,7 @@ export interface AutomationRun {
   startedAt: string | null
   completedAt: string | null
   stepResults: AutomationStepResult[]
+  failureRequestId?: string
   error: string | null
   createdAt: string
   updatedAt: string
@@ -237,6 +239,7 @@ export interface AutomationTrigger {
   triggerType: AutomationTriggerType
   triggerConfig: Record<string, unknown>
   lastRunAt: string | null
+  lastRunId?: string | null
   nextRunAt: string | null
   lastStatus: AutomationLastStatus
   lastError: string | null

@@ -1,20 +1,16 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
-import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
+import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import { AutomationRunInspector } from './automation-run-inspector'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
@@ -74,24 +70,14 @@ const sortRuns = (runs: AutomationRun[], sorting: SortingState) => {
 export function AutomationTracesSection({
   applications,
   runs,
+  workflowId,
   loading = false
 }: {
   loading?: boolean
   applications: AndroidApplication[]
   runs: AutomationRun[]
+  workflowId?: string
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const selectedRun = runs.find(run => run.id === searchParams.get('run')) ?? null
-  const selectRun = useCallback(
-    (id: string | null) => {
-      const query = new URLSearchParams(searchParams.toString())
-      if (id) query.set('run', id)
-      else query.delete('run')
-      router.replace(`?${query.toString()}`, { scroll: false })
-    },
-    [router, searchParams]
-  )
   const [sorting, setSorting] = useState<SortingState>([{ id: 'startedAt', desc: true }])
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
@@ -114,32 +100,25 @@ export function AutomationTracesSection({
     })
   }, [applicationById, runs, search, sourceFilter, statusFilter, targetFilter])
   const sortedRuns = useMemo(() => sortRuns(filteredRuns, sorting), [filteredRuns, sorting])
-  const activeRuns = useMemo(
-    () => sortedRuns.filter(run => run.status === 'queued' || run.status === 'running'),
-    [sortedRuns]
-  )
 
   const columns = useMemo<ColumnDef<AutomationRun>[]>(
     () => [
       {
         id: 'startedAt',
         accessorFn: run => run.startedAt ?? run.createdAt,
-        header: 'Started',
+        header: 'Run',
         size: 176,
-        meta: { label: 'Started', skeleton: { kind: 'text', width: 'w-32' } },
+        meta: { label: 'Run', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <Button
-            type='button'
-            variant='link'
-            className='h-auto p-0 text-left [&_time]:text-inherit'
-            aria-label={`Inspect run ${row.original.id}`}
-            onClick={() => selectRun(row.original.id)}
-          >
+          <div className='grid justify-items-start gap-1'>
+            <ResourceLink href={workflowTraceHref(workflowId ?? row.original.automationId, row.original.id)}>
+              Run {row.original.id.slice(0, 8)}
+            </ResourceLink>
             <DateTimeValue
               value={row.original.startedAt ?? row.original.createdAt}
               compact
             />
-          </Button>
+          </div>
         )
       },
       {
@@ -204,7 +183,7 @@ export function AutomationTracesSection({
         )
       }
     ],
-    [applicationById, selectRun]
+    [applicationById, workflowId]
   )
 
   return (
@@ -213,30 +192,6 @@ export function AutomationTracesSection({
       aria-label='Workflow executions'
       description='Select a run to inspect its steps, errors, and recorded events.'
     >
-      {!loading && searchParams.get('run') && !selectedRun ? (
-        <Notice
-          tone='warning'
-          title='Requested run unavailable'
-          description='The run may have been removed or access is restricted.'
-        />
-      ) : null}
-      <AutomationRunInspector
-        run={selectedRun}
-        targetName={selectedRun ? applicationById.get(selectedRun.targetApplicationId)?.name : undefined}
-        onClose={() => selectRun(null)}
-      />
-
-      {activeRuns.length > 0 ? (
-        <div className='grid gap-3 lg:grid-cols-2'>
-          {activeRuns.map(run => (
-            <AutomationRunLiveEvents
-              key={run.id}
-              run={run}
-            />
-          ))}
-        </div>
-      ) : null}
-
       <DataGridWorkspace
         disabled={loading}
         search={searchDraft}
@@ -345,7 +300,6 @@ export function AutomationTracesSection({
       >
         <DataGrid
           loading={loading}
-          rowActivation={{ getLabel: run => `Inspect run ${run.id}`, onActivate: run => selectRun(run.id) }}
           columns={columns}
           data={sortedRuns}
           totalItems={sortedRuns.length}

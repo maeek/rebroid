@@ -1,5 +1,6 @@
 'use client'
 
+import { useSearchParams } from 'next/navigation'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PageHeader } from '@/shared/ui/page/page-header'
@@ -106,11 +107,15 @@ export const AutomationEditorPageSkeleton = ({ creating = false }: { creating?: 
   </StandardPage>
 )
 
-export const AutomationTracesPageSkeleton = () => (
-  <AutomationTracesPage
-    applications={[]}
-    automation={null}
-    runs={[]}
-    loading
-  />
-)
+export const AutomationTracesPageSkeleton = () => {
+  const run = useSearchParams().get('run')
+  return (
+    <AutomationTracesPage
+      applications={[]}
+      automation={null}
+      runs={[]}
+      selectedRunId={run ?? undefined}
+      loading
+    />
+  )
+}

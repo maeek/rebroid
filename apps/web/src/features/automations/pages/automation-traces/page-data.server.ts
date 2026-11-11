@@ -15,16 +15,17 @@ export const loadAutomationTracesPageData = async (id: string, selectedRunId?: s
     notFound()
   }
 
-  const [applications, runs] = await Promise.all([listApplicationsAction(), listAutomationRunsAction(id, 50)])
-
-  if (selectedRunId && /^[a-zA-Z0-9_-]{1,128}$/.test(selectedRunId) && !runs.some(run => run.id === selectedRunId)) {
+  const loadRuns = async () => {
+    if (selectedRunId === undefined) return listAutomationRunsAction(id, 50)
+    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(selectedRunId)) return []
     const user = await getCurrentUserContext()
     const selected = await orchestratorAutomationsClient.getRun(user.ownerUserId, selectedRunId).catch(error => {
       if (error instanceof OrchestratorRequestError && error.status === 404) return null
       throw error
     })
-    if (selected?.automationId === automation.id) runs.unshift(selected)
+    return selected?.automationId === automation.id ? [selected] : []
   }
+  const [applications, runs] = await Promise.all([listApplicationsAction(), loadRuns()])
 
   return {
     applications,

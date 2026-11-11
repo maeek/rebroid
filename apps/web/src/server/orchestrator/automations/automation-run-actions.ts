@@ -43,7 +43,7 @@ export const runAdHocAiAutomationAction = async (input: RunAdHocAiAutomationInpu
   assertAutomationPermission(user, 'automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
-  assertRunProfilePermission(user, input)
+  if (input.startPolicy === 'start-if-needed') assertRunProfilePermission(user, input)
   const permittedTools = await listPermittedAiTools(user)
   const rawShellRequested = input.rawShellPolicy === 'allowlisted'
   if (rawShellRequested && !permittedTools.includes('android.adbShell')) {
@@ -69,7 +69,6 @@ export const suggestAdHocAiPromptsAction = async (input: SuggestAdHocAiPromptsIn
   assertAutomationPermission(user, 'automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(input.targetApplicationId)
-  assertRunProfilePermission(user, input)
   return orchestratorAutomationsClient.suggestAdHocAiPrompts(user.ownerUserId, {
     ...input,
     allowedTools: await listPermittedAiTools(user)
@@ -118,12 +117,6 @@ export const createAutomationRunEventStreamUrlAction = async (runId: string, aft
   })
 }
 
-export const listActiveAutomationRunsAction = async () => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  return orchestratorAutomationsClient.listActiveRuns(user.ownerUserId)
-}
-
 export const listAdHocAiAutomationRunsAction = async (targetApplicationId: string, limit = 20) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:run')
@@ -137,11 +130,7 @@ export const listAdHocAiAutomationRunHistoryAction = async (targetApplicationId:
   assertAutomationPermission(user, 'automations:run')
   assertAutomationPermission(user, 'automations:run-ai')
   await assertTargetApplication(targetApplicationId)
-  const runs = await orchestratorAutomationsClient.listAdHocAiRuns(user.ownerUserId, targetApplicationId, limit)
-  const events = await Promise.all(
-    runs.map(run => orchestratorAutomationsClient.listRunEvents(user.ownerUserId, run.id, 0))
-  )
-  return runs.map((run, index) => ({ run, events: events[index] ?? [] }))
+  return orchestratorAutomationsClient.listAdHocAiRunHistory(user.ownerUserId, targetApplicationId, limit)
 }
 
 export const clearAdHocAiAutomationRunsAction = async (targetApplicationId: string) => {

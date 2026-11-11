@@ -3488,6 +3488,17 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "view",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "conversation"
+              ],
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -5526,6 +5537,170 @@
         },
         "tags": [
           "docker"
+        ]
+      }
+    },
+    "/api/v1/automations/ai/run-history": {
+      "get": {
+        "operationId": "AutomationsController_listAdHocAiRunHistory",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiRunHistoryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/history": {
+      "get": {
+        "operationId": "AutomationsController_listApplicationWorkflowRuns",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationWorkflowRunPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/history/{runId}": {
+      "get": {
+        "operationId": "AutomationsController_getApplicationWorkflowRun",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationWorkflowRunDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
         ]
       }
     }
@@ -9009,7 +9184,8 @@
           },
           "timeoutMs": {
             "type": "number",
-            "default": 120000
+            "default": 120000,
+            "maximum": 900000
           }
         },
         "required": [
@@ -9134,6 +9310,10 @@
           },
           "createdAt": {
             "type": "string"
+          },
+          "failureRequestId": {
+            "type": "string",
+            "description": "Request ID recorded for a failed service request."
           },
           "updatedAt": {
             "type": "string"
@@ -9306,6 +9486,10 @@
             "type": "string",
             "nullable": true
           },
+          "lastRunId": {
+            "type": "string",
+            "nullable": true
+          },
           "lastStatus": {
             "type": "string",
             "enum": [
@@ -9335,6 +9519,7 @@
           "definition",
           "yaml",
           "lastRunAt",
+          "lastRunId",
           "lastStatus",
           "lastError",
           "createdAt",
@@ -9529,6 +9714,10 @@
             "type": "string",
             "nullable": true
           },
+          "lastRunId": {
+            "type": "string",
+            "nullable": true
+          },
           "nextRunAt": {
             "type": "string",
             "nullable": true
@@ -9567,6 +9756,7 @@
           "triggerType",
           "triggerConfig",
           "lastRunAt",
+          "lastRunId",
           "nextRunAt",
           "lastStatus",
           "lastError",
@@ -11411,6 +11601,199 @@
           "maxConcurrentLongOperations",
           "slowRequestWarningMs",
           "longOperationTimeoutMs"
+        ]
+      },
+      "AutomationAiRunHistoryDto": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/AutomationRunDto"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationRunEventDto"
+            }
+          }
+        },
+        "required": [
+          "run",
+          "events"
+        ]
+      },
+      "ApplicationWorkflowRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "automationTriggerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "targetApplicationId": {
+            "type": "string"
+          },
+          "targetProfileMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetProfileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule",
+              "webhook",
+              "event"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "stepResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationStepResultDto"
+            }
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "failureRequestId": {
+            "type": "string",
+            "description": "Request ID recorded for a failed service request."
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "automationName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "automationTriggerId",
+          "ownerUserId",
+          "targetApplicationId",
+          "targetProfileMode",
+          "targetProfileName",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "stepResults",
+          "error",
+          "createdAt",
+          "updatedAt",
+          "automationName"
+        ]
+      },
+      "ApplicationWorkflowRunRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule",
+              "webhook",
+              "event"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "automationName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "createdAt",
+          "automationName"
+        ]
+      },
+      "ApplicationWorkflowRunPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationWorkflowRunRowDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "pageSize"
         ]
       }
     }

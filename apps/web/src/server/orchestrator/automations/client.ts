@@ -1,3 +1,4 @@
+import { AUTOMATION_DRAFT_TIMEOUT_MS } from '@rebroid/automation-core/yaml-draft'
 import { emptyRequest, jsonRequest, request, responseRequest } from '../request'
 import type {
   Automation,
@@ -38,6 +39,7 @@ export const orchestratorAutomationsClient = {
     return responseRequest('/automations/draft-yaml/stream', {
       method: 'POST',
       body: JSON.stringify(input),
+      timeoutMs: AUTOMATION_DRAFT_TIMEOUT_MS + 15_000,
       signal
     })
   },
@@ -101,8 +103,9 @@ export const orchestratorAutomationsClient = {
     )
   },
 
-  listRunEvents(ownerUserId: string, runId: string, after = 0) {
+  listRunEvents(ownerUserId: string, runId: string, after = 0, view?: 'conversation') {
     const query = new URLSearchParams({ ownerUserId, after: String(after) })
+    if (view) query.set('view', view)
     return emptyRequest<AutomationRunEvent[]>(`/automations/runs/${encodeURIComponent(runId)}/events?${query}`)
   },
 
@@ -129,6 +132,13 @@ export const orchestratorAutomationsClient = {
       limit: String(limit)
     })
     return emptyRequest<AutomationRun[]>(`/automations/ai/runs?${query.toString()}`)
+  },
+
+  listAdHocAiRunHistory(ownerUserId: string, targetApplicationId: string, limit: number) {
+    const query = new URLSearchParams({ ownerUserId, targetApplicationId, limit: String(limit) })
+    return emptyRequest<Array<{ run: AutomationRun; events: AutomationRunEvent[] }>>(
+      `/automations/ai/run-history?${query}`
+    )
   },
 
   clearAdHocAiRuns(ownerUserId: string, targetApplicationId: string) {

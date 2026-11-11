@@ -13,6 +13,7 @@ import { AutomationStepResult } from './automation-runner.types';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { MetricsService } from '../../metrics/metrics.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
+import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import type {
   AdmitAutomationTargetStart,
   AutomationRunTargetOptions,
@@ -151,6 +152,16 @@ export class AutomationRunExecutionService {
           run.id,
           run.ownerUserId,
           getErrorMessage(error),
+          error instanceof AutomationAuthorizationError
+            ? {
+                requestId: error.requestId,
+                code: error.code,
+                service: 'web',
+                ...(error.httpStatus === undefined
+                  ? {}
+                  : { httpStatus: error.httpStatus }),
+              }
+            : undefined,
         );
         if (failed) {
           this.metrics.automationRunFinished(
@@ -174,6 +185,7 @@ export class AutomationRunExecutionService {
     runId: string,
     ownerUserId: string,
     message: string,
+    data?: Record<string, unknown>,
   ) {
     const failed = await this.runs.transition(
       runId,
@@ -190,6 +202,7 @@ export class AutomationRunExecutionService {
       ownerUserId,
       type: 'run.failed',
       message,
+      ...(data ? { data } : {}),
     });
     return failed;
   }

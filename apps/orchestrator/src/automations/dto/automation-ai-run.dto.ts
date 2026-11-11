@@ -1,3 +1,4 @@
+import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -146,11 +147,14 @@ export class RunAdHocAiAutomationDto {
   @Max(100)
   maxActions?: number;
 
-  @ApiPropertyOptional({ default: 120000 })
+  @ApiPropertyOptional({
+    default: 120000,
+    maximum: AUTOMATION_AI_RUN_MAX_TIMEOUT_MS,
+  })
   @IsOptional()
   @IsInt()
   @Min(1000)
-  @Max(360_0000)
+  @Max(AUTOMATION_AI_RUN_MAX_TIMEOUT_MS)
   timeoutMs?: number;
 }
 

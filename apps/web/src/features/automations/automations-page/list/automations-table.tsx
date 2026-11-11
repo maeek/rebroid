@@ -177,6 +177,7 @@ export function AutomationsTable({
             at={row.original.lastRunAt}
             error={row.original.lastError}
             workflowId={row.original.id}
+            runId={row.original.lastRunId}
           />
         )
       }

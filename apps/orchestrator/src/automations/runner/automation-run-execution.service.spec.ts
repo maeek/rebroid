@@ -2,6 +2,7 @@ import { MetricsService } from '../../metrics/metrics.service';
 import { AndroidApplicationStatus } from '../../android-apps/contracts/android-application-status';
 import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
 import { AutomationRunStatus } from '../entities/automation-run.entity';
+import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
 import { AutomationRunStartPolicy } from './automation-runner-options';
@@ -93,6 +94,36 @@ const createExecution = ({
 };
 
 describe('AutomationRunExecutionService', () => {
+  it('attaches to an expected current profile without asking for a profile switch', async () => {
+    const running = { ...target, profileName: 'test-profile' };
+    const { service, runs, assertAllowed, executeSteps, start } =
+      createExecution({
+        getTarget: jest.fn().mockResolvedValue(running),
+      });
+    runs.transition.mockResolvedValue({
+      ...queuedRun,
+      status: AutomationRunStatus.Running,
+    });
+    await service.execute({
+      ...runInput(),
+      targetOptions: {
+        currentProfileOnly: true,
+        startPolicy: AutomationRunStartPolicy.RequireRunning,
+        targetProfileMode: running.profileMode,
+        targetProfileName: running.profileName,
+      },
+    });
+    expect(assertAllowed).toHaveBeenCalledWith(
+      queuedRun.ownerUserId,
+      runnable.definition,
+      target.id,
+      { operation: 'attach', profileMode: undefined, profileName: undefined },
+      expect.any(AbortSignal),
+    );
+    expect(start).not.toHaveBeenCalled();
+    expect(executeSteps).toHaveBeenCalled();
+  });
+
   it('never starts a target that stopped after authorization to attach', async () => {
     const getTarget = jest
       .fn()
@@ -212,8 +243,15 @@ describe('AutomationRunExecutionService', () => {
   it('fails closed before runtime preparation when current authorization is denied', async () => {
     const assertAllowed = jest
       .fn()
-      .mockRejectedValue(new Error('Account disabled'));
-    const { service, runs, start, executeSteps } = createExecution({
+      .mockRejectedValue(
+        new AutomationAuthorizationError(
+          'Workflow authorization was rejected.',
+          'auth-request-1',
+          'authorization_rejected',
+          403,
+        ),
+      );
+    const { service, runs, start, executeSteps, events } = createExecution({
       assertAllowed,
       getTarget: jest.fn().mockResolvedValue(stoppedTarget),
     });
@@ -228,6 +266,17 @@ describe('AutomationRunExecutionService', () => {
       queuedRun.id,
       [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
+    );
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'run.failed',
+        data: {
+          requestId: 'auth-request-1',
+          code: 'authorization_rejected',
+          service: 'web',
+          httpStatus: 403,
+        },
+      }),
     );
   });
 

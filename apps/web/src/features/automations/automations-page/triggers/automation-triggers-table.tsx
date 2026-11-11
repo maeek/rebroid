@@ -162,6 +162,7 @@ export function AutomationTriggersTable({
             at={row.original.lastRunAt}
             error={row.original.lastError}
             workflowId={row.original.automationId}
+            runId={row.original.lastRunId}
           />
         )
       },

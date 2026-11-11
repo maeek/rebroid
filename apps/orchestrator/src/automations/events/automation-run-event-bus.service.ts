@@ -24,6 +24,14 @@ export class AutomationRunEventBus {
     return this.events.listForRun(ownerUserId, runId, after);
   }
 
+  listConversationEvents(ownerUserId: string, runIds: string[]) {
+    return this.events.listConversationEvents(ownerUserId, runIds);
+  }
+
+  findFailureRequestId(ownerUserId: string, runId: string) {
+    return this.events.findFailureRequestId(ownerUserId, runId);
+  }
+
   deleteForRuns(ownerUserId: string, runIds: string[]) {
     return this.events.deleteForRuns(ownerUserId, runIds);
   }

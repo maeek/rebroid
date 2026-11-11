@@ -129,7 +129,7 @@ describe('AutomationRunnerService', () => {
     expect(ephemeral.delete).toHaveBeenCalledWith('ephemeral-1');
   });
 
-  it('reserves and dispatches an ephemeral run before preparation', async () => {
+  it('records the ad hoc prompt before dispatching an ephemeral run', async () => {
     const definition = {
       apiVersion: 'rebroid.io/v1alpha1',
       kind: 'Automation',
@@ -164,12 +164,23 @@ describe('AutomationRunnerService', () => {
         definition,
         AutomationRunTrigger.Manual,
         { targetApplicationId: 'app-1' },
+        { prompt: 'Open settings', clientMessageId: 'turn-1' },
       ),
     ).resolves.toBe(queued);
     await Promise.resolve();
 
     expect(events.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'run.queued' }),
+    );
+    expect(events.emit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'ai.user.message',
+        message: 'Open settings',
+        data: { clientMessageId: 'turn-1' },
+      }),
+    );
+    expect(jest.mocked(events.emit).mock.invocationCallOrder[1]).toBeLessThan(
+      jest.mocked(execution.execute).mock.invocationCallOrder[0],
     );
     expect(execution.execute).toHaveBeenCalledWith(
       expect.objectContaining({

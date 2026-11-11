@@ -7,7 +7,7 @@ describe('automation authorization transport', () => {
     global.fetch = originalFetch;
   });
   it('uses the internal secret and rejects authorization failures', async () => {
-    const fetch = jest.fn().mockResolvedValue({ ok: false });
+    const fetch = jest.fn().mockResolvedValue({ ok: false, status: 403 });
     global.fetch = fetch;
     const service = new AutomationRunAuthorizationService(
       new ConfigService({
@@ -24,6 +24,34 @@ describe('automation authorization transport', () => {
       expect.objectContaining({
         redirect: 'error',
         headers: expect.objectContaining({ 'x-orchestrator-secret': 'secret' }),
+      }),
+    );
+  });
+
+  it('keeps the request ID when the web service cannot be reached', async () => {
+    const fetch = jest.fn().mockRejectedValue(new TypeError('fetch failed'));
+    global.fetch = fetch;
+    const service = new AutomationRunAuthorizationService(
+      new ConfigService({
+        app: { webInternalUrl: 'http://web:3101', sharedSecret: 'secret' },
+      }),
+    );
+    await expect(
+      service.assertAllowed('owner', { spec: { steps: [] } } as never, 'app', {
+        operation: 'attach',
+      }),
+    ).rejects.toMatchObject({
+      message:
+        'The web service could not be reached to authorize this workflow.',
+      code: 'authorization_unreachable',
+      requestId: expect.any(String),
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-request-id': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        }),
       }),
     );
   });

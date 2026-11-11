@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Like, Repository } from 'typeorm';
+import { Automation } from '../entities/automation.entity';
 import {
   AutomationRun,
   AutomationRunStatus,
@@ -127,6 +128,79 @@ export class AutomationRunsRepository {
       ],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async listApplicationWorkflows(
+    ownerUserId: string,
+    targetApplicationId: string,
+    page: number,
+    pageSize: number,
+    search: string,
+  ) {
+    const query = this.applicationWorkflows(ownerUserId, targetApplicationId);
+    if (search) {
+      query.andWhere(
+        '(instr(lower(workflow.name), lower(:search)) > 0 OR instr(lower(run.id), lower(:search)) > 0)',
+        { search },
+      );
+    }
+    const [total, result] = await Promise.all([
+      query.getCount(),
+      query
+        .clone()
+        .select([
+          'run.id',
+          'run.automationId',
+          'run.status',
+          'run.trigger',
+          'run.createdAt',
+          'run.startedAt',
+          'run.completedAt',
+        ])
+        .addSelect('workflow.name', 'automationName')
+        .orderBy('run.createdAt', 'DESC')
+        .addOrderBy('run.rowid', 'DESC')
+        .limit(pageSize)
+        .offset(page * pageSize)
+        .getRawAndEntities<{ automationName: string | null }>(),
+    ]);
+    return {
+      items: result.entities.map((run, index) => ({
+        run,
+        automationName: result.raw[index]?.automationName ?? null,
+      })),
+      total,
+    };
+  }
+
+  async findApplicationWorkflow(
+    ownerUserId: string,
+    targetApplicationId: string,
+    runId: string,
+  ) {
+    const {
+      entities: [run],
+      raw,
+    } = await this.applicationWorkflows(ownerUserId, targetApplicationId)
+      .andWhere('run.id = :runId', { runId })
+      .addSelect('workflow.name', 'automationName')
+      .getRawAndEntities<{ automationName: string | null }>();
+    return run ? { run, automationName: raw[0]?.automationName ?? null } : null;
+  }
+
+  private applicationWorkflows(
+    ownerUserId: string,
+    targetApplicationId: string,
+  ) {
+    return this.runs
+      .createQueryBuilder('run')
+      .leftJoin(
+        Automation,
+        'workflow',
+        'workflow.id = run.automationId AND workflow.ownerUserId = run.ownerUserId',
+      )
+      .where({ ownerUserId, targetApplicationId })
+      .andWhere("run.automationId NOT LIKE 'ephemeral-ai-%'");
   }
 
   listAdHocAiForTarget(

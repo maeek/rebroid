@@ -1,17 +1,23 @@
+import { once } from 'node:events';
 import {
   Body,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Req,
   Res,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import {
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import type { FastifyReply } from 'fastify';
 import {
   AutomationDto,
   AutomationsGridPageDto,
@@ -24,6 +30,12 @@ import {
 } from '../dto/automation.dto';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import {
+  ApplicationWorkflowRunDto,
+  ApplicationWorkflowRunPageDto,
+  ApplicationWorkflowScopeDto,
+  ListApplicationWorkflowRunsDto,
+} from '../dto/application-workflow-history.dto';
+import {
   AiPromptSuggestionsDto,
   RunAdHocAiAutomationDto,
   SuggestAdHocAiPromptsDto,
@@ -34,6 +46,7 @@ import {
 } from '../dto/automation-run-event.dto';
 import {
   AutomationRunDto,
+  AutomationAiRunHistoryDto,
   ListActiveAutomationRunsQueryDto,
   ListAutomationRunsQueryDto,
   RunAutomationDto,
@@ -70,23 +83,36 @@ export class AutomationsController {
   })
   async draftYamlStream(
     @Body() dto: DraftAutomationYamlDto,
-    @Req() request: FastifyRequest,
     @Res() reply: FastifyReply,
   ) {
     const abortController = new AbortController();
-    request.raw.on('close', () => abortController.abort());
-    reply
-      .header('content-type', 'text/event-stream; charset=utf-8')
-      .header('cache-control', 'no-store')
-      .header('connection', 'keep-alive');
-    for await (const event of this.automations.draftYamlEvents(
-      dto,
-      abortController.signal,
-    )) {
-      if (reply.raw.destroyed) break;
-      reply.raw.write(sseEvent(event.type, event));
+    const close = () => abortController.abort();
+    reply.raw.once('close', close);
+    const requestId = reply.getHeader('x-request-id');
+    reply.hijack();
+    reply.raw.writeHead(200, {
+      ...(typeof requestId === 'string' ? { 'x-request-id': requestId } : {}),
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-store',
+    });
+    try {
+      for await (const event of this.automations.draftYamlEvents(
+        dto,
+        abortController.signal,
+      )) {
+        if (reply.raw.destroyed) break;
+        if (!reply.raw.write(sseEvent(event.type, event))) {
+          await once(reply.raw, 'drain', { signal: abortController.signal });
+        }
+      }
+      if (!reply.raw.destroyed) reply.raw.end();
+    } catch (error) {
+      if (!abortController.signal.aborted)
+        reply.raw.destroy(error instanceof Error ? error : undefined);
+    } finally {
+      reply.raw.off('close', close);
+      close();
     }
-    if (!reply.raw.destroyed) reply.raw.end();
   }
 
   @Post('ai/runs')
@@ -109,6 +135,21 @@ export class AutomationsController {
     @Query('limit') limit?: string,
   ) {
     return this.automations.listAdHocAiRuns(
+      ownerUserId,
+      targetApplicationId,
+      limit ? Number(limit) : undefined,
+    );
+  }
+
+  @Get('ai/run-history')
+  @ApiQuery({ name: 'limit', required: false, type: String })
+  @ApiOkResponse({ type: AutomationAiRunHistoryDto, isArray: true })
+  listAdHocAiRunHistory(
+    @Query('ownerUserId') ownerUserId: string,
+    @Query('targetApplicationId') targetApplicationId: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.automations.listAdHocAiRunHistory(
       ownerUserId,
       targetApplicationId,
       limit ? Number(limit) : undefined,
@@ -153,6 +194,25 @@ export class AutomationsController {
     return this.automations.listActiveRuns(query.ownerUserId);
   }
 
+  @Get('runs/history')
+  @ApiOkResponse({ type: ApplicationWorkflowRunPageDto })
+  listApplicationWorkflowRuns(@Query() query: ListApplicationWorkflowRunsDto) {
+    return this.automations.listApplicationWorkflowRuns(query);
+  }
+
+  @Get('runs/history/:runId')
+  @ApiOkResponse({ type: ApplicationWorkflowRunDto })
+  getApplicationWorkflowRun(
+    @Query() query: ApplicationWorkflowScopeDto,
+    @Param('runId', ParseUUIDPipe) runId: string,
+  ) {
+    return this.automations.getApplicationWorkflowRun(
+      query.ownerUserId,
+      query.targetApplicationId,
+      runId,
+    );
+  }
+
   @Get('runs/:runId')
   @ApiOkResponse({ type: AutomationRunDto })
   getRun(
@@ -172,16 +232,19 @@ export class AutomationsController {
   }
 
   @Get('runs/:runId/events')
+  @ApiQuery({ name: 'view', required: false, enum: ['conversation'] })
   @ApiOkResponse({ type: AutomationRunEventDto, isArray: true })
   listRunEvents(
     @Param('runId') runId: string,
     @Query('ownerUserId') ownerUserId: string,
     @Query('after') after?: string,
+    @Query('view') view?: string,
   ) {
     return this.automations.listRunEvents(
       ownerUserId,
       runId,
       after === undefined ? undefined : Number(after),
+      view,
     );
   }
 

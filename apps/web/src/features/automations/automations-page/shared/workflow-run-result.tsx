@@ -1,10 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Notice } from '@/components/ui/notice'
+import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AutomationLastStatus } from '@/shared/contracts/automation'
@@ -26,14 +23,15 @@ export const WorkflowRunResult = ({
   status,
   at,
   error,
-  workflowId
+  workflowId,
+  runId
 }: {
   status: AutomationLastStatus
   at: string | null
   error: string | null
   workflowId: string
+  runId?: string | null
 }) => {
-  const [open, setOpen] = useState(false)
   return (
     <div className='grid justify-items-start gap-1'>
       {status === 'never_run' ? (
@@ -47,34 +45,14 @@ export const WorkflowRunResult = ({
           />
         </>
       )}
-      {error ? (
-        <Button
-          type='button'
-          size='sm'
-          variant='danger-ghost'
-          className='h-auto px-0 py-0.5'
-          onClick={() => setOpen(true)}
+      {status === 'failed' && (runId || error) ? (
+        <ResourceLink
+          href={workflowTraceHref(workflowId, runId)}
+          className='text-sm'
         >
-          View failure
-        </Button>
+          {runId ? 'View failure' : 'Open run history'}
+        </ResourceLink>
       ) : null}
-      <Dialog
-        open={open}
-        onOpenChange={setOpen}
-      >
-        <DialogContent className='sm:max-w-xl'>
-          <DialogHeader>
-            <DialogTitle>Last run failure</DialogTitle>
-            <DialogDescription>Recorded failure from the most recent execution.</DialogDescription>
-          </DialogHeader>
-          <Notice
-            tone='danger'
-            title='Execution failed'
-            description={error}
-          />
-          <ResourceLink href={`/automations/${encodeURIComponent(workflowId)}/traces`}>Open run history</ResourceLink>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

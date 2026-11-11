@@ -7,6 +7,7 @@ import { InitializeSqliteSchema1800000000000 } from './migrations/1800000000000-
 
 import { WorkflowRunSummaries1800000001000 } from './migrations/1800000001000-workflow-run-summaries';
 import { NetworkPolicyRevision1800000002000 } from './migrations/1800000002000-network-policy-revision';
+import { ApplicationWorkflowHistory1800000003000 } from './migrations/1800000003000-application-workflow-history';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NetworkPolicyRevision1800000002000 } from './migrations/1800000002000-n
             InitializeSqliteSchema1800000000000,
             WorkflowRunSummaries1800000001000,
             NetworkPolicyRevision1800000002000,
+            ApplicationWorkflowHistory1800000003000,
           ],
           migrationsRun: true,
           synchronize: false,

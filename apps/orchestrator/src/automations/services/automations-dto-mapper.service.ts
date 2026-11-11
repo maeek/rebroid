@@ -97,6 +97,7 @@ const runSummary = (
 ) => {
   if (!run)
     return {
+      lastRunId: null,
       lastRunAt: toIso(resource.lastRunAt),
       lastStatus: resource.lastStatus,
       lastError: resource.lastError,
@@ -105,6 +106,7 @@ const runSummary = (
   const lastRunAt = toIso(run.completedAt ?? run.startedAt ?? run.createdAt);
   if (lastEnqueueFailureAt && lastEnqueueFailureAt > run.createdAt)
     return {
+      lastRunId: null,
       lastRunAt,
       lastStatus: AutomationLastStatus.Failed,
       lastError: resource.lastError,
@@ -119,6 +121,7 @@ const runSummary = (
     lastStatus = AutomationLastStatus.Failed;
   }
   return {
+    lastRunId: run.id,
     lastRunAt,
     lastStatus,
     lastError: lastStatus === AutomationLastStatus.Failed ? run.error : null,

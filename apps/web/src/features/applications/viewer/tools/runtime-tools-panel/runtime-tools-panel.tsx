@@ -1,8 +1,7 @@
 'use client'
 
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { appResourceHref } from '@/features/applications/detail/app-resource-links'
@@ -14,12 +13,11 @@ import { AiAgentTranscript } from './ai-agent/ai-agent-transcript'
 import { DownloadsToolsLoading } from './files/downloads-tools-section'
 import { RuntimeToolContent } from './runtime-tool-content'
 import { getRuntimeTools, runtimeToolPanelClassName, type RuntimeToolId } from './runtime-tool-definitions'
-import type { AutomationRun } from '@/shared/contracts/automation'
+import { AppWorkflowsLoading } from './workflows/app-workflows-section'
 
 export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
   const router = useRouter()
   const { app, initialSettings, permissions } = useApplicationViewerApp()
-  const [latestAutomationRun, setLatestAutomationRun] = useState<AutomationRun | null>(null)
   const available = getRuntimeTools({ permissions }).some(tool => tool.id === toolId)
   if (!available)
     return (
@@ -35,9 +33,7 @@ export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
         <RuntimeToolContent
           app={app}
           initialAiContextualSuggestionsEnabled={initialSettings.aiContextualSuggestionsEnabled}
-          latestAutomationRun={latestAutomationRun}
           onOpenWorkflowDraft={() => router.push('/automations/create')}
-          onRunStarted={setLatestAutomationRun}
           onToolSelected={next => {
             if (next !== toolId) router.push(appResourceHref(app.id, next))
           }}
@@ -102,18 +98,6 @@ export const RuntimeToolsPanelLoading = ({ toolId }: { toolId: RuntimeToolId }) 
       />
     )
   if (toolId === 'files') content = <DownloadsToolsLoading />
-  if (toolId === 'workflows')
-    content = (
-      <section className='grid min-h-0 gap-4'>
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <div>
-            <h3 className='text-sm font-medium'>Workflow activity</h3>
-            <p className='mt-0.5 text-xs text-foreground-muted'>Run workflows and inspect their live execution.</p>
-          </div>
-          <Button disabled>Run workflow</Button>
-        </div>
-        {content}
-      </section>
-    )
+  if (toolId === 'workflows') content = <AppWorkflowsLoading />
   return <RuntimeToolPanelLayout toolId={toolId}>{content}</RuntimeToolPanelLayout>
 }

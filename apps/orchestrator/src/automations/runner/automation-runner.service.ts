@@ -90,11 +90,13 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     definition: AutomationDefinition,
     trigger: AutomationRunTrigger,
     options: AutomationRunTargetOptions = {},
+    userMessage?: { prompt: string; clientMessageId?: string },
   ) {
     return this.enqueueRunnable(
       this.ephemeralAutomations.create(ownerUserId, definition),
       trigger,
       options,
+      userMessage,
     );
   }
 
@@ -102,6 +104,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     runnable: RunnableAutomation,
     trigger: AutomationRunTrigger,
     options: AutomationRunTargetOptions,
+    userMessage?: { prompt: string; clientMessageId?: string },
   ) {
     const targetApplicationId = options.targetApplicationId;
     if (!targetApplicationId) {
@@ -150,6 +153,15 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         message: 'Automation queued.',
         data: { automationId: runnable.entity.id, trigger },
       });
+      if (userMessage) {
+        await this.events.emit({
+          runId: run.id,
+          ownerUserId: run.ownerUserId,
+          type: 'ai.user.message',
+          message: userMessage.prompt,
+          data: { clientMessageId: userMessage.clientMessageId ?? null },
+        });
+      }
     } catch (error) {
       await this.runs.transition(run.id, [AutomationRunStatus.Queued], {
         status: AutomationRunStatus.Failed,

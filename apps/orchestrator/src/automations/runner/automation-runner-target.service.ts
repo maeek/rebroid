@@ -51,13 +51,21 @@ export class AutomationRunnerTargetService {
     admitTargetStart: AdmitAutomationTargetStart;
   }) {
     abortSignal.throwIfAborted();
-    const profile: TargetProfile = {
-      profileMode: (options.targetProfileMode ??
-        ApplicationProfileMode.Persistent) as ApplicationProfileMode,
-      profileName: options.targetProfileName?.trim() || 'default',
-    };
     const initial = await this.apps.get(targetApplicationId);
     abortSignal.throwIfAborted();
+    const currentProfileOnly =
+      options.currentProfileOnly === true &&
+      options.startPolicy === AutomationRunStartPolicy.RequireRunning;
+    const profile: TargetProfile = {
+      profileMode: (options.targetProfileMode ??
+        (currentProfileOnly
+          ? initial.profileMode
+          : ApplicationProfileMode.Persistent)) as ApplicationProfileMode,
+      profileName:
+        options.targetProfileName?.trim() ||
+        (currentProfileOnly ? initial.profileName : null) ||
+        'default',
+    };
 
     const startRequested =
       initial.status !== AndroidApplicationStatus.Running &&
@@ -75,8 +83,12 @@ export class AutomationRunnerTargetService {
       targetApplicationId,
       {
         operation: startRequested ? 'start' : 'attach',
-        profileMode: profileOverride?.profileMode ?? options.targetProfileMode,
-        profileName: profileOverride?.profileName ?? options.targetProfileName,
+        profileMode: currentProfileOnly
+          ? undefined
+          : (profileOverride?.profileMode ?? options.targetProfileMode),
+        profileName: currentProfileOnly
+          ? undefined
+          : (profileOverride?.profileName ?? options.targetProfileName),
       },
       abortSignal,
     );
