@@ -16,8 +16,12 @@ Follow the [local setup](../../CONTRIBUTING.md#local-development), then run from
 ```
 
 The script builds the service/viewer and starts port `8000`. Local ADB/scrcpy access must be available.
-The image bundles checksum-verified scrcpy 4.0 and the WebRTC bridge. Use the
+The image bundles checksum-verified scrcpy 5.0.1 and the WebRTC bridge. Use the
 [Compose deployment](../../docs/deployment.md) for complete runtime wiring.
+Only scrcpy's Android server is copied from the release archive. The sidecar relays
+encoded media; the viewer's browser decodes it. Scrcpy 5 desktop hardware decoding
+does not require GPU passthrough to this sidecar. See
+[GPU acceleration](../../docs/deployment.md#gpu-acceleration-and-scrcpy-5).
 
 ## Configuration and access
 

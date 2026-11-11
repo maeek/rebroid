@@ -11,8 +11,30 @@ import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import { ScrcpySourceStream } from "./scrcpy-source-stream";
 import { ScrcpyVideoResetWatchdog } from "./scrcpy-video-reset-watchdog";
 import { ScrcpyService } from "./scrcpy.service";
+import { parseCompatibilityProbe } from "./scrcpy-compatibility";
 
 const scrcpy = new ScrcpyService({} as never, {} as never);
+
+test("Android 13–16 pass display admission while newer SDKs remain gated", () => {
+  for (const sdk of [33, 34, 35, 36]) {
+    assert.doesNotThrow(() =>
+      scrcpy["assertSupportedAndroidVersion"](
+        parseCompatibilityProbe(`== props ==\nro.build.version.sdk=${sdk}`, ""),
+      ),
+    );
+  }
+  assert.doesNotThrow(() => scrcpy["assertSupportedAndroidVersion"](null));
+  assert.throws(
+    () =>
+      scrcpy["assertSupportedAndroidVersion"](
+        parseCompatibilityProbe(
+          "== props ==\nro.build.version.sdk=37\nro.build.version.release=17",
+          "",
+        ),
+      ),
+    /Android 17 is not supported/,
+  );
+});
 
 test(
   "forward tunnel preserves split codec bytes during auxiliary startup",
@@ -102,7 +124,7 @@ test(
         },
       } as never,
       {
-        scrcpyVersion: "4.0",
+        scrcpyVersion: "5.0.1",
         scrcpyControlChannel: true,
       } as never,
     );

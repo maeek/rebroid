@@ -72,7 +72,7 @@ export class SidecarConfigService {
   readonly sessionMaxLifetimeSeconds =
     environment.DISPLAY_SESSION_MAX_LIFETIME_SECONDS ?? 3600;
   readonly sessionMaxActive = environment.DISPLAY_SESSION_MAX_ACTIVE ?? 64;
-  readonly scrcpyVersion = environment.SCRCPY_VERSION || "4.0";
+  readonly scrcpyVersion = environment.SCRCPY_VERSION || "5.0.1";
   readonly scrcpyServerPath =
     environment.SCRCPY_SERVER_PATH ||
     "/opt/rebroid-display-sidecar/scrcpy-server";

@@ -407,9 +407,9 @@ export class DisplayCapabilitiesDto {
 
   @ApiProperty({
     example: {
-      scrcpyVersion: "4.0",
-      supportedAndroidVersions: ["13", "14"],
-      unsupportedAndroidVersions: ["15", "16"],
+      scrcpyVersion: "5.0.1",
+      supportedAndroidVersions: ["13", "14", "15", "16"],
+      unsupportedAndroidVersions: ["17"],
       fallbackModes: ["audio-disabled", "stream-control-disabled"],
     },
   })

@@ -6,7 +6,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 
 | Guide                       | Covers                                                                              |
 | --------------------------- | ----------------------------------------------------------------------------------- |
-| [Deployment](deployment.md) | Host requirements, Compose stacks, HTTPS, networking, and configuration.            |
+| [Deployment](deployment.md) | Host requirements, Compose stacks, GPU acceleration, HTTPS, networking, and configuration. |
 | [Operations](operations.md) | Service health, Docker operation limits, troubleshooting, state resets, image builds, and AI providers. |
 
 ## Understand and contribute

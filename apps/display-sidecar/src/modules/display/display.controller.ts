@@ -77,8 +77,8 @@ export class DisplayController {
       },
       compatibility: {
         scrcpyVersion: this.scrcpy.serverVersion(),
-        supportedAndroidVersions: ["13", "14"],
-        unsupportedAndroidVersions: ["15", "16"],
+        supportedAndroidVersions: ["13", "14", "15", "16"],
+        unsupportedAndroidVersions: ["17"],
         fallbackModes: ["audio-disabled", "stream-control-disabled"],
       },
       surfaces: {

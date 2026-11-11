@@ -67,7 +67,7 @@ const SCRCPY_LOGCAT_INTERVAL_MS = 10_000;
 const DEVICE_MESSAGE_CLIPBOARD = 0;
 const DEVICE_MESSAGE_ACK_CLIPBOARD = 1;
 const MINIMUM_SCRCPY_SERVER_MAJOR = 4;
-const MAX_SUPPORTED_ANDROID_SDK = 34;
+const MAX_SUPPORTED_ANDROID_SDK = 36;
 const COMPATIBILITY_PROBE_LOGCAT_LINES = 220;
 const SOURCE_IDLE_GRACE_MS = 30_000;
 const VIDEO_RESET_MIN_INTERVAL_MS = 1_000;
@@ -1636,7 +1636,7 @@ export class ScrcpyService implements OnModuleDestroy {
     }
 
     throw new Error(
-      `Redroid Android ${probe.androidRelease || probe.androidSdk} is not supported by Rebroid display streaming yet. Use a Redroid 13 or 14 image for live display access.`,
+      `Redroid Android ${probe.androidRelease || probe.androidSdk} is not supported by Rebroid display streaming yet. Use a Redroid 13–16 image for live display access.`,
     );
   }
 

@@ -98,6 +98,21 @@ The browser chooses a fallback before sending a command. A missing acknowledgmen
 outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
 The Go relay sends correlated replies in order and coalesces replaceable telemetry under pressure.
 
+## Browser hardware decoding
+
+Decoding occurs on the viewer machine. The WebSocket WebCodecs path initially requests
+`hardwareAcceleration: "prefer-hardware"` and switches to a software preference after a decoder
+queue overflow. This [WebCodecs preference](https://www.w3.org/TR/webcodecs/#hardware-acceleration)
+may be ignored by the browser. The reported `decoderPreference` describes the requested
+policy, not proof of hardware use. WebRTC and Firefox MediaSource decoding are selected
+by the browser's native media stack.
+
+Scrcpy 5's `--hwdec` setting belongs to its native desktop player. Rebroid's sidecar ships
+the Android server and forwards compressed packets without a desktop player or video
+decoder. GPU access in the sidecar therefore does not change browser decoding. See the
+[Linux Docker requirements](deployment.md#gpu-acceleration-and-scrcpy-5) for the distinction
+between Android rendering/encoding, the relay, and client playback.
+
 ## Protected scrcpy lifecycle
 
 ADB commands, listener registration, video → audio → control socket acquisition, process launch,
@@ -112,6 +127,13 @@ compatibility-probe parsing, retry classification, and stream-option selection. 
 protected ordering require the manual matrix below, with before/after results in the pull request.
 
 ## Diagnostics
+
+The image pins [scrcpy 5.0.1](https://github.com/Genymobile/scrcpy/releases/tag/v5.0.1)
+and verifies the release archive checksum. `SCRCPY_VERSION` must match the server artifact
+when overriding the image defaults. The adapter name `scrcpy-server-v4-rbd1` identifies the
+compatible wire format, not the bundled release; `scrcpyVersion` reports the release.
+Android 13–16 are admitted. Android 16 video/control has been reported working; Android 15
+and Android 16 audio still need the manual matrix below. Android 17 remains gated.
 
 The viewer reports `ViewerStreamMetricsV4` once per second. Compare stages rather than relying
 on one FPS value:
@@ -143,7 +165,7 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 
 | Area            | Required coverage                                                         |
 | --------------- | ------------------------------------------------------------------------- |
-| Android         | ReDroid 13 and 14; 15/16 must fail clearly as unsupported.                |
+| Android         | ReDroid 13, 14, 15, and 16; 17+ must fail clearly as unsupported.         |
 | Transport       | WebRTC and WebSocket; Chromium and Firefox.                               |
 | Media           | Video with audio enabled and disabled.                                    |
 | Controls        | Touch, keyboard, actions, clipboard, and ADB fallback.                    |

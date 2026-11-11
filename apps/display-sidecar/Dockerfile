@@ -29,8 +29,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -o /o
 
 FROM node:24-bookworm-slim AS scrcpy-server
 
-ARG SCRCPY_VERSION=4.0
-ARG SCRCPY_LINUX_X86_64_SHA256=7daf05af5d575862e62b068cf6852d6068faf7ef3178f3735e3953e778fbf0ab
+ARG SCRCPY_VERSION=5.0.1
+ARG SCRCPY_LINUX_X86_64_SHA256=9f969d30cc574816077edecda65719c1c70b0aee1df1ba5fa00779ac07b8fd6e
 
 RUN apt-get -o Acquire::Check-Date=false update \
   && apt-get install -y --no-install-recommends \
@@ -49,7 +49,7 @@ RUN curl -fL --retry 3 --max-time 60 \
 
 FROM node:24-bookworm-slim AS runtime
 
-ARG SCRCPY_VERSION=4.0
+ARG SCRCPY_VERSION=5.0.1
 
 RUN apt-get -o Acquire::Check-Date=false update \
   && apt-get install -y --no-install-recommends \
@@ -69,6 +69,8 @@ WORKDIR /opt/rebroid-display-sidecar
 
 COPY --from=builder /workspace/apps/display-sidecar/dist ./dist
 COPY --from=builder /out ./
+# Only the Android server is used. The desktop client and its VA-API decoder
+# are not part of this relay; the viewer's browser decodes the video.
 COPY --from=scrcpy-server /tmp/scrcpy/scrcpy-server ./scrcpy-server
 COPY --from=webrtc-bridge /out/rebroid-webrtc-bridge ./rebroid-webrtc-bridge
 

@@ -743,14 +743,15 @@ export interface components {
             stream: Record<string, never>;
             /**
              * @example {
-             *       "scrcpyVersion": "4.0",
+             *       "scrcpyVersion": "5.0.1",
              *       "supportedAndroidVersions": [
              *         "13",
-             *         "14"
-             *       ],
-             *       "unsupportedAndroidVersions": [
+             *         "14",
              *         "15",
              *         "16"
+             *       ],
+             *       "unsupportedAndroidVersions": [
+             *         "17"
              *       ],
              *       "fallbackModes": [
              *         "audio-disabled",

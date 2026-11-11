@@ -140,8 +140,9 @@ when a path is missing; `REDROID_OPTIONAL_DEVICES` is for best-effort mappings.
 
 ## Redroid display streaming support
 
-Live displays support ReDroid 13 and 14. Versions 15 and 16 are blocked because their current
-video startup behavior is incompatible with the viewer.
+Live displays admit ReDroid 13–16 with scrcpy 5.0.1. Android 16 video and control have been
+reported working; Android 15 and Android 16 audio still require manual verification.
+Android 17 remains gated. See [display compatibility and audio diagnosis](display-streaming.md#diagnostics).
 
 On a supported image, compatibility retries may disable audio capture or use ADB-backed controls.
 Requested resolution, frame rate, and bitrate are not silently reduced. If the viewer reconnects
@@ -154,6 +155,42 @@ If a log tail exceeds the read limit, use the container engine logs on the deplo
 with an unreachable API can also indicate a listener, DNS, or connectivity problem. To investigate
 the restart itself, correlate the finish time with container engine events and timestamped logs on
 the deployment host.
+
+### GPU acceleration and scrcpy 5
+
+[Scrcpy 5 hardware decoding](https://github.com/Genymobile/scrcpy/blob/v5.0.1/doc/video.md#hardware-decoding)
+accelerates video playback in the native desktop client. On Linux it uses VA-API with
+an EGL renderer and the GPU's VA-API driver. `--hwdec=auto` is the desktop default and
+can fall back to software; `--hwdec=vaapi` explicitly requires VA-API to work.
+
+Rebroid's Docker display sidecar uses only the Android server from that release. It
+forwards compressed H.264/Opus without decoding or transcoding, so the new desktop
+decoder has no workload here. Both Compose stacks intentionally require no GPU device
+mapping for the display sidecar. Adding `/dev/dri`, `gpus: all`, or VA-API libraries to
+that service does not accelerate the current relay. `--hwdec` is a desktop-client
+option; it is not a scrcpy server option or a Rebroid environment setting.
+
+| Stage | Runs in | Acceleration control |
+| --- | --- | --- |
+| Android rendering and H.264 encoding | Redroid container | Image/host graphics support and Android MediaCodec encoders. `SCRCPY_VIDEO_ENCODER` selects an encoder exposed by Android. |
+| Compressed-media relay and RTP packetization | Display sidecar | No video decoder or transcoder runs here. |
+| Viewer video decoding | User's browser/device | WebSocket WebCodecs requests `prefer-hardware`; WebRTC and MediaSource use the browser's native media stack. |
+
+Browser hardware decoding depends on the viewer machine's GPU, drivers, browser, and
+codec support. A WebCodecs hardware preference is a hint, not confirmation that a GPU
+was selected. See [browser decoding](display-streaming.md#browser-hardware-decoding).
+Android GPU rendering and hardware video encoding are separate capabilities; choosing
+an encoder name does not install it or guarantee acceleration. Keep the existing Redroid
+boot arguments until host/image-specific changes have passed manual verification.
+
+A **separate native scrcpy desktop client** can use VA-API inside a Linux Docker container
+if the daemon's host/VM exposes a compatible GPU. That client container needs the desktop
+binary, libva and a matching VA-API driver, access and permissions for the relevant GPU
+device nodes, and an authorized Wayland or X11 display connection supporting EGL. Docker
+Compose supports explicit [device mappings](https://docs.docker.com/reference/compose-file/services/#devices)
+and supplementary groups for those permissions. This is a separate graphical-client
+deployment, outside Rebroid's browser viewer; it has not been validated by this project's
+Compose tests. GPU passthrough alone is insufficient.
 
 ## Updates and image transfer
 
