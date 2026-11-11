@@ -1,18 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { IconArrowLeft } from '@tabler/icons-react'
 import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
-import { Visible } from '@/components/ui/visible'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { beginLoginAction } from '@/server/users/actions/begin-login-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { AuthPanel } from './auth-panel'
 
 const requiredPasswordChangePath = '/account/required-password-change'
 
@@ -23,6 +22,7 @@ export default function LoginCard({
 }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const passwordInput = useRef<HTMLInputElement>(null)
   const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -94,111 +94,96 @@ export default function LoginCard({
   }
 
   return (
-    <div className='mx-auto flex w-full max-w-md flex-col gap-4 max-sm:mx-0 max-sm:max-w-full'>
-      <Card className='w-full border-surface-border bg-surface-panel shadow-none max-sm:border-0 max-sm:border-transparent! max-sm:bg-transparent! max-sm:shadow-none! max-sm:backdrop-blur-none! max-sm:rounded-none! max-sm:mx-0 max-sm:max-w-full'>
-        <CardHeader className='max-sm:px-0 gap-2'>
-          <CardTitle className='text-2xl font-medium tracking-tight'>
-            {step === 'mfa' ? 'Verify your identity' : 'Sign in'}
-          </CardTitle>
-          <CardDescription>
-            {step === 'mfa' ? 'Enter your authentication or recovery code.' : 'Continue to your Rebroid workspace.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className='max-sm:px-0'>
-          {step === 'credentials' ? (
-            <>
-              <FormField
-                layout='vertical'
-                controlId='username'
-                label='Username'
-                className='gap-2 pt-2'
-              >
-                <Input
-                  id='username'
-                  placeholder='Username'
-                  required
-                  aria-required='true'
-                  autoComplete='username'
-                  onChange={event => setUsername(event.target.value)}
-                  value={username}
-                  onKeyDown={event => {
-                    if (event.key === 'Enter') document.querySelector<HTMLInputElement>('#password')?.focus()
-                  }}
-                />
-              </FormField>
-              <FormField
-                layout='vertical'
-                controlId='password'
-                label='Password'
-                className='gap-2 pb-1 pt-5'
-              >
-                <Input
-                  id='password'
-                  type='password'
-                  required
-                  aria-required='true'
-                  autoComplete='current-password'
-                  placeholder='········'
-                  className='placeholder:text-lg placeholder:font-bold'
-                  onChange={event => setPassword(event.target.value)}
-                  value={password}
-                  onKeyDown={event => event.key === 'Enter' && void submitCredentials()}
-                />
-              </FormField>
-            </>
-          ) : (
+    <AuthPanel
+      title={step === 'mfa' ? 'Verify your identity' : 'Sign in'}
+      description={step === 'mfa' ? 'Use your authenticator app or a recovery code.' : undefined}
+    >
+      <form
+        className='grid gap-5'
+        noValidate
+        onSubmit={event => {
+          event.preventDefault()
+          if (!isSubmitting) void (step === 'mfa' ? submitMfaCode() : submitCredentials())
+        }}
+      >
+        {step === 'credentials' ? (
+          <>
             <FormField
               layout='vertical'
-              controlId='mfa-code'
-              label='Authentication or recovery code'
-              className='gap-2 pt-2'
+              label='Username'
             >
               <Input
-                id='mfa-code'
-                inputMode='numeric'
-                autoComplete='one-time-code'
-                placeholder='123456 or recovery code'
-                value={mfaCode}
-                onChange={event => setMfaCode(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && void submitMfaCode()}
+                name='username'
+                required
+                autoComplete='username'
+                onChange={event => setUsername(event.target.value)}
+                value={username}
+                onKeyDown={event => {
+                  if (event.key !== 'Enter') return
+                  event.preventDefault()
+                  passwordInput.current?.focus()
+                }}
               />
             </FormField>
-          )}
-        </CardContent>
-        <CardFooter className='max-sm:px-0'>
-          <div className='flex w-full flex-col'>
-            <MutationButton
-              pending={isSubmitting}
-              pendingLabel={step === 'mfa' ? 'Verifying…' : 'Signing in…'}
-              className='w-full'
-              size='lg'
-              disabled={isSubmitting}
-              onClick={() => void (step === 'mfa' ? submitMfaCode() : submitCredentials())}
+            <FormField
+              layout='vertical'
+              label='Password'
             >
-              {step === 'mfa' ? 'Verify' : 'Sign in'}
-            </MutationButton>
-            {step === 'mfa' ? (
-              <Button
-                className='mt-2 w-full'
-                variant='ghost'
-                disabled={isSubmitting}
-                onClick={returnToCredentials}
-              >
-                <IconArrowLeft className='size-4' />
-                Use another account
-              </Button>
-            ) : null}
-          </div>
-        </CardFooter>
-      </Card>
-      <Visible when={!!error}>
-        <Notice
-          tone='danger'
-          className='break-words'
-        >
-          {error}
-        </Notice>
-      </Visible>
-    </div>
+              <Input
+                name='password'
+                ref={passwordInput}
+                type='password'
+                required
+                autoComplete='current-password'
+                onChange={event => setPassword(event.target.value)}
+                value={password}
+              />
+            </FormField>
+          </>
+        ) : (
+          <FormField
+            layout='vertical'
+            label='Authentication or recovery code'
+          >
+            <Input
+              name='mfa-code'
+              required
+              inputMode='numeric'
+              autoComplete='one-time-code'
+              value={mfaCode}
+              onChange={event => setMfaCode(event.target.value)}
+            />
+          </FormField>
+        )}
+        {error ? (
+          <Notice
+            tone='danger'
+            description={error}
+            className='break-words'
+          />
+        ) : null}
+        <div className='grid gap-2'>
+          <MutationButton
+            type='submit'
+            pending={isSubmitting}
+            pendingLabel={step === 'mfa' ? 'Verifying…' : 'Signing in…'}
+            size='lg'
+          >
+            {step === 'mfa' ? 'Verify' : 'Sign in'}
+          </MutationButton>
+          {step === 'mfa' ? (
+            <Button
+              type='button'
+              variant='ghost'
+              disabled={isSubmitting}
+              onClick={returnToCredentials}
+            >
+              <IconArrowLeft className='size-4' />
+              Use another account
+            </Button>
+          ) : null}
+        </div>
+      </form>
+    </AuthPanel>
   )
 }

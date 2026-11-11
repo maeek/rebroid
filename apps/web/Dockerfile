@@ -52,6 +52,7 @@ ENV REBROID_TLS_HOSTS=localhost,127.0.0.1
 RUN apk add --no-cache libc6-compat openssl su-exec
 COPY --from=builder /workspace/apps/web/.next/standalone ./
 COPY --from=builder /workspace/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /workspace/apps/web/public ./apps/web/public
 COPY --chmod=755 apps/web/docker-entrypoint.sh /usr/local/bin/rebroid-web-entrypoint
 RUN mkdir -p /app/data /app/secrets /data/secrets && chown -R node:node /app /data
 EXPOSE 3101

@@ -55,7 +55,7 @@ UI text is at least `text-xs`.
 | Family             | Composition                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------ |
 | Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`; add `PageAside` for split workspaces. |
-| Authentication     | `AuthPage` owns the branded backdrop and centered form panel.                              |
+| Authentication     | `AuthPage` uses the console wordmark and navigation surface. `AuthPanel` contains the form. |
 | Immersive viewer   | `ImmersiveViewerPage` owns full-bleed media and floating controls.                         |
 
 The protected layout owns sidebar offset, `main`, width, and outer gutters. Standard rhythm uses

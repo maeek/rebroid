@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import { NavigationControls } from './navigation-controls/navigation-controls'
 import { ProtectedNavigation } from './protected-navigation'
-import styles from './rebroid-wordmark.module.css'
 import type { ShellUser } from './shell-user'
+import styles from '@/shared/ui/branding/rebroid-wordmark.module.css'
 
 export const MobileNavigation = ({
   user,

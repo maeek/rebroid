@@ -11,7 +11,8 @@ import { Toaster } from '@/components/ui/toaster'
 import { getServerAuthSession } from '@/server/auth/auth'
 import { isViewerPlacement, viewerPlacementCookie } from '@/shared/model/settings/viewer-placement'
 import { ViewerPlacementProvider } from '@/shared/model/settings/viewer-placement-context'
-import { getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
+import { defaultAccentColor, getAccentColorDataAttribute } from '@/shared/model/theme/accent-color'
+import { AccentFavicon } from '@/shared/ui/accent-favicon'
 import './globals.css'
 
 const ubuntu = localFont({
@@ -40,7 +41,6 @@ export const metadata: Metadata = {
   description: 'Stop making me install your dumb apps on my phone!',
   manifest: '/manifest.webmanifest',
   icons: {
-    icon: '/rebroid-icon.svg',
     apple: '/rebroid-icon-192.png'
   },
   appleWebApp: {
@@ -59,6 +59,8 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [session, requestHeaders, requestCookies] = await Promise.all([getServerAuthSession(), headers(), cookies()])
+  const user = session?.user
+  const accentColor = user?.id ? (user.accentColor ?? defaultAccentColor) : null
   const nonce = requestHeaders.get('x-nonce') ?? undefined
   const viewerPlacement = requestCookies.get(viewerPlacementCookie)?.value
 
@@ -68,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       dir='ltr'
       suppressHydrationWarning
       className={ubuntu.className}
-      data-accent={getAccentColorDataAttribute(session?.user?.accentColor)}
+      data-accent={getAccentColorDataAttribute(accentColor)}
       style={
         {
           '--font-ubuntu': ubuntu.style.fontFamily
@@ -76,6 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       }
     >
       <body>
+        <AccentFavicon initialAccentColor={accentColor} />
         <div className='root'>
           <ThemeProvider
             attribute='class'
