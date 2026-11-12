@@ -74,6 +74,21 @@ const clampTail = (value: string | undefined) => {
   return Math.max(1, Math.min(Math.trunc(parsed), 2000));
 };
 
+async function whileClientConnected<T>(
+  reply: FastifyReply,
+  operation: (signal: AbortSignal) => Promise<T>,
+) {
+  const disconnected = new AbortController();
+  const abort = () => disconnected.abort();
+  reply.raw.once("close", abort);
+  if (reply.raw.destroyed) abort();
+  try {
+    return await operation(disconnected.signal);
+  } finally {
+    reply.raw.off("close", abort);
+  }
+}
+
 @UseGuards(SidecarAuthGuard)
 @Controller("rebroid/adb/:udid")
 @ApiTags("adb")
@@ -123,8 +138,13 @@ export class AdbController {
   @Get("notifications")
   @ApiOperation({ summary: "Read Android notification dump through ADB." })
   @ApiOkResponse({ type: AdbNotificationsDto })
-  async notifications(@Param("udid") udid: string) {
-    const result = await this.adb.notifications(udid);
+  async notifications(
+    @Param("udid") udid: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const result = await whileClientConnected(reply, (signal) =>
+      this.adb.notifications(udid, signal),
+    );
     return {
       output: result.stdout,
     };
@@ -224,15 +244,9 @@ export class AdbController {
     const result = uiTextSchema.safeParse(body);
     if (!result.success)
       throw new BadRequestException("Invalid UI text request.");
-    const disconnected = new AbortController();
-    const abort = () => disconnected.abort();
-    reply.raw.once("close", abort);
-    if (reply.raw.destroyed) abort();
-    try {
-      return await this.text.poll(udid, result.data, disconnected.signal);
-    } finally {
-      reply.raw.off("close", abort);
-    }
+    return whileClientConnected(reply, (signal) =>
+      this.text.poll(udid, result.data, signal),
+    );
   }
 
   @Delete("ui-text/:operationId")

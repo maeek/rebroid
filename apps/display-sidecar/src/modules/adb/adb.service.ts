@@ -90,15 +90,27 @@ export class AdbService {
     );
   }
 
-  async notifications(udid: string) {
+  async notifications(udid: string, signal?: AbortSignal) {
+    const timeoutMs = 5_000;
+    const deadline = AbortSignal.timeout(timeoutMs);
+    const operationSignal = signal
+      ? AbortSignal.any([signal, deadline])
+      : deadline;
     try {
       return await this.shell(
         udid,
         ["dumpsys", "notification", "--noredact"],
-        20_000,
+        timeoutMs,
+        operationSignal,
       );
     } catch {
-      return this.shell(udid, ["dumpsys", "notification"], 20_000);
+      operationSignal.throwIfAborted();
+      return this.shell(
+        udid,
+        ["dumpsys", "notification"],
+        timeoutMs,
+        operationSignal,
+      );
     }
   }
 

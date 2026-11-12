@@ -311,10 +311,11 @@ export class AndroidAppsSidecarAdbService {
     );
   }
 
-  async notifications(app: AndroidApplication) {
+  async notifications(app: AndroidApplication, signal?: AbortSignal) {
     const result = await this.request<{ output: string }>(
       app,
       '/notifications',
+      { signal },
     );
     return parseAndroidNotifications(result.output);
   }
@@ -358,7 +359,11 @@ export class AndroidAppsSidecarAdbService {
   ): Promise<T> {
     options.signal?.throwIfAborted();
     const cacheKey = this.targetCacheKey(app);
-    const udid = await this.prepareUdid(app, cacheKey);
+    const udid = await this.prepareUdid(
+      app,
+      cacheKey,
+      options.signal ?? undefined,
+    );
     return this.requestPrepared(udid, cacheKey, path, options);
   }
 

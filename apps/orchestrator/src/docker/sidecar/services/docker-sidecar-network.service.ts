@@ -30,13 +30,18 @@ export class DockerSidecarNetworkService {
   async ensureOnNetwork(
     sidecar: Dockerode.Container,
     networkName: string,
+    inspect?: Dockerode.ContainerInspectInfo,
   ): Promise<ViewerTargetStatus> {
     const cached = this.sidecarNetworks.get(networkName);
     if (cached?.containerId === sidecar.id && cached.expiresAt > Date.now()) {
       return this.sidecarNetworkStatus(networkName, cached.ipAddress);
     }
 
-    const currentIp = await this.getContainerIpOnNetwork(sidecar, networkName);
+    const currentIp = await this.getContainerIpOnNetwork(
+      sidecar,
+      networkName,
+      inspect,
+    );
     if (currentIp) {
       return this.cacheSidecarNetwork(sidecar.id, networkName, currentIp);
     }
@@ -68,9 +73,13 @@ export class DockerSidecarNetworkService {
     await this.networks.disconnectContainerFromNetwork(sidecar.id, networkName);
   }
 
-  async getSidecarIp(sidecar: Dockerode.Container, networkName: string) {
+  async getSidecarIp(
+    sidecar: Dockerode.Container,
+    networkName: string,
+    inspect?: Dockerode.ContainerInspectInfo,
+  ) {
     try {
-      return await this.getContainerIpOnNetwork(sidecar, networkName);
+      return await this.getContainerIpOnNetwork(sidecar, networkName, inspect);
     } catch {
       return null;
     }
@@ -107,11 +116,14 @@ export class DockerSidecarNetworkService {
   private async getContainerIpOnNetwork(
     sidecar: Dockerode.Container,
     networkName: string,
+    currentInspect?: Dockerode.ContainerInspectInfo,
   ) {
-    const inspect = await this.engine.read(
-      () => sidecar.inspect(),
-      `Inspect display sidecar on network ${networkName}`,
-    );
+    const inspect =
+      currentInspect ??
+      (await this.engine.read(
+        () => sidecar.inspect(),
+        `Inspect display sidecar on network ${networkName}`,
+      ));
     return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
   }
 

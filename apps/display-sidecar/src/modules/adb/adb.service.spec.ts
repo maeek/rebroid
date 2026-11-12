@@ -4,6 +4,44 @@ import type { SidecarConfigService } from "../shared/sidecar-config.service";
 import { AdbCommandRunner } from "./adb-command-runner";
 import { AdbService } from "./adb.service";
 
+test("notification fallback shares the first command's deadline", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const text = t.mock.method(runner, "text", async (args: string[]) => {
+    if (args.includes("--noredact")) throw new Error("Unsupported option");
+    return { stdout: "notifications", stderr: "", exitCode: 0 };
+  });
+
+  assert.equal(
+    (await new AdbService(runner).notifications("device")).stdout,
+    "notifications",
+  );
+  assert.deepEqual(
+    text.mock.calls.map(({ arguments: [args] }) => args),
+    [
+      ["-s", "device", "shell", "dumpsys", "notification", "--noredact"],
+      ["-s", "device", "shell", "dumpsys", "notification"],
+    ],
+  );
+  const first = text.mock.calls[0].arguments[2]?.signal;
+  assert.ok(first);
+  assert.equal(text.mock.calls[1].arguments[2]?.signal, first);
+});
+
+test("does not launch another notification dump after cancellation", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const abort = new AbortController();
+  const text = t.mock.method(runner, "text", async () => {
+    abort.abort();
+    throw new Error("ADB stopped");
+  });
+
+  await assert.rejects(
+    new AdbService(runner).notifications("device", abort.signal),
+    { name: "AbortError" },
+  );
+  assert.equal(text.mock.callCount(), 1);
+});
+
 test("key commands reject shell syntax before starting ADB", async (t) => {
   const calls: string[][] = [];
   const runner = new AdbCommandRunner({} as SidecarConfigService);

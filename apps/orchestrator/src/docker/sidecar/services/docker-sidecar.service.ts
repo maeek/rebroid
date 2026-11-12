@@ -22,6 +22,11 @@ import { webrtcUdpPortBinding } from '../utils/docker-sidecar.utils';
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
 import type { DockerSidecarPort } from '../../contracts/docker-sidecar.port';
 
+interface DiscoveredSidecar {
+  container: Dockerode.Container;
+  inspect?: Dockerode.ContainerInspectInfo;
+}
+
 @Injectable()
 export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   private readonly logger = new Logger(DockerSidecarService.name);
@@ -128,7 +133,11 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         return this.sidecarUnavailableStatus();
       }
 
-      return this.sidecarNetwork.ensureOnNetwork(sidecar, networkName);
+      return this.sidecarNetwork.ensureOnNetwork(
+        sidecar.container,
+        networkName,
+        sidecar.inspect,
+      );
     });
   }
 
@@ -139,7 +148,10 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         return;
       }
 
-      await this.sidecarNetwork.detachFromNetwork(sidecar, networkName);
+      await this.sidecarNetwork.detachFromNetwork(
+        sidecar.container,
+        networkName,
+      );
     });
   }
 
@@ -155,7 +167,11 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       return this.sidecarUnavailableStatus();
     }
 
-    return this.sidecarAdb.prepareTarget(sidecar.id, adbHost, adbPort);
+    return this.sidecarAdb.prepareTarget(
+      sidecar.container.id,
+      adbHost,
+      adbPort,
+    );
   }
 
   /**
@@ -167,7 +183,11 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       return null;
     }
 
-    return this.sidecarNetwork.getSidecarIp(sidecar, networkName);
+    return this.sidecarNetwork.getSidecarIp(
+      sidecar.container,
+      networkName,
+      sidecar.inspect,
+    );
   }
 
   /**
@@ -210,10 +230,9 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         };
       }
 
-      const inspect = await this.engine.read(
-        () => sidecar.inspect(),
-        'Inspect display sidecar health',
-      );
+      const inspect =
+        sidecar.inspect ??
+        (await this.lifecycle.inspectContainer(sidecar.container.id));
       const state = inspect.State;
 
       return {
@@ -283,7 +302,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       ? displaySidecarLogLimits.expanded
       : displaySidecarLogLimits.preview;
     const output = await this.lifecycle.getBoundedContainerLogs(
-      sidecar.id,
+      sidecar.container.id,
       limits.lines + 1,
       limits.readBytes,
     );
@@ -310,12 +329,12 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       try {
         const existing = await this.findSidecar();
         if (existing) {
-          await this.lifecycle.stopContainer(existing.id, 3);
-          await this.lifecycle.startContainer(existing.id);
+          await this.lifecycle.stopContainer(existing.container.id, 3);
+          await this.lifecycle.startContainer(existing.container.id);
           await this.sidecarApi.waitForReady();
-          await this.sidecarNetwork.cleanupStaleNetworks(existing);
+          await this.sidecarNetwork.cleanupStaleNetworks(existing.container);
           this.displaySidecarLastError = null;
-          return existing.id;
+          return existing.container.id;
         }
 
         const created = await this.ensureSidecarUnlocked();
@@ -324,7 +343,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         }
 
         this.displaySidecarLastError = null;
-        return created.id;
+        return created.container.id;
       } catch (error) {
         this.displaySidecarLastError = this.engine.errorMessage(error);
         throw error;
@@ -339,18 +358,19 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return this.queueSidecarMutation(() => this.ensureSidecarUnlocked());
   }
 
-  private async ensureSidecarUnlocked() {
+  private async ensureSidecarUnlocked(): Promise<DiscoveredSidecar | null> {
     const existing = await this.findSidecar();
     if (existing) {
-      const inspect = await this.engine.read(
-        () => existing.inspect(),
-        'Inspect display sidecar before start',
-      );
+      const { container } = existing;
+      const inspect =
+        existing.inspect ??
+        (await this.lifecycle.inspectContainer(container.id));
       if (!inspect.State?.Running) {
-        await this.lifecycle.startContainer(existing.id);
+        await this.lifecycle.startContainer(container.id);
         await this.sidecarApi.waitForReady();
+        return { container };
       }
-      return existing;
+      return { container, inspect };
     }
 
     if (!this.displaySidecarAutoStart) {
@@ -432,7 +452,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       `Start display sidecar ${container.id}`,
     );
     await this.sidecarApi.waitForReady();
-    return container;
+    return { container };
   }
 
   private async initializeSidecarOnStartup() {
@@ -442,7 +462,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         return null;
       }
 
-      await this.sidecarNetwork.cleanupStaleNetworks(sidecar);
+      await this.sidecarNetwork.cleanupStaleNetworks(sidecar.container);
       this.displaySidecarLastError = null;
       return sidecar;
     });
@@ -457,17 +477,13 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return queued;
   }
 
-  private async findSidecar() {
+  private async findSidecar(): Promise<DiscoveredSidecar | null> {
     if (this.displaySidecarContainerId) {
       try {
-        const container = this.docker.getContainer(
+        const inspect = await this.lifecycle.inspectContainer(
           this.displaySidecarContainerId,
         );
-        await this.engine.read(
-          () => container.inspect(),
-          'Inspect configured display sidecar',
-        );
-        return container;
+        return { container: this.docker.getContainer(inspect.Id), inspect };
       } catch (error) {
         if (!this.engine.isDockerNotFound(error)) {
           throw error;
@@ -478,7 +494,9 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     const existing = await this.lifecycle.findContainerByName(
       this.displaySidecarContainerName,
     );
-    return existing ? this.docker.getContainer(existing.Id) : null;
+    return existing
+      ? { container: this.docker.getContainer(existing.Id) }
+      : null;
   }
 
   /**

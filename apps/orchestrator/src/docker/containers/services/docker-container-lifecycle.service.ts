@@ -19,8 +19,13 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
   }
 
   async findContainerByName(name: string, applicationId?: string) {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const containers = await this.engine.read(
-      () => this.engine.docker.listContainers({ all: true }),
+      () =>
+        this.engine.docker.listContainers({
+          all: true,
+          filters: { name: [`^/?${escapedName}$`] },
+        }),
       `List containers while finding ${name}`,
     );
     const dockerName = `/${name}`;

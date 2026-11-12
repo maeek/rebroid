@@ -18,15 +18,6 @@ export class AndroidAppsRuntimeDiagnosticsService {
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
   ) {}
 
-  async notifications(id: string) {
-    const app = await this.reconciler.reconcileById(id);
-    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
-      return [];
-    }
-
-    return this.sidecarAdb.notifications(app);
-  }
-
   async containerLogs(id: string, tail = 300) {
     const app = await this.reconciler.reconcileById(id);
     if (!app.containerId) {

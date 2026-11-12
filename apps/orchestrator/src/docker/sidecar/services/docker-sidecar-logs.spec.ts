@@ -59,6 +59,7 @@ const setup = () => {
   );
   const lifecycle = {
     findContainerByName: async () => ({ Id: id }),
+    inspectContainer: container.inspect,
     getBoundedContainerLogs,
   } as unknown as DockerContainerLifecycleService;
   const api = {

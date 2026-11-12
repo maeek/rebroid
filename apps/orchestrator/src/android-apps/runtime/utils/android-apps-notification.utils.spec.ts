@@ -38,6 +38,29 @@ describe('android notification utils', () => {
     ]);
   });
 
+  it('reads active records and excludes archived, enqueued, and snoozed records', () => {
+    const output = [
+      'Current Notification Manager state:',
+      ' Notification List:',
+      ' NotificationRecord(pkg=com.example.active title=Active, text=Now)',
+      ' ',
+      ' mArchive=Archive (1 notification)',
+      '   StatusBarNotification(pkg=com.example.old title=Old, text=Yesterday)',
+      ' Enqueued Notification List:',
+      ' NotificationRecord(pkg=com.example.next title=Enqueued, text=Later)',
+      ' Snoozed notifications:',
+      ' NotificationRecord(pkg=com.example.snoozed title=Snoozed, text=Later)',
+    ];
+    expect(
+      parseAndroidNotifications(output.join('\n')).map(
+        ({ packageName }) => packageName,
+      ),
+    ).toEqual(['com.example.active']);
+    expect(
+      parseAndroidNotifications([output[0], ...output.slice(4)].join('\n')),
+    ).toEqual([]);
+  });
+
   it('unwraps typed Android extras instead of displaying their debug representation', () => {
     const notifications = parseAndroidNotifications(
       `NotificationRecord(pkg=com.example.messages)\n  android.title=String (New message)\n  android.text=CharSequence (Hello there)`,

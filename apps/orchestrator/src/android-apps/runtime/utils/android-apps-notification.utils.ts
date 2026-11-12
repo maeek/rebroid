@@ -35,8 +35,26 @@ const extractNotificationValue = (block: string, patterns: RegExp[]) => {
   return null;
 };
 
+const activeNotificationLines = (output: string) => {
+  const lines = output.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === 'Notification List:');
+  if (start < 0) {
+    // Android omits the active section when there are no active notifications.
+    return output.startsWith('Current Notification Manager state') ? [] : lines;
+  }
+  const end = lines.findIndex(
+    (line, index) =>
+      index > start &&
+      (line === ' ' ||
+        /^\s*(?:mArchive=|Lights List:|Enqueued Notification List:|Snoozed notifications:)/i.test(
+          line,
+        )),
+  );
+  return lines.slice(start + 1, end < 0 ? undefined : end);
+};
+
 const splitNotificationBlocks = (output: string) => {
-  const lines = output.split('\n').map((line) => line.trimEnd());
+  const lines = activeNotificationLines(output);
   const blocks: string[] = [];
   let current: string[] = [];
 
