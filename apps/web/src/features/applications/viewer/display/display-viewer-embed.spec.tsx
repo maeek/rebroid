@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { previewApp } from '@/features/applications/detail/app-resource-preview-data'
 import { defaultViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
@@ -10,8 +10,24 @@ vi.mock('@/server/orchestrator/applications/actions/runtime/viewer-actions', () 
 }))
 vi.mock('./display-viewer-shell/display-viewer-shell', () => ({ DisplayViewerShell: () => null }))
 
-it('keeps the same streaming settings trigger when opening the main display fails', async () => {
-  vi.mocked(getScrcpySessionAction).mockRejectedValueOnce(new Error('Sidecar unreachable'))
+it('keeps the device frame and settings when a session is unavailable and can retry in place', async () => {
+  const openSession = vi.mocked(getScrcpySessionAction)
+  openSession
+    .mockResolvedValueOnce({
+      applicationId: previewApp.id,
+      transport: 'websocket',
+      udid: 'adb:5555',
+      proxyRemote: 'tcp:8886',
+      player: 'webcodecs',
+      viewerServiceConfigured: true,
+      viewerTargetConnected: true,
+      viewerMessage: null,
+      viewerError: null,
+      adbHost: 'adb',
+      adbPort: 5555,
+      displaySession: null
+    })
+    .mockRejectedValueOnce(new Error('Sidecar unreachable'))
   render(
     <DisplayViewerEmbed
       app={{ ...previewApp, status: 'running' }}
@@ -22,12 +38,23 @@ it('keeps the same streaming settings trigger when opening the main display fail
     />
   )
 
-  expect(screen.getByText('Starting live display')).toBeVisible()
-  const settings = screen.getByRole('button', { name: 'Streaming settings' })
+  const frame = screen.getByRole('region', { name: 'Android display' })
+  const display = within(frame)
+  expect(display.getByText('Starting live display')).toBeVisible()
+  const settings = display.getByRole('button', { name: 'Streaming settings' })
   expect(settings).toBeVisible()
-  expect(await screen.findByText('Viewer unavailable')).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Streaming settings' })).toBe(settings)
+  const aspectRatio = frame.style.aspectRatio
+  expect(aspectRatio).toBeTruthy()
+  const error = await display.findByRole('alert')
+  expect(error).toHaveTextContent('Viewer unavailable')
+  expect(frame.style.aspectRatio).toBe(aspectRatio)
+  expect(display.getByRole('button', { name: 'Streaming settings' })).toBe(settings)
   expect(settings).toBeVisible()
+
+  fireEvent.click(display.getByRole('button', { name: 'Try again' }))
+  expect(display.getByText('Starting live display')).toBeVisible()
+  expect(openSession).toHaveBeenNthCalledWith(2, previewApp.id)
+  expect(await display.findByText('Sidecar unreachable')).toBeVisible()
 })
 
 it('stops opening sessions once the Android startup deadline is reached', async () => {

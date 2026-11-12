@@ -403,6 +403,9 @@ without another panel background or outer padding. Ready and loading states shar
 
 App resource views share one device pane in AppDeviceLayout, including configuration and profiles. Fit the live display to the available width and height using the stream's observed dimensions. Put streaming settings in the display chrome and device controls in a rail just outside the right edge. The streaming settings sheet uses the dialog surface so controls remain distinct in each theme.
 
+Keep the embedded device frame and streaming settings visible when a session fails to open. Show
+the error and a retry action inside the frame.
+
 The Viewer layout menu beside the breadcrumbs switches between the default stacked layout and a right-hand pane. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
 The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
-import { IconAlertTriangle, IconDeviceDesktop, IconLoader2 } from '@tabler/icons-react'
+import { IconLoader2 } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
@@ -39,35 +39,6 @@ const useBrowserBaseUrl = () => {
   return baseUrl
 }
 
-const EmbeddedViewerSplash = ({
-  title,
-  description,
-  detail,
-  tone = 'default',
-  icon
-}: {
-  title: string
-  description: string
-  detail?: string | null
-  tone?: 'default' | 'danger'
-  icon?: ReactNode
-}) => (
-  <div className='flex min-h-136 w-full items-center justify-center p-6'>
-    <StateView
-      kind={tone === 'danger' ? 'error' : 'unavailable'}
-      scope='grid'
-      title={title}
-      description={description}
-      detail={detail}
-      icon={
-        icon ??
-        (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconDeviceDesktop className='size-10' />)
-      }
-      className='min-h-full'
-    />
-  </div>
-)
-
 const viewerOrientation = (app: AppDefinition): ViewerOrientation => {
   const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
   return display.width >= display.height ? 'landscape' : 'portrait'
@@ -76,45 +47,57 @@ const viewerOrientation = (app: AppDefinition): ViewerOrientation => {
 const EmbeddedViewerFallback = ({
   app,
   loadingDescription,
-  actions,
-  children
+  streamingSettings,
+  error,
+  onRetry
 }: {
   app: AppDefinition
   loadingDescription: string
-  actions?: ReactNode
-  children?: ReactNode
+  streamingSettings?: ReactNode
+  error?: { description: string; detail?: string }
+  onRetry: () => void
 }) => {
   const layout = getViewerFrameLayout(app, viewerOrientation(app))
 
   return (
     <div className='flex w-full items-center justify-center'>
       <div
-        className={children ? 'relative w-full' : getViewerFrameClassName(false)}
-        style={children ? undefined : getViewerFrameStyle(layout, false)}
+        data-viewer-frame
+        role='region'
+        aria-label='Android display'
+        className={cn(getViewerFrameClassName(false), 'flex-col')}
+        style={getViewerFrameStyle(layout, false)}
       >
-        {actions ? (
-          <div
-            className={cn(
-              'viewer-chrome flex h-[var(--viewer-chrome-height)] items-center justify-end bg-surface-band px-1.5',
-              children ? 'rounded-t-panel' : 'absolute inset-x-0 top-0 z-20'
-            )}
-          >
-            {actions}
+        {streamingSettings ? (
+          <div className='viewer-chrome flex h-[var(--viewer-chrome-height)] w-full shrink-0 items-center justify-end bg-surface-band px-1.5'>
+            {streamingSettings}
           </div>
         ) : null}
-        {children ?? (
-          <ViewerPlaceholderScreen
-            app={app}
-            placeholder={{
-              title: 'Starting live display',
-              description: loadingDescription,
-              toneClassName: 'text-primary',
-              Icon: IconLoader2,
-              showSpinner: true,
-              showProgress: false
-            }}
-          />
-        )}
+        <div className='flex min-h-0 w-full flex-1 flex-col overflow-auto bg-surface-panel'>
+          {error ? (
+            <StateView
+              kind='error'
+              scope='grid'
+              title='Viewer unavailable'
+              description={error.description}
+              detail={error.detail}
+              actions={[{ label: 'Try again', onClick: onRetry }]}
+              className='my-auto shrink-0'
+            />
+          ) : (
+            <ViewerPlaceholderScreen
+              app={app}
+              placeholder={{
+                title: 'Starting live display',
+                description: loadingDescription,
+                toneClassName: 'text-primary',
+                Icon: IconLoader2,
+                showSpinner: true,
+                showProgress: false
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -146,6 +129,8 @@ export const DisplayViewerEmbed = ({
   const startedAt = app.lastStartedAt?.getTime() ?? null
   const runtime = `${app.id}:${startedAt}`
   const reloadCount = reload.runtime === runtime ? reload.count : 0
+  const reloadSession = () =>
+    setReload(current => ({ runtime, count: current.runtime === runtime ? current.count + 1 : 1 }))
 
   useEffect(() => {
     if (app.status !== 'running') {
@@ -222,12 +207,9 @@ export const DisplayViewerEmbed = ({
   )
 
   if (!session?.viewerServiceConfigured || !session.displaySession?.viewerPath || surfaces.length === 0) {
-    let error: { description: string; detail: string } | undefined
+    let error: { description: string; detail?: string } | undefined
     if (session && !session.viewerServiceConfigured) {
-      error = {
-        description: 'The live display service is not ready.',
-        detail: 'Refresh the viewer or restart the app, then try again.'
-      }
+      error = { description: 'The live display service is not ready.' }
     } else if (sessionError) {
       error = { description: 'The live display session could not be opened.', detail: sessionError }
     }
@@ -236,17 +218,14 @@ export const DisplayViewerEmbed = ({
       <EmbeddedViewerFallback
         app={app}
         loadingDescription={session ? 'Preparing the display session.' : 'Rebroid is opening the app screen.'}
-        actions={streamingSettings}
-      >
-        {error ? (
-          <EmbeddedViewerSplash
-            title='Viewer unavailable'
-            description={error.description}
-            detail={error.detail}
-            tone='danger'
-          />
-        ) : null}
-      </EmbeddedViewerFallback>
+        streamingSettings={streamingSettings}
+        error={error}
+        onRetry={() => {
+          setSession(null)
+          setSessionError(null)
+          reloadSession()
+        }}
+      />
     )
   }
 
@@ -266,8 +245,7 @@ export const DisplayViewerEmbed = ({
           controlsEnabled: true,
           canControl: canControlViewer && session.displaySession.capabilities.includes('control'),
           canCaptureScreenshot: canCaptureScreenshot && session.displaySession.capabilities.includes('screenshot'),
-          onSurfacesChanged: () =>
-            setReload(current => ({ runtime, count: current.runtime === runtime ? current.count + 1 : 1 })),
+          onSurfacesChanged: reloadSession,
           onKeyboardCaptureChange: enabled => {
             onViewerSettingsChange?.({
               ...viewerSettings,
