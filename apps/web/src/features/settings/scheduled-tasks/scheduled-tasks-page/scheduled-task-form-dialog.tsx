@@ -140,7 +140,16 @@ export const ScheduledTaskFormDialog = () => {
           </Visible>
           <Visible when={actionNeedsRetentionDays(form.actionType)}>
             <FormField
-              label='Remove logs older than'
+              label={
+                form.actionType === 'clean_workflow_history'
+                  ? 'Keep finished workflow runs for'
+                  : 'Remove logs older than'
+              }
+              description={
+                form.actionType === 'clean_workflow_history'
+                  ? 'The task removes expired runs, step results, and events on its schedule.'
+                  : undefined
+              }
               layout='vertical'
               controlId='scheduled-task-retention-days'
             >

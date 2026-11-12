@@ -10,6 +10,7 @@ import { AutomationTriggersRepository } from './automation-triggers.repository';
 import { AutomationsRepository } from './automations.repository';
 import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsModule } from '../../metrics/metrics.module';
+import { WORKFLOW_HISTORY_MAINTENANCE } from '../contracts/workflow-history-maintenance.port';
 
 @Module({
   imports: [
@@ -26,12 +27,17 @@ import { MetricsModule } from '../../metrics/metrics.module';
     AutomationsRepository,
     AutomationRunEventsRepository,
     AutomationRunsRepository,
+    {
+      provide: WORKFLOW_HISTORY_MAINTENANCE,
+      useExisting: AutomationRunsRepository,
+    },
     AutomationTriggersRepository,
   ],
   exports: [
     AutomationsRepository,
     AutomationRunEventsRepository,
     AutomationRunsRepository,
+    WORKFLOW_HISTORY_MAINTENANCE,
     AutomationTriggersRepository,
   ],
 })

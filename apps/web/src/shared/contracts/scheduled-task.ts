@@ -6,6 +6,7 @@ export type ScheduledTaskActionType =
   | 'prune_volumes'
   | 'prune_all'
   | 'clean_runtime_logs'
+  | 'clean_workflow_history'
 
 export type ScheduledTaskLastStatus = 'never_run' | 'success' | 'failed'
 export type ScheduledTaskKind = 'predefined' | 'custom'

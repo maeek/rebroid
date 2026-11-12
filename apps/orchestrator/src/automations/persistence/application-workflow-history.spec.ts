@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { Automation } from '../entities/automation.entity';
+import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
   AutomationRun,
   AutomationRunStatus,
@@ -85,6 +86,93 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
         runs.findApplicationWorkflow('owner', 'app', excluded.id),
       ).resolves.toBeNull();
     }
+  } finally {
+    await db.destroy();
+  }
+});
+
+it('prunes only expired finished workflows with their results and events', async () => {
+  const db = await new DataSource({
+    type: 'better-sqlite3',
+    database: ':memory:',
+    entities: [Automation, AutomationRun, AutomationRunEvent],
+    migrations: [InitializeSqliteSchema1800000005000],
+    migrationsRun: true,
+  }).initialize();
+  try {
+    const runs = new AutomationRunsRepository(db.getRepository(AutomationRun));
+    const events = db.getRepository(AutomationRunEvent);
+    const cutoff = new Date('2026-11-01T12:00:00Z');
+    const old = new Date('2026-10-01T00:00:00Z');
+    const save = async (id: string, values: Partial<AutomationRun> = {}) => {
+      await runs.save(
+        runs.create({
+          id,
+          ownerUserId: 'owner',
+          targetApplicationId: id,
+          automationId: 'deleted-workflow',
+          trigger: AutomationRunTrigger.Manual,
+          status: AutomationRunStatus.Success,
+          completedAt: old,
+          createdAt: old,
+          ...values,
+        }),
+      );
+      await events.insert({
+        runId: id,
+        ownerUserId: 'owner',
+        sequence: 1,
+        type: 'vision.ocr.exchange',
+        message: 'OCR returned text.',
+        dataJson: '{}',
+      });
+      await db.query(
+        'INSERT INTO automation_run_step_results (runId, sequence, resultJson) VALUES (?, 1, ?)',
+        [id, '{}'],
+      );
+    };
+    await save('old-success');
+    await save('old-failure', {
+      ownerUserId: 'other-owner',
+      status: AutomationRunStatus.Failed,
+    });
+    await save('old-canceled', { status: AutomationRunStatus.Canceled });
+    await save('active', { status: AutomationRunStatus.Running });
+    await save('queued', { status: AutomationRunStatus.Queued });
+    await save('cutoff', { completedAt: cutoff });
+    await save('recent', { completedAt: new Date('2026-11-02T00:00:00Z') });
+    await save('ad-hoc', { automationId: 'ephemeral-ai-fixture' });
+    await save('unknown-finish', { completedAt: null });
+    await save('legacy-finish', { completedAt: null, updatedAt: old });
+
+    await expect(runs.pruneWorkflowHistory(cutoff)).resolves.toEqual({
+      removedRuns: 4,
+    });
+    const remaining = [
+      'active',
+      'ad-hoc',
+      'cutoff',
+      'queued',
+      'recent',
+      'unknown-finish',
+    ];
+    expect(
+      (
+        await db.getRepository(AutomationRun).find({ order: { id: 'ASC' } })
+      ).map((run) => run.id),
+    ).toEqual(remaining);
+    expect(
+      (await events.find({ order: { runId: 'ASC' } })).map(
+        (event) => event.runId,
+      ),
+    ).toEqual(remaining);
+    const results: { runId: string }[] = await db.query(
+      'SELECT runId FROM automation_run_step_results ORDER BY runId',
+    );
+    expect(results.map((result) => result.runId)).toEqual(remaining);
+    await expect(runs.pruneWorkflowHistory(cutoff)).resolves.toEqual({
+      removedRuns: 0,
+    });
   } finally {
     await db.destroy();
   }

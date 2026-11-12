@@ -16,7 +16,8 @@ export type { ScheduleDraft }
 
 export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) => type === 'prune_images'
 
-export const actionNeedsRetentionDays = (type: ScheduledTaskActionType) => type === 'clean_runtime_logs'
+export const actionNeedsRetentionDays = (type: ScheduledTaskActionType) =>
+  type === 'clean_runtime_logs' || type === 'clean_workflow_history'
 
 export const defaultForm = (actionType: ScheduledTaskActionType): FormState => ({
   name: '',

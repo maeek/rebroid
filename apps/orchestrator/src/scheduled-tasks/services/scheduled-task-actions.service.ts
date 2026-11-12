@@ -13,6 +13,10 @@ import {
 } from '../../docker/contracts/docker-platform-prune.port';
 import { ScheduledTaskActionType } from '../entities/scheduled-task.entity';
 import { ScheduledTaskActionDto } from '../dto/scheduled-task.dto';
+import {
+  WORKFLOW_HISTORY_MAINTENANCE,
+  type WorkflowHistoryMaintenancePort,
+} from '../../automations/contracts/workflow-history-maintenance.port';
 
 type ScheduledTaskPayload = Record<string, unknown> | null | undefined;
 
@@ -66,6 +70,8 @@ export class ScheduledTaskActionsService {
     private readonly logs: AndroidAppsRuntimeLogMaintenancePort,
     @Inject(DOCKER_PLATFORM_PRUNE)
     private readonly prune: DockerPlatformPrunePort,
+    @Inject(WORKFLOW_HISTORY_MAINTENANCE)
+    private readonly workflowHistory: WorkflowHistoryMaintenancePort,
   ) {}
 
   listActions(): ScheduledTaskActionDto[] {
@@ -160,6 +166,21 @@ export class ScheduledTaskActionsService {
         }),
         run: (payload) =>
           this.logs.cleanup(Number(payload?.retentionDays ?? 30)),
+      },
+      {
+        type: ScheduledTaskActionType.CleanWorkflowHistory,
+        label: 'Clean workflow history',
+        description:
+          'Remove finished workflow runs and their step results and events after the retention period.',
+        normalizePayload: (payload) => ({
+          retentionDays: integerValue(payload, 'retentionDays', 30, 1, 3650),
+        }),
+        run: (payload) => {
+          const days = integerValue(payload, 'retentionDays', 30, 1, 3650);
+          return this.workflowHistory.pruneWorkflowHistory(
+            new Date(Date.now() - days * 86_400_000),
+          );
+        },
       },
     ];
   }

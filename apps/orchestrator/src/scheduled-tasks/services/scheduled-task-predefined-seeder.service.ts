@@ -46,6 +46,14 @@ const predefinedTasks: PredefinedScheduledTask[] = [
     payload: { retentionDays: 30 },
   },
   {
+    key: 'clean-workflow-history',
+    name: 'Workflow history retention',
+    enabled: true,
+    cronExpression: '30 2 * * *',
+    actionType: ScheduledTaskActionType.CleanWorkflowHistory,
+    payload: { retentionDays: 30 },
+  },
+  {
     key: 'prune-stopped-containers',
     name: 'Prune stopped containers',
     enabled: false,

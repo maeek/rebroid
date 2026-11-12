@@ -14,6 +14,7 @@ export enum ScheduledTaskActionType {
   PruneVolumes = 'prune_volumes',
   PruneAll = 'prune_all',
   CleanRuntimeLogs = 'clean_runtime_logs',
+  CleanWorkflowHistory = 'clean_workflow_history',
 }
 
 export enum ScheduledTaskLastStatus {

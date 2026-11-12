@@ -95,6 +95,15 @@ Open an OCR event to inspect the submitted image preview, request settings, resp
 preprocessing passes, and returned text boxes. In the full trace, **Steps → OCR events** filters the
 log to that execution of the step. Each event keeps a resized preview and up to 30 detections.
 
+## Workflow history retention
+
+In **Platform settings → Scheduler**, edit **Workflow history retention** to set how many days to
+keep finished workflow runs. The built-in task runs daily and defaults to 30 days from completion.
+For older finished runs without a completion timestamp, the task uses their last update.
+It removes expired runs together with their step results and events, including OCR previews and
+responses. The task covers saved workflow runs, including runs of workflows that were later
+deleted. Active runs and ad hoc AI conversations are outside its scope.
+
 ## Platform overview
 
 The administrator overview prioritizes app failures, current lifecycle operations, active workflow

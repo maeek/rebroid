@@ -39,6 +39,7 @@ export const scheduledTaskColumns = ({
           <span className='text-xs text-foreground-muted'>
             {task.kind === 'predefined' ? 'Built-in' : 'Custom'}
             {showAction ? ` · ${action}` : null}
+            {task.actionType === 'clean_workflow_history' ? ` · ${task.payload?.retentionDays ?? 30} days` : null}
           </span>
         </div>
       )

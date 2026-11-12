@@ -1,16 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Like, Repository } from 'typeorm';
-import type { AutomationStepResult } from '../runner/automation-runner.types';
+import { In, IsNull, LessThan, Like, Not, Repository } from 'typeorm';
+import { adHocAiAutomationIdPrefix } from '../contracts/automation-run-kind';
+import type { WorkflowHistoryMaintenancePort } from '../contracts/workflow-history-maintenance.port';
 import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { Automation } from '../entities/automation.entity';
+import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
   AutomationRun,
   AutomationRunStatus,
 } from '../entities/automation-run.entity';
 
+const adHocAiPattern = `${adHocAiAutomationIdPrefix}%`;
+const historyBatchSize = 250;
+
 @Injectable()
-export class AutomationRunsRepository {
+export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort {
   constructor(
     @InjectRepository(AutomationRun)
     private readonly runs: Repository<AutomationRun>,
@@ -183,7 +188,9 @@ export class AutomationRunsRepository {
         'workflow.id = run.automationId AND workflow.ownerUserId = run.ownerUserId',
       )
       .where({ ownerUserId, targetApplicationId })
-      .andWhere("run.automationId NOT LIKE 'ephemeral-ai-%'");
+      .andWhere('run.automationId NOT LIKE :adHocAiPattern', {
+        adHocAiPattern,
+      });
   }
 
   listAdHocAiForTarget(
@@ -195,7 +202,7 @@ export class AutomationRunsRepository {
       where: {
         ownerUserId,
         targetApplicationId,
-        automationId: Like('ephemeral-ai-%'),
+        automationId: Like(adHocAiPattern),
       },
       order: { createdAt: 'DESC' },
       take: Math.max(1, Math.min(Math.trunc(limit), 50)),
@@ -207,7 +214,7 @@ export class AutomationRunsRepository {
       where: {
         ownerUserId,
         targetApplicationId,
-        automationId: Like('ephemeral-ai-%'),
+        automationId: Like(adHocAiPattern),
       },
       order: { createdAt: 'DESC' },
     });
@@ -232,5 +239,47 @@ export class AutomationRunsRepository {
       return;
     }
     await this.queue.run(() => this.runs.delete({ ownerUserId, id: In(ids) }));
+  }
+
+  async pruneWorkflowHistory(cutoff: Date) {
+    let removedRuns = 0;
+    const finishedWorkflows = {
+      automationId: Not(Like(adHocAiPattern)),
+      status: In([
+        AutomationRunStatus.Success,
+        AutomationRunStatus.Failed,
+        AutomationRunStatus.Canceled,
+      ]),
+    };
+    while (true) {
+      const count = await this.queue.run(() =>
+        this.runs.manager.transaction(async (manager) => {
+          const runs = manager.getRepository(AutomationRun);
+          const expired = await runs.find({
+            select: { id: true },
+            where: [
+              { ...finishedWorkflows, completedAt: LessThan(cutoff) },
+              {
+                ...finishedWorkflows,
+                completedAt: IsNull(),
+                updatedAt: LessThan(cutoff),
+              },
+            ],
+            order: { completedAt: 'ASC', id: 'ASC' },
+            take: historyBatchSize,
+          });
+          if (!expired.length) return 0;
+          const ids = In(expired.map(({ id }) => id));
+          await manager
+            .getRepository(AutomationRunEvent)
+            .delete({ runId: ids });
+          // Step results cascade with the run. Events are removed in the same transaction.
+          await runs.delete({ id: ids });
+          return expired.length;
+        }),
+      );
+      removedRuns += count;
+      if (count < historyBatchSize) return { removedRuns };
+    }
   }
 }

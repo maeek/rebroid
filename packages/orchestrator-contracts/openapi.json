@@ -11333,7 +11333,8 @@
               "prune_networks",
               "prune_volumes",
               "prune_all",
-              "clean_runtime_logs"
+              "clean_runtime_logs",
+              "clean_workflow_history"
             ]
           },
           "label": {
@@ -11384,7 +11385,8 @@
               "prune_networks",
               "prune_volumes",
               "prune_all",
-              "clean_runtime_logs"
+              "clean_runtime_logs",
+              "clean_workflow_history"
             ]
           },
           "payload": {
@@ -11445,7 +11447,7 @@
           },
           "retentionDays": {
             "type": "number",
-            "description": "Only for clean_runtime_logs. Logs older than this many days are removed.",
+            "description": "Age in days for clean_runtime_logs and clean_workflow_history.",
             "example": 30,
             "minimum": 1,
             "maximum": 3650
@@ -11477,7 +11479,8 @@
               "prune_networks",
               "prune_volumes",
               "prune_all",
-              "clean_runtime_logs"
+              "clean_runtime_logs",
+              "clean_workflow_history"
             ]
           },
           "payload": {
@@ -11522,7 +11525,8 @@
               "prune_networks",
               "prune_volumes",
               "prune_all",
-              "clean_runtime_logs"
+              "clean_runtime_logs",
+              "clean_workflow_history"
             ]
           },
           "payload": {
