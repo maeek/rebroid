@@ -25,7 +25,7 @@ import {
   sanitizeAndroidApplicationForUser
 } from '../../safety'
 import { assertCanAccessApplication } from '../common/action-helpers'
-import { toCreateApplicationError } from './create-application-error'
+import { toApplicationNameError, toCreateApplicationError } from './create-application-error'
 
 const assertCanChangeResources = (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,
@@ -107,30 +107,37 @@ const assertCanConfigureCreateNetworkPolicy = (
   }
 }
 
-export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
-  assertCanChangeResources(user, input)
-  assertCanChangeSessionLimit(user, input)
-  assertCanChangeContainerArgs(user, input)
-  const quotas = await getEnforcedResourceQuota(user.quotas)
-  enforceResourceQuotas(input, quotas)
-  enforceSessionQuota(input, quotas)
-  const command = await orchestratorAppCatalogClient.updateApplication(id, input)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.update',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: command.name,
-    details: { fields: Object.keys(input) }
-  })
-  revalidateApplicationDetail(id)
-  const app = await orchestratorAppCatalogClient.getApplication(id)
-  return sanitizeAndroidApplicationForUser(app, user)
-}
+export const updateApplicationAction = async (id: string, input: UpdateAndroidApplicationInput) =>
+  runSafeAction(
+    async () => {
+      await assertCanAccessApplication(id)
+      const user = await getCurrentUserContext()
+      assertCanChangeResources(user, input)
+      assertCanChangeSessionLimit(user, input)
+      assertCanChangeContainerArgs(user, input)
+      const quotas = await getEnforcedResourceQuota(user.quotas)
+      enforceResourceQuotas(input, quotas)
+      enforceSessionQuota(input, quotas)
+      const command = await orchestratorAppCatalogClient.updateApplication(id, input).catch((error: unknown) => {
+        throw toApplicationNameError(error) ?? error
+      })
+      recordAuditEvent({
+        actorUserId: user.ownerUserId,
+        actorLabel: user.ownerUserId,
+        category: 'application',
+        action: 'application.update',
+        resourceType: 'application',
+        resourceId: id,
+        resourceLabel: command.name,
+        details: { fields: Object.keys(input) }
+      })
+      revalidateApplicationDetail(id)
+      revalidateApplicationList()
+      const app = await orchestratorAppCatalogClient.getApplication(id)
+      return sanitizeAndroidApplicationForUser(app, user)
+    },
+    { fallbackMessage: 'Could not save the app settings.' }
+  )
 
 // The former action returned a bare app. Use a distinct action name for the operation result.
 export const submitCreateApplicationAction = async (input: CreateApplicationActionInput) =>

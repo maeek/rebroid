@@ -15,10 +15,27 @@ const validationMessages = {
   cpuLimitCpus: 'Enter a CPU limit from 0.1 to 128 cores.'
 }
 
+export const toApplicationNameError = (error: unknown) => {
+  if (!(error instanceof OrchestratorRequestError)) return undefined
+  const { status, details } = error
+  if (status === 409 && details?.code === 'application_name_taken') {
+    const message = 'This owner already has an app with that name. Enter a different name.'
+    return new PublicActionError(message, { code: 'conflict', status, fieldErrors: { name: [message] } })
+  }
+  if (status === 400 && details?.fields?.includes('name')) {
+    return new PublicActionError(validationMessages.name, {
+      code: 'validation',
+      status,
+      fieldErrors: { name: [validationMessages.name] }
+    })
+  }
+}
+
 export const toCreateApplicationError = (error: unknown): unknown => {
   if (!(error instanceof OrchestratorRequestError)) return error
 
   const { status, details } = error
+  if (status === 409 && details?.code === 'application_name_taken') return toApplicationNameError(error)
   if (status === 503 && details?.code === 'container_engine_unavailable') {
     return new PublicActionError(
       'The container engine is unavailable. Ask a platform administrator to check the Docker or Podman connection, then try again.',

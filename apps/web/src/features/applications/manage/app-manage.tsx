@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconDeviceFloppy, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -15,8 +15,11 @@ import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/ap
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -37,6 +40,8 @@ export const AppManage = () => {
     canViewAuditActivity
   } = useApplicationViewerApp()
   const [isSaving, setIsSaving] = useState(false)
+  const [nameError, setNameError] = useState<string>()
+  const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { displayApp, draft, formValues, markSaved, updateForm, updateIcon } = useAppManageDraft(currentApp)
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
@@ -50,10 +55,15 @@ export const AppManage = () => {
     canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
   const resourceLimits = useResourceLimitBounds(canChangeResources)
 
+  useEffect(() => {
+    if (nameError) nameInput.current?.focus()
+  }, [nameError])
+
   const handleSave = async () => {
     setIsSaving(true)
+    setNameError(undefined)
     try {
-      const updated = await updateApplicationAction(
+      const result = await updateApplicationAction(
         currentApp.id,
         buildAppManageUpdateInput({
           canChangeContainerArgs,
@@ -62,15 +72,20 @@ export const AppManage = () => {
           draft
         })
       )
-      const nextApp = mapAndroidApplicationToAppDefinition(updated)
+      if (!result.ok && result.error.fieldErrors?.name) {
+        setNameError(result.error.fieldErrors.name.join(' '))
+        return
+      }
+      const nextApp = mapAndroidApplicationToAppDefinition(unwrapActionResult(result))
       markSaved()
       setApp(current => mergeAppPreservingDraftAssets(nextApp, current))
+      if (nextApp.name !== currentApp.name) notifyRecentAppsUpdated()
       toast({ title: 'App saved', variant: 'success' })
       router.refresh()
     } catch (error) {
       toast({
         title: 'Could not save app',
-        description: error instanceof Error ? error.message : 'Unknown error',
+        description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
@@ -154,7 +169,12 @@ export const AppManage = () => {
                 onIconChange={updateIcon}
               />
             }
-            onAppNameChange={value => updateForm({ name: value })}
+            nameError={nameError}
+            nameInputRef={nameInput}
+            onAppNameChange={value => {
+              setNameError(undefined)
+              updateForm({ name: value })
+            }}
           />
           <Visible when={showRuntimeSection}>
             <AppManageRuntimeSettings

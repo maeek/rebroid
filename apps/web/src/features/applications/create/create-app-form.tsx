@@ -81,11 +81,17 @@ export const CreateAppForm = ({
   const [autoExtractIcon, setAutoExtractIcon] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [destinationDraft, setDestinationDraft] = useState('')
-  const [failure, setFailure] = useState<{ message: string; requestId?: string; hasFieldErrors?: boolean } | null>(null)
+  const [failure, setFailure] = useState<{
+    message: string
+    requestId?: string
+    hasFieldErrors?: boolean
+    focusName?: boolean
+  } | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const submitting = useRef(false)
   const form = useRef<HTMLFormElement>(null)
   const failureSummary = useRef<HTMLDivElement>(null)
+  const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const extractedIcon = uploadedApk?.extractedIconDataUrl ?? null
   const iconPreview = manualIconPreview ?? (autoExtractIcon ? extractedIcon : null)
@@ -119,7 +125,8 @@ export const CreateAppForm = ({
   }, [initialContainerImage, settings.defaultInactivityTimeoutSeconds, settings.defaultContainerImage])
 
   useEffect(() => {
-    if (failure) failureSummary.current?.focus()
+    if (failure?.focusName) nameInput.current?.focus()
+    else if (failure) failureSummary.current?.focus()
   }, [failure])
 
   const clearFieldErrors = (...fields: string[]) => {
@@ -268,7 +275,7 @@ export const CreateAppForm = ({
       if (!result.ok) {
         topLoader.done(true)
         const errors = result.error.fieldErrors ?? {}
-        setFailure({ ...result.error, hasFieldErrors: Object.keys(errors).length > 0 })
+        setFailure({ ...result.error, hasFieldErrors: Object.keys(errors).length > 0, focusName: Boolean(errors.name) })
         setFieldErrors(errors)
         return
       }
@@ -380,6 +387,7 @@ export const CreateAppForm = ({
                 uploadedApk={uploadedApk}
                 isUploadingApk={isUploadingApk}
                 nameError={fieldError('name')}
+                nameInputRef={nameInput}
                 apkError={fieldError('uploadedApkId')}
                 onApkSelect={file => void handleApkSelect(file)}
                 iconSlot={

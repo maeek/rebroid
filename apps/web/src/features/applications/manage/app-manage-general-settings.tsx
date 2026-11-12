@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode, type Ref } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
@@ -16,6 +16,8 @@ type AppManageGeneralSettingsProps = {
   values: AppFormValues
   initialSettings: OrchestratorUiSettings
   iconSlot?: ReactNode
+  nameError?: string
+  nameInputRef?: Ref<HTMLInputElement>
   onAppNameChange: (value: string) => void
 }
 
@@ -25,6 +27,8 @@ export const AppManageGeneralSettings = ({
   values,
   initialSettings,
   iconSlot,
+  nameError,
+  nameInputRef,
   onAppNameChange
 }: AppManageGeneralSettingsProps) => {
   const [isUploadingApk, setIsUploadingApk] = useState(false)
@@ -58,6 +62,8 @@ export const AppManageGeneralSettings = ({
     <AppIdentitySection
       valuesName={values.name}
       nameLabel='Name'
+      nameError={nameError}
+      nameInputRef={nameInputRef}
       nameDescription='Display name shown in the UI for this app. Minimum 2 characters.'
       onNameChange={onAppNameChange}
       uploadedApkLabel={app?.apkOriginalName ? `Current APK: ${app.apkOriginalName}` : 'No APK uploaded'}

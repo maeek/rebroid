@@ -32,9 +32,10 @@ export class AndroidApplicationsRepository
     return this.applications.create(values);
   }
 
-  async save(app: AndroidApplication) {
+  async save(app: AndroidApplication, updateName = false) {
     // Only the policy command can update settings and advance their revision.
     const changes: Partial<AndroidApplication> = { ...app };
+    if (!updateName) delete changes.name;
     delete changes.networkPolicyEnabled;
     delete changes.networkPolicyAllowCidrs;
     delete changes.networkPolicyRevision;
@@ -171,6 +172,13 @@ export class AndroidApplicationsRepository
 
   findById(id: string) {
     return this.applications.findOneBy({ id });
+  }
+
+  findOwnerAppNames(ownerUserId: string | null) {
+    return this.applications.find({
+      select: { id: true, name: true },
+      where: { ownerUserId: ownerUserId ?? IsNull() },
+    });
   }
 
   findByStatus(status: AndroidApplicationStatus) {

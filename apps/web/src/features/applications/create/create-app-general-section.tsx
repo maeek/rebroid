@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
 import type { AppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
@@ -11,6 +11,7 @@ type AppFormGeneralSectionProps = {
   isUploadingApk: boolean
   iconSlot?: ReactNode
   nameError?: string
+  nameInputRef?: Ref<HTMLInputElement>
   apkError?: string
   onApkSelect: (file: File | null) => void
 }
@@ -23,6 +24,7 @@ export const AppFormGeneralSection = ({
   isUploadingApk,
   iconSlot,
   nameError,
+  nameInputRef,
   apkError,
   onApkSelect
 }: AppFormGeneralSectionProps) => {
@@ -39,6 +41,7 @@ export const AppFormGeneralSection = ({
       onApkSelect={file => onApkSelect(file)}
       iconSlot={iconSlot}
       nameError={nameError}
+      nameInputRef={nameInputRef}
       apkError={apkError}
       surface='plain'
     />

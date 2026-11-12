@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { resolveContainerImage } from '../../../common/container-image-reference';
 import { RedroidRuntimeConfigService } from '../../../config/redroid-runtime-config.service';
@@ -33,6 +38,11 @@ import {
   assertApplicationImageAccess,
   type ApplicationImageAccess,
 } from '../utils/application-image-access';
+import {
+  assertAppNameAvailable,
+  availableCloneName,
+  appNameKey,
+} from '../utils/application-names';
 
 type ApplicationSettings = Awaited<ReturnType<SettingsService['getSettings']>>;
 
@@ -45,6 +55,11 @@ const unavailableApk = () =>
 
 @Injectable()
 export class AndroidAppsConfigurationService {
+  private readonly ownerConfiguration = new Map<
+    string | null,
+    Promise<unknown>
+  >();
+
   constructor(
     private readonly applications: AndroidApplicationsRepository,
     @Inject(APK_CATALOG) private readonly apks: ApkCatalogPort,
@@ -96,13 +111,18 @@ export class AndroidAppsConfigurationService {
       imageAccess,
       this.redroidConfig.privileged,
     );
-    return this.provision(
-      dto,
-      settings,
-      containerImage,
-      uploadedApk,
-      maxOpenApps,
-    );
+    const ownerUserId = dto.ownerUserId?.trim() || null;
+    const name = dto.name.trim();
+    return this.withOwnerConfiguration(ownerUserId, async () => {
+      assertAppNameAvailable(name, await this.ownerNameKeys(ownerUserId));
+      return this.provision(
+        { ...dto, name },
+        settings,
+        containerImage,
+        uploadedApk,
+        maxOpenApps,
+      );
+    });
   }
 
   private async provision(
@@ -165,28 +185,54 @@ export class AndroidAppsConfigurationService {
       this.redroidConfig.privileged,
     );
     const ownerUserId = dto.ownerUserId?.trim() || null;
-    const uploadedApk = source.uploadedApkId
-      ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
-      : null;
-
-    return this.provision(
-      {
-        name: dto.name?.trim() || source.name,
-        ownerUserId: ownerUserId ?? undefined,
-        inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
-        memoryLimitMb: source.memoryLimitMb ?? undefined,
-        cpuLimitCpus: source.cpuLimitCpus ?? undefined,
-        containerArgs: source.containerArgs ?? undefined,
-      },
-      settings,
-      containerImage,
-      uploadedApk,
-      maxOpenApps,
-    );
+    return this.withOwnerConfiguration(ownerUserId, async () => {
+      const names = await this.ownerNameKeys(ownerUserId);
+      const name = dto.name?.trim() ?? availableCloneName(source.name, names);
+      assertAppNameAvailable(name, names);
+      const uploadedApk = source.uploadedApkId
+        ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
+        : null;
+      return this.provision(
+        {
+          name,
+          ownerUserId: ownerUserId ?? undefined,
+          inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
+          memoryLimitMb: source.memoryLimitMb ?? undefined,
+          cpuLimitCpus: source.cpuLimitCpus ?? undefined,
+          containerArgs: source.containerArgs ?? undefined,
+        },
+        settings,
+        containerImage,
+        uploadedApk,
+        maxOpenApps,
+      );
+    });
   }
 
   async update(id: string, dto: UpdateAndroidApplicationDto) {
-    const app = await this.reconciler.reconcileById(id);
+    const { ownerUserId } = await this.queries.getStored(id);
+    return this.withOwnerConfiguration(ownerUserId, () =>
+      this.updateConfiguration(id, dto),
+    );
+  }
+
+  private async updateConfiguration(
+    id: string,
+    dto: UpdateAndroidApplicationDto,
+  ) {
+    const stored = await this.queries.getStored(id);
+    const name = dto.name?.trim();
+    const renamed = name !== undefined && name !== stored.name;
+    if (renamed) {
+      if (name.length < 2) throw new BadRequestException({ fields: ['name'] });
+      if (appNameKey(name) !== appNameKey(stored.name)) {
+        assertAppNameAvailable(
+          name,
+          await this.ownerNameKeys(stored.ownerUserId, id),
+        );
+      }
+    }
+    const app = await this.reconciler.reconcileOne(stored);
     await this.assertRuntimeNotRecreating(app);
     const containerArgs =
       dto.containerArgs === undefined
@@ -201,7 +247,7 @@ export class AndroidAppsConfigurationService {
       { ...dto, containerArgs },
     );
 
-    if (dto.name !== undefined) app.name = dto.name;
+    if (renamed) app.name = name;
     if (dto.inactivityTimeoutSeconds !== undefined) {
       app.inactivityTimeoutSeconds = dto.inactivityTimeoutSeconds;
     }
@@ -211,7 +257,33 @@ export class AndroidAppsConfigurationService {
     if (recreate) {
       await this.runtimePreparation.markContainerForRecreation(app);
     }
-    return this.writer.saveAndDecorate(app);
+    return this.writer.saveAndDecorate(app, renamed);
+  }
+
+  private async ownerNameKeys(ownerUserId: string | null, exceptId?: string) {
+    const apps = await this.applications.findOwnerAppNames(ownerUserId);
+    return new Set(
+      apps
+        .filter((app) => app.id !== exceptId)
+        .map((app) => appNameKey(app.name)),
+    );
+  }
+
+  private async withOwnerConfiguration<T>(
+    ownerUserId: string | null,
+    operation: () => Promise<T>,
+  ) {
+    const previous =
+      this.ownerConfiguration.get(ownerUserId) ?? Promise.resolve();
+    const current = previous.catch(() => undefined).then(operation);
+    this.ownerConfiguration.set(ownerUserId, current);
+    try {
+      return await current;
+    } finally {
+      if (this.ownerConfiguration.get(ownerUserId) === current) {
+        this.ownerConfiguration.delete(ownerUserId);
+      }
+    }
   }
 
   async switchProfile(id: string, dto: SwitchApplicationProfileDto) {

@@ -31,8 +31,8 @@ export class AndroidAppsStateWriter {
     return this.applications.save(app);
   }
 
-  async saveAndDecorate(app: AndroidApplication) {
-    const saved = await this.applications.save(app);
+  async saveAndDecorate(app: AndroidApplication, updateName = false) {
+    const saved = await this.applications.save(app, updateName);
     return this.status.decorateApplication(saved);
   }
 

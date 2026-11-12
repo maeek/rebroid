@@ -33,6 +33,8 @@ describe('resolved application image authorization', () => {
     jest.clearAllMocks();
     Object.assign(service, {
       features: { assertEnabled: jest.fn() },
+      ownerConfiguration: new Map(),
+      applications: { findOwnerAppNames: jest.fn().mockResolvedValue([]) },
       settings: {
         getSettings: jest.fn().mockResolvedValue({
           defaultContainerImage: 'redroid/redroid:latest',
@@ -90,5 +92,71 @@ describe('resolved application image authorization', () => {
     ).rejects.toMatchObject({ status: 403 });
     expect(cloneForOwner).not.toHaveBeenCalled();
     expect(resolveKind).not.toHaveBeenCalled();
+  });
+});
+
+describe('owner-scoped application names', () => {
+  it('serializes same-owner creates and rejects a conflicting rename before runtime preparation', async () => {
+    const service = Object.create(
+      AndroidAppsConfigurationService.prototype,
+    ) as AndroidAppsConfigurationService;
+    const apps: Array<{ id: string; name: string; ownerUserId: string }> = [
+      { id: 'original', name: 'Other app', ownerUserId: 'owner' },
+    ];
+    const reconcileOne = jest.fn();
+    Object.assign(service, {
+      ownerConfiguration: new Map(),
+      applications: {
+        findOwnerAppNames: async (owner: string) =>
+          apps.filter((app) => app.ownerUserId === owner),
+      },
+      settings: {
+        getSettings: async () => ({
+          defaultContainerImage: 'redroid/redroid:latest',
+        }),
+      },
+      redroidConfig: { privileged: true },
+      queries: {
+        getStored: async (id: string) => apps.find((app) => app.id === id),
+      },
+      reconciler: { reconcileOne },
+      provision: async (input: { name: string; ownerUserId: string }) => {
+        const app = { ...input, id: String(apps.length) };
+        apps.push(app);
+        return app;
+      },
+    });
+
+    const result = await Promise.allSettled([
+      service.create({
+        name: ' Test app ',
+        ownerUserId: 'owner',
+        networkPolicyEnabled: false,
+      }),
+      service.create({
+        name: 'TEST APP',
+        ownerUserId: 'owner',
+        networkPolicyEnabled: false,
+      }),
+      service.create({
+        name: 'Test app',
+        ownerUserId: 'another-owner',
+        networkPolicyEnabled: false,
+      }),
+    ]);
+    expect(result).toMatchObject([
+      { status: 'fulfilled', value: { name: 'Test app' } },
+      {
+        status: 'rejected',
+        reason: { response: { code: 'application_name_taken' } },
+      },
+      { status: 'fulfilled', value: { name: 'Test app' } },
+    ]);
+    await expect(
+      service.update('original', { name: ' test app ' }),
+    ).rejects.toMatchObject({
+      response: { code: 'application_name_taken', fields: ['name'] },
+    });
+    expect(reconcileOne).not.toHaveBeenCalled();
   });
 });

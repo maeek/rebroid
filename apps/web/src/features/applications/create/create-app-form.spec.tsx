@@ -171,6 +171,22 @@ describe('Create app failure feedback', () => {
     expect(ram).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('focuses and marks the Name input when the owner already has that app name', async () => {
+    const message = 'This owner already has an app with that name. Enter a different name.'
+    vi.mocked(submitCreateApplicationAction).mockResolvedValueOnce(
+      actionError({ message, code: 'conflict', fieldErrors: { name: [message] } })
+    )
+    renderForm()
+    const name = screen.getByRole('textbox', { name: /Name/ })
+    fireEvent.change(name, { target: { value: 'Test app' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
+
+    await waitFor(() => expect(name).toHaveFocus())
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(name).toHaveValue('Test app')
+    expect(push).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['CPU limit', '16', /Enter a value of 8 or less/],
     ['RAM limit', '32768', /Enter a value of 16384 or less/],
