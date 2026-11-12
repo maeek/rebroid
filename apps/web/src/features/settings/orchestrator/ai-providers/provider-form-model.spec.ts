@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createProviderModelRows,
+  createProviderDraft,
   normalizeProviderForm,
   setDefaultProviderModelAt,
   updateProviderModelAt,
@@ -29,6 +30,20 @@ const provider: ProviderFormState = {
 }
 
 describe('AI provider form model', () => {
+  it('starts OpenAI with an available planning preset and generates unused provider IDs', () => {
+    expect(createProviderDraft('openai', ['openai', 'openai-2'])).toMatchObject({
+      id: 'openai-3',
+      kind: 'openai',
+      label: 'OpenAI',
+      enabled: true,
+      models: [{ id: 'gpt-5.6-luna', defaultFor: ['controller', 'planner'], enabled: true }]
+    })
+    expect(createProviderDraft('ollama')).toMatchObject({
+      protocol: 'ollama-native-chat',
+      baseUrl: 'http://localhost:11434',
+      models: []
+    })
+  })
   it('normalizes editable provider values', () => {
     expect(normalizeProviderForm(provider)).toMatchObject({
       id: 'local',

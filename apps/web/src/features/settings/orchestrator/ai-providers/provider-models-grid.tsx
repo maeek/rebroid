@@ -143,7 +143,7 @@ export const ProviderModelsGrid = ({
     <Section
       surface='plain'
       title='Models'
-      description='Choose a model name to manage its purposes and generation settings. Enable, disable, and remove changes apply when you save.'
+      description='Choose a model to edit its name or purposes.'
       contentClassName='gap-4'
       actions={
         <Button
@@ -258,6 +258,7 @@ export const ProviderModelsGrid = ({
       </DataGridWorkspace>
       <ProviderModelSettingsDialog
         model={settingsRow}
+        provider={initialProvider}
         onClose={() => setSettingsRowId(null)}
         onChange={onUpdateModel}
       />

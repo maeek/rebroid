@@ -20,6 +20,8 @@ export interface AutomationsListPageProps {
 export interface AutomationEditorPageProps {
   initialAutomation?: Automation | null
   initialCommands: AutomationCommand[]
+  canUseAi: boolean
+  canManageAi: boolean
 }
 
 export interface AutomationTriggersPageProps {

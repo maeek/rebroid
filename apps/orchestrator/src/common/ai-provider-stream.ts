@@ -60,7 +60,7 @@ interface PendingToolCall {
   };
 }
 
-interface ChatCompletionStreamResult {
+export interface ChatCompletionStreamResult {
   message: ChatMessage;
   content: string;
   toolCalls: ChatToolCall[];
@@ -244,6 +244,16 @@ export async function* readProviderStreamFrames(
   } finally {
     void reader.cancel().catch(() => undefined);
     reader.releaseLock();
+  }
+}
+
+export async function* readProviderSseEvents(body: ReadableStream<Uint8Array>) {
+  for await (const frame of readProviderStreamFrames(body, 'openai-sse')) {
+    const data = eventData(frame);
+    if (data === '[DONE]') return;
+    if (!data) continue;
+    const event = parseJsonObject(data);
+    if (event) yield event;
   }
 }
 

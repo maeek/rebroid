@@ -13,7 +13,13 @@ import {
 import {
   consumeChatCompletionStream,
   providerStreamFormat,
+  type ChatCompletionStreamResult,
 } from '../../common/ai-provider-stream';
+import {
+  consumeOpenAiResponsesStream,
+  withOpenAiResponsesStream,
+  type OpenAiResponsesHistory,
+} from '../../common/openai-responses';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -45,6 +51,7 @@ export class AutomationAiChatClientService {
     abortSignal,
     onContentDelta,
     responseFormat,
+    responsesHistory,
     role = 'controller',
   }: {
     provider: AutomationAiProvider;
@@ -55,35 +62,55 @@ export class AutomationAiChatClientService {
     abortSignal?: AbortSignal;
     onContentDelta?: (delta: string) => Promise<void>;
     responseFormat?: ChatResponseFormat;
+    responsesHistory?: OpenAiResponsesHistory;
     role?: 'controller' | 'planner';
   }): Promise<AutomationAiChatResponse> {
     const finishMetrics = this.metrics.beginAiProviderRequest('chat', role);
     try {
-      const result = await withProviderChatResponse(
-        { provider, model, messages, responseFormat, tools, stream: true },
-        { deadline, abortSignal },
-        async (response) => {
-          if (!response.ok) {
-            const detail = await this.readProviderError(response);
-            this.logger.warn(
-              `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
-            );
-            throw new BadRequestException(
-              `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
-            );
-          }
-          if (!response.body) {
-            throw new BadRequestException(
-              'AI provider did not return a streaming response body.',
-            );
-          }
-          return this.consumeStream(
-            response.body,
-            providerStreamFormat(provider),
-            onContentDelta,
+      const consume = async (response: Response) => {
+        if (!response.ok) {
+          const detail = await this.readProviderError(response);
+          this.logger.warn(
+            `AI provider request failed for provider=${provider.id} model=${model.id}: ${response.status} ${response.statusText}`,
           );
-        },
-      );
+          throw new BadRequestException(
+            `AI provider request failed: ${response.status} ${response.statusText}${detail ? ` - ${detail}` : ''}`,
+          );
+        }
+        if (!response.body) {
+          throw new BadRequestException(
+            'AI provider did not return a streaming response body.',
+          );
+        }
+        const body = response.body;
+        return this.consumeStream(onContentDelta, (onDelta) =>
+          responsesHistory
+            ? consumeOpenAiResponsesStream(body, responsesHistory, onDelta)
+            : consumeChatCompletionStream({
+                body,
+                format: providerStreamFormat(provider),
+                onUpdate: ({ contentDelta }) => onDelta(contentDelta),
+              }),
+        );
+      };
+      const options = { deadline, abortSignal };
+      const result = await (responsesHistory
+        ? withOpenAiResponsesStream(
+            {
+              provider,
+              model: model.id,
+              messages,
+              tools,
+              history: responsesHistory,
+            },
+            options,
+            consume,
+          )
+        : withProviderChatResponse(
+            { provider, model, messages, responseFormat, tools, stream: true },
+            options,
+            consume,
+          ));
       finishMetrics('success');
       return {
         choices: [{ message: result.message }],
@@ -92,7 +119,9 @@ export class AutomationAiChatClientService {
           finishReason: result.finishReason ?? null,
           usage: result.usage ?? null,
           timings: result.timings ?? null,
-          protocol: providerProtocol(provider),
+          protocol: responsesHistory
+            ? 'openai-responses'
+            : providerProtocol(provider),
         },
       };
     } catch (error) {
@@ -119,9 +148,10 @@ export class AutomationAiChatClientService {
   }
 
   private async consumeStream(
-    body: ReadableStream<Uint8Array>,
-    format: 'openai-sse' | 'ollama-ndjson',
-    onContentDelta?: (delta: string) => Promise<void>,
+    onContentDelta: ((delta: string) => Promise<void>) | undefined,
+    consume: (
+      onDelta: (delta: string) => Promise<void>,
+    ) => Promise<ChatCompletionStreamResult>,
   ) {
     let pendingDelta = '';
     let lastFlushAt = Date.now();
@@ -136,14 +166,10 @@ export class AutomationAiChatClientService {
       await onContentDelta?.(sanitizeAiText(delta, 2_000));
     };
 
-    const result = await consumeChatCompletionStream({
-      body,
-      format,
-      onUpdate: async ({ contentDelta }) => {
-        if (!contentDelta) return;
-        pendingDelta += contentDelta;
-        await flush(false);
-      },
+    const result = await consume(async (contentDelta) => {
+      if (!contentDelta) return;
+      pendingDelta += contentDelta;
+      await flush(false);
     });
     await flush(true);
     return result;
@@ -165,6 +191,7 @@ export interface AutomationAiChatResponse {
       predictedMs?: number;
       cacheTokens?: number;
     } | null;
-    protocol: 'openai-chat-completions' | 'ollama-native-chat';
+    protocol:
+      'openai-chat-completions' | 'openai-responses' | 'ollama-native-chat';
   };
 }

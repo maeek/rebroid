@@ -2,168 +2,179 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { ProviderFormState } from './provider-form-model'
+import { providerConnectionDefaults, type ProviderFormState } from './provider-form-model'
 
 export const ProviderConnectionFields = ({
   provider,
   mode,
-  onChange
+  onChange,
+  onKindChange
 }: {
   provider: ProviderFormState
   mode: 'create' | 'edit'
   onChange: (patch: Partial<ProviderFormState>) => void
+  onKindChange?: (kind: ProviderFormState['kind']) => void
 }) => {
   const idPrefix = `provider-${mode}`
+  const openAi = provider.kind === 'openai'
+  const defaults = providerConnectionDefaults[provider.kind]
+
+  const changeKind = (kind: ProviderFormState['kind']) => {
+    if (onKindChange) {
+      onKindChange(kind)
+      return
+    }
+    const next = providerConnectionDefaults[kind]
+    onChange({
+      kind,
+      protocol: next.protocol,
+      serverFlavor: next.serverFlavor
+    })
+  }
 
   return (
-    <div className='grid gap-6'>
-      <div className='grid gap-x-form-column gap-y-6 sm:grid-cols-2'>
-        <FormField
-          controlId={`${idPrefix}-label`}
-          label='Name'
-          description='Display name used in model selectors and automation editors.'
-          layout='vertical'
-        >
-          <Input
-            value={provider.label}
-            placeholder='Local Ollama'
-            onChange={event => onChange({ label: event.target.value })}
-          />
-        </FormField>
-        <FormField
-          controlId={`${idPrefix}-id`}
-          label='Provider ID'
-          description='Stable identifier used by automation steps and model selectors.'
-          layout='vertical'
-        >
-          <Input
-            value={provider.id}
-            placeholder='local-ollama'
-            onChange={event => onChange({ id: event.target.value })}
-          />
-        </FormField>
-      </div>
+    <div className='grid gap-5'>
       <FormField
         controlId={`${idPrefix}-kind`}
-        label='Provider family'
-        description={
-          mode === 'edit'
-            ? 'Used for defaults, downloads, and display. Transport is configured separately.'
-            : 'Used for defaults, downloads, and display.'
-        }
+        label='Provider'
         layout='vertical'
       >
         <Select
           value={provider.kind}
-          onValueChange={kind => onChange({ kind })}
+          onValueChange={changeKind}
         >
           <SelectTrigger
             id={`${idPrefix}-kind`}
             className='w-full'
-            aria-describedby={`${idPrefix}-kind-description`}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='ollama'>Ollama</SelectItem>
             <SelectItem value='openai'>OpenAI</SelectItem>
-            <SelectItem value='openai-compatible'>OpenAI-compatible</SelectItem>
+            <SelectItem value='ollama'>Ollama</SelectItem>
+            <SelectItem value='openai-compatible'>OpenAI-compatible server</SelectItem>
           </SelectContent>
         </Select>
-      </FormField>
-      <FormField
-        controlId={`${idPrefix}-base-url`}
-        label='Base URL'
-        description='Use the provider root URL. OpenAI-compatible providers should include their /v1 endpoint.'
-        layout='vertical'
-      >
-        <Input
-          value={provider.baseUrl}
-          placeholder='http://localhost:11434'
-          onChange={event => onChange({ baseUrl: event.target.value })}
-        />
       </FormField>
       <FormField
         controlId={`${idPrefix}-api-key`}
         label='API key'
         description={
-          mode === 'edit'
-            ? 'Stored as a secret. Leave the masked value unchanged to keep the existing key.'
-            : 'Stored as a secret. Leave blank for local providers.'
+          mode === 'edit' && provider.apiKey
+            ? 'Replace the masked value to change your saved key.'
+            : openAi
+              ? 'Use an OpenAI API key from the project that will run your workflows.'
+              : 'Optional. Enter a key if your server requires one.'
         }
         layout='vertical'
       >
         <Input
+          name='apiKey'
+          autoComplete='off'
+          spellCheck={false}
           value={provider.apiKey ?? ''}
-          placeholder='Leave blank for local providers'
           type='password'
           onChange={event => onChange({ apiKey: event.target.value || null })}
         />
       </FormField>
+      <FormField
+        controlId={`${idPrefix}-base-url`}
+        label='Base URL'
+        description={
+          openAi ? undefined : 'Use an address reachable by the orchestrator. Compatible servers usually end in /v1.'
+        }
+        layout='vertical'
+      >
+        <Input
+          name='baseUrl'
+          type='url'
+          spellCheck={false}
+          value={provider.baseUrl}
+          placeholder={defaults.baseUrl || 'https://your-server.example/v1'}
+          onChange={event => onChange({ baseUrl: event.target.value })}
+        />
+      </FormField>
       <Section
         surface='plain'
-        title='Protocol and server settings'
-        description='Configure compatibility with the server hosting your models.'
+        title='Advanced connection settings'
+        headingSpacing='compact'
         collapsible
       >
-        <div className='grid gap-x-form-column gap-y-6 sm:grid-cols-2'>
+        <div className='grid gap-x-form-column gap-y-5 sm:grid-cols-2'>
           <FormField
-            controlId={`${idPrefix}-protocol`}
-            label='Transport protocol'
-            description={
-              mode === 'edit'
-                ? 'Use OpenAI chat completions for llama.cpp, Lemonade, OpenAI, and OpenAI-compatible servers.'
-                : 'Use OpenAI chat completions for llama.cpp, Lemonade, and compatible servers.'
-            }
+            controlId={`${idPrefix}-label`}
+            label='Display name'
             layout='vertical'
           >
-            <Select
-              value={provider.protocol ?? 'openai-chat-completions'}
-              onValueChange={protocol => onChange({ protocol })}
-            >
-              <SelectTrigger
-                id={`${idPrefix}-protocol`}
-                className='w-full'
-                aria-describedby={`${idPrefix}-protocol-description`}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='openai-chat-completions'>OpenAI chat completions</SelectItem>
-                <SelectItem value='ollama-native-chat'>Ollama native chat</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              name='label'
+              value={provider.label}
+              onChange={event => onChange({ label: event.target.value })}
+            />
           </FormField>
           <FormField
-            controlId={`${idPrefix}-flavor`}
-            label='Server flavor'
-            description={
-              mode === 'edit'
-                ? 'Auto-detection distinguishes Lemonade from its Ollama compatibility endpoints.'
-                : 'Auto-detection checks Lemonade before Ollama compatibility endpoints.'
-            }
+            controlId={`${idPrefix}-id`}
+            label='Provider ID'
+            description={mode === 'edit' ? 'Used by existing workflows.' : 'Stable identifier used by workflows.'}
             layout='vertical'
           >
-            <Select
-              value={provider.serverFlavor ?? 'auto'}
-              onValueChange={serverFlavor => onChange({ serverFlavor })}
-            >
-              <SelectTrigger
-                id={`${idPrefix}-flavor`}
-                className='w-full'
-                aria-describedby={`${idPrefix}-flavor-description`}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value='auto'>Auto-detect</SelectItem>
-                <SelectItem value='lemonade'>Lemonade</SelectItem>
-                <SelectItem value='llama-cpp'>llama.cpp</SelectItem>
-                <SelectItem value='ollama'>Ollama</SelectItem>
-                <SelectItem value='openai'>OpenAI</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              name='providerId'
+              spellCheck={false}
+              value={provider.id}
+              readOnly={mode === 'edit'}
+              onChange={event => onChange({ id: event.target.value })}
+            />
           </FormField>
+          {!openAi ? (
+            <>
+              <FormField
+                controlId={`${idPrefix}-protocol`}
+                label='Transport protocol'
+                layout='vertical'
+              >
+                <Select
+                  value={provider.protocol ?? defaults.protocol}
+                  onValueChange={protocol => onChange({ protocol })}
+                >
+                  <SelectTrigger
+                    id={`${idPrefix}-protocol`}
+                    className='w-full'
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='openai-chat-completions'>OpenAI Chat Completions</SelectItem>
+                    <SelectItem value='ollama-native-chat'>Ollama native chat</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField
+                controlId={`${idPrefix}-flavor`}
+                label='Server flavor'
+                layout='vertical'
+              >
+                <Select
+                  value={provider.serverFlavor ?? defaults.serverFlavor}
+                  onValueChange={serverFlavor => onChange({ serverFlavor })}
+                >
+                  <SelectTrigger
+                    id={`${idPrefix}-flavor`}
+                    className='w-full'
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='auto'>Auto-detect</SelectItem>
+                    <SelectItem value='lemonade'>Lemonade</SelectItem>
+                    <SelectItem value='llama-cpp'>llama.cpp</SelectItem>
+                    <SelectItem value='ollama'>Ollama</SelectItem>
+                    <SelectItem value='openai'>OpenAI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </>
+          ) : null}
         </div>
       </Section>
     </div>

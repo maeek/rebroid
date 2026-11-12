@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { toast } from '@/hooks/use-toast'
 import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-automation-draft-stream'
 import { definitionToForm } from './builder-utils'
 import { useAiDraftModelSelection } from './use-ai-draft-model-selection'
@@ -32,12 +31,14 @@ export const useAutomationAiDraft = ({
   setBusy,
   setYamlError,
   setYamlValid,
+  canUseAi,
   workflowId
 }: {
   commitEditorChange: (update: () => EditorSnapshot) => void
   setBusy: Dispatch<SetStateAction<boolean>>
   setYamlError: Dispatch<SetStateAction<string | null>>
   setYamlValid: Dispatch<SetStateAction<boolean>>
+  canUseAi: boolean
   workflowId: string | null
 }) => {
   const [aiDraftOpen, setAiDraftOpenState] = useState(false)
@@ -45,6 +46,7 @@ export const useAutomationAiDraft = ({
   const [aiDraftStatus, setAiDraftStatus] = useState<AiDraftStatus>('idle')
   const [aiDraftLog, setAiDraftLog] = useState<AiDraftLogItem[]>([])
   const [aiDraftResult, setAiDraftResult] = useState<AutomationYamlDraft | null>(null)
+  const [aiDraftError, setAiDraftError] = useState<string | null>(null)
   const [aiDraftClarificationQuestion, setAiDraftClarificationQuestion] = useState<string | null>(null)
   const [aiDraftClarificationAnswer, setAiDraftClarificationAnswer] = useState('')
   const [clarifications, setClarifications] = useState<Array<{ question: string; answer: string }>>([])
@@ -52,11 +54,12 @@ export const useAutomationAiDraft = ({
   const {
     canDraftFromPrompt,
     catalog: aiModelCatalog,
+    catalogStatus,
     model: selectedAiDraftModel,
     provider: selectedAiDraftProvider,
     setModelId: setAiDraftModelId,
     setProviderId: setAiDraftProviderId
-  } = useAiDraftModelSelection()
+  } = useAiDraftModelSelection(canUseAi)
 
   const appendLog = (type: AiDraftLogItem['type'], message: string) => {
     if (!message.trim()) return
@@ -73,6 +76,7 @@ export const useAutomationAiDraft = ({
 
   const resetDraftState = () => {
     setAiDraftStatus('idle')
+    setAiDraftError(null)
     setAiDraftLog([])
     setAiDraftResult(null)
     setAiDraftClarificationQuestion(null)
@@ -117,6 +121,7 @@ export const useAutomationAiDraft = ({
     abortRef.current = controller
     setBusy(true)
     setAiDraftStatus('running')
+    setAiDraftError(null)
     setAiDraftResult(null)
     setAiDraftClarificationQuestion(null)
     setAiDraftClarificationAnswer('')
@@ -134,14 +139,12 @@ export const useAutomationAiDraft = ({
     } catch (error) {
       if (controller.signal.aborted) return
       setAiDraftStatus('failed')
-      toast({
-        title: 'Could not draft automation',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
+      setAiDraftError(error instanceof Error ? error.message : 'Draft generation failed.')
     } finally {
-      if (abortRef.current === controller) abortRef.current = null
-      setBusy(false)
+      if (abortRef.current === controller) {
+        abortRef.current = null
+        setBusy(false)
+      }
     }
   }
 
@@ -173,6 +176,7 @@ export const useAutomationAiDraft = ({
     aiDraftClarificationAnswer,
     aiDraftClarificationQuestion,
     aiDraftLog,
+    aiDraftError,
     aiDraftOpen,
     aiDraftPrompt,
     aiDraftResult,
@@ -180,15 +184,25 @@ export const useAutomationAiDraft = ({
     aiModelCatalog,
     applyDraft,
     canDraftFromPrompt,
+    catalogStatus,
     cancelDraft,
     draftFromPrompt,
     selectedAiDraftModel,
     selectedAiDraftProvider,
     setAiDraftClarificationAnswer,
-    setAiDraftModelId,
+    setAiDraftModelId: (modelId: string) => {
+      if (modelId !== selectedAiDraftModel?.id) resetDraftState()
+      setAiDraftModelId(modelId)
+    },
     setAiDraftOpen,
-    setAiDraftPrompt,
-    setAiDraftProviderId,
+    setAiDraftPrompt: (prompt: string) => {
+      if (aiDraftStatus !== 'idle') resetDraftState()
+      setAiDraftPrompt(prompt)
+    },
+    setAiDraftProviderId: (providerId: string) => {
+      if (providerId !== selectedAiDraftProvider?.id) resetDraftState()
+      setAiDraftProviderId(providerId)
+    },
     submitClarification
   }
 }

@@ -38,7 +38,12 @@ import { WorkflowEditorWorkspace } from './workflow-editor-workspace'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/shared/contracts/automation'
 
-export function AutomationEditorPage({ initialAutomation, initialCommands }: AutomationEditorPageProps) {
+export function AutomationEditorPage({
+  initialAutomation,
+  initialCommands,
+  canUseAi,
+  canManageAi
+}: AutomationEditorPageProps) {
   const router = useRouter()
   const [automation, setAutomation] = useState<Automation | null>(initialAutomation ?? null)
   const [form, setForm] = useState<AutomationFormState>(() =>
@@ -90,11 +95,13 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     aiDraftClarificationAnswer,
     aiDraftClarificationQuestion,
     aiDraftLog,
+    aiDraftError,
     aiDraftResult,
     aiDraftStatus,
     aiModelCatalog,
     applyDraft,
     canDraftFromPrompt,
+    catalogStatus,
     cancelDraft,
     draftFromPrompt,
     selectedAiDraftModel,
@@ -106,6 +113,7 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
     setAiDraftProviderId,
     submitClarification
   } = useAutomationAiDraft({
+    canUseAi,
     commitEditorChange,
     setBusy,
     setYamlError,
@@ -271,6 +279,9 @@ export function AutomationEditorPage({ initialAutomation, initialCommands }: Aut
         open={aiDraftOpen && canDraftFromPrompt}
         busy={busy}
         catalog={aiModelCatalog}
+        catalogStatus={catalogStatus}
+        canManageAi={canManageAi}
+        draftError={aiDraftError}
         clarificationAnswer={aiDraftClarificationAnswer}
         clarificationQuestion={aiDraftClarificationQuestion}
         draftLog={aiDraftLog}

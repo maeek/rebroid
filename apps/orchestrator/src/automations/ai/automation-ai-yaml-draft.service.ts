@@ -4,7 +4,11 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { modelSupportsTools } from '../../common/ai-provider-request';
+import {
+  isOfficialOpenAiProvider,
+  modelSupportsTools,
+} from '../../common/ai-provider-request';
+import type { OpenAiResponsesHistory } from '../../common/openai-responses';
 import {
   AUTOMATION_DRAFT_TIMEOUT_MS,
   type AutomationYamlDraftStreamEvent,
@@ -90,6 +94,8 @@ export class AutomationAiYamlDraftService {
       modelSystemPrompt: model.settings.systemPrompt,
       clarifications: dto.clarifications,
     });
+    const responsesHistory: OpenAiResponsesHistory | undefined =
+      isOfficialOpenAiProvider(provider) ? new WeakMap() : undefined;
     let lastError = 'AI provider did not submit automation YAML.';
 
     for (let attempt = 1; attempt <= MAX_DRAFT_ATTEMPTS; attempt += 1) {
@@ -108,6 +114,7 @@ export class AutomationAiYamlDraftService {
         deadline,
         abortSignal,
         attempt,
+        responsesHistory,
       });
       const message = response.choices?.[0]?.message;
       if (!message) {
@@ -186,6 +193,7 @@ export class AutomationAiYamlDraftService {
     deadline,
     abortSignal,
     attempt,
+    responsesHistory,
   }: {
     provider: Parameters<AutomationAiChatClientService['chat']>[0]['provider'];
     model: Parameters<AutomationAiChatClientService['chat']>[0]['model'];
@@ -193,6 +201,7 @@ export class AutomationAiYamlDraftService {
     deadline: number;
     abortSignal?: AbortSignal;
     attempt: number;
+    responsesHistory?: OpenAiResponsesHistory;
   }): AsyncGenerator<
     AutomationYamlDraftStreamEvent,
     Awaited<ReturnType<AutomationAiChatClientService['chat']>>
@@ -229,6 +238,7 @@ export class AutomationAiYamlDraftService {
           : [],
         deadline,
         abortSignal: signal,
+        responsesHistory,
         onContentDelta: async (delta) => {
           signal.throwIfAborted();
           const consumed = new Promise<void>((resolve) => {

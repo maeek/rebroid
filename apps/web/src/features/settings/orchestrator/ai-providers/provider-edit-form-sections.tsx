@@ -25,7 +25,7 @@ export const ProviderConnectionSection = ({
       <FormField
         controlId='provider-edit-enabled'
         label='Available for automation'
-        description='Enable this provider after configuring at least one usable model.'
+        description='Enabled models appear in automation when their purposes match.'
         layout='vertical'
       >
         <Switch

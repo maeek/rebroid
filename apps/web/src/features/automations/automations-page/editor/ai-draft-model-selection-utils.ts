@@ -1,4 +1,4 @@
-import { selectCatalogProviderAndModel } from '@/shared/model/ai-model-catalog'
+import { catalogByRole, selectCatalogProviderAndModel } from '@/shared/model/ai-model-catalog'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
 
 export const selectAiDraftProviderAndModel = (
@@ -6,5 +6,9 @@ export const selectAiDraftProviderAndModel = (
   providerId: string,
   modelId: string
 ) => {
-  return selectCatalogProviderAndModel(catalog, providerId, modelId, 'planner')
+  const planningCatalog = catalogByRole(catalog, 'planner')
+  return {
+    ...selectCatalogProviderAndModel(planningCatalog, providerId, modelId, 'planner'),
+    catalog: planningCatalog
+  }
 }

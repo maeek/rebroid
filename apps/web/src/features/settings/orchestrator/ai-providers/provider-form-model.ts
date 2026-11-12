@@ -7,6 +7,54 @@ export type ProviderModelRow = AutomationAiProviderModel & {
   index: number
 }
 
+export const providerConnectionDefaults = {
+  openai: {
+    label: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    protocol: 'openai-chat-completions',
+    serverFlavor: 'openai'
+  },
+  ollama: {
+    label: 'Ollama',
+    baseUrl: 'http://localhost:11434',
+    protocol: 'ollama-native-chat',
+    serverFlavor: 'auto'
+  },
+  'openai-compatible': {
+    label: 'OpenAI-compatible',
+    baseUrl: '',
+    protocol: 'openai-chat-completions',
+    serverFlavor: 'auto'
+  }
+} satisfies Record<ProviderFormState['kind'], Partial<ProviderFormState>>
+
+export const openAiStarterModel = {
+  id: 'gpt-5.6-luna',
+  label: 'GPT-5.6 Luna',
+  roles: ['controller', 'planner'],
+  defaultFor: ['controller', 'planner'],
+  settings: {},
+  enabled: true
+} satisfies AutomationAiProviderModel
+
+export const createProviderDraft = (
+  kind: ProviderFormState['kind'] = 'openai',
+  existingIds: readonly string[] = []
+): ProviderFormState => {
+  let id: string = kind
+  for (let suffix = 2; existingIds.includes(id); suffix += 1) {
+    id = `${kind}-${suffix}`
+  }
+  return {
+    ...providerConnectionDefaults[kind],
+    id,
+    kind,
+    apiKey: null,
+    enabled: true,
+    models: kind === 'openai' ? [openAiStarterModel] : []
+  }
+}
+
 export const emptyProvider = (): ProviderFormState => ({
   id: '',
   label: '',

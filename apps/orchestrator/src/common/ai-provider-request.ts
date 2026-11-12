@@ -64,6 +64,11 @@ export const providerProtocol = (
 ): AutomationAiProviderProtocol =>
   provider.protocol ?? 'openai-chat-completions';
 
+export const isOfficialOpenAiProvider = (provider: AutomationAiProvider) =>
+  provider.kind === 'openai' &&
+  providerProtocol(provider) === 'openai-chat-completions' &&
+  /^https:\/\/api\.openai\.com(?:\/v1)?\/*$/.test(provider.baseUrl);
+
 const providerServerFlavor = (
   provider: Pick<AutomationAiProvider, 'kind' | 'serverFlavor'>,
 ): AutomationAiProviderServerFlavor =>
@@ -74,6 +79,7 @@ const providerOpenAiRoot = (provider: AutomationAiProvider) => {
   if (/\/v1$/i.test(baseUrl)) return baseUrl;
   const flavor = providerServerFlavor(provider);
   if (
+    isOfficialOpenAiProvider(provider) ||
     provider.kind === 'ollama' ||
     flavor === 'llama-cpp' ||
     flavor === 'lemonade' ||
@@ -163,6 +169,7 @@ export const buildChatRequestBody = ({
     };
   }
 
+  const openAi = provider.kind === 'openai';
   return {
     model: model.id,
     messages,
@@ -173,17 +180,22 @@ export const buildChatRequestBody = ({
       ? { response_format: openAiResponseFormat(responseFormat) }
       : {}),
     stream,
-    temperature: model.settings.temperature ?? 0.2,
-    ...(model.settings.topP !== null && model.settings.topP !== undefined
+    ...(!openAi ? { temperature: model.settings.temperature ?? 0.2 } : {}),
+    ...(!openAi &&
+    model.settings.topP !== null &&
+    model.settings.topP !== undefined
       ? { top_p: model.settings.topP }
       : {}),
-    ...(model.settings.thinkingMode === 'disabled'
+    ...(openAi && hasTools && /^gpt-5\.6(?:-|$)/.test(model.id)
+      ? { reasoning_effort: 'none' }
+      : {}),
+    ...(!openAi && model.settings.thinkingMode === 'disabled'
       ? {
           reasoning_format: 'deepseek',
           chat_template_kwargs: { enable_thinking: false },
         }
       : {}),
-    ...(model.settings.thinkingMode === 'bounded'
+    ...(!openAi && model.settings.thinkingMode === 'bounded'
       ? {
           reasoning_format: 'deepseek',
           reasoning_budget: model.settings.reasoningBudgetTokens ?? 512,

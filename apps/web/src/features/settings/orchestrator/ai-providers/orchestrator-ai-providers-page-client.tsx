@@ -19,7 +19,7 @@ import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-se
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderDialog } from './provider-dialog'
-import { emptyProvider, normalizeProviderForm, type ProviderFormState } from './provider-form-model'
+import { createProviderDraft, normalizeProviderForm, type ProviderFormState } from './provider-form-model'
 import { ProvidersGrid } from './providers-grid'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -35,6 +35,7 @@ export const OrchestratorAiProvidersPageClient = ({
   const [providers, setProviders] = useState(initialProviders)
   const [settings, setSettings] = useState(initialSettings)
   const [editingProvider, setEditingProvider] = useState<ProviderFormState | null>(null)
+  const [creationError, setCreationError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingAiSettings, setIsSavingAiSettings] = useState(false)
   const [isRefreshing, startRefreshTransition] = useTransition()
@@ -55,7 +56,13 @@ export const OrchestratorAiProvidersPageClient = ({
   }
 
   const openCreateDialog = () => {
-    setEditingProvider(emptyProvider())
+    setCreationError(null)
+    setEditingProvider(
+      createProviderDraft(
+        'openai',
+        providers.map(provider => provider.id)
+      )
+    )
   }
 
   const openEditDialog = (provider: AutomationAiProvider) => {
@@ -66,24 +73,17 @@ export const OrchestratorAiProvidersPageClient = ({
     if (!editingProvider) return
 
     const input = normalizeProviderForm(editingProvider)
-    if (!input.id || !input.baseUrl) {
-      toast({
-        title: 'Provider is incomplete',
-        description: 'Provider ID and base URL are required.',
-        variant: 'danger'
-      })
+    if (!input.id || !input.baseUrl || (input.kind === 'openai' && !input.apiKey)) {
+      setCreationError('Enter a provider ID, base URL, and an API key for OpenAI.')
       return
     }
 
     setIsSaving(true)
+    setCreationError(null)
     try {
       const health = await checkAutomationAiProviderCandidateHealthAction(input)
       if (health.status !== 'ok') {
-        toast({
-          title: 'Provider connection failed',
-          description: health.message,
-          variant: 'danger'
-        })
+        setCreationError(health.message)
         return
       }
       const saved = await createAutomationAiProviderAction(input)
@@ -95,11 +95,7 @@ export const OrchestratorAiProvidersPageClient = ({
       toast({ title: 'AI provider created', variant: 'success' })
       router.push(`/platform/ai/${encodeURIComponent(saved.id)}`)
     } catch (error) {
-      toast({
-        title: 'Could not save AI provider',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
+      setCreationError(getDisplayErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
@@ -224,8 +220,13 @@ export const OrchestratorAiProvidersPageClient = ({
 
       <ProviderDialog
         provider={editingProvider}
+        existingIds={providers.map(provider => provider.id)}
+        error={creationError}
         isSaving={isSaving}
-        onChange={setEditingProvider}
+        onChange={provider => {
+          setEditingProvider(provider)
+          setCreationError(null)
+        }}
         onClose={() => setEditingProvider(null)}
         onSave={() => void saveProvider()}
       />

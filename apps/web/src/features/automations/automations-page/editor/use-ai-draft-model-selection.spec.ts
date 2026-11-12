@@ -44,6 +44,15 @@ const catalog = [
 ] satisfies AutomationAiModelCatalogProvider[]
 
 describe('AI draft model selection', () => {
+  it('skips providers whose models cannot draft workflows', () => {
+    const controllerOnly = {
+      ...catalog[0],
+      models: [{ ...catalog[0].models[0], roles: ['controller' as const] }]
+    }
+    const selected = selectAiDraftProviderAndModel([controllerOnly, catalog[1]], 'local', 'small')
+    expect(selected.provider?.id).toBe('cloud')
+    expect(selected.catalog).toHaveLength(1)
+  })
   it('selects requested provider and model', () => {
     const selected = selectAiDraftProviderAndModel(catalog, 'cloud', 'fast')
 

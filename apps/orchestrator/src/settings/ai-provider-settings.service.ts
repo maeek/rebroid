@@ -121,7 +121,7 @@ export class AiProviderSettingsService {
       enabled: true,
       models: dto.models ?? [],
     });
-    return this.aiProviderHealth.checkProviderConnection(provider);
+    return this.aiProviderHealth.checkProviderConnection(provider, true);
   }
 
   async listRemoteModels(providerId: string) {

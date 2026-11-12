@@ -1,6 +1,3 @@
-import { useState } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
-import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -13,146 +10,110 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { Switch } from '@/components/ui/switch'
 import { useDialogPayload } from '@/hooks/use-dialog-payload'
-import { checkAutomationAiProviderCandidateHealthAction } from '@/server/orchestrator/settings/actions'
-import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import { ProviderConnectionFields } from './provider-connection-fields'
-import { normalizeProviderForm, type ProviderFormState } from './provider-form-model'
-import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import { createProviderDraft, openAiStarterModel, type ProviderFormState } from './provider-form-model'
 
 export const ProviderDialog = ({
   provider: currentProvider,
+  existingIds = [],
+  error,
   isSaving,
   onChange,
   onClose,
   onSave
 }: {
   provider: ProviderFormState | null
+  existingIds?: readonly string[]
+  error?: string | null
   isSaving: boolean
   onChange: (provider: ProviderFormState | null) => void
   onClose: () => void
   onSave: () => void
 }) => {
   const { payload: provider, onOpenChangeComplete } = useDialogPayload(currentProvider)
-  const [health, setHealth] = useState<AutomationAiProviderHealth | null>(null)
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false)
-  const update = (patch: Partial<ProviderFormState>) => {
-    if (!provider) return
-    onChange({ ...provider, ...patch })
-    setHealth(null)
-  }
-
-  const checkHealth = async () => {
-    if (!provider) return
-    setIsCheckingHealth(true)
-    try {
-      setHealth(await checkAutomationAiProviderCandidateHealthAction(normalizeProviderForm(provider)))
-    } catch (error) {
-      setHealth({
-        providerId: provider.id,
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Connection check failed.',
-        checkedAt: new Date().toISOString()
-      })
-    } finally {
-      setIsCheckingHealth(false)
-    }
-  }
+  const openAi = provider?.kind === 'openai'
 
   return (
     <Dialog
       open={Boolean(currentProvider)}
       onOpenChangeComplete={onOpenChangeComplete}
       onOpenChange={open => {
-        if (!open && !isSaving && !isCheckingHealth) onClose()
+        if (!open && !isSaving) onClose()
       }}
     >
       <DialogContent
         data-editor-dialog=''
-        className='max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl'
+        className='max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg'
       >
         <DialogHeader>
-          <DialogTitle className='flex items-center gap-2'>
-            <GradientSparklesIcon className='size-5' />
-            Add AI provider
-          </DialogTitle>
-          <DialogDescription>
-            Connect your model server, then choose which models to make available for automation.
-          </DialogDescription>
+          <DialogTitle>Add AI provider</DialogTitle>
+          <DialogDescription>Connect a provider to draft workflows and use AI in automations.</DialogDescription>
         </DialogHeader>
-        {provider ? (
-          <fieldset
-            disabled={isSaving || isCheckingHealth}
-            className='grid min-w-0 gap-5'
-          >
-            <div className='grid gap-4'>
+        <form
+          className='grid min-w-0 gap-5'
+          onSubmit={event => {
+            event.preventDefault()
+            if (!isSaving) onSave()
+          }}
+        >
+          {provider ? (
+            <fieldset
+              disabled={isSaving}
+              className='grid min-w-0 gap-5'
+            >
               <ProviderConnectionFields
                 provider={provider}
                 mode='create'
-                onChange={update}
+                onChange={patch => onChange({ ...provider, ...patch })}
+                onKindChange={kind => onChange(createProviderDraft(kind, existingIds))}
               />
-              <div className='flex flex-wrap items-center justify-between gap-3'>
-                <div className='flex min-w-0 flex-wrap items-center gap-3'>
-                  {health ? (
-                    <>
-                      <AiHealthBadge
-                        health={health}
-                        isChecking={isCheckingHealth}
-                      />
-                      <span className='min-w-0 break-words text-sm text-foreground-muted'>{health.message}</span>
-                    </>
-                  ) : (
-                    <span className='text-sm text-foreground-muted'>Check the provider before saving.</span>
-                  )}
-                </div>
-                <MutationButton
-                  type='button'
-                  variant='secondary'
-                  pending={isCheckingHealth}
-                  pendingLabel='Checking connection…'
-                  onClick={() => void checkHealth()}
+              {openAi ? (
+                <FormField
+                  controlId='provider-create-starter-model'
+                  label='Add GPT-5.6 Luna'
+                  description='Use Luna for workflow drafts. Turn this off to choose a different model after connecting.'
+                  layout='horizontal'
                 >
-                  <IconRefresh className={isCheckingHealth ? 'size-4 animate-spin' : 'size-4'} />
-                  Check connection
-                </MutationButton>
-              </div>
-              <FormField
-                controlId='provider-create-enabled'
-                label='Enabled'
-                description='Keep disabled until at least one usable model is configured.'
-                layout='horizontal'
+                  <Switch
+                    checked={provider.models.length > 0}
+                    onCheckedChange={checked => onChange({ ...provider, models: checked ? [openAiStarterModel] : [] })}
+                  />
+                </FormField>
+              ) : (
+                <p className='text-sm text-foreground-muted'>Choose a model after connecting to your server.</p>
+              )}
+            </fieldset>
+          ) : null}
+          {error ? (
+            <Notice
+              tone='danger'
+              title='Could not connect provider'
+              description={error}
+            />
+          ) : null}
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type='button'
+                variant='secondary'
+                disabled={isSaving}
               >
-                <Switch
-                  className='shrink-0'
-                  checked={provider.enabled}
-                  disabled={isSaving || isCheckingHealth}
-                  onCheckedChange={enabled => update({ enabled })}
-                />
-              </FormField>
-            </div>
-          </fieldset>
-        ) : null}
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button
-              type='button'
-              variant='secondary'
-              disabled={isSaving || isCheckingHealth}
+                Cancel
+              </Button>
+            </DialogClose>
+            <MutationButton
+              type='submit'
+              pending={isSaving}
+              pendingLabel='Connecting…'
+              disabled={!provider?.id.trim() || !provider.baseUrl.trim() || (openAi && !provider.apiKey?.trim())}
             >
-              Cancel
-            </Button>
-          </DialogClose>
-          <MutationButton
-            type='button'
-            pending={isSaving}
-            pendingLabel='Saving…'
-            disabled={isCheckingHealth || !provider?.id.trim() || !provider.baseUrl.trim()}
-            onClick={onSave}
-          >
-            Create provider
-          </MutationButton>
-        </DialogFooter>
+              {openAi ? 'Connect OpenAI' : 'Connect provider'}
+            </MutationButton>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

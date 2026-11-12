@@ -106,7 +106,7 @@ spec:
                 durationMs: 500
 `;
 
-const createService = () => {
+const createService = (openAi = false) => {
   const registry = new AutomationCommandRegistryService(
     new AndroidAutomationCommandsService(),
     new ContainerNetworkAutomationCommandsService(),
@@ -121,11 +121,24 @@ const createService = () => {
     ),
   );
   const providers = {
-    getProvider: jest.fn().mockResolvedValue({ provider, model }),
+    getProvider: jest.fn().mockResolvedValue(
+      openAi
+        ? {
+            provider: {
+              ...provider,
+              id: 'openai',
+              kind: 'openai',
+              serverFlavor: 'openai',
+              baseUrl: 'https://api.openai.com/v1',
+            },
+            model: { ...model, id: 'gpt-5.6-luna' },
+          }
+        : { provider, model },
+    ),
   } as unknown as AutomationAiProviderService;
-  const chatClient = {
-    chat: jest.fn(),
-  } as unknown as AutomationAiChatClientService;
+  const chatClient = openAi
+    ? new AutomationAiChatClientService()
+    : ({ chat: jest.fn() } as unknown as AutomationAiChatClientService);
   return {
     chat: jest.mocked(chatClient.chat),
     service: new AutomationAiYamlDraftService(
@@ -180,6 +193,121 @@ const completedDraft = (
 };
 
 describe('AutomationAiYamlDraftService', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('drafts with Luna through Responses and replays reasoning on YAML repair', async () => {
+    const reasoning = {
+      type: 'reasoning',
+      id: 'rs_1',
+      summary: [],
+      encrypted_content: 'encrypted-test-reasoning',
+    };
+    const submission = (id: number, yaml: string) => ({
+      type: 'function_call',
+      id: `fc_${id}`,
+      call_id: `call_${id}`,
+      name: 'submitAutomationYaml',
+      arguments: JSON.stringify({ yaml }),
+      status: 'completed',
+    });
+    const invalidSubmission = submission(1, 'apiVersion: bad');
+    const response = (output: unknown[]) =>
+      new Response(
+        `data: ${JSON.stringify({ type: 'response.completed', response: { status: 'completed', output } })}\n\n`,
+        { headers: { 'content-type': 'text/event-stream' } },
+      );
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (url) => {
+        if (url === 'https://api.openai.com/v1/chat/completions') {
+          return new Response(
+            JSON.stringify({
+              error: {
+                message:
+                  'Function tools with reasoning_effort are not supported for gpt-5.6-luna in /v1/chat/completions.',
+              },
+            }),
+            { status: 400, statusText: 'Bad Request' },
+          );
+        }
+        return fetchMock.mock.calls.length === 1
+          ? response([reasoning, invalidSubmission])
+          : response([submission(2, validYaml)]);
+      });
+
+    const { service } = createService(true);
+    const events = await collectDraftEvents(service, {
+      prompt: 'Draft a smoke test.',
+      providerId: 'openai',
+      modelId: 'gpt-5.6-luna',
+    });
+
+    expect(events.at(-1)).toMatchObject({ type: 'draft.completed' });
+    expect(completedDraft(events).yaml).toContain('uses: android.waitForText');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [first, second] = fetchMock.mock.calls;
+    expect(first[0]).toBe('https://api.openai.com/v1/responses');
+    expect(second[0]).toBe(first[0]);
+    const firstBody = JSON.parse(String(first[1]?.body)) as Record<
+      string,
+      unknown
+    >;
+    const secondBody = JSON.parse(String(second[1]?.body)) as Record<
+      string,
+      unknown
+    >;
+    expect(firstBody).toMatchObject({
+      model: 'gpt-5.6-luna',
+      store: false,
+      stream: true,
+      include: ['reasoning.encrypted_content'],
+      parallel_tool_calls: false,
+      tools: [
+        { type: 'function', name: 'submitAutomationYaml' },
+        { type: 'function', name: 'requestDraftClarification' },
+      ],
+    });
+    expect(firstBody).not.toHaveProperty('temperature');
+    expect(firstBody).not.toHaveProperty('reasoning_format');
+    expect(secondBody.input).toEqual([
+      ...(firstBody.input as unknown[]),
+      reasoning,
+      invalidSubmission,
+      {
+        type: 'function_call_output',
+        call_id: 'call_1',
+        output: expect.stringContaining(
+          'apiVersion must be rebroid.io/automation/v1',
+        ),
+      },
+    ]);
+  });
+
+  it('reports streamed progress and fails when OpenAI does not complete the response', async () => {
+    const delta =
+      'Preparing the requested workflow with a device wake step and an explicit wait for the home screen, using the commands and timeout limits available in this workspace.';
+    const fetchMock = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          `data: ${JSON.stringify({ type: 'response.output_text.delta', delta })}\n\n`,
+          { headers: { 'content-type': 'text/event-stream' } },
+        ),
+      );
+    const { service } = createService(true);
+
+    const events = await collectDraftEvents(service, { prompt: 'Draft this.' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(events).toContainEqual(
+      expect.objectContaining({ type: 'draft.message.delta', message: delta }),
+    );
+    expect(events.at(-1)).toMatchObject({
+      type: 'draft.failed',
+      message: 'OpenAI ended the stream before completing the response.',
+    });
+  });
+
   it('generates normalized YAML from a submitted multi-step draft', async () => {
     const { chat, service } = createService();
     chat.mockResolvedValue(toolResponse(validYaml));

@@ -102,6 +102,40 @@ describe('AutomationAiChatClientService', () => {
     expect(deltas.join('')).toBe('Open settings');
   });
 
+  it('uses OpenAI tool compatibility for Luna controller requests', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(new Response(streamFromText(['data: [DONE]\n\n'])));
+    global.fetch = fetchMock;
+
+    await new AutomationAiChatClientService().chat({
+      provider: {
+        ...provider,
+        kind: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+      },
+      model: {
+        ...model,
+        id: 'gpt-5.6-luna',
+        settings: { ...model.settings, thinkingMode: 'disabled', topP: 0.9 },
+      },
+      messages: [],
+      tools: [
+        { type: 'function', function: { name: 'submit_device_decision' } },
+      ],
+      deadline: Date.now() + 10_000,
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body)) as Record<
+      string,
+      unknown
+    >;
+    expect(body).toHaveProperty('reasoning_effort', 'none');
+    expect(body).not.toHaveProperty('temperature');
+    expect(body).not.toHaveProperty('top_p');
+    expect(body).not.toHaveProperty('chat_template_kwargs');
+  });
+
   it.each(['controller', 'planner'] as const)(
     'attributes %s requests and failures to the supplied role',
     async (role) => {

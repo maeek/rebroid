@@ -145,7 +145,7 @@ AI features require a configured provider. Manual app control and workflows with
 Raw ADB shell is not a default AI capability. A permitted escalation is limited to allowlisted,
 read-only commands for one follow-up run.
 
-See the [AI provider compatibility notes](docs/operations.md#local-ai-provider-compatibility)
+See the [AI provider compatibility notes](docs/operations.md#ai-provider-compatibility)
 for transport selection, model IDs, and provider diagnostics.
 
 ## Get started

@@ -1,7 +1,19 @@
-import { IconCircleCheck, IconLoader2, IconSparkles } from '@tabler/icons-react'
+import { IconCircleCheck, IconSparkles } from '@tabler/icons-react'
+import Link from 'next/link'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
+import { Section } from '@/components/ui/section'
 import { Textarea } from '@/components/ui/textarea'
 import { selectCatalogModel } from '@/shared/model/ai-model-catalog'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
@@ -13,6 +25,9 @@ export const AiDraftDialog = ({
   open,
   busy,
   catalog,
+  catalogStatus,
+  canManageAi,
+  draftError,
   clarificationAnswer,
   clarificationQuestion,
   draftLog,
@@ -34,6 +49,9 @@ export const AiDraftDialog = ({
   open: boolean
   busy: boolean
   catalog: AutomationAiModelCatalogProvider[]
+  catalogStatus: 'loading' | 'ready' | 'error'
+  canManageAi: boolean
+  draftError: string | null
   clarificationAnswer: string
   clarificationQuestion: string | null
   draftLog: AiDraftLogItem[]
@@ -58,111 +76,167 @@ export const AiDraftDialog = ({
   const needsInput = draftStatus === 'needs-input'
   const completed = draftStatus === 'completed' && hasDraftResult
 
+  const hasModel = Boolean(selectedProvider && selectedModel)
+  const canGenerate = hasModel && !busy && !running && Boolean(prompt.trim())
+  const latestPhase = draftLog.findLast(item => item.type === 'draft.phase')
+
   return (
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
     >
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent className='max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl'>
         <DialogHeader>
           <DialogTitle className='flex items-center gap-2'>
             <GradientSparklesIcon className='size-5' />
-            Draft automation
+            Draft workflow with AI
           </DialogTitle>
-          <DialogDescription>Generate a runnable AI automation draft into the YAML editor.</DialogDescription>
+          <DialogDescription>
+            Describe the steps you want. Review the generated workflow before saving it.
+          </DialogDescription>
         </DialogHeader>
-        <AiPromptComposer
-          value={prompt}
-          rows={6}
-          variant='plain'
-          disabled={running}
-          placeholder='Describe the workflow this automation should perform.'
-          textareaClassName='min-h-32'
-          onChange={onPromptChange}
-          onSubmit={() => {
-            if (busy || running || !prompt.trim() || !selectedProvider || !selectedModel) return
-            onDraft()
-          }}
-          modelControl={
-            <AiModelPicker
-              catalog={catalog}
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              onProviderChange={onProviderChange}
-              onModelChange={onModelChange}
+        {!hasModel ? (
+          <Notice
+            loading={catalogStatus === 'loading'}
+            tone={catalogStatus === 'error' ? 'danger' : 'info'}
+            title={catalogStatus === 'error' ? 'Could not load planning models' : 'Add a planning model'}
+            description={
+              catalogStatus === 'error'
+                ? 'Reload the workflow editor and try again.'
+                : 'Enable a model with the Planning purpose in Platform → AI.'
+            }
+            actions={
+              canManageAi && catalogStatus === 'ready' ? (
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  asChild
+                >
+                  <Link href='/platform/ai'>Open AI settings</Link>
+                </Button>
+              ) : null
+            }
+          />
+        ) : (
+          <>
+            <AiPromptComposer
+              value={prompt}
+              ariaLabel='Describe your workflow'
+              rows={4}
+              variant='plain'
+              disabled={running}
+              placeholder='For example, open the app and wait for the home screen…'
+              onChange={onPromptChange}
+              onSubmit={() => {
+                if (canGenerate && !needsInput && !completed) onDraft()
+              }}
+              modelControl={
+                <fieldset
+                  disabled={running}
+                  inert={running || undefined}
+                  className='min-w-0'
+                >
+                  <AiModelPicker
+                    catalog={catalog}
+                    selectedProvider={selectedProvider}
+                    selectedModel={selectedModel}
+                    onProviderChange={onProviderChange}
+                    onModelChange={onModelChange}
+                  />
+                </fieldset>
+              }
             />
-          }
-          actions={
-            <>
-              {running ? (
-                <Button
-                  variant='secondary'
-                  onClick={onCancelDraft}
-                >
-                  Cancel
-                </Button>
-              ) : (
-                <Button
-                  variant='secondary'
-                  onClick={() => onOpenChange(false)}
-                >
-                  Close
-                </Button>
-              )}
-              {completed ? (
-                <Button onClick={onApplyDraft}>
-                  <IconCircleCheck className='size-4' />
-                  Apply draft
-                </Button>
-              ) : needsInput ? (
-                <Button
-                  disabled={!clarificationAnswer.trim()}
-                  onClick={onSubmitClarification}
-                >
-                  Continue
-                </Button>
-              ) : (
-                <Button
-                  disabled={busy || running || !prompt.trim() || !selectedProvider || !selectedModel}
-                  onClick={onDraft}
-                >
-                  {running ? <IconLoader2 className='size-4 animate-spin' /> : <IconSparkles className='size-4' />}
-                  Draft
-                </Button>
-              )}
-            </>
-          }
-        />
-        {draftLog.length > 0 ? (
-          <div className='grid gap-2 rounded-control border border-surface-border/70 bg-surface-panel/40 p-3'>
-            <div className='flex items-center gap-2 text-sm font-medium'>
-              {running ? <IconLoader2 className='size-4 animate-spin' /> : <IconSparkles className='size-4' />}
-              {completed ? 'Draft ready' : needsInput ? 'More detail needed' : 'Draft progress'}
-            </div>
-            <div className='max-h-44 overflow-y-auto pr-1 text-xs text-foreground-muted'>
-              {draftLog.map(item => (
-                <div
-                  key={item.id}
-                  className='py-1'
-                >
-                  {item.message}
+            {running ? (
+              <p
+                role='status'
+                className='text-sm text-foreground-muted'
+              >
+                {latestPhase?.message ?? 'Preparing your draft…'}
+              </p>
+            ) : null}
+            {completed ? (
+              <Notice
+                tone='success'
+                title='Draft ready'
+                description='Apply it to review and edit the generated steps.'
+              />
+            ) : null}
+            {draftError ? (
+              <Notice
+                tone='danger'
+                title='Could not generate draft'
+                description={draftError}
+              />
+            ) : null}
+            {needsInput && clarificationQuestion ? (
+              <FormField
+                controlId='workflow-draft-answer'
+                label={clarificationQuestion}
+                layout='vertical'
+              >
+                <Textarea
+                  value={clarificationAnswer}
+                  rows={2}
+                  className='resize-none'
+                  onChange={event => onClarificationAnswerChange(event.target.value)}
+                />
+              </FormField>
+            ) : null}
+            {draftLog.length > 0 ? (
+              <Section
+                surface='plain'
+                title='Generation details'
+                headingSpacing='compact'
+                collapsible
+              >
+                <div className='grid max-h-32 gap-1 overflow-y-auto break-words text-xs text-foreground-muted'>
+                  {draftLog.map(item => (
+                    <div key={item.id}>{item.message}</div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {needsInput && clarificationQuestion ? (
-          <div className='grid gap-2'>
-            <div className='text-sm font-medium'>{clarificationQuestion}</div>
-            <Textarea
-              value={clarificationAnswer}
-              rows={3}
-              className='resize-none'
-              placeholder='Answer so the draft can continue.'
-              onChange={event => onClarificationAnswerChange(event.target.value)}
-            />
-          </div>
-        ) : null}
+              </Section>
+            ) : null}
+          </>
+        )}
+        <DialogFooter>
+          <Button
+            variant='secondary'
+            onClick={running ? onCancelDraft : () => onOpenChange(false)}
+          >
+            {running ? 'Cancel generation' : 'Close'}
+          </Button>
+          {hasModel && completed ? (
+            <Button onClick={onApplyDraft}>
+              <IconCircleCheck
+                aria-hidden='true'
+                className='size-4'
+              />{' '}
+              Apply draft
+            </Button>
+          ) : null}
+          {hasModel && needsInput ? (
+            <Button
+              disabled={!clarificationAnswer.trim() || busy}
+              onClick={onSubmitClarification}
+            >
+              Continue
+            </Button>
+          ) : null}
+          {hasModel && !completed && !needsInput ? (
+            <MutationButton
+              pending={running}
+              pendingLabel='Generating…'
+              disabled={!canGenerate}
+              onClick={onDraft}
+            >
+              <IconSparkles
+                aria-hidden='true'
+                className='size-4'
+              />
+              {draftError ? 'Try again' : 'Generate draft'}
+            </MutationButton>
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

@@ -14,6 +14,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { ProviderModelPurposes } from './provider-model-purposes'
@@ -59,6 +60,7 @@ export const ProviderModelAddDialog = ({
   const busy = isSubmitting || submitting
   const availableModels = remoteModels.filter(model => !configuredModelIds.includes(model.id))
   const duplicate = configuredModelIds.includes(modelId.trim())
+  const openAi = providerKind === 'openai'
 
   useEffect(() => {
     if (!open) return
@@ -83,6 +85,28 @@ export const ProviderModelAddDialog = ({
     }
   }
 
+  const modelDetails = (
+    <div className='grid gap-5'>
+      <FormField
+        controlId='provider-model-label'
+        label='Display name'
+        description='Optional name shown in model pickers.'
+        layout='vertical'
+      >
+        <Input
+          value={label}
+          onChange={event => setLabel(event.target.value)}
+          placeholder={modelId || undefined}
+        />
+      </FormField>
+      <ProviderModelPurposes
+        roles={roles}
+        onChange={setRoles}
+        disabled={busy}
+      />
+    </div>
+  )
+
   return (
     <Dialog
       open={open}
@@ -97,7 +121,9 @@ export const ProviderModelAddDialog = ({
         <DialogHeader>
           <DialogTitle>Add model</DialogTitle>
           <DialogDescription>
-            Register a model with this provider and choose how automation can use it. Adding saves immediately.
+            {openAi
+              ? 'Choose a model from your OpenAI project. Adding saves immediately.'
+              : 'Register a model with this provider. Adding saves immediately.'}
           </DialogDescription>
         </DialogHeader>
         <fieldset
@@ -187,29 +213,33 @@ export const ProviderModelAddDialog = ({
               />
             </FormField>
           )}
-          <FormField
-            controlId='provider-model-label'
-            label='Display name'
-            description='Optional. Use a recognizable name in model selectors; the exact ID is kept separately.'
-            layout='vertical'
-          >
-            <Input
-              value={label}
-              onChange={event => setLabel(event.target.value)}
-              placeholder={modelId || 'Model display name'}
-            />
-          </FormField>
           {source === 'download' ? (
-            <Notice
-              title='Download and register'
-              description='Ollama adds this model for planning and device control. Progress appears in the model list. Review its purposes and test it when the download finishes.'
-            />
+            <>
+              <FormField
+                controlId='provider-model-label'
+                label='Display name (optional)'
+                layout='vertical'
+              >
+                <Input
+                  value={label}
+                  onChange={event => setLabel(event.target.value)}
+                  placeholder={modelId || undefined}
+                />
+              </FormField>
+              <Notice description='Ollama adds this model for planning and device control. Download progress appears in the model list.' />
+            </>
+          ) : openAi ? (
+            <Section
+              surface='plain'
+              title='Model options'
+              description='Available for planning and device control by default.'
+              collapsible
+              headingSpacing='compact'
+            >
+              {modelDetails}
+            </Section>
           ) : (
-            <ProviderModelPurposes
-              roles={roles}
-              onChange={setRoles}
-              disabled={busy}
-            />
+            modelDetails
           )}
         </fieldset>
         <DialogFooter>

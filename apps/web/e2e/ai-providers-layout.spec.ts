@@ -29,9 +29,13 @@ for (const width of [390, 768, 1440, 2048]) {
       if (view === 'list') {
         await page.getByRole('button', { name: 'Add provider', exact: true }).click()
         const dialog = page.getByRole('dialog')
-        await expect(dialog.getByRole('textbox', { name: 'Name', exact: true })).toBeVisible()
+        await expect(dialog.getByLabel('Base URL')).toHaveValue('https://api.openai.com/v1')
+        await expect(dialog.getByRole('switch', { name: 'Add GPT-5.6 Luna' })).toBeChecked()
         await expect(dialog.getByRole('combobox', { name: 'Transport protocol' })).toHaveCount(0)
-        await expect(dialog.getByRole('button', { name: 'Create provider' })).toBeDisabled()
+        const connect = dialog.getByRole('button', { name: 'Connect OpenAI' })
+        await expect(connect).toBeDisabled()
+        await dialog.getByLabel('API key', { exact: true }).fill('test-api-key')
+        await expect(connect).toBeEnabled()
         await page.screenshot({
           path: `/tmp/rebroid-ai-create-${width}-${test.info().project.name}.png`,
           animations: 'disabled'
@@ -66,7 +70,7 @@ for (const width of [390, 768, 1440, 2048]) {
         await expect(page.getByRole('button', { name: 'Another model', exact: true })).toBeVisible()
         await page.getByRole('button', { name: 'Device controller', exact: true }).click()
         await expect(page.getByRole('dialog').getByRole('checkbox', { name: /^Device control/ })).toBeDisabled()
-        await page.getByRole('dialog').getByRole('button', { name: 'Generation settings' }).click()
+        await page.getByRole('dialog').getByRole('button', { name: 'Advanced generation settings' }).click()
         const settings = page.getByRole('dialog', { name: 'Model settings' })
         const temperature = settings.getByRole('spinbutton', { name: 'Temperature' })
         const done = settings.getByRole('button', { name: 'Done' })
@@ -84,11 +88,11 @@ for (const width of [390, 768, 1440, 2048]) {
       if (view === 'connection') {
         const field = page
           .locator('[data-editor-field]')
-          .filter({ has: page.getByRole('textbox', { name: 'Name', exact: true }) })
+          .filter({ has: page.getByRole('textbox', { name: 'Base URL', exact: true }) })
         const label = await field.locator('label').boundingBox()
         const input = await field.getByRole('textbox').boundingBox()
         expect(input!.y - (label!.y + label!.height)).toBeGreaterThanOrEqual(8)
-        await page.getByRole('button', { name: 'Protocol and server settings' }).click()
+        await page.getByRole('button', { name: 'Advanced connection settings' }).click()
         await expect(page.getByRole('combobox', { name: 'Transport protocol' })).toBeVisible()
       }
     }

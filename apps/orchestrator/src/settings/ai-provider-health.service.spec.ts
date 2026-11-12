@@ -93,6 +93,24 @@ describe('AiProviderHealthService', () => {
     );
   });
 
+  it('explains how to proceed when the OpenAI starter model is unavailable', async () => {
+    const openAi = provider({
+      kind: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      models: [{ ...provider().models[0], id: 'gpt-5.6-luna' }],
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(Response.json({ data: [{ id: 'another-model' }] }));
+
+    await expect(
+      new AiProviderHealthService().checkProviderConnection(openAi, true),
+    ).resolves.toMatchObject({
+      status: 'error',
+      message: expect.stringContaining('Turn off the starter model'),
+    });
+  });
+
   it('probes a schema-only controller through streaming without tools', async () => {
     const model = {
       ...provider().models[0],

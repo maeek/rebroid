@@ -9,7 +9,13 @@ import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderEditorLayout } from './provider-editor-layout'
-import { createProviderModelRows, emptyModel, emptyProvider, updateProviderModelAt } from './provider-form-model'
+import {
+  createProviderDraft,
+  createProviderModelRows,
+  emptyModel,
+  emptyProvider,
+  updateProviderModelAt
+} from './provider-form-model'
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelDefaults } from './provider-model-defaults'
 import { normalizeModelDefaults } from './provider-model-usage'
@@ -44,7 +50,7 @@ export const AiProvidersPreview = ({ view }: { view: 'list' | 'models' | 'connec
     return (
       <>
         <AiProvidersPageLayout
-          actions={<Button onClick={() => setCreating(emptyProvider())}>Add provider</Button>}
+          actions={<Button onClick={() => setCreating(createProviderDraft())}>Add provider</Button>}
           providers={
             <ProvidersGrid
               providers={[provider]}

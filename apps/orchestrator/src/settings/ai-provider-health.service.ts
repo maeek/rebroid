@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   withProviderChatResponse,
   deviceControllerResponseMode,
+  isOfficialOpenAiProvider,
   modelSupportsTools,
   providerModelsEndpoint,
 } from '../common/ai-provider-request';
@@ -246,14 +247,28 @@ export class AiProviderHealthService {
     }
   }
 
-  async checkProviderConnection(provider: AutomationAiProvider) {
+  async checkProviderConnection(
+    provider: AutomationAiProvider,
+    verifyConfiguredModels = false,
+  ) {
     try {
+      const requiredModels =
+        verifyConfiguredModels && isOfficialOpenAiProvider(provider)
+          ? provider.models.filter((model) => model.enabled)
+          : [];
       const response = await this.requestModels(
         provider,
         'health',
         'provider',
         async (response) => {
+          if (response.ok && requiredModels.length > 0) {
+            return parseProviderRemoteModels(
+              provider,
+              await readProviderJson(response, { strict: true }),
+            );
+          }
           await response.body?.cancel();
+          return [];
         },
       );
       if (!response.ok) {
@@ -262,6 +277,16 @@ export class AiProviderHealthService {
           undefined,
           'error',
           `Provider returned HTTP ${response.status}.`,
+        );
+      }
+      const available = new Set(response.body.map((model) => model.id));
+      const missing = requiredModels.find((model) => !available.has(model.id));
+      if (missing) {
+        return this.healthResult(
+          provider.id,
+          undefined,
+          'error',
+          `This OpenAI project does not list ${missing.id}. Turn off the starter model to connect and choose a different model.`,
         );
       }
       return this.healthResult(

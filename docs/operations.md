@@ -140,9 +140,21 @@ or guarantee Google login, Play Protect certification, or Play Integrity compati
 For builder changes, run `pnpm test:gapps-patcher` and manually build both supported Android versions.
 Record image IDs, payload validation, duration, disk usage, and peak memory.
 
-## Local AI provider compatibility
+## AI provider compatibility
 
-- Configure llama.cpp and Lemonade with `openai-chat-completions`; native Ollama uses its explicit transport.
+- In **Platform → AI → Add provider**, OpenAI starts with the editable `https://api.openai.com/v1`
+  URL and GPT-5.6 Luna configured for planning and device control. Enter your API key and connect.
+  If the project does not list Luna, turn off the starter model and choose another model after
+  connecting. In the workflow editor, **Draft with AI** offers enabled models assigned to Planning.
+- OpenAI workflow drafts use the Responses API with OpenAI's reasoning and sampling defaults.
+  For GPT-5.6 Chat Completions requests that use function tools, Rebroid sends reasoning effort
+  `none` for compatibility. The model's custom instructions still apply.
+- OpenAI workflow drafts stream through Responses with storage disabled. If generated YAML needs
+  repair, Rebroid sends the previous response items and validation feedback in the next request.
+
+- Choose Ollama for native chat or OpenAI-compatible server for llama.cpp, Lemonade, and other
+  compatible servers. Use a URL reachable from the orchestrator. Transport and generation
+  overrides are in the advanced settings.
 - Keep server flavor separate from transport. Automatic detection checks Lemonade before Ollama compatibility endpoints.
 - Use exact model IDs returned by the chosen transport. Do not append `:latest` to `/v1/models` IDs.
 - Controller models need structured output or tool calling. Use the provider diagnostic to test a real

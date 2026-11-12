@@ -5,7 +5,7 @@ suggestions. Device tasks run inside the normal automation runner, using its tar
 permissions, cancellation, and event stream.
 
 For the surrounding services, see the [architecture overview](../../../../../docs/architecture.md).
-Provider setup is covered in [Operations](../../../../../docs/operations.md#local-ai-provider-compatibility).
+Provider setup is covered in [Operations](../../../../../docs/operations.md#ai-provider-compatibility).
 
 ## Functions
 
@@ -111,11 +111,11 @@ Provider CRUD, persistence, model roles, health checks, and downloads belong to
 surface. The device harness uses the selected controller model for decisions and optional plans;
 drafting and suggestions select the planner role. A separate vision provider/model is optional.
 
-Provider request deadlines cover the response body. Non-streamed Vision and health probes decode
-both OpenAI-compatible and native Ollama responses. The chat client normalizes OpenAI-compatible SSE
-and native Ollama NDJSON, preserving content,
-tool decisions, usage, finish reasons, and timing. Transport is independent from detected server
-flavor. Hidden reasoning text is not persisted; only its presence is recorded.
+Provider request deadlines cover the response body. Official OpenAI workflow drafts use Responses
+SSE and replay encrypted reasoning in memory during YAML repair. The chat client also normalizes
+Chat Completions SSE and native Ollama NDJSON, preserving content, tool decisions, usage, finish
+reasons, and timing. Transport is independent from detected server flavor. Hidden reasoning text
+is not persisted; only its presence is recorded.
 
 Vision lookup filters local detections before applying the result cap and enforces the requested
 region on model matches. OCR health reports when the expected language differs from the deployment.

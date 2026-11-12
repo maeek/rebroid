@@ -18,19 +18,23 @@ import { useDialogPayload } from '@/hooks/use-dialog-payload'
 import { ProviderModelPurposes } from './provider-model-purposes'
 import { ProviderNumberField } from './provider-number-field'
 import type { ProviderModelRow } from './provider-form-model'
-import type { AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
+import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 
 export const ProviderModelSettingsDialog = ({
   model: currentModel,
+  provider,
   onClose,
   onChange
 }: {
   model: ProviderModelRow | null
+  provider: Pick<AutomationAiProvider, 'kind' | 'protocol'>
   onClose: () => void
   onChange: (index: number, patch: Partial<AutomationAiProviderModel>) => void
 }) => {
   const { payload: model, onOpenChangeComplete } = useDialogPayload(currentModel)
   const settings = model?.settings ?? {}
+  const openAi = provider.kind === 'openai'
+  const nativeOllama = provider.protocol === 'ollama-native-chat'
   const updateSettings = (patch: Partial<AutomationAiProviderModel['settings']>) => {
     if (!model) return
     onChange(model.index, { settings: { ...settings, ...patch } })
@@ -46,7 +50,11 @@ export const ProviderModelSettingsDialog = ({
     >
       <DialogContent
         data-editor-dialog=''
-        className='flex flex-col overflow-hidden p-4 sm:max-w-3xl sm:p-6 lg:max-w-4xl'
+        className={
+          openAi
+            ? 'flex flex-col overflow-hidden sm:max-w-xl'
+            : 'flex flex-col overflow-hidden sm:max-w-3xl lg:max-w-4xl'
+        }
       >
         <DialogHeader className='shrink-0 pr-6'>
           <DialogTitle className='flex items-center gap-2'>
@@ -54,12 +62,12 @@ export const ProviderModelSettingsDialog = ({
             Model settings
           </DialogTitle>
           <DialogDescription>
-            Choose a name and purposes for this model. Changes remain in the provider draft until you select Save.
+            Choose how Rebroid uses this model. Changes apply when you save the provider.
           </DialogDescription>
         </DialogHeader>
         {model ? (
           <div className='scrollbar-thin grid min-h-0 min-w-0 content-start gap-6 overflow-y-auto px-1 py-1'>
-            <div className='grid items-start gap-x-form-column gap-y-4 md:grid-cols-2'>
+            <div className='grid items-start gap-4'>
               <FormField
                 controlId='provider-model-display-name'
                 label='Display name'
@@ -78,14 +86,14 @@ export const ProviderModelSettingsDialog = ({
             </div>
             <Section
               surface='plain'
-              title='Generation settings'
-              description='Optional prompt and generation overrides. Leave empty to use provider defaults.'
+              title={openAi ? 'Custom instructions' : 'Advanced generation settings'}
+              description={openAi ? undefined : 'Use overrides supported by your server.'}
               collapsible
             >
               <FormField
                 controlId='provider-model-system-prompt'
                 label='System prompt'
-                description='Additional system instructions appended to AI automation runs for this model.'
+                description='Optional instructions for this model when it drafts or runs automations.'
                 layout='vertical'
               >
                 <Textarea
@@ -94,116 +102,131 @@ export const ProviderModelSettingsDialog = ({
                   onChange={event => updateSettings({ systemPrompt: event.target.value || null })}
                 />
               </FormField>
-              <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
+              {!openAi ? (
+                <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
+                  <FormField
+                    controlId='provider-model-thinking-mode'
+                    label='Thinking mode'
+                    description={
+                      nativeOllama
+                        ? 'Choose whether the model thinks before answering.'
+                        : 'Bound or disable reasoning on compatible servers.'
+                    }
+                    layout='vertical'
+                  >
+                    <Select
+                      value={settings.thinkingMode ?? 'provider-default'}
+                      onValueChange={thinkingMode =>
+                        updateSettings({
+                          thinkingMode
+                        })
+                      }
+                    >
+                      <SelectTrigger
+                        id='provider-model-thinking-mode'
+                        className='w-full'
+                        aria-describedby='provider-model-thinking-mode-description'
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='disabled'>Disabled</SelectItem>
+                        <SelectItem value='bounded'>{nativeOllama ? 'Enabled' : 'Bounded'}</SelectItem>
+                        <SelectItem value='provider-default'>Provider default</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                  {!nativeOllama ? (
+                    <ProviderNumberField
+                      controlId='provider-model-reasoning-budget'
+                      label='Reasoning budget'
+                      description='Maximum hidden reasoning tokens when bounded mode is selected.'
+                      value={settings.reasoningBudgetTokens}
+                      min={0}
+                      max={32768}
+                      step={64}
+                      onChange={reasoningBudgetTokens => updateSettings({ reasoningBudgetTokens })}
+                      disabled={settings.thinkingMode !== 'bounded'}
+                    />
+                  ) : null}
+                  <ProviderNumberField
+                    controlId='provider-model-temperature'
+                    label='Temperature'
+                    description='Sampling randomness from 0 to 2.'
+                    value={settings.temperature}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    onChange={temperature => updateSettings({ temperature })}
+                  />
+                  <ProviderNumberField
+                    controlId='provider-model-top-p'
+                    label='Top P'
+                    description='Nucleus sampling value from 0 to 1.'
+                    value={settings.topP}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onChange={topP => updateSettings({ topP })}
+                  />
+                  {nativeOllama ? (
+                    <>
+                      <ProviderNumberField
+                        controlId='provider-model-top-k'
+                        label='Top K'
+                        description='Ollama top-k sampling limit.'
+                        value={settings.topK}
+                        min={0}
+                        max={500}
+                        step={1}
+                        onChange={topK => updateSettings({ topK })}
+                      />
+                      <ProviderNumberField
+                        controlId='provider-model-context-length'
+                        label='Context length'
+                        description='Ollama num_ctx option.'
+                        value={settings.numCtx}
+                        min={128}
+                        max={262144}
+                        step={128}
+                        onChange={numCtx => updateSettings({ numCtx })}
+                      />
+                      <ProviderNumberField
+                        controlId='provider-model-repeat-penalty'
+                        label='Repeat penalty'
+                        description='Ollama repeat_penalty option.'
+                        value={settings.repeatPenalty}
+                        min={0}
+                        max={4}
+                        step={0.05}
+                        onChange={repeatPenalty => updateSettings({ repeatPenalty })}
+                      />
+                      <ProviderNumberField
+                        controlId='provider-model-seed'
+                        label='Seed'
+                        description='Optional deterministic seed.'
+                        value={settings.seed}
+                        step={1}
+                        onChange={seed => updateSettings({ seed })}
+                      />
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+              {!openAi && nativeOllama ? (
                 <FormField
-                  controlId='provider-model-thinking-mode'
-                  label='Thinking mode'
-                  description='Bound or disable hidden reasoning for latency-sensitive controller turns.'
+                  controlId='provider-model-keep-alive'
+                  label='Keep alive'
+                  description='Ollama keep_alive value such as 5m, 1h, or -1.'
                   layout='vertical'
                 >
-                  <Select
-                    value={settings.thinkingMode ?? 'provider-default'}
-                    onValueChange={thinkingMode =>
-                      updateSettings({
-                        thinkingMode
-                      })
-                    }
-                  >
-                    <SelectTrigger
-                      id='provider-model-thinking-mode'
-                      className='w-full'
-                      aria-describedby='provider-model-thinking-mode-description'
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value='disabled'>Disabled</SelectItem>
-                      <SelectItem value='bounded'>Bounded</SelectItem>
-                      <SelectItem value='provider-default'>Provider default</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    value={settings.keepAlive ?? ''}
+                    placeholder='5m'
+                    onChange={event => updateSettings({ keepAlive: event.target.value || null })}
+                  />
                 </FormField>
-                <ProviderNumberField
-                  controlId='provider-model-reasoning-budget'
-                  label='Reasoning budget'
-                  description='Maximum hidden reasoning tokens when bounded mode is selected.'
-                  value={settings.reasoningBudgetTokens}
-                  min={0}
-                  max={32768}
-                  step={64}
-                  onChange={reasoningBudgetTokens => updateSettings({ reasoningBudgetTokens })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-temperature'
-                  label='Temperature'
-                  description='Sampling randomness from 0 to 2.'
-                  value={settings.temperature}
-                  min={0}
-                  max={2}
-                  step={0.1}
-                  onChange={temperature => updateSettings({ temperature })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-top-p'
-                  label='Top P'
-                  description='Nucleus sampling value from 0 to 1.'
-                  value={settings.topP}
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  onChange={topP => updateSettings({ topP })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-top-k'
-                  label='Top K'
-                  description='Ollama top-k sampling limit.'
-                  value={settings.topK}
-                  min={0}
-                  max={500}
-                  step={1}
-                  onChange={topK => updateSettings({ topK })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-context-length'
-                  label='Context length'
-                  description='Ollama num_ctx option.'
-                  value={settings.numCtx}
-                  min={128}
-                  max={262144}
-                  step={128}
-                  onChange={numCtx => updateSettings({ numCtx })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-repeat-penalty'
-                  label='Repeat penalty'
-                  description='Ollama repeat_penalty option.'
-                  value={settings.repeatPenalty}
-                  min={0}
-                  max={4}
-                  step={0.05}
-                  onChange={repeatPenalty => updateSettings({ repeatPenalty })}
-                />
-                <ProviderNumberField
-                  controlId='provider-model-seed'
-                  label='Seed'
-                  description='Optional deterministic seed.'
-                  value={settings.seed}
-                  step={1}
-                  onChange={seed => updateSettings({ seed })}
-                />
-              </div>
-              <FormField
-                controlId='provider-model-keep-alive'
-                label='Keep alive'
-                description='Ollama keep_alive value such as 5m, 1h, or -1.'
-                layout='vertical'
-              >
-                <Input
-                  value={settings.keepAlive ?? ''}
-                  placeholder='5m'
-                  onChange={event => updateSettings({ keepAlive: event.target.value || null })}
-                />
-              </FormField>
+              ) : null}
             </Section>
           </div>
         ) : null}
