@@ -16,7 +16,7 @@ export default async function GroupDetailPageEntry({ params }: GroupDetailPageEn
     return (
       <StandardPage className='gap-2'>
         <PageHeader
-          section={{ label: 'Security' }}
+          section={{ label: 'Users & groups' }}
           trail={[{ label: 'Groups', href: '/security/groups' }]}
           title='Group'
         />

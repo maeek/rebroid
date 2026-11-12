@@ -89,6 +89,10 @@ omits `section` to render without breadcrumbs or an empty breadcrumb gap. Keep `
 a vertical stack; responsive columns belong to a child grid with explicit `minmax()` tracks.
 Do not repeat outer padding or use fractional flex sizing for primary columns.
 
+Use the closest sidebar group as the first breadcrumb, such as Docker, Users & groups, or System.
+Use Administration for its direct destinations. Keep the same group and destination labels when a
+page is loading or unavailable. Detail pages link back to the destination that lists the resource.
+
 ## Surfaces and feedback
 
 Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic tones. Sections use
@@ -305,13 +309,12 @@ for streaming adjustments. Inline compound controls may explicitly opt out of ed
 
 ### Personal preferences
 
-The avatar menu offers an Account overview and a direct link to Preferences.
-The overview is a two-column dialog on desktop and stacks on narrow screens.
-It shows the signed-in identity and security status, with links to the Profile
-and Security sections of General preferences. Keep account edits on that page.
+The sidebar footer shows service status and notifications above a compact account row.
+The account menu offers Preferences, Security, Appearance, and Log out.
+Edit your profile in Preferences and manage sign-in in Security.
 
 Theme, accent, and viewer placement apply immediately. Profile photo and sign-in
-changes have their own action buttons. Only administrators see Console defaults,
+changes have their own action buttons. Only administrators see Console defaults, linked from Administration → General,
 where Save defaults and Restore defaults apply to the shared app-list and viewer defaults.
 
 Schedule editors use labeled Frequency, Time, interval, and day controls. Keep hidden frequency-specific
@@ -455,9 +458,9 @@ Overview Operations uses compact grouped counts with at most five preview rows p
 the operation groups, capacity cards, and their sampling hints. On refresh failure, retain real
 values with an explicit stale-data notice. Do not repeat unavailable values beneath an error notice.
 
-Scheduler uses the shared QuickGlanceCard summary surfaces and flat DataGridWorkspace. Task names open their editor; built-in/custom provenance stays secondary. Combine the last result and timestamp, keep availability on the switch, and avoid repeated name/action labels or enabled badges. Loading reuses the complete scheduler page and column definitions with disabled controls.
+Maintenance tasks uses the shared QuickGlanceCard summary surfaces and flat DataGridWorkspace. Task names open their editor; built-in/custom provenance stays secondary. Combine the last result and timestamp, keep availability on the switch, and avoid repeated name/action labels or enabled badges. Loading reuses the complete scheduler page and column definitions with disabled controls.
 
-Scheduler rows show availability once through the Enabled switch beside the task name. An unscheduled next run is an em dash. Built-in task metadata does not repeat its action label; custom tasks retain action context. Recurrence and time have predictable separate lines; execution timestamps use unambiguous month names and 24-hour local times, with the full timestamp and time zone available on hover and to assistive technology. Failure results open a read-only dialog with the complete error instead of stretching table rows.
+Maintenance task rows show availability once through the Enabled switch beside the task name. An unscheduled next run is an em dash. Built-in task metadata does not repeat its action label; custom tasks retain action context. Recurrence and time have predictable separate lines; execution timestamps use unambiguous month names and 24-hour local times, with the full timestamp and time zone available on hover and to assistive technology. Failure results open a read-only dialog with the complete error instead of stretching table rows.
 
 Runtime inventory and detail pages use the shared server-side failure classification. An unavailable read retains its
 request reference in the page notice. A missing runtime resource offers a return link. Services keeps its selected
@@ -465,9 +468,9 @@ infrastructure view and retains an existing connection draft across a failed ref
 
 The Services inventory uses Service, Status, Connection, and Actions columns. Show endpoint and timeout together. Service names link to their destinations, and the non-resizable action column reserves enough space for text and icons. Configuration presence is neutral, while verified health uses semantic status colors. Loading shares ServicesGrid and ServicesPageLayout.
 
-Runtime defaults group fields under Image defaults, App behavior, and Hardware Acceleration. The default image picker accepts local images and manually entered references. The runtime pulls a saved image when it is needed and unavailable locally. Show the GPU render device field when Host GPU is selected. All three sections share the page's Save and Discard changes actions. Send changed fields and retain unsaved edits through revalidation. Deployment-managed connection details live in Services. Maintenance stays visible as a compact action list on one shared section surface. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Scheduler for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
+Administration → General groups runtime defaults under Image defaults, App behavior, and Hardware Acceleration. The default image picker accepts local images and manually entered references. The runtime pulls a saved image when it is needed and unavailable locally. Show the GPU render device field when Host GPU is selected. All three sections share the page's Save and Discard changes actions. Send changed fields and retain unsaved edits through revalidation. Deployment-managed connection details live in Services. Maintenance stays visible as a compact action list on one shared section surface. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Maintenance tasks for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
 
-Services and Features are separate destinations under Platform settings. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Features. Feature gates still protect service editors. Features use readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
+Services is under System. Feature management is a direct destination under Administration. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Feature management. Feature gates still protect service editors. Feature management uses readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
 
 Services lists Orchestrator, Docker, Display, Firewall, and OCR from the same health snapshot used
 by the shell indicator. A configured endpoint never substitutes for measured health. Docker combines
@@ -475,6 +478,8 @@ engine reachability with runtime suitability. Orchestrator and Docker have resou
 `/platform/services?service=orchestrator` and `?service=docker`; shell health links point there.
 Display sessions shows the service notice, Connection details, and the session grid in that order.
 View logs opens a wide dialog and requests the bounded log tail on demand.
+Service details, Display sessions, and App network policies use `ServiceHealthNotice` for reported health
+and its neutral loading state.
 OCR perception and Firewall agent use the same service header, health notice, and editable
 Connection section. OCR also has a Settings section for recognition. Each page saves only its own configuration.
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
@@ -484,7 +489,7 @@ When orchestrator health is missing or offline, the Docker view shows one warnin
 limits or metrics sections or issue their requests. Unknown health uses warning styling, including
 inventory badges. Docker-only failures retain these orchestrator-owned diagnostics for investigation.
 Refreshing rechecks health and restores dependent sections when the orchestrator responds.
-Runtime defaults checks health before reading settings and images. Initial failures use the shared
+General checks health before reading runtime settings and images. Initial failures use the shared
 illustrated page state; retry reloads real saved settings rather than editable fallback defaults.
 If a later refresh fails, retain the mounted draft with one warning and disable settings/maintenance
 mutations until recovery.

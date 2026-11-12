@@ -39,7 +39,7 @@ export const CastingSettingsPageClient = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Platform', href: '/platform' }}
+        section={{ label: 'System' }}
         trail={[{ label: 'Services', href: '/platform/services' }]}
         title='Display sessions'
         breadcrumbRefresh={

@@ -33,7 +33,7 @@ export async function RuntimeContainerDetailPageEntry({
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         trail={[{ label: 'Containers', href: '/runtime/containers' }]}
         title='Container'
         description='Container details could not be loaded.'

@@ -22,7 +22,7 @@ export async function RuntimeNetworkDetailPageEntry({ params }: { params: Promis
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         trail={[{ label: 'Networks', href: '/runtime/networks' }]}
         title='Network'
         description='Network details could not be loaded.'

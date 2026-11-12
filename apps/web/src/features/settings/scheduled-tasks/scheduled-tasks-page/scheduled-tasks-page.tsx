@@ -31,8 +31,8 @@ const ScheduledTasksPageContent = ({ loading }: { loading: boolean }) => {
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Platform', href: '/platform' }}
-        title='Scheduler'
+        section={{ label: 'System' }}
+        title='Maintenance tasks'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
         actions={
           <Button
@@ -80,7 +80,7 @@ const SchedulerSummary = ({
     <div
       className='grid grid-cols-2 gap-3 xl:grid-cols-4'
       data-testid={loading ? 'scheduler-summary-skeleton' : undefined}
-      aria-label='Scheduler summary'
+      aria-label='Maintenance tasks summary'
       aria-busy={loading}
     >
       {items.map(item => (

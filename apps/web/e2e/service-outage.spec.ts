@@ -43,7 +43,7 @@ test('known orchestrator outages produce one warning and no dependent Docker req
 
 test('runtime defaults uses the shared illustrated failure with page-level recovery', async ({ page }) => {
   await page.goto('/skeleton-contract-test?editor=runtime-unavailable')
-  await expect(page.getByRole('heading', { level: 1, name: 'Runtime defaults', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'General', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { level: 2, name: 'Runtime defaults unavailable' })).toBeVisible()
   await expect(page.locator('[data-slot="state-illustration"]')).toBeVisible()
   await expect(page.locator('.root').getByRole('alert')).toHaveCount(1)

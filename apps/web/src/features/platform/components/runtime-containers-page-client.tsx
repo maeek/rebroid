@@ -51,7 +51,7 @@ const RuntimeContainersPageFrame = ({
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Runtime' }}
+      section={{ label: 'Docker' }}
       title='Containers'
       description='Docker containers visible to the platform. Managed application containers are shown first.'
       breadcrumbRefresh={

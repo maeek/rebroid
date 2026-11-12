@@ -63,17 +63,17 @@ for (const [kind, titles] of [
   })
 }
 
-test('general preferences keep descriptions beneath labels and preserve loading geometry', async ({ page }) => {
+test('console defaults keep descriptions beneath labels and preserve loading geometry', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })
-    await page.goto('/skeleton-contract-test?editor=general-loading')
+    await page.goto('/skeleton-contract-test?editor=console-defaults-loading')
     const loading = await page.locator('[data-surface="editor"]').evaluateAll(sections =>
       sections.map(section => {
         const rect = section.getBoundingClientRect()
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
       })
     )
-    await page.goto('/skeleton-contract-test?editor=general')
+    await page.goto('/skeleton-contract-test?editor=console-defaults')
     const ready = await page.locator('[data-surface="editor"]').evaluateAll(sections =>
       sections.map(section => {
         const rect = section.getBoundingClientRect()

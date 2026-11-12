@@ -3,17 +3,15 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
-import { Notice } from '@/components/ui/notice'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { firewallServiceSettingsSchema } from '@/shared/contracts/firewall-service-settings'
 import { ocrServiceSettingsSchema } from '@/shared/contracts/ocr-service-settings'
-import { serviceHealthState } from '@/shared/model/diagnostics/service-health'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { OcrServiceFields } from './ocr-service-fields'
 import { ServiceConnectionSection } from './service-connection-section'
@@ -52,10 +50,6 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   const enabled = isFeatureEnabled(meta.featureKey)
   const unavailable = !initialSettings
   const disabled = loading || saving || unavailable || !enabled
-  const state = serviceHealthState(initialHealth)
-  const healthTone = state.tone === 'neutral' ? 'info' : state.tone
-  const statusTitle = unavailable ? `${serviceName} settings unavailable` : state.label
-  const statusDescription = unavailable ? 'Refresh to reconnect and load the service configuration.' : state.description
   const { draft, saved } = form
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved)
   const settings = draft ?? defaultOrchestratorUiSettings.services[serviceId]
@@ -122,19 +116,18 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
         ) : undefined
       }
     >
-      <Notice
+      <ServiceHealthNotice
+        health={unavailable ? undefined : initialHealth}
         loading={loading}
-        tone={unavailable ? 'warning' : healthTone}
-        title={loading ? <Skeleton className='h-5 w-20' /> : statusTitle}
-        description={loading ? <Skeleton className='h-5 w-full max-w-96' /> : statusDescription}
+        title={unavailable ? `${serviceName} settings unavailable` : undefined}
+        description={unavailable ? 'Refresh to reconnect and load the service configuration.' : undefined}
+        requestId={requestId}
         actions={
-          !loading && !unavailable && !enabled ? (
+          !unavailable && !enabled ? (
             <ResourceLink href={`/platform/features#${meta.featureKey}`}>Manage feature</ResourceLink>
           ) : undefined
         }
-      >
-        {requestId ? <p className='text-xs text-foreground-muted'>Reference: {requestId}</p> : null}
-      </Notice>
+      />
       {loading || draft ? (
         <>
           <ServiceConnectionSection

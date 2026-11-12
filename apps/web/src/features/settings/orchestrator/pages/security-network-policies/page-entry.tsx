@@ -11,9 +11,9 @@ const SecurityNetworkPoliciesPageContent = () => (
     fallback={requestId => (
       <PlatformRouteUnavailable
         requestId={requestId}
-        title='Network policies'
+        title='App network policies'
         description='Monitor outbound access and firewall enforcement. Open an app to edit its policy.'
-        section={{ label: 'Security' }}
+        section={{ label: 'Administration' }}
       />
     )}
   >

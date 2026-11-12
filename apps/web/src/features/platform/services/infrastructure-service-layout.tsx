@@ -52,7 +52,7 @@ export const InfrastructureServiceLayout = ({
         />
         <div className='flex flex-wrap gap-x-6 gap-y-2 text-sm'>
           <ResourceLink href='/platform/services?service=docker'>Docker diagnostics and limits</ResourceLink>
-          <ResourceLink href='/platform/runtime'>Runtime defaults</ResourceLink>
+          <ResourceLink href='/platform/runtime'>General</ResourceLink>
         </div>
       </Section>
     )}

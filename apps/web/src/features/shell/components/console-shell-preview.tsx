@@ -10,11 +10,8 @@ import type { ShellUser } from './shell-user'
 
 const user: ShellUser = {
   name: 'Preview operator',
-  username: 'preview-operator',
   isPlatformAdmin: true,
-  accentColor: 'blue',
-  avatarDataUrl: null,
-  mfaEnabled: false
+  avatarDataUrl: null
 }
 
 export const ConsoleShellPreview = ({ initialSidebarCollapsed }: { initialSidebarCollapsed?: boolean }) => {
@@ -28,7 +25,7 @@ export const ConsoleShellPreview = ({ initialSidebarCollapsed }: { initialSideba
           pollNavigation={false}
         >
           <PageHeader
-            section={{ label: 'Runtime' }}
+            section={{ label: 'Docker' }}
             trail={[{ label: 'Containers', href: '/runtime/containers' }]}
             title={'rebroid-runtime-' + 'inventory-worker-'.repeat(8)}
             actions={

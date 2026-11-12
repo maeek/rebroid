@@ -129,6 +129,9 @@ test('network policies keep the same grid and filter geometry while loading', as
     const readyGrid = await grid.boundingBox()
     expect(readyGrid?.x).toBe(loadingGrid?.x)
     expect(readyGrid?.y).toBe(loadingGrid?.y)
+    const health = page.getByRole('status').filter({ hasText: 'Network policy agent is responding.' })
+    await expect(health).toHaveAttribute('data-tone', 'success')
+    await expect(health.getByText('Healthy', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Sync all rules' })).toBeEnabled()
     await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
       'href',
@@ -181,7 +184,7 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
     await expect(page.getByRole('button', { name: 'Remove', exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
     if (width >= 1024) {
-      for (const group of ['Platform settings', 'Infrastructure', 'Access and policies']) {
+      for (const group of ['Docker', 'Users & groups', 'System']) {
         const collapse = page.getByRole('button', { name: `Collapse ${group} menu` })
         await expect(collapse).toHaveAttribute('aria-expanded', 'true')
         await collapse.click()
@@ -191,16 +194,16 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
       }
       const toggle = page.getByRole('button', { name: 'Collapse sidebar', exact: true })
       const header = await toggle.boundingBox()
-      const general = page.getByRole('link', { name: 'General', exact: true })
-      await general.scrollIntoViewIfNeeded()
-      const link = await general.boundingBox()
+      const maintenance = page.getByRole('link', { name: 'Maintenance tasks', exact: true })
+      await maintenance.scrollIntoViewIfNeeded()
+      const link = await maintenance.boundingBox()
       expect(link!.y + link!.height).toBeLessThanOrEqual(480)
       const sidebar = await page.getByRole('complementary', { name: 'Primary navigation' }).boundingBox()
       expect(sidebar!.x).toBe(8)
       expect(sidebar!.y).toBe(8)
       expect(sidebar!.y + sidebar!.height).toBe(472)
       expect(await toggle.boundingBox()).toEqual(header)
-      await expect(page.getByRole('link', { name: 'Features', exact: true })).toHaveAttribute(
+      await expect(page.getByRole('link', { name: 'Feature management', exact: true })).toHaveAttribute(
         'href',
         '/platform/features'
       )
@@ -213,6 +216,15 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
         '/security/groups?create=1'
       )
       await expect(page.getByRole('link', { name: 'Build image', exact: true })).toHaveCount(0)
+    } else {
+      await page.getByRole('button', { name: 'Open navigation' }).click()
+      const drawer = page.getByRole('dialog', { name: 'Navigation' })
+      for (const group of ['Docker', 'Users & groups', 'System']) {
+        await expect(drawer.getByRole('button', { name: `Collapse ${group} menu` })).toHaveAttribute(
+          'aria-expanded',
+          'true'
+        )
+      }
     }
   }
 })
@@ -271,7 +283,9 @@ test('the health chip sits next to notifications and becomes a dot in the rail',
   const statusBox = (await status.boundingBox())!
   const bellBox = (await bell.boundingBox())!
   expect(statusBox.y + statusBox.height / 2).toBe(bellBox.y + bellBox.height / 2)
-  expect(bellBox.x - (statusBox.x + statusBox.width)).toBe(4)
+  expect(bellBox.x).toBeGreaterThan(statusBox.x + statusBox.width)
+  const accountBox = (await footer.getByRole('button', { name: /^Account:/ }).boundingBox())!
+  expect(accountBox.y).toBeGreaterThan(bellBox.y + bellBox.height)
 
   const finePointer = await page.evaluate(() => matchMedia('(pointer: fine)').matches)
   if (finePointer) {
@@ -397,7 +411,7 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
     await expect(apps).toBeFocused()
     await expect(hint).toBeVisible()
   }
-  const access = sidebar.getByRole('button', { name: 'Access and policies', exact: true })
+  const access = sidebar.getByRole('button', { name: 'Users & groups', exact: true })
   await access.press('Enter')
   const group = page.getByRole('menu')
   await expect(group).not.toHaveCSS(
@@ -417,12 +431,12 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   await expect(access).toBeFocused()
   if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
     await access.hover()
-    await expect(group).toHaveAttribute('aria-label', 'Access and policies')
+    await expect(group).toHaveAttribute('aria-label', 'Users & groups')
     await expect(group).toHaveCSS('animation-name', 'none')
     const flyout = (await group.elementHandle())!
-    await sidebar.getByRole('button', { name: 'Infrastructure', exact: true }).hover()
-    await expect(group).toHaveAttribute('aria-label', 'Infrastructure')
-    expect(await flyout.getAttribute('aria-label')).toBe('Infrastructure')
+    await sidebar.getByRole('button', { name: 'Docker', exact: true }).hover()
+    await expect(group).toHaveAttribute('aria-label', 'Docker')
+    expect(await flyout.getAttribute('aria-label')).toBe('Docker')
     const containers = group.getByRole('menuitem', { name: 'Containers', exact: true })
     const item = (await containers.boundingBox())!
     await page.mouse.move(item.x + item.width / 2, item.y + item.height / 2, { steps: 12 })
@@ -477,7 +491,7 @@ test('console anchors only clear the top bar when it is visible', async ({ page 
   for (const { editor, anchors, mobileOffset, desktopOffset } of [
     {
       editor: 'general',
-      anchors: ['appearance', 'profile', 'security', 'console-defaults'],
+      anchors: ['appearance', 'profile'],
       mobileOffset: 80,
       desktopOffset: 24
     },

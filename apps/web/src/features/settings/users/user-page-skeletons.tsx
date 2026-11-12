@@ -27,7 +27,7 @@ const UsersHeaderSkeleton = ({
   withAvatar?: boolean
 }) => (
   <PageHeader
-    section={{ label: 'Security' }}
+    section={{ label: 'Users & groups' }}
     trail={trail}
     title={<Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' />}
     breadcrumbLabel={title}

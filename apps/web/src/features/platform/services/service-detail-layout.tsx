@@ -15,7 +15,7 @@ export const ServiceDetailLayout = ({
 }) => (
   <StandardPage className='gap-2'>
     <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
+      section={{ label: 'System' }}
       trail={[{ label: 'Services', href: '/platform/services' }]}
       title={title}
       breadcrumbRefresh={refresh}

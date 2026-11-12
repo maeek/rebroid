@@ -20,7 +20,7 @@ export const AiProvidersPageLayout = ({
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
+      section={{ label: 'Administration' }}
       title='AI'
       leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
       description='Manage model providers and AI-assisted automation.'

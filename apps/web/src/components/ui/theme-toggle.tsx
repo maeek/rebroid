@@ -59,7 +59,7 @@ export function ThemeToggle({ side }: { side?: 'left' | 'right' }) {
         <Visible when={theme !== 'light' && theme !== 'dark' && theme !== 'oled'}>
           <IconSunMoon className='mr-2 size-4' />
         </Visible>
-        <span>Theme</span>
+        <span>Appearance</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>
         <DropdownMenuSubContent

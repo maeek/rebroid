@@ -130,7 +130,7 @@ export const UsersSettings = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Security' }}
+        section={{ label: 'Users & groups' }}
         title='Users'
         actions={
           <>

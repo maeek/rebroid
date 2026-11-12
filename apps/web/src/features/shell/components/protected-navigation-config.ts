@@ -35,50 +35,62 @@ export const automationSections: NavigationItem[] = [
   { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
 ]
 
-export const securitySections: NavigationItem[] = [
-  {
-    name: 'Users',
-    Icon: IconUsers,
-    href: '/security/users',
-    shortcut: { href: '/security/users?create=1', label: 'Create user' }
-  },
-  {
-    name: 'Groups',
-    Icon: IconShield,
-    href: '/security/groups',
-    shortcut: { href: '/security/groups?create=1', label: 'Create group' }
-  },
-  { name: 'Network policies', Icon: IconNetwork, href: '/security/network-policies', feature: 'feature.firewall' },
-  { name: 'Audit log', Icon: IconHistory, href: '/security/audit-log' }
-]
+export type NavigationGroup = { label: string; Icon: NavigationItem['Icon']; items: NavigationItem[] }
 
 export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
 
-export const platformSections: NavigationItem[] = [
-  { name: 'Runtime defaults', Icon: IconAdjustments, href: '/platform/runtime' },
-  { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
-  { name: 'Features', Icon: IconToggleLeft, href: '/platform/features' },
-  { name: 'Scheduler', Icon: IconCalendarTime, href: '/platform/scheduler' },
-  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' }
-]
-
-export const runtimeSections: NavigationItem[] = [
-  { name: 'Containers', Icon: IconBox, href: '/runtime/containers' },
+export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
+  { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
+  { name: 'Feature management', Icon: IconToggleLeft, href: '/platform/features' },
+  { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' },
   {
-    name: 'Images',
-    Icon: IconBrandDocker,
-    href: '/runtime/images',
-    shortcut: { href: '/runtime/images/build', label: 'Build image', feature: 'feature.image-builder' }
+    label: 'Docker',
+    Icon: IconBox,
+    items: [
+      { name: 'Containers', Icon: IconBox, href: '/runtime/containers' },
+      {
+        name: 'Images',
+        Icon: IconBrandDocker,
+        href: '/runtime/images',
+        shortcut: { href: '/runtime/images/build', label: 'Build image', feature: 'feature.image-builder' }
+      },
+      { name: 'Networks', Icon: IconNetwork, href: '/runtime/networks' }
+    ]
   },
-  { name: 'Networks', Icon: IconNetwork, href: '/runtime/networks' }
-]
-
-export const systemSections: NavigationItem[] = [
-  { name: 'Resources', Icon: IconServerSpark, href: '/system/resources' }
-]
-
-export const preferenceSections: NavigationItem[] = [
-  { name: 'General', Icon: IconAdjustments, href: '/preferences/general' }
+  {
+    name: 'App network policies',
+    Icon: IconNetwork,
+    href: '/security/network-policies',
+    feature: 'feature.firewall'
+  },
+  {
+    label: 'Users & groups',
+    Icon: IconUsers,
+    items: [
+      {
+        name: 'Users',
+        Icon: IconUsers,
+        href: '/security/users',
+        shortcut: { href: '/security/users?create=1', label: 'Create user' }
+      },
+      {
+        name: 'Groups',
+        Icon: IconShield,
+        href: '/security/groups',
+        shortcut: { href: '/security/groups?create=1', label: 'Create group' }
+      }
+    ]
+  },
+  { name: 'Audit log', Icon: IconHistory, href: '/security/audit-log' },
+  {
+    label: 'System',
+    Icon: IconServerSpark,
+    items: [
+      { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
+      { name: 'Resource usage', Icon: IconServerSpark, href: '/system/resources' },
+      { name: 'Maintenance tasks', Icon: IconCalendarTime, href: '/platform/scheduler' }
+    ]
+  }
 ]
 
 export const variantStyles = {

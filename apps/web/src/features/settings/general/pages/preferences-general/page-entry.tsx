@@ -4,14 +4,9 @@ import { getPreferencesGeneralPageData } from './page-data.server'
 import { PreferencesGeneralPageSkeleton } from './preferences-general-page-skeleton'
 
 const PreferencesGeneralContent = async () => {
-  const { user, initialSettings } = await getPreferencesGeneralPageData()
+  const { user } = await getPreferencesGeneralPageData()
 
-  return (
-    <GeneralSettingsForm
-      user={user}
-      initialSettings={initialSettings}
-    />
-  )
+  return <GeneralSettingsForm user={user} />
 }
 
 export default function PreferencesGeneralPageEntry() {

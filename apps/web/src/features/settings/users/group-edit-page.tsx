@@ -51,7 +51,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   return (
     <EditorPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Security' }}
+        section={{ label: 'Users & groups' }}
         trail={[{ label: 'Groups', href: '/security/groups' }]}
         breadcrumbLabel={group.name}
         title={draft.name || group.name}

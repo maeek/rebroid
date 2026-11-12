@@ -57,7 +57,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
   return (
     <EditorPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Security' }}
+        section={{ label: 'Users & groups' }}
         trail={[{ label: 'Users', href: '/security/users' }]}
         breadcrumbLabel={user.username}
         title={draft.name || draft.username}

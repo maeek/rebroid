@@ -59,7 +59,7 @@ const RuntimeImagesPageFrame = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         title='Images'
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         breadcrumbRefresh={

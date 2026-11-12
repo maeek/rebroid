@@ -51,7 +51,7 @@ const RuntimeNetworksPageFrame = ({
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Runtime' }}
+      section={{ label: 'Docker' }}
       title='Networks'
       description='Docker networks visible to the platform, including application isolation networks.'
       breadcrumbRefresh={

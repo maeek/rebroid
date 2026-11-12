@@ -13,7 +13,7 @@ export const FirewallSettingsPageClient = ({
   initialApplications,
   loading = false
 }: {
-  initialHealth: ServiceHealth
+  initialHealth?: ServiceHealth
   initialApplications: AndroidApplication[]
   loading?: boolean
 }) => {
@@ -31,8 +31,8 @@ export const FirewallSettingsPageClient = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Security' }}
-        title='Network policies'
+        section={{ label: 'Administration' }}
+        title='App network policies'
         description='Monitor outbound access and firewall enforcement. Open an app to edit its policy.'
         breadcrumbRefresh={
           <PlatformPageRefreshButton

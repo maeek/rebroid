@@ -14,7 +14,7 @@ const AiProvidersListContent = async () => {
         title='AI'
         leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         description='Configure OpenAI, Ollama, and OpenAI-compatible providers used by AI automation steps.'
-        section={{ label: 'Platform' }}
+        section={{ label: 'Administration' }}
       />
     )
   }

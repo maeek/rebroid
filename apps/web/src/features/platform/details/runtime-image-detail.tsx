@@ -112,7 +112,7 @@ export const RuntimeImagePageContent = ({
   return (
     <>
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         breadcrumbLabel={image ? undefined : 'Image'}
         trail={[{ label: 'Images', href: '/runtime/images' }]}
         title={image ? imageDisplayName(image) : <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' />}

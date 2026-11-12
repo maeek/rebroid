@@ -15,7 +15,7 @@ export const ImageBuilderLayout = ({
 }) => (
   <StandardPage className='min-w-0'>
     <PageHeader
-      section={{ label: 'Runtime' }}
+      section={{ label: 'Docker' }}
       trail={[{ label: 'Images', href: '/runtime/images' }]}
       title={mode === 'gapps' ? 'Build Google Play image' : 'Build custom image'}
       description={

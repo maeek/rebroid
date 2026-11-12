@@ -20,7 +20,7 @@ export default async function AiProviderDetailPageEntry({ params, searchParams }
           requestId={requestId}
           title='AI provider'
           description='Manage provider models and connection settings.'
-          section={{ label: 'Platform', href: '/platform' }}
+          section={{ label: 'Administration' }}
           trail={[{ label: 'AI', href: '/platform/ai' }]}
         />
       )}

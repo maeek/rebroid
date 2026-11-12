@@ -2,6 +2,7 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
+import { ResourceLink } from '@/shared/ui/resource-link'
 
 export const PlatformRuntimeHeader = ({
   isSaving = false,
@@ -19,9 +20,14 @@ export const PlatformRuntimeHeader = ({
   showActions?: boolean
 }) => (
   <PageHeader
-    section={{ label: 'Platform', href: '/platform' }}
-    title='Runtime defaults'
-    description='Configure app defaults and manage runtime maintenance.'
+    section={{ label: 'Administration' }}
+    title='General'
+    description={
+      <>
+        Set defaults for Android apps. For shared refresh and streaming settings, see{' '}
+        <ResourceLink href='/platform/console'>Console defaults</ResourceLink>.
+      </>
+    }
     actions={
       showActions ? (
         <>

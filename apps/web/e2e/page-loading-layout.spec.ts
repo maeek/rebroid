@@ -113,10 +113,10 @@ test('loading editor cannot receive keyboard focus', async ({ page }) => {
 
 test('platform subpage loaders retain their own destination and chrome', async ({ page }) => {
   const destinations = [
-    ['runtime-loading', 'Runtime defaults', 'Image defaults'],
-    ['scheduler-loading', 'Scheduler', 'Task'],
+    ['runtime-loading', 'General', 'Image defaults'],
+    ['scheduler-loading', 'Maintenance tasks', 'Task'],
     ['services-all-loading', 'Services', 'Connection'],
-    ['features-loading', 'Features', 'OCR perception'],
+    ['features-loading', 'Feature management', 'OCR perception'],
     ['ai-list-loading', 'AI', 'Providers'],
     ['display-sessions-loading', 'Display sessions', 'Connection']
   ] as const

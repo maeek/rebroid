@@ -118,10 +118,10 @@ describe('FeaturesPage', () => {
     expect(screen.queryByText(/Configuration revision/)).toBeNull()
     expect(screen.getByRole('row', { name: /OCR perception/ })).toBeTruthy()
     expect(screen.getByRole('row', { name: /Virtual displays/ })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Features', level: 1 })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Feature management', level: 1 })).toBeVisible()
     const breadcrumb = screen.getByRole('navigation', { name: 'breadcrumb' })
-    expect(within(breadcrumb).getByRole('link', { name: 'Platform' })).toHaveAttribute('href', '/platform')
-    expect(within(breadcrumb).getByText('Features')).toBeVisible()
+    expect(within(breadcrumb).getByText('Administration')).toBeVisible()
+    expect(within(breadcrumb).getByText('Feature management')).toBeVisible()
     expect(within(breadcrumb).queryByRole('link', { name: 'Services' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Connection settings' })).toHaveAttribute(
       'href',

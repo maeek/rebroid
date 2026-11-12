@@ -76,7 +76,6 @@ export const AccountMfaSettings = ({
   return (
     <Section
       surface='plain'
-      headingLevel={3}
       title='Multi-factor authentication'
       description='Use an authenticator app. Each recovery code works once.'
     >

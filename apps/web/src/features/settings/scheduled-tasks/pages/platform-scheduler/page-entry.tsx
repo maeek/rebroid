@@ -8,9 +8,9 @@ export async function PlatformSchedulerPageEntry() {
   if (orchestratorError) {
     return (
       <PlatformRouteUnavailable
-        title='Scheduler'
+        title='Maintenance tasks'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'
-        section={{ label: 'Platform' }}
+        section={{ label: 'System' }}
       />
     )
   }

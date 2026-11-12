@@ -8,7 +8,7 @@ export const ActivityPageLayout = ({ children }: { children: ReactNode }) => (
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Security' }}
+      section={{ label: 'Administration' }}
       title='Audit log'
       description='Review administrative and application activity. Select an event to inspect its details.'
     />

@@ -9,9 +9,10 @@ export const CustomRuntimeImageBuilderPageEntry = () => (
     fallback={requestId => (
       <PlatformRouteUnavailable
         requestId={requestId}
-        title='Custom image builder'
+        title='Build custom image'
         description='Build a runtime image from a Dockerfile and uploaded context.'
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
+        trail={[{ label: 'Images', href: '/runtime/images' }]}
       />
     )}
   >

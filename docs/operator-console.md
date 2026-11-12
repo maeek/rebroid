@@ -1,10 +1,25 @@
 # Operator console
 
-Rebroid organizes everyday work around apps and automation runs. Administrative configuration
-stays available in expandable sidebar groups. Existing role and capability checks remain authoritative.
+Rebroid organizes everyday work around apps and automation runs. Administration starts with
+General, Feature management, and AI. The Docker group keeps Containers, Images, and Networks together.
+App network policies and Audit log open directly. Users & groups contains the account and group lists.
+System contains Services, Resource usage, and Maintenance tasks. These groups start expanded in the
+desktop sidebar and mobile drawer, and you can collapse each one.
 Use the desktop sidebar toggle beside the Rebroid wordmark to reclaim the navigation width. The
 browser remembers the choice. The Images shortcut opens the builder when the feature is available.
 Administrator shortcuts beside Users and Groups open the corresponding creation dialogs.
+
+## Preferences and platform settings
+
+Open **Preferences** from the account menu to manage settings for your own account and browser.
+Open **Security** from the same menu to manage sign-in settings.
+
+- **General** (`/preferences/general`): theme, accent color, viewer layout, and profile photo.
+- **Security** (`/preferences/security`): password changes, multi-factor authentication, and recovery codes.
+
+Administrators manage shared list refresh and streaming defaults in
+**Administration → General → Console defaults** (`/platform/console`). Save defaults and Restore defaults
+apply to everyone. Android app defaults are on **Administration → General**.
 
 ## Runtime images
 
@@ -49,7 +64,7 @@ editable list. Paste entries separated by commas or new lines, or delete entries
 **Save network access** saves the policy and attempts enforcement for a running app. A stopped app
 uses the saved policy on its next start. If the firewall cannot confirm enforcement, the Network
 tab shows the last reported state and offers **Retry enforcement** for the saved policy.
-Administrators can monitor apps under **Network policies**, open an app's policy from its row,
+Administrators can monitor apps under **App network policies**, open an app's policy from its row,
 or use **Sync all rules** to refresh host rules and remove stale entries.
 
 ## Workflow device steps
@@ -137,7 +152,7 @@ log to that execution of the step. Each event keeps a resized preview and up to 
 
 ## Workflow history retention
 
-In **Platform settings → Scheduler**, edit **Workflow history retention** to set how many days to
+In **System → Maintenance tasks**, edit **Workflow history retention** to set how many days to
 keep finished workflow runs. The built-in task runs daily and defaults to 30 days from completion.
 For older finished runs without a completion timestamp, the task uses their last update.
 It removes expired runs together with their step results and events, including OCR previews and

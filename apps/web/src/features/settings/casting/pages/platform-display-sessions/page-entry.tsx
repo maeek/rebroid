@@ -13,7 +13,7 @@ const PlatformDisplaySessionsPageContent = () => (
         requestId={requestId}
         title='Display sessions'
         description='Inspect the display service and manage viewer sessions.'
-        section={{ label: 'Platform', href: '/platform' }}
+        section={{ label: 'System' }}
         trail={[{ label: 'Services', href: '/platform/services' }]}
       />
     )}

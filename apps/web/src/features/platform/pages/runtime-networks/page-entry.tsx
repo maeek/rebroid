@@ -14,7 +14,7 @@ const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Pro
         title='Networks'
         requestId={result.failure.requestId}
         description='Docker networks visible to the platform, including application isolation networks.'
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
       />
     )
   }

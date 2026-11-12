@@ -281,7 +281,7 @@ test('scheduler matches shared panels and keeps task interactions stable', async
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/skeleton-contract-test?editor=scheduler')
-    await expect(page.getByRole('heading', { name: 'Scheduler', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Maintenance tasks', exact: true })).toBeVisible()
     const table = page.getByRole('table')
     const rowHeights = await table
       .locator('tbody tr')
@@ -517,8 +517,8 @@ test('services hides disabled entries and Features keeps their settings discover
       })
     }
     await page.goto('/skeleton-contract-test?editor=features')
-    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('PlatformFeatures')
-    await expect(page.getByRole('heading', { name: 'Features', exact: true })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('AdministrationFeature management')
+    await expect(page.getByRole('heading', { name: 'Feature management', exact: true })).toBeVisible()
     const firewall = page.getByRole('row').filter({ hasText: 'Firewall enforcement' })
     await expect(firewall.getByRole('switch', { name: 'Enable Firewall enforcement' })).toBeEnabled()
     await expect(firewall.getByRole('link')).toHaveCount(0)

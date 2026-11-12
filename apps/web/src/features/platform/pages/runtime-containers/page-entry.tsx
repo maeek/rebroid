@@ -17,7 +17,7 @@ const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: P
         title='Containers'
         requestId={result.failure.requestId}
         description='Docker containers visible to the platform. Managed application containers are shown first.'
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
       />
     )
   }

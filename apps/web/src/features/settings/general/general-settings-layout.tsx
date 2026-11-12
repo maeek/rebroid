@@ -6,27 +6,23 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 
 const personalSections = [
   { id: 'appearance', label: 'Appearance' },
-  { id: 'profile', label: 'Profile' },
-  { id: 'security', label: 'Security' }
+  { id: 'profile', label: 'Profile' }
 ]
 
-export const GeneralSettingsLayout = ({ children, showDefaults }: { children: ReactNode; showDefaults: boolean }) => {
-  const sections = showDefaults
-    ? [...personalSections, { id: 'console-defaults', label: 'Console defaults' }]
-    : personalSections
-
+export const GeneralSettingsLayout = ({ children }: { children: ReactNode }) => {
   return (
     <EditorPage className='gap-2'>
       <PageHeader
         section={{ label: 'Preferences' }}
         title='General'
+        description='Personalize your appearance, viewer layout, and profile photo.'
       />
       <PageContent>
         <nav
           aria-label='Preference sections'
           className='flex flex-wrap gap-1'
         >
-          {sections.map(({ id, label }) => (
+          {personalSections.map(({ id, label }) => (
             <Button
               key={id}
               asChild

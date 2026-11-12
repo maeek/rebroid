@@ -14,7 +14,7 @@ const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promi
         title='Images'
         requestId={result.failure.requestId}
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
       />
     )
   }

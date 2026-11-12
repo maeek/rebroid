@@ -22,7 +22,7 @@ export async function RuntimeImageDetailPageEntry({ params }: { params: Promise<
   return (
     <StandardPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         trail={[{ label: 'Images', href: '/runtime/images' }]}
         title='Image'
         description='Image details could not be loaded.'

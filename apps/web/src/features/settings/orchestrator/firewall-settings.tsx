@@ -20,7 +20,7 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
-import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
+import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { firewallPolicyColumns } from './firewall-policy-columns'
 import {
   clampFirewallPageIndex,
@@ -44,7 +44,7 @@ export const FirewallSettings = ({
   onRefreshComplete,
   loading = false
 }: {
-  initialHealth: ServiceHealth
+  initialHealth?: ServiceHealth
   initialApplications: AndroidApplication[]
   refreshKey?: number
   onRefreshComplete?: () => void
@@ -189,11 +189,9 @@ export const FirewallSettings = ({
 
   return (
     <>
-      <PlatformStatusBanner
+      <ServiceHealthNotice
+        health={health}
         loading={loading}
-        status={health.status}
-        ok={health.ok}
-        message={health.message}
       />
       <Section
         surface='plain'

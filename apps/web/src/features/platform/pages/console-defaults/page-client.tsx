@@ -8,9 +8,12 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { pickGeneralUiSettings, type GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { ConsoleDefaultsFields } from './general-settings-fields'
+import { EditorPage } from '@/shared/ui/page/editor-page'
+import { PageHeader } from '@/shared/ui/page/page-header'
+import { PageContent } from '@/shared/ui/page/page-layout'
+import { ConsoleDefaultsFields } from './ui/console-defaults-fields'
 
-export const ConsoleDefaultsForm = ({
+export const ConsoleDefaultsPageClient = ({
   initialSettings,
   loading = false
 }: {
@@ -64,50 +67,45 @@ export const ConsoleDefaultsForm = ({
   }
 
   return (
-    <section
-      id='console-defaults'
-      className='grid scroll-mt-[calc(var(--console-top-inset)+1rem)] gap-4'
-      aria-labelledby='console-defaults-title'
-    >
-      <div className='flex flex-wrap items-start justify-between gap-3'>
-        <div>
-          <h2
-            id='console-defaults-title'
-            className='text-lg font-medium'
-          >
-            Console defaults
-          </h2>
-          <p className='text-sm text-foreground-muted'>Administrator settings that apply to everyone.</p>
-        </div>
-        <div className='flex flex-wrap gap-2'>
-          <Button
-            variant='ghost'
-            disabled={loading || isSaving}
-            ref={resetTrigger}
-            onClick={() => setResetOpen(true)}
-          >
-            Restore defaults
-          </Button>
-          <MutationButton
-            disabled={loading || !dirty}
-            pending={isSaving}
-            pendingLabel='Saving…'
-            onClick={() => void saveSettings()}
-          >
-            Save defaults
-          </MutationButton>
-        </div>
-      </div>
-      <fieldset
-        disabled={isSaving}
-        className='grid min-w-0 gap-4'
-      >
-        <ConsoleDefaultsFields
-          settings={settings}
-          onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
-          loading={loading}
-        />
-      </fieldset>
+    <EditorPage className='gap-2'>
+      <PageHeader
+        section={{ label: 'Administration' }}
+        trail={[{ label: 'General', href: '/platform/runtime' }]}
+        title='Console defaults'
+        description='Default list refresh and streaming settings for all users.'
+        actions={
+          <div className='flex flex-wrap gap-2'>
+            <Button
+              variant='ghost'
+              disabled={loading || isSaving}
+              ref={resetTrigger}
+              onClick={() => setResetOpen(true)}
+            >
+              Restore defaults
+            </Button>
+            <MutationButton
+              disabled={loading || !dirty}
+              pending={isSaving}
+              pendingLabel='Saving…'
+              onClick={() => void saveSettings()}
+            >
+              Save defaults
+            </MutationButton>
+          </div>
+        }
+      />
+      <PageContent>
+        <fieldset
+          disabled={loading || isSaving}
+          className='grid min-w-0 gap-4'
+        >
+          <ConsoleDefaultsFields
+            settings={settings}
+            onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
+            loading={loading}
+          />
+        </fieldset>
+      </PageContent>
       <ConfirmMutationDialog
         open={resetOpen}
         onOpenChange={setResetOpen}
@@ -120,6 +118,6 @@ export const ConsoleDefaultsForm = ({
         tone='warning'
         onConfirm={() => void resetSettings()}
       />
-    </section>
+    </EditorPage>
   )
 }

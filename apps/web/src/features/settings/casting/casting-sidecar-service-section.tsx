@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react'
 import { IconRestore } from '@tabler/icons-react'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
-import { Skeleton } from '@/components/ui/skeleton'
-import { serviceHealthState } from '@/shared/model/diagnostics/service-health'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { castingDetailLabels, formatHealthDetail } from './casting-sidecar-utils'
 import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 
@@ -25,7 +23,6 @@ export const CastingSidecarServiceSection = ({
   onRestart: () => void
   logs?: ReactNode
 }) => {
-  const state = serviceHealthState(health)
   const details = health.details ?? {}
   const diagnosticKeys = Object.keys(castingDetailLabels).filter(key => !connectionKeys.includes(key) && key in details)
   const fields = [...connectionKeys, ...diagnosticKeys].map(key => {
@@ -41,11 +38,9 @@ export const CastingSidecarServiceSection = ({
 
   return (
     <>
-      <Notice
+      <ServiceHealthNotice
+        health={health}
         loading={loading}
-        tone={state.tone === 'neutral' ? 'info' : state.tone}
-        title={loading ? <Skeleton className='h-5 w-20' /> : state.label}
-        description={loading ? <Skeleton className='h-5 w-full max-w-96' /> : state.description}
       />
       <Section
         surface='panel'

@@ -98,10 +98,12 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
 
 export const OrchestratorStatus = ({
   compact = false,
+  showSystemLabel = false,
   popupPosition = navigationPopupPositions.header,
   polling = true
 }: {
   compact?: boolean
+  showSystemLabel?: boolean
   popupPosition?: NavigationPopupPosition
   polling?: boolean
 }) => {
@@ -110,6 +112,7 @@ export const OrchestratorStatus = ({
   const [health, setHealth] = useState<OrchestratorHealth | null>(null)
   const { getFeature } = useFeatureFlags()
   const { label, tone, dot } = healthPresentation[state]
+  const visibleLabel = showSystemLabel && state !== 'checking' ? `System ${label.toLowerCase()}` : label
 
   const applyHealth = useCallback((nextHealth: OrchestratorHealth) => {
     setHealth(nextHealth)
@@ -198,7 +201,7 @@ export const OrchestratorStatus = ({
                 aria-hidden='true'
                 className={cn('size-1.5 shrink-0 rounded-full', dot)}
               />
-              {label}
+              {visibleLabel}
             </span>
           )}
         </Button>

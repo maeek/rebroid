@@ -17,8 +17,8 @@ const FeaturesPageLayout = ({ children }: { children: ReactNode }) => (
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
-      title='Features'
+      section={{ label: 'Administration' }}
+      title='Feature management'
       description='Manage platform capabilities and their availability. Changes are saved immediately.'
     />
     <PageContent>{children}</PageContent>

@@ -7,17 +7,13 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
-import { NavigationRailGroups } from './navigation-rail-group'
+import { NavigationRail } from './navigation-rail-group'
 import {
+  administrationEntries,
   appSections,
   isNavigationDestinationActive,
   automationSections,
   overviewSections,
-  platformSections,
-  preferenceSections,
-  runtimeSections,
-  securitySections,
-  systemSections,
   variantStyles,
   type NavigationItem,
   type NavigationVariant
@@ -57,52 +53,22 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
   const isActivePath = (href: string, exact = false) => isNavigationDestinationActive(pathname, href, exact)
 
   const itemIsActive = (href: string) => {
-    if (href === '/security/users') {
-      return pathname === href || (pathname.startsWith('/security/users/') && !pathname.startsWith('/security/groups'))
-    }
+    if (href === '/platform/runtime' && isActivePath('/platform/console')) return true
 
     return isActivePath(href, href === '/platform')
   }
 
-  const administrationGroups = [
-    { label: 'Platform settings', items: platformSections },
-    { label: 'Infrastructure', items: [...runtimeSections, ...systemSections] },
-    { label: 'Access and policies', items: securitySections }
-  ].map(({ label, items }) => ({
-    label,
-    items: items
-      .filter(item => !item.feature || isFeatureEnabled(item.feature))
-      .map(item => ({
-        ...item,
-        shortcut: item.shortcut?.feature && !isFeatureEnabled(item.shortcut.feature) ? undefined : item.shortcut
-      }))
-  }))
-
-  const renderSection = (title: string, items: NavigationItem[]) => (
-    <>
-      <SectionHeader
-        title={title}
-        variant={variant}
-      />
-      <ul className={styles.list}>
-        {items
-          .filter(item => !item.feature || isFeatureEnabled(item.feature))
-          .map(({ name, Icon, href }) => {
-            return (
-              <NavLink
-                key={href}
-                href={href}
-                label={name}
-                Icon={Icon}
-                isActive={itemIsActive(href)}
-                variant={variant}
-                onNavigate={onNavigate}
-              />
-            )
-          })}
-      </ul>
-    </>
-  )
+  const isItemVisible = (item: NavigationItem) => !item.feature || isFeatureEnabled(item.feature)
+  const visibleAdministration = administrationEntries
+    .filter(entry => 'items' in entry || isItemVisible(entry))
+    .map(entry => {
+      if (!('items' in entry)) return entry
+      const items = entry.items.filter(isItemVisible).map(item => {
+        const feature = item.shortcut?.feature
+        return feature && !isFeatureEnabled(feature) ? { ...item, shortcut: undefined } : item
+      })
+      return { ...entry, items }
+    })
 
   return (
     <div className={styles.root}>
@@ -181,21 +147,34 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
           variant={variant}
         />
         {variant === 'rail' ? (
-          <NavigationRailGroups
-            groups={administrationGroups}
+          <NavigationRail
+            entries={visibleAdministration}
             isActivePath={itemIsActive}
           />
         ) : (
           <ul className={styles.list}>
-            {administrationGroups.map(({ label, items }) => {
-              const first = items[0]
-              if (!first) return null
-              const isOpen = expanded[label] ?? (variant === 'sidebar' || items.some(item => itemIsActive(item.href)))
+            {visibleAdministration.map(entry => {
+              if (!('items' in entry)) {
+                return (
+                  <NavLink
+                    key={entry.href}
+                    href={entry.href}
+                    label={entry.name}
+                    Icon={entry.Icon}
+                    isActive={itemIsActive(entry.href)}
+                    variant={variant}
+                    onNavigate={onNavigate}
+                  />
+                )
+              }
+              const { label, items, Icon } = entry
+              if (!items.length) return null
+              const isOpen = expanded[label] ?? true
               return (
                 <NestedNavigationMenu
                   key={label}
                   label={label}
-                  Icon={first.Icon}
+                  Icon={Icon}
                   items={items}
                   variant={variant}
                   isOpen={isOpen}
@@ -208,7 +187,6 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
           </ul>
         )}
       </Visible>
-      {renderSection('Preferences', preferenceSections)}
     </div>
   )
 }

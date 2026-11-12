@@ -11,7 +11,7 @@ export default async function FilesLayout({ children }: { children: React.ReactN
   return (
     <TooltipProvider>
       <ProtectedShell
-        user={user}
+        user={{ name: user.name, avatarDataUrl: user.avatarDataUrl, isPlatformAdmin: user.isPlatformAdmin }}
         initialSidebarCollapsed={initialSidebarCollapsed}
       >
         {children}

@@ -8,15 +8,14 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { variantStyles, type NavigationItem } from './protected-navigation-config'
+import { variantStyles, type NavigationGroup, type NavigationItem } from './protected-navigation-config'
+import { NavLink } from './protected-navigation-parts'
 
-type NavigationGroup = { label: string; items: NavigationItem[] }
-
-export const NavigationRailGroups = ({
-  groups,
+export const NavigationRail = ({
+  entries,
   isActivePath
 }: {
-  groups: NavigationGroup[]
+  entries: (NavigationItem | NavigationGroup)[]
   isActivePath: (href: string) => boolean
 }) => {
   const styles = variantStyles.rail
@@ -26,23 +25,34 @@ export const NavigationRailGroups = ({
       {({ payload }) => (
         <>
           <ul className={cn(styles.list, 'pointer-events-auto')}>
-            {groups.map(group => {
-              const first = group.items[0]
-              if (!first) return null
-              const { Icon } = first
-              const containsActive = group.items.some(item => isActivePath(item.href))
+            {entries.map(entry => {
+              const { Icon } = entry
+              if (!('items' in entry)) {
+                return (
+                  <NavLink
+                    key={entry.href}
+                    href={entry.href}
+                    label={entry.name}
+                    Icon={Icon}
+                    isActive={isActivePath(entry.href)}
+                    variant='rail'
+                  />
+                )
+              }
+              if (!entry.items.length) return null
+              const containsActive = entry.items.some(item => isActivePath(item.href))
               return (
-                <li key={group.label}>
+                <li key={entry.label}>
                   <DropdownMenuTrigger
                     asChild
-                    payload={group}
+                    payload={entry}
                     openOnHover
                     delay={0}
                     closeDelay={120}
                   >
                     <button
                       type='button'
-                      aria-label={group.label}
+                      aria-label={entry.label}
                       className={cn(styles.item, containsActive && styles.activeItem)}
                     >
                       <Icon className={styles.icon} />

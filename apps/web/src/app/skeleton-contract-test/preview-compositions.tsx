@@ -1,11 +1,15 @@
 'use client'
 
 import { previewApp } from '@/features/applications/detail/app-resource-preview-data'
+import { ConsoleDefaultsPageClient } from '@/features/platform/pages/console-defaults/page-client'
+import { ConsoleDefaultsPageSkeleton } from '@/features/platform/pages/console-defaults/page-skeleton'
 import { ActivityEventsTable } from '@/features/settings/activity/activity-events-table'
 import { ActivityPageLayout } from '@/features/settings/activity/activity-page-layout'
 import { previewActivityProps } from '@/features/settings/activity/activity-preview-data'
 import { GeneralSettingsForm } from '@/features/settings/general/general-settings-form'
 import { PreferencesGeneralPageSkeleton } from '@/features/settings/general/pages/preferences-general/preferences-general-page-skeleton'
+import { PreferencesSecurityPageClient } from '@/features/settings/security/pages/preferences-security/page-client'
+import { PreferencesSecurityPageSkeleton } from '@/features/settings/security/pages/preferences-security/page-skeleton'
 import { SystemResourceCharts } from '@/features/settings/system/system-resource-charts'
 import { previewUsers } from '@/features/settings/users/users-preview-data'
 import { UsersSettings } from '@/features/settings/users/users-settings'
@@ -19,14 +23,21 @@ export const UsersListPreview = () => (
   />
 )
 
-export const GeneralSettingsPreview = ({ loading = false, member = false }: { loading?: boolean; member?: boolean }) =>
+export const GeneralSettingsPreview = ({ loading = false }: { loading?: boolean }) =>
   loading ? (
-    <PreferencesGeneralPageSkeleton showDefaults />
+    <PreferencesGeneralPageSkeleton />
   ) : (
-    <GeneralSettingsForm
-      user={{ name: 'Preview operator', avatarDataUrl: null, mfaEnabled: false, accentColor: 'blue' }}
-      initialSettings={member ? undefined : pickGeneralUiSettings(defaultOrchestratorUiSettings)}
-    />
+    <GeneralSettingsForm user={{ name: 'Preview operator', avatarDataUrl: null, accentColor: 'blue' }} />
+  )
+
+export const SecuritySettingsPreview = ({ loading = false }: { loading?: boolean }) =>
+  loading ? <PreferencesSecurityPageSkeleton /> : <PreferencesSecurityPageClient mfaEnabled={false} />
+
+export const ConsoleDefaultsPreview = ({ loading = false }: { loading?: boolean }) =>
+  loading ? (
+    <ConsoleDefaultsPageSkeleton />
+  ) : (
+    <ConsoleDefaultsPageClient initialSettings={pickGeneralUiSettings(defaultOrchestratorUiSettings)} />
   )
 
 export const AppActivityPreview = () => (

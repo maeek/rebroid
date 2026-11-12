@@ -43,7 +43,6 @@ export const AccountPasswordSettings = ({ loading = false }: { loading?: boolean
   return (
     <Section
       surface='plain'
-      headingLevel={3}
       title='Change password'
       description='Confirm your current password before setting a new one.'
     >

@@ -14,7 +14,7 @@ export const ServicesPageLayout = ({
     className='gap-2'
   >
     <PageHeader
-      section={{ label: 'Platform', href: '/platform' }}
+      section={{ label: 'System' }}
       title='Services'
       description='Review service health, manage connections, and inspect infrastructure.'
       breadcrumbRefresh={breadcrumbRefresh}

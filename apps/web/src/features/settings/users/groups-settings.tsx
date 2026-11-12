@@ -22,7 +22,7 @@ export const GroupsSettings = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'Security' }}
+        section={{ label: 'Users & groups' }}
         title='Groups'
         description='Groups provide the permissions and quotas that members inherit.'
         actions={

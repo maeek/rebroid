@@ -38,7 +38,7 @@ export const SystemResourcesContent = ({
   <StandardPage className='gap-2'>
     <PageHeader
       section={{ label: 'System' }}
-      title='Resources'
+      title='Resource usage'
     />
     <PageContent>
       {!loading && systemError && resourcesError && !systemUtilization && !resources ? (

@@ -119,7 +119,7 @@ export const RuntimeNetworkPageContent = ({
   return (
     <>
       <PageHeader
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
         breadcrumbLabel={network ? undefined : 'Network'}
         trail={[{ label: 'Networks', href: '/runtime/networks' }]}
         title={network?.name ?? <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' />}

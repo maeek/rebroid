@@ -24,6 +24,7 @@ describe('runtime inventory loading geometry', () => {
     )
 
     expectLoadingGrid('1120px', ['Image', 'Size', 'Created', 'Containers', 'ID'])
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('DockerImages')
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
   })
 
@@ -31,6 +32,7 @@ describe('runtime inventory loading geometry', () => {
     render(<RuntimeContainersPageLoading />)
 
     expectLoadingGrid('1368px', ['Container', 'State', 'Image', 'Application', 'Networks'])
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('DockerContainers')
     expect(screen.getAllByRole('columnheader')).toHaveLength(8)
   })
 
@@ -38,6 +40,7 @@ describe('runtime inventory loading geometry', () => {
     render(<RuntimeNetworksPageLoading />)
 
     expectLoadingGrid('1328px', ['Network', 'Driver', 'Scope', 'Subnet', 'Gateway', 'Containers'])
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('DockerNetworks')
     expect(screen.getAllByRole('columnheader')).toHaveLength(9)
   })
 })

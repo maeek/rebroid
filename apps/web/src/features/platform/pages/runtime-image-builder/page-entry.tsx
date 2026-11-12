@@ -9,9 +9,10 @@ export const RuntimeImageBuilderPageEntry = ({ uploadedApkId }: { uploadedApkId?
     fallback={requestId => (
       <PlatformRouteUnavailable
         requestId={requestId}
-        title='Image builder'
+        title='Build Google Play image'
         description='Build a runtime image with Google apps.'
-        section={{ label: 'Runtime' }}
+        section={{ label: 'Docker' }}
+        trail={[{ label: 'Images', href: '/runtime/images' }]}
       />
     )}
   >

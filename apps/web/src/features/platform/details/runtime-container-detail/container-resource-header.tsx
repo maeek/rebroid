@@ -68,7 +68,7 @@ export const ContainerResourceHeading = ({
 }) => {
   return (
     <PageHeader
-      section={{ label: 'Runtime' }}
+      section={{ label: 'Docker' }}
       breadcrumbLabel={container ? undefined : 'Container'}
       trail={[{ label: 'Containers', href: '/runtime/containers' }]}
       title={container?.names[0] ?? container?.shortId ?? <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' />}

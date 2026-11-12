@@ -1,70 +1,20 @@
 import { expect, test } from '@playwright/test'
 
-test('the account overview and preferences have distinct destinations', async ({ page }) => {
+test('the account menu links directly to Preferences and Security', async ({ page }) => {
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const controls = page.getByRole('group', { name: 'Navigation controls', exact: true })
-  const account = controls.getByRole('button', { name: 'Account', exact: true })
+  const account = controls.getByRole('button', { name: /^Account(?::|$)/ })
   await expect(controls.getByRole('button', { name: 'Notifications' })).toBeVisible()
   await account.click()
   await expect(page.getByRole('menuitem', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
-  await page.getByRole('menuitem', { name: 'Account overview' }).click()
-
-  const dialog = page.getByRole('dialog', { name: 'Account overview' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByText('preview-operator')).toBeVisible()
-  await expect(dialog.getByRole('link', { name: 'Edit profile photo' })).toHaveAttribute(
+  await expect(page.getByRole('menuitem', { name: 'Security', exact: true })).toHaveAttribute(
     'href',
-    '/preferences/general#profile'
+    '/preferences/security'
   )
-  await expect(dialog.getByRole('link', { name: 'Manage sign-in' })).toHaveAttribute(
-    'href',
-    '/preferences/general#security'
-  )
-  await expect(dialog.locator('input')).toHaveCount(0)
-  const [profile, security] = await dialog
-    .getByRole('region', { name: /^(Profile|Sign-in security)$/ })
-    .evaluateAll(sections =>
-      sections.map(section => {
-        const { x, y } = section.getBoundingClientRect()
-        return { x, y }
-      })
-    )
-  const viewport = page.viewportSize()!
-  if (viewport.width >= 640) {
-    expect(profile.y).toBe(security.y)
-    expect((await dialog.boundingBox())!.width).toBeGreaterThan(512)
-  } else {
-    expect(profile.x).toBe(security.x)
-    expect(security.y).toBeGreaterThan(profile.y)
-  }
-
-  const backdrop = page.locator('[data-slot="dialog-overlay"]')
-  await expect(backdrop).toHaveCSS('opacity', '1')
-  const samples = page.evaluate(async () => {
-    const values: number[] = []
-    const start = performance.now()
-    await new Promise<void>(resolve => {
-      const sample = () => {
-        const overlay = document.querySelector('[data-slot="dialog-overlay"]')
-        values.push(overlay ? Number(getComputedStyle(overlay).opacity) : 0)
-        if (performance.now() - start < 500) requestAnimationFrame(sample)
-        else resolve()
-      }
-      requestAnimationFrame(sample)
-    })
-    return values
-  })
-  await dialog.getByRole('button', { name: 'Close' }).click()
-  await expect(backdrop).toHaveCount(0)
-  await expect(account).toBeFocused()
-  const opacity = await samples
-  expect(opacity.some(value => value > 0 && value < 1)).toBe(true)
-  for (let index = 1; index < opacity.length; index++) {
-    expect(opacity[index]).toBeLessThanOrEqual(opacity[index - 1] + 0.01)
-  }
+  await expect(page.getByRole('menuitem', { name: 'Account overview', exact: true })).toHaveCount(0)
 })
 
-test('the account Theme submenu matches its parent and fits beside it on narrow screens', async ({ page }) => {
+test('the account Appearance submenu matches its parent and fits beside it on narrow screens', async ({ page }) => {
   const mobile = page.viewportSize()!.width < 1024
   await page.setViewportSize(mobile ? { width: 320, height: 640 } : { width: 1440, height: 900 })
   await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
@@ -74,9 +24,9 @@ test('the account Theme submenu matches its parent and fits beside it on narrow 
     await expect(page.getByRole('complementary', { name: 'Primary navigation' })).toHaveCSS('width', '64px')
   }
 
-  const account = page.getByRole('button', { name: 'Account', exact: true })
+  const account = page.getByRole('button', { name: /^Account(?::|$)/ })
   await account.click()
-  const trigger = page.getByRole('menuitem', { name: 'Theme', exact: true })
+  const trigger = page.getByRole('menuitem', { name: 'Appearance', exact: true })
   await expect(trigger.locator(mobile ? '.tabler-icon-chevron-left' : '.tabler-icon-chevron-right')).toBeVisible()
   const menu = page.getByRole('menu').filter({ has: trigger })
   if (mobile) {
@@ -86,7 +36,7 @@ test('the account Theme submenu matches its parent and fits beside it on narrow 
   }
 
   const dark = page.getByRole('menuitemradio', { name: 'Dark', exact: true })
-  const submenu = page.getByRole('menu', { name: 'Theme', exact: true })
+  const submenu = page.getByRole('menu', { name: 'Appearance', exact: true })
   await expect(submenu).toBeVisible()
   await expect(dark).toBeChecked()
   await expect(submenu).toHaveCSS(
@@ -125,10 +75,9 @@ test('personal preferences apply immediately or have their own save action', asy
   await page.getByRole('link', { name: 'Profile', exact: true }).click()
   await expect(page).toHaveURL(/#profile$/)
   await expect(page.getByRole('button', { name: 'Save photo' })).toBeDisabled()
-  await page.getByRole('link', { name: 'Security', exact: true }).click()
-  await expect(page).toHaveURL(/#security$/)
-  await expect(page.getByRole('button', { name: 'Set up MFA' })).toBeDisabled()
-  await expect(page.getByRole('button', { name: 'Change password' })).toBeDisabled()
+  await expect(page.getByRole('region', { name: 'Multi-factor authentication' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: 'Change password' })).toHaveCount(0)
+  await expect(page.getByRole('spinbutton', { name: 'List refresh interval' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'Console defaults' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
 })
@@ -136,12 +85,10 @@ test('personal preferences apply immediately or have their own save action', asy
 test('preferences use a consistent form column gap and stack fields on narrow screens', async ({ page }, testInfo) => {
   const narrow = testInfo.project.name === 'mobile-chromium'
   await page.setViewportSize({ width: narrow ? 390 : 1440, height: 900 })
-  await page.goto('/skeleton-contract-test?editor=general-member')
-
+  await page.goto('/skeleton-contract-test?editor=security')
   const password = page.getByRole('region', { name: 'Change password', exact: true })
   const mfa = page.getByRole('region', { name: 'Multi-factor authentication', exact: true })
   const pairs = [
-    [page.getByRole('combobox', { name: 'Theme' }), page.getByRole('combobox', { name: 'Viewer layout' })],
     [mfa, password],
     [password.getByLabel('New password', { exact: true }), password.getByLabel('Confirm new password', { exact: true })]
   ]
@@ -161,8 +108,9 @@ test('preferences use a consistent form column gap and stack fields on narrow sc
 })
 
 test('shared defaults have a scoped save and confirmed restore', async ({ page }) => {
-  await page.goto('/skeleton-contract-test?editor=general')
-  const defaults = page.getByRole('region', { name: 'Console defaults' })
+  await page.goto('/skeleton-contract-test?editor=console-defaults')
+  await expect(page.getByRole('heading', { level: 1, name: 'Console defaults' })).toBeVisible()
+  const defaults = page.locator('[data-editor]')
   const save = defaults.getByRole('button', { name: 'Save defaults' })
   await expect(save).toBeDisabled()
   await defaults.getByRole('spinbutton', { name: 'List refresh interval' }).fill('12')
@@ -173,3 +121,26 @@ test('shared defaults have a scoped save and confirmed restore', async ({ page }
   await confirmation.getByRole('button', { name: 'Cancel' }).click()
   await expect(defaults.getByRole('spinbutton', { name: 'List refresh interval' })).toHaveValue('12')
 })
+
+for (const editor of ['general', 'security']) {
+  test(`${editor} preferences preserve their own loading geometry`, async ({ page }) => {
+    await page.goto(`/skeleton-contract-test?editor=${editor}-loading`)
+    const geometry = () =>
+      page.locator('[data-surface="editor"]').evaluateAll(sections =>
+        sections.map(section => {
+          const { x, y, width, height } = section.getBoundingClientRect()
+          return { x, y, width, height }
+        })
+      )
+    const loading = await geometry()
+    await page.goto(`/skeleton-contract-test?editor=${editor}`)
+    expect(await geometry()).toEqual(loading)
+    await expect(page.getByRole('spinbutton', { name: 'List refresh interval' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Save defaults' })).toHaveCount(0)
+    if (editor === 'security') {
+      await expect(page.getByRole('button', { name: 'Set up MFA' })).toBeDisabled()
+      await expect(page.getByRole('button', { name: 'Change password' })).toBeDisabled()
+      await expect(page.getByRole('combobox', { name: 'Theme' })).toHaveCount(0)
+    }
+  })
+}

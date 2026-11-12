@@ -73,6 +73,8 @@ import {
   AppActivityPreview,
   AuditLogPreview,
   GeneralSettingsPreview,
+  SecuritySettingsPreview,
+  ConsoleDefaultsPreview,
   ResourceChartsPreview,
   UsersListPreview
 } from './preview-compositions'
@@ -242,12 +244,11 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'ai-models-loading') return <AiProviderEditPageSkeleton />
   if (editor === 'users-list') return <UsersListPreview />
   if (editor === 'general' || editor === 'general-loading' || editor === 'general-member')
-    return (
-      <GeneralSettingsPreview
-        loading={editor === 'general-loading'}
-        member={editor === 'general-member'}
-      />
-    )
+    return <GeneralSettingsPreview loading={editor === 'general-loading'} />
+  if (editor === 'security' || editor === 'security-loading')
+    return <SecuritySettingsPreview loading={editor === 'security-loading'} />
+  if (editor === 'console-defaults' || editor === 'console-defaults-loading')
+    return <ConsoleDefaultsPreview loading={editor === 'console-defaults-loading'} />
   if (editor === 'user' || editor === 'group') return <UserEditorPreview kind={editor} />
   if (editor === 'scheduler') return <ScheduledTasksPreview />
   if (editor === 'scheduler-loading') return <ScheduledTasksPageSkeleton />

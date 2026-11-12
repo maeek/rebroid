@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProviderHealthBannerContent } from '@/features/settings/orchestrator/ai-providers/provider-health-badge'
-import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
+import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
 describe('neutral loading content', () => {
@@ -91,18 +91,16 @@ describe('neutral loading content', () => {
     expect(screen.getByText('Online')).toBeVisible()
   })
 
-  it.each(['healthy', 'offline'])('does not infer %s service status during loading', status => {
+  it.each(['healthy', 'offline'] as const)('does not infer %s service status during loading', status => {
     const view = renderToStaticMarkup(
-      <PlatformStatusBanner
+      <ServiceHealthNotice
         loading
-        status={status}
-        ok={status === 'healthy'}
-        message='Ready'
+        health={{ status, ok: status === 'healthy', message: 'Ready' }}
       />
     )
     expect(view).toContain('data-tone="neutral"')
     expect(view).not.toMatch(/data-tone="(success|danger|warning|info)"/)
     expect(view).not.toContain('Ready')
-    expect(view).not.toContain('role="status"')
+    expect(view).not.toMatch(/role="(alert|status)"/)
   })
 })

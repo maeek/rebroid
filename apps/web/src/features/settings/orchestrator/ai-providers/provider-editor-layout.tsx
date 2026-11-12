@@ -30,7 +30,7 @@ export const ProviderEditorLayout = ({
   return (
     <EditorPage className='gap-2'>
       <PageHeader
-        section={{ label: 'Platform', href: '/platform' }}
+        section={{ label: 'Administration' }}
         trail={[
           { label: 'AI', href: '/platform/ai' },
           { label: provider.label, href }

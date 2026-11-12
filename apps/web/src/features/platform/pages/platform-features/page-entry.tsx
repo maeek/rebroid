@@ -10,9 +10,9 @@ const PlatformFeaturesContent = () => (
     fallback={requestId => (
       <PlatformRouteUnavailable
         requestId={requestId}
-        title='Features'
+        title='Feature management'
         description='Manage platform capabilities and their availability.'
-        section={{ label: 'Platform', href: '/platform' }}
+        section={{ label: 'Administration' }}
       />
     )}
   >

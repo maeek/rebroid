@@ -6,6 +6,5 @@ export const SecurityNetworkPoliciesPageLoading = () => (
   <FirewallSettingsPageClient
     loading
     initialApplications={[]}
-    initialHealth={{ status: 'offline', ok: false, message: '' }}
   />
 )
