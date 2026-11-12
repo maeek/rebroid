@@ -1,8 +1,8 @@
 # Operator console
 
 Rebroid organizes everyday work around apps and automation runs. Administration starts with
-General, Feature management, and AI. The Docker group keeps Containers, Images, and Networks together.
-App network policies and Audit log open directly. Users & groups contains the account and group lists.
+General, Casting, and Firewall, followed by Feature management and AI. The Docker group keeps
+Containers, Images, and Networks together. Users & groups contains the account and group lists.
 System contains Services, Resource usage, and Maintenance tasks. These groups start expanded in the
 desktop sidebar and mobile drawer, and you can collapse each one.
 Use the desktop sidebar toggle beside the Rebroid wordmark to reclaim the navigation width. The
@@ -20,6 +20,12 @@ Open **Security** from the same menu to manage sign-in settings.
 Administrators manage shared list refresh and streaming defaults in
 **Administration → General → Console defaults** (`/platform/console`). Save defaults and Restore defaults
 apply to everyone. Android app defaults are on **Administration → General**.
+
+## Casting
+
+Open **Administration → Casting** (`/platform/casting`) to check display service health, view logs,
+restart the display sidecar, or manage viewer sessions. The Display service row in **System → Services**
+also opens Casting. **View logs** in Connection opens the sidecar's Docker **Logs** tab.
 
 ## Runtime images
 
@@ -64,8 +70,9 @@ editable list. Paste entries separated by commas or new lines, or delete entries
 **Save network access** saves the policy and attempts enforcement for a running app. A stopped app
 uses the saved policy on its next start. If the firewall cannot confirm enforcement, the Network
 tab shows the last reported state and offers **Retry enforcement** for the saved policy.
-Administrators can monitor apps under **App network policies**, open an app's policy from its row,
-or use **Sync all rules** to refresh host rules and remove stale entries.
+Administrators can manage the firewall agent connection under **Firewall** (`/security/firewall`). The
+**Network policies** table below **Connection** shows app access and enforcement. Open an app's
+policy from its row, or use **Sync all rules** to refresh host rules and remove stale entries.
 
 ## Workflow device steps
 

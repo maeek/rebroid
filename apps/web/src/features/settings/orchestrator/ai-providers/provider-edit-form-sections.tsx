@@ -1,15 +1,18 @@
 import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
+import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
 import { ProviderConnectionFields } from './provider-connection-fields'
 import type { ProviderFormState } from './provider-form-model'
 
 export const ProviderConnectionSection = ({
   provider,
+  containerId,
   onChange,
   disabled = false
 }: {
   provider: ProviderFormState
+  containerId?: string
   onChange: (patch: Partial<ProviderFormState>) => void
   disabled?: boolean
 }) => (
@@ -17,6 +20,14 @@ export const ProviderConnectionSection = ({
     surface='plain'
     title='Connection'
     description='Connect to a hosted API or a local model server.'
+    actions={
+      containerId ? (
+        <DockerContainerLinks
+          containerId={containerId}
+          className='max-sm:flex-col max-sm:items-end'
+        />
+      ) : undefined
+    }
   >
     <fieldset
       disabled={disabled}

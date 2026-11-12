@@ -58,7 +58,7 @@ describe('Service settings detail', () => {
         services: { ...initialSettings, firewall }
       })
     render(page('firewall'))
-    expect(screen.getByRole('heading', { level: 1, name: 'Firewall agent' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: 'Firewall' })).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Language' })).toBeNull()
 
     const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })

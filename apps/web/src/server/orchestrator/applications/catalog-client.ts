@@ -46,12 +46,6 @@ export const orchestratorAppCatalogClient = {
     return emptyRequest<AndroidApplication[]>(`/apps${suffix}`)
   },
 
-  reconcileApplications(ownerUserId?: string) {
-    return jsonRequest<AndroidAppRuntimeReconciliation[]>('/apps/runtime-state/reconcile', 'POST', {
-      ...(ownerUserId ? { ownerUserId } : {})
-    })
-  },
-
   reconcileApplication(id: string) {
     return jsonRequest<AndroidAppRuntimeReconciliation>(
       `/apps/${encodeURIComponent(id)}/runtime-state/reconcile`,

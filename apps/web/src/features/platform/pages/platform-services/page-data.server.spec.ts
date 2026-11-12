@@ -32,7 +32,7 @@ describe('Services page data availability', () => {
 
   it('keeps infrastructure diagnostics independent from connection settings', async () => {
     vi.mocked(getOrchestratorHealthSummaryAction).mockResolvedValue(health(true))
-    const result = await loadPlatformServicesPageData(Promise.resolve({ service: 'docker' }))
+    const result = await loadPlatformServicesPageData(Promise.resolve({ service: 'orchestrator' }))
     expect(result.initialHealth?.services.orchestrator.ok).toBe(true)
     expect(getRequiredServerOrchestratorUiSettings).not.toHaveBeenCalled()
   })

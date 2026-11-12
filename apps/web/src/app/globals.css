@@ -448,6 +448,11 @@
   }
 }
 
+/* NProgress sets an inline transition on all properties. Keep accent changes immediate. */
+#nprogress .bar {
+  transition-property: transform, margin-left !important;
+}
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-color: hsl(var(--control-border-strong) / 0.7) transparent;

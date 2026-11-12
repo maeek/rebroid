@@ -12,6 +12,7 @@ import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import { appendDockerMetricsHistory, type HistorySample } from './docker-metrics-history'
 import type { DockerMetricsSnapshot } from '@/shared/contracts/diagnostics'
@@ -108,6 +109,16 @@ export const DockerMetricsContent = ({
       <Section
         surface='panel'
         title='Connection'
+        actions={
+          loading ? undefined : (
+            <ResourceLink
+              href='/runtime/containers'
+              className='text-sm'
+            >
+              Browse Docker containers
+            </ResourceLink>
+          )
+        }
       >
         <DetailFields
           loading={loading}

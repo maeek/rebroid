@@ -4,12 +4,14 @@ import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Input } from '@/components/ui/input'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { Section } from '@/components/ui/section'
+import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
 import { serviceMeta, type ServiceId } from './service-definitions'
 import type { OptionalServiceUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const ServiceConnectionSection = ({
   serviceId,
   settings,
+  containerId,
   disabled,
   loading,
   errors,
@@ -17,6 +19,7 @@ export const ServiceConnectionSection = ({
 }: {
   serviceId: ServiceId
   settings: OptionalServiceUiSettings
+  containerId?: string
   disabled: boolean
   loading: boolean
   errors?: Partial<Record<keyof OptionalServiceUiSettings, string[]>>
@@ -28,6 +31,14 @@ export const ServiceConnectionSection = ({
     <Section
       surface='panel'
       title='Connection'
+      actions={
+        !loading && containerId ? (
+          <DockerContainerLinks
+            containerId={containerId}
+            className='max-sm:flex-col max-sm:items-end'
+          />
+        ) : undefined
+      }
     >
       <FieldsBoundary>
         <div className='grid gap-x-form-column gap-y-4 md:grid-cols-2'>

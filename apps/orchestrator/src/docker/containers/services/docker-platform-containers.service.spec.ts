@@ -1,4 +1,50 @@
+import { PayloadTooLargeException } from '@nestjs/common';
 import { DockerPlatformContainersService } from './docker-platform-containers.service';
+
+it('caps log reads by line count and bytes and rejects invalid tail values', async () => {
+  const getBoundedContainerLogs = jest.fn().mockResolvedValue('output');
+  const docker = new DockerPlatformContainersService(
+    {} as never,
+    { getBoundedContainerLogs } as never,
+    {} as never,
+  );
+
+  await expect(
+    docker.getPlatformContainerLogs('container', 2000),
+  ).resolves.toMatchObject({
+    output: 'output',
+    source: 'container',
+  });
+  expect(getBoundedContainerLogs).toHaveBeenCalledWith(
+    'container',
+    1000,
+    2 * 1024 * 1024,
+  );
+  await expect(
+    docker.getPlatformContainerLogs('container', NaN),
+  ).rejects.toMatchObject({ status: 400 });
+  expect(getBoundedContainerLogs).toHaveBeenCalledTimes(1);
+});
+
+it('reads a shorter tail when the requested tail exceeds the byte limit', async () => {
+  const getBoundedContainerLogs = jest
+    .fn()
+    .mockRejectedValueOnce(new PayloadTooLargeException())
+    .mockResolvedValueOnce('recent output');
+  const docker = new DockerPlatformContainersService(
+    {} as never,
+    { getBoundedContainerLogs } as never,
+    {} as never,
+  );
+
+  await expect(
+    docker.getPlatformContainerLogs('container'),
+  ).resolves.toMatchObject({ output: 'recent output' });
+  expect(getBoundedContainerLogs.mock.calls).toEqual([
+    ['container', 500, 2 * 1024 * 1024],
+    ['container', 20, 2 * 1024 * 1024],
+  ]);
+});
 
 const deferred = () => {
   let resolve!: () => void;

@@ -1,10 +1,8 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { getCurrentUserContext } from '../current-user'
 import { requireAdminUser, requireUser } from '../shared'
 import { orchestratorDiagnosticsClient } from './client'
-import { buildResourceLimitBounds } from './resource-limits'
 
 export const getOrchestratorHealthAction = async () => {
   await requireUser()
@@ -38,16 +36,4 @@ export const listDisplaySidecarSessionsAction = async () => {
 export const releaseDisplaySidecarSessionAction = async (id: string) => {
   await requireAdminUser()
   return orchestratorDiagnosticsClient.releaseDisplaySidecarSession(id)
-}
-
-export const getSystemResourcesAction = async () => {
-  await requireAdminUser()
-  return orchestratorDiagnosticsClient.getSystemResources()
-}
-
-export const getResourceLimitBoundsAction = async () => {
-  const user = await getCurrentUserContext()
-  const resources = await orchestratorDiagnosticsClient.getSystemResourceCapacity()
-
-  return buildResourceLimitBounds(resources, user.quotas)
 }

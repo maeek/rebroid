@@ -71,20 +71,20 @@ const serviceRows = (health: OrchestratorHealth | null, fallbackMessage: string)
   {
     impact: 'App provisioning and runtime operations depend on Docker.',
     name: 'Docker',
-    href: '/platform/services?service=docker',
+    href: '/runtime/docker',
     service: health ? dockerRuntimeHealth(health) : checkingService(fallbackMessage)
   },
   {
     impact: 'Viewer sessions may be unavailable.',
     name: 'Casting',
-    href: '/platform/services/display-sessions',
+    href: '/platform/casting',
     service: health?.services.display ?? checkingService(fallbackMessage)
   },
   {
     impact: 'Network policy changes may not be applied.',
     name: 'Firewall',
     optionalServiceId: 'firewall' as const,
-    href: '/platform/services?service=firewall',
+    href: '/security/firewall',
     service: health?.services.firewall ?? checkingService(fallbackMessage)
   },
   {

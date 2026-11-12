@@ -3,17 +3,18 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CreateAppPageEntry } from '@/features/applications/pages/create-app/page-entry'
 import { AutomationTracesPageEntry } from '@/features/automations/pages/automation-traces/page-entry'
+import { FirewallPageEntry } from '@/features/platform/pages/firewall/page-entry'
 import PlatformFeaturesPageEntry from '@/features/platform/pages/platform-features/page-entry'
 import { PlatformOverviewPageEntry } from '@/features/platform/pages/platform-overview/page-entry'
 import { loadRuntimeContainersPageData } from '@/features/platform/pages/runtime-containers/page-data.server'
 import { RuntimeContainersPageEntry } from '@/features/platform/pages/runtime-containers/page-entry'
 import { CustomRuntimeImageBuilderPageEntry } from '@/features/platform/pages/runtime-image-builder/custom-page-entry'
 import { RuntimeImageBuilderPageEntry } from '@/features/platform/pages/runtime-image-builder/page-entry'
-import { PlatformDisplaySessionsPageEntry } from '@/features/settings/casting/pages/platform-display-sessions/page-entry'
+import { CastingPageEntry } from '@/features/settings/casting/pages/casting/page-entry'
 import AiProviderDetailPageEntry from '@/features/settings/orchestrator/pages/ai-provider-detail/page-entry'
-import { SecurityNetworkPoliciesPageEntry } from '@/features/settings/orchestrator/pages/security-network-policies/page-entry'
 import { OrchestratorPageBoundary } from '@/server/orchestrator/orchestrator-page-boundary'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 
 const { health, load } = vi.hoisted(() => ({
@@ -21,10 +22,17 @@ const { health, load } = vi.hoisted(() => ({
   load: vi.fn()
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }), unstable_rethrow: vi.fn() }))
+vi.mock('@/server/auth/authorization', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/server/auth/authorization')>()),
+  requireAdmin: vi.fn()
+}))
 vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: health }))
 vi.mock('@/features/applications/pages/create-app/page-data.server', () => ({ getCreateAppPageData: load }))
 vi.mock('@/features/automations/pages/automation-traces/page-data.server', () => ({
   loadAutomationTracesPageData: load
+}))
+vi.mock('@/features/platform/pages/firewall/page-data.server', () => ({
+  loadFirewallPageData: load
 }))
 vi.mock('@/features/platform/pages/platform-features/page-data.server', () => ({ loadPlatformFeatures: load }))
 vi.mock('@/features/platform/pages/runtime-containers/page-data.server', () => ({
@@ -36,14 +44,11 @@ vi.mock('@/features/platform/pages/runtime-image-builder/page-data.server', () =
 vi.mock('@/features/platform/pages/runtime-image-builder/gapps-page-data.server', () => ({
   loadRuntimeGappsBuilderPageData: load
 }))
-vi.mock('@/features/settings/casting/pages/platform-display-sessions/page-data.server', () => ({
-  loadPlatformDisplaySessionsPageData: load
+vi.mock('@/features/settings/casting/pages/casting/page-data.server', () => ({
+  loadCastingPageData: load
 }))
 vi.mock('@/features/settings/orchestrator/pages/ai-provider-detail/page-data.server', () => ({
   getAiProviderDetailPageData: load
-}))
-vi.mock('@/features/settings/orchestrator/pages/security-network-policies/page-data.server', () => ({
-  loadSecurityNetworkPoliciesPageData: load
 }))
 
 const resolveBoundary = async (entry: ReactNode | Promise<ReactNode>) => {
@@ -72,8 +77,7 @@ describe('runtime page outage matrix', () => {
     ['Build Google Play image', () => RuntimeImageBuilderPageEntry()],
     ['Build custom image', () => CustomRuntimeImageBuilderPageEntry()],
     ['Feature management', () => PlatformFeaturesPageEntry()],
-    ['Display sessions', () => PlatformDisplaySessionsPageEntry()],
-    ['App network policies', () => SecurityNetworkPoliciesPageEntry()],
+    ['Casting', () => CastingPageEntry()],
     ['AI provider', () => AiProviderDetailPageEntry({ params: Promise.resolve({ providerId: 'example' }) })],
     ['Run history', () => AutomationTracesPageEntry({ params: Promise.resolve({ id: 'example' }) })]
   ] as const)('%s renders one page failure without starting dependent loaders', async (title, entry) => {
@@ -81,6 +85,16 @@ describe('runtime page outage matrix', () => {
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible()
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(load).not.toHaveBeenCalled()
+  })
+
+  it('keeps the firewall page refreshable during an orchestrator outage and skips dependent reads', async () => {
+    const page = await resolveBoundary(FirewallPageEntry())
+    render(<FeatureFlagsProvider manifest={null}>{page}</FeatureFlagsProvider>)
+    expect(screen.getByRole('heading', { level: 1, name: 'Firewall' })).toBeVisible()
+    expect(screen.getByText('Firewall settings unavailable')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled()
     expect(screen.queryByRole('table')).toBeNull()
     expect(load).not.toHaveBeenCalled()
   })

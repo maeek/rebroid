@@ -14,11 +14,13 @@ export const InfrastructureServicePage = ({
   serviceId,
   initialHealth,
   apiUrl,
+  containerId,
   requestId
 }: {
   serviceId: 'orchestrator' | 'docker'
   initialHealth: OrchestratorHealth | null
-  apiUrl: string
+  apiUrl?: string
+  containerId?: string
   requestId?: string
 }) => {
   const router = useRouter()
@@ -36,6 +38,7 @@ export const InfrastructureServicePage = ({
     <InfrastructureServiceLayout
       serviceId={serviceId}
       apiUrl={apiUrl}
+      containerId={containerId}
       actions={
         <PlatformPageRefreshButton
           isRefreshing={refreshing}

@@ -5,6 +5,7 @@ import {
   IconBox,
   IconBrandDocker,
   IconCalendarTime,
+  IconCast,
   IconChartHistogram,
   IconHistory,
   IconNetwork,
@@ -35,17 +36,20 @@ export const automationSections: NavigationItem[] = [
   { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
 ]
 
-export type NavigationGroup = { label: string; Icon: NavigationItem['Icon']; items: NavigationItem[] }
+export type NavigationGroup = { label: string; Icon: NavigationItem['Icon']; href?: string; items: NavigationItem[] }
 
 export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
 
 export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
+  { name: 'Casting', Icon: IconCast, href: '/platform/casting' },
+  { name: 'Firewall', Icon: IconNetwork, href: '/security/firewall', feature: 'feature.firewall' },
   { name: 'Feature management', Icon: IconToggleLeft, href: '/platform/features' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' },
   {
     label: 'Docker',
     Icon: IconBox,
+    href: '/runtime/docker',
     items: [
       { name: 'Containers', Icon: IconBox, href: '/runtime/containers' },
       {
@@ -56,12 +60,6 @@ export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
       },
       { name: 'Networks', Icon: IconNetwork, href: '/runtime/networks' }
     ]
-  },
-  {
-    name: 'App network policies',
-    Icon: IconNetwork,
-    href: '/security/network-policies',
-    feature: 'feature.firewall'
   },
   {
     label: 'Users & groups',
@@ -114,7 +112,7 @@ export const variantStyles = {
     nestedIconWrap: 'flex size-6 shrink-0 items-center justify-center rounded-control',
     nestedIcon: 'size-4 stroke-current',
     toggleButton:
-      'mr-1 flex size-8 items-center justify-center rounded-control text-foreground-muted transition hover:bg-accent/70 hover:text-foreground',
+      'flex w-8 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control-hover hover:text-foreground',
     dashboardSpacing: ''
   },
   rail: {
@@ -151,7 +149,7 @@ export const variantStyles = {
     nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-control',
     nestedIcon: 'size-4 stroke-current',
     toggleButton:
-      'mr-1 flex size-8 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control hover:text-foreground',
+      'touch-control flex w-11 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control hover:text-foreground',
     dashboardSpacing: 'mb-4'
   }
 } as const

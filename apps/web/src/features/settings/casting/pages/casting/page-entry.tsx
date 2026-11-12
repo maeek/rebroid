@@ -2,25 +2,25 @@ import { Suspense } from 'react'
 import { OrchestratorPageBoundary } from '@/server/orchestrator/orchestrator-page-boundary'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { CastingSettingsPageClient } from '../../casting-settings-page-client'
-import { loadPlatformDisplaySessionsPageData } from './page-data.server'
-import { PlatformDisplaySessionsPageSkeleton } from './page-skeleton'
+import { loadCastingPageData } from './page-data.server'
+import { CastingPageLoading } from './page-skeleton'
 
-const PlatformDisplaySessionsPageContent = () => (
+const CastingPageContent = () => (
   <OrchestratorPageBoundary
-    load={loadPlatformDisplaySessionsPageData}
+    load={loadCastingPageData}
     fallback={requestId => (
       <PlatformRouteUnavailable
         requestId={requestId}
-        title='Display sessions'
+        title='Casting'
         description='Inspect the display service and manage viewer sessions.'
-        section={{ label: 'System' }}
-        trail={[{ label: 'Services', href: '/platform/services' }]}
+        section={{ label: 'Administration' }}
       />
     )}
   >
-    {({ applications, owners, sessions, sidecarHealth }) => (
+    {({ applications, owners, sessions, sidecarHealth, containerId }) => (
       <CastingSettingsPageClient
         initialHealth={sidecarHealth}
+        containerId={containerId}
         initialSessions={sessions}
         applications={applications}
         owners={owners}
@@ -29,10 +29,10 @@ const PlatformDisplaySessionsPageContent = () => (
   </OrchestratorPageBoundary>
 )
 
-export function PlatformDisplaySessionsPageEntry() {
+export function CastingPageEntry() {
   return (
-    <Suspense fallback={<PlatformDisplaySessionsPageSkeleton />}>
-      <PlatformDisplaySessionsPageContent />
+    <Suspense fallback={<CastingPageLoading />}>
+      <CastingPageContent />
     </Suspense>
   )
 }

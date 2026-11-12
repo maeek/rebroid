@@ -12,9 +12,10 @@ type AiProviderDetailPageEntryProps = {
 export default async function AiProviderDetailPageEntry({ params, searchParams }: AiProviderDetailPageEntryProps) {
   const { providerId } = await params
   const query = await searchParams
+  const view = query?.view === 'connection' ? 'connection' : 'models'
   return (
     <OrchestratorPageBoundary
-      load={() => getAiProviderDetailPageData(providerId)}
+      load={health => getAiProviderDetailPageData(providerId, health, view)}
       fallback={requestId => (
         <PlatformRouteUnavailable
           requestId={requestId}
@@ -25,13 +26,14 @@ export default async function AiProviderDetailPageEntry({ params, searchParams }
         />
       )}
     >
-      {({ provider }) => {
+      {({ provider, containerId }) => {
         if (!provider) notFound()
         return (
           <OrchestratorAiProviderEditPageClient
             key={provider.id}
             initialProvider={provider}
-            view={query?.view === 'connection' ? 'connection' : 'models'}
+            containerId={containerId}
+            view={view}
           />
         )
       }}

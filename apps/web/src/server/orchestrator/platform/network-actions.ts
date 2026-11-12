@@ -8,11 +8,6 @@ import { runAuditedPlatformAction } from './platform-audit'
 import { platformNetworksGridPage } from './platform-grid-utils'
 import type { PlatformNetworksGridPage, PlatformNetworksGridQuery } from '@/shared/contracts/platform'
 
-export const listPlatformNetworksAction = async () => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.listPlatformNetworks()
-}
-
 export const listPlatformNetworksGridAction = async (
   query: PlatformNetworksGridQuery = {}
 ): Promise<PlatformNetworksGridPage> => {

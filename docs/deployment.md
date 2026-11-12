@@ -192,7 +192,7 @@ are retained. See [rendering troubleshooting](operations.md#android-gpu-renderin
 
 If Android boots after a rendering change and the app reports an ADB connection timeout,
 Rebroid retries the connection to that app. If it still fails, use **Restart sidecar**
-under **Platform settings → Services → Display sessions**, then retry the app.
+under **Administration → Casting**, then retry the app.
 Restarting the sidecar interrupts active display sessions.
 
 Docker can skip explicit same-path device mapping checks for privileged containers.
@@ -210,10 +210,10 @@ preserve the requested audio setting. Main-display compatibility retries may use
 Requested resolution, frame rate, and bitrate are not silently reduced. If the viewer reconnects
 repeatedly, check its compatibility diagnostics and the display-sidecar logs.
 
-**Display sidecar restarts.** In Services → Display sessions, check the Connection panel for the
+**Display sidecar restarts.** In **Administration → Casting**, check the Connection panel for the
 container state, start and finish times, exit code, and whether the process was killed for running out of memory.
 If the UI reports that the restart is unconfirmed, refresh the sidecar status before retrying.
-Administrators can select **View logs** for a bounded tail or **Show more logs** in the dialog for more output.
+Administrators can select **View logs** to open the container's Docker **Logs** tab and read its recent output.
 If a log tail exceeds the read limit, use the container engine logs on the deployment host. A running container
 with an unreachable API can also indicate a listener, DNS, or connectivity problem. To investigate
 the restart itself, correlate the finish time with container engine events and timestamped logs on

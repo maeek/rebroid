@@ -17,7 +17,7 @@ export async function RuntimeContainerDetailPageEntry({
 
   const result = await readOrchestratorPage(() => loadRuntimeContainerDetailPageData(id, view), { allowMissing: true })
   if (result.ok) {
-    const { details, logs } = result.data
+    const { details, logs, logReadLimitExceeded } = result.data
 
     return (
       <StandardPage className='gap-2'>
@@ -25,6 +25,7 @@ export async function RuntimeContainerDetailPageEntry({
           view={view}
           details={details}
           initialLogs={logs}
+          logReadLimitExceeded={logReadLimitExceeded}
         />
       </StandardPage>
     )

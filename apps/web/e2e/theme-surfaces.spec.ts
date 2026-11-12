@@ -1,5 +1,39 @@
 import { expect, test } from '@playwright/test'
 
+test('the navigation bar immediately follows the selected accent', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=general')
+  await page.waitForLoadState('networkidle')
+
+  const colors = await page.evaluate(() => {
+    const root = document.documentElement
+    delete root.dataset.accent
+    const link = document.createElement('a')
+    link.href = '/login'
+    document.body.append(link)
+    // Keep the source page mounted after the loader handles the click.
+    window.addEventListener('click', event => event.preventDefault(), { once: true })
+    link.click()
+
+    const bar = document.querySelector('#nprogress .bar')
+    if (!bar) throw new Error('Missing navigation progress bar')
+
+    const reference = document.createElement('div')
+    reference.style.backgroundColor = 'hsl(var(--primary))'
+    document.body.append(reference)
+    const before = getComputedStyle(bar).backgroundColor
+    root.dataset.accent = 'purple'
+
+    return {
+      before,
+      after: getComputedStyle(bar).backgroundColor,
+      expected: getComputedStyle(reference).backgroundColor
+    }
+  })
+
+  expect(colors.after).toBe(colors.expected)
+  expect(colors.after).not.toBe(colors.before)
+})
+
 test('workflow controls share neutral surfaces across themes and accents', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/skeleton-contract-test?editor=workflow')

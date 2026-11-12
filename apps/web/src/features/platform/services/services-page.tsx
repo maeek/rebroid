@@ -12,16 +12,18 @@ import { serviceDetails, serviceMeta, visibleOptionalServiceIds } from './servic
 import { ServicesGrid } from './services-grid'
 import { ServicesPageLayout } from './services-page-layout'
 import type { ServiceRow } from './service-row'
-import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
+import type { OrchestratorHealth, ServiceContainerIds } from '@/shared/contracts/diagnostics'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const PlatformServicesPage = ({
   initialHealth,
   initialSettings,
+  containerIds,
   requestId
 }: {
   initialHealth: OrchestratorHealth | null
   initialSettings: OrchestratorUiSettings
+  containerIds?: ServiceContainerIds
   requestId?: string
 }) => {
   const router = useRouter()
@@ -42,10 +44,11 @@ export const PlatformServicesPage = ({
         description: meta.description,
         icon: meta.icon,
         endpoint: service.endpoint,
+        containerId: containerIds?.[id],
         timeoutMs: service.timeoutMs,
         settingsSummary: `${serviceDetails(services, id)} ${meta.featureKey}`,
         state: serviceHealthState(initialHealth?.services[id]),
-        href: `/platform/services?service=${id}`
+        href: id === 'firewall' ? '/security/firewall' : '/platform/services?service=ocr'
       }
     })
 
@@ -56,6 +59,7 @@ export const PlatformServicesPage = ({
         description: 'Application lifecycle and platform API.',
         icon: <IconServer className='size-5' />,
         endpoint: initialSettings.orchestratorApiUrl,
+        containerId: containerIds?.orchestrator,
         timeoutMs: null,
         settingsSummary: 'Platform API',
         state: serviceHealthState(initialHealth?.services.orchestrator),
@@ -70,7 +74,7 @@ export const PlatformServicesPage = ({
         timeoutMs: null,
         settingsSummary: 'Infrastructure diagnostics and operation limits',
         state: serviceHealthState(initialHealth ? dockerRuntimeHealth(initialHealth) : undefined),
-        href: '/platform/services?service=docker'
+        href: '/runtime/docker'
       },
       ...configurableRows,
       {
@@ -79,13 +83,14 @@ export const PlatformServicesPage = ({
         description: 'Live streaming and viewer sessions.',
         icon: <IconCast className='size-5' />,
         endpoint: 'Managed internally',
+        containerId: containerIds?.display,
         timeoutMs: null,
         settingsSummary: 'Viewer session management',
         state: serviceHealthState(initialHealth?.services.display),
-        href: '/platform/services/display-sessions'
+        href: '/platform/casting'
       }
     ]
-  }, [getFeature, initialHealth, initialSettings])
+  }, [getFeature, initialHealth, initialSettings, containerIds])
 
   if (unavailable && !hasLoaded)
     return (

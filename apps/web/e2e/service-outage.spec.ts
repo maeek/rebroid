@@ -13,15 +13,11 @@ test('remaining inventories show one failure without dependent controls or reque
     await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled()
   }
-  const dependentRequests: string[] = []
-  page.on('request', request => {
-    if (request.url().includes('/api/bff/platform/display-sidecar/logs')) dependentRequests.push(request.url())
-  })
   await page.goto('/skeleton-contract-test?editor=display-offline')
   await expect(page.getByText('Display service is offline.')).toBeVisible()
   await expect(page.getByRole('region', { name: 'Sessions', exact: true })).toHaveCount(0)
   await expect(page.getByRole('table')).toHaveCount(0)
-  expect(dependentRequests).toEqual([])
+  await expect(page.getByRole('link', { name: 'View logs' })).toHaveCount(0)
 })
 
 test('known orchestrator outages produce one warning and no dependent Docker requests', async ({ page }) => {

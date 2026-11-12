@@ -69,20 +69,18 @@ describe('PlatformServicesPage', () => {
     expect(within(screen.getByRole('table')).getAllByRole('link', { name: 'View details' })).toHaveLength(5)
     const docker = screen.getByRole('row', { name: 'View details for Docker' })
     expect(docker).toHaveTextContent('Healthy')
-    expect(within(docker).getByRole('link', { name: 'Docker' })).toHaveAttribute(
-      'href',
-      '/platform/services?service=docker'
-    )
+    expect(within(docker).getByRole('link', { name: 'Docker' })).toHaveAttribute('href', '/runtime/docker')
     expect(screen.getByRole('row', { name: 'View details for Firewall agent' })).toHaveTextContent('Offline')
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
     expect(screen.queryByText('Configured')).not.toBeInTheDocument()
   })
-  it('shows Display as a service row linking to session management', () => {
+  it('shows Display as a service row linking to Casting', () => {
     render(
       <FeatureFlagsProvider manifest={manifest}>
         <PlatformServicesPage
           initialSettings={defaultOrchestratorUiSettings}
           initialHealth={servicesPreviewHealth}
+          containerIds={{ display: 'display-id' }}
         />
       </FeatureFlagsProvider>
     )
@@ -92,7 +90,11 @@ describe('PlatformServicesPage', () => {
 
     expect(displayRow).toHaveTextContent('Healthy')
     expect(displayRow).toHaveTextContent('Managed internally')
-    expect(sessionsLink.getAttribute('href')).toBe('/platform/services/display-sessions')
+    expect(sessionsLink.getAttribute('href')).toBe('/platform/casting')
+    expect(within(displayRow).getByRole('link', { name: 'View logs for Display service' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/display-id?view=logs'
+    )
     expect(screen.queryByRole('navigation', { name: 'Services sections' })).toBeNull()
   })
 
@@ -117,16 +119,13 @@ describe('PlatformServicesPage', () => {
     expect(navigation.replace).not.toHaveBeenCalled()
     expect(navigation.refresh).not.toHaveBeenCalled()
     const firewall = screen.getByRole('row', { name: 'View details for Firewall agent' })
-    expect(within(firewall).getByRole('link', { name: 'Firewall agent' })).toHaveAttribute(
-      'href',
-      '/platform/services?service=firewall'
-    )
+    expect(within(firewall).getByRole('link', { name: 'Firewall agent' })).toHaveAttribute('href', '/security/firewall')
     fireEvent.click(firewall)
-    expect(navigation.push).toHaveBeenCalledWith('/platform/services?service=firewall')
+    expect(navigation.push).toHaveBeenCalledWith('/security/firewall')
 
     fireEvent.keyDown(screen.getByRole('row', { name: 'View details for Display service' }), { key: 'Enter' })
 
-    expect(navigation.push).toHaveBeenCalledWith('/platform/services/display-sessions')
+    expect(navigation.push).toHaveBeenCalledWith('/platform/casting')
   })
 
   it('hides services for disabled or unsupported features even if their health was previously available', () => {
@@ -146,10 +145,7 @@ describe('PlatformServicesPage', () => {
         />
       </FeatureFlagsProvider>
     )
-    expect(screen.getByRole('link', { name: 'Display service' })).toHaveAttribute(
-      'href',
-      '/platform/services/display-sessions'
-    )
+    expect(screen.getByRole('link', { name: 'Display service' })).toHaveAttribute('href', '/platform/casting')
     expect(screen.queryByRole('columnheader', { name: 'Timeout' })).toBeNull()
     expect(screen.queryByRole('columnheader', { name: 'Settings' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()

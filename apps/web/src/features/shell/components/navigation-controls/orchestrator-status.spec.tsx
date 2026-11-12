@@ -90,12 +90,8 @@ describe('OrchestratorStatus', () => {
     render(status())
     fireEvent.click(screen.getByRole('button', { name: /checking/i }))
 
-    expect(screen.getByRole('link', { name: /casting/i }).getAttribute('href')).toBe(
-      '/platform/services/display-sessions'
-    )
-    expect(screen.getByRole('link', { name: /firewall/i }).getAttribute('href')).toBe(
-      '/platform/services?service=firewall'
-    )
+    expect(screen.getByRole('link', { name: /casting/i }).getAttribute('href')).toBe('/platform/casting')
+    expect(screen.getByRole('link', { name: /firewall/i }).getAttribute('href')).toBe('/security/firewall')
     expect(screen.getByRole('link', { name: /ocr/i }).getAttribute('href')).toBe('/platform/services?service=ocr')
   })
 

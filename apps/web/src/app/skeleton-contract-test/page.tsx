@@ -31,23 +31,25 @@ import {
   RuntimeNetworkDetailPageLoading
 } from '@/features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton'
 import { SkeletonContractFixture } from '@/features/platform/components/skeleton-contract-fixture'
+import { FirewallPageClient } from '@/features/platform/pages/firewall/page-client'
+import { FirewallPageLoading } from '@/features/platform/pages/firewall/page-loading'
 import { ImageBuilderPreview } from '@/features/platform/pages/runtime-image-builder/image-builder-preview'
 import {
   FeaturesPreview,
+  OcrServiceSettingsPreview,
   ServicesPreview,
   InfrastructureServicePreview,
-  ServiceSettingsPreview
+  servicesPreviewHealth,
+  servicesPreviewManifest
 } from '@/features/platform/services/services-preview'
 import { AppActivityLoading, ActivityPageSkeleton } from '@/features/settings/activity/activity-page-skeleton'
 import { CastingSettingsPageClient } from '@/features/settings/casting/casting-settings-page-client'
-import { PlatformDisplaySessionsPageSkeleton } from '@/features/settings/casting/pages/platform-display-sessions/page-skeleton'
+import { CastingPageLoading } from '@/features/settings/casting/pages/casting/page-skeleton'
 import {
   AiProvidersPageSkeleton,
   AiProviderEditPageSkeleton
 } from '@/features/settings/orchestrator/ai-providers/ai-provider-page-skeletons'
 import { AiProvidersPreview } from '@/features/settings/orchestrator/ai-providers/ai-providers-preview'
-import { FirewallSettingsPageClient } from '@/features/settings/orchestrator/firewall-settings-page-client'
-import { SecurityNetworkPoliciesPageLoading } from '@/features/settings/orchestrator/firewall-settings-page-loading'
 import { PlatformRuntimePageSkeleton } from '@/features/settings/orchestrator/platform-runtime-page-skeleton'
 import { PlatformRuntimeUnavailable } from '@/features/settings/orchestrator/platform-runtime-unavailable'
 import { RuntimeSettingsPreview } from '@/features/settings/orchestrator/runtime-settings-preview'
@@ -64,6 +66,7 @@ import {
 } from '@/features/settings/users/user-page-skeletons'
 import { ConsoleShellPreview } from '@/features/shell/components/console-shell-preview'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
+import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
@@ -93,9 +96,10 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
         resourcesError
       />
     )
-  if (editor === 'display-offline' || editor === 'display-sessions')
+  if (editor === 'display-offline' || editor === 'display-sessions' || editor === 'display-published-ports')
     return (
       <CastingSettingsPageClient
+        containerId={editor === 'display-sessions' ? 'preview-display-container' : undefined}
         initialHealth={
           editor === 'display-offline'
             ? { ok: false, status: 'offline', message: 'Display service is offline.' }
@@ -107,7 +111,10 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
                   containerName: 'rebroid-display-sidecar',
                   image: 'rebroid/display-sidecar:local',
                   port: 4300,
-                  publishedHostPort: null
+                  publishedHostPort:
+                    editor === 'display-published-ports'
+                      ? Array.from({ length: 120 }, (_, index) => 40000 + index).join(', ')
+                      : null
                 }
               }
         }
@@ -198,7 +205,7 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'network-loading') return <RuntimeNetworkDetailPageLoading />
   if (editor === 'activity') return <AuditLogPreview />
   if (editor === 'activity-loading') return <ActivityPageSkeleton />
-  if (editor === 'display-sessions-loading') return <PlatformDisplaySessionsPageSkeleton />
+  if (editor === 'display-sessions-loading') return <CastingPageLoading />
   if (editor === 'resources-loading') return <SystemResourcesPageSkeleton />
   if (editor === 'users-list-loading') return <UsersPageSkeleton />
   if (editor === 'groups-list-loading') return <GroupsPageSkeleton />
@@ -215,13 +222,25 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
     )
   }
   if (editor === 'triggers') return <AutomationTriggersPreview />
-  if (editor === 'policies-loading') return <SecurityNetworkPoliciesPageLoading />
-  if (editor === 'policies')
+  if (editor === 'policies-loading')
     return (
-      <FirewallSettingsPageClient
-        initialApplications={[applicationPreview]}
-        initialHealth={{ ok: true, status: 'healthy', message: 'Network policy agent is responding.' }}
-      />
+      <FeatureFlagsProvider manifest={servicesPreviewManifest(true)}>
+        <FirewallPageLoading />
+      </FeatureFlagsProvider>
+    )
+  if (editor === 'policies' || editor === 'service-firewall')
+    return (
+      <FeatureFlagsProvider manifest={servicesPreviewManifest(true)}>
+        <FirewallPageClient
+          initialApplications={[applicationPreview]}
+          initialSettings={defaultOrchestratorUiSettings.services.firewall}
+          initialHealth={
+            editor === 'service-firewall'
+              ? servicesPreviewHealth.services.firewall
+              : { ok: true, status: 'healthy', message: 'Network policy agent is responding.' }
+          }
+        />
+      </FeatureFlagsProvider>
     )
   if (editor?.startsWith('builder-gapps'))
     return (
@@ -254,8 +273,7 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'scheduler-loading') return <ScheduledTasksPageSkeleton />
   if (editor === 'service-docker' || editor === 'service-orchestrator')
     return <InfrastructureServicePreview serviceId={editor === 'service-docker' ? 'docker' : 'orchestrator'} />
-  if (editor === 'service-ocr' || editor === 'service-firewall')
-    return <ServiceSettingsPreview serviceId={editor === 'service-ocr' ? 'ocr' : 'firewall'} />
+  if (editor === 'service-ocr') return <OcrServiceSettingsPreview />
   if (editor === 'services' || editor === 'services-all') return <ServicesPreview all={editor === 'services-all'} />
   if (editor === 'features') return <FeaturesPreview />
   if (editor === 'features-loading') return <FeaturesPreview loading />

@@ -97,8 +97,8 @@ export const CreateAppDeviceSection = ({
                     output={formatRuntimeArguments(redroidDefaultArgs)}
                   />
                   <p className='text-xs text-foreground-muted'>
-                    The managed ADB endpoint uses TCP port 5555. Android GPU rendering is set in Platform → Services →
-                    Display sessions. Other additional values override matching keys.
+                    The managed ADB endpoint uses TCP port 5555. Set Android GPU rendering in Administration → General.
+                    Other additional values override matching keys.
                   </p>
                 </div>
               </Visible>

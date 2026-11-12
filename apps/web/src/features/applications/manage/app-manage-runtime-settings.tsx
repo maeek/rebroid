@@ -68,7 +68,7 @@ export const AppManageRuntimeSettings = ({
           containerArgsLabel='Container arguments'
           containerArgsDescription={
             app?.runtimeKind === 'redroid'
-              ? 'Set Android GPU rendering in Platform → Services → Display sessions.'
+              ? 'Set Android GPU rendering in Administration → General.'
               : 'Optional Docker Cmd override. Use a long-running command for images that would otherwise exit immediately, for example sleep infinity.'
           }
           containerArgsPlaceholder='sleep infinity'

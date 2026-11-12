@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { FeaturesPageLoading } from '@/features/platform/features/features-page'
 import { PlatformServicesPageSkeleton } from '@/features/platform/services/services-page-skeleton'
 import { servicesPreviewManifest } from '@/features/platform/services/services-preview'
-import { PlatformDisplaySessionsPageSkeleton } from '@/features/settings/casting/pages/platform-display-sessions/page-skeleton'
+import { CastingPageLoading } from '@/features/settings/casting/pages/casting/page-skeleton'
 import {
   AiProviderEditPageSkeleton,
   AiProvidersPageSkeleton
@@ -45,13 +45,7 @@ describe('platform destination loading states', () => {
     ['features', FeaturesPageLoading, 'Feature management', 'OCR perception', 'AdministrationFeature management'],
     ['connections', PlatformServicesPageSkeleton, 'Services', 'Connection', 'SystemServices'],
     ['providers', AiProvidersPageSkeleton, 'AI', 'Providers', 'AdministrationAI'],
-    [
-      'display sessions',
-      PlatformDisplaySessionsPageSkeleton,
-      'Display sessions',
-      'Connection',
-      'SystemServicesDisplay sessions'
-    ]
+    ['casting', CastingPageLoading, 'Casting', 'Connection', 'AdministrationCasting']
   ] as const)('renders the %s page chrome instead of overview content', (_, Component, title, content, breadcrumb) => {
     renderLoading(<Component />)
 
@@ -64,15 +58,15 @@ describe('platform destination loading states', () => {
   })
 
   it.each([
-    ['docker', 'Docker'],
-    ['orchestrator', 'Orchestrator'],
-    ['ocr', 'OCR perception'],
-    ['firewall', 'Firewall agent']
-  ] as const)('selects the %s service loader from the destination query', (service, title) => {
+    ['docker', 'Docker', 'DockerOverview'],
+    ['orchestrator', 'Orchestrator', 'SystemServicesOrchestrator'],
+    ['ocr', 'OCR perception', 'SystemServicesOCR perception'],
+    ['firewall', 'Firewall', 'AdministrationFirewall']
+  ] as const)('selects the %s service loader from the destination query', (service, title, breadcrumb) => {
     renderLoading(<PlatformServicesPageSkeleton />, `service=${service}`)
 
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible()
-    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent(`SystemServices${title}`)
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent(breadcrumb)
     expect(screen.queryByRole('searchbox', { name: 'Search services' })).toBeNull()
   })
 

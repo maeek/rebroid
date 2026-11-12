@@ -14,15 +14,13 @@ import type {
   PlatformNetworkDetails,
   StartContainerImageBuildInput,
   GappsBuildPresetsResponse,
-  StartGappsBuildInput,
-  UpdateContainerImageRecipeInput,
-  UpdateRuntimeImageMetadataInput
+  StartGappsBuildInput
 } from '@/shared/contracts/platform'
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export const orchestratorPlatformClient = {
-  listPlatformContainers() {
-    return emptyRequest<PlatformContainer[]>('/platform/docker/containers')
+  listPlatformContainers(signal?: AbortSignal) {
+    return emptyRequest<PlatformContainer[]>('/platform/docker/containers', { signal })
   },
 
   getPlatformContainer(id: string) {
@@ -61,14 +59,6 @@ export const orchestratorPlatformClient = {
     )
   },
 
-  updatePlatformImageRuntimeMetadata(id: string, input: UpdateRuntimeImageMetadataInput) {
-    return jsonRequest<PlatformImageDetails>(
-      `/platform/docker/images/${encodeURIComponent(id)}/runtime-metadata`,
-      'PATCH',
-      input
-    )
-  },
-
   listImageBuildContextFiles() {
     return emptyRequest<ContainerImageBuildContextFile[]>('/platform/container-images/build-context')
   },
@@ -101,16 +91,6 @@ export const orchestratorPlatformClient = {
 
   createImageBuildRecipe(input: ContainerImageRecipeInput) {
     return jsonRequest<ContainerImageBuildRecipe>('/platform/container-images/recipes', 'POST', input)
-  },
-
-  updateImageBuildRecipe(id: string, input: UpdateContainerImageRecipeInput) {
-    return jsonRequest<ContainerImageBuildRecipe>(`/platform/container-images/recipes/${id}`, 'PATCH', input)
-  },
-
-  removeImageBuildRecipe(id: string) {
-    return emptyRequest<{ id: string; removed: boolean }>(`/platform/container-images/recipes/${id}`, {
-      method: 'DELETE'
-    })
   },
 
   listImageBuildJobs() {

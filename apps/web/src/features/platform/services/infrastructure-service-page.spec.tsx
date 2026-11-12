@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { serviceHealthState } from '@/shared/model/diagnostics/service-health'
 import { InfrastructureServicePage } from './infrastructure-service-page'
@@ -20,6 +20,22 @@ vi.mock('@/features/platform/metrics/docker-metrics-dashboard', () => ({
 }))
 
 describe('infrastructure service availability', () => {
+  it('links from the orchestrator connection to its container Logs tab', () => {
+    render(
+      <InfrastructureServicePage
+        serviceId='orchestrator'
+        initialHealth={servicesPreviewHealth}
+        apiUrl='http://orchestrator:4100'
+        containerId='orchestrator-id'
+      />
+    )
+    const connection = screen.getByRole('region', { name: 'Connection' })
+    expect(within(connection).getByRole('link', { name: 'View logs' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/orchestrator-id?view=logs'
+    )
+  })
+
   it('shows one warning without mounting dependent requests and recovers after refresh', () => {
     const { rerender } = render(
       <InfrastructureServicePage
@@ -28,6 +44,7 @@ describe('infrastructure service availability', () => {
         apiUrl=''
       />
     )
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('DockerOverview')
     expect(screen.getByRole('status')).toHaveAttribute('data-tone', 'warning')
     expect(screen.getByRole('status')).toHaveTextContent('Unknown')
     expect(screen.queryByRole('alert')).toBeNull()

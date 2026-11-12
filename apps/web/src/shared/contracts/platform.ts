@@ -110,9 +110,7 @@ export type ContainerImageBuildContextFile = OrchestratorApiSchemas['ContainerIm
 export type ContainerImageBuildRecipe = OrchestratorApiSchemas['ContainerImageBuildRecipe']
 export type ContainerImageBuildJob = OrchestratorApiSchemas['ContainerImageBuildJob']
 export type ContainerImageRecipeInput = OrchestratorApiSchemas['CreateContainerImageRecipeDto']
-export type UpdateContainerImageRecipeInput = OrchestratorApiSchemas['UpdateContainerImageRecipeDto']
 export type StartContainerImageBuildInput = OrchestratorApiSchemas['StartContainerImageBuildDto']
-export type UpdateRuntimeImageMetadataInput = OrchestratorApiSchemas['UpdateRuntimeImageMetadataDto']
 
 export type GappsBuildPhase = ContainerImageBuildJob['phase']
 export type GappsBuildPreset = OrchestratorApiSchemas['GappsBuildPresetDto']

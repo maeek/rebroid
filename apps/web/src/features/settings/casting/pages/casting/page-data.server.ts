@@ -5,8 +5,10 @@ import {
   getDisplaySidecarHealthAction,
   listDisplaySidecarSessionsAction
 } from '@/server/orchestrator/diagnostics/actions'
+import { loadServiceContainerIds } from '@/server/orchestrator/platform/service-containers'
+import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 
-export const loadPlatformDisplaySessionsPageData = async () => {
+export const loadCastingPageData = async (health: OrchestratorHealth) => {
   await requireAdmin()
 
   const [sidecarHealth, applications, users] = await Promise.all([
@@ -14,12 +16,16 @@ export const loadPlatformDisplaySessionsPageData = async () => {
     listApplicationsAction(),
     userService.listUsers()
   ])
-  const sessions = sidecarHealth.ok ? await listDisplaySidecarSessionsAction() : []
+  const [sessions, containers] = await Promise.all([
+    sidecarHealth.ok ? listDisplaySidecarSessionsAction() : [],
+    loadServiceContainerIds(health, { displayHealth: sidecarHealth })
+  ])
 
   return {
     applications,
     owners: users.map(user => ({ id: user.id, name: user.name || user.username })),
     sessions,
+    containerId: containers.display,
     sidecarHealth
   }
 }

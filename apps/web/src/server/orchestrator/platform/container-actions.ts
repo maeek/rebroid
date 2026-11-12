@@ -8,11 +8,6 @@ import { runAuditedPlatformAction } from './platform-audit'
 import { platformContainersGridPage } from './platform-grid-utils'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
-export const listPlatformContainersAction = async () => {
-  await requireAdminUser()
-  return resolveContainerApplicationNames(await orchestratorPlatformClient.listPlatformContainers())
-}
-
 export const listPlatformContainersGridAction = async (
   query: PlatformContainersGridQuery = {}
 ): Promise<PlatformContainersGridPage> => {

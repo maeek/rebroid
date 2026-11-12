@@ -40,6 +40,16 @@ const nextConfig = {
         source: '/',
         destination: '/apps',
         permanent: true
+      },
+      {
+        source: '/security/network-policies',
+        destination: '/security/firewall',
+        permanent: true
+      },
+      {
+        source: '/platform/services/display-sessions',
+        destination: '/platform/casting',
+        permanent: true
       }
     ]
   }

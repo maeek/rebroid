@@ -8,7 +8,6 @@ import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 import type { UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
-import type { RuntimeUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const requireAutomationAiRunUser = async () => {
   const user = await getCurrentUserContext()
@@ -36,37 +35,6 @@ export const cleanupUploadedApksAction = async () => {
 export const getOrchestratorSettingsAction = async () => {
   await requireAdminUser()
   return orchestratorSettingsClient.getSettings()
-}
-
-export const updateOrchestratorSettingsAction = async (input: RuntimeUiSettings) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorSettingsClient.updateSettings(input)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'settings',
-    action: 'settings.orchestrator.update',
-    resourceType: 'orchestrator_settings'
-  })
-  return result
-}
-
-export const resetOrchestratorSettingsAction = async () => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorSettingsClient.resetSettings()
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'settings',
-    action: 'settings.orchestrator.reset',
-    resourceType: 'orchestrator_settings'
-  })
-  return result
-}
-
-export const getFeatureFlagsAction = async () => {
-  await requireAdminUser()
-  return orchestratorSettingsClient.getFeatures()
 }
 
 export const updateFeatureFlagsAction = async (input: UpdateFeatureFlags) => {
@@ -196,41 +164,6 @@ export const downloadAutomationAiProviderModelAction = async (
 export const getAutomationAiProviderModelDownloadAction = async (providerId: string, downloadId: string) => {
   await requireAdminUser()
   return orchestratorSettingsClient.getAiProviderModelDownload(providerId, downloadId)
-}
-
-export const updateAutomationAiProviderModelAction = async (
-  providerId: string,
-  modelId: string,
-  input: Partial<AutomationAiProviderModel>
-) => {
-  const admin = await requireAdminUser()
-  const result = await orchestratorSettingsClient.updateAiProviderModel(providerId, modelId, input)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'settings',
-    action: 'settings.ai_provider_model.update',
-    resourceType: 'ai_provider',
-    resourceId: providerId,
-    details: { modelId: result.id }
-  })
-  revalidateOrchestratorSettingsPage()
-  return result
-}
-
-export const deleteAutomationAiProviderModelAction = async (providerId: string, modelId: string) => {
-  const admin = await requireAdminUser()
-  await orchestratorSettingsClient.deleteAiProviderModel(providerId, modelId)
-  recordAuditEvent({
-    actorUserId: admin.id,
-    actorLabel: admin.name || admin.username || admin.id,
-    category: 'settings',
-    action: 'settings.ai_provider_model.delete',
-    resourceType: 'ai_provider',
-    resourceId: providerId,
-    details: { modelId }
-  })
-  revalidateOrchestratorSettingsPage()
 }
 
 export const listAutomationAiModelCatalogAction = async () => {

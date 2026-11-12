@@ -167,13 +167,14 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
                   />
                 )
               }
-              const { label, items, Icon } = entry
+              const { label, items, href, Icon } = entry
               if (!items.length) return null
               const isOpen = expanded[label] ?? true
               return (
                 <NestedNavigationMenu
                   key={label}
                   label={label}
+                  href={href}
                   Icon={Icon}
                   items={items}
                   variant={variant}

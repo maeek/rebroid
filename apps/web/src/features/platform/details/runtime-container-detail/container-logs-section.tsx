@@ -5,12 +5,13 @@ import { LogsConsole } from '@/shared/ui/logs/logs-console'
 import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 
-export const ContainerLogsSection = () => {
+export const ContainerLogsSection = ({ logReadLimitExceeded }: { logReadLimitExceeded?: boolean }) => {
   const { isRefreshingLogs, logs, refreshLogs } = useContainerDetailControllerContext()
 
   return (
     <ContainerLogsContent
       logs={logs}
+      logReadLimitExceeded={logReadLimitExceeded && !logs}
       isRefreshingLogs={isRefreshingLogs}
       refreshLogs={refreshLogs}
     />
@@ -19,11 +20,13 @@ export const ContainerLogsSection = () => {
 
 export const ContainerLogsContent = ({
   logs,
+  logReadLimitExceeded = false,
   isRefreshingLogs = false,
   refreshLogs = () => Promise.resolve(),
   loading = false
 }: {
   logs?: { collectedAt: string; output: string }
+  logReadLimitExceeded?: boolean
   isRefreshingLogs?: boolean
   refreshLogs?: () => Promise<void>
   loading?: boolean
@@ -39,7 +42,11 @@ export const ContainerLogsContent = ({
         log={logs}
         isRefreshing={isRefreshingLogs}
         onRefresh={() => void refreshLogs()}
-        emptyMessage='No logs returned for this container.'
+        emptyMessage={
+          logReadLimitExceeded
+            ? 'The container log tail exceeds the read limit.'
+            : 'No logs returned for this container.'
+        }
         collectedAtPrefix='Recent Docker logs collected at'
         formatCollectedAt={formatPlatformDate}
         controls={<p className='text-sm text-foreground-muted'>Recent Docker logs for this container.</p>}

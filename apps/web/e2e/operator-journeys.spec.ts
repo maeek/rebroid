@@ -352,7 +352,7 @@ test('services keep navigation actions readable and unclipped', async ({ page })
         exact: true
       })
       await link.scrollIntoViewIfNeeded()
-      await expect(link).toHaveAttribute('href', '/platform/services/display-sessions')
+      await expect(link).toHaveAttribute('href', '/platform/casting')
       expect(
         await link.evaluate(node => {
           const cell = node.closest('td')!.getBoundingClientRect()
@@ -557,50 +557,52 @@ test('services hides disabled entries and Features keeps their settings discover
   expect(errors).toEqual([])
 })
 
-test('display sessions shows connection details and opens logs in a wide dialog on demand', async ({ page }) => {
-  const requests: string[] = []
-  await page.route('**/api/bff/platform/display-sidecar/logs?*', route => {
-    requests.push(route.request().url())
-    return route.fulfill({
-      json: {
-        ok: true,
-        data: { output: 'Display sidecar ready\n' + 'diagnostic output '.repeat(120), lineLimit: 20, truncated: false },
-        requestId: 'display-logs-preview'
-      }
-    })
-  })
-
+test('Casting shows connection details and links to the Docker Logs tab', async ({ page }) => {
   for (const width of [390, 1440]) {
-    requests.length = 0
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/skeleton-contract-test?editor=display-sessions')
+    await expect(page.getByRole('heading', { level: 1, name: 'Casting' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
+      'Administration',
+      'Casting'
+    ])
 
     const status = page.getByRole('status').filter({ hasText: 'Healthy' })
     const connection = page.getByRole('region', { name: 'Connection' })
     const sessions = page.getByRole('region', { name: 'Sessions' })
-    const trigger = connection.getByRole('button', { name: 'View logs' })
     await expect(status).toContainText('Display sidecar API is responding.')
     await expect(connection.getByText('rebroid-display-sidecar', { exact: true })).toBeVisible()
+    await expect(connection.getByRole('link', { name: 'Open Docker container' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/preview-display-container'
+    )
+    await expect(connection.getByRole('link', { name: 'View logs' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/preview-display-container?view=logs'
+    )
+    await expect(connection.getByRole('button', { name: 'Restart sidecar' })).toBeVisible()
     await expect(connection.getByText('Not published')).toBeVisible()
     await expect(sessions.getByRole('table')).toBeVisible()
     expect((await status.boundingBox())!.y).toBeLessThan((await connection.boundingBox())!.y)
     expect((await connection.boundingBox())!.y).toBeLessThan((await sessions.boundingBox())!.y)
-    expect(requests).toEqual([])
-
-    await trigger.click()
-    const dialog = page.getByRole('dialog', { name: 'Display sidecar logs' })
-    const output = dialog.getByRole('region', { name: 'Display sidecar log output' })
-    await expect(output).toContainText('Display sidecar ready')
-    expect(requests).toHaveLength(1)
-    const expectedWidth = width < 640 ? width - 32 : Math.round(width * 0.8)
-    await expect.poll(async () => Math.round((await dialog.boundingBox())!.width)).toBe(expectedWidth)
-    expect(await output.evaluate(node => node.scrollWidth)).toBeGreaterThan(
-      await output.evaluate(node => node.clientWidth)
-    )
-    await page.keyboard.press('Escape')
-    await expect(dialog).toBeHidden()
-    await expect(trigger).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
   }
+})
+
+test('Casting truncates long published ports and shows the full value in a tooltip', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=display-published-ports')
+  const trigger = page.getByRole('region', { name: 'Connection' }).getByRole('button', { name: /^40000, 40001/ })
+  await expect(trigger).toHaveCSS('text-overflow', 'ellipsis')
+  expect(await trigger.evaluate(node => node.scrollWidth > node.clientWidth)).toBe(true)
+
+  if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) await trigger.hover()
+  else await trigger.tap()
+
+  const tooltip = page.getByRole('tooltip')
+  await expect(tooltip).toContainText('40117, 40118, 40119')
+  await expect(trigger).toHaveAttribute('aria-describedby', (await tooltip.getAttribute('id')) ?? '')
+  await page.keyboard.press('Escape')
+  await expect(tooltip).toBeHidden()
 })
 
 test('embedded Files keeps folder navigation, filtering, and details in one workspace', async ({ page }) => {

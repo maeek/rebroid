@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Section } from '@/components/ui/section'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { ServiceDetailLayout } from './service-detail-layout'
 
@@ -11,6 +12,7 @@ export const InfrastructureServiceLayout = ({
   limits,
   diagnostics,
   apiUrl,
+  containerId,
   loading = false
 }: {
   serviceId: 'orchestrator' | 'docker'
@@ -19,10 +21,12 @@ export const InfrastructureServiceLayout = ({
   limits?: ReactNode
   diagnostics?: ReactNode
   apiUrl?: string
+  containerId?: string
   loading?: boolean
 }) => (
   <ServiceDetailLayout
     title={serviceId === 'docker' ? 'Docker' : 'Orchestrator'}
+    navigation={serviceId === 'docker' ? { section: { label: 'Docker' }, breadcrumbLabel: 'Overview' } : undefined}
     refresh={actions}
   >
     {health}
@@ -44,6 +48,14 @@ export const InfrastructureServiceLayout = ({
         surface='panel'
         title='Connection'
         description='Managed by your deployment configuration.'
+        actions={
+          !loading && containerId ? (
+            <DockerContainerLinks
+              containerId={containerId}
+              className='max-sm:flex-col max-sm:items-end'
+            />
+          ) : undefined
+        }
         contentClassName='gap-6'
       >
         <DetailFields
@@ -51,7 +63,7 @@ export const InfrastructureServiceLayout = ({
           fields={[{ label: 'API URL', value: apiUrl, code: true, copyValue: apiUrl, fullWidth: true }]}
         />
         <div className='flex flex-wrap gap-x-6 gap-y-2 text-sm'>
-          <ResourceLink href='/platform/services?service=docker'>Docker diagnostics and limits</ResourceLink>
+          <ResourceLink href='/runtime/docker'>Docker diagnostics and limits</ResourceLink>
           <ResourceLink href='/platform/runtime'>General</ResourceLink>
         </div>
       </Section>

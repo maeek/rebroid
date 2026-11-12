@@ -40,7 +40,8 @@ export const NavigationRail = ({
                 )
               }
               if (!entry.items.length) return null
-              const containsActive = entry.items.some(item => isActivePath(item.href))
+              const containsActive =
+                (entry.href && isActivePath(entry.href)) || entry.items.some(item => isActivePath(item.href))
               return (
                 <li key={entry.label}>
                   <DropdownMenuTrigger
@@ -70,7 +71,7 @@ export const NavigationRail = ({
           >
             {payload ? (
               <NavigationRailItems
-                items={payload.items}
+                group={payload}
                 isActivePath={isActivePath}
               />
             ) : null}
@@ -82,13 +83,14 @@ export const NavigationRail = ({
 }
 
 const NavigationRailItems = ({
-  items,
+  group,
   isActivePath
 }: {
-  items: NavigationItem[]
+  group: NavigationGroup
   isActivePath: (href: string) => boolean
 }) => {
   const styles = variantStyles.rail
+  const items = group.href ? [{ name: 'Overview', href: group.href, Icon: group.Icon }, ...group.items] : group.items
   const shortcuts = items.flatMap(item => (item.shortcut ? [item.shortcut] : []))
   return (
     <>

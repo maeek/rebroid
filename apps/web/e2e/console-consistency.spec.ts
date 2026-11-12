@@ -207,6 +207,11 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
         'href',
         '/platform/features'
       )
+      await expect(page.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute('href', '/runtime/docker')
+      await expect(page.getByRole('link', { name: 'Casting', exact: true })).toHaveAttribute(
+        'href',
+        '/platform/casting'
+      )
       await expect(page.getByRole('link', { name: 'Create user', exact: true })).toHaveAttribute(
         'href',
         '/security/users?create=1'
@@ -219,6 +224,11 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
     } else {
       await page.getByRole('button', { name: 'Open navigation' }).click()
       const drawer = page.getByRole('dialog', { name: 'Navigation' })
+      await expect(drawer.getByRole('link', { name: 'Casting', exact: true })).toHaveAttribute(
+        'href',
+        '/platform/casting'
+      )
+      await expect(drawer.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute('href', '/runtime/docker')
       for (const group of ['Docker', 'Users & groups', 'System']) {
         await expect(drawer.getByRole('button', { name: `Collapse ${group} menu` })).toHaveAttribute(
           'aria-expanded',
@@ -437,6 +447,10 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
     await sidebar.getByRole('button', { name: 'Docker', exact: true }).hover()
     await expect(group).toHaveAttribute('aria-label', 'Docker')
     expect(await flyout.getAttribute('aria-label')).toBe('Docker')
+    await expect(group.getByRole('menuitem', { name: 'Overview', exact: true })).toHaveAttribute(
+      'href',
+      '/runtime/docker'
+    )
     const containers = group.getByRole('menuitem', { name: 'Containers', exact: true })
     const item = (await containers.boundingBox())!
     await page.mouse.move(item.x + item.width / 2, item.y + item.height / 2, { steps: 12 })

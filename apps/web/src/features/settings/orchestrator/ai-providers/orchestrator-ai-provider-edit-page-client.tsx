@@ -13,9 +13,11 @@ import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 
 export const OrchestratorAiProviderEditPageClient = ({
   initialProvider,
+  containerId,
   view = 'models'
 }: {
   initialProvider: AutomationAiProvider
+  containerId?: string
   view?: ProviderEditorView
 }) => {
   const controller = useAiProviderEditController(initialProvider)
@@ -64,6 +66,7 @@ export const OrchestratorAiProviderEditPageClient = ({
       {view === 'connection' ? (
         <ProviderConnectionSection
           provider={provider}
+          containerId={provider.baseUrl === initialProvider.baseUrl ? containerId : undefined}
           disabled={busy}
           onChange={controller.updateProvider}
         />

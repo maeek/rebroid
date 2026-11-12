@@ -3,6 +3,7 @@
 import { useContainerDetailContext } from '@/features/platform/details/runtime-container-detail/container-detail-context'
 import { formatContainerPorts } from '@/features/platform/details/runtime-container-detail/container-detail-utils'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { OverflowText } from '@/shared/ui/overflow-text'
 import { formatPlatformDate } from '@/shared/ui/platform/platform-detail-parts'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import type { PlatformContainerDetails } from '@/shared/contracts/platform'
@@ -32,24 +33,31 @@ const ContainerRuntimeDetails = ({
 }: {
   container?: PlatformContainerDetails['container']
   loading?: boolean
-}) => (
-  <DetailFields
-    loading={loading}
-    title='Configuration'
-    fields={[
-      { label: 'Component', value: container?.component ?? 'None' },
-      { label: 'Ports', value: formatContainerPorts(container?.ports ?? []) },
-      { label: 'Image ID', value: container?.imageId, copyValue: container?.imageId, code: true, fullWidth: true },
-      {
-        label: 'Command',
-        value: container?.command || 'None',
-        copyValue: container?.command || undefined,
-        code: true,
-        fullWidth: true
-      }
-    ]}
-  />
-)
+}) => {
+  const ports = formatContainerPorts(container?.ports ?? [])
+  return (
+    <DetailFields
+      loading={loading}
+      title='Configuration'
+      fields={[
+        { label: 'Component', value: container?.component ?? 'None' },
+        {
+          label: 'Ports',
+          value: <OverflowText value={ports} />,
+          copyValue: container?.ports.length ? ports : undefined
+        },
+        { label: 'Image ID', value: container?.imageId, copyValue: container?.imageId, code: true, fullWidth: true },
+        {
+          label: 'Command',
+          value: container?.command || 'None',
+          copyValue: container?.command || undefined,
+          code: true,
+          fullWidth: true
+        }
+      ]}
+    />
+  )
+}
 
 export const ContainerOverviewSection = () => {
   const { details } = useContainerDetailContext()

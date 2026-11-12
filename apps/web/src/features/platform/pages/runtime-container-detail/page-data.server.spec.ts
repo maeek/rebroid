@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { loadRuntimeContainerDetailPageData } from './page-data.server'
 
 const { getContainer, getLogs } = vi.hoisted(() => ({ getContainer: vi.fn(), getLogs: vi.fn() }))
@@ -24,5 +25,15 @@ describe('container section loading', () => {
     const result = await loadRuntimeContainerDetailPageData('container', 'logs')
     expect(getLogs).toHaveBeenCalledWith('container')
     expect(result.logs).toEqual({ output: 'ready' })
+  })
+
+  it('keeps the container details available when the log tail exceeds the read limit', async () => {
+    getLogs.mockRejectedValueOnce(new OrchestratorRequestError('Log limit exceeded', 413))
+
+    await expect(loadRuntimeContainerDetailPageData('container', 'logs')).resolves.toMatchObject({
+      name: 'runtime',
+      logReadLimitExceeded: true,
+      logs: undefined
+    })
   })
 })

@@ -50,6 +50,3 @@ export const visibleOptionalServiceIds = (
   getFeature: (key: FeatureFlagKey) => FeatureFlagState | undefined,
   health?: Partial<Record<ServiceId, ServiceHealth>>
 ) => serviceIds.filter(id => isOptionalServiceVisible(getFeature(serviceMeta[id].featureKey), health?.[id]))
-
-export const isConfigurableService = (value: string | null | undefined): value is ServiceId =>
-  serviceIds.some(id => id === value)

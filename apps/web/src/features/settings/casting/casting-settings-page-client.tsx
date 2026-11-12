@@ -11,6 +11,7 @@ import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/di
 
 export const CastingSettingsPageClient = ({
   initialHealth,
+  containerId,
   initialSessions,
   applications,
   owners,
@@ -18,6 +19,7 @@ export const CastingSettingsPageClient = ({
 }: {
   loading?: boolean
   initialHealth: ServiceHealth
+  containerId?: string
   initialSessions: DisplaySidecarSession[]
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
   owners: Array<{ id: string; name: string }>
@@ -27,10 +29,11 @@ export const CastingSettingsPageClient = ({
   const [isRefreshingPage, startRefresh] = useTransition()
   const router = useRouter()
 
+  const refreshPage = () => startRefresh(() => router.refresh())
   const refresh = () => {
     setIsRefreshing(true)
     setRefreshKey(current => current + 1)
-    startRefresh(() => router.refresh())
+    refreshPage()
   }
 
   return (
@@ -39,9 +42,8 @@ export const CastingSettingsPageClient = ({
       className='gap-2'
     >
       <PageHeader
-        section={{ label: 'System' }}
-        trail={[{ label: 'Services', href: '/platform/services' }]}
-        title='Display sessions'
+        section={{ label: 'Administration' }}
+        title='Casting'
         breadcrumbRefresh={
           <PlatformPageRefreshButton
             disabled={loading}
@@ -54,11 +56,13 @@ export const CastingSettingsPageClient = ({
         <CastingSidecarSettings
           loading={loading}
           initialHealth={initialHealth}
+          containerId={isRefreshingPage ? undefined : containerId}
           initialSessions={initialSessions}
           applications={applications}
           owners={owners}
           refreshKey={refreshKey}
           onRefreshComplete={() => setIsRefreshing(false)}
+          onRestartComplete={refreshPage}
         />
       </PageContent>
     </StandardPage>

@@ -5,7 +5,6 @@ import { InfrastructureServicePage } from './infrastructure-service-page'
 import { ServiceSettingsPage } from './service-settings-page'
 import { PlatformServicesPage } from './services-page'
 import { PlatformServicesPageSkeleton } from './services-page-skeleton'
-import type { ServiceId } from './service-definitions'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 import type { FeatureFlagState, FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 
@@ -124,20 +123,12 @@ export const ServicesPreview = ({
   </FeatureFlagsProvider>
 )
 
-export const ServiceSettingsPreview = ({ serviceId }: { serviceId: ServiceId }) => (
+export const OcrServiceSettingsPreview = () => (
   <FeatureFlagsProvider manifest={servicesPreviewManifest(true)}>
     <ServiceSettingsPage
-      serviceId={serviceId}
-      initialHealth={
-        serviceId === 'ocr'
-          ? { ok: true, status: 'healthy', message: 'OCR sidecar is reachable.' }
-          : servicesPreviewHealth.services.firewall
-      }
-      initialSettings={
-        serviceId === 'ocr'
-          ? { ...defaultOrchestratorUiSettings.services.ocr, endpoint: 'http://ocr-sidecar:4300' }
-          : defaultOrchestratorUiSettings.services.firewall
-      }
+      serviceId='ocr'
+      initialHealth={{ ok: true, status: 'healthy', message: 'OCR sidecar is reachable.' }}
+      initialSettings={{ ...defaultOrchestratorUiSettings.services.ocr, endpoint: 'http://ocr-sidecar:4300' }}
     />
   </FeatureFlagsProvider>
 )

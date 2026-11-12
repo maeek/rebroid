@@ -5,7 +5,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Visible } from '@/components/ui/visible'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import { firewallAccessLabel, firewallAllowlistDisplay, firewallPolicyEnforcement } from './firewall-settings-model'
+import {
+  firewallAccessLabel,
+  firewallAllowlistDisplay,
+  firewallPolicyEnforcement
+} from '../model/firewall-settings-model'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { ColumnDef } from '@tanstack/react-table'
 

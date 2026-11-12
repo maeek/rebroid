@@ -19,23 +19,34 @@ import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/co
 export const RuntimeContainerDetail = ({
   details,
   initialLogs,
+  logReadLimitExceeded,
   view = 'overview'
 }: {
   details: PlatformContainerDetails
   view?: 'overview' | 'logs'
   initialLogs?: PlatformContainerLog
+  logReadLimitExceeded?: boolean
 }) => {
   return (
     <ContainerDetailProvider
       details={details}
       initialLogs={initialLogs}
     >
-      <RuntimeContainerDetailContent view={view} />
+      <RuntimeContainerDetailContent
+        view={view}
+        logReadLimitExceeded={logReadLimitExceeded}
+      />
     </ContainerDetailProvider>
   )
 }
 
-const RuntimeContainerDetailContent = ({ view }: { view: 'overview' | 'logs' }) => {
+const RuntimeContainerDetailContent = ({
+  view,
+  logReadLimitExceeded
+}: {
+  view: 'overview' | 'logs'
+  logReadLimitExceeded?: boolean
+}) => {
   const { details } = useContainerDetailContext()
   const container = details.container
 
@@ -48,7 +59,7 @@ const RuntimeContainerDetailContent = ({ view }: { view: 'overview' | 'logs' }) 
           view={view}
         />
         {view === 'logs' ? (
-          <ContainerLogsSection />
+          <ContainerLogsSection logReadLimitExceeded={logReadLimitExceeded} />
         ) : (
           <>
             <ContainerOverviewSection />

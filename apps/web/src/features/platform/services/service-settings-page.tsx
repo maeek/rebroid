@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { toast } from '@/hooks/use-toast'
@@ -30,14 +30,18 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   serviceId,
   initialHealth,
   initialSettings,
+  containerId,
   requestId,
-  loading = false
+  loading = false,
+  children
 }: {
   serviceId: Id
   initialHealth?: ServiceHealth
   initialSettings?: OptionalServicesUiSettings[Id]
+  containerId?: string
   requestId?: string
   loading?: boolean
+  children?: ReactNode
 }) => {
   const router = useRouter()
   const [refreshing, startRefresh] = useTransition()
@@ -95,7 +99,8 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
 
   return (
     <ServiceDetailLayout
-      title={meta.title}
+      title={serviceId === 'firewall' ? 'Firewall' : meta.title}
+      navigation={serviceId === 'firewall' ? { section: { label: 'Administration' } } : undefined}
       refresh={
         <PlatformPageRefreshButton
           disabled={loading || saving}
@@ -133,6 +138,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
           <ServiceConnectionSection
             serviceId={serviceId}
             settings={settings}
+            containerId={settings.endpoint === initialSettings?.endpoint ? containerId : undefined}
             disabled={disabled}
             loading={loading}
             errors={errors}
@@ -149,6 +155,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
           ) : null}
         </>
       ) : null}
+      {children}
     </ServiceDetailLayout>
   )
 }

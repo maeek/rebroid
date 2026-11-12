@@ -29,7 +29,6 @@ export const useCastingSidecarController = ({
   const [health, setHealth] = useState(initialHealth)
   const lastRefreshKey = useRef(0)
   const [sessions, setSessions] = useState(initialSessions)
-  const [logRevision, setLogRevision] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
@@ -74,7 +73,6 @@ export const useCastingSidecarController = ({
 
   const updateDisplayState = useCallback(async (nextHealth: ServiceHealth) => {
     setHealth(nextHealth)
-    setLogRevision(current => current + 1)
     if (nextHealth.ok) setSessions(await listDisplaySidecarSessionsAction())
   }, [])
 
@@ -174,7 +172,6 @@ export const useCastingSidecarController = ({
 
   return {
     health,
-    logRevision,
     busy,
     restartSidecar,
     sessions,

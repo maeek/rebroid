@@ -13,9 +13,7 @@ import type {
   ContainerImageRecipeInput,
   PlatformImagesGridPage,
   PlatformImagesGridQuery,
-  StartContainerImageBuildInput,
-  UpdateContainerImageRecipeInput,
-  UpdateRuntimeImageMetadataInput
+  StartContainerImageBuildInput
 } from '@/shared/contracts/platform'
 
 export const listPlatformImagesAction = async () => {
@@ -74,19 +72,6 @@ export const removePlatformImageAction = async (id: string, force = false) =>
     { fallbackMessage: 'Could not remove image.', logLabel: 'removePlatformImageAction failed' }
   )
 
-export const updatePlatformImageRuntimeMetadataAction = async (id: string, input: UpdateRuntimeImageMetadataInput) =>
-  runSafeAction(
-    () =>
-      runAuditedPlatformAction({
-        action: 'docker.image.runtime_metadata.update',
-        details: { ...input },
-        operation: () => orchestratorPlatformClient.updatePlatformImageRuntimeMetadata(id, input),
-        resourceType: 'docker_image',
-        resourceId: id
-      }),
-    { fallbackMessage: 'Could not update image metadata.', logLabel: 'updatePlatformImageRuntimeMetadataAction failed' }
-  )
-
 export const listImageBuildContextFilesAction = async () => {
   await requireAdminUser()
   await requireFeature('feature.image-builder')
@@ -126,35 +111,6 @@ export const createImageBuildRecipeAction = async (input: ContainerImageRecipeIn
       })
     },
     { fallbackMessage: 'Could not create image build recipe.', logLabel: 'createImageBuildRecipeAction failed' }
-  )
-
-export const updateImageBuildRecipeAction = async (id: string, input: UpdateContainerImageRecipeInput) =>
-  runSafeAction(
-    async () => {
-      await requireFeature('feature.image-builder')
-      return runAuditedPlatformAction({
-        action: 'docker.image_build.recipe.update',
-        details: { fields: Object.keys(input) },
-        operation: () => orchestratorPlatformClient.updateImageBuildRecipe(id, input),
-        resourceType: 'docker_image_build_recipe',
-        resourceId: id
-      })
-    },
-    { fallbackMessage: 'Could not update image build recipe.', logLabel: 'updateImageBuildRecipeAction failed' }
-  )
-
-export const removeImageBuildRecipeAction = async (id: string) =>
-  runSafeAction(
-    async () => {
-      await requireFeature('feature.image-builder')
-      return runAuditedPlatformAction({
-        action: 'docker.image_build.recipe.remove',
-        operation: () => orchestratorPlatformClient.removeImageBuildRecipe(id),
-        resourceType: 'docker_image_build_recipe',
-        resourceId: id
-      })
-    },
-    { fallbackMessage: 'Could not remove image build recipe.', logLabel: 'removeImageBuildRecipeAction failed' }
   )
 
 export const listImageBuildJobsAction = async () => {

@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
 import {
   PlatformContainer,
@@ -17,6 +22,10 @@ import type {
   AdmitPlatformContainerChange,
   DockerPlatformContainersPort,
 } from '../../contracts/docker-platform-containers.port';
+
+const maxPlatformLogLines = 1_000;
+const maxPlatformLogBytes = 2 * 1024 * 1024;
+const fallbackPlatformLogLines = 20;
 
 @Injectable()
 export class DockerPlatformContainersService implements DockerPlatformContainersPort {
@@ -78,10 +87,30 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
     containerId: string,
     tail = 500,
   ): Promise<PlatformContainerLog> {
+    if (!Number.isSafeInteger(tail) || tail < 1) {
+      throw new BadRequestException(
+        'The log tail must be a positive whole number.',
+      );
+    }
+    const lineLimit = Math.min(tail, maxPlatformLogLines);
+    const output = await this.lifecycle
+      .getBoundedContainerLogs(containerId, lineLimit, maxPlatformLogBytes)
+      .catch((error: unknown) => {
+        if (
+          !(error instanceof PayloadTooLargeException) ||
+          lineLimit <= fallbackPlatformLogLines
+        )
+          throw error;
+        return this.lifecycle.getBoundedContainerLogs(
+          containerId,
+          fallbackPlatformLogLines,
+          maxPlatformLogBytes,
+        );
+      });
     return {
       source: 'container',
       collectedAt: new Date().toISOString(),
-      output: await this.lifecycle.getContainerLogs(containerId, tail),
+      output,
     };
   }
 

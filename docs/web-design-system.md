@@ -77,7 +77,8 @@ the same floating surface and opens toward the center of the viewport from the m
 On mobile, the top bar contains the brand and navigation drawer trigger, with the health chip beside the bell in the account controls.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
-In the icon rail, they open labeled flyouts with their destinations and available shortcuts.
+The Docker label opens its overview, with a separate chevron for expanding or collapsing its child links.
+In the icon rail, groups open labeled flyouts with their destinations and available shortcuts.
 Use the circled add icon for sidebar create shortcuts.
 Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subheadings that
 repeat the page title or active tab. Put page-wide context in `PageHeader.description` and
@@ -199,7 +200,7 @@ pending; on partial failure, retain failed items for retry and apply successful 
 
 Keep column visibility independent. Show bulk actions only for selected visible rows. Use
 `DataGrid.rowActivation` for a clear primary row destination, preserving nested controls and providing
-an accessible activation label. Read-only metrics/key/value tables use `DefinitionTable`.
+an accessible activation label. Use `DetailFields` for read-only metrics and key/value details.
 
 Loading belongs to the component that owns ready-state geometry. Reuse shells, responsive grids,
 sections, columns, system columns, table markup, and scroll containers; define cell placeholders
@@ -474,14 +475,20 @@ Services is under System. Feature management is a direct destination under Admin
 
 Services lists Orchestrator, Docker, Display, Firewall, and OCR from the same health snapshot used
 by the shell indicator. A configured endpoint never substitutes for measured health. Docker combines
-engine reachability with runtime suitability. Orchestrator and Docker have resource views at
-`/platform/services?service=orchestrator` and `?service=docker`; shell health links point there.
-Display sessions shows the service notice, Connection details, and the session grid in that order.
-View logs opens a wide dialog and requests the bounded log tail on demand.
-Service details, Display sessions, and App network policies use `ServiceHealthNotice` for reported health
+engine reachability with runtime suitability. The Orchestrator view is at
+`/platform/services?service=orchestrator`. Docker opens at `/runtime/docker` with the Docker → Overview breadcrumb.
+The inventory and shell health links point to these pages. Bookmarks to `/platform/services?service=docker` redirect to the Docker overview.
+Casting is a direct Administration destination at `/platform/casting`. The Display service row and
+shell health link open Casting. The page shows the service notice, Connection details, and the session grid in that order.
+Service details, Casting, and Firewall use `ServiceHealthNotice` for reported health
 and its neutral loading state.
-OCR perception and Firewall agent use the same service header, health notice, and editable
-Connection section. OCR also has a Settings section for recognition. Each page saves only its own configuration.
+OCR perception and Firewall use the same health notice and editable Connection section. OCR also
+has a Settings section for recognition. Firewall is a direct Administration destination at
+`/security/firewall`, with the Network policies grid below Connection. The Firewall agent service row
+and health link open this page. Connection saves and policy sync actions each submit their own changes.
+Connection panels and the Services inventory offer **Open Docker container** and **View logs** when the
+connection resolves to a container in the deployment. **View logs** opens the container's **Logs** tab,
+which reads a bounded log tail on demand. Long port values truncate to one line and expose the full value in a tooltip.
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.

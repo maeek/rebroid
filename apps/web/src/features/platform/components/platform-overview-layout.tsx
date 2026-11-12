@@ -32,7 +32,7 @@ export const PlatformOverviewLayout = ({
         contentClassName='gap-4'
         actions={
           <ResourceLink
-            href='/platform/services?service=docker'
+            href='/runtime/docker'
             className='inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium'
           >
             Infrastructure diagnostics

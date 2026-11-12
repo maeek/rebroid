@@ -25,9 +25,9 @@ export const featureDestination = (feature: FeatureFlagState) => {
   if (feature.key === 'feature.ocr' && feature.enabled)
     return { label: 'Connection settings', href: '/platform/services?service=ocr' }
   if (feature.key === 'feature.firewall' && feature.enabled)
-    return { label: 'Connection settings', href: '/platform/services?service=firewall' }
+    return { label: 'Open firewall', href: '/security/firewall' }
   if (feature.key === 'feature.display-virtual' || feature.key === 'feature.display-webrtc')
-    return { label: 'View sessions', href: '/platform/services/display-sessions' }
+    return { label: 'View sessions', href: '/platform/casting' }
   if (feature.key === 'feature.ai' && feature.enabled) return { label: 'Manage AI providers', href: '/platform/ai' }
   if (feature.key === 'feature.workflows' && feature.enabled) return { label: 'Open workflows', href: '/automations' }
   if (feature.key === 'feature.resource-quota') return { label: 'Manage users', href: '/security/users' }

@@ -8,6 +8,7 @@ export type ServiceRow = {
   description: string
   icon: ReactNode
   endpoint: string | null
+  containerId?: string
   timeoutMs: number | null
   settingsSummary: string
   state: {

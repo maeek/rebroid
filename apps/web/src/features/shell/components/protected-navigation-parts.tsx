@@ -92,6 +92,7 @@ export const NavLink = ({ href, label, Icon, isActive, variant, onNavigate }: Na
 
 export const NestedNavigationMenu = ({
   label,
+  href,
   variant,
   items,
   isOpen,
@@ -101,6 +102,7 @@ export const NestedNavigationMenu = ({
   onToggle
 }: {
   label: string
+  href?: string
   variant: Exclude<NavigationVariant, 'rail'>
   items: NavigationItem[]
   isOpen: boolean
@@ -112,25 +114,58 @@ export const NestedNavigationMenu = ({
   const listId = useId()
   const styles = variantStyles[variant]
   const containsActive = items.some(item => isActivePath(item.href))
+  const toggleActive = containsActive && !isOpen && styles.activeItem
+  const linkActive = href !== undefined && isActivePath(href)
+  const toggleProps = {
+    type: 'button',
+    onClick: onToggle,
+    'aria-label': isOpen ? `Collapse ${label} menu` : `Expand ${label} menu`,
+    'aria-expanded': isOpen,
+    'aria-controls': isOpen ? listId : undefined
+  } as const
+  const labelContent = (
+    <>
+      <div className={styles.iconWrap}>
+        <ParentIcon className={styles.icon} />
+      </div>
+      <span className={cn(styles.label, 'min-w-0 flex-1 truncate')}>{label}</span>
+    </>
+  )
+  const chevron = (
+    <IconChevronRight
+      aria-hidden='true'
+      className={cn('size-3.5 shrink-0 text-foreground-muted transition-transform', isOpen && 'rotate-90')}
+    />
+  )
 
   return (
     <li>
-      <button
-        type='button'
-        onClick={onToggle}
-        aria-label={isOpen ? `Collapse ${label} menu` : `Expand ${label} menu`}
-        aria-expanded={isOpen}
-        aria-controls={isOpen ? listId : undefined}
-        className={cn(styles.item, 'w-full min-w-0 text-left', containsActive && !isOpen && styles.activeItem)}
-      >
-        <div className={styles.iconWrap}>
-          <ParentIcon className={styles.icon} />
+      {href ? (
+        <div className='flex min-w-0'>
+          <Link
+            href={href}
+            className={cn(styles.item, 'min-w-0 flex-1', linkActive && styles.activeItem)}
+            onClick={onNavigate}
+            aria-current={linkActive ? 'page' : undefined}
+          >
+            {labelContent}
+          </Link>
+          <button
+            {...toggleProps}
+            className={cn(styles.toggleButton, toggleActive)}
+          >
+            {chevron}
+          </button>
         </div>
-        <span className={cn(styles.label, 'min-w-0 flex-1 truncate')}>{label}</span>
-        <IconChevronRight
-          className={cn('mr-1 size-3.5 shrink-0 text-foreground-muted transition-transform', isOpen && 'rotate-90')}
-        />
-      </button>
+      ) : (
+        <button
+          {...toggleProps}
+          className={cn(styles.item, 'w-full min-w-0 pr-3 text-left', toggleActive)}
+        >
+          {labelContent}
+          {chevron}
+        </button>
+      )}
       <Visible when={isOpen}>
         <ul
           id={listId}

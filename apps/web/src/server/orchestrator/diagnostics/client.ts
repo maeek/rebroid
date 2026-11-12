@@ -1,6 +1,5 @@
 import { emptyRequest, request } from '../request'
 import type {
-  DisplaySidecarLogTail,
   DisplaySidecarSession,
   OrchestratorHealth,
   DockerMetricsSnapshot,
@@ -27,10 +26,6 @@ export const orchestratorDiagnosticsClient = {
 
   dockerMetrics() {
     return emptyRequest<DockerMetricsSnapshot>('/metrics/docker')
-  },
-
-  displaySidecarLogs(expanded: boolean) {
-    return emptyRequest<DisplaySidecarLogTail>(`/platform/display-sidecar/logs?expanded=${expanded}`)
   },
 
   async displaySidecarHealth() {

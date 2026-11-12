@@ -5,22 +5,17 @@ import {
   applyNetworkPolicyAction,
   reconcileNetworkPoliciesAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import { actionOk, actionError } from '@/shared/actions/action-result'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { FirewallSettings } from './firewall-settings'
 
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/network-policy-actions', () => ({
   applyNetworkPolicyAction: vi.fn(),
   reconcileNetworkPoliciesAction: vi.fn()
 }))
-vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
-  listApplicationsAction: vi.fn()
-}))
-vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthAction: vi.fn() }))
-const health = { status: 'healthy' as const, ok: true, message: 'Policy agent is responding.' }
 const applications = [applicationPreview, { ...applicationPreview, id: 'reports', name: 'Reports worker' }]
 beforeEach(() => {
   vi.resetAllMocks()
@@ -35,16 +30,7 @@ describe('Network policies workflow', () => {
           finish = () => resolve({ reconciled: 2 })
         })
     )
-    vi.mocked(listApplicationsAction).mockResolvedValue(applications)
-    vi.mocked(getOrchestratorHealthAction).mockResolvedValue({ services: { firewall: health } } as Awaited<
-      ReturnType<typeof getOrchestratorHealthAction>
-    >)
-    render(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={applications}
-      />
-    )
+    render(<FirewallSettings initialApplications={applications} />)
     fireEvent.click(screen.getByRole('button', { name: 'Sync all rules' }))
     expect(screen.getByRole('button', { name: 'Syncing…' })).toBeDisabled()
     expect(reconcileNetworkPoliciesAction).toHaveBeenCalledOnce()
@@ -53,56 +39,22 @@ describe('Network policies workflow', () => {
       await Promise.resolve()
     })
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sync all rules' })).toBeEnabled())
+    expect(refresh).toHaveBeenCalledOnce()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }))
   })
 
-  it('refreshes exactly once per request despite callback identity changes', async () => {
-    vi.mocked(listApplicationsAction).mockResolvedValue(applications)
-    vi.mocked(getOrchestratorHealthAction).mockResolvedValue({ services: { firewall: health } } as Awaited<
-      ReturnType<typeof getOrchestratorHealthAction>
-    >)
-    const { rerender } = render(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={applications}
-      />
-    )
-    const completed = vi.fn()
-    rerender(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={applications}
-        refreshKey={1}
-        onRefreshComplete={() => {
-          completed()
-        }}
-      />
-    )
-    await waitFor(() => expect(completed).toHaveBeenCalledOnce())
-    rerender(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={applications}
-        refreshKey={1}
-        onRefreshComplete={() => {
-          completed()
-        }}
-      />
-    )
-    expect(listApplicationsAction).toHaveBeenCalledOnce()
-    expect(getOrchestratorHealthAction).toHaveBeenCalledOnce()
+  it('renders the latest route data after a refresh', () => {
+    const { rerender } = render(<FirewallSettings initialApplications={[applicationPreview]} />)
+    expect(screen.queryByRole('link', { name: 'Reports worker' })).toBeNull()
+    rerender(<FirewallSettings initialApplications={applications} />)
+    expect(screen.getByRole('link', { name: 'Reports worker' })).toBeVisible()
   })
 
   it('retains only failed policies for retry after a partial bulk failure', async () => {
     vi.mocked(applyNetworkPolicyAction)
       .mockResolvedValueOnce(actionOk(applicationPreview))
       .mockResolvedValueOnce(actionError({ message: 'Unavailable' }))
-    render(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={applications}
-      />
-    )
+    render(<FirewallSettings initialApplications={applications} />)
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select current page' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sync 2 selected' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sync 1 selected' })).toBeEnabled())
@@ -113,13 +65,50 @@ describe('Network policies workflow', () => {
     )
   })
 
+  it('keeps a failed policy selected when its new enforcement state falls outside the filter', async () => {
+    const running = {
+      ...applicationPreview,
+      status: { ...applicationPreview.status, currentStatus: 'running' as const },
+      network: { ...applicationPreview.network, policy: { ...applicationPreview.network.policy, result: null } }
+    }
+    const failed = {
+      ...running,
+      network: {
+        ...running.network,
+        policy: {
+          ...running.network.policy,
+          result: {
+            status: 'error' as const,
+            code: 'agent_unavailable' as const,
+            message: 'Firewall unavailable',
+            hint: null
+          }
+        }
+      }
+    }
+    vi.mocked(applyNetworkPolicyAction).mockResolvedValue(actionOk(failed))
+    render(<FirewallSettings initialApplications={[running, applications[1]]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const drawer = await screen.findByRole('dialog')
+    fireEvent.click(within(drawer).getByRole('combobox', { name: 'Firewall enforcement' }))
+    const unverified = await screen.findByRole('option', { name: 'Unverified' })
+    fireEvent.pointerDown(unverified, { pointerType: 'mouse' })
+    fireEvent.click(unverified)
+    fireEvent.keyDown(drawer, { key: 'Escape' })
+    await waitFor(() => expect(drawer).not.toBeVisible())
+    expect(screen.queryByRole('link', { name: 'Reports worker' })).toBeNull()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select current page' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sync 1 selected' }))
+
+    expect(await screen.findByText('Needs attention')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Sync 1 selected' }))
+    await waitFor(() => expect(applyNetworkPolicyAction).toHaveBeenCalledTimes(2))
+    expect(applyNetworkPolicyAction).toHaveBeenLastCalledWith(running.id)
+    expect(reconcileNetworkPoliciesAction).not.toHaveBeenCalled()
+  })
+
   it('links to the network editor and separates configured access from enforcement', () => {
-    render(
-      <FirewallSettings
-        initialHealth={health}
-        initialApplications={[applicationPreview]}
-      />
-    )
+    render(<FirewallSettings initialApplications={[applicationPreview]} />)
     expect(screen.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
       'href',
       '/app/preview-app?view=network'
@@ -129,15 +118,13 @@ describe('Network policies workflow', () => {
     expect(screen.queryByRole('switch')).toBeNull()
   })
 
-  it('retains real filter controls during loading without claiming a health status', async () => {
+  it('retains real filter controls during loading', async () => {
     render(
       <FirewallSettings
         loading
-        initialHealth={health}
         initialApplications={[]}
       />
     )
-    expect(screen.queryByRole('status')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     const drawer = await screen.findByRole('dialog')
     expect(within(drawer).getByRole('combobox', { name: 'Outbound access' })).toBeEnabled()

@@ -2,7 +2,7 @@
 
 import { CastingSettingsPageClient } from '../../casting-settings-page-client'
 
-export const PlatformDisplaySessionsPageSkeleton = () => (
+export const CastingPageLoading = () => (
   <CastingSettingsPageClient
     initialHealth={{ status: 'offline', ok: false, message: '' }}
     initialSessions={[]}

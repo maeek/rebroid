@@ -95,21 +95,6 @@ export const orchestratorSettingsClient = {
     )
   },
 
-  updateAiProviderModel(providerId: string, modelId: string, input: Partial<AutomationAiProviderModel>) {
-    return jsonRequest<AutomationAiProviderModel>(
-      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}`,
-      'PATCH',
-      input
-    )
-  },
-
-  deleteAiProviderModel(providerId: string, modelId: string) {
-    return requestVoid(
-      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}`,
-      { method: 'DELETE' }
-    )
-  },
-
   listAiModelCatalog() {
     return emptyRequest<AutomationAiModelCatalogProvider[]>('/settings/ai-model-catalog')
   }

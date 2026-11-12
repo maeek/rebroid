@@ -6,6 +6,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
+import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { ServiceRow } from './service-row'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -94,10 +95,18 @@ export const ServicesGrid = ({
             >
               {service.endpoint ?? 'Not configured'}
             </span>
-            {service.timeoutMs !== null ? (
-              <span className='text-xs tabular-nums text-foreground-muted'>
-                {service.timeoutMs.toLocaleString('en-GB')} ms timeout
-              </span>
+            {service.timeoutMs !== null || service.containerId ? (
+              <div className='flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1'>
+                {service.timeoutMs !== null ? (
+                  <span className='text-xs tabular-nums text-foreground-muted'>
+                    {service.timeoutMs.toLocaleString('en-GB')} ms timeout
+                  </span>
+                ) : null}
+                <DockerContainerLinks
+                  containerId={service.containerId}
+                  serviceName={service.title}
+                />
+              </div>
             ) : null}
           </div>
         )

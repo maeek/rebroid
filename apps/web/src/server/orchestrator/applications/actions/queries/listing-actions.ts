@@ -14,16 +14,6 @@ export const listApplicationsAction = async () => {
   return apps.map(app => sanitizeAndroidApplicationForUser(app, user))
 }
 
-export const reconcileApplicationsRuntimeStateAction = async () => {
-  const user = await getCurrentUserContext()
-  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
-  const results = await orchestratorAppCatalogClient.reconcileApplications(ownerUserId)
-  return results.map(result => ({
-    ...result,
-    application: sanitizeAndroidApplicationForUser(result.application, user)
-  }))
-}
-
 export const listRunningApplicationNotificationsAction = async (): Promise<RunningApplicationNotifications[]> => {
   const user = await getCurrentUserContext()
 

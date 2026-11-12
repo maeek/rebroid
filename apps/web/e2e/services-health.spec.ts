@@ -2,16 +2,15 @@ import { expect, test } from '@playwright/test'
 import { dockerOperationLimitsSchema } from '../src/shared/contracts/docker-operation-limits'
 import { defaultOrchestratorUiSettings } from '../src/shared/model/settings/orchestrator-ui-settings'
 
-test('Firewall agent has a service page with a scoped connection save', async ({ page }) => {
+test('Firewall shows the connection above network policies and saves connection settings separately', async ({
+  page
+}) => {
   await page.goto('/skeleton-contract-test?editor=services-all')
   const search = page.getByPlaceholder('Search services')
   await search.fill('Firewall')
   const row = page.getByRole('row', { name: 'View details for Firewall agent' })
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(2)
-  await expect(row.getByRole('link', { name: 'View details' })).toHaveAttribute(
-    'href',
-    '/platform/services?service=firewall'
-  )
+  await expect(row.getByRole('link', { name: 'View details' })).toHaveAttribute('href', '/security/firewall')
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
 
   const firewall = { endpoint: '/run/draft-firewall.sock', timeoutMs: 6000 }
@@ -30,11 +29,22 @@ test('Firewall agent has a service page with a scoped connection save', async ({
     })
   })
   await page.goto('/skeleton-contract-test?editor=service-firewall')
-  await expect(page.getByRole('heading', { level: 1, name: 'Firewall agent' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Firewall' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
+    'Administration',
+    'Firewall'
+  ])
   await expect(page.getByRole('alert').filter({ hasText: 'Offline' })).toContainText(
     'Firewall agent could not be reached.'
   )
   const connection = page.getByRole('region', { name: 'Connection' })
+  const policies = page.getByRole('region', { name: 'Network policies' })
+  await expect(policies.getByRole('table')).toBeVisible()
+  await expect(policies.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
+    'href',
+    '/app/preview-app?view=network'
+  )
+  expect((await policies.boundingBox())!.y).toBeGreaterThan((await connection.boundingBox())!.y)
   const endpoint = connection.getByRole('textbox', { name: 'Endpoint' })
   const timeout = connection.getByRole('spinbutton', { name: 'Timeout' })
   const save = page.getByRole('button', { name: 'Save', exact: true })
@@ -115,10 +125,7 @@ test('services show complete observed health and matching loading geometry', asy
     expect(await page.getByRole('columnheader').allTextContents()).toEqual(columns)
     await expect(page.getByRole('table').getByRole('row')).toHaveCount(6)
     await expect(page.getByRole('row', { name: 'View details for Firewall agent' })).toContainText('Offline')
-    await expect(page.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute(
-      'href',
-      '/platform/services?service=docker'
-    )
+    await expect(page.getByRole('link', { name: 'Docker', exact: true })).toHaveAttribute('href', '/runtime/docker')
     await expect(page.getByRole('link', { name: 'Orchestrator', exact: true })).toHaveAttribute(
       'href',
       '/platform/services?service=orchestrator'
@@ -232,7 +239,7 @@ test('Docker service edits real limits, retains failed drafts, and leaves connec
   await expect(page.getByRole('heading', { name: 'Orchestrator', exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Docker diagnostics and limits' })).toHaveAttribute(
     'href',
-    '/platform/services?service=docker'
+    '/runtime/docker'
   )
   await expect(page.getByRole('heading', { name: 'Operation limits' })).toHaveCount(0)
 })

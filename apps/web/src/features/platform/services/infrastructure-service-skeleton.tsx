@@ -36,3 +36,5 @@ export const InfrastructureServiceSkeleton = ({ serviceId }: { serviceId: 'orche
     }
   />
 )
+
+export const DockerOverviewLoading = () => <InfrastructureServiceSkeleton serviceId='docker' />

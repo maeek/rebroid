@@ -118,7 +118,7 @@ test('platform subpage loaders retain their own destination and chrome', async (
     ['services-all-loading', 'Services', 'Connection'],
     ['features-loading', 'Feature management', 'OCR perception'],
     ['ai-list-loading', 'AI', 'Providers'],
-    ['display-sessions-loading', 'Display sessions', 'Connection']
+    ['display-sessions-loading', 'Casting', 'Connection']
   ] as const
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
@@ -206,6 +206,10 @@ test('nested Services loaders show their own sections and remain inert', async (
       ).toBeVisible()
       await expect(page.getByRole('searchbox', { name: 'Search services' })).toHaveCount(0)
       if (service === 'docker') {
+        await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
+          'Docker',
+          'Overview'
+        ])
         await expect(page.getByRole('heading', { name: 'Operation limits', exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Edit limits' })).toBeDisabled()
         await expect(page.getByRole('heading', { name: 'Infrastructure diagnostics' })).toBeVisible()
