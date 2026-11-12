@@ -3,6 +3,7 @@ export type AuditEventOutcome = 'success' | 'failure'
 export interface AuditEvent {
   id: number
   actorUserId: string | null
+  actorUsername?: string | null
   actorLabel: string
   action: string
   category: string

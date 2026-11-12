@@ -130,7 +130,7 @@ export const ActivityEventsDataTable = () => {
       }}
       rowContextMenu={row => (
         <ContextMenuItem onSelect={() => setSelectedEvent(row.original)}>
-          <IconEye className='mr-2 size-4' />
+          <IconEye className='size-4' />
           Details
         </ContextMenuItem>
       )}

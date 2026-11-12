@@ -77,7 +77,7 @@ export const ActivityEventsActions = () => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end'>
             <DropdownMenuItem onClick={() => controller.setRetentionOpen(true)}>
-              <IconCalendarStats className='mr-2 size-4' />
+              <IconCalendarStats className='size-4' />
               Retention settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -85,7 +85,7 @@ export const ActivityEventsActions = () => {
               className='text-danger focus:text-danger'
               onClick={() => controller.setPurgeOpen(true)}
             >
-              <IconTrash className='mr-2 size-4' />
+              <IconTrash className='size-4' />
               Purge all logs
             </DropdownMenuItem>
           </DropdownMenuContent>

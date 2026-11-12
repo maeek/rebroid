@@ -53,7 +53,7 @@ describe('audit model', () => {
   })
 
   it('builds allowlisted order clauses and pagination', () => {
-    expect(auditOrderBy([{ id: 'actorLabel', desc: false }])).toBe('actor_label ASC, id DESC')
+    expect(auditOrderBy([{ id: 'actorLabel', desc: false }])).toBe('coalesce(actor_username, actor_label) ASC, id DESC')
     expect(auditOrderBy()).toBe('created_at DESC, id DESC')
     expect(normalizeAuditPagination(-4, 500)).toEqual({ page: 1, pageSize: 100 })
   })

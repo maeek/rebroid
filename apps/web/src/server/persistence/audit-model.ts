@@ -24,6 +24,7 @@ export type AuditEventInput = {
 export type AuditEventRow = {
   id: number
   actor_user_id: string | null
+  actor_username?: string | null
   actor_label: string
   action: string
   category: string
@@ -46,6 +47,7 @@ export const normalizeAuditDetails = (details: Record<string, unknown> | undefin
 export const parseAuditRow = (row: AuditEventRow): AuditEvent => ({
   id: row.id,
   actorUserId: row.actor_user_id,
+  actorUsername: row.actor_username,
   actorLabel: row.actor_label,
   action: row.action,
   category: row.category,
@@ -62,6 +64,7 @@ export const parseAuditRow = (row: AuditEventRow): AuditEvent => ({
 export const auditSelectColumns = [
   'id',
   'actor_user_id',
+  'actor_username',
   'actor_label',
   'action',
   'category',
@@ -75,6 +78,11 @@ export const auditSelectColumns = [
   'created_at'
 ].join(', ')
 
+export const auditEventsWithActors =
+  'audit_events LEFT JOIN (SELECT id AS actor_user_id, username AS actor_username FROM users) USING (actor_user_id)'
+
+export const auditActorName = 'coalesce(actor_username, actor_label)'
+
 export const auditWhere = (filters: AuditEventFilters = {}) => {
   const clauses: string[] = []
   const values: Array<string> = []
@@ -86,15 +94,17 @@ export const auditWhere = (filters: AuditEventFilters = {}) => {
       'lower(action) LIKE ?',
       'lower(category) LIKE ?',
       'lower(actor_label) LIKE ?',
+      "lower(coalesce(actor_username, '')) LIKE ?",
+      "lower(coalesce(actor_user_id, '')) LIKE ?",
       "lower(coalesce(resource_type, '')) LIKE ?",
       "lower(coalesce(resource_id, '')) LIKE ?",
       "lower(coalesce(resource_label, '')) LIKE ?",
       'lower(details_json) LIKE ?',
       "lower(replace(replace(action, '.', ' '), '_', ' ')) LIKE ?"
     ]
+    values.push(...matches.map(() => pattern), ...actions)
     if (actions.length) matches.push(`action IN (${actions.map(() => '?').join(', ')})`)
     clauses.push(`(${matches.join(' OR ')})`)
-    values.push(pattern, pattern, pattern, pattern, pattern, pattern, pattern, pattern, ...actions)
   }
   if (filters.actorUserId) {
     clauses.push('actor_user_id = ?')
@@ -137,7 +147,7 @@ export const auditWhere = (filters: AuditEventFilters = {}) => {
 
 const auditSortColumns: Record<AuditEventSortField, string> = {
   createdAt: 'created_at',
-  actorLabel: 'actor_label',
+  actorLabel: auditActorName,
   action: 'action',
   category: 'category',
   outcome: 'outcome',

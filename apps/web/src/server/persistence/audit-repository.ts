@@ -1,6 +1,8 @@
 import 'server-only'
 import { auditExportLimit } from '@/shared/model/audit-export'
 import {
+  auditActorName,
+  auditEventsWithActors,
   auditOrderBy,
   auditRetentionCutoff,
   auditSelectColumns,
@@ -44,23 +46,25 @@ export const listAuditEvents = (
   const where = auditWhere(filters)
   const client = getDatabase()
   const total = (
-    client.prepare(`SELECT COUNT(*) AS count FROM audit_events ${where.sql}`).get(...where.values) as {
+    client.prepare(`SELECT COUNT(*) AS count FROM ${auditEventsWithActors} ${where.sql}`).get(...where.values) as {
       count: number
     }
   ).count
   const page = Math.min(requestedPage, Math.max(Math.ceil(total / pageSize), 1))
   const outcomeRows = client
-    .prepare(`SELECT outcome, COUNT(*) AS count FROM audit_events ${where.sql} GROUP BY outcome`)
+    .prepare(`SELECT outcome, COUNT(*) AS count FROM ${auditEventsWithActors} ${where.sql} GROUP BY outcome`)
     .all(...where.values) as Array<{ outcome: AuditEventOutcome; count: number }>
   const lastEventAt =
     (
-      client.prepare(`SELECT MAX(created_at) AS value FROM audit_events ${where.sql}`).get(...where.values) as {
+      client
+        .prepare(`SELECT MAX(created_at) AS value FROM ${auditEventsWithActors} ${where.sql}`)
+        .get(...where.values) as {
         value: string | null
       }
     ).value ?? null
   const rows = client
     .prepare(
-      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY ${auditOrderBy(
+      `SELECT ${auditSelectColumns} FROM ${auditEventsWithActors} ${where.sql} ORDER BY ${auditOrderBy(
         options.sorting
       )} LIMIT ? OFFSET ?`
     )
@@ -91,7 +95,10 @@ export const listAuditFacetValues = () => {
   return {
     actors: client
       .prepare(
-        'SELECT actor_user_id AS id, actor_label AS label FROM audit_events WHERE id IN (SELECT MAX(id) FROM audit_events WHERE actor_user_id IS NOT NULL GROUP BY actor_user_id) ORDER BY actor_label, actor_user_id'
+        `SELECT actor_user_id AS id, ${auditActorName} AS label FROM ${auditEventsWithActors}
+         WHERE audit_events.id IN (
+           SELECT MAX(id) FROM audit_events WHERE actor_user_id IS NOT NULL GROUP BY actor_user_id
+         ) ORDER BY label, actor_user_id`
       )
       .all() as Array<{ id: string; label: string }>,
     categories: values('category'),
@@ -108,7 +115,8 @@ export const exportAuditEvents = (
   const where = auditWhere(filters)
   const rows = getDatabase()
     .prepare(
-      `SELECT ${auditSelectColumns} FROM audit_events ${where.sql} ORDER BY ${auditOrderBy(options.sorting)} LIMIT ?`
+      `SELECT ${auditSelectColumns} FROM ${auditEventsWithActors} ${where.sql}
+       ORDER BY ${auditOrderBy(options.sorting)} LIMIT ?`
     )
     .all(...where.values, boundedLimit) as Parameters<typeof parseAuditRow>[0][]
   return rows.map(parseAuditRow)

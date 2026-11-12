@@ -66,7 +66,8 @@ export const auditActionLabel = (action: string) => {
   return auditValueLabel(action)
 }
 
-export const auditActorLabel = (event: AuditEvent) => event.actorLabel.trim() || event.actorUserId || 'System'
+export const auditActorLabel = (event: AuditEvent) =>
+  event.actorUsername || event.actorLabel.trim() || event.actorUserId || 'System'
 
 export const auditTargetLabel = (event: AuditEvent) => {
   const label = event.resourceLabel?.trim()
