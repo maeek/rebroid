@@ -75,10 +75,11 @@ timestamps and configuration, keyframe, and discontinuity flags.
   that input and leaves video active. A shared timestamp regression ends the peer attempt.
 - Repeated RTCP feedback leaves an outstanding consumer recovery deadline in place. The deadline
   advances with source PTS while waiting for configuration and an IDR.
-- Consumer attachment, PLI, and decoder recovery use scrcpy v4 reset-video message `17` over the
-  existing control socket, coalesced to at most once per second. An outstanding reset keeps its
-  original three-second deadline after the control write completes. A configuration followed by an
-  IDR completes recovery. Losing the control socket cancels its watchdog.
+- A new capture must deliver configuration and an IDR before the sidecar can send scrcpy reset-video
+  message `17` over its control socket. Later attachment, PLI, and decoder recovery can request a
+  reset, coalesced to at most once per second. An outstanding reset keeps its original three-second
+  deadline after the control write completes. A configuration followed by an IDR completes recovery.
+  Losing the control socket cancels its watchdog.
 - Static screens are healthy. Recovery must compare advancing source frames with delivery and
   presentation, rather than treating an idle source as a freeze.
 - Retries never silently lower requested resolution, FPS, bitrate, or switch transport.
@@ -200,6 +201,10 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 | Connections     | Direct, forward, and reverse tunnels, fallback, repeated create/release.   |
 | Recovery        | Disconnect, retry, reconnect, expiry, shutdown, and final cleanup.        |
 | Virtual display | Rejection while disabled; creation/release after synchronized enablement. |
+
+On each transport, rotate the physical display from portrait to landscape and back. Record the
+time from the rotation command to the first browser frame at the new dimensions, and verify touch
+mapping after each change. For WebRTC, record any new offer and the bridge's media close reason.
 
 ### Performance validation
 

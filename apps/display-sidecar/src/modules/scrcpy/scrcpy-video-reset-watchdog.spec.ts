@@ -67,6 +67,7 @@ test("a reset waits for control dispatch and cannot restart a later control sock
     socket,
     udid: "fixture",
     stopAttempt,
+    captureReady: true,
     resetDispatchPending: false,
   };
   scrcpy["sources"].set("display", source);

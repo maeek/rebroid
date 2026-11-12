@@ -110,6 +110,7 @@ export class DisplayWebrtcAttempt {
       this.options;
     signal.throwIfAborted();
     const bridge = this.options.launchBridge();
+    let mediaCloseReason: string | undefined;
     let audioDisabled = !audio;
     const disableAudio = (message = "Audio relay stopped.") => {
       if (audioDisabled || signal.aborted) return;
@@ -131,7 +132,12 @@ export class DisplayWebrtcAttempt {
           disableAudio();
         }
       },
-      close: () => bridge.close(),
+      close: (_code, reason) => {
+        if (reason && !signal.aborted) {
+          mediaCloseReason = reason.slice(0, 120);
+        }
+        bridge.close();
+      },
     });
     let attachment: ScrcpyStreamAttachment | null = null;
     let connectTimer: NodeJS.Timeout | undefined;
@@ -184,8 +190,11 @@ export class DisplayWebrtcAttempt {
     );
     bridge.onClose((code, reason) => {
       this.stop(new ServiceUnavailableException("WebRTC bridge exited."));
+      const media = mediaCloseReason
+        ? ` mediaReason=${JSON.stringify(mediaCloseReason)}`
+        : "";
       this.logger.debug(
-        `[webrtc:${sessionId}] bridge closed code=${code ?? 0}${reason ? ` signal=${reason.toString()}` : ""}`,
+        `[webrtc:${sessionId}] bridge closed code=${code ?? 0}${reason ? ` signal=${reason.toString()}` : ""}${media}`,
       );
     });
 

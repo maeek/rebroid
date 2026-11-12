@@ -85,6 +85,7 @@ interface ActiveControlSocket {
   socket: ScrcpySocket;
   udid: string;
   stopAttempt: () => Promise<void>;
+  captureReady: boolean;
   resetDispatchPending: boolean;
 }
 
@@ -354,13 +355,11 @@ export class ScrcpyService implements OnModuleDestroy {
 
   requestVideoReset(sessionId: string, reason: string): boolean {
     const source = this.sources.get(sessionId);
-    if (!source || !source.stream.isOpen()) {
+    const active = this.controlSockets.get(sessionId);
+    if (!source || !source.stream.isOpen() || !active?.captureReady) {
       return false;
     }
-    if (
-      source.resetWatchdog.pending ||
-      this.controlSockets.get(sessionId)?.resetDispatchPending
-    )
+    if (source.resetWatchdog.pending || active.resetDispatchPending)
       return true;
     source.resetPending = true;
     source.resetReason = reason.slice(0, 120);
@@ -469,7 +468,7 @@ export class ScrcpyService implements OnModuleDestroy {
       }
       released = true;
       source?.stream.invalidateVideoBootstrap();
-      source?.resetWatchdog.clear();
+      if (source) this.clearVideoReset(source);
 
       const videoStats = videoPacketForwarder?.snapshot() ?? {
         mediaPackets: 0,
@@ -700,17 +699,18 @@ export class ScrcpyService implements OnModuleDestroy {
         throw new Error("scrcpy video socket closed during startup.");
       }
 
-      if (controlSocket) {
-        this.controlSockets.set(options.sessionId, {
-          socket: controlSocket,
-          udid: options.udid,
-          stopAttempt: cleanup,
-          resetDispatchPending: false,
-        });
+      const activeControl = controlSocket
+        ? {
+            socket: controlSocket,
+            udid: options.udid,
+            stopAttempt: cleanup,
+            captureReady: false,
+            resetDispatchPending: false,
+          }
+        : null;
+      if (activeControl) {
+        this.controlSockets.set(options.sessionId, activeControl);
         this.flushQueuedControlMessages(options.sessionId);
-        if (source) {
-          this.scheduleVideoReset(options.sessionId, source);
-        }
       }
       if (options.audio && !audioSocket) {
         this.streamSessions.markAudioDisabled(options.sessionId);
@@ -778,6 +778,16 @@ export class ScrcpyService implements OnModuleDestroy {
           return;
         }
         const streamPacket = forwarded.packet;
+        // A control socket can open before scrcpy initializes the capture.
+        if (
+          activeControl &&
+          !activeControl.captureReady &&
+          forwarded.stats.configPackets > 0 &&
+          !streamPacket.config &&
+          streamPacket.keyFrame
+        ) {
+          activeControl.captureReady = true;
+        }
         if (source) {
           this.observeVideoReset(source, streamPacket);
         }
@@ -935,7 +945,7 @@ export class ScrcpyService implements OnModuleDestroy {
             return;
           }
           this.controlSockets.delete(options.sessionId);
-          source?.resetWatchdog.clear();
+          if (source) this.clearVideoReset(source);
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
@@ -947,7 +957,7 @@ export class ScrcpyService implements OnModuleDestroy {
             return;
           }
           this.controlSockets.delete(options.sessionId);
-          source?.resetWatchdog.clear();
+          if (source) this.clearVideoReset(source);
           this.controlUnavailableSessions.add(options.sessionId);
           this.queuedControlMessages.discard(options.sessionId);
           this.logger.debug(
@@ -2026,13 +2036,18 @@ export class ScrcpyService implements OnModuleDestroy {
     if (source.idleTimer) {
       clearTimeout(source.idleTimer);
     }
+    source.idleTimer = null;
+    this.clearVideoReset(source);
+    source.stream.close(code, reason);
+  }
+
+  private clearVideoReset(source: ActiveScrcpySource): void {
     if (source.resetTimer) {
       clearTimeout(source.resetTimer);
     }
     source.resetWatchdog.clear();
-    source.idleTimer = null;
     source.resetTimer = null;
-    source.stream.close(code, reason);
+    source.resetPending = false;
   }
 
   private scheduleVideoReset(
@@ -2049,7 +2064,7 @@ export class ScrcpyService implements OnModuleDestroy {
     }
     const active = this.controlSockets.get(sessionId);
     if (
-      !active ||
+      !active?.captureReady ||
       active.resetDispatchPending ||
       active.socket.destroyed ||
       !active.socket.writable
