@@ -5,17 +5,10 @@ import { DockerEngineService } from '../../docker-engine.service';
 import { ViewerTargetStatus } from '../../docker.types';
 import { DockerNetworkRuntimeService } from '../../networks/services/docker-network-runtime.service';
 
-interface CachedSidecarNetwork {
-  containerId: string;
-  ipAddress: string;
-  expiresAt: number;
-}
-
 @Injectable()
 export class DockerSidecarNetworkService {
   private readonly logger = new Logger(DockerSidecarNetworkService.name);
   private readonly displaySidecarPlatformNetwork?: string;
-  private readonly sidecarNetworks = new Map<string, CachedSidecarNetwork>();
 
   constructor(
     private readonly config: ConfigService,
@@ -32,18 +25,13 @@ export class DockerSidecarNetworkService {
     networkName: string,
     inspect?: Dockerode.ContainerInspectInfo,
   ): Promise<ViewerTargetStatus> {
-    const cached = this.sidecarNetworks.get(networkName);
-    if (cached?.containerId === sidecar.id && cached.expiresAt > Date.now()) {
-      return this.sidecarNetworkStatus(networkName, cached.ipAddress);
-    }
-
     const currentIp = await this.getContainerIpOnNetwork(
       sidecar,
       networkName,
       inspect,
     );
     if (currentIp) {
-      return this.cacheSidecarNetwork(sidecar.id, networkName, currentIp);
+      return this.sidecarNetworkStatus(networkName, currentIp);
     }
 
     await this.networks.connectContainerToNetwork(sidecar.id, networkName);
@@ -65,11 +53,10 @@ export class DockerSidecarNetworkService {
       };
     }
 
-    return this.cacheSidecarNetwork(sidecar.id, networkName, sidecarIp);
+    return this.sidecarNetworkStatus(networkName, sidecarIp);
   }
 
   async detachFromNetwork(sidecar: Dockerode.Container, networkName: string) {
-    this.sidecarNetworks.delete(networkName);
     await this.networks.disconnectContainerFromNetwork(sidecar.id, networkName);
   }
 
@@ -104,10 +91,6 @@ export class DockerSidecarNetworkService {
         this.networks.disconnectContainerFromNetwork(sidecar.id, networkName),
       ),
     );
-    staleNetworkNames.forEach((networkName) =>
-      this.sidecarNetworks.delete(networkName),
-    );
-
     this.logger.log(
       `Detached display sidecar from stale networks: ${staleNetworkNames.join(', ')}`,
     );
@@ -125,19 +108,6 @@ export class DockerSidecarNetworkService {
         `Inspect display sidecar on network ${networkName}`,
       ));
     return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
-  }
-
-  private cacheSidecarNetwork(
-    containerId: string,
-    networkName: string,
-    ipAddress: string,
-  ) {
-    this.sidecarNetworks.set(networkName, {
-      containerId,
-      ipAddress,
-      expiresAt: Date.now() + 30_000,
-    });
-    return this.sidecarNetworkStatus(networkName, ipAddress);
   }
 
   private sidecarNetworkStatus(

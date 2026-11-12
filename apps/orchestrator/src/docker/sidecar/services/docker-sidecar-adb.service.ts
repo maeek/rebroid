@@ -1,4 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  OperationDeadlineExceededError,
+  type OperationDeadline,
+} from '../../../common/operation-deadline';
 import { DockerContainerExecService } from '../../containers/services/docker-container-exec.service';
 import { DockerEngineService } from '../../docker-engine.service';
 import {
@@ -9,6 +13,13 @@ import {
   ViewerTargetStatus,
 } from '../../docker.types';
 import { isTransientAdbConnectionError } from '../utils/docker-sidecar.utils';
+
+type AdbStep = 'tcp' | 'connect' | 'state' | 'recovery' | 'display';
+type AdbPreparation = {
+  sidecarId: string;
+  deadline?: OperationDeadline;
+  elapsedMs: Partial<Record<AdbStep, number>>;
+};
 
 @Injectable()
 export class DockerSidecarAdbService {
@@ -23,10 +34,12 @@ export class DockerSidecarAdbService {
     sidecarId: string,
     adbHost: string,
     adbPort: number,
+    deadline?: OperationDeadline,
   ): Promise<ViewerTargetStatus> {
+    const preparation: AdbPreparation = { sidecarId, deadline, elapsedMs: {} };
+    const target = `${adbHost}:${adbPort}`;
     try {
-      const target = `${adbHost}:${adbPort}`;
-      const tcpProbe = await this.probeTcpTarget(sidecarId, adbHost, adbPort);
+      const tcpProbe = await this.probeTcpTarget(preparation, adbHost, adbPort);
       if (tcpProbe) {
         return {
           configured: true,
@@ -36,24 +49,33 @@ export class DockerSidecarAdbService {
         };
       }
 
-      const connection = await this.connectTarget(sidecarId, target);
+      const connection = await this.connectTarget(preparation, target);
       if (!connection.connected) {
         return connection;
       }
 
-      await this.prepareAndroidDisplay(sidecarId, target);
+      await this.prepareAndroidDisplay(preparation, target);
       return connection;
     } catch (error) {
+      if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
         `Unable to prepare display sidecar ADB target ${adbHost}:${adbPort}: ${viewerError.message}`,
       );
       return this.targetFailure(viewerError);
+    } finally {
+      if (deadline) {
+        this.logger.debug({
+          message: 'Display sidecar ADB preparation timings.',
+          target,
+          elapsedMs: preparation.elapsedMs,
+        });
+      }
     }
   }
 
   private async connectTarget(
-    sidecarId: string,
+    preparation: AdbPreparation,
     target: string,
   ): Promise<ViewerTargetStatus> {
     const quotedTarget = this.shellQuote(target);
@@ -62,20 +84,21 @@ export class DockerSidecarAdbService {
         'sh',
         '-lc',
         [
-          `timeout -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true`,
-          `timeout -k 1s 10s adb connect ${quotedTarget}`,
+          `timeout --foreground -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true`,
+          `timeout --foreground -k 1s 10s adb connect ${quotedTarget}`,
         ].join('; '),
       ];
-      const output = await this.exec.execInContainerWithOutput(
-        sidecarId,
+      const output = await this.execStep(
+        preparation,
+        'connect',
         connectCommand,
-        { timeoutMs: 20_000 },
+        20_000,
       );
       const connectOutput = [output.stdout, output.stderr]
         .filter(Boolean)
         .join('\n');
       if (connectOutput.toLowerCase().includes('offline')) {
-        return this.reconnectTarget(sidecarId, target);
+        return this.reconnectTarget(preparation, target);
       }
       if (isTransientAdbConnectionError(connectOutput)) {
         return this.targetFailure({
@@ -92,15 +115,16 @@ export class DockerSidecarAdbService {
       const stateCommand = [
         'sh',
         '-lc',
-        `timeout -k 1s 10s adb -s ${quotedTarget} get-state 2>&1`,
+        `timeout --foreground -k 1s 10s adb -s ${quotedTarget} get-state 2>&1`,
       ];
-      const state = await this.exec.execInContainerWithOutput(
-        sidecarId,
+      const state = await this.execStep(
+        preparation,
+        'state',
         stateCommand,
-        { timeoutMs: 15_000 },
+        15_000,
       );
       if (state.stdout.toLowerCase().includes('offline')) {
-        return this.reconnectTarget(sidecarId, target);
+        return this.reconnectTarget(preparation, target);
       }
 
       return this.targetState(target, stateCommand, state, connectOutput);
@@ -114,33 +138,27 @@ export class DockerSidecarAdbService {
             output?.toLowerCase().includes('offline'),
           )
         ) {
-          return this.reconnectTarget(sidecarId, target);
+          return this.reconnectTarget(preparation, target);
         }
       }
       throw error;
     }
   }
 
-  private async reconnectTarget(sidecarId: string, target: string) {
+  private async reconnectTarget(preparation: AdbPreparation, target: string) {
     const quotedTarget = this.shellQuote(target);
     const command = [
       'sh',
       '-lc',
       [
-        `timeout -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true;`,
-        `timeout -k 1s 10s adb connect ${quotedTarget} &&`,
-        `timeout -k 1s 10s adb -s ${quotedTarget} wait-for-device &&`,
-        `timeout -k 1s 5s adb -s ${quotedTarget} get-state`,
+        `timeout --foreground -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true;`,
+        `timeout --foreground -k 1s 10s adb connect ${quotedTarget} &&`,
+        `timeout --foreground -k 1s 10s adb -s ${quotedTarget} wait-for-device &&`,
+        `timeout --foreground -k 1s 5s adb -s ${quotedTarget} get-state`,
       ].join(' '),
     ];
     // A shared ADB daemon restart would drop other applications' transports.
-    const state = await this.exec.execInContainerWithOutput(
-      sidecarId,
-      command,
-      {
-        timeoutMs: 40_000,
-      },
-    );
+    const state = await this.execStep(preparation, 'recovery', command, 40_000);
     return this.targetState(target, command, state);
   }
 
@@ -182,14 +200,14 @@ export class DockerSidecarAdbService {
   }
 
   private async prepareAndroidDisplay(
-    sidecarId: string,
+    preparation: AdbPreparation,
     target: string,
   ): Promise<void> {
     const command = [
       'sh',
       '-lc',
       [
-        `timeout 10s adb -s ${this.shellQuote(target)} shell ${this.shellQuote(
+        `timeout --foreground 10s adb -s ${this.shellQuote(target)} shell ${this.shellQuote(
           [
             'settings put system screen_off_timeout 2147483647 >/dev/null 2>&1 || true',
             'svc power stayon true >/dev/null 2>&1 || true',
@@ -201,10 +219,9 @@ export class DockerSidecarAdbService {
     ];
 
     try {
-      await this.exec.execInContainerWithOutput(sidecarId, command, {
-        timeoutMs: 15_000,
-      });
+      await this.execStep(preparation, 'display', command, 15_000);
     } catch (error) {
+      if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
         `Unable to prepare Android display for ${target}: ${viewerError.message}`,
@@ -213,7 +230,7 @@ export class DockerSidecarAdbService {
   }
 
   private async probeTcpTarget(
-    sidecarId: string,
+    preparation: AdbPreparation,
     adbHost: string,
     adbPort: number,
   ): Promise<ViewerTargetError | null> {
@@ -250,11 +267,10 @@ export class DockerSidecarAdbService {
     ];
 
     try {
-      await this.exec.execInContainerWithOutput(sidecarId, probeCommand, {
-        timeoutMs: 5_000,
-      });
+      await this.execStep(preparation, 'tcp', probeCommand, 5_000);
       return null;
     } catch (error) {
+      if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       return {
         code: 'adb_unreachable',
@@ -268,6 +284,37 @@ export class DockerSidecarAdbService {
         stdout: viewerError.stdout,
         stderr: viewerError.stderr,
       };
+    }
+  }
+
+  private async execStep(
+    { sidecarId, deadline, elapsedMs }: AdbPreparation,
+    step: AdbStep,
+    command: string[],
+    timeoutMs: number,
+  ) {
+    if (!deadline) {
+      return this.exec.execInContainerWithOutput(sidecarId, command, {
+        timeoutMs,
+      });
+    }
+
+    deadline.throwIfExpired();
+    const startedAt = performance.now();
+    const remainingMs = deadline.remainingMs();
+    if (remainingMs < timeoutMs) {
+      // Let the in-container process time out before the Docker stream closes.
+      const limitSeconds = Math.max(1, remainingMs - 1_000) / 1000;
+      command = ['timeout', '-k', '1s', `${limitSeconds}s`, ...command];
+    }
+    try {
+      return await this.exec.execInContainerWithOutput(sidecarId, command, {
+        timeoutMs,
+        deadline,
+      });
+    } finally {
+      elapsedMs[step] = Math.round(performance.now() - startedAt);
+      deadline.throwIfExpired();
     }
   }
 
@@ -299,7 +346,7 @@ export class DockerSidecarAdbService {
     if (
       details.exitCode === 127 &&
       combinedOutput.includes('adb') &&
-      combinedOutput.includes('not found')
+      /\b(?:not found|no such file or directory)\b/.test(combinedOutput)
     ) {
       return {
         code: 'adb_missing',

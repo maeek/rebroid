@@ -17,11 +17,10 @@ describe('AndroidAppsDisplaySidecarService viewer control', () => {
       app: { displaySidecar: { internalBaseUrl: 'http://sidecar.test' } },
     });
     const network = {
-      prepareNetwork: jest.fn(),
-      resolveScrcpyAdbHost: jest.fn().mockResolvedValue('10.0.0.2'),
-      prepareScrcpyAdbTarget: jest
+      requireViewerTarget: jest
         .fn()
-        .mockResolvedValue({ configured: true, connected: true }),
+        .mockResolvedValue({ udid: '10.0.0.2:5555' }),
+      invalidateViewerTarget: jest.fn(),
     } as unknown as AndroidAppsViewerNetworkService;
     service = new AndroidAppsDisplaySidecarService(
       config,

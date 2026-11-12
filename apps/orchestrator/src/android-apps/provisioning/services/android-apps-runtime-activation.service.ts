@@ -315,6 +315,6 @@ export class AndroidAppsRuntimeActivationService {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Preparing Android remote access.',
     });
-    await this.android.prepareRemoteAccess(app);
+    await this.android.prepareRemoteAccess(app, reservation.id);
   }
 }

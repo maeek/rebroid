@@ -195,10 +195,9 @@ export class AndroidAppsDisplaySidecarService {
   ) {
     this.features.assertEnabled('feature.display-virtual');
     await this.featureSync.synchronizeFeatures();
-    const udid = await this.prepareUdid(app);
-    const session = await this.createSessionForPreparedTarget(
+    const session = await this.ensureSession(
       app,
-      udid,
+      undefined,
       input.capabilities ?? ['video', 'audio'],
     );
     const result = await this.request<DisplaySessionResponse>(
@@ -231,11 +230,24 @@ export class AndroidAppsDisplaySidecarService {
     );
   }
 
-  private async ensureSession(app: AndroidApplication, signal?: AbortSignal) {
+  private async ensureSession(
+    app: AndroidApplication,
+    signal?: AbortSignal,
+    capabilities?: string[],
+  ) {
+    const target = await this.viewerNetwork.requireViewerTarget(app, signal);
     signal?.throwIfAborted();
-    const udid = await this.prepareUdid(app);
-    signal?.throwIfAborted();
-    return this.createSessionForPreparedTarget(app, udid, undefined, signal);
+    try {
+      return await this.createSessionForPreparedTarget(
+        app,
+        target.udid,
+        capabilities,
+        signal,
+      );
+    } catch (error) {
+      if (!signal?.aborted) this.viewerNetwork.invalidateViewerTarget(target);
+      throw error;
+    }
   }
 
   private async findMainSession(app: AndroidApplication) {
@@ -281,20 +293,6 @@ export class AndroidAppsDisplaySidecarService {
         session.status !== 'released' &&
         session.status !== 'expired',
     );
-  }
-
-  private async prepareUdid(app: AndroidApplication) {
-    await this.viewerNetwork.prepareNetwork(app);
-    const adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
-    const adbTarget = await this.viewerNetwork.prepareScrcpyAdbTarget(
-      app,
-      adbHost,
-    );
-    if (!adbTarget.configured || !adbTarget.connected) {
-      throw new ConflictException(adbTarget.message);
-    }
-
-    return `${adbHost}:${app.adbPort}`;
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

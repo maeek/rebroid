@@ -10,10 +10,12 @@ import { AndroidApplication } from '../../android-application.entity';
 import type {
   AndroidAutomationUiTextInput,
   AndroidAutomationUiTextResult,
-  AndroidAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
 import { parseAndroidNotifications } from '../../runtime/utils/android-apps-notification.utils';
-import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
+import {
+  AndroidAppsViewerNetworkService,
+  type PreparedViewerTarget,
+} from './android-apps-viewer-network.service';
 
 const uiTextResponseSchema = z.discriminatedUnion('status', [
   z.object({
@@ -37,11 +39,6 @@ interface AdbRequestOptions extends RequestInit {
 
 @Injectable()
 export class AndroidAppsSidecarAdbService {
-  private readonly preparedTargets = new Map<
-    string,
-    { udid: string; expiresAt: number }
-  >();
-
   constructor(
     private readonly config: ConfigService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
@@ -120,8 +117,7 @@ export class AndroidAppsSidecarAdbService {
     deadline?: number,
   ) {
     signal?.throwIfAborted();
-    const cacheKey = this.targetCacheKey(app);
-    const udid = await this.prepareUdid(app, cacheKey);
+    const target = await this.viewerNetwork.requireViewerTarget(app, signal);
     signal?.throwIfAborted();
     const budget =
       deadline === undefined
@@ -134,7 +130,7 @@ export class AndroidAppsSidecarAdbService {
       stdout: string;
       stderr: string;
       exitCode: number;
-    }>(udid, cacheKey, '/shell', {
+    }>(target, '/shell', {
       signal,
       method: 'POST',
       body: JSON.stringify({ command, timeoutMs: budget }),
@@ -186,8 +182,7 @@ export class AndroidAppsSidecarAdbService {
     const timedOut = () =>
       new DOMException('UI text request timed out.', 'TimeoutError');
     signal.throwIfAborted();
-    const cacheKey = this.targetCacheKey(app);
-    const udid = await this.prepareUdid(app, cacheKey, signal);
+    const target = await this.viewerNetwork.requireViewerTarget(app, signal);
     signal.throwIfAborted();
     const remaining = Math.floor(deadline - performance.now());
     if (remaining <= 0) throw timedOut();
@@ -198,7 +193,7 @@ export class AndroidAppsSidecarAdbService {
       timeoutMs: remaining,
       ...(operationId ? { operationId } : {}),
     } satisfies DisplaySidecarApiSchemas['AdbUiTextDto'];
-    const request = this.requestPrepared(udid, cacheKey, '/ui-text', {
+    const request = this.requestPrepared(target, '/ui-text', {
       signal,
       method: 'POST',
       redirect: 'error',
@@ -209,7 +204,7 @@ export class AndroidAppsSidecarAdbService {
     // Cancel the sidecar poll without dropping the response that confirms it settled.
     const cancel = operationId
       ? addAbortListener(signal, () => {
-          void this.requestPrepared(udid, cacheKey, `/ui-text/${operationId}`, {
+          void this.requestPrepared(target, `/ui-text/${operationId}`, {
             method: 'DELETE',
             redirect: 'error',
             requestTimeoutMs: 2_000,
@@ -358,18 +353,15 @@ export class AndroidAppsSidecarAdbService {
     options: AdbRequestOptions = {},
   ): Promise<T> {
     options.signal?.throwIfAborted();
-    const cacheKey = this.targetCacheKey(app);
-    const udid = await this.prepareUdid(
+    const target = await this.viewerNetwork.requireViewerTarget(
       app,
-      cacheKey,
       options.signal ?? undefined,
     );
-    return this.requestPrepared(udid, cacheKey, path, options);
+    return this.requestPrepared<T>(target, path, options);
   }
 
   private async requestPrepared<T = unknown>(
-    udid: string,
-    cacheKey: string,
+    target: PreparedViewerTarget,
     path: string,
     {
       requestTimeoutMs = 20_000,
@@ -392,8 +384,15 @@ export class AndroidAppsSidecarAdbService {
     if (secret) {
       headers.set('x-rebroid-sidecar-secret', secret);
     }
+    const transportFailure = (error: unknown): never => {
+      if (!init.signal?.aborted || awaitMutation)
+        this.viewerNetwork.invalidateViewerTarget(target);
+      throw new ConflictException(
+        `Display sidecar ADB API is not reachable: ${getErrorMessage(error)}`,
+      );
+    };
     const response = await fetch(
-      `${baseUrl}/rebroid/adb/${encodeURIComponent(udid)}${path}`,
+      `${baseUrl}/rebroid/adb/${encodeURIComponent(target.udid)}${path}`,
       {
         ...init,
         body,
@@ -404,14 +403,9 @@ export class AndroidAppsSidecarAdbService {
             ? AbortSignal.any([init.signal, timeout])
             : timeout,
       },
-    ).catch((error) => {
-      this.preparedTargets.delete(cacheKey);
-      throw new ConflictException(
-        `Display sidecar ADB API is not reachable: ${getErrorMessage(error)}`,
-      );
-    });
+    ).catch(transportFailure);
 
-    const text = await response.text();
+    const text = await response.text().catch(transportFailure);
     let payload: (T & { message?: string }) | null;
     try {
       payload = text ? (JSON.parse(text) as T & { message?: string }) : null;
@@ -419,7 +413,8 @@ export class AndroidAppsSidecarAdbService {
       payload = { message: text } as T & { message?: string };
     }
     if (!response.ok) {
-      this.preparedTargets.delete(cacheKey);
+      if (response.status >= 500)
+        this.viewerNetwork.invalidateViewerTarget(target);
       throw new ConflictException(
         payload?.message ??
           `Display sidecar ADB API returned ${response.status}.`,
@@ -427,56 +422,5 @@ export class AndroidAppsSidecarAdbService {
     }
 
     return payload as T;
-  }
-
-  private async prepareUdid(
-    app: AndroidApplication,
-    cacheKey: string,
-    signal?: AbortSignal,
-  ) {
-    const cached = this.preparedTargets.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.udid;
-    }
-
-    await this.viewerNetwork.prepareNetwork(app);
-    signal?.throwIfAborted();
-    const adbHost = await this.viewerNetwork.resolveScrcpyAdbHost(app);
-    signal?.throwIfAborted();
-    const adbTarget = await this.viewerNetwork.prepareScrcpyAdbTarget(
-      app,
-      adbHost,
-    );
-    signal?.throwIfAborted();
-    if (!adbTarget.configured || !adbTarget.connected) {
-      throw new ConflictException(adbTarget.message);
-    }
-
-    const udid = `${adbHost}:${app.adbPort}`;
-    for (const key of this.preparedTargets.keys()) {
-      if (key.startsWith(`${app.id}:`) && key !== cacheKey) {
-        this.preparedTargets.delete(key);
-      }
-    }
-    this.preparedTargets.set(cacheKey, {
-      udid,
-      expiresAt: Date.now() + 60_000,
-    });
-    return udid;
-  }
-
-  private targetCacheKey(
-    app: AndroidApplication &
-      Partial<Pick<AndroidAutomationTarget, 'containerStartedAt'>>,
-  ) {
-    return [
-      app.id,
-      app.containerId ?? 'no-container',
-      app.containerName,
-      app.networkName,
-      app.adbPort,
-      app.lastStartedAt?.getTime() ?? 'no-start',
-      app.containerStartedAt ?? '',
-    ].join(':');
   }
 }

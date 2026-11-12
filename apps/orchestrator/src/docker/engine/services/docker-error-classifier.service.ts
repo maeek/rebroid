@@ -33,9 +33,9 @@ export class DockerErrorClassifier {
   isContainerAlreadyDisconnectedFromNetwork(error: unknown) {
     const message = this.errorMessage(error).toLowerCase();
     return (
-      message.includes('not connected') ||
+      /not connected to (?:the )?network\b/.test(message) ||
       message.includes('no such container') ||
-      message.includes('not found')
+      message.includes('no such network')
     );
   }
 

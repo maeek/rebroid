@@ -106,4 +106,24 @@ describe('display sidecar discovery', () => {
     expect(waitForReady).toHaveBeenCalledTimes(1);
     expect(container.inspect).toHaveBeenCalledTimes(2);
   });
+
+  it('reports a new ADB generation after observing the same container restart', async () => {
+    const { service, container } = setup();
+    const inspect = (startedAt: string) => ({
+      Id: id,
+      State: { Running: true, StartedAt: startedAt },
+      NetworkSettings: {
+        Networks: { 'app-network': { IPAddress: '172.20.0.2' } },
+      },
+    });
+    container.inspect
+      .mockResolvedValueOnce(inspect('2026-11-12T10:00:00Z'))
+      .mockResolvedValueOnce(inspect('2026-11-12T10:01:00Z'));
+    const original = await service.ensureSidecarOnNetwork('app-network');
+    const restarted = await service.ensureSidecarOnNetwork('app-network');
+    expect(restarted.sidecarGeneration).toBeGreaterThan(
+      original.sidecarGeneration,
+    );
+    expect(service.adbTargetGeneration).toBe(restarted.sidecarGeneration);
+  });
 });

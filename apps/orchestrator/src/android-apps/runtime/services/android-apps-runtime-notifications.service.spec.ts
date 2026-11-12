@@ -63,13 +63,10 @@ function fixture({ appCount = 1, adbDelayMs = 0 } = {}) {
   const sidecar = new AndroidAppsSidecarAdbService(
     { getOrThrow: () => 'http://sidecar.test', get: () => undefined } as never,
     {
-      prepareNetwork: async () => undefined,
-      resolveScrcpyAdbHost: async (app: AndroidApplication) =>
-        app.containerName,
-      prepareScrcpyAdbTarget: async () => ({
-        configured: true,
-        connected: true,
+      requireViewerTarget: async (app: AndroidApplication) => ({
+        udid: app.containerName,
       }),
+      invalidateViewerTarget: jest.fn(),
     } as never,
   );
   const android = { output: exampleNotification };

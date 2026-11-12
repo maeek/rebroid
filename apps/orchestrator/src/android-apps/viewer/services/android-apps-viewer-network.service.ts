@@ -1,9 +1,14 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { addAbortListener } from 'node:events';
+import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
 import {
   DOCKER_CONTAINER_EXEC,
   type DockerContainerExecPort,
 } from '../../../docker/contracts/docker-container-exec.port';
+import {
+  DOCKER_CONTAINER_LIFECYCLE,
+  type DockerContainerLifecyclePort,
+} from '../../../docker/contracts/docker-container-lifecycle.port';
 import {
   DOCKER_NETWORK_RUNTIME,
   type DockerNetworkRuntimePort,
@@ -12,6 +17,7 @@ import {
   DOCKER_SIDECAR,
   type DockerSidecarPort,
 } from '../../../docker/contracts/docker-sidecar.port';
+import type { ViewerTargetStatus } from '../../../docker/docker.types';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
@@ -29,11 +35,79 @@ export class ViewerRuntimeChangedError extends Error {
   }
 }
 
+type ViewerRuntime = AndroidApplication & { containerStartedAt?: string };
+
+export type PreparedViewerTarget = {
+  readonly adbHost: string;
+  readonly udid: string;
+  readonly viewerTarget: ViewerTargetStatus;
+  readonly key: string;
+};
+
+type TargetPreparation = {
+  appId: string;
+  controller: AbortController;
+  pending: Promise<PreparedViewerTarget>;
+  waiters: number;
+};
+
+type ObservedAdbTarget = {
+  adbHost: string;
+  containerStartedAt: string | null;
+};
+
+type ProvisionedAdbTarget = ObservedAdbTarget & {
+  sidecarGeneration: number;
+  target: ViewerTargetStatus;
+};
+
+type ProvisionedAdbReadiness = ProvisionedAdbTarget & {
+  runtime: string;
+  expiresAt: number;
+};
+
+const provisionedAdbReadinessTtlMs = 10_000;
+const targetReadinessTtlMs = 60_000;
+const maxPreparedTargets = 128;
+const maxPendingTargets = 64;
+
+const runtimeFingerprint = (app: AndroidApplication) =>
+  JSON.stringify([
+    app.id,
+    app.ownerUserId,
+    app.containerId,
+    app.containerName,
+    app.networkName,
+    app.lastStartedAt,
+    app.profileMode,
+    app.profileName,
+    app.adbPort,
+  ]);
+
+const readinessFingerprint = (app: AndroidApplication) =>
+  JSON.stringify([runtimeFingerprint(app), app.networkPolicyRevision]);
+
 @Injectable()
 export class AndroidAppsViewerNetworkService {
   private readonly logger = new Logger(AndroidAppsViewerNetworkService.name);
   private readonly networkPreparations = new Map<string, Promise<unknown>>();
+  private readonly networkReleases = new Map<string, Promise<unknown>>();
   private readonly adbTargetPreparations = new Map<string, Promise<unknown>>();
+  private readonly provisionedTargets = new Map<
+    string,
+    ProvisionedAdbReadiness
+  >();
+  private readonly pendingTargets = new Map<string, TargetPreparation>();
+  private readonly preparedTargets = new Map<
+    string,
+    {
+      appId: string;
+      runtime: string;
+      target: PreparedViewerTarget;
+      generation: number;
+      expiresAt: number;
+    }
+  >();
 
   constructor(
     @Inject(DOCKER_NETWORK_RUNTIME)
@@ -47,38 +121,223 @@ export class AndroidAppsViewerNetworkService {
     private readonly writer: AndroidAppsStateWriter,
     private readonly queries: AndroidAppsQueryService,
     private readonly policyGate: AndroidAppsPolicyGate,
+    @Inject(DOCKER_CONTAINER_LIFECYCLE)
+    private readonly lifecycle: DockerContainerLifecyclePort,
   ) {}
 
-  /** Makes sure the viewer sidecar is on the app network. */
-  async prepareNetwork(app: AndroidApplication) {
-    const applicationId = app?.id;
-    if (!applicationId) {
-      this.logger.warn(
-        'Could not prepare display sidecar network: application id is missing.',
-      );
+  async observeProvisioningAdbTarget(
+    app: AndroidApplication,
+  ): Promise<ObservedAdbTarget> {
+    const { containerId } = app;
+    if (!containerId)
+      return { adbHost: app.containerName, containerStartedAt: null };
+
+    const inspect = await this.lifecycle.inspectContainer(containerId);
+    const ip = inspect.NetworkSettings?.Networks?.[app.networkName]?.IPAddress;
+    const containerStartedAt =
+      ip && inspect.Id === containerId && inspect.State?.Running
+        ? inspect.State.StartedAt || null
+        : null;
+    return { adbHost: ip || app.containerName, containerStartedAt };
+  }
+
+  rememberProvisionedAdb(
+    app: AndroidApplication,
+    observation: ProvisionedAdbTarget,
+  ) {
+    this.provisionedTargets.delete(app.id);
+    if (
+      !app.containerId ||
+      !observation.containerStartedAt ||
+      !observation.target.configured ||
+      !observation.target.connected ||
+      this.networkReleases.has(app.id) ||
+      observation.sidecarGeneration !== this.sidecar.adbTargetGeneration
+    ) {
       return;
     }
-    if (!app.networkName) {
-      this.logger.warn(
-        `Could not prepare display sidecar network for ${applicationId}: network name is missing.`,
-      );
-      return;
+
+    const now = performance.now();
+    for (const [id, entry] of this.provisionedTargets) {
+      if (
+        entry.expiresAt <= now ||
+        entry.sidecarGeneration !== observation.sidecarGeneration
+      ) {
+        this.provisionedTargets.delete(id);
+      }
     }
+    if (this.provisionedTargets.size >= maxPreparedTargets) {
+      const oldest = this.provisionedTargets.keys().next();
+      if (!oldest.done) this.provisionedTargets.delete(oldest.value);
+    }
+    this.provisionedTargets.set(app.id, {
+      ...observation,
+      runtime: readinessFingerprint(app),
+      expiresAt: now + provisionedAdbReadinessTtlMs,
+    });
+  }
+
+  async prepareViewerTarget(
+    expected: ViewerRuntime,
+    signal?: AbortSignal,
+  ): Promise<PreparedViewerTarget> {
+    signal?.throwIfAborted();
+    const app = await this.currentViewerRuntime(expected);
+    signal?.throwIfAborted();
+    const runtime = readinessFingerprint(app);
+    const key = JSON.stringify([runtime, expected.containerStartedAt]);
+    this.expirePreparedTargets();
+    for (const [cachedKey, entry] of this.preparedTargets) {
+      if (entry.appId === app.id && entry.runtime !== runtime)
+        this.preparedTargets.delete(cachedKey);
+    }
+    const cached = this.preparedTargets.get(key);
+    if (cached) return cached.target;
+
+    const existing = this.pendingTargets.get(key);
+    if (existing) {
+      if (!existing.controller.signal.aborted)
+        return this.waitForTarget(existing, signal);
+      await existing.pending.catch(() => undefined);
+      return this.prepareViewerTarget(expected, signal);
+    }
+    if (this.pendingTargets.size >= maxPendingTargets) {
+      throw new ConflictException('Display target preparation is busy.');
+    }
+
+    const controller = new AbortController();
+    const preparation: TargetPreparation = {
+      appId: app.id,
+      controller,
+      waiters: 0,
+      pending: this.prepareTarget(
+        { ...app, containerStartedAt: expected.containerStartedAt },
+        runtime,
+        key,
+        controller.signal,
+      ).finally(() => {
+        this.pendingTargets.delete(key);
+      }),
+    };
+    this.pendingTargets.set(key, preparation);
+    return this.waitForTarget(preparation, signal);
+  }
+
+  async requireViewerTarget(app: ViewerRuntime, signal?: AbortSignal) {
+    const target = await this.prepareViewerTarget(app, signal);
+    if (!target.viewerTarget.configured || !target.viewerTarget.connected) {
+      throw new ConflictException(
+        target.viewerTarget.message ?? 'Display target is unavailable.',
+      );
+    }
+    return target;
+  }
+
+  invalidateViewerTarget(target: PreparedViewerTarget) {
+    if (this.preparedTargets.get(target.key)?.target === target) {
+      this.preparedTargets.delete(target.key);
+    }
+  }
+
+  private async prepareTarget(
+    app: ViewerRuntime,
+    runtime: string,
+    key: string,
+    signal: AbortSignal,
+  ) {
+    const network = await this.ensureNetworkPrepared(app);
+    signal.throwIfAborted();
+    const generation = network.sidecarGeneration;
+    const provisioned = this.provisionedTargets.get(app.id);
+    this.provisionedTargets.delete(app.id);
+    const connected = network.configured && network.connected;
+    const observed =
+      connected &&
+      provisioned?.runtime === runtime &&
+      provisioned.sidecarGeneration === generation &&
+      provisioned.expiresAt > performance.now()
+        ? await this.observeProvisioningAdbTarget(app).catch(() => null)
+        : null;
+    if (
+      observed?.containerStartedAt &&
+      app.containerStartedAt !== undefined &&
+      observed.containerStartedAt !== app.containerStartedAt
+    ) {
+      throw new ViewerRuntimeChangedError();
+    }
+    const verified =
+      provisioned &&
+      observed &&
+      observed.adbHost === provisioned.adbHost &&
+      observed.containerStartedAt === provisioned.containerStartedAt
+        ? provisioned
+        : undefined;
+    const adbHost = observed?.adbHost ?? (await this.resolveScrcpyAdbHost(app));
+    signal.throwIfAborted();
+    if (generation !== this.sidecar.adbTargetGeneration)
+      throw new Error('Display sidecar changed during target preparation.');
+    const viewerTarget = connected
+      ? await this.prepareScrcpyAdbTarget(app, adbHost, verified)
+      : network;
+    signal.throwIfAborted();
+    const target = {
+      adbHost,
+      udid: `${adbHost}:${app.adbPort}`,
+      viewerTarget,
+      key,
+    };
+    if (viewerTarget.configured && viewerTarget.connected) {
+      const current = await this.currentViewerRuntime(app);
+      signal.throwIfAborted();
+      if (readinessFingerprint(current) !== runtime)
+        throw new ViewerRuntimeChangedError();
+      if (generation !== this.sidecar.adbTargetGeneration)
+        throw new Error('Display sidecar changed during target preparation.');
+      this.expirePreparedTargets();
+      if (this.preparedTargets.size >= maxPreparedTargets) {
+        const oldest = this.preparedTargets.keys().next();
+        if (!oldest.done) this.preparedTargets.delete(oldest.value);
+      }
+      this.preparedTargets.set(key, {
+        appId: app.id,
+        runtime,
+        target,
+        generation,
+        expiresAt: performance.now() + targetReadinessTtlMs,
+      });
+    }
+    return target;
+  }
+
+  private async waitForTarget(
+    preparation: TargetPreparation,
+    signal?: AbortSignal,
+  ) {
+    preparation.waiters += 1;
+    let waiting = true;
+    const leave = () => {
+      if (!waiting) return;
+      waiting = false;
+      preparation.waiters -= 1;
+      if (preparation.waiters === 0) preparation.controller.abort();
+    };
+    const listener = signal ? addAbortListener(signal, leave) : undefined;
     try {
-      await this.ensureNetworkPrepared(app);
-    } catch (error) {
-      const message = getErrorMessage(error);
-      this.logger.warn(
-        `Could not prepare display sidecar network for ${applicationId}: ${message}`,
-      );
-      await this.appendLifecycleLog(
-        applicationId,
-        'Display sidecar network preparation failed',
-        {
-          networkName: app.networkName,
-          message,
-        },
-      );
+      // Drain admitted network/ADB work before allowing an interrupted caller to settle.
+      return await preparation.pending;
+    } finally {
+      listener?.[Symbol.dispose]();
+      leave();
+      signal?.throwIfAborted();
+    }
+  }
+
+  private expirePreparedTargets() {
+    const now = performance.now();
+    const generation = this.sidecar.adbTargetGeneration;
+    for (const [key, entry] of this.preparedTargets) {
+      if (entry.expiresAt <= now || entry.generation !== generation)
+        this.preparedTargets.delete(key);
     }
   }
 
@@ -121,29 +380,42 @@ export class AndroidAppsViewerNetworkService {
       );
       return;
     }
-    try {
-      await this.sidecar.detachSidecarFromNetwork(app.networkName);
-      await this.appendLifecycleLog(
-        applicationId,
-        'Display sidecar network released',
-        {
-          networkName: app.networkName,
-        },
-      );
-    } catch (error) {
-      const message = getErrorMessage(error);
-      this.logger.warn(
-        `Could not release display sidecar network for ${applicationId}: ${message}`,
-      );
-      await this.appendLifecycleLog(
-        applicationId,
-        'Display sidecar network release failed',
-        {
-          networkName: app.networkName,
-          message,
-        },
-      );
-    }
+    await this.coalesce(this.networkReleases, applicationId, async () => {
+      this.provisionedTargets.delete(applicationId);
+      for (const [key, entry] of this.preparedTargets) {
+        if (entry.appId === applicationId) this.preparedTargets.delete(key);
+      }
+      const draining: Promise<PreparedViewerTarget>[] = [];
+      for (const preparation of this.pendingTargets.values()) {
+        if (preparation.appId !== applicationId) continue;
+        preparation.controller.abort(new ViewerRuntimeChangedError());
+        draining.push(preparation.pending);
+      }
+      await Promise.allSettled(draining);
+      try {
+        await this.sidecar.detachSidecarFromNetwork(app.networkName);
+        await this.appendLifecycleLog(
+          applicationId,
+          'Display sidecar network released',
+          {
+            networkName: app.networkName,
+          },
+        );
+      } catch (error) {
+        const message = getErrorMessage(error);
+        this.logger.warn(
+          `Could not release display sidecar network for ${applicationId}: ${message}`,
+        );
+        await this.appendLifecycleLog(
+          applicationId,
+          'Display sidecar network release failed',
+          {
+            networkName: app.networkName,
+            message,
+          },
+        );
+      }
+    });
   }
 
   /** Finds the best ADB host for the viewer. */
@@ -161,7 +433,11 @@ export class AndroidAppsViewerNetworkService {
   }
 
   /** Prepares the viewer sidecar to reach the app over ADB. */
-  async prepareScrcpyAdbTarget(app: AndroidApplication, adbHost: string) {
+  async prepareScrcpyAdbTarget(
+    app: AndroidApplication,
+    adbHost: string,
+    provisioned?: ProvisionedAdbReadiness,
+  ) {
     return this.coalesce(
       this.adbTargetPreparations,
       JSON.stringify([
@@ -173,15 +449,24 @@ export class AndroidAppsViewerNetworkService {
         adbHost,
         app.adbPort,
       ]),
-      () => this.prepareScrcpyAdbTargetOnce(app, adbHost),
+      () => this.prepareScrcpyAdbTargetOnce(app, adbHost, provisioned),
     );
   }
 
   private async prepareScrcpyAdbTargetOnce(
     app: AndroidApplication,
     adbHost: string,
+    provisioned?: ProvisionedAdbReadiness,
   ) {
-    await this.refreshNetworkPolicy(app);
+    const current = await this.refreshNetworkPolicy(app);
+    if (
+      provisioned &&
+      provisioned.runtime === readinessFingerprint(current) &&
+      provisioned.sidecarGeneration === this.sidecar.adbTargetGeneration &&
+      provisioned.expiresAt > performance.now()
+    ) {
+      return provisioned.target;
+    }
     await this.ensureRedroidTcpAdb(app);
 
     await this.appendLifecycleLog(
@@ -235,17 +520,8 @@ export class AndroidAppsViewerNetworkService {
 
   private refreshNetworkPolicy(expected: AndroidApplication) {
     return this.policyGate.run(expected.id, async () => {
-      const app = await this.queries.getStored(expected.id);
-      if (
-        !app.containerId ||
-        app.status !== AndroidApplicationStatus.Running ||
-        app.containerId !== expected.containerId ||
-        app.networkName !== expected.networkName ||
-        app.lastStartedAt?.getTime() !== expected.lastStartedAt?.getTime()
-      ) {
-        throw new ViewerRuntimeChangedError();
-      }
-      if (!app.networkPolicyEnabled) return;
+      const app = await this.currentViewerRuntime(expected);
+      if (!app.networkPolicyEnabled) return app;
       const result = await this.networkPolicy.refreshViewerPolicy(app);
       if (!(await this.writer.recordViewerNetworkPolicy(app, result))) {
         throw new ViewerRuntimeChangedError();
@@ -255,7 +531,21 @@ export class AndroidAppsViewerNetworkService {
           `Outbound policy enforcement failed: ${result.message}`,
         );
       }
+      return app;
     });
+  }
+
+  private async currentViewerRuntime(expected: AndroidApplication) {
+    const app = await this.queries.getStored(expected.id);
+    if (
+      this.networkReleases.has(expected.id) ||
+      !app.containerId ||
+      app.status !== AndroidApplicationStatus.Running ||
+      runtimeFingerprint(app) !== runtimeFingerprint(expected)
+    ) {
+      throw new ViewerRuntimeChangedError();
+    }
+    return app;
   }
 
   /** Recovered Redroid containers may be running before provisioning enabled TCP ADB. */

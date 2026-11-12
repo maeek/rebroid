@@ -6,7 +6,10 @@ import {
   ContainerCommandResult,
 } from '../../docker.types';
 import { formatContainerCommandFailureMessage } from '../../utils/docker-engine.utils';
-import type { DockerContainerExecPort } from '../../contracts/docker-container-exec.port';
+import type {
+  DockerContainerExecOptions,
+  DockerContainerExecPort,
+} from '../../contracts/docker-container-exec.port';
 
 @Injectable()
 export class DockerContainerExecService implements DockerContainerExecPort {
@@ -15,7 +18,7 @@ export class DockerContainerExecService implements DockerContainerExecPort {
   async execInContainer(
     containerId: string,
     command: string[],
-    options: { timeoutMs?: number } = {},
+    options: DockerContainerExecOptions = {},
   ) {
     await this.execInContainerWithOutput(containerId, command, options);
   }
@@ -23,18 +26,22 @@ export class DockerContainerExecService implements DockerContainerExecPort {
   async execInContainerWithOutput(
     containerId: string,
     command: string[],
-    options: { timeoutMs?: number } = {},
+    options: DockerContainerExecOptions = {},
   ): Promise<ContainerCommandResult> {
     const result = await this.engine.longOperation(
       'container_exec',
       `Execute command in container ${containerId}`,
       async (docker, signal) => {
+        options.deadline?.throwIfExpired();
         const container = docker.getContainer(containerId);
         const exec = await container.exec({
           Cmd: command,
           AttachStdout: true,
           AttachStderr: true,
+          ...(options.deadline ? { abortSignal: signal } : {}),
         });
+        options.deadline?.throwIfExpired();
+        signal.throwIfAborted();
         const stream = await exec.start({ abortSignal: signal });
         const stdout = new PassThrough();
         const stderr = new PassThrough();
@@ -54,12 +61,15 @@ export class DockerContainerExecService implements DockerContainerExecPort {
           await new Promise<void>((resolve, reject) => {
             stream.on('end', resolve);
             stream.on('error', reject);
+            if (signal.aborted) abort();
           });
         } finally {
           signal.removeEventListener('abort', abort);
         }
 
-        const inspect = await exec.inspect();
+        const inspect = options.deadline
+          ? await exec.inspect({ abortSignal: signal })
+          : await exec.inspect();
         return {
           inspect,
           stdoutText: Buffer.concat(stdoutChunks).toString('utf-8'),
@@ -67,6 +77,7 @@ export class DockerContainerExecService implements DockerContainerExecPort {
         };
       },
       options.timeoutMs,
+      options.deadline ? { waitForCleanup: true } : undefined,
     );
     const stdoutText = result.stdoutText;
     const stderrText = result.stderrText;

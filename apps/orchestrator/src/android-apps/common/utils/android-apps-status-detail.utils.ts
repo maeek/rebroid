@@ -107,7 +107,10 @@ export const deriveStatusDetail = (
     case AndroidApplicationLifecycleStage.AndroidBooting:
       return {
         code: 'android_booting',
-        title: 'Booting Android',
+        title:
+          description === 'Preparing Android remote access.'
+            ? 'Preparing Android remote access'
+            : 'Booting Android',
         description:
           description ??
           'Waiting for the Android runtime to finish booting inside the managed container.',

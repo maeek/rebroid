@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
+import type { OperationDeadline } from '../../../common/operation-deadline';
 import { DockerContainerLifecycleService } from '../../containers/services/docker-container-lifecycle.service';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ServiceHealth, ViewerTargetStatus } from '../../docker.types';
@@ -42,6 +43,8 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   private readonly displaySidecarWebrtcIceHost: string;
   private displaySidecarLastError: string | null = null;
   private sidecarMutation = Promise.resolve();
+  private observedAdbTargetGeneration = 0;
+  private observedSidecar?: { id: string; startedAt?: string };
 
   constructor(
     private readonly config: ConfigService,
@@ -88,6 +91,30 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     return this.engine.docker;
   }
 
+  get adbTargetGeneration() {
+    return this.observedAdbTargetGeneration;
+  }
+
+  private invalidateAdbTargets() {
+    this.observedAdbTargetGeneration += 1;
+    this.observedSidecar = undefined;
+  }
+
+  private observeAdbTarget(id: string, startedAt?: string) {
+    const previous = this.observedSidecar;
+    if (
+      previous &&
+      (previous.id !== id ||
+        (startedAt && previous.startedAt && startedAt !== previous.startedAt))
+    ) {
+      this.invalidateAdbTargets();
+    }
+    this.observedSidecar = {
+      id,
+      startedAt: startedAt ?? this.observedSidecar?.startedAt,
+    };
+  }
+
   /**
    * Starts the display sidecar lazily on module init when autostart is enabled.
    * Startup failures are logged and cached for health responses instead of crashing boot.
@@ -126,18 +153,19 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
    */
   async ensureSidecarOnNetwork(
     networkName: string,
-  ): Promise<ViewerTargetStatus> {
+    deadline?: OperationDeadline,
+  ): ReturnType<DockerSidecarPort['ensureSidecarOnNetwork']> {
     return this.queueSidecarMutation(async () => {
-      const sidecar = await this.ensureSidecarUnlocked();
-      if (!sidecar) {
-        return this.sidecarUnavailableStatus();
-      }
-
-      return this.sidecarNetwork.ensureOnNetwork(
-        sidecar.container,
-        networkName,
-        sidecar.inspect,
-      );
+      const sidecar = await this.ensureSidecarUnlocked(deadline);
+      deadline?.throwIfExpired();
+      const target = sidecar
+        ? await this.sidecarNetwork.ensureOnNetwork(
+            sidecar.container,
+            networkName,
+            sidecar.inspect,
+          )
+        : this.sidecarUnavailableStatus();
+      return { ...target, sidecarGeneration: this.adbTargetGeneration };
     });
   }
 
@@ -161,8 +189,10 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   async connectAdb(
     adbHost: string,
     adbPort: number,
+    deadline?: OperationDeadline,
   ): Promise<ViewerTargetStatus> {
-    const sidecar = await this.ensureSidecar();
+    const sidecar = await this.ensureSidecar(deadline);
+    deadline?.throwIfExpired();
     if (!sidecar) {
       return this.sidecarUnavailableStatus();
     }
@@ -171,6 +201,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       sidecar.container.id,
       adbHost,
       adbPort,
+      deadline,
     );
   }
 
@@ -326,6 +357,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
    */
   async repair() {
     return this.queueSidecarMutation(async () => {
+      this.invalidateAdbTargets();
       try {
         const existing = await this.findSidecar();
         if (existing) {
@@ -354,11 +386,16 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   /**
    * Returns a started sidecar container, creating one only when autostart is enabled.
    */
-  private async ensureSidecar() {
-    return this.queueSidecarMutation(() => this.ensureSidecarUnlocked());
+  private async ensureSidecar(deadline?: OperationDeadline) {
+    return this.queueSidecarMutation(() =>
+      this.ensureSidecarUnlocked(deadline),
+    );
   }
 
-  private async ensureSidecarUnlocked(): Promise<DiscoveredSidecar | null> {
+  private async ensureSidecarUnlocked(
+    deadline?: OperationDeadline,
+  ): Promise<DiscoveredSidecar | null> {
+    deadline?.throwIfExpired();
     const existing = await this.findSidecar();
     if (existing) {
       const { container } = existing;
@@ -366,21 +403,29 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         existing.inspect ??
         (await this.lifecycle.inspectContainer(container.id));
       if (!inspect.State?.Running) {
+        deadline?.throwIfExpired();
+        this.invalidateAdbTargets();
         await this.lifecycle.startContainer(container.id);
         await this.sidecarApi.waitForReady();
+        this.observeAdbTarget(container.id);
         return { container };
       }
+      this.observeAdbTarget(container.id, inspect.State.StartedAt);
       return { container, inspect };
     }
+
+    if (this.observedSidecar) this.invalidateAdbTargets();
 
     if (!this.displaySidecarAutoStart) {
       return null;
     }
 
+    deadline?.throwIfExpired();
     await this.sidecarImages.ensureImage(
       this.displaySidecarImage,
       this.displaySidecarBuildContext,
     );
+    deadline?.throwIfExpired();
     const hostConfig: Dockerode.HostConfig = {
       AutoRemove: false,
       PublishAllPorts: false,
@@ -452,6 +497,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       `Start display sidecar ${container.id}`,
     );
     await this.sidecarApi.waitForReady();
+    this.observeAdbTarget(container.id);
     return { container };
   }
 

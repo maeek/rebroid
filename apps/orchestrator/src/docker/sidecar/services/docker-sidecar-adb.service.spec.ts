@@ -1,3 +1,7 @@
+import {
+  OperationDeadline,
+  OperationDeadlineExceededError,
+} from '../../../common/operation-deadline';
 import type { DockerContainerExecService } from '../../containers/services/docker-container-exec.service';
 import type { DockerEngineService } from '../../docker-engine.service';
 import {
@@ -103,5 +107,29 @@ describe(DockerSidecarAdbService.name, () => {
       error: { code: 'adb_unreachable', retryable: true, exitCode: 124 },
     });
     expect(exec).toHaveBeenCalledTimes(3);
+  });
+
+  it('drains the admitted connect step and skips later ADB work after the deadline', async () => {
+    jest.useFakeTimers();
+    try {
+      exec
+        .mockResolvedValueOnce(success())
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) =>
+              setTimeout(() => resolve(success(connect)), 10_001),
+            ),
+        );
+      const deadline = new OperationDeadline(10_000);
+      const result = expect(
+        service.prepareTarget('sidecar', '172.20.0.3', 5555, deadline),
+      ).rejects.toBeInstanceOf(OperationDeadlineExceededError);
+      await jest.advanceTimersByTimeAsync(10_001);
+      await result;
+      expect(commands()[1]).toContain('timeout -k 1s 9s sh -lc');
+      expect(exec).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
