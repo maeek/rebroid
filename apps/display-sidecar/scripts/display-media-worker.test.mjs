@@ -119,10 +119,181 @@ const flush = async () => {
   await new Promise((resolve) => setImmediate(resolve));
 };
 
+async function startWebCodecsWorker(t, name, overrides = {}) {
+  const posted = [];
+  globalThis.EncodedVideoChunk = FakeEncodedVideoChunk;
+  globalThis.EncodedAudioChunk = FakeEncodedVideoChunk;
+  globalThis.WebSocket = FakeWebSocket;
+  globalThis.postMessage = (message) => posted.push(message);
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => undefined;
+  globalThis.close = () => undefined;
+  await import(
+    new URL(
+      `../dist/modules/display/viewer/assets/display-media-worker.js?${name}`,
+      import.meta.url,
+    )
+  );
+  t.after(() => globalThis.onmessage({ data: { type: "close" } }));
+  globalThis.onmessage({
+    data: {
+      type: "init",
+      url: "wss://example.test/rebroid/display/stream",
+      canvas: {
+        getContext: (type) => (type === "webgl2" ? null : { drawImage() {} }),
+      },
+      audio: false,
+      renderer: "webcodecs",
+      ...overrides,
+    },
+  });
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  return { socket, posted };
+}
+
+function sendFrame(socket, sequence, data, flags = {}) {
+  socket.emit("message", {
+    data: rbd1({ sequence, timestampUs: 17_000 * sequence, data, ...flags }),
+  });
+}
+
+for (const limit of ["frames", "bytes", "age"]) {
+  test(`video ingress discards the queued GOP at its ${limit} limit`, async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const firstProbe = Promise.withResolvers();
+    const decoded = [];
+    let probeCount = 0;
+    globalThis.VideoDecoder = class extends FakeVideoDecoder {
+      static async isConfigSupported(config) {
+        if (++probeCount === 1) await firstProbe.promise;
+        return { supported: true, config };
+      }
+
+      decode(chunk) {
+        decoded.push(chunk);
+      }
+    };
+    const { socket } = await startWebCodecsWorker(t, `ingress-${limit}`);
+    sendFrame(socket, 0, configuration, { config: true });
+    sendFrame(socket, 1, keyFrame, { key: true });
+
+    let sequence = 2;
+    if (limit === "frames") {
+      for (; sequence <= 9; sequence++) sendFrame(socket, sequence, deltaFrame);
+    } else if (limit === "bytes") {
+      const largeDelta = new Uint8Array(9 * 1024 * 1024);
+      sendFrame(socket, sequence++, largeDelta);
+      sendFrame(socket, sequence++, largeDelta);
+    } else {
+      sendFrame(socket, sequence++, deltaFrame);
+      t.mock.timers.tick(151);
+    }
+    assert.equal(decoded.length, 0);
+    const recovery = socket.sent.map(JSON.parse);
+    assert.equal(recovery.length, 1);
+    assert.equal(
+      recovery[0].reason,
+      limit === "age" ? "video-ingress-age" : "video-ingress-overflow",
+    );
+
+    sendFrame(socket, sequence++, deltaFrame);
+    firstProbe.resolve();
+    await flush();
+    assert.equal(decoded.length, 0);
+
+    const recoverySequence = sequence;
+    sendFrame(socket, sequence++, keyFrame, { key: true });
+    sendFrame(socket, sequence, deltaFrame);
+    await flush();
+    assert.deepEqual(
+      decoded.map(({ timestamp, type }) => [timestamp, type]),
+      [
+        [recoverySequence * 17_000, "key"],
+        [sequence * 17_000, "delta"],
+      ],
+    );
+    assert.deepEqual(
+      decoded[0].data,
+      Uint8Array.from([...configuration, ...keyFrame]),
+    );
+    assert.deepEqual(socket.closeCalls, []);
+  });
+}
+
+test("a stalled audio probe leaves video live and cannot affect a replacement connection", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const firstProbe = Promise.withResolvers();
+  const videoTimestamps = [];
+  const audioTimestamps = [];
+  let audioChecks = 0;
+  globalThis.VideoDecoder = class extends FakeVideoDecoder {
+    decode(chunk) {
+      videoTimestamps.push(chunk.timestamp);
+    }
+  };
+  globalThis.AudioDecoder = class {
+    static async isConfigSupported(config) {
+      if (++audioChecks === 1) await firstProbe.promise;
+      return { supported: true, config };
+    }
+    configure() {
+      this.state = "configured";
+    }
+    decode(chunk) {
+      audioTimestamps.push(chunk.timestamp);
+    }
+    close() {
+      this.state = "closed";
+    }
+  };
+  const { socket, posted } = await startWebCodecsWorker(t, "audio-reconnect", {
+    audio: true,
+    audioPort: {
+      postMessage() {},
+      start() {},
+      close() {},
+      addEventListener() {},
+    },
+  });
+  const opus = Uint8Array.from([0xf8, 0xff, 0xfe]);
+  sendFrame(socket, 0, opus, { kind: 2 });
+  sendFrame(socket, 0, configuration, { config: true });
+  sendFrame(socket, 1, keyFrame, { key: true });
+  await flush();
+  assert.deepEqual(videoTimestamps, [17_000]);
+  assert.deepEqual(audioTimestamps, []);
+
+  socket.emit("close", { code: 1006 });
+  t.mock.timers.tick(300);
+  const replacement = FakeWebSocket.instances.at(-1);
+  assert.notEqual(replacement, socket);
+  replacement.open();
+  sendFrame(replacement, 0, keyFrame, { key: true });
+  await flush();
+  assert.deepEqual(videoTimestamps, [17_000]);
+  sendFrame(replacement, 1, configuration, { config: true });
+  sendFrame(replacement, 2, keyFrame, { key: true });
+  sendFrame(replacement, 1, opus, { kind: 2 });
+  await flush();
+  assert.deepEqual(videoTimestamps, [17_000, 34_000]);
+  assert.deepEqual(audioTimestamps, [17_000]);
+
+  firstProbe.reject(new Error("probe from closed connection"));
+  await flush();
+  assert.equal(posted.filter(({ type }) => type === "reconnecting").length, 1);
+  assert.equal(
+    posted.some(({ payload }) => payload?.type === "audio-disabled"),
+    false,
+  );
+  assert.deepEqual(replacement.closeCalls, []);
+});
+
 test("media worker renders only the newest frame and recovers locally from backlog", async (t) => {
   const posted = [];
   const animationFrames = [];
   const draws = [];
+  FakeVideoDecoder.instances = [];
   globalThis.VideoDecoder = FakeVideoDecoder;
   globalThis.EncodedVideoChunk = FakeEncodedVideoChunk;
   globalThis.WebSocket = FakeWebSocket;

@@ -4,7 +4,8 @@ import {
   type FragmentedMp4Configuration,
   type FragmentedMp4Sample,
 } from "./fragmented-mp4.js";
-import { parseViewerMediaFrame } from "./media-frame.js";
+import { parseViewerMediaFrame, type ViewerMediaFrame } from "./media-frame.js";
+import { MediaIngressQueue } from "./media-ingress-queue.js";
 import {
   createVideoFrameRenderer,
   type VideoFrameRenderer,
@@ -87,6 +88,14 @@ const heartbeatTimeoutMs = 15_000;
 const metricsIntervalMs = 1_000;
 const maxDecodeQueue = 4;
 const avSyncBoundUs = 80_000;
+const videoIngressLimits = {
+  bytes: 16 * 1024 * 1024 + 24,
+  frames: 8,
+  ageMs: 150,
+};
+const audioIngressLimits = { bytes: 256 * 1024, frames: 8, ageMs: 150 };
+const maxCodecConfigurationBytes = 256 * 1024;
+const decoderProbeTimeoutMs = 1_500;
 
 let canvas: OffscreenCanvas | null = null;
 let renderer: VideoFrameRenderer | null = null;
@@ -97,8 +106,10 @@ let audioPlaybackDisabled = false;
 let websocketUrl = "";
 let effectiveProfile: ViewerEffectiveProfile | null = null;
 let ws: WebSocket | null = null;
+let ingress: ReturnType<typeof createMediaIngress> | null = null;
 let generation = 0;
 let videoEpoch = 0;
+let audioEpoch = 0;
 let reconnectAttempt = 0;
 let reconnectTimer = 0;
 let firstFrameTimer = 0;
@@ -160,6 +171,7 @@ let relayDroppedFrames = 0;
 let decodeDroppedFrames = 0;
 let presentationDroppedFrames = 0;
 let audioDroppedFrames = 0;
+let audioWorkletDroppedFrames = 0;
 let freezeCount = 0;
 let reconnectCount = 0;
 let resyncCount = 0;
@@ -173,7 +185,6 @@ let liveEdgeAgesMs: number[] = [];
 let frameGapsMs: number[] = [];
 const decodeStartedAt = new Map<number, number>();
 const decodeSequences = new Map<number, number>();
-let messageProcessing: Promise<void> = Promise.resolve();
 let decoderPreference: "hardware" | "software" = "hardware";
 let softwareDecoderFallbackUsed = false;
 const mp4Muxer = new FragmentedMp4Muxer();
@@ -230,14 +241,44 @@ function closeAudioDecoder(): void {
   audioDecoder = null;
 }
 
+function probeDecoder<T>(probe: Promise<T>, signal: AbortSignal): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Display decoder capability check timed out."));
+    }, decoderProbeTimeoutMs);
+    const abort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    void probe.then(
+      (result) => {
+        cleanup();
+        resolve(result);
+      },
+      (error: unknown) => {
+        cleanup();
+        reject(error);
+      },
+    );
+    if (signal.aborted) abort();
+  });
+}
+
 async function configureVideo(
   codec: string,
   expectedGeneration: number,
+  signal: AbortSignal,
 ): Promise<boolean> {
-  if (generation !== expectedGeneration) {
-    return false;
-  }
   const epoch = videoEpoch;
+  const isCurrent = () =>
+    generation === expectedGeneration && videoEpoch === epoch && !closing;
+  if (!isCurrent()) return false;
   if (decoder?.state === "configured" && decoderCodec === codec) {
     return true;
   }
@@ -248,12 +289,18 @@ async function configureVideo(
     hardwareAcceleration:
       decoderPreference === "hardware" ? "prefer-hardware" : "prefer-software",
   };
-  const support = await VideoDecoder.isConfigSupported(config);
-  if (generation !== expectedGeneration || videoEpoch !== epoch || closing) {
-    return false;
-  }
-  if (!support.supported) {
-    throw new Error(`Unsupported display decoder ${codec}.`);
+  try {
+    const support = await probeDecoder(
+      VideoDecoder.isConfigSupported(config),
+      signal,
+    );
+    if (!isCurrent()) return false;
+    if (!support.supported) {
+      throw new Error(`Unsupported display decoder ${codec}.`);
+    }
+  } catch (error) {
+    if (!isCurrent()) return false;
+    throw error;
   }
   const configuredDecoder = new VideoDecoder({
     output(frame) {
@@ -386,9 +433,7 @@ function scheduleMp4Flush(): void {
   }, 33) as unknown as number;
 }
 
-function enqueueMp4Sample(
-  frame: ReturnType<typeof parseViewerMediaFrame>,
-): void {
+function enqueueMp4Sample(frame: ViewerMediaFrame): void {
   if (needsKeyFrame) {
     pendingMp4Samples = [];
     postMp4Initialization(frame.timestampUs);
@@ -407,51 +452,45 @@ function enqueueMp4Sample(
   }
 }
 
-async function decodeVideo(
-  frame: ReturnType<typeof parseViewerMediaFrame>,
-  expectedGeneration: number,
-) {
-  if (frame.config) {
-    const next = codecConfiguration(frame.data);
-    if (!next.sps || !next.pps) {
-      throw new Error("H.264 configuration is missing SPS or PPS.");
-    }
-    if (frame.discontinuity) resetVideoDecoderAdmission();
-    cachedConfiguration = frame.data.slice();
-    needsKeyFrame = true;
-    codecName = next.codec;
-    if (next.width && next.height) {
-      mp4Configuration = {
-        codec: next.codec,
-        sps: next.sps,
-        pps: next.pps,
-        width: next.width,
-        height: next.height,
-      };
-      width = next.width;
-      height = next.height;
-    }
-    if (effectiveProfile) {
-      effectiveProfile.h264ProfileLevelId = next.profileLevelId;
-      effectiveProfile.width = next.width;
-      effectiveProfile.height = next.height;
-      effectiveProfile.pixelRate =
-        next.width && next.height
-          ? next.width * next.height * effectiveProfile.maxFps
-          : undefined;
-    }
-    if (rendererMode === "mse") {
-      if (!frame.discontinuity) resetVideoAdmission();
-      return;
-    }
-    await configureVideo(next.codec, expectedGeneration);
-    return;
+function receiveVideoConfiguration(frame: ViewerMediaFrame): void {
+  if (frame.data.byteLength > maxCodecConfigurationBytes) {
+    throw new Error("H.264 configuration exceeds the viewer size limit.");
   }
+  const next = codecConfiguration(frame.data);
+  if (!next.sps || !next.pps) {
+    throw new Error("H.264 configuration is missing SPS or PPS.");
+  }
+  resetVideoDecoderAdmission();
+  cachedConfiguration = frame.data.slice();
+  codecName = next.codec;
+  mp4Configuration = null;
+  if (next.width && next.height) {
+    mp4Configuration = {
+      codec: next.codec,
+      sps: next.sps,
+      pps: next.pps,
+      width: next.width,
+      height: next.height,
+    };
+    width = next.width;
+    height = next.height;
+  }
+  if (effectiveProfile) {
+    effectiveProfile.h264ProfileLevelId = next.profileLevelId;
+    effectiveProfile.width = next.width;
+    effectiveProfile.height = next.height;
+    effectiveProfile.pixelRate =
+      next.width && next.height
+        ? next.width * next.height * effectiveProfile.maxFps
+        : undefined;
+  }
+}
+
+function recordVideoArrival(frame: ViewerMediaFrame, arrivalAt: number): void {
   receivedFrames += 1;
   highestReceivedSequence = frame.sequence;
   latestSourcePtsUs = Math.max(latestSourcePtsUs, frame.timestampUs);
   sourceAdvancedSinceDraw = true;
-  const arrivalAt = performance.now();
   if (lastArrivalAt !== null && lastReceivedPtsUs !== null) {
     const sourceGapMs =
       Math.max(0, frame.timestampUs - lastReceivedPtsUs) / 1_000;
@@ -460,12 +499,14 @@ async function decodeVideo(
   }
   lastArrivalAt = arrivalAt;
   lastReceivedPtsUs = frame.timestampUs;
+}
 
-  if (frame.discontinuity) {
-    if (!frame.keyFrame || !cachedConfiguration)
-      localVideoRecovery("rbd1-discontinuity");
-    else if (!needsKeyFrame) resetVideoDecoderAdmission();
-  }
+async function decodeVideo(
+  frame: ViewerMediaFrame,
+  expiresAt: number,
+  expectedGeneration: number,
+  signal: AbortSignal,
+): Promise<void> {
   if (decoder && decoder.decodeQueueSize >= maxDecodeQueue) {
     decodeDroppedFrames += decoder.decodeQueueSize + 1;
     if (decoderPreference === "hardware" && !softwareDecoderFallbackUsed) {
@@ -488,11 +529,16 @@ async function decodeVideo(
       decodeDroppedFrames += 1;
       return;
     }
-    if (!(await configureVideo(codecName, expectedGeneration))) {
+    if (!(await configureVideo(codecName, expectedGeneration, signal))) {
       return;
     }
   }
   if (generation !== expectedGeneration || videoEpoch !== epoch || closing) {
+    return;
+  }
+  if (performance.now() >= expiresAt) {
+    decodeDroppedFrames += 1;
+    localVideoRecovery("video-ingress-age");
     return;
   }
   const data =
@@ -599,6 +645,7 @@ function resetVideoAdmission(): void {
 }
 
 function resetVideoDecoderAdmission(): void {
+  decodeDroppedFrames += ingress?.video.clear() ?? 0;
   resetVideoAdmission();
   closeVideoDecoder();
   if (pendingFrame) {
@@ -613,6 +660,13 @@ function localVideoRecovery(reason: string): void {
   requestVideoResync(reason);
 }
 
+function resetAudioAdmission(): void {
+  audioDroppedFrames += ingress?.audio.clear() ?? 0;
+  audioEpoch += 1;
+  closeAudioDecoder();
+  audioDiscontinuityPending = true;
+}
+
 function disableAudioPlayback(
   error: unknown,
   expectedGeneration: number,
@@ -620,8 +674,7 @@ function disableAudioPlayback(
   if (generation !== expectedGeneration || closing || audioPlaybackDisabled)
     return;
   audioPlaybackDisabled = true;
-  closeAudioDecoder();
-  audioDiscontinuityPending = true;
+  resetAudioAdmission();
   resetAudioTimeline();
   scope.postMessage({
     type: "status",
@@ -635,10 +688,14 @@ function disableAudioPlayback(
   });
 }
 
-async function configureAudio(expectedGeneration: number): Promise<boolean> {
-  if (generation !== expectedGeneration) {
-    return false;
-  }
+async function configureAudio(
+  expectedGeneration: number,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const epoch = audioEpoch;
+  const isCurrent = () =>
+    generation === expectedGeneration && audioEpoch === epoch && !closing;
+  if (!isCurrent()) return false;
   if (audioDecoder?.state === "configured") {
     return true;
   }
@@ -654,15 +711,25 @@ async function configureAudio(expectedGeneration: number): Promise<boolean> {
     numberOfChannels: 2,
     description: audioDescription,
   };
-  const support = await AudioDecoder.isConfigSupported(config);
-  if (generation !== expectedGeneration || closing) {
-    return false;
-  }
-  if (!support.supported) {
-    throw new Error("This browser cannot decode the live display audio.");
+  try {
+    const support = await probeDecoder(
+      AudioDecoder.isConfigSupported(config),
+      signal,
+    );
+    if (!isCurrent()) return false;
+    if (!support.supported) {
+      throw new Error("This browser cannot decode the live display audio.");
+    }
+  } catch (error) {
+    if (!isCurrent()) return false;
+    throw error;
   }
   const decoder = new AudioDecoder({
     output(audio) {
+      if (audioDecoder !== decoder || !isCurrent()) {
+        audio.close();
+        return;
+      }
       const planes: ArrayBuffer[] = [];
       for (let channel = 0; channel < audio.numberOfChannels; channel += 1) {
         const plane = new Float32Array(audio.numberOfFrames);
@@ -694,28 +761,24 @@ async function configureAudio(expectedGeneration: number): Promise<boolean> {
 }
 
 async function decodeAudio(
-  frame: ReturnType<typeof parseViewerMediaFrame>,
+  frame: ViewerMediaFrame,
+  expiresAt: number,
   expectedGeneration: number,
-) {
-  if (!audioRequested || !audioPort || audioPlaybackDisabled) {
-    return;
-  }
-  if (frame.config) {
-    audioDescription = frame.data.slice();
-    closeAudioDecoder();
-    audioDiscontinuityPending = true;
-    return;
-  }
-  if (frame.discontinuity) {
-    closeAudioDecoder();
-    audioDiscontinuityPending = true;
-  }
+  signal: AbortSignal,
+): Promise<void> {
+  if (audioPlaybackDisabled) return;
   if (audioDecoder && audioDecoder.decodeQueueSize >= 8) {
     audioDroppedFrames += audioDecoder.decodeQueueSize + 1;
     closeAudioDecoder();
     audioDiscontinuityPending = true;
   }
-  if (!(await configureAudio(expectedGeneration))) {
+  const epoch = audioEpoch;
+  if (!(await configureAudio(expectedGeneration, signal))) return;
+  if (generation !== expectedGeneration || audioEpoch !== epoch || closing)
+    return;
+  if (performance.now() >= expiresAt) {
+    audioDroppedFrames += 1;
+    audioDiscontinuityPending = true;
     return;
   }
   audioDecoder?.decode(
@@ -727,9 +790,7 @@ async function decodeAudio(
   );
 }
 
-function validateSequence(
-  frame: ReturnType<typeof parseViewerMediaFrame>,
-): boolean {
+function validateSequence(frame: ViewerMediaFrame): boolean {
   const previous = lastSequences.get(frame.kind);
   lastSequences.set(frame.kind, frame.sequence);
   if (previous === undefined) {
@@ -738,54 +799,98 @@ function validateSequence(
   return frame.sequence === (previous + 1) >>> 0;
 }
 
-async function handleBinary(
+function handleBinary(
   data: ArrayBuffer,
-  expectedGeneration: number,
-): Promise<void> {
+  connection: NonNullable<typeof ingress>,
+): void {
   bytes += data.byteLength;
   const frame = parseViewerMediaFrame(data);
-  if (!validateSequence(frame)) {
-    if (frame.kind === "video") {
-      localVideoRecovery("rbd1-sequence-gap");
-    } else {
-      closeAudioDecoder();
-      audioDiscontinuityPending = true;
-    }
-  }
+  const contiguous = validateSequence(frame);
+  const receivedAt = performance.now();
   if (frame.kind === "video") {
-    await decodeVideo(frame, expectedGeneration);
-  } else {
-    try {
-      await decodeAudio(frame, expectedGeneration);
-    } catch (error) {
-      disableAudioPlayback(error, expectedGeneration);
+    if (!contiguous) localVideoRecovery("rbd1-sequence-gap");
+    if (frame.config) {
+      receiveVideoConfiguration(frame);
+      return;
     }
+    recordVideoArrival(frame, receivedAt);
+    if (frame.discontinuity) {
+      if (!frame.keyFrame || !cachedConfiguration) {
+        localVideoRecovery("rbd1-discontinuity");
+      } else if (!needsKeyFrame) {
+        resetVideoDecoderAdmission();
+      }
+    }
+    if (!connection.video.offer(frame, receivedAt)) {
+      localVideoRecovery("video-ingress-overflow");
+      if (!frame.keyFrame || !connection.video.offer(frame, receivedAt)) {
+        decodeDroppedFrames += 1;
+      }
+    }
+    return;
+  }
+
+  if (!audioRequested || !audioPort || audioPlaybackDisabled) return;
+  if (!contiguous || frame.discontinuity || frame.config) resetAudioAdmission();
+  if (frame.config) {
+    if (frame.data.byteLength > maxCodecConfigurationBytes) {
+      disableAudioPlayback(
+        new Error("Opus configuration exceeds the viewer size limit."),
+        connection.generation,
+      );
+      return;
+    }
+    audioDescription = frame.data.slice();
+    return;
+  }
+  if (!connection.audio.offer(frame, receivedAt)) {
+    resetAudioAdmission();
+    if (!connection.audio.offer(frame, receivedAt)) audioDroppedFrames += 1;
   }
 }
 
-function enqueueMessage(
-  expectedGeneration: number,
-  task: () => void | Promise<void>,
-): void {
-  messageProcessing = messageProcessing
-    .catch(() => undefined)
-    .then(async () => {
-      if (generation !== expectedGeneration || closing) {
-        return;
-      }
-      await task();
-    })
-    .catch((error: unknown) => {
-      if (generation !== expectedGeneration || closing) {
-        return;
-      }
-      reconnect({
-        initiator: "worker",
-        category: "malformed-media",
-        generation,
-        detail: error instanceof Error ? error.message : String(error),
-      });
-    });
+function handleMediaError(error: unknown, expectedGeneration: number): void {
+  if (generation !== expectedGeneration || closing) return;
+  reconnect({
+    initiator: "worker",
+    category: "malformed-media",
+    generation,
+    detail: error instanceof Error ? error.message : String(error),
+  });
+}
+
+function createMediaIngress(currentGeneration: number) {
+  const controller = new AbortController();
+  const video = new MediaIngressQueue(
+    videoIngressLimits,
+    (frame, expiresAt) =>
+      decodeVideo(frame, expiresAt, currentGeneration, controller.signal),
+    (dropped) => {
+      decodeDroppedFrames += dropped;
+      localVideoRecovery("video-ingress-age");
+    },
+    (error) => handleMediaError(error, currentGeneration),
+  );
+  const audio = new MediaIngressQueue(
+    audioIngressLimits,
+    (frame, expiresAt) =>
+      decodeAudio(frame, expiresAt, currentGeneration, controller.signal),
+    (dropped) => {
+      audioDroppedFrames += dropped;
+      resetAudioAdmission();
+    },
+    (error) => disableAudioPlayback(error, currentGeneration),
+  );
+  return {
+    generation: currentGeneration,
+    video,
+    audio,
+    close() {
+      video.close();
+      audio.close();
+      controller.abort();
+    },
+  };
 }
 
 function numberField(record: Record<string, unknown>, key: string) {
@@ -796,7 +901,6 @@ function numberField(record: Record<string, unknown>, key: string) {
 }
 
 function handleText(text: string): void {
-  markAlive();
   let payload: Record<string, unknown>;
   try {
     const parsed: unknown = JSON.parse(text);
@@ -846,7 +950,12 @@ function handleText(text: string): void {
       typeof payload.name === "string" ? payload.name : undefined;
   } else if (payload.type === "reconnecting") {
     sourceRestartCount += 1;
+    resetAudioAdmission();
+    audioDescription = undefined;
     resetAudioTimeline();
+    cachedConfiguration = null;
+    codecName = null;
+    mp4Configuration = null;
     localVideoRecovery("source-restarting");
   } else if (payload.type === "video-reset") {
     videoResetCount = numberField(payload, "count") ?? videoResetCount + 1;
@@ -912,12 +1021,22 @@ function markAlive(): void {
 function resetConsumerState(): void {
   clearFirstFrameTimer();
   clearHeartbeatTimer();
+  ingress?.close();
+  ingress = null;
   closeVideoDecoder();
   closeAudioDecoder();
   audioPlaybackDisabled = false;
+  audioDescription = undefined;
+  cachedConfiguration = null;
+  codecName = null;
+  mp4Configuration = null;
   resetVideoAdmission();
   hasFrameInGeneration = false;
   lastSequences = new Map();
+  lastResyncRequestAt = 0;
+  lastArrivalAt = null;
+  lastReceivedPtsUs = null;
+  latestSourcePtsUs = 0;
   highestReceivedSequence = undefined;
   highestDecodedSequence = undefined;
   highestPresentedSequence = undefined;
@@ -1004,6 +1123,8 @@ function connect(): void {
   const currentGeneration = ++generation;
   const socket = new WebSocket(websocketUrl);
   socket.binaryType = "arraybuffer";
+  const connection = createMediaIngress(currentGeneration);
+  ingress = connection;
   ws = socket;
   socket.addEventListener("open", () => {
     if (generation !== currentGeneration) {
@@ -1013,27 +1134,19 @@ function connect(): void {
     armFirstFrameTimer(currentGeneration);
   });
   socket.addEventListener("message", (event) => {
-    if (generation !== currentGeneration) {
-      return;
-    }
-    if (typeof event.data === "string") {
-      markAlive();
-      enqueueMessage(currentGeneration, () => handleText(event.data));
-      return;
-    }
+    if (ingress !== connection || closing) return;
     markAlive();
-    if (!(event.data instanceof ArrayBuffer)) {
-      reconnect({
-        initiator: "worker",
-        category: "malformed-media",
-        generation,
-        detail: "Display stream delivered a non-binary media frame.",
-      });
-      return;
+    try {
+      if (typeof event.data === "string") {
+        handleText(event.data);
+      } else if (event.data instanceof ArrayBuffer) {
+        handleBinary(event.data, connection);
+      } else {
+        throw new Error("Display stream delivered a non-binary media frame.");
+      }
+    } catch (error) {
+      handleMediaError(error, currentGeneration);
     }
-    enqueueMessage(currentGeneration, () =>
-      handleBinary(event.data, currentGeneration),
-    );
   });
   socket.addEventListener("close", (event) => {
     if (generation !== currentGeneration || closing) {
@@ -1108,7 +1221,7 @@ function emitMetrics(): void {
       relayDroppedFrames,
       decodeDroppedFrames,
       presentationDroppedFrames,
-      audioDroppedFrames,
+      audioDroppedFrames: audioDroppedFrames + audioWorkletDroppedFrames,
       freezeCount,
       reconnectCount,
       resyncCount,
@@ -1240,7 +1353,7 @@ scope.onmessage = (event) => {
         audioPlayheadUs = audioEvent.data.timestampUs;
         audioQueueDepthMs = audioEvent.data.queueDepthMs;
       } else {
-        audioDroppedFrames = audioEvent.data.droppedFrames;
+        audioWorkletDroppedFrames = audioEvent.data.droppedFrames;
       }
     },
   );
