@@ -1,4 +1,4 @@
-import { emptyRequest } from '../request'
+import { emptyRequest, request } from '../request'
 import type {
   DisplaySidecarLogTail,
   DisplaySidecarSession,
@@ -33,9 +33,13 @@ export const orchestratorDiagnosticsClient = {
     return emptyRequest<DisplaySidecarLogTail>(`/platform/display-sidecar/logs?expanded=${expanded}`)
   },
 
+  async displaySidecarHealth() {
+    return withoutEmbeddedLogs(await request<ServiceHealth>('/platform/display-sidecar/health'))
+  },
+
   async repairDisplaySidecar() {
     return withoutEmbeddedLogs(
-      await emptyRequest<ServiceHealth>('/platform/display-sidecar/repair', { method: 'POST' })
+      await request<ServiceHealth>('/platform/display-sidecar/repair', { method: 'POST', timeoutMs: 90_000 })
     )
   },
 

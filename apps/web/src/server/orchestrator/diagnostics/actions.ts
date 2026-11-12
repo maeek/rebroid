@@ -1,5 +1,6 @@
 'use server'
 
+import { runSafeAction } from '@/server/actions/safe-action'
 import { getCurrentUserContext } from '../current-user'
 import { requireAdminUser, requireUser } from '../shared'
 import { orchestratorDiagnosticsClient } from './client'
@@ -15,10 +16,19 @@ export const getOrchestratorHealthSummaryAction = async () => {
   return orchestratorDiagnosticsClient.healthSummary()
 }
 
-export const repairDisplaySidecarAction = async () => {
+export const getDisplaySidecarHealthAction = async () => {
   await requireAdminUser()
-  return orchestratorDiagnosticsClient.repairDisplaySidecar()
+  return orchestratorDiagnosticsClient.displaySidecarHealth()
 }
+
+export const repairDisplaySidecarAction = async () =>
+  runSafeAction(
+    async () => {
+      await requireAdminUser()
+      return orchestratorDiagnosticsClient.repairDisplaySidecar()
+    },
+    { fallbackMessage: 'Could not restart the display sidecar.', logLabel: 'Display sidecar restart' }
+  )
 
 export const listDisplaySidecarSessionsAction = async () => {
   await requireAdminUser()

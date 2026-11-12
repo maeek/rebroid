@@ -190,6 +190,11 @@ path or mapping and retry Start. To return to software rendering, select
 **Software**, save, then stop and start affected applications. Persistent profiles
 are retained. See [rendering troubleshooting](operations.md#android-gpu-rendering).
 
+If Android boots after a rendering change and the app reports an ADB connection timeout,
+Rebroid retries the connection to that app. If it still fails, use **Restart sidecar**
+under **Platform settings → Services → Display sessions**, then retry the app.
+Restarting the sidecar interrupts active display sessions.
+
 Docker can skip explicit same-path device mapping checks for privileged containers.
 Confirm the render node on the host and verify the renderer after Android starts.
 [Moby device handling](https://github.com/moby/moby/blob/master/daemon/oci_linux.go#L801-L844)
@@ -207,6 +212,7 @@ repeatedly, check its compatibility diagnostics and the display-sidecar logs.
 
 **Display sidecar restarts.** In Services → Display sessions, check the Connection panel for the
 container state, start and finish times, exit code, and whether the process was killed for running out of memory.
+If the UI reports that the restart is unconfirmed, refresh the sidecar status before retrying.
 Administrators can select **View logs** for a bounded tail or **Show more logs** in the dialog for more output.
 If a log tail exceeds the read limit, use the container engine logs on the deployment host. A running container
 with an unreachable API can also indicate a listener, DNS, or connectivity problem. To investigate

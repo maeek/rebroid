@@ -4,6 +4,7 @@ import { DockerEngineService } from '../../docker-engine.service';
 import {
   ContainerCommandFailure,
   ContainerCommandFailedException,
+  ContainerCommandResult,
   ViewerTargetError,
   ViewerTargetStatus,
 } from '../../docker.types';
@@ -35,116 +36,149 @@ export class DockerSidecarAdbService {
         };
       }
 
-      const connectCommand = [
-        'sh',
-        '-lc',
-        [
-          `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
-          `timeout 10s adb connect ${this.shellQuote(target)}`,
-        ].join('; '),
-      ];
-      const output = await this.exec.execInContainerWithOutput(
-        sidecarId,
-        [...connectCommand],
-        { timeoutMs: 20_000 },
-      );
-      const connectFailure = this.viewerTargetErrorFromOutput({
-        command: connectCommand,
-        stdout: output.stdout,
-        stderr: output.stderr,
-      });
-      if (connectFailure) {
-        return {
-          configured: true,
-          connected: false,
-          message: connectFailure.message,
-          error: connectFailure,
-        };
-      }
-
-      const stateCommand = [
-        'sh',
-        '-lc',
-        `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
-      ];
-      const state = await this.exec.execInContainerWithOutput(
-        sidecarId,
-        [...stateCommand],
-        { timeoutMs: 15_000 },
-      );
-      let currentState = state.stdout.trim().toLowerCase();
-      let lastStateCommand = stateCommand;
-      let lastState = state;
-
-      if (currentState.includes('offline')) {
-        const recoveryCommand = [
-          'sh',
-          '-lc',
-          [
-            `timeout 5s adb disconnect ${this.shellQuote(target)} >/dev/null 2>&1 || true`,
-            'timeout 5s adb reconnect offline >/dev/null 2>&1 || true',
-            'timeout 5s adb kill-server >/dev/null 2>&1 || true',
-            'timeout 5s adb start-server >/dev/null 2>&1 || true',
-            `timeout 10s adb connect ${this.shellQuote(target)}`,
-            `timeout 30s adb -s ${this.shellQuote(target)} wait-for-device`,
-            `timeout 10s adb -s ${this.shellQuote(target)} get-state 2>&1 || true`,
-          ].join('; '),
-        ];
-        lastStateCommand = recoveryCommand;
-        lastState = await this.exec.execInContainerWithOutput(
-          sidecarId,
-          recoveryCommand,
-          { timeoutMs: 45_000 },
-        );
-        const stateTokens = lastState.stdout.trim().toLowerCase().split(/\s+/);
-        currentState = stateTokens[stateTokens.length - 1] ?? '';
-      }
-
-      if (currentState !== 'device') {
-        const viewerError = this.viewerTargetErrorFromOutput({
-          command: lastStateCommand,
-          stdout: lastState.stdout,
-          stderr: lastState.stderr,
-          fallbackMessage: `ADB target ${target} is not ready: ${lastState.stdout.trim() || 'unknown state'}.`,
-        }) ?? {
-          code: 'adb_unreachable' as const,
-          message: `ADB target ${target} is not ready.`,
-          retryable: true,
-          exitCode: 0,
-          command: lastStateCommand,
-          stdout: lastState.stdout,
-          stderr: lastState.stderr,
-        };
-        return {
-          configured: true,
-          connected: false,
-          message: viewerError.message,
-          error: viewerError,
-        };
+      const connection = await this.connectTarget(sidecarId, target);
+      if (!connection.connected) {
+        return connection;
       }
 
       await this.prepareAndroidDisplay(sidecarId, target);
-
-      return {
-        configured: true,
-        connected: true,
-        message: [output.stdout, output.stderr, state.stdout]
-          .filter(Boolean)
-          .join('\n'),
-        error: null,
-      };
+      return connection;
     } catch (error) {
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
         `Unable to prepare display sidecar ADB target ${adbHost}:${adbPort}: ${viewerError.message}`,
       );
-      return {
-        configured: true,
-        connected: false,
-        message: viewerError.message,
-        error: viewerError,
-      };
+      return this.targetFailure(viewerError);
     }
+  }
+
+  private async connectTarget(
+    sidecarId: string,
+    target: string,
+  ): Promise<ViewerTargetStatus> {
+    const quotedTarget = this.shellQuote(target);
+    try {
+      const connectCommand = [
+        'sh',
+        '-lc',
+        [
+          `timeout -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true`,
+          `timeout -k 1s 10s adb connect ${quotedTarget}`,
+        ].join('; '),
+      ];
+      const output = await this.exec.execInContainerWithOutput(
+        sidecarId,
+        connectCommand,
+        { timeoutMs: 20_000 },
+      );
+      const connectOutput = [output.stdout, output.stderr]
+        .filter(Boolean)
+        .join('\n');
+      if (connectOutput.toLowerCase().includes('offline')) {
+        return this.reconnectTarget(sidecarId, target);
+      }
+      if (isTransientAdbConnectionError(connectOutput)) {
+        return this.targetFailure({
+          code: 'adb_unreachable',
+          message: connectOutput.trim(),
+          retryable: true,
+          exitCode: output.exitCode,
+          command: connectCommand,
+          stdout: output.stdout,
+          stderr: output.stderr,
+        });
+      }
+
+      const stateCommand = [
+        'sh',
+        '-lc',
+        `timeout -k 1s 10s adb -s ${quotedTarget} get-state 2>&1`,
+      ];
+      const state = await this.exec.execInContainerWithOutput(
+        sidecarId,
+        stateCommand,
+        { timeoutMs: 15_000 },
+      );
+      if (state.stdout.toLowerCase().includes('offline')) {
+        return this.reconnectTarget(sidecarId, target);
+      }
+
+      return this.targetState(target, stateCommand, state, connectOutput);
+    } catch (error) {
+      if (error instanceof ContainerCommandFailedException) {
+        const { exitCode, stdout, stderr } = error.details;
+        if (
+          exitCode === 124 ||
+          exitCode === 137 ||
+          [stdout, stderr].some((output) =>
+            output?.toLowerCase().includes('offline'),
+          )
+        ) {
+          return this.reconnectTarget(sidecarId, target);
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async reconnectTarget(sidecarId: string, target: string) {
+    const quotedTarget = this.shellQuote(target);
+    const command = [
+      'sh',
+      '-lc',
+      [
+        `timeout -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true;`,
+        `timeout -k 1s 10s adb connect ${quotedTarget} &&`,
+        `timeout -k 1s 10s adb -s ${quotedTarget} wait-for-device &&`,
+        `timeout -k 1s 5s adb -s ${quotedTarget} get-state`,
+      ].join(' '),
+    ];
+    // A shared ADB daemon restart would drop other applications' transports.
+    const state = await this.exec.execInContainerWithOutput(
+      sidecarId,
+      command,
+      {
+        timeoutMs: 40_000,
+      },
+    );
+    return this.targetState(target, command, state);
+  }
+
+  private targetState(
+    target: string,
+    command: string[],
+    state: ContainerCommandResult,
+    connectOutput?: string,
+  ): ViewerTargetStatus {
+    if (
+      state.stdout.trim().split('\n').at(-1)?.trim().toLowerCase() !== 'device'
+    ) {
+      return this.targetFailure({
+        code: 'adb_unreachable',
+        message: `ADB target ${target} is not ready: ${state.stdout.trim() || 'unknown state'}.`,
+        retryable: true,
+        exitCode: state.exitCode,
+        command,
+        stdout: state.stdout,
+        stderr: state.stderr,
+      });
+    }
+
+    return {
+      configured: true,
+      connected: true,
+      message: [connectOutput, state.stdout].filter(Boolean).join('\n'),
+      error: null,
+    };
+  }
+
+  private targetFailure(error: ViewerTargetError): ViewerTargetStatus {
+    return {
+      configured: true,
+      connected: false,
+      message: error.message,
+      error,
+    };
   }
 
   private async prepareAndroidDisplay(
@@ -254,49 +288,6 @@ export class DockerSidecarAdbService {
     };
   }
 
-  private viewerTargetErrorFromOutput({
-    command,
-    stdout,
-    stderr,
-    fallbackMessage,
-  }: {
-    command: string[];
-    stdout: string;
-    stderr: string;
-    fallbackMessage?: string;
-  }): ViewerTargetError | null {
-    const combinedOutput = [stderr, stdout].filter(Boolean).join('\n');
-
-    if (!isTransientAdbConnectionError(combinedOutput)) {
-      if (!fallbackMessage) {
-        return null;
-      }
-
-      return {
-        code: 'adb_unreachable',
-        message: fallbackMessage,
-        retryable: true,
-        exitCode: 0,
-        command,
-        stdout,
-        stderr,
-      };
-    }
-
-    return {
-      code: 'adb_unreachable',
-      message:
-        combinedOutput.trim() ||
-        fallbackMessage ||
-        'ADB target is not reachable.',
-      retryable: true,
-      exitCode: 0,
-      command,
-      stdout,
-      stderr,
-    };
-  }
-
   private classifyViewerTargetError(
     details: ContainerCommandFailure,
   ): ViewerTargetError {
@@ -321,7 +312,12 @@ export class DockerSidecarAdbService {
       };
     }
 
-    if (isTransientAdbConnectionError(combinedOutput)) {
+    if (
+      details.exitCode === 124 ||
+      details.exitCode === 137 ||
+      /device .* not found/.test(combinedOutput) ||
+      isTransientAdbConnectionError(combinedOutput)
+    ) {
       return {
         code: 'adb_unreachable',
         message: details.message,

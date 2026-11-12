@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import {
-  getOrchestratorHealthAction,
+  getDisplaySidecarHealthAction,
   listDisplaySidecarSessionsAction,
   repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
@@ -72,13 +72,16 @@ export const useCastingSidecarController = ({
     })
   }, [sortedSessions])
 
+  const updateDisplayState = useCallback(async (nextHealth: ServiceHealth) => {
+    setHealth(nextHealth)
+    setLogRevision(current => current + 1)
+    if (nextHealth.ok) setSessions(await listDisplaySidecarSessionsAction())
+  }, [])
+
   const refresh = useCallback(async () => {
     setBusy('refresh')
     try {
-      const nextHealth = await getOrchestratorHealthAction()
-      setHealth(nextHealth.services.display)
-      setLogRevision(current => current + 1)
-      if (nextHealth.services.display.ok) setSessions(await listDisplaySidecarSessionsAction())
+      await updateDisplayState(await getDisplaySidecarHealthAction())
     } catch (error) {
       toast({
         title: 'Could not load casting sessions',
@@ -89,7 +92,7 @@ export const useCastingSidecarController = ({
       setBusy(null)
       onRefreshComplete?.()
     }
-  }, [onRefreshComplete])
+  }, [onRefreshComplete, updateDisplayState])
 
   useEffect(() => {
     if (refreshKey > 0 && refreshKey !== lastRefreshKey.current) {
@@ -101,15 +104,39 @@ export const useCastingSidecarController = ({
   const restartSidecar = async () => {
     setBusy('restart')
     try {
-      await repairDisplaySidecarAction()
-      toast({ title: 'Casting sidecar restarted' })
-      await refresh()
+      const result = await repairDisplaySidecarAction().catch(() => null)
+      if (!result || (!result.ok && result.error.code === 'upstream_unavailable')) {
+        toast({
+          title: 'Casting sidecar restart unconfirmed',
+          description: `The restart may still be in progress. Check the sidecar status before retrying.${
+            result ? ` Request ID ${result.requestId}.` : ''
+          }`,
+          variant: 'warning'
+        })
+        const currentHealth = await getDisplaySidecarHealthAction().catch(() => null)
+        if (currentHealth) await updateDisplayState(currentHealth)
+        return
+      }
+      if (!result.ok) {
+        toast({
+          title: 'Could not restart casting sidecar',
+          description: `${result.error.message} Request ID ${result.requestId}.`,
+          variant: 'danger'
+        })
+        return
+      }
+      if (result.data.ok) {
+        toast({ title: 'Casting sidecar restarted', variant: 'success' })
+      } else {
+        toast({
+          title: 'Casting sidecar is unavailable after restart',
+          description: result.data.message,
+          variant: 'warning'
+        })
+      }
+      await updateDisplayState(result.data)
     } catch (error) {
-      toast({
-        title: 'Could not restart casting sidecar',
-        description: castingErrorMessage(error),
-        variant: 'danger'
-      })
+      toast({ title: 'Could not load casting sessions', description: castingErrorMessage(error), variant: 'danger' })
     } finally {
       setBusy(null)
     }
