@@ -52,7 +52,7 @@ export const previewApp: AppDefinition = {
   containerArgs: null,
   recreateContainerOnNextStart: true,
   networkPolicyEnabled: true,
-  networkPolicyAllowCidrs: [],
+  networkPolicyAllowCidrs: ['10.0.0.0/24'],
   networkPolicyResult: null,
   networkPolicyAppliedAt: null,
   apkOriginalName: 'inventory.apk',

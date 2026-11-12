@@ -15,6 +15,7 @@ import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-cont
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppNetworkPage } from './app-network-page'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
 import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
@@ -78,7 +79,9 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
   const workspaceView =
-    selected === 'configuration' || selected === 'files' || selected === 'workflows' ? selected : view
+    selected === 'configuration' || selected === 'files' || selected === 'workflows' || selected === 'network'
+      ? selected
+      : view
   const breadcrumbView = showAgent ? 'ai-agent' : workspaceView
   return (
     <QueryClientProvider client={queryClient}>
@@ -140,6 +143,8 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
               </AppWorkspaceLayout>
             ) : selected === 'configuration' ? (
               <AppManage />
+            ) : selected === 'network' ? (
+              <AppNetworkPage />
             ) : selected === 'workflows' ? (
               <AppWorkspaceContent toolId='workflows' />
             ) : selected === 'files' ? (

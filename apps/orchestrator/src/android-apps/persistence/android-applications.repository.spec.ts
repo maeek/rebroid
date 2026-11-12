@@ -127,6 +127,11 @@ describe('Android application runtime observations', () => {
 
   it('increments the revision with policy settings and preserves it on unrelated saves', async () => {
     const stale = await makeApp();
+    await repository.updateNetworkPolicyState(stale.id, {
+      networkPolicyStatus: 'applied',
+      networkPolicyMessage: 'Rules applied',
+      networkPolicyAppliedAt: new Date('2026-01-01T00:00:03Z'),
+    });
     await repository.updateNetworkPolicyConfiguration(stale.id, {
       networkPolicyEnabled: false,
       networkPolicyAllowCidrs: '["192.0.2.0/24"]',
@@ -139,6 +144,9 @@ describe('Android application runtime observations', () => {
         networkPolicyEnabled: false,
         networkPolicyAllowCidrs: '["192.0.2.0/24"]',
         networkPolicyRevision: 1,
+        networkPolicyStatus: null,
+        networkPolicyMessage: null,
+        networkPolicyAppliedAt: null,
       },
     );
   });

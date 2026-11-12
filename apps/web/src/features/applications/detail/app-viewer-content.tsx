@@ -10,7 +10,7 @@ import { AppViewerStatusSection } from './app-viewer-status-section'
 import { useApplicationViewerApp } from './application-viewer-context'
 
 export const AppViewerContent = () => {
-  const { app, isForeignOwnedApp, permissions, setApp } = useApplicationViewerApp()
+  const { app, isForeignOwnedApp, permissions } = useApplicationViewerApp()
 
   return (
     <PageContent className='pr-2'>
@@ -36,7 +36,6 @@ export const AppViewerContent = () => {
       <AppInfo
         app={app}
         permissions={permissions}
-        onAppChange={setApp}
       />
       <div className='mt-4 flex w-full items-center justify-center gap-2 select-none text-lg font-bold text-foreground-muted md:hidden'>
         <div>•</div>

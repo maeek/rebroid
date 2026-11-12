@@ -148,7 +148,13 @@ export class AndroidApplicationsRepository
   ) {
     return this.applications.update(
       { id: applicationId, status: Not(AndroidApplicationStatus.Provisioning) },
-      { ...patch, networkPolicyRevision: () => '"networkPolicyRevision" + 1' },
+      {
+        ...patch,
+        networkPolicyRevision: () => '"networkPolicyRevision" + 1',
+        networkPolicyStatus: null,
+        networkPolicyMessage: null,
+        networkPolicyAppliedAt: null,
+      },
     );
   }
 

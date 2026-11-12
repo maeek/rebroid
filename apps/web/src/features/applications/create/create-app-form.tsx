@@ -9,6 +9,8 @@ import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
+import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
+import { parseOutboundDestinations } from '@/features/applications/components/outbound-destinations'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
@@ -38,7 +40,6 @@ import { AppFormGeneralSection } from './create-app-general-section'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
 import { AppFormIconSection } from './create-app-icon-section'
 import { CreateAppLayout } from './create-app-layout'
-import { CreateAppNetworkAccessSection } from './create-app-network-access-section'
 import { AppFormResourcesSection } from './create-app-resources-section'
 import { AppFormSessionSection } from './create-app-session-section'
 import type { CreateAppFormValues } from './create-app-form.types'
@@ -79,6 +80,7 @@ export const CreateAppForm = ({
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
   const [autoExtractIcon, setAutoExtractIcon] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
+  const [destinationDraft, setDestinationDraft] = useState('')
   const [failure, setFailure] = useState<{ message: string; requestId?: string; hasFieldErrors?: boolean } | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
   const submitting = useRef(false)
@@ -223,9 +225,14 @@ export const CreateAppForm = ({
 
     if (isSubmitDisabled || submitting.current || loading) return
 
+    const destinations = parseOutboundDestinations(
+      canConfigureEgress && formValues.networkPolicyEnabled ? destinationDraft : '',
+      canUseInternet
+    )
     const draftErrors = {
       ...validateCreateAppDraft(formValues, isRedroidRuntime && canChangeContainerArgs),
-      ...validateCreateAppNumericFields(event.currentTarget)
+      ...validateCreateAppNumericFields(event.currentTarget),
+      ...(destinations.error ? { networkPolicyAllowCidrs: [destinations.error] } : {})
     }
     setFieldErrors(draftErrors)
     if (Object.keys(draftErrors).length > 0) {
@@ -253,7 +260,7 @@ export const CreateAppForm = ({
           runtimeKind,
           trimmedName,
           uploadedApk,
-          values: formValues
+          values: { ...formValues, networkPolicyAllowCidrs: destinations.cidrs ?? formValues.networkPolicyAllowCidrs }
         })
       )
 
@@ -431,12 +438,18 @@ export const CreateAppForm = ({
 
             <Visible when={canConfigureEgress}>
               <div>
-                <CreateAppNetworkAccessSection
-                  values={formValues}
+                <AppNetworkPolicyEditorSection
+                  restricted={formValues.networkPolicyEnabled}
+                  onRestrictedChange={networkPolicyEnabled => updateFormValues({ networkPolicyEnabled })}
+                  destinations={destinationDraft}
+                  onDestinationsChange={text => {
+                    setDestinationDraft(text)
+                    clearFieldErrors('networkPolicyAllowCidrs')
+                  }}
                   canUseInternet={canUseInternet}
-                  onChange={updateFormValues}
+                  disabled={loading || isCreating}
                   modeError={fieldError('networkPolicyEnabled')}
-                  allowlistError={fieldError('networkPolicyAllowCidrs')}
+                  destinationsError={fieldError('networkPolicyAllowCidrs')}
                 />
               </div>
             </Visible>

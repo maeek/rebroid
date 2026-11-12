@@ -1,6 +1,7 @@
 import { Section } from '@/components/ui/section'
 import { editorSectionClassName } from '@/components/ui/surface'
 import { formatDateLocale } from '@/lib/format'
+import { outboundEnforcement } from '@/shared/model/network/outbound-policy'
 import { DetailFields, type DetailField } from '@/shared/ui/detail-fields'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
@@ -75,10 +76,15 @@ export const AppManageTechnicalDetails = ({
     },
     { label: 'Transport', value: app?.scrcpyTransport },
     { label: 'ADB', value: adbAddress, copyValue: adbAddress, code: true, fullWidth: true },
-    { label: 'Network policy', value: app?.networkPolicyResult?.status ?? 'Not applied' }
+    {
+      label: 'Firewall enforcement',
+      value:
+        app &&
+        outboundEnforcement(app.status, { enabled: app.networkPolicyEnabled, result: app.networkPolicyResult }).label
+    }
   ]
   if (app?.networkPolicyAppliedAt)
-    networkFields.push({ label: 'Policy applied', value: formatDateLocale(app?.networkPolicyAppliedAt) })
+    networkFields.push({ label: 'Last firewall check', value: formatDateLocale(app.networkPolicyAppliedAt) })
   if (policyMessage) networkFields.push({ label: 'Policy message', value: policyMessage, fullWidth: true })
 
   return (

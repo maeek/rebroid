@@ -10,25 +10,25 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
-  reconcileNetworkPoliciesAction,
-  updateNetworkPolicyAction
+  reconcileNetworkPoliciesAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { approvedDestinationsLabel, unrestrictedAccessLabel } from '@/shared/model/network/outbound-policy'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { PlatformStatusBanner } from '@/shared/ui/platform/platform-status-banner'
-import { useFirewallPolicyColumns } from './firewall-policy-columns'
+import { firewallPolicyColumns } from './firewall-policy-columns'
 import {
   clampFirewallPageIndex,
   firewallReconcileActionState,
+  firewallPolicyEnforcement,
   filterFirewallApplications,
   mergeFirewallApplications,
   paginateFirewallApplications,
-  replaceFirewallApplication,
   retainVisibleFirewallSelection,
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
@@ -57,9 +57,9 @@ export const FirewallSettings = ({
   const [busy, setBusy] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [submittedSearch, setSubmittedSearch] = useState('')
-  const [restrictionFilter, setRestrictionFilter] = useState('all')
+  const [accessFilter, setAccessFilter] = useState('all')
   const [runtimeFilter, setRuntimeFilter] = useState('all')
-  const [resultFilter, setResultFilter] = useState('all')
+  const [enforcementFilter, setEnforcementFilter] = useState('all')
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [pageIndex, setPageIndex] = useState(0)
@@ -67,14 +67,14 @@ export const FirewallSettings = ({
   const filteredApplications = useMemo(
     () =>
       filterFirewallApplications(applications, submittedSearch).filter(application => {
-        if (restrictionFilter === 'restricted' && !application.network.policy.enabled) return false
-        if (restrictionFilter === 'unrestricted' && application.network.policy.enabled) return false
+        if (accessFilter === 'restricted' && !application.network.policy.enabled) return false
+        if (accessFilter === 'unrestricted' && application.network.policy.enabled) return false
         if (runtimeFilter !== 'all' && application.status.currentStatus !== runtimeFilter) return false
-        const result = application.network.policy.result?.code ?? 'not-applied'
-        if (resultFilter !== 'all' && result !== resultFilter) return false
+        if (enforcementFilter !== 'all' && firewallPolicyEnforcement(application).label !== enforcementFilter)
+          return false
         return true
       }),
-    [applications, restrictionFilter, resultFilter, runtimeFilter, submittedSearch]
+    [applications, accessFilter, enforcementFilter, runtimeFilter, submittedSearch]
   )
   const sortedApplications = useMemo(
     () => sortFirewallApplications(filteredApplications, sorting),
@@ -99,11 +99,6 @@ export const FirewallSettings = ({
   useEffect(() => {
     setSelectedIds(current => retainVisibleFirewallSelection(sortedApplications, current))
   }, [sortedApplications])
-
-  const replaceApplication = useCallback(
-    (application: AndroidApplication) => setApplications(current => replaceFirewallApplication(current, application)),
-    []
-  )
 
   const loadSnapshot = useCallback(async () => {
     const [nextHealth, nextApplications] = await Promise.all([getOrchestratorHealthAction(), listApplicationsAction()])
@@ -140,33 +135,6 @@ export const FirewallSettings = ({
     }
   }, [refresh, refreshKey])
 
-  const setRestricted = useCallback(
-    async (application: AndroidApplication, enabled: boolean) => {
-      if (mutationPending.current) return
-      mutationPending.current = true
-      setBusy(application.id)
-      try {
-        replaceApplication(
-          unwrapActionResult(await updateNetworkPolicyAction(application.id, { networkPolicyEnabled: enabled }))
-        )
-        toast({
-          title: enabled ? 'Restricted network access enabled' : 'Unrestricted network access enabled',
-          variant: 'success'
-        })
-      } catch (error) {
-        toast({
-          title: 'Could not update network access policy',
-          description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'danger'
-        })
-      } finally {
-        mutationPending.current = false
-        setBusy(null)
-      }
-    },
-    [replaceApplication]
-  )
-
   const reconcileSelected = async () => {
     if (mutationPending.current) return
     mutationPending.current = true
@@ -176,7 +144,11 @@ export const FirewallSettings = ({
       if (targets.length === 0) {
         await reconcileNetworkPoliciesAction()
         await loadSnapshot()
-        toast({ title: 'Network policies reconciled', description: 'Stale rules were pruned.', variant: 'success' })
+        toast({
+          title: 'Firewall rules synced',
+          description: 'The firewall refreshed rules from saved policies and removed stale rules.',
+          variant: 'success'
+        })
         return
       }
       const results = await Promise.allSettled(
@@ -184,22 +156,28 @@ export const FirewallSettings = ({
       )
       const updated = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []))
       const failedIds = targets
-        .filter((_, index) => results[index]?.status === 'rejected')
+        .filter((_, index) => {
+          const result = results[index]
+          if (result?.status !== 'fulfilled') return true
+          const { tone } = firewallPolicyEnforcement(result.value)
+          return tone === 'danger' || tone === 'warning'
+        })
         .map(application => application.id)
       setApplications(current => mergeFirewallApplications(current, updated))
       setSelectedIds(new Set(failedIds))
+      const syncedCount = targets.length - failedIds.length
       toast(
         failedIds.length > 0
           ? {
-              title: 'Some network policies could not be reconciled',
-              description: `${updated.length} updated. ${failedIds.length} remain selected for retry.`,
+              title: 'Some firewall rules could not be confirmed',
+              description: `${syncedCount} synced. ${failedIds.length} remain selected for retry.`,
               variant: 'danger'
             }
-          : { title: 'Selected network access policies reconciled', variant: 'success' }
+          : { title: 'Selected firewall rules synced', variant: 'success' }
       )
     } catch (error) {
       toast({
-        title: 'Could not reconcile network access policies',
+        title: 'Could not sync firewall rules',
         description: error instanceof Error ? error.message : 'Unknown error',
         variant: 'danger'
       })
@@ -208,8 +186,6 @@ export const FirewallSettings = ({
       setBusy(null)
     }
   }
-
-  const columns = useFirewallPolicyColumns({ disabled: loading || busy !== null, onSetRestricted: setRestricted })
 
   return (
     <>
@@ -221,7 +197,6 @@ export const FirewallSettings = ({
       />
       <Section
         surface='plain'
-        title='Application access'
         headingSpacing='compact'
         contentClassName='gap-4'
       >
@@ -234,20 +209,20 @@ export const FirewallSettings = ({
           filters={
             <>
               <FormField
-                label='Restriction'
+                label='Outbound access'
                 layout='vertical'
               >
                 <Select
-                  value={restrictionFilter}
-                  onValueChange={setRestrictionFilter}
+                  value={accessFilter}
+                  onValueChange={setAccessFilter}
                 >
                   <SelectTrigger className='w-full'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>Any access mode</SelectItem>
-                    <SelectItem value='restricted'>Restricted</SelectItem>
-                    <SelectItem value='unrestricted'>Unrestricted</SelectItem>
+                    <SelectItem value='restricted'>{approvedDestinationsLabel}</SelectItem>
+                    <SelectItem value='unrestricted'>{unrestrictedAccessLabel}</SelectItem>
                   </SelectContent>
                 </Select>
               </FormField>
@@ -278,20 +253,20 @@ export const FirewallSettings = ({
                 </Select>
               </FormField>
               <FormField
-                label='Result'
+                label='Firewall enforcement'
                 layout='vertical'
               >
                 <Select
-                  value={resultFilter}
-                  onValueChange={setResultFilter}
+                  value={enforcementFilter}
+                  onValueChange={setEnforcementFilter}
                 >
                   <SelectTrigger className='w-full'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='all'>Any result</SelectItem>
+                    <SelectItem value='all'>Any enforcement state</SelectItem>
                     {Array.from(
-                      new Set(applications.map(application => application.network.policy.result?.code ?? 'not-applied'))
+                      new Set(applications.map(application => firewallPolicyEnforcement(application).label))
                     ).map(value => (
                       <SelectItem
                         key={value}
@@ -306,27 +281,34 @@ export const FirewallSettings = ({
             </>
           }
           activeFilters={[
-            ...(restrictionFilter !== 'all'
+            ...(accessFilter !== 'all'
               ? [
                   {
-                    id: 'restriction',
+                    id: 'access',
                     label: 'Access',
-                    value: restrictionFilter,
-                    onRemove: () => setRestrictionFilter('all')
+                    value: accessFilter === 'restricted' ? approvedDestinationsLabel : unrestrictedAccessLabel,
+                    onRemove: () => setAccessFilter('all')
                   }
                 ]
               : []),
             ...(runtimeFilter !== 'all'
               ? [{ id: 'runtime', label: 'Runtime', value: runtimeFilter, onRemove: () => setRuntimeFilter('all') }]
               : []),
-            ...(resultFilter !== 'all'
-              ? [{ id: 'result', label: 'Result', value: resultFilter, onRemove: () => setResultFilter('all') }]
+            ...(enforcementFilter !== 'all'
+              ? [
+                  {
+                    id: 'enforcement',
+                    label: 'Enforcement',
+                    value: enforcementFilter,
+                    onRemove: () => setEnforcementFilter('all')
+                  }
+                ]
               : [])
           ]}
           onResetFilters={() => {
-            setRestrictionFilter('all')
+            setAccessFilter('all')
             setRuntimeFilter('all')
-            setResultFilter('all')
+            setEnforcementFilter('all')
           }}
           selectedCount={selectedApplications.length}
           actions={
@@ -335,11 +317,11 @@ export const FirewallSettings = ({
               variant='ghost'
               disabled={loading || reconcileAction.disabled}
               pending={reconcileAction.busy}
-              pendingLabel='Reconciling…'
+              pendingLabel='Syncing…'
               onClick={() => void reconcileSelected()}
             >
               <IconShieldCheck className='size-4' />
-              Reconcile all
+              {selectedApplications.length === 0 ? reconcileAction.label : 'Sync all rules'}
             </MutationButton>
           }
           bulkActions={
@@ -348,7 +330,7 @@ export const FirewallSettings = ({
               variant='ghost'
               disabled={reconcileAction.disabled}
               pending={reconcileAction.busy}
-              pendingLabel='Reconciling…'
+              pendingLabel='Syncing…'
               onClick={() => void reconcileSelected()}
             >
               <IconShieldCheck className='size-4' />
@@ -358,7 +340,7 @@ export const FirewallSettings = ({
         >
           <TooltipProvider delayDuration={150}>
             <DataGrid
-              columns={columns}
+              columns={firewallPolicyColumns}
               loading={loading ? { rowCount: 4, selectable: true, rowMenu: false } : false}
               data={paginatedApplications}
               totalItems={sortedApplications.length}
@@ -375,7 +357,7 @@ export const FirewallSettings = ({
                 selectedIds,
                 onSelectedIdsChange: setSelectedIds
               }}
-              minWidth='74rem'
+              minWidth='64rem'
               emptyState={
                 <DataGridEmptyState
                   title='No app policies'

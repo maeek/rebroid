@@ -33,7 +33,7 @@ export const FirewallSettingsPageClient = ({
       <PageHeader
         section={{ label: 'Security' }}
         title='Network policies'
-        description='Apply outbound network restrictions to application containers.'
+        description='Monitor outbound access and firewall enforcement. Open an app to edit its policy.'
         breadcrumbRefresh={
           <PlatformPageRefreshButton
             isRefreshing={isRefreshing || loading}

@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Visible } from '@/components/ui/visible'
-import { appResourceHref } from '@/features/applications/detail/app-resource-links'
 import { AppResourceNavigation } from '@/features/applications/detail/app-resource-navigation'
 import { AppViewerStatusSection } from '@/features/applications/detail/app-viewer-status-section'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
@@ -17,7 +16,7 @@ import { AppViewerHeading } from '@/features/applications/viewer/components/head
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
 import { toast } from '@/hooks/use-toast'
 import { updateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
-import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
+import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -25,7 +24,6 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
-import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import { buildAppManageUpdateInput, mergeAppPreservingDraftAssets, useAppManageDraft } from './use-app-manage-draft'
 
@@ -44,9 +42,6 @@ export const AppManage = () => {
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
-  const { isFeatureEnabled } = useFeatureFlags()
-  const canConfigureEgress =
-    isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canViewLogs = hasPermission(permissions, 'applications:view-logs')
   const canDelete = hasPermission(permissions, 'applications:delete')
@@ -171,12 +166,6 @@ export const AppManage = () => {
               canChangeContainerArgs={canChangeContainerArgs}
               canViewBackendDetails={canViewBackendDetails}
               onChange={updateForm}
-            />
-          </Visible>
-          <Visible when={canConfigureEgress}>
-            <AppManageNetworkPolicySettings
-              app={currentApp}
-              onUpdated={setApp}
             />
           </Visible>
         </div>

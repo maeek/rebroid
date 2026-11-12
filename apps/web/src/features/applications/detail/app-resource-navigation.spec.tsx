@@ -35,6 +35,7 @@ describe('app resource navigation', () => {
       />
     )
     expect(screen.getByRole('link', { name: 'Activity' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.queryByRole('link', { name: 'Network' })).toBeNull()
   })
   it('shows app sections in order and keeps Diagnostics in the same navigation as AI tools', () => {
     render(
@@ -53,11 +54,13 @@ describe('app resource navigation', () => {
       'Files',
       'Activity',
       'Diagnostics',
-      'Configuration'
+      'Configuration',
+      'Network'
     ])
     expect(screen.getByRole('link', { name: 'Diagnostics' })).toHaveAttribute('href', '/app/app-1?view=diagnostics')
     expect(screen.getByRole('link', { name: 'AI agent' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute('href', '/app/app-1?view=configuration')
+    expect(screen.getByRole('link', { name: 'Network' })).toHaveAttribute('href', '/app/app-1?view=network')
     expect(screen.queryByRole('link', { name: 'Workspace' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Streaming' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Clipboard' })).toBeNull()

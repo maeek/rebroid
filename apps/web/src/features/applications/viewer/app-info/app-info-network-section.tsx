@@ -1,281 +1,56 @@
-'use client'
-
-import { useEffect, useRef, useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { Section } from '@/components/ui/section'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Visible } from '@/components/ui/visible'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
-import { toast } from '@/hooks/use-toast'
-import { formatDateLocale } from '@/lib/format'
-import { updateNetworkPolicyAction } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
-import { unwrapActionResult } from '@/shared/actions/action-result'
-import {
-  adbAddressForApp,
-  getAppAllowCidrs,
-  getAppId,
-  getPolicyAppliedAt,
-  getPolicyEnabledDescription,
-  getPolicyHint,
-  getPolicyMessage,
-  getPolicyStatusDescription,
-  getPolicyStatusText,
-  isNetworkAccessDisabled
-} from './app-info-network-model'
+import { appResourceHref } from '@/shared/model/applications/app-resource-links'
+import { outboundAccessLabel } from '@/shared/model/network/outbound-policy'
+import { ResourceLink } from '@/shared/ui/resource-link'
 import { AppInfoRow } from './app-info-row'
-import { NetworkAccessInput } from './network-access-input'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-
-type AppInfoNetworkSectionProps = {
-  app?: AppDefinition
-  canConfigureEgress: boolean
-  canViewBackendDetails: boolean
-  onAppChange: (app: AppDefinition) => void
-}
-
-const NetworkPolicyEnabledBadge = ({ enabled }: { enabled: boolean }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span>
-        <Badge
-          variant={enabled ? 'success' : 'neutral'}
-          className='capitalize'
-        >
-          {enabled ? 'enabled' : 'disabled'}
-        </Badge>
-      </span>
-    </TooltipTrigger>
-    <TooltipContent>{getPolicyEnabledDescription(enabled)}</TooltipContent>
-  </Tooltip>
-)
-
-const NetworkPolicyStatusBadge = ({ app }: { app: AppDefinition }) => (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <span>
-        <Badge
-          variant={app.networkPolicyResult?.status === 'error' ? 'danger' : 'neutral'}
-          className='capitalize'
-        >
-          {getPolicyStatusText(app)}
-        </Badge>
-      </span>
-    </TooltipTrigger>
-    <TooltipContent>{getPolicyStatusDescription(app.networkPolicyResult)}</TooltipContent>
-  </Tooltip>
-)
-
-const NetworkPolicyBadges = ({ app }: { app?: AppDefinition }) => {
-  if (!app) {
-    return <>Loading...</>
-  }
-
-  return (
-    <div className='flex flex-wrap items-center justify-end gap-2'>
-      <NetworkPolicyEnabledBadge enabled={app.networkPolicyEnabled} />
-      <NetworkPolicyStatusBadge app={app} />
-    </div>
-  )
-}
-
-const NetworkNameRow = ({ app }: { app?: AppDefinition }) => {
-  if (!app) {
-    return (
-      <AppInfoRow
-        label='Network'
-        value='Loading...'
-      />
-    )
-  }
-
-  return (
-    <AppInfoRow
-      label='Network'
-      value={app.networkName}
-      copyValue={app.networkName}
-    />
-  )
-}
-
-const NetworkConnectionRows = ({ app }: { app?: AppDefinition }) => {
-  if (!app) {
-    return (
-      <>
-        <AppInfoRow
-          label='ADB'
-          value='Loading...'
-        />
-        <AppInfoRow
-          label='Transport'
-          value='Loading...'
-        />
-      </>
-    )
-  }
-
-  const adbAddress = adbAddressForApp(app)
-
-  return (
-    <>
-      <AppInfoRow
-        label='ADB'
-        value={adbAddress}
-        copyValue={adbAddress}
-      />
-      <AppInfoRow
-        label='Transport'
-        value={app.scrcpyTransport}
-      />
-    </>
-  )
-}
-
-const PolicyAppliedRow = ({ appliedAt }: { appliedAt?: Date | string }) => (
-  <AppInfoRow
-    label='Applied'
-    value={appliedAt ? formatDateLocale(appliedAt) : 'Not applied'}
-  />
-)
-
-const PolicyHintRow = ({ hint }: { hint?: string }) => (
-  <Visible when={hint}>
-    <AppInfoRow
-      label='Policy hint'
-      value={hint}
-    />
-  </Visible>
-)
-
-const PolicyMessageRow = ({ message }: { message?: string }) => (
-  <Visible when={message}>
-    <AppInfoRow
-      label='Policy message'
-      value={message}
-    />
-  </Visible>
-)
-
-const PolicyResultRows = ({ app }: { app?: AppDefinition }) => {
-  if (!app) {
-    return <PolicyAppliedRow />
-  }
-
-  return (
-    <>
-      <PolicyAppliedRow appliedAt={getPolicyAppliedAt(app)} />
-      <PolicyHintRow hint={getPolicyHint(app)} />
-      <PolicyMessageRow message={getPolicyMessage(app)} />
-    </>
-  )
-}
-
-const showInvalidCidrToast = (value: string) => {
-  toast({
-    title: 'Invalid CIDR',
-    description: `${value} is not a valid IPv4 address or CIDR range.`,
-    variant: 'danger'
-  })
-}
 
 export const AppInfoNetworkSection = ({
   app,
   canConfigureEgress,
-  canViewBackendDetails,
-  onAppChange
-}: AppInfoNetworkSectionProps) => {
-  const appId = getAppId(app)
-  const [allowCidrs, setAllowCidrs] = useState<string[]>(() => getAppAllowCidrs(app))
-  const [isSaving, setIsSaving] = useState(false)
-  const hasPendingLocalChangesRef = useRef(false)
-  const previousAppIdRef = useRef(appId)
-
-  useEffect(() => {
-    if (appId !== previousAppIdRef.current) {
-      previousAppIdRef.current = appId
-      hasPendingLocalChangesRef.current = false
-    }
-
-    if (!hasPendingLocalChangesRef.current) {
-      setAllowCidrs(getAppAllowCidrs(app))
-    }
-  }, [app, appId])
-
-  const persistAllowCidrs = async (nextCidrs: string[]) => {
-    if (!app) {
-      return
-    }
-
-    const previousCidrs = allowCidrs
-    hasPendingLocalChangesRef.current = true
-    setAllowCidrs(nextCidrs)
-    setIsSaving(true)
-
-    try {
-      const updated = unwrapActionResult(
-        await updateNetworkPolicyAction(app.id, {
-          networkPolicyEnabled: app.networkPolicyEnabled,
-          networkPolicyAllowCidrs: nextCidrs
-        })
-      )
-      const mapped = mapAndroidApplicationToAppDefinition(updated)
-      hasPendingLocalChangesRef.current = false
-      setAllowCidrs(mapped.networkPolicyAllowCidrs)
-      onAppChange(mapped)
-    } catch (error) {
-      hasPendingLocalChangesRef.current = false
-      setAllowCidrs(previousCidrs)
-      toast({
-        title: 'Could not update network access',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleAddCidr = (cidr: string) => {
-    void persistAllowCidrs([...allowCidrs, cidr])
-  }
-
-  const handleRemoveCidr = (cidr: string) => {
-    void persistAllowCidrs(allowCidrs.filter(entry => entry !== cidr))
-  }
-
-  return (
-    <Section
-      surface='plain'
-      title='Network'
-      headingSpacing='default'
-      contentClassName='flex-col'
-    >
-      <Visible when={canViewBackendDetails}>
-        <NetworkNameRow app={app} />
-      </Visible>
+  canViewBackendDetails
+}: {
+  app?: AppDefinition
+  canConfigureEgress: boolean
+  canViewBackendDetails: boolean
+}) => (
+  <Section
+    surface='plain'
+    title='Network'
+    headingSpacing='default'
+    contentClassName='flex-col'
+  >
+    {canConfigureEgress ? (
       <AppInfoRow
-        label='Policy'
-        value={<NetworkPolicyBadges app={app} />}
+        label='Outbound access'
+        value={
+          app ? (
+            <ResourceLink href={appResourceHref(app.id, 'network')}>
+              {outboundAccessLabel(app.networkPolicyEnabled)}
+            </ResourceLink>
+          ) : (
+            'Loading…'
+          )
+        }
       />
-      <Visible when={canConfigureEgress}>
+    ) : null}
+    {canViewBackendDetails ? (
+      <>
         <AppInfoRow
-          label='Network access'
-          value={
-            <NetworkAccessInput
-              cidrs={allowCidrs}
-              disabled={isNetworkAccessDisabled(app)}
-              isBusy={isSaving}
-              onAddCidr={handleAddCidr}
-              onRemoveCidr={handleRemoveCidr}
-              onInvalidCidr={showInvalidCidrToast}
-            />
-          }
-          valueClassName='w-full sm:max-w-none sm:justify-stretch sm:text-left'
+          label='Network'
+          value={app?.networkName ?? 'Loading…'}
+          copyValue={app?.networkName}
         />
-      </Visible>
-      <Visible when={canViewBackendDetails}>
-        <NetworkConnectionRows app={app} />
-      </Visible>
-      <PolicyResultRows app={app} />
-    </Section>
-  )
-}
+        <AppInfoRow
+          label='ADB'
+          value={app ? `${app.containerName}:${app.adbPort}` : 'Loading…'}
+          copyValue={app ? `${app.containerName}:${app.adbPort}` : undefined}
+        />
+        <AppInfoRow
+          label='Transport'
+          value={app?.scrcpyTransport ?? 'Loading…'}
+        />
+      </>
+    ) : null}
+  </Section>
+)

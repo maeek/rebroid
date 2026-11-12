@@ -119,9 +119,9 @@ test('network policies keep the same grid and filter geometry while loading', as
       .poll(() => grid.evaluate(table => parseFloat(table.style.width) >= table.parentElement!.clientWidth))
       .toBe(true)
     const loadingGrid = await grid.boundingBox()
-    await expect(page.getByRole('button', { name: 'Reconcile all' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Sync all rules' })).toBeDisabled()
     await page.getByRole('button', { name: 'Filters', exact: true }).click()
-    await expect(page.getByRole('combobox', { name: 'Restriction' })).toBeEnabled()
+    await expect(page.getByRole('combobox', { name: 'Outbound access' })).toBeEnabled()
     await page.getByRole('button', { name: 'Done' }).click()
     await page.goto('/skeleton-contract-test?editor=policies')
     expect(await page.getByRole('columnheader').allTextContents()).toEqual(header)
@@ -129,10 +129,10 @@ test('network policies keep the same grid and filter geometry while loading', as
     const readyGrid = await grid.boundingBox()
     expect(readyGrid?.x).toBe(loadingGrid?.x)
     expect(readyGrid?.y).toBe(loadingGrid?.y)
-    await expect(page.getByRole('button', { name: 'Reconcile all' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Sync all rules' })).toBeEnabled()
     await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
       'href',
-      '/app/preview-app?view=configuration'
+      '/app/preview-app?view=network'
     )
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
@@ -146,6 +146,28 @@ test('network policies keep the same grid and filter geometry while loading', as
       })
     }
   }
+})
+
+test('the app Network view keeps its editor separate and accepts pasted destinations', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=app-resource-loading&view=network')
+  await expect(page.getByRole('heading', { name: 'Firewall enforcement' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Save network access' })).toBeDisabled()
+  await expect(page.getByLabel('Android device')).toBeVisible()
+
+  await page.goto('/skeleton-contract-test?editor=app-resource&view=network')
+  const navigation = page.getByRole('navigation', { name: 'App sections' })
+  await expect(navigation.getByRole('link', { name: 'Network', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+  const save = page.getByRole('button', { name: 'Save network access' })
+  await expect(save).toBeDisabled()
+  const destinations = page.getByRole('textbox', { name: 'Additional IPv4 destinations' })
+  await expect(destinations).toHaveValue('10.0.0.0/24')
+  await destinations.fill('192.0.2.10, 10.0.0.0/16')
+  await expect(save).toBeEnabled()
+  await page.getByRole('button', { name: 'Discard changes' }).click()
+  await expect(destinations).toHaveValue('10.0.0.0/24')
+  await expect(save).toBeDisabled()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0)
 })
 
 test('resource titles wrap and the expanded sidebar remains scrollable to its last link', async ({ page }) => {

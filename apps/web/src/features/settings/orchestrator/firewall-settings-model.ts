@@ -1,10 +1,12 @@
+import { outboundAccessLabel, outboundEnforcement } from '@/shared/model/network/outbound-policy'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { SortingState } from '@tanstack/react-table'
 
 const defaultSorting: SortingState = [{ id: 'name', desc: false }]
 const visibleFirewallCidrCount = 3
 
-const firewallPolicyResult = (application: AndroidApplication) => application.network.policy.result?.code ?? ''
+export const firewallPolicyEnforcement = (application: AndroidApplication) =>
+  outboundEnforcement(application.status.currentStatus, application.network.policy)
 
 const compareFirewallApplications = (
   left: AndroidApplication,
@@ -13,10 +15,10 @@ const compareFirewallApplications = (
 ) => {
   if (sorting.id === 'name') return left.name.localeCompare(right.name)
   if (sorting.id === 'runtime') return left.status.currentStatus.localeCompare(right.status.currentStatus)
-  if (sorting.id === 'result') return firewallPolicyResult(left).localeCompare(firewallPolicyResult(right))
-  if (sorting.id === 'restricted') {
-    return Number(left.network.policy.enabled) - Number(right.network.policy.enabled)
+  if (sorting.id === 'enforcement') {
+    return firewallPolicyEnforcement(left).label.localeCompare(firewallPolicyEnforcement(right).label)
   }
+  if (sorting.id === 'access') return firewallAccessLabel(left).localeCompare(firewallAccessLabel(right))
 
   return 0
 }
@@ -43,8 +45,8 @@ export const filterFirewallApplications = (applications: AndroidApplication[], s
       application.id,
       application.name,
       application.status.currentStatus,
-      application.network.policy.result?.status,
-      application.network.policy.result?.code,
+      firewallAccessLabel(application),
+      firewallPolicyEnforcement(application).label,
       ...application.network.policy.allowCidrs
     ]
       .filter(Boolean)
@@ -72,9 +74,6 @@ export const retainVisibleFirewallSelection = (applications: AndroidApplication[
 export const selectedFirewallApplicationsFromIds = (applications: AndroidApplication[], selectedIds: Set<string>) =>
   applications.filter(application => selectedIds.has(application.id))
 
-export const replaceFirewallApplication = (applications: AndroidApplication[], updated: AndroidApplication) =>
-  applications.map(application => (application.id === updated.id ? updated : application))
-
 export const mergeFirewallApplications = (
   applications: AndroidApplication[],
   updatedApplications: AndroidApplication[]
@@ -90,17 +89,8 @@ export const firewallAllowlistDisplay = (cidrs: string[]) => ({
   hiddenCidrs: cidrs.slice(visibleFirewallCidrCount)
 })
 
-export const firewallPolicyResultDisplay = (application: AndroidApplication) => {
-  const policy = application.network.policy
-
-  return {
-    label: policy.result?.code ?? 'Not applied',
-    variant: policy.result?.status === 'error' ? 'danger' : 'neutral'
-  } as const
-}
-
-export const firewallRestrictionLabel = (application: AndroidApplication) =>
-  application.network.policy.enabled ? 'Restricted' : 'Unrestricted'
+export const firewallAccessLabel = (application: AndroidApplication) =>
+  outboundAccessLabel(application.network.policy.enabled)
 
 export const firewallReconcileActionState = ({
   busy,
@@ -112,6 +102,6 @@ export const firewallReconcileActionState = ({
   selectedCount: number
 }) => ({
   disabled: busy !== null || applicationCount === 0,
-  label: selectedCount > 0 ? `Reconcile ${selectedCount} selected` : 'Prune stale rules',
+  label: selectedCount > 0 ? `Sync ${selectedCount} selected` : 'Sync all rules',
   busy: busy === 'reconcile'
 })

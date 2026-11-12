@@ -1,5 +1,9 @@
+import {
+  appResourceHref,
+  appResourceLabels,
+  type AppResourceView
+} from '@/shared/model/applications/app-resource-links'
 import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
-import { appResourceHref, appResourceLabels, type AppResourceView } from './app-resource-links'
 
 export const AppResourceBreadcrumbs = ({
   appId,

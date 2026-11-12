@@ -8,6 +8,9 @@ import { AppManageTechnicalDetails } from '@/features/applications/manage/app-ma
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
+import { appResourceHref } from '@/shared/model/applications/app-resource-links'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
+import { outboundAccessLabel } from '@/shared/model/network/outbound-policy'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { ResourceLink } from '@/shared/ui/resource-link'
@@ -30,6 +33,9 @@ export const AppResourceHome = ({
   const { app, permissions, isForeignOwnedApp, canViewInfrastructure, canViewAuditActivity } = useApplicationViewerApp()
   const canViewLogs = !isForeignOwnedApp && hasPermission(permissions, 'applications:view-logs')
   const canViewDetails = hasPermission(permissions, 'applications:view-backend-details')
+  const { isFeatureEnabled } = useFeatureFlags()
+  const canConfigureEgress =
+    isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
   const canDiagnose = canViewLogs || canViewDetails
 
   return (
@@ -71,6 +77,7 @@ export const AppResourceHome = ({
             <AppConfigurationSummary
               app={app}
               canViewInfrastructure={canViewInfrastructure}
+              canConfigureEgress={canConfigureEgress}
             />
           }
         />
@@ -118,10 +125,12 @@ export const AppResourceHome = ({
 export const AppConfigurationSummary = ({
   app,
   canViewInfrastructure = false,
+  canConfigureEgress = false,
   loading = false
 }: {
   app?: AppDefinition
   canViewInfrastructure?: boolean
+  canConfigureEgress?: boolean
   loading?: boolean
 }) => (
   <Section
@@ -155,8 +164,16 @@ export const AppConfigurationSummary = ({
           value: app?.cpuLimitCpus === null ? 'Runtime default' : `${app?.cpuLimitCpus} cores`
         },
         {
-          label: 'Network access',
-          value: app?.networkPolicyEnabled ? 'Restricted to API and allowlist' : 'Unrestricted'
+          label: 'Outbound access',
+          value:
+            app &&
+            (canConfigureEgress ? (
+              <ResourceLink href={appResourceHref(app.id, 'network')}>
+                {outboundAccessLabel(app.networkPolicyEnabled)}
+              </ResourceLink>
+            ) : (
+              outboundAccessLabel(app.networkPolicyEnabled)
+            ))
         }
       ]}
     />

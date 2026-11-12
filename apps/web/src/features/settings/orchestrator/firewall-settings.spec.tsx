@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
-  reconcileNetworkPoliciesAction,
-  updateNetworkPolicyAction
+  reconcileNetworkPoliciesAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getOrchestratorHealthAction } from '@/server/orchestrator/diagnostics/actions'
@@ -15,8 +14,7 @@ import { FirewallSettings } from './firewall-settings'
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/network-policy-actions', () => ({
   applyNetworkPolicyAction: vi.fn(),
-  reconcileNetworkPoliciesAction: vi.fn(),
-  updateNetworkPolicyAction: vi.fn()
+  reconcileNetworkPoliciesAction: vi.fn()
 }))
 vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
   listApplicationsAction: vi.fn()
@@ -29,7 +27,7 @@ beforeEach(() => {
 })
 
 describe('Network policies workflow', () => {
-  it('exposes Reconcile all without selection and prevents repeated submission', async () => {
+  it('offers Sync all rules without selection and prevents repeated submission', async () => {
     let finish!: () => void
     vi.mocked(reconcileNetworkPoliciesAction).mockImplementation(
       () =>
@@ -47,14 +45,14 @@ describe('Network policies workflow', () => {
         initialApplications={applications}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Reconcile all' }))
-    expect(screen.getByRole('button', { name: 'Reconciling…' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Sync all rules' }))
+    expect(screen.getByRole('button', { name: 'Syncing…' })).toBeDisabled()
     expect(reconcileNetworkPoliciesAction).toHaveBeenCalledOnce()
     await act(async () => {
       finish()
       await Promise.resolve()
     })
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Reconcile all' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync all rules' })).toBeEnabled())
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }))
   })
 
@@ -106,36 +104,29 @@ describe('Network policies workflow', () => {
       />
     )
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select current page' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Reconcile 2 selected' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Reconcile 1 selected' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Sync 2 selected' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync 1 selected' })).toBeEnabled())
     expect(within(screen.getByRole('row', { name: /Inventory worker/ })).getByRole('checkbox')).not.toBeChecked()
     expect(within(screen.getByRole('row', { name: /Reports worker/ })).getByRole('checkbox')).toBeChecked()
     expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: 'danger', description: '1 updated. 1 remain selected for retry.' })
+      expect.objectContaining({ variant: 'danger', description: '1 synced. 1 remain selected for retry.' })
     )
   })
 
-  it('updates access with the existing payload and shows an explicit next action', async () => {
-    const updated = {
-      ...applicationPreview,
-      network: { ...applicationPreview.network, policy: { ...applicationPreview.network.policy, enabled: false } }
-    }
-    vi.mocked(updateNetworkPolicyAction).mockResolvedValue(actionOk(updated))
+  it('links to the network editor and separates configured access from enforcement', () => {
     render(
       <FirewallSettings
         initialHealth={health}
         initialApplications={[applicationPreview]}
       />
     )
-    fireEvent.click(screen.getByRole('switch', { name: 'Disable restricted network access for Inventory worker' }))
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Enable restricted network access for Inventory worker' })
-      ).not.toBeChecked()
+    expect(screen.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
+      'href',
+      '/app/preview-app?view=network'
     )
-    expect(updateNetworkPolicyAction).toHaveBeenCalledExactlyOnceWith(applicationPreview.id, {
-      networkPolicyEnabled: false
-    })
+    expect(screen.getByText('Approved destinations only')).toBeVisible()
+    expect(screen.getByText('On next start')).toBeVisible()
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 
   it('retains real filter controls during loading without claiming a health status', async () => {
@@ -149,7 +140,7 @@ describe('Network policies workflow', () => {
     expect(screen.queryByRole('status')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     const drawer = await screen.findByRole('dialog')
-    expect(within(drawer).getByRole('combobox', { name: 'Restriction' })).toBeEnabled()
+    expect(within(drawer).getByRole('combobox', { name: 'Outbound access' })).toBeEnabled()
     expect(within(drawer).getByRole('combobox', { name: 'Runtime' })).toBeEnabled()
   })
 })

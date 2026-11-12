@@ -389,7 +389,7 @@ Container pages put a concise identity/configuration overview first, followed by
 
 Container logs have a dedicated `?view=logs` destination beside Overview. Fetch logs only for that destination; the default overview does not render an empty log console or request log data.
 
-App pages use a resource overview with local Overview, Configuration, Activity, Diagnostics,
+App pages use a resource overview with local Overview, Configuration, Network, Activity, Diagnostics,
 AI agent, and Workflows links. Keep headers in document flow. Use semantic Notice feedback for lifecycle
 state and pending changes. Diagnostics and runtime interaction remain capability- and owner-gated.
 Use AppResourceLayout and AppResourceOverviewLayout for ready and loading geometry. Operations

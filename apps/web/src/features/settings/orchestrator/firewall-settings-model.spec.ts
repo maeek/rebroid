@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   clampFirewallPageIndex,
   firewallAllowlistDisplay,
-  firewallPolicyResultDisplay,
+  firewallPolicyEnforcement,
   firewallReconcileActionState,
-  firewallRestrictionLabel,
+  firewallAccessLabel,
   filterFirewallApplications,
   mergeFirewallApplications,
   paginateFirewallApplications,
-  replaceFirewallApplication,
   retainVisibleFirewallSelection,
   selectedFirewallApplicationsFromIds,
   sortFirewallApplications
@@ -50,24 +49,23 @@ describe('firewall settings model', () => {
 
     expect(filterFirewallApplications(applications, 'calendar')).toEqual([applications[0]])
     expect(filterFirewallApplications(applications, '10.0.0.0')).toEqual([applications[0]])
-    expect(filterFirewallApplications(applications, 'apply_failed')).toEqual([applications[1]])
-    expect(filterFirewallApplications(applications, 'error')).toEqual([applications[1]])
+    expect(filterFirewallApplications(applications, 'needs attention')).toEqual([applications[1]])
     expect(filterFirewallApplications(applications, 'stopped')).toEqual([applications[1]])
   })
 
   it('sorts by known firewall columns and falls back to application id', () => {
     const applications = [
-      app('b', { name: 'Same', restricted: true, resultCode: 'zeta' }),
-      app('a', { name: 'Same', restricted: false, resultCode: 'alpha' }),
-      app('c', { name: 'Same', restricted: true, resultCode: 'beta' })
+      app('b', { name: 'Same', restricted: true }),
+      app('a', { name: 'Same', restricted: false, resultCode: 'policy_disabled', policyStatus: 'skipped' }),
+      app('c', { name: 'Same', restricted: true, resultCode: 'applied', policyStatus: 'applied' })
     ]
 
-    expect(sortFirewallApplications(applications, [{ id: 'result', desc: false }]).map(item => item.id)).toEqual([
-      'a',
+    expect(sortFirewallApplications(applications, [{ id: 'enforcement', desc: false }]).map(item => item.id)).toEqual([
       'c',
+      'a',
       'b'
     ])
-    expect(sortFirewallApplications(applications, [{ id: 'restricted', desc: true }]).map(item => item.id)).toEqual([
+    expect(sortFirewallApplications(applications, [{ id: 'access', desc: false }]).map(item => item.id)).toEqual([
       'b',
       'c',
       'a'
@@ -101,12 +99,11 @@ describe('firewall settings model', () => {
     expect(selectedFirewallApplicationsFromIds(applications, selectedIds)).toEqual(applications)
   })
 
-  it('replaces and merges updated applications', () => {
+  it('merges updated applications', () => {
     const applications = [app('a'), app('b'), app('c')]
     const updatedB = app('b', { name: 'Updated B' })
     const updatedC = app('c', { restricted: true })
 
-    expect(replaceFirewallApplication(applications, updatedB)).toEqual([applications[0], updatedB, applications[2]])
     expect(mergeFirewallApplications(applications, [updatedB, updatedC])).toEqual([applications[0], updatedB, updatedC])
   })
 
@@ -121,32 +118,37 @@ describe('firewall settings model', () => {
       visibleCidrs: ['10.0.0.0/24', '10.0.1.0/24', '10.0.2.0/24'],
       hiddenCidrs: ['10.0.3.0/24']
     })
-    expect(firewallPolicyResultDisplay(app('a', { resultCode: 'apply_failed' }))).toEqual({
-      label: 'apply_failed',
-      variant: 'neutral'
+    expect(firewallPolicyEnforcement(app('a', { policyStatus: 'error', resultCode: 'apply_failed' }))).toMatchObject({
+      label: 'Needs attention',
+      tone: 'danger'
     })
-    expect(firewallPolicyResultDisplay(app('b'))).toEqual({
-      label: 'Not applied',
-      variant: 'neutral'
+    expect(firewallPolicyEnforcement(app('b', { restricted: true }))).toMatchObject({
+      label: 'Unverified',
+      tone: 'warning'
     })
-    expect(firewallRestrictionLabel(app('restricted', { restricted: true }))).toBe('Restricted')
-    expect(firewallRestrictionLabel(app('open', { restricted: false }))).toBe('Unrestricted')
+    expect(
+      firewallPolicyEnforcement(
+        app('c', { status: 'stopped', restricted: true, resultCode: 'applied', policyStatus: 'applied' })
+      )
+    ).toMatchObject({ label: 'On next start', tone: 'neutral' })
+    expect(firewallAccessLabel(app('restricted', { restricted: true }))).toBe('Approved destinations only')
+    expect(firewallAccessLabel(app('open', { restricted: false }))).toBe('Unrestricted')
   })
 
   it('derives reconcile action state', () => {
     expect(firewallReconcileActionState({ busy: null, applicationCount: 0, selectedCount: 0 })).toEqual({
       disabled: true,
-      label: 'Prune stale rules',
+      label: 'Sync all rules',
       busy: false
     })
     expect(firewallReconcileActionState({ busy: 'reconcile', applicationCount: 2, selectedCount: 1 })).toEqual({
       disabled: true,
-      label: 'Reconcile 1 selected',
+      label: 'Sync 1 selected',
       busy: true
     })
     expect(firewallReconcileActionState({ busy: null, applicationCount: 2, selectedCount: 0 })).toEqual({
       disabled: false,
-      label: 'Prune stale rules',
+      label: 'Sync all rules',
       busy: false
     })
   })

@@ -5,11 +5,12 @@ import { AppPageFailure } from '@/features/applications/components/app-page-fail
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { AppManage } from '@/features/applications/manage/app-manage'
 import { AppManageProfiles } from '@/features/applications/manage/app-manage-profiles'
+import { resolveAppResourceView } from '@/shared/model/applications/app-resource-links'
 import { StandardPageSplit } from '@/shared/ui/page/page-layout'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppNetworkPage } from './app-network-page'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
-import { resolveAppResourceView } from './app-resource-links'
 import { AppViewerContent } from './app-viewer-content'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
@@ -120,6 +121,8 @@ const AppResourceBody = ({
   switch (view) {
     case 'configuration':
       return <AppManage />
+    case 'network':
+      return <AppNetworkPage />
     case 'profiles':
       return (
         <AppManageProfiles

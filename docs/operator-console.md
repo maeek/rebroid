@@ -18,7 +18,7 @@ managed image inventory and are recorded in the audit log.
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
 - `/app/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
   and relevant destinations. Reading this page does not reconcile Docker or create a viewer session.
-- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
+- Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
 - The resource navigation is one row, with permission-based destinations kept consistent across views.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
@@ -38,6 +38,19 @@ If Start or Restart cannot recover an app, stop it and choose **Runtime actions 
 Rebroid replaces the app container and its network and starts it with the active profile. Persistent
 profiles and app settings are kept. Changes stored only in the old container are lost.
 Recreate requires ownership and permission to start and stop the app.
+
+## Outbound network access
+
+Use the app's **Network** tab to change where Android can connect. **Approved destinations only**
+includes Rebroid's managed destinations and any additional IPv4 addresses or CIDR ranges in the
+editable list. Paste entries separated by commas or new lines, or delete entries to remove them.
+**Unrestricted** requires internet access permission. **Create app** saves the list with the app.
+
+**Save network access** saves the policy and attempts enforcement for a running app. A stopped app
+uses the saved policy on its next start. If the firewall cannot confirm enforcement, the Network
+tab shows the last reported state and offers **Retry enforcement** for the saved policy.
+Administrators can monitor apps under **Network policies**, open an app's policy from its row,
+or use **Sync all rules** to refresh host rules and remove stale entries.
 
 ## Automation investigation
 

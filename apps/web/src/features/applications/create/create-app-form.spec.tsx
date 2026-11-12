@@ -73,6 +73,27 @@ describe('Create app failure feedback', () => {
     expect(screen.getByText('Network access')).toBeVisible()
   })
 
+  it('includes pasted IPv4 destinations when Create app is the next action', async () => {
+    vi.mocked(submitCreateApplicationAction).mockResolvedValueOnce(
+      actionOk({ id: '6d8b5e09-e4bf-4568-9aa9-0572237c04d3' })
+    )
+    renderForm(true)
+    fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Additional IPv4 destinations' }), {
+      target: { value: '192.0.2.10\n10.0.0.0/16' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
+
+    await waitFor(() =>
+      expect(submitCreateApplicationAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          networkPolicyEnabled: true,
+          networkPolicyAllowCidrs: ['192.0.2.10/32', '10.0.0.0/16']
+        })
+      )
+    )
+  })
+
   it('shows and links to a field error before sending an invalid draft', () => {
     renderForm()
     fireEvent.click(screen.getByRole('button', { name: 'Create app' }))

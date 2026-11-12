@@ -4,16 +4,21 @@ import {
   IconActivity,
   IconFolder,
   IconLayoutDashboard,
+  IconNetwork,
   IconRobot,
   IconSettings,
   IconStethoscope
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { getRuntimeTools } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tool-definitions'
+import {
+  appResourceHref,
+  appResourceLabels,
+  type AppResourceView
+} from '@/shared/model/applications/app-resource-links'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
-import { appResourceHref, appResourceLabels, type AppResourceView } from './app-resource-links'
 
 const appTabs = [
   { view: 'overview', Icon: IconLayoutDashboard },
@@ -22,7 +27,8 @@ const appTabs = [
   { view: 'files', Icon: IconFolder },
   { view: 'activity', Icon: IconActivity },
   { view: 'diagnostics', Icon: IconStethoscope },
-  { view: 'configuration', Icon: IconSettings }
+  { view: 'configuration', Icon: IconSettings },
+  { view: 'network', Icon: IconNetwork }
 ] as const
 
 export const AppResourceNavigation = ({
@@ -50,6 +56,9 @@ export const AppResourceNavigation = ({
   }
   if (canViewAuditActivity) visibleViews.add('activity')
   if (canDiagnose) visibleViews.add('diagnostics')
+  if (isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')) {
+    visibleViews.add('network')
+  }
 
   return (
     <ResourceNavigation

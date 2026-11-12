@@ -2,6 +2,7 @@
 
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
 import { AppInfoArtifactsSection } from './app-info-artifacts-section'
 import { AppInfoNetworkSection } from './app-info-network-section'
@@ -12,17 +13,16 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 export const AppInfo = ({
   app,
   className,
-  permissions,
-  onAppChange
+  permissions
 }: {
   app?: AppDefinition
   className?: string
   permissions: PermissionMap
-  onAppChange?: (app: AppDefinition) => void
 }) => {
-  const handleAppChange = onAppChange ?? (() => undefined)
+  const { isFeatureEnabled } = useFeatureFlags()
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
-  const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  const canConfigureEgress =
+    isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
 
   return (
     <div className={cn('flex w-full flex-col gap-4', className)}>
@@ -36,7 +36,6 @@ export const AppInfo = ({
           app={app}
           canConfigureEgress={canConfigureEgress}
           canViewBackendDetails={canViewBackendDetails}
-          onAppChange={handleAppChange}
         />
       </Visible>
       <AppInfoArtifactsSection app={app} />

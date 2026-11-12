@@ -1,6 +1,7 @@
 export const appResourceLabels = {
   overview: 'Overview',
   configuration: 'Configuration',
+  network: 'Network',
   activity: 'Activity',
   diagnostics: 'Diagnostics',
   'ai-agent': 'AI agent',

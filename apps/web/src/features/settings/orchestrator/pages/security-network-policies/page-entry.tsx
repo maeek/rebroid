@@ -12,7 +12,7 @@ const SecurityNetworkPoliciesPageContent = () => (
       <PlatformRouteUnavailable
         requestId={requestId}
         title='Network policies'
-        description='Apply outbound network restrictions to application containers.'
+        description='Monitor outbound access and firewall enforcement. Open an app to edit its policy.'
         section={{ label: 'Security' }}
       />
     )}

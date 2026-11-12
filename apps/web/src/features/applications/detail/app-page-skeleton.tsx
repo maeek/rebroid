@@ -8,17 +8,16 @@ import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
-import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { getInitialCreateAppFormValues } from '@/features/applications/create/create-app-form-model'
 import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
 import { AppConfigurationMenu } from '@/features/applications/manage/app-configuration-menu'
+import { AppNetworkPolicySettingsLoading } from '@/features/applications/manage/app-manage-network-policy-settings'
 import { AppProfilesSection } from '@/features/applications/manage/app-manage-profiles'
 import { AppManageRuntimeSettings } from '@/features/applications/manage/app-manage-runtime-settings'
 import { AppManageTechnicalDetails } from '@/features/applications/manage/app-manage-technical-details'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AppLogsLoading } from '@/features/applications/viewer/logs/app-logs-content'
 import { RuntimeToolsPanelLoading } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
-import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
@@ -29,7 +28,7 @@ import { AppConfigurationSummary } from './app-resource-home'
 import { AppResourceLayout, AppResourceOverviewLayout } from './app-resource-layout'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { AppViewerPaneLayout } from './app-viewer-pane'
-import type { AppResourceView } from './app-resource-links'
+import type { AppResourceView } from '@/shared/model/applications/app-resource-links'
 
 const noop = () => undefined
 
@@ -77,7 +76,7 @@ const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceV
                     Save
                   </Button>
                 </>
-              ) : (
+              ) : view === 'network' ? null : (
                 <Button disabled>
                   <IconPlayerPlay className='size-4' />
                   Start
@@ -111,7 +110,6 @@ const AppOverviewSkeleton = () => (
 )
 
 export const AppManagePageSkeleton = () => {
-  const { isFeatureEnabled } = useFeatureFlags()
   const values = getInitialCreateAppFormValues(defaultOrchestratorUiSettings)
   return (
     <LoadingAppLayout view='configuration'>
@@ -147,30 +145,6 @@ export const AppManagePageSkeleton = () => {
             canChangeContainerArgs
             canViewBackendDetails
           />
-          {isFeatureEnabled('feature.firewall') ? (
-            <AppNetworkPolicyEditorSection
-              title='Network access'
-              modeValue={false}
-              onModeChange={noop}
-              allowCidrs={[]}
-              onAddCidr={noop}
-              onRemoveCidr={noop}
-              onInvalidCidr={noop}
-              isBusy
-              modeDescription='Choose whether Android traffic is limited to the API and explicit CIDR ranges.'
-              sectionActions={
-                <>
-                  <Button disabled>Save policy</Button>
-                  <Button
-                    variant='secondary'
-                    disabled
-                  >
-                    Apply now
-                  </Button>
-                </>
-              }
-            />
-          ) : null}
         </EditorPage>
       </FormLoadingBoundary>
     </LoadingAppLayout>
@@ -205,6 +179,16 @@ export const AppPageSkeleton = ({ activity }: { activity?: React.ReactNode } = {
 const AppRouteSkeleton = ({ activity }: { activity?: React.ReactNode }) => {
   const view = useSearchParams().get('view')
   if (view === 'configuration') return <AppManagePageSkeleton />
+  if (view === 'network')
+    return (
+      <LoadingAppLayout view='network'>
+        <FormLoadingBoundary>
+          <EditorPage>
+            <AppNetworkPolicySettingsLoading />
+          </EditorPage>
+        </FormLoadingBoundary>
+      </LoadingAppLayout>
+    )
   if (view === 'profiles') return <AppProfilesPageSkeleton />
   if (view === 'diagnostics')
     return (

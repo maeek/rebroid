@@ -18,7 +18,7 @@ Start with the [project README](../README.md) for features, screenshots, and a q
 | [Orchestrator architecture](orchestrator-architecture.md)          | Domain boundaries, lifecycle jobs, profile storage, maintenance schedules, automation execution, and AI decisions. |
 | [AI automation](../apps/orchestrator/src/automations/ai/README.md) | Device tasks, workflow drafts, decisions, evidence, and provider/perception boundaries. |
 | [Web contributor guide](web-contributor-guide.md)                  | Page structure, browser/server contracts, and code placement.                           |
-| [Operator console](operator-console.md) | Sidebar and app navigation, image pulls, live viewer, device files, app recovery, and workflow runs. |
+| [Operator console](operator-console.md) | Sidebar and app navigation, image pulls, live viewer, device files, app recovery, outbound network access, and workflow runs. |
 | [Web design system](web-design-system.md)                          | Shared layouts, tokens, controls, loading states, and illustrated outage feedback.       |
 | [Web security](web-security.md)                                    | Sessions, MFA, group authorization, viewer revocation, and public error handling.                 |
 | [Display streaming](display-streaming.md)                          | Media transport, protocol invariants, audio diagnosis, recovery, and manual verification. |
