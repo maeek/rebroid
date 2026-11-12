@@ -1,8 +1,10 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
+import { createHash } from "node:crypto";
 import type { IncomingHttpHeaders } from "node:http";
 import { z } from "zod";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
@@ -27,6 +29,11 @@ const missingTarget = {
 const recheckIntervalMs = 10_000;
 const authorizationTimeoutMs = 2_000;
 
+type AccessWatch = {
+  listeners: Set<() => void>;
+  stop: () => void;
+};
+
 const sessionUnavailable = () =>
   new NotFoundException({
     code: "display_session_unavailable",
@@ -36,6 +43,9 @@ const sessionUnavailable = () =>
 
 @Injectable()
 export class DisplayViewerAccessService {
+  private readonly logger = new Logger(DisplayViewerAccessService.name);
+  private readonly watches = new Map<string, AccessWatch>();
+
   constructor(
     private readonly config: SidecarConfigService,
     private readonly sessions: DisplaySessionService,
@@ -80,10 +90,13 @@ export class DisplayViewerAccessService {
 
     const session = await authorize();
     this.sessions.activate(session);
+    const watchKey = createHash("sha256")
+      .update(JSON.stringify([id, credentials]))
+      .digest("hex");
     return {
       session,
       watch: (onRevoked: () => void) =>
-        this.watch(session, authorize, onRevoked),
+        this.watch(watchKey, session, authorize, onRevoked),
     };
   }
 
@@ -143,22 +156,48 @@ export class DisplayViewerAccessService {
   }
 
   private watch(
+    key: string,
     session: DisplaySession,
     authorize: (signal: AbortSignal) => Promise<DisplaySession>,
     onRevoked: () => void,
   ) {
-    this.sessions.get(session.id);
+    if (this.sessions.get(session.id) !== session) throw sessionUnavailable();
+    const watch =
+      this.watches.get(key) ?? this.startWatch(key, session, authorize);
+    const listener = () => onRevoked();
+    watch.listeners.add(listener);
+    return () => {
+      if (watch.listeners.delete(listener) && !watch.listeners.size)
+        watch.stop();
+    };
+  }
+
+  private startWatch(
+    key: string,
+    session: DisplaySession,
+    authorize: (signal: AbortSignal) => Promise<DisplaySession>,
+  ): AccessWatch {
     const controller = new AbortController();
-    let timer: NodeJS.Timeout;
+    let timer: NodeJS.Timeout | undefined;
     const stop = () => {
       clearTimeout(timer);
       unsubscribe();
       controller.abort();
+      if (this.watches.get(key) === watch) this.watches.delete(key);
     };
+    const watch: AccessWatch = { listeners: new Set(), stop };
     const revoke = () => {
       if (controller.signal.aborted) return;
       stop();
-      onRevoked();
+      const listeners = [...watch.listeners];
+      watch.listeners.clear();
+      for (const listener of listeners) {
+        try {
+          listener();
+        } catch {
+          this.logger.warn("Display consumer failed to handle revoked access.");
+        }
+      }
     };
     const unsubscribe = this.sessions.onClosed((id) => {
       if (id === session.id) revoke();
@@ -170,7 +209,8 @@ export class DisplayViewerAccessService {
       }, recheckIntervalMs);
       timer.unref();
     };
+    this.watches.set(key, watch);
     schedule();
-    return stop;
+    return watch;
   }
 }

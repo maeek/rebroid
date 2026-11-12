@@ -1998,6 +1998,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/viewer-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AndroidAppsController_getViewerRuntime"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3782,6 +3798,12 @@ export interface components {
         DockerSidecarSessionRevocationDto: {
             released: number;
         };
+        AndroidApplicationViewerRuntimeDto: {
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
+            containerId: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -4614,6 +4636,9 @@ export interface operations {
         parameters: {
             query?: {
                 ownerUserId?: string;
+                applicationIds?: string[];
+                /** @description Include running applications alongside any requested IDs. */
+                includeRunning?: "true";
             };
             header?: never;
             path?: never;
@@ -7380,6 +7405,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockerSidecarSessionRevocationDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsController_getViewerRuntime: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidApplicationViewerRuntimeDto"];
                 };
             };
         };

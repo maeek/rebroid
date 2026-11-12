@@ -1,8 +1,5 @@
 import { headers } from 'next/headers'
-import {
-  getViewerStartupDeadline,
-  redroidViewerRefreshIntervalMs
-} from '@/features/applications/viewer/display/display-viewer-startup'
+import { redroidViewerRefreshIntervalMs } from '@/features/applications/viewer/display/display-viewer-startup'
 import {
   defaultViewerSettings,
   isViewerPlayer,
@@ -109,40 +106,15 @@ export const getViewerError = (session: ScrcpySession): ViewerErrorDetails => {
   }
 }
 
-const isTransientViewerStartupIssue = (viewerError: ViewerErrorDetails) => {
-  if (!viewerError) return true
-  return viewerError.retryable
-}
-
 export const describeViewerIssue = ({
   viewerError,
   message,
-  containerImage,
-  lastStartedAt
+  startupDeadline
 }: {
   viewerError: ViewerErrorDetails
   message: string | null
-  containerImage: string
-  lastStartedAt: string | null
+  startupDeadline: Date | null
 }) => {
-  if (!message) {
-    const startupDeadline = getViewerStartupDeadline(lastStartedAt)
-    if (startupDeadline && isLikelyRedroidImage(containerImage) && Date.now() < startupDeadline.getTime()) {
-      const secondsRemaining = Math.max(1, Math.ceil((startupDeadline.getTime() - Date.now()) / 1000))
-      return {
-        kind: 'pending' as const,
-        title: 'Starting Android viewer',
-        description: 'The app is running, but the Android display is still getting ready.',
-        detail: `Retrying automatically for up to ${secondsRemaining} more seconds.`,
-        deadlineAt: startupDeadline.toISOString()
-      }
-    }
-    return null
-  }
-
-  const compactMessage = message.replace(/\s+/g, ' ').trim()
-  const startupDeadline = getViewerStartupDeadline(lastStartedAt)
-
   if (viewerError?.code === 'adb_missing') {
     return {
       kind: 'fatal' as const,
@@ -152,12 +124,7 @@ export const describeViewerIssue = ({
     }
   }
 
-  if (
-    startupDeadline &&
-    isLikelyRedroidImage(containerImage) &&
-    Date.now() < startupDeadline.getTime() &&
-    isTransientViewerStartupIssue(viewerError)
-  ) {
+  if (startupDeadline && Date.now() < startupDeadline.getTime() && viewerError?.retryable !== false) {
     const secondsRemaining = Math.max(1, Math.ceil((startupDeadline.getTime() - Date.now()) / 1000))
     return {
       kind: 'pending' as const,
@@ -170,7 +137,7 @@ export const describeViewerIssue = ({
     }
   }
 
-  if (viewerError?.code === 'adb_unreachable') {
+  if (viewerError?.code === 'adb_unreachable' || viewerError?.retryable === false) {
     return {
       kind: 'fatal' as const,
       title: 'Viewer could not reach the app',
@@ -179,8 +146,9 @@ export const describeViewerIssue = ({
     }
   }
 
+  if (!message) return null
   return {
     kind: 'warning' as const,
-    banner: compactMessage ? 'Viewer connection could not be confirmed yet.' : 'Viewer connection is still starting.'
+    banner: message.trim() ? 'Viewer connection could not be confirmed yet.' : 'Viewer connection is still starting.'
   }
 }

@@ -63,6 +63,7 @@ const sidebar = (optionalServicesEnabled = true) => (
       <ProtectedNavigation
         variant='sidebar'
         initialUser={{ name: 'Admin', avatarDataUrl: null, isPlatformAdmin: true }}
+        pollRecentApps
       />
     </PlatformHealthProvider>
   </FeatureFlagsProvider>

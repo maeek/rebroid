@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconLoader2 } from '@tabler/icons-react'
@@ -127,10 +127,13 @@ export const DisplayViewerEmbed = ({
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [reload, setReload] = useState({ runtime: '', count: 0 })
   const startedAt = app.lastStartedAt?.getTime() ?? null
-  const runtime = `${app.id}:${startedAt}`
+  const runtime = `${app.id}:${app.containerId}:${startedAt}`
   const reloadCount = reload.runtime === runtime ? reload.count : 0
   const reloadSession = () =>
     setReload(current => ({ runtime, count: current.runtime === runtime ? current.count + 1 : 1 }))
+  const getStartupDeadline = useEffectEvent(() =>
+    getViewerStartupDeadline(startedAt, app.provisioningCompletedAt?.getTime() ?? null)
+  )
 
   useEffect(() => {
     if (app.status !== 'running') {
@@ -141,32 +144,52 @@ export const DisplayViewerEmbed = ({
 
     let active = true
     let retryTimer: number | null = null
-    const deadline = getViewerStartupDeadline(startedAt)
+    const deadline = getStartupDeadline()
 
     const scheduleStartupRetry = () => {
       if (reloadCount !== 0 || !deadline || Date.now() + redroidViewerRefreshIntervalMs >= deadline.getTime()) {
         return false
       }
       retryTimer = window.setTimeout(() => {
-        if (Date.now() < deadline.getTime()) {
-          void loadSession()
-        } else {
-          setSessionError(current => current ?? 'The display service could not create a viewer session.')
-        }
+        retryTimer = null
+        if (document.visibilityState === 'visible') retryWhenVisible()
+        else document.addEventListener('visibilitychange', retryWhenVisible)
       }, redroidViewerRefreshIntervalMs)
       return true
     }
 
+    const retryWhenVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      document.removeEventListener('visibilitychange', retryWhenVisible)
+      if (deadline && Date.now() < deadline.getTime()) {
+        void loadSession()
+      } else {
+        setSessionError('The display service could not create a viewer session.')
+      }
+    }
+
     const loadSession = async () => {
       try {
-        const nextSession = await getScrcpySessionAction(app.id)
+        const result = await getScrcpySessionAction(app.id)
         if (!active) {
           return
         }
 
+        if (!result.ok) {
+          const retrying = result.error.code === 'upstream_unavailable' && scheduleStartupRetry()
+          setSessionError(retrying ? null : result.error.message)
+          return
+        }
+
+        const nextSession = result.data
         setSession(nextSession)
+        const canRetry =
+          nextSession.viewerServiceConfigured &&
+          nextSession.viewerError?.code !== 'adb_missing' &&
+          nextSession.viewerError?.retryable !== false
+        const ready = nextSession.displaySession?.viewerPath
         setSessionError(
-          nextSession.displaySession?.viewerPath || scheduleStartupRetry()
+          ready || (canRetry && scheduleStartupRetry())
             ? null
             : 'The display service could not create a viewer session.'
         )
@@ -176,7 +199,6 @@ export const DisplayViewerEmbed = ({
         }
 
         setSessionError(getToastErrorDescription(error))
-        scheduleStartupRetry()
       }
     }
 
@@ -187,8 +209,9 @@ export const DisplayViewerEmbed = ({
       if (retryTimer !== null) {
         window.clearTimeout(retryTimer)
       }
+      document.removeEventListener('visibilitychange', retryWhenVisible)
     }
-  }, [app.id, app.status, startedAt, reloadCount])
+  }, [app.id, app.status, runtime, reloadCount])
 
   const mainDisplaySize = useMemo(() => getRedroidDisplayDimensionsFromArgs(app.containerArgs), [app.containerArgs])
   const surfaces = useMemo(

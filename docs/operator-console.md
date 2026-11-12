@@ -11,6 +11,7 @@ browser remembers the choice. The Images shortcut opens the builder when the fea
 Administrator shortcuts beside Users and Groups open the corresponding creation dialogs.
 On mobile, the bottom bar links to Apps and, when enabled, Workflows. Tap **More** for the full navigation list.
 Swipe down from the grip or tap **Close navigation** to dismiss the drawer.
+The recent app list refreshes while the desktop sidebar or mobile drawer is visible.
 
 ## Finding permissions
 

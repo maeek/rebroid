@@ -8,10 +8,14 @@ import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { requireFeature } from '../features'
 import {
   assertCanUseOwnedApplicationRuntime,
+  getAccessibleApplication,
   ownedRuntimeControlMessage,
   ownedRuntimeMessage
 } from './actions/common/action-helpers'
+import { sanitizeAndroidApplicationForUser, sanitizeScrcpySessionForUser } from './safety'
 import { viewerCapabilitiesFor } from './viewer-capabilities'
+import { orchestratorAppViewerClient } from './viewer-client'
+import type { CurrentUserContext } from './actions/common/action-helpers'
 
 const assertViewerRevocationComplete = (userId: string) => {
   if (hasPendingViewerRevocation(userId)) {
@@ -37,6 +41,30 @@ export const issueViewerGrant = async <Grant>(
     id,
     surface === 'main' ? ownedRuntimeMessage : ownedRuntimeControlMessage
   )
+  return mintViewerGrant(user, surface, mint)
+}
+
+export const loadViewerPageApplication = async (id: string) => {
+  const { app, user } = await getAccessibleApplication(id)
+  return {
+    app: sanitizeAndroidApplicationForUser(app, user),
+    openSession: async () => {
+      if (app.ownerUserId !== user.ownerUserId) {
+        throw new PublicActionError(ownedRuntimeMessage, { code: 'forbidden', status: 403 })
+      }
+      const current = await mintViewerGrant(user, 'main', access =>
+        orchestratorAppViewerClient.getScrcpySession(id, access)
+      )
+      return sanitizeScrcpySessionForUser(current.grant, current.user)
+    }
+  }
+}
+
+const mintViewerGrant = async <Grant>(
+  user: CurrentUserContext,
+  surface: 'main' | 'virtual',
+  mint: (capabilities: ReturnType<typeof viewerCapabilitiesFor>) => Promise<Grant>
+) => {
   const identity = await getCurrentSessionIdentity()
   if (identity.userId !== user.ownerUserId) throw staleViewerGrant()
 

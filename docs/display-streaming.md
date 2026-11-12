@@ -35,8 +35,8 @@ consumer. Sources can remain alive for 30 seconds without consumers; release, ex
 changes, shutdown, or a genuine source failure close them.
 Transport recovery reuses the current session. If the sidecar reports that the session is gone,
 both transports ask the parent viewer to refresh through the authorized web path. An automatic
-refresh is attempted once until a replacement displays video. Initial startup retries in both
-viewer entry points are bounded by the Android startup deadline.
+refresh is attempted once until a replacement displays video. Both viewer entry points use the
+current runtime's Ready timestamp for the startup retry window when that timestamp is available.
 
 ## RBD1 protocol
 

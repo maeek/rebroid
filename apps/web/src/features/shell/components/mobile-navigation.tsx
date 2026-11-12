@@ -122,6 +122,7 @@ export const MobileNavigation = ({
                 <ProtectedNavigation
                   variant='drawer'
                   initialUser={user}
+                  pollRecentApps={pollNavigation && open}
                   onNavigate={close}
                 />
               </div>

@@ -58,9 +58,21 @@ describe('authorized recent application reads', () => {
     const apps = await listRecentlyOpenedApps()
 
     expect(listStoredRecentApps).toHaveBeenCalledWith('signed-in-user')
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledExactlyOnceWith('signed-in-user')
+    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledExactlyOnceWith('signed-in-user', {
+      applicationIds: ['older', 'inaccessible', 'newest'],
+      includeRunning: false
+    })
     expect(apps.map(app => app.id)).toEqual(['newest', 'older'])
     expect(vi.mocked(getStoredAppIcon).mock.calls.map(([id]) => id)).toEqual(['newest', 'older'])
+  })
+
+  it('skips the upstream inventory when there are no recent visits', async () => {
+    vi.mocked(listStoredRecentApps).mockReturnValue([])
+
+    await expect(listRecentlyOpenedApps()).resolves.toEqual([])
+
+    expect(orchestratorAppCatalogClient.listApplicationSummaries).not.toHaveBeenCalled()
+    expect(getVisibleOwnerDisplayNames).not.toHaveBeenCalled()
   })
 
   it('provides gallery ownership and clone access for other owners in personal visit order', async () => {
@@ -81,12 +93,22 @@ describe('authorized recent application reads', () => {
       { id: 'newest', ownerDisplayName: 'Operations', canClone: true, canStart: false, statusLabel: 'Error' },
       { id: 'older', ownerDisplayName: null, canClone: false }
     ])
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledWith(undefined)
+    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledWith(undefined, {
+      applicationIds: ['older', 'inaccessible', 'newest'],
+      includeRunning: false
+    })
+    expect(getVisibleOwnerDisplayNames).toHaveBeenCalledWith(expect.objectContaining({ isPlatformAdmin: true }), [
+      'another-user'
+    ])
     expect(listStoredRecentApps).toHaveBeenCalledWith('signed-in-user')
   })
 
   it('keeps the sidebar running-first selection distinct from overview visit order', async () => {
     expect((await listVisibleRecentApps()).map(app => app.id)).toEqual(['unvisited', 'newest', 'older'])
+    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenLastCalledWith('signed-in-user', {
+      applicationIds: ['older', 'inaccessible', 'newest'],
+      includeRunning: true
+    })
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
   })
 

@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../dto/application-command-result.dto';
 import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
+import { AndroidApplicationViewerRuntimeDto } from '../dto/android-application-viewer-runtime.dto';
 import {
   AndroidAppRuntimeReconciliationDto,
   ReconcileAndroidApplicationsDto,
@@ -28,6 +29,7 @@ import { AndroidApplicationSummaryResponseDto } from '../dto/android-application
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
 import { CreateAndroidApplicationDto } from '../dto/create-android-application.dto';
 import { DeleteAndroidApplicationResponseDto } from '../dto/delete-android-application-response.dto';
+import { ListAndroidApplicationSummariesDto } from '../dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { RemoveAndroidApplicationDto } from '../dto/remove-android-application.dto';
 import { UpdateAndroidApplicationDto } from '../dto/update-android-application.dto';
@@ -168,7 +170,7 @@ export class AndroidAppsController {
       'List lightweight app state for navigation and polling without Docker reconciliation.',
   })
   @ApiOkResponse({ type: AndroidApplicationSummaryResponseDto, isArray: true })
-  async listSummaries(@Query() query: ListAndroidApplicationsDto) {
+  async listSummaries(@Query() query: ListAndroidApplicationSummariesDto) {
     return (await this.queries.listSummaries(query)).map((app) =>
       AndroidApplicationSummaryResponseDto.fromEntity(app),
     );
@@ -193,6 +195,16 @@ export class AndroidAppsController {
     return AndroidAppRuntimeReconciliationDto.fromResult(
       await this.reconciler.reconcileResultById(id),
     );
+  }
+
+  @Get(':id/viewer-runtime')
+  @ApiOkResponse({ type: AndroidApplicationViewerRuntimeDto })
+  async getViewerRuntime(
+    @Param('id') id: string,
+  ): Promise<AndroidApplicationViewerRuntimeDto> {
+    const { ownerUserId, status, containerId } =
+      await this.queries.getViewerRuntime(id);
+    return { ownerUserId, status, containerId };
   }
 
   @Get(':id')

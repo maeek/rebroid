@@ -6,8 +6,9 @@ import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { defaultUserQuota } from '@/shared/permissions/permissions'
 import { requireFeature } from '../features'
-import { assertCanUseOwnedApplicationRuntime } from './actions/common/action-helpers'
-import { issueViewerGrant } from './viewer-grant-access'
+import { assertCanUseOwnedApplicationRuntime, getAccessibleApplication } from './actions/common/action-helpers'
+import { orchestratorAppViewerClient } from './viewer-client'
+import { issueViewerGrant, loadViewerPageApplication } from './viewer-grant-access'
 import type { PublicUser } from '@/shared/contracts/auth-user'
 
 vi.mock('@/server/auth/authorization', () => ({ getCurrentSessionIdentity: vi.fn() }))
@@ -18,9 +19,11 @@ vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeUserViewerSessio
 vi.mock('../features', () => ({ requireFeature: vi.fn() }))
 vi.mock('./actions/common/action-helpers', () => ({
   assertCanUseOwnedApplicationRuntime: vi.fn(),
+  getAccessibleApplication: vi.fn(),
   ownedRuntimeMessage: 'Viewer access requires ownership.',
   ownedRuntimeControlMessage: 'Viewer control requires ownership.'
 }))
+vi.mock('./viewer-client', () => ({ orchestratorAppViewerClient: { getScrcpySession: vi.fn() } }))
 
 const permissions = { 'applications:control-viewer': true, 'applications:sync-clipboard': true } as const
 const account = {
@@ -110,5 +113,26 @@ describe('viewer grant issuance', () => {
     vi.mocked(hasPendingViewerRevocation).mockReturnValueOnce(false)
     await expect(issueViewerGrant('app', 'main', mint)).rejects.toThrow('Viewer access is being updated')
     expect(mint).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses the page application read for grant admission and still rechecks the account after mint', async () => {
+    const user = {
+      ownerUserId: 'user',
+      isPlatformAdmin: false,
+      permissions: { ...permissions, 'applications:view-backend-details': true },
+      quotas: defaultUserQuota
+    }
+    vi.mocked(getAccessibleApplication).mockResolvedValue({ app: { id: 'app', ownerUserId: 'user' } as never, user })
+    vi.mocked(orchestratorAppViewerClient.getScrcpySession).mockResolvedValue({ applicationId: 'app' } as never)
+    const opening = await loadViewerPageApplication('app')
+    await expect(opening.openSession()).resolves.toMatchObject({ applicationId: 'app' })
+    expect(getAccessibleApplication).toHaveBeenCalledExactlyOnceWith('app')
+    expect(assertCanUseOwnedApplicationRuntime).not.toHaveBeenCalled()
+    expect(userService.getUserById).toHaveBeenCalledWith('user')
+
+    vi.mocked(getAccessibleApplication).mockResolvedValue({ app: { id: 'app', ownerUserId: 'other' } as never, user })
+    const foreign = await loadViewerPageApplication('app')
+    await expect(foreign.openSession()).rejects.toThrow('Viewer access requires ownership')
+    expect(orchestratorAppViewerClient.getScrcpySession).toHaveBeenCalledTimes(1)
   })
 })

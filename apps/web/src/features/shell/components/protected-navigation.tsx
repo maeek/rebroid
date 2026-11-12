@@ -28,17 +28,18 @@ import type { RecentApp } from '@/shared/contracts/recent-app'
 type ProtectedNavigationProps = {
   variant: NavigationVariant
   initialUser: ShellUser
+  pollRecentApps: boolean
   onNavigate?: () => void
 }
 
-export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
+export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
   const serviceView = useSearchParams().get('service')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
     () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
-    { intervalMs: 5000 }
+    { enabled: pollRecentApps, intervalMs: 5000 }
   )
   const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
@@ -46,13 +47,14 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
   const styles = variantStyles[variant]
 
   useEffect(() => {
+    if (!pollRecentApps) return
     const onRecentAppsUpdated = () => void refreshRecentApps()
 
     window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     return () => {
       window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
     }
-  }, [refreshRecentApps])
+  }, [pollRecentApps, refreshRecentApps])
 
   const isActivePath = (href: string, exact = false) => isNavigationDestinationActive(pathname, href, exact)
 

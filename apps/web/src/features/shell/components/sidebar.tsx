@@ -102,6 +102,7 @@ export default function Sidebar({
           <ProtectedNavigation
             variant={collapsed ? 'rail' : 'sidebar'}
             initialUser={initialUser}
+            pollRecentApps={pollNavigation}
           />
         </div>
       </div>

@@ -27,11 +27,13 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
   const user = await getCurrentUserContext()
   const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
   const recent = listStoredRecentApps(user.ownerUserId)
+  if (recentOnly && recent.length === 0) return []
+
   const dismissedIds = recentOnly ? undefined : listDismissedRecentAppIds(user.ownerUserId)
-  const [apps, ownerNames] = await Promise.all([
-    orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId),
-    getVisibleOwnerDisplayNames(user)
-  ])
+  const apps = await orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId, {
+    applicationIds: recent.map(app => app.id),
+    includeRunning: !recentOnly
+  })
   const navigationApps = recentOnly
     ? selectRecentlyOpenedAppEntries(apps, recent)
     : selectNavigationAppEntries(
@@ -39,6 +41,11 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
         recent,
         navigationAppsLimit
       )
+  const otherOwnerIds = new Set<string>()
+  for (const { app } of navigationApps) {
+    if (app.ownerUserId && app.ownerUserId !== user.ownerUserId) otherOwnerIds.add(app.ownerUserId)
+  }
+  const ownerNames = await getVisibleOwnerDisplayNames(user, [...otherOwnerIds])
 
   return Promise.all(
     navigationApps.map(async ({ app, openedAt }) => {

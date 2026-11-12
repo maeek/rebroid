@@ -9,7 +9,7 @@ import { defaultUserPermissions } from '@/shared/permissions/permissions'
 vi.mock('@/server/auth/account-sessions', () => ({ isCurrentAccountSession: vi.fn() }))
 vi.mock('@/server/auth/authorization', () => ({ getCurrentUser: vi.fn(), getCurrentSessionIdentity: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
-  orchestratorAppCatalogClient: { getApplication: vi.fn() }
+  orchestratorAppCatalogClient: { getViewerRuntime: vi.fn() }
 }))
 vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingViewerRevocation: vi.fn() }))
 
@@ -35,9 +35,9 @@ const account = (id: string) =>
 const app = (ownerUserId: string, runtimeId: string) =>
   ({
     ownerUserId,
-    status: { currentStatus: 'running' },
-    runtime: { containerId: runtimeId }
-  }) as Awaited<ReturnType<typeof orchestratorAppCatalogClient.getApplication>>
+    status: 'running',
+    containerId: runtimeId
+  }) as Awaited<ReturnType<typeof orchestratorAppCatalogClient.getViewerRuntime>>
 
 describe('internal viewer authorization', () => {
   afterEach(() => {
@@ -53,7 +53,7 @@ describe('internal viewer authorization', () => {
     expect((await GET(requestFor())).status).toBe(403)
     vi.mocked(getCurrentUser).mockResolvedValue(account('bob'))
     expect((await GET(requestFor())).status).toBe(403)
-    expect(orchestratorAppCatalogClient.getApplication).not.toHaveBeenCalled()
+    expect(orchestratorAppCatalogClient.getViewerRuntime).not.toHaveBeenCalled()
   })
 
   it('requires the same running app and container and denies pending revocations', async () => {
@@ -66,7 +66,7 @@ describe('internal viewer authorization', () => {
       authEpoch: 'epoch'
     })
     vi.mocked(isCurrentAccountSession).mockReturnValue(true)
-    vi.mocked(orchestratorAppCatalogClient.getApplication)
+    vi.mocked(orchestratorAppCatalogClient.getViewerRuntime)
       .mockResolvedValueOnce(app('bob', containerId))
       .mockResolvedValueOnce(app('alice', 'b'.repeat(64)))
       .mockResolvedValue(app('alice', containerId))

@@ -12,6 +12,7 @@ import type {
   AndroidAppRuntimeReconciliation,
   UpdateAndroidApplicationInput
 } from '@/shared/contracts/application'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 const throwAppCreateError = (error: unknown): never => {
   if (error instanceof OrchestratorRequestError && error.details?.code === 'application_image_forbidden') {
@@ -54,13 +55,27 @@ export const orchestratorAppCatalogClient = {
     )
   },
 
-  listApplicationSummaries(ownerUserId?: string) {
-    const query = ownerUserId ? `?${new URLSearchParams({ ownerUserId }).toString()}` : ''
-    return emptyRequest<AndroidApplicationSummary[]>(`/apps/summaries${query}`)
+  listApplicationSummaries(
+    ownerUserId?: string,
+    filters?: { applicationIds?: readonly string[]; includeRunning?: boolean }
+  ) {
+    const query = new URLSearchParams()
+    if (ownerUserId) query.set('ownerUserId', ownerUserId)
+    for (const id of filters?.applicationIds ?? []) query.append('applicationIds', id)
+    if (filters?.includeRunning) query.set('includeRunning', 'true')
+    const suffix = query.size > 0 ? `?${query.toString()}` : ''
+    return emptyRequest<AndroidApplicationSummary[]>(`/apps/summaries${suffix}`)
   },
 
   getApplication(id: string, signal?: AbortSignal) {
     return emptyRequest<AndroidApplication>(`/apps/${id}`, { signal })
+  },
+
+  getViewerRuntime(id: string, signal?: AbortSignal) {
+    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationViewerRuntimeDto']>(
+      `/apps/${encodeURIComponent(id)}/viewer-runtime`,
+      { signal }
+    )
   },
 
   cloneApplication(id: string, input: CloneApplicationInput, maxOpenApps: number | null, actor: ApplicationImageActor) {

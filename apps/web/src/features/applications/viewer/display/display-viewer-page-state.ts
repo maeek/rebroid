@@ -11,8 +11,9 @@ import {
   getViewerStartupDeadline,
   redroidViewerRefreshIntervalMs
 } from '@/features/applications/viewer/display/display-viewer-startup'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
-import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
+import { PublicActionError } from '@/server/errors/public-action-error'
+import { loadViewerPageApplication } from '@/server/orchestrator/applications/viewer-grant-access'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import type { AndroidApplication, ScrcpySession } from '@/shared/contracts/application'
 
 type ViewerSplashState = {
@@ -69,14 +70,8 @@ const startupState = ({
   deadlineAt
 })
 
-const pendingStartupState = (app: AndroidApplication, description: string): ViewerStartupState | null => {
-  const startupDeadline = getViewerStartupDeadline(app.status.lastStartedAt)
-  if (
-    app.status.currentStatus !== 'running' ||
-    !startupDeadline ||
-    !isLikelyRedroidImage(app.runtime.image) ||
-    Date.now() >= startupDeadline.getTime()
-  ) {
+const pendingStartupState = (startupDeadline: Date | null, description: string): ViewerStartupState | null => {
+  if (!startupDeadline || Date.now() >= startupDeadline.getTime()) {
     return null
   }
 
@@ -86,6 +81,10 @@ const pendingStartupState = (app: AndroidApplication, description: string): View
     deadlineAt: startupDeadline.toISOString()
   })
 }
+
+const isRetryableSessionError = (error: unknown) =>
+  (error instanceof PublicActionError && error.code === 'upstream_unavailable') ||
+  (error instanceof OrchestratorRequestError && [502, 503, 504].includes(error.status))
 
 export const resolveDisplayViewerPageState = async ({
   id,
@@ -98,21 +97,29 @@ export const resolveDisplayViewerPageState = async ({
   const controlsEnabled = searchParams?.controls === '1'
   const selectedSurfaceId = searchParams?.surfaceId
 
-  let app: AndroidApplication
+  let opening: Awaited<ReturnType<typeof loadViewerPageApplication>>
   try {
-    app = await getApplicationAction(id)
+    opening = await loadViewerPageApplication(id)
   } catch {
     return viewerUnavailable('The app must be running before a display viewer stream can be opened.')
   }
+  const { app } = opening
+  const startupDeadline =
+    app.status.currentStatus === 'running' && isLikelyRedroidImage(app.runtime.image)
+      ? getViewerStartupDeadline(app.status.lastStartedAt, app.status.provisioningCompletedAt)
+      : null
 
   let session: ScrcpySession
   try {
-    session = await getScrcpySessionAction(id)
-  } catch {
-    return (
-      pendingStartupState(app, 'The app is running, but the live display connection is still getting ready.') ??
-      viewerUnavailable('The live display session could not be opened.')
-    )
+    session = await opening.openSession()
+  } catch (error) {
+    const pending = isRetryableSessionError(error)
+      ? pendingStartupState(
+          startupDeadline,
+          'The app is running, but the live display connection is still getting ready.'
+        )
+      : null
+    return pending ?? viewerUnavailable('The live display session could not be opened.')
   }
 
   if (!session.viewerServiceConfigured) {
@@ -128,8 +135,7 @@ export const resolveDisplayViewerPageState = async ({
     ? describeViewerIssue({
         viewerError: getViewerError(session),
         message: session.viewerMessage,
-        containerImage: app.runtime.image,
-        lastStartedAt: app.status.lastStartedAt
+        startupDeadline
       })
     : null
 
@@ -162,7 +168,10 @@ export const resolveDisplayViewerPageState = async ({
 
   if (!session.displaySession?.viewerPath) {
     return (
-      pendingStartupState(app, 'The app is running, but the live display session is still getting ready.') ?? {
+      pendingStartupState(
+        startupDeadline,
+        'The app is running, but the live display session is still getting ready.'
+      ) ?? {
         kind: 'splash',
         title: 'Viewer session unavailable',
         description: 'The app is running, but the live display session could not be created.',

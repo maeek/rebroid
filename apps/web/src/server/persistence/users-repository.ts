@@ -33,6 +33,15 @@ interface UserRow {
   updated_at: string
 }
 
+export const readUserDisplayNames = (userIds: readonly string[]) => {
+  if (!userIds.length) return new Map<string, string>()
+  const placeholders = userIds.map(() => '?').join(', ')
+  const rows = getDatabase()
+    .prepare(`SELECT id, name, username FROM users WHERE id IN (${placeholders})`)
+    .all(...userIds) as Array<Pick<UserRow, 'id' | 'name' | 'username'>>
+  return new Map(rows.map(user => [user.id, user.name || user.username]))
+}
+
 const readGroups = (): UserGroup[] =>
   (getDatabase().prepare('SELECT * FROM groups ORDER BY id').all() as GroupRow[]).map(row => ({
     id: row.id,

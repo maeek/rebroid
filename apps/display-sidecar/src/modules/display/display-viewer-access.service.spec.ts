@@ -168,3 +168,39 @@ test("revoking one browser closes only its connection to a shared display sessio
   assert.equal(secondClosed.mock.callCount(), 0);
   assert.equal(sessions.get(grant.id).status, "active");
 });
+
+test("paired consumers admit independently, share rechecks, and detach independently", async (t) => {
+  const { access, grant } = setup();
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let allowed = true;
+  const authorize = t.mock.method(globalThis, "fetch", async () =>
+    allowed
+      ? Response.json({
+          ownerUserId: "alice",
+          capabilities: { control: false, clipboard: true, screenshot: false },
+        })
+      : new Response(null, { status: 403 }),
+  );
+  const media = await access.admit(grant.id, headersFor("same-browser"));
+  const control = await access.admit(grant.id, headersFor("same-browser"));
+  assert.equal(authorize.mock.callCount(), 2);
+
+  const mediaClosed = t.mock.fn();
+  const controlClosed = t.mock.fn();
+  const detachMedia = media.watch(mediaClosed);
+  t.after(detachMedia);
+  t.after(control.watch(controlClosed));
+  t.mock.timers.tick(10_000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(authorize.mock.callCount(), 3);
+
+  detachMedia();
+  allowed = false;
+  t.mock.timers.tick(10_000);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(authorize.mock.callCount(), 4);
+  assert.equal(mediaClosed.mock.callCount(), 0);
+  assert.equal(controlClosed.mock.callCount(), 1);
+  t.mock.timers.tick(10_000);
+  assert.equal(authorize.mock.callCount(), 4);
+});

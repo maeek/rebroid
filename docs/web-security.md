@@ -91,7 +91,9 @@ own access. Its viewer connections close at the next sidecar authorization check
 The sidecar authenticates viewer attachments and HTTP controls through the private web
 authorization route. Web checks the browser's current session, app ownership, and the stored
 running container ID. Pending revocation blocks grant creation and attachment. Active transports
-close on revocation or a failed authorization recheck. Viewer URLs contain only a session ID and
+close on revocation or a failed authorization recheck. Attached transports with the same Display
+session and browser credentials share a live recheck. Each new transport authorizes independently.
+Viewer URLs contain only a session ID and
 playback settings. nginx blocks the internal viewer authorization and display session management
 routes from public ingress.
 

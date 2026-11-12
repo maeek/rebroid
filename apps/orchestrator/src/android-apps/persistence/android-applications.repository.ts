@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, LessThan, Not, Or, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
+import { ListAndroidApplicationSummariesDto } from '../common/dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
@@ -166,12 +167,54 @@ export class AndroidApplicationsRepository
     });
   }
 
+  findForSummaries(query: ListAndroidApplicationSummariesDto) {
+    const owner = query.ownerUserId ? { ownerUserId: query.ownerUserId } : {};
+    const candidates = [];
+    if (query.applicationIds?.length) {
+      candidates.push({ ...owner, id: In(query.applicationIds) });
+    }
+    if (query.includeRunning) {
+      candidates.push({ ...owner, status: AndroidApplicationStatus.Running });
+    }
+
+    return this.applications.find({
+      select: {
+        id: true,
+        name: true,
+        ownerUserId: true,
+        status: true,
+        lifecycleStage: true,
+        apkPackageName: true,
+        statusMessage: true,
+        lastError: true,
+        containerImage: true,
+        containerArgs: true,
+        containerName: true,
+        volumeName: true,
+        networkName: true,
+        recreateContainerOnNextStart: true,
+        provisioningStartedAt: true,
+        provisioningCompletedAt: true,
+        lastStartedAt: true,
+      },
+      where: candidates.length ? candidates : owner,
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   findAll() {
     return this.applications.find();
   }
 
   findById(id: string) {
     return this.applications.findOneBy({ id });
+  }
+
+  findViewerRuntime(id: string) {
+    return this.applications.findOne({
+      where: { id },
+      select: { ownerUserId: true, status: true, containerId: true },
+    });
   }
 
   findOwnerAppNames(ownerUserId: string | null) {

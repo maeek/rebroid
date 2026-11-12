@@ -3,8 +3,11 @@ import { throwNotFound } from '../../../common/not-found';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import { ListAndroidApplicationSummariesDto } from '../dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
+import { deriveApplicationError } from '../utils/android-apps-error-status.utils';
 import { latestRuntimeActivity } from '../utils/android-apps-inactivity.utils';
+import { deriveStatusDetail } from '../utils/android-apps-status-detail.utils';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
 @Injectable()
@@ -19,8 +22,13 @@ export class AndroidAppsQueryService {
     return apps.map((app) => this.status.decorateApplication(app));
   }
 
-  listSummaries(query: ListAndroidApplicationsDto) {
-    return this.listStored(query);
+  async listSummaries(query: ListAndroidApplicationSummariesDto) {
+    const apps = await this.applications.findForSummaries(query);
+    return apps.map((app) => {
+      app.applicationError = deriveApplicationError(app);
+      app.statusDetail = deriveStatusDetail(app);
+      return app;
+    });
   }
 
   listStoredEntities(query: ListAndroidApplicationsDto) {
@@ -30,6 +38,13 @@ export class AndroidAppsQueryService {
   async getStored(id: string) {
     return (
       (await this.applications.findById(id)) ?? throwNotFound('Application', id)
+    );
+  }
+
+  async getViewerRuntime(id: string) {
+    return (
+      (await this.applications.findViewerRuntime(id)) ??
+      throwNotFound('Application', id)
     );
   }
 

@@ -1,5 +1,6 @@
 'use server'
 
+import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -13,12 +14,16 @@ import {
 } from '../common/action-helpers'
 import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
-export const getScrcpySessionAction = async (id: string) => {
-  const { grant, user } = await issueViewerGrant(id, 'main', access =>
-    orchestratorAppViewerClient.getScrcpySession(id, access)
+export const getScrcpySessionAction = async (id: string) =>
+  runSafeAction(
+    async () => {
+      const { grant, user } = await issueViewerGrant(id, 'main', access =>
+        orchestratorAppViewerClient.getScrcpySession(id, access)
+      )
+      return sanitizeScrcpySessionForUser(grant, user)
+    },
+    { fallbackMessage: 'Could not open the live display session.', logLabel: 'Open display session' }
   )
-  return sanitizeScrcpySessionForUser(grant, user)
-}
 
 export const recordViewerActivityAction = async (id: string) => {
   await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)

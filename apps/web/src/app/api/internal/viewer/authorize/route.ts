@@ -29,12 +29,12 @@ export const GET = async (request: Request) => {
     return new Response(null, { status: 403, headers })
   }
 
-  const app = await orchestratorAppCatalogClient.getApplication(target.data.appId, request.signal).catch(() => null)
+  const app = await orchestratorAppCatalogClient.getViewerRuntime(target.data.appId, request.signal).catch(() => null)
   if (
     !app ||
     app.ownerUserId !== account.id ||
-    app.status.currentStatus !== 'running' ||
-    app.runtime.containerId !== target.data.runtimeId ||
+    app.status !== 'running' ||
+    app.containerId !== target.data.runtimeId ||
     hasPendingViewerRevocation(account.id) ||
     !isCurrentAccountSession(account, identity)
   ) {

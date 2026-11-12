@@ -1253,6 +1253,30 @@
               "example": "user_123",
               "type": "string"
             }
+          },
+          {
+            "name": "applicationIds",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "includeRunning",
+            "required": false,
+            "in": "query",
+            "description": "Include running applications alongside any requested IDs.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
           }
         ],
         "responses": {
@@ -5799,6 +5823,36 @@
         "summary": "Revoke display sessions for the supplied accounts.",
         "tags": [
           "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer-runtime": {
+      "get": {
+        "operationId": "AndroidAppsController_getViewerRuntime",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidApplicationViewerRuntimeDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apps"
         ]
       }
     }
@@ -12022,6 +12076,35 @@
         },
         "required": [
           "released"
+        ]
+      },
+      "AndroidApplicationViewerRuntimeDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "containerId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "status",
+          "containerId"
         ]
       }
     }

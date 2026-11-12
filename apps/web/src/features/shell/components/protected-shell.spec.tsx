@@ -31,4 +31,28 @@ describe('protected shell service health', () => {
     expect(screen.queryByRole('button', { name: 'System' })).toBeNull()
     expect(vi.mocked(usePollingQuery).mock.calls.map(([key]) => key)).not.toContain('orchestrator:health')
   })
+
+  it('polls recent applications on mobile only while the navigation drawer is open', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    render(
+      <TooltipProvider>
+        <FeatureFlagsProvider manifest={null}>
+          <ProtectedShell user={{ name: 'Test user', avatarDataUrl: null, isPlatformAdmin: false }}>
+            Apps
+          </ProtectedShell>
+        </FeatureFlagsProvider>
+      </TooltipProvider>
+    )
+    const enabledRecentReads = () =>
+      vi
+        .mocked(usePollingQuery)
+        .mock.calls.filter(([key, , options]) => key === 'navigation:recent-apps' && options?.enabled)
+
+    expect(enabledRecentReads()).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(enabledRecentReads().length).toBeGreaterThan(0)
+    vi.mocked(usePollingQuery).mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Close navigation' }))
+    expect(enabledRecentReads()).toHaveLength(0)
+  })
 })

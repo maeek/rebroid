@@ -1,7 +1,12 @@
 import { DataSource, type Repository } from 'typeorm';
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../android-application.entity';
-import { AndroidApplicationStatus } from '../contracts/android-application-status';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../contracts/android-application-status';
+import { AndroidAppsQueryService } from '../common/services/android-apps-query.service';
+import { AndroidAppsStatusService } from '../common/services/android-apps-status.service';
 import { AndroidApplicationsRepository } from './android-applications.repository';
 
 const createRepository = (overrides: Partial<Repository<AndroidApplication>>) =>
@@ -100,6 +105,62 @@ describe('Android application runtime observations', () => {
         lastStartedAt: new Date('2026-01-01T00:00:00Z'),
       }),
     );
+
+  it('hydrates only the owner’s running and recent candidates with summary fields', async () => {
+    const [running, recent, otherOwner, stopped] = await apps.save(
+      Array.from({ length: 100 }, (_, index) =>
+        apps.create({
+          name: `Fixture ${index}`,
+          containerImage: 'fixture',
+          containerName: `runtime-fixture-${index}`,
+          networkName: `network-fixture-${index}`,
+          volumeName: `volume-fixture-${index}`,
+          ownerUserId: index === 2 ? 'other-owner' : 'owner',
+          savedProfilesJson: '[{"name":"example"}]',
+          status:
+            index === 0 || index === 2
+              ? AndroidApplicationStatus.Running
+              : AndroidApplicationStatus.Stopped,
+          lifecycleStage:
+            index === 0 || index === 2
+              ? AndroidApplicationLifecycleStage.Ready
+              : AndroidApplicationLifecycleStage.Stopped,
+        }),
+      ),
+    );
+    const query = new AndroidAppsQueryService(
+      repository,
+      new AndroidAppsStatusService(),
+    );
+    const result = await query.listSummaries({
+      ownerUserId: 'owner',
+      applicationIds: [recent.id, otherOwner.id],
+      includeRunning: 'true',
+    });
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: running.id,
+          statusDetail: expect.objectContaining({ title: 'Ready' }),
+        }),
+        expect.objectContaining({
+          id: recent.id,
+          statusDetail: expect.objectContaining({ title: 'Stopped' }),
+        }),
+      ]),
+    );
+    expect(result.every((app) => app.savedProfilesJson === undefined)).toBe(
+      true,
+    );
+    expect(
+      (await query.listSummaries({ applicationIds: [stopped.id] })).map(
+        (app) => app.id,
+      ),
+    ).toEqual([stopped.id]);
+    expect(await query.listSummaries({})).toHaveLength(100);
+  });
 
   it('includes restricted containers even when the app is marked Error', async () => {
     const app = await makeApp();

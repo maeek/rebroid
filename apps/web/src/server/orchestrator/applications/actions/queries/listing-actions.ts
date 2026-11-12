@@ -21,21 +21,25 @@ export const listRunningApplicationNotificationsAction = async (): Promise<Runni
     return []
   }
 
-  const apps = await orchestratorAppCatalogClient.listApplicationSummaries(user.ownerUserId)
+  const apps = await orchestratorAppCatalogClient.listApplicationSummaries(user.ownerUserId, { includeRunning: true })
   const runningApps = apps.filter(app => app.ownerUserId === user.ownerUserId && app.currentStatus === 'running')
 
-  const notifications = await Promise.all(
-    runningApps.map(async app => ({
-      appId: app.id,
-      appName: app.name,
-      appIcon: await getStoredAppIcon(app.id),
-      appPackageName: app.apkPackageName,
-      notifications: await orchestratorAppRuntimeClient.getNotifications(app.id).catch(() => [])
-    }))
+  const perAppNotifications = await Promise.all(
+    runningApps.map(async app => {
+      const notifications = await orchestratorAppRuntimeClient.getNotifications(app.id).catch(() => [])
+      if (!notifications.length) return null
+      return {
+        appId: app.id,
+        appName: app.name,
+        appIcon: await getStoredAppIcon(app.id),
+        appPackageName: app.apkPackageName,
+        notifications
+      }
+    })
   )
 
-  return notifications
-    .filter(app => app.notifications.length > 0)
+  return perAppNotifications
+    .filter(app => app !== null)
     .sort(
       (left, right) =>
         right.notifications.length - left.notifications.length || left.appName.localeCompare(right.appName)
