@@ -146,6 +146,20 @@ describe('automation AI execution policy', () => {
     ).toEqual([command('android.deleteFile')]);
   });
 
+  it.each(['Delete /storage/emulated/0/report.txt', 'Usuń zbędny raport'])(
+    'keeps an explicitly granted file capability eligible for "%s"',
+    (goal) => {
+      const commands = ['android.deleteFile', 'vision.locate'].map(command);
+      expect(
+        routeCapabilities({
+          commands,
+          goal,
+          input: { capabilities: ['android.deleteFile'] },
+        }),
+      ).toEqual([command('android.deleteFile')]);
+    },
+  );
+
   it.each([
     ['settings', 'android.openSystemSettings', {}],
     ['notifications', 'android.expandNotifications', {}],

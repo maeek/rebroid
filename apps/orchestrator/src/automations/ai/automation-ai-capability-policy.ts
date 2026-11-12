@@ -171,12 +171,15 @@ export const routeCapabilities = ({
       .replace(/\p{M}/gu, '')
       .match(/[\p{L}\p{N}]+/gu),
   );
-  const allowed = commands.flatMap((command) => {
+  if (/(?:^|[\s"'(])\/[\p{L}\p{N}._-]/u.test(goal)) terms.add('file');
+  const ranked = commands.flatMap((command) => {
     const { uses } = command;
-    if (!isRoutedAiCapability(uses) || !commandAllowedForRun(input, uses))
-      return [];
+    if (!isRoutedAiCapability(uses)) return [];
     return [{ command, score: scoreCapability(uses, terms) }];
   });
+  const allowed = ranked.filter(({ command }) =>
+    commandAllowedForRun(input, command.uses),
+  );
   const relevant = allowed.filter(({ score }) => score > 0);
   if (relevant.length > 0) {
     return relevant
@@ -191,9 +194,15 @@ export const routeCapabilities = ({
   const defaults = allowed
     .map(({ command }) => command)
     .filter(({ uses }) => isDefaultAiCapability(uses));
+  const optional = allowed
+    .map(({ command }) => command)
+    .filter(({ uses }) => !isDefaultAiCapability(uses));
+  if (optional.length && !ranked.some(({ score }) => score > 0)) {
+    return [...optional, ...defaults].slice(0, 5);
+  }
   const discovery = defaults.filter(({ uses }) => discoveryTools.has(uses));
   if (discovery.length > 0) return discovery;
-  return defaults;
+  return defaults.slice(0, 5);
 };
 
 export const capabilityPrompt = (capabilities: RoutedAiCapabilities) => {
