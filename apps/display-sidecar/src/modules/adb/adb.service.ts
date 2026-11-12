@@ -6,6 +6,7 @@ import {
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { hasCompleteUiHierarchy } from "@rebroid/android-application-core/ui-text";
 import { type ViewerCommand } from "@rebroid/android-application-core/viewer-control";
 
 import {
@@ -151,7 +152,7 @@ export class AdbService {
 
   async pullFileContent(udid: string, path: string) {
     const content = await this.adbBuffer(
-      ["-s", udid, "exec-out", "cat", path],
+      ["-s", udid, "shell", "-T", "cat", "--", quoteAdbShellArgument(path)],
       15_000,
     );
     return {
@@ -459,7 +460,14 @@ export class AdbService {
         xml = catResult.stdout.trim();
       }
     }
-    const stderr = [dump.stderr, catResult?.stderr].filter(Boolean).join("\n");
+    const complete = hasCompleteUiHierarchy(xml);
+    const stderr = [
+      dump.stderr,
+      catResult?.stderr,
+      xml && !complete ? "Android returned an incomplete UI hierarchy." : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
     const stdout = [
       dump.stdout,
       catResult?.stdout && !xml ? catResult.stdout : "",
@@ -477,7 +485,7 @@ export class AdbService {
       xmlBytes: Buffer.byteLength(xml),
       rawNodeCount: this.countUiNodes(xml),
     };
-    if (!xml.includes("<hierarchy")) {
+    if (!complete) {
       return { diagnostics };
     }
     return { xml, diagnostics };

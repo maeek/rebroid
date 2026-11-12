@@ -5,7 +5,11 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { AdbService } from "./adb.service";
-import { findUiTextTarget, type UiTextMatch } from "./adb-ui-text";
+import {
+  findUiTextTarget,
+  hasCompleteUiHierarchy,
+  type UiTextMatch,
+} from "@rebroid/android-application-core/ui-text";
 
 interface UiTextInput {
   text: string;
@@ -42,7 +46,7 @@ export class AdbTextService {
     const dump = await this.adb.dumpUi(udid, signal);
     return dump.status === "available" &&
       dump.xml &&
-      /(?:<\/hierarchy>|<hierarchy\b[^>]*\/>)\s*$/.test(dump.xml)
+      hasCompleteUiHierarchy(dump.xml)
       ? { available: true, target: findUiTextTarget(dump.xml, text, match) }
       : { available: false, target: null };
   }

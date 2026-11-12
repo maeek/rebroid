@@ -6,6 +6,10 @@
   "type": "commonjs",
   "sideEffects": false,
   "exports": {
+    "./ui-text": {
+      "types": "./dist/ui-text.d.ts",
+      "default": "./dist/ui-text.js"
+    },
     "./redroid-runtime": {
       "types": "./dist/redroid-runtime.d.ts",
       "default": "./dist/redroid-runtime.js"
@@ -17,6 +21,9 @@
   },
   "typesVersions": {
     "*": {
+      "ui-text": [
+        "dist/ui-text.d.ts"
+      ],
       "redroid-runtime": [
         "dist/redroid-runtime.d.ts"
       ],
