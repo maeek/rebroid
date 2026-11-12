@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userService } from '@/server/auth/user'
 import { orchestratorAppCatalogClient as apps } from '@/server/orchestrator/applications/catalog-client'
+import {
+  listPermittedAutomationCommands,
+  listPermittedDefaultAiCapabilities,
+  listPermittedDraftCommands
+} from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient as workflows } from '@/server/orchestrator/automations/client'
 import { defaultUserPermissions } from '@/shared/permissions/permissions'
 import { authorizeAutomationExecution } from './authorize-execution'
@@ -54,6 +59,21 @@ describe('execution authorization', () => {
       { uses: 'android.wait', requiredPermissions: ['automations:run-adb-shell'] }
     ] as never)
     await expect(authorizeAutomationExecution(input)).rejects.toThrow()
+  })
+  it('uses the same permitted catalog for the editor, workflow drafts, and ad hoc AI defaults', async () => {
+    const user = { permissions: { ...defaultUserPermissions, 'automations:run-adb-shell': false } }
+    vi.mocked(workflows.listCommands).mockResolvedValue([
+      { uses: 'android.wait', requiredPermissions: ['automations:run'] },
+      { uses: 'vision.locate', requiredPermissions: ['automations:run'] },
+      { uses: 'flow.stop', requiredPermissions: ['automations:run'] },
+      { uses: 'android.deleteFile', requiredPermissions: ['automations:run'] },
+      { uses: 'android.adbShell', requiredPermissions: ['automations:run-adb-shell'] },
+      { uses: 'android.getClipboard', requiredPermissions: ['unknown:permission'] }
+    ] as never)
+    const editor = (await listPermittedAutomationCommands(user)).map(command => command.uses)
+    expect(editor).toEqual(['android.wait', 'vision.locate', 'flow.stop', 'android.deleteFile'])
+    await expect(listPermittedDraftCommands(user)).resolves.toEqual(editor)
+    await expect(listPermittedDefaultAiCapabilities(user)).resolves.toEqual(['android.wait', 'vision.locate'])
   })
   it('authorizes omitted AI defaults against current group permissions and denies explicit restricted tools', async () => {
     vi.mocked(userService.getUserById).mockResolvedValue({

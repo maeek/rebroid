@@ -1,4 +1,7 @@
-import type { AutomationCommandOutputMetadata } from "./definition";
+import type {
+  AutomationCommandOutputMetadata,
+  AutomationStepOutputRef,
+} from "./definition";
 
 export type { AutomationCommandOutputMetadata } from "./definition";
 
@@ -24,17 +27,68 @@ export const summaryOutput: AutomationCommandOutputMetadata = {
   description: "Human-readable step result summary.",
 };
 
+export type AutomationCommandOutcome =
+  "succeeded" | "not_found" | "unsupported" | "failed" | "uncertain";
+
+const commandOutcomeOutput: AutomationCommandOutputMetadata = {
+  key: "commandOutcome",
+  label: "Command outcome",
+  type: "string",
+  description: "succeeded, not_found, unsupported, failed, or uncertain.",
+};
+
 export const normalizeCommandOutputs = (
   outputs: AutomationCommandOutputMetadata[] = [],
 ) => {
   const seen = new Set<string>();
-  return [summaryOutput, ...outputs].filter((output) => {
+  return [summaryOutput, commandOutcomeOutput, ...outputs].filter((output) => {
     if (seen.has(output.key)) {
       return false;
     }
     seen.add(output.key);
     return true;
   });
+};
+
+export const actionInputBindingType = (
+  uses: string,
+  key: string,
+  property: unknown,
+) => {
+  if (!isRecord(property)) return undefined;
+  if (uses === "ai.run" && key !== "prompt") return undefined;
+  if (uses === "android.adbShell" && key === "command") return undefined;
+  if (property.type === "integer") return "number";
+  if (
+    property.type === "number" ||
+    property.type === "boolean" ||
+    property.type === "string"
+  ) {
+    return property.type;
+  }
+  return undefined;
+};
+
+export const hasActionInputBinding = (
+  value: unknown,
+): value is Record<"$ref", unknown> =>
+  isRecord(value) && Object.hasOwn(value, "$ref");
+
+export const actionInputBinding = (
+  value: unknown,
+): AutomationStepOutputRef | undefined => {
+  if (!hasActionInputBinding(value) || !isRecord(value.$ref)) return undefined;
+  if (Object.keys(value).length !== 1 || Object.keys(value.$ref).length !== 3)
+    return undefined;
+  const { source, stepId, outputKey } = value.$ref;
+  if (
+    source !== "stepOutput" ||
+    typeof stepId !== "string" ||
+    typeof outputKey !== "string"
+  )
+    return undefined;
+  if (!stepId.trim() || !outputKey.trim()) return undefined;
+  return { source, stepId: stepId.trim(), outputKey: outputKey.trim() };
 };
 
 export const buildCommandEditorMetadata = (

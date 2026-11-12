@@ -114,6 +114,7 @@ export const createAndroidDeviceShellAutomationCommands = () =>
 
         return {
           summary: summaryParts.join(' '),
+          outcome: result.exitCode === 0 ? 'succeeded' : 'failed',
           data: {
             stdout: result.stdout,
             stderr: result.stderr,

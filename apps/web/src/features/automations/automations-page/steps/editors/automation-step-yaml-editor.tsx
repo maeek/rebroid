@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import dynamic from 'next/dynamic'
 import { parse, stringify } from 'yaml'
 import { getActionUiStateFromInput, normalizeActionInput } from '../../actions/action-registry'
 import { buildAutomationActionInputYamlSchema } from '../../editor/monaco-yaml/schema/automation-yaml-schema'
+import { parseStepInput } from '../shared/automation-step-utils'
 import type { AutomationActionStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -31,9 +32,13 @@ export function AutomationStepYamlEditor({
   const [error, setError] = useState<string | null>(null)
   const schema = useMemo(() => buildAutomationActionInputYamlSchema(command), [command])
   const modelUri = useMemo(() => `file:///rebroid-action-${step.clientKey.replaceAll(':', '-')}.yaml`, [step.clientKey])
+  const appliedInput = useRef({ clientKey: step.clientKey, withJson: step.withJson })
 
   useEffect(() => {
+    if (appliedInput.current.clientKey === step.clientKey && appliedInput.current.withJson === step.withJson) return
+    appliedInput.current = { clientKey: step.clientKey, withJson: step.withJson }
     setYaml(stringify(parseStepInput(step), { lineWidth: 0 }).trimEnd())
+    setError(null)
   }, [step])
 
   const changeYaml = (nextYaml: string) => {
@@ -44,10 +49,12 @@ export function AutomationStepYamlEditor({
         throw new Error('Step input must be a YAML object.')
       }
       const normalized = normalizeActionInput(step.uses, parsed as Record<string, unknown>)
+      const withJson = JSON.stringify(normalized, null, 2)
+      appliedInput.current = { clientKey: step.clientKey, withJson }
       setError(null)
       onChange({
         ...step,
-        withJson: JSON.stringify(normalized, null, 2),
+        withJson,
         uiState: { ...(step.uiState ?? {}), ...getActionUiStateFromInput(step.uses, normalized) }
       })
     } catch (parseError) {
@@ -80,15 +87,6 @@ export function AutomationStepYamlEditor({
       ) : null}
     </div>
   )
-}
-
-const parseStepInput = (step: AutomationActionStepForm) => {
-  try {
-    const parsed: unknown = JSON.parse(step.withJson || '{}')
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
-  } catch {
-    return {}
-  }
 }
 
 const canParseYamlObject = (yaml: string) => {

@@ -1,6 +1,9 @@
 import { AUTOMATION_DRAFT_PROMPT_MAX_LENGTH } from '@rebroid/automation-core/yaml-draft'
 import { NextRequest, NextResponse } from 'next/server'
-import { assertAutomationPermission, listPermittedAiTools } from '@/server/orchestrator/automations/action-helpers'
+import {
+  assertAutomationPermission,
+  listPermittedDraftCommands
+} from '@/server/orchestrator/automations/action-helpers'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import type { DraftAutomationYamlInput } from '@/shared/contracts/automation'
@@ -41,7 +44,7 @@ export const POST = async (request: NextRequest) => {
   const response = await orchestratorAutomationsClient.draftYamlStream(
     {
       ...input,
-      allowedTools: await listPermittedAiTools(user)
+      allowedTools: await listPermittedDraftCommands(user)
     },
     request.signal
   )

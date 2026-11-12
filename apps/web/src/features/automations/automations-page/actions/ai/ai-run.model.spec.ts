@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
+import { buildYaml, definitionToForm } from '../../editor/builder-utils'
+import { parseStepInput } from '../../steps/shared/automation-step-utils'
 import {
   defaultAiRunCapabilities,
   defaultAiRunInput,
   healthLabel,
   nextAiRunCapabilities,
-  normalizeAiRunInput,
   selectableAiRunCommands,
   summarizeAiRunInput
 } from './ai-run.model'
 import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
+import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 const command = (uses: string): AutomationCommand => ({
   uses,
@@ -26,30 +29,49 @@ const command = (uses: string): AutomationCommand => ({
 })
 
 describe('ai run action model', () => {
-  it('provides stable defaults and normalizes bounded backend input', () => {
+  it('provides stable defaults for a new step', () => {
     expect(defaultAiRunInput()).toEqual({
       prompt: 'Inspect the screen and complete the requested task.',
       maxActions: 20,
       timeoutMs: 120000
     })
+  })
 
-    expect(
-      normalizeAiRunInput({
-        prompt: '',
-        providerId: 'local',
-        modelId: 'qwen',
-        visionProviderId: 10,
-        capabilities: ['android.tap', 7, 'android.swipe'],
-        maxActions: 200,
-        timeoutMs: 100
-      })
-    ).toEqual({
-      prompt: 'Inspect the screen and complete the requested task.',
-      providerId: 'local',
-      modelId: 'qwen',
-      capabilities: ['android.tap', 'android.swipe'],
-      maxActions: 100,
-      timeoutMs: 1000
+  it('preserves the complete AI input through a visual prompt edit and YAML serialization', () => {
+    const definition = parse(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Open Żappka
+spec:
+  steps:
+    - id: open
+      uses: ai.run
+      with:
+        prompt: Open Żappka
+        conversation:
+          - role: user
+            content: Use the launcher
+        clientMessageId: message-1
+        providerId: local
+        modelId: controller-model
+        visionProviderId: separate
+        visionModelId: vision-model
+        maxActions: 7
+        timeoutMs: 45000
+        capabilities: []
+        agentMode: planned
+        rawShellPolicy: allowlisted
+`) as AutomationDefinition
+    const form = definitionToForm(definition)
+    const step = form.steps[0]
+    const original = definition.spec.steps[0]
+    if (step?.kind !== 'action' || !original || !('with' in original)) throw new Error('Expected an action')
+    const prompt = 'Open Żappka and verify the app is visible'
+    step.withJson = JSON.stringify({ ...parseStepInput(step), prompt })
+
+    expect(parse(buildYaml(form)) as unknown).toMatchObject({
+      spec: { steps: [{ with: { ...original.with, prompt } }] }
     })
   })
 
@@ -78,18 +100,15 @@ describe('ai run action model', () => {
       command('android.wait'),
       command('android.getClipboard'),
       command('android.waitForText'),
-      { ...command('android.getSetting'), permitted: false }
+      command('flow.stop'),
+      command('vision.locate')
     ])
 
-    expect(commands.map(item => item.uses)).toEqual([
-      'android.getClipboard',
-      'android.getSetting',
-      'android.wait',
-      'android.waitForText'
-    ])
-    expect(defaultAiRunCapabilities(commands)).toEqual(['android.getClipboard', 'android.wait'])
+    expect(commands.map(item => item.uses)).toEqual(['android.getClipboard', 'android.wait', 'vision.locate'])
+    expect(defaultAiRunCapabilities(commands)).toEqual(['android.getClipboard', 'android.wait', 'vision.locate'])
     expect(nextAiRunCapabilities({ capabilities: undefined, commands, uses: 'android.wait', enabled: false })).toEqual([
-      'android.getClipboard'
+      'android.getClipboard',
+      'vision.locate'
     ])
     expect(
       nextAiRunCapabilities({ capabilities: ['android.getClipboard'], commands, uses: 'android.wait', enabled: true })
@@ -97,7 +116,6 @@ describe('ai run action model', () => {
     expect(
       nextAiRunCapabilities({ capabilities: ['android.wait'], commands, uses: 'android.wait', enabled: false })
     ).toEqual([])
-    expect(normalizeAiRunInput({ capabilities: [] }).capabilities).toEqual([])
   })
 
   it('labels provider health states for compact UI display', () => {

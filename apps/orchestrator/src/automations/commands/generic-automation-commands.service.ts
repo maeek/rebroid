@@ -1,4 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import {
+  findUiTextTarget,
+  hasCompleteUiHierarchy,
+} from '@rebroid/android-application-core/ui-text';
 import { z } from 'zod';
 import {
   AutomationCommandContext,
@@ -6,7 +10,13 @@ import {
 } from './automation-command.types';
 
 const textSchema = z.object({
-  text: z.string().min(1).max(500),
+  text: z
+    .string()
+    .min(1)
+    .max(500)
+    .refine((text) => Boolean(text.trim())),
+  match: z.enum(['exact', 'contains']).default('exact'),
+  source: z.enum(['label', 'xml']).default('label'),
 });
 
 const fileSchema = z.object({
@@ -26,11 +36,40 @@ const readUiXml = async ({
 }: AutomationCommandContext) => {
   const dump = await adb.dumpUi(app, abortSignal);
   abortSignal?.throwIfAborted();
-  if (dump.status !== 'available' || !dump.xml?.trim()) {
+  if (
+    dump.status !== 'available' ||
+    !dump.xml ||
+    !hasCompleteUiHierarchy(dump.xml)
+  ) {
     throw new Error('Android UI hierarchy is unavailable.');
   }
   return dump.xml;
 };
+
+const assertText =
+  (present: boolean) =>
+  async (
+    { text, match = 'exact', source = 'label' }: z.input<typeof textSchema>,
+    context: AutomationCommandContext,
+  ) => {
+    const xml = await readUiXml(context);
+    const found =
+      source === 'xml'
+        ? match === 'exact'
+          ? xml === text
+          : xml.includes(text)
+        : findUiTextTarget(xml, text, match, { requireEnabled: false }) !==
+          null;
+    if (found !== present)
+      throw new Error(
+        present ? `Text "${text}" was not found.` : `Text "${text}" was found.`,
+      );
+    return {
+      summary: present
+        ? `Text "${text}" exists.`
+        : `Text "${text}" is missing.`,
+    };
+  };
 
 @Injectable()
 export class GenericAutomationCommandsService {
@@ -39,36 +78,20 @@ export class GenericAutomationCommandsService {
       {
         uses: 'assert.textExists',
         label: 'Assert text exists',
-        description: 'Fails unless text exists in the current UI hierarchy.',
+        description:
+          'Fails unless a visible label matches in the current Android UI hierarchy.',
         requiredPermissions: ['automations:run'],
         schema: textSchema,
-        execute: async (
-          { text }: z.infer<typeof textSchema>,
-          context: AutomationCommandContext,
-        ) => {
-          const xml = await readUiXml(context);
-          if (!xml.includes(text)) {
-            throw new Error(`Text "${text}" was not found.`);
-          }
-          return { summary: `Text "${text}" exists.` };
-        },
+        execute: assertText(true),
       },
       {
         uses: 'assert.textMissing',
         label: 'Assert text missing',
-        description: 'Fails when text exists in the current UI hierarchy.',
+        description:
+          'Fails when a visible label matches in the current Android UI hierarchy.',
         requiredPermissions: ['automations:run'],
         schema: textSchema,
-        execute: async (
-          { text }: z.infer<typeof textSchema>,
-          context: AutomationCommandContext,
-        ) => {
-          const xml = await readUiXml(context);
-          if (xml.includes(text)) {
-            throw new Error(`Text "${text}" was found.`);
-          }
-          return { summary: `Text "${text}" is missing.` };
-        },
+        execute: assertText(false),
       },
       {
         uses: 'assert.fileExists',

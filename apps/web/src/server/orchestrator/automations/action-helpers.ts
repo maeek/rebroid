@@ -1,4 +1,4 @@
-import { isDefaultAiCapability } from '@rebroid/automation-core/ai-run'
+import { isDefaultAiCapability, isSelectableAiCapability } from '@rebroid/automation-core/ai-run'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
@@ -22,13 +22,16 @@ export const assertAutomationPermission = (user: CurrentAutomationUser, permissi
 const commandPermissionIsKnown = (permission: string): permission is PermissionId =>
   allPermissionIds.some(candidate => candidate === permission)
 
-export const canUseAutomationCommand = (
+const canUseAutomationCommand = (
   user: CurrentAutomationUser,
   command: Pick<AutomationCommand, 'requiredPermissions'>
 ) =>
   command.requiredPermissions.every(
     permission => commandPermissionIsKnown(permission) && hasPermission(user.permissions, permission)
   )
+
+const defaultAiCapabilitiesFor = (commands: readonly AutomationCommand[]) =>
+  commands.filter(command => isDefaultAiCapability(command.uses)).map(command => command.uses)
 
 export const assertDefinitionPermissions = async (user: CurrentAutomationUser, definition: AutomationDefinition) => {
   const commands = await orchestratorAutomationsClient.listCommands()
@@ -68,28 +71,39 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
       if (step.with.rawShellPolicy === 'allowlisted') assertAutomationPermission(user, 'automations:run-adb-shell')
       const { capabilities } = step.with
       if (capabilities === undefined) {
-        defaultAiCapabilities ??= commands
-          .filter(command => isDefaultAiCapability(command.uses) && canUseAutomationCommand(user, command))
-          .map(command => command.uses)
+        defaultAiCapabilities ??= defaultAiCapabilitiesFor(
+          commands.filter(command => canUseAutomationCommand(user, command))
+        )
         return
       }
       if (!Array.isArray(capabilities) || !capabilities.every(uses => typeof uses === 'string')) {
         throw new PublicActionError('AI capabilities must be a list of command names.', { code: 'validation' })
       }
-      capabilities.forEach(uses => assertCommandPermissions(uses.trim()))
+      for (const capability of capabilities) {
+        const uses = capability.trim()
+        if (!isSelectableAiCapability(uses)) {
+          throw new PublicActionError(`Command "${uses}" is unavailable to the device agent.`, { code: 'validation' })
+        }
+        assertCommandPermissions(uses)
+      }
     }
   }
   definition.spec.steps.forEach(assertStep)
   return defaultAiCapabilities
 }
 
-export const listPermittedAiTools = async (user: CurrentAutomationUser) => {
+export const listPermittedAutomationCommands = async (user: CurrentAutomationUser) => {
   const commands = await orchestratorAutomationsClient.listCommands()
-  return commands
-    .filter(command => command.uses !== 'ai.run')
-    .filter(command => canUseAutomationCommand(user, command))
-    .map(command => command.uses)
+  return commands.filter(command => canUseAutomationCommand(user, command))
 }
+
+export const listPermittedDraftCommands = async (user: CurrentAutomationUser) =>
+  (await listPermittedAutomationCommands(user))
+    .filter(command => command.uses !== 'ai.run')
+    .map(command => command.uses)
+
+export const listPermittedDefaultAiCapabilities = async (user: CurrentAutomationUser) =>
+  defaultAiCapabilitiesFor(await listPermittedAutomationCommands(user))
 
 export const assertTargetApplication = async (targetApplicationId?: string | null) => {
   if (targetApplicationId) {

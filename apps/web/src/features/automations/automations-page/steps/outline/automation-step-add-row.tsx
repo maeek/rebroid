@@ -13,10 +13,12 @@ import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export function AutomationStepAddRow({
   label = 'Add step',
+  canAdd,
   onAdd,
   onPaste
 }: {
   label?: string
+  canAdd: boolean
   onAdd: (kind: AutomationStepForm['kind']) => void
   onPaste: () => void
 }) {
@@ -36,10 +38,30 @@ export function AutomationStepAddRow({
         align='start'
         className='min-w-44 p-2'
       >
-        <DropdownMenuItem onSelect={() => onAdd('action')}>Action</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAdd('condition')}>Condition</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAdd('switch')}>Switch</DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => onAdd('repeat')}>Repeat</DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canAdd}
+          onSelect={() => onAdd('action')}
+        >
+          Action
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canAdd}
+          onSelect={() => onAdd('condition')}
+        >
+          Condition
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canAdd}
+          onSelect={() => onAdd('switch')}
+        >
+          Switch
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!canAdd}
+          onSelect={() => onAdd('repeat')}
+        >
+          Repeat
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className='gap-2'

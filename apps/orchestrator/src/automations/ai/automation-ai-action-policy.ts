@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { AutomationCommandOutcome } from '@rebroid/automation-core/command-registry';
 import type { DeviceAgentAction } from './core/device-decision';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';
 
@@ -77,14 +78,13 @@ export const resolveActionCommand = (
   }
 };
 
-export const resultIndicatesFailure = (data: Record<string, unknown>) => {
-  if (data.failed === true || data.success === false) return true;
-  if (typeof data.exitCode === 'number' && data.exitCode !== 0) return true;
-  for (const key of ['executed', 'opened', 'launched', 'found']) {
-    if (data[key] === false) return true;
-  }
-  return typeof data.failureCategory === 'string';
-};
+export const outcomeAllowsEvidence = (outcome: AutomationCommandOutcome) =>
+  outcome === 'succeeded' || outcome === 'not_found';
+
+export const expectsScreenChange = (action: ResolvedAiAction) =>
+  action.screenMutating &&
+  action.uses !== 'android.wait' &&
+  action.uses !== 'android.setClipboard';
 
 export const screenFingerprint = (observation: AutomationScreenObservation) =>
   createHash('sha256')

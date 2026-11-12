@@ -1,4 +1,5 @@
 import type { AutomationCommandContext } from '../commands/automation-command.types';
+import { AutomationConditionService } from '../condition/automation-condition.service';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';
 import { AutomationStepExecutorService } from './automation-step-executor.service';
@@ -18,6 +19,7 @@ const createService = ({
   recordActionCompleted = jest.fn().mockResolvedValue(true),
   recordStepFailed = jest.fn().mockResolvedValue(true),
   recordControlCompleted = jest.fn().mockResolvedValue(true),
+  recordRepeatStarted = jest.fn().mockResolvedValue(true),
   ocrExchangeRecorder = jest.fn(),
   evaluate = jest.fn(),
   resolveValueRef = jest.fn(),
@@ -31,6 +33,7 @@ const createService = ({
       recordActionCompleted,
       recordStepFailed,
       recordControlCompleted,
+      recordRepeatStarted,
       ocrExchangeRecorder,
     } as never,
     { evaluate, resolveValueRef } as never,
@@ -76,6 +79,53 @@ const deferred = () => {
 };
 
 describe('AutomationStepExecutorService', () => {
+  it.each([0, undefined])(
+    'uses a resolved coordinate of %s or fails before dispatch when missing',
+    async (x) => {
+      const conditions = new AutomationConditionService();
+      const { service, registryExecute, recordStepFailed } = createService({
+        registryExecute: jest.fn().mockResolvedValue({ summary: 'Tapped.' }),
+        resolveValueRef: jest.fn(conditions.resolveValueRef.bind(conditions)),
+      });
+      const state = createState();
+      state.outputsByStepId.set('locate', { centerX: x });
+      const result = await service.executeSteps(
+        [
+          {
+            id: 'tap',
+            uses: 'android.tapNormalized',
+            with: {
+              x: {
+                $ref: {
+                  source: 'stepOutput',
+                  stepId: 'locate',
+                  outputKey: 'centerX',
+                },
+              },
+              y: 0.5,
+            },
+          },
+        ],
+        state,
+        createRun(),
+        { ...stepOptions, isRunCanceled: () => false },
+      );
+      expect(result.failed).toBe(x === undefined);
+      if (x === undefined) {
+        expect(registryExecute).not.toHaveBeenCalled();
+        expect(recordStepFailed.mock.calls[0]?.[6]).toContain(
+          'the step returned no value',
+        );
+      } else {
+        expect(registryExecute).toHaveBeenCalledWith(
+          'android.tapNormalized',
+          { x, y: 0.5 },
+          expect.any(Object),
+        );
+      }
+    },
+  );
+
   it('lets an AI deadline finish the decision while keeping later steps behind the admitted command', async () => {
     const deadline = new AbortController();
     const dispatch = deferred();
@@ -189,7 +239,7 @@ describe('AutomationStepExecutorService', () => {
 
   it('does not enter a repeat when the run stopped before recording it', async () => {
     const { service, registryExecute } = createService({
-      recordControlCompleted: jest.fn().mockResolvedValue(false),
+      recordRepeatStarted: jest.fn().mockResolvedValue(false),
     });
     await expect(
       service.executeSteps(

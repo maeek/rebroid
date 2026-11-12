@@ -29,15 +29,11 @@ const responseErrorMessage = async (response: Response) => {
 export const useAutomationAiDraft = ({
   commitEditorChange,
   setBusy,
-  setYamlError,
-  setYamlValid,
   canUseAi,
   workflowId
 }: {
   commitEditorChange: (update: () => EditorSnapshot) => void
   setBusy: Dispatch<SetStateAction<boolean>>
-  setYamlError: Dispatch<SetStateAction<string | null>>
-  setYamlValid: Dispatch<SetStateAction<boolean>>
   canUseAi: boolean
   workflowId: string | null
 }) => {
@@ -165,8 +161,6 @@ export const useAutomationAiDraft = ({
       yamlOpen: true,
       yamlDraft: aiDraftResult.yaml
     }))
-    setYamlValid(true)
-    setYamlError(null)
     setAiDraftOpenState(false)
     setAiDraftPrompt('')
     resetDraftState()

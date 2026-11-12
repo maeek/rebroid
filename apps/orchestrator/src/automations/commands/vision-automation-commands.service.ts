@@ -75,7 +75,7 @@ export class VisionAutomationCommandsService {
             description: 'Detected UI elements with normalized bounds.',
           },
           {
-            key: 'summary',
+            key: 'visionSummary',
             label: 'Vision summary',
             type: 'string',
             description: 'Optional vision model summary.',
@@ -135,7 +135,7 @@ export class VisionAutomationCommandsService {
               height: observation.image.height,
               capturedAt: observation.image.capturedAt,
               detections,
-              summary: observation.summary ?? null,
+              visionSummary: observation.summary ?? null,
               uiXml: observation.uiXml ?? null,
               ocrStatus: observation.ocr?.status ?? 'unavailable',
               ocrTextCount: observation.ocr?.detections.length ?? 0,
@@ -160,6 +160,20 @@ export class VisionAutomationCommandsService {
             label: 'Matches',
             type: 'array',
             description: 'Matching detections with normalized bounds.',
+          },
+          {
+            key: 'centerX',
+            label: 'First match X',
+            type: 'number',
+            description:
+              'Normalized horizontal center of the first match, when found.',
+          },
+          {
+            key: 'centerY',
+            label: 'First match Y',
+            type: 'number',
+            description:
+              'Normalized vertical center of the first match, when found.',
           },
           {
             key: 'found',
@@ -206,14 +220,21 @@ export class VisionAutomationCommandsService {
           );
           const { visionSnapshot } = context;
           const found = result.outcome === 'found';
+          const center = found ? result.matches[0]?.center : undefined;
           const summary = found
             ? `Found ${result.matches.length} match(es) for "${input.query}".`
             : `Search for "${input.query}" returned ${result.outcome}.${result.reason ? ` ${result.reason}` : ''}`;
           return {
             summary,
+            outcome: found
+              ? 'succeeded'
+              : result.outcome === 'not_found'
+                ? 'not_found'
+                : 'uncertain',
             data: {
               ...result,
               found,
+              ...(center ? { centerX: center.x, centerY: center.y } : {}),
             },
             ...(visionSnapshot && found
               ? {

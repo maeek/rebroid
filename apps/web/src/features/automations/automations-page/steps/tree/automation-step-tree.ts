@@ -26,32 +26,37 @@ const nestedListsForStep = (step: AutomationStepForm): Array<{ id: string; steps
   return []
 }
 
-const cloneStepPreservingKeys = (step: AutomationStepForm): AutomationStepForm => {
-  if (step.kind === 'condition') {
-    return {
-      ...step,
-      thenSteps: step.thenSteps.map(cloneStepPreservingKeys),
-      elseSteps: step.elseSteps.map(cloneStepPreservingKeys)
+export const mapAutomationSteps = (
+  steps: AutomationStepForm[],
+  transform: (step: AutomationStepForm) => AutomationStepForm
+): AutomationStepForm[] =>
+  steps.map(original => {
+    const step = transform(original)
+    if (step.kind === 'condition') {
+      return {
+        ...step,
+        thenSteps: mapAutomationSteps(step.thenSteps, transform),
+        elseSteps: mapAutomationSteps(step.elseSteps, transform)
+      }
     }
-  }
-  if (step.kind === 'switch') {
-    return {
-      ...step,
-      cases: step.cases.map(item => ({
-        ...item,
-        steps: item.steps.map(cloneStepPreservingKeys)
-      })),
-      defaultSteps: step.defaultSteps.map(cloneStepPreservingKeys)
+    if (step.kind === 'switch') {
+      return {
+        ...step,
+        cases: step.cases.map(item => ({
+          ...item,
+          steps: mapAutomationSteps(item.steps, transform)
+        })),
+        defaultSteps: mapAutomationSteps(step.defaultSteps, transform)
+      }
     }
-  }
-  if (step.kind === 'repeat') {
-    return {
-      ...step,
-      steps: step.steps.map(cloneStepPreservingKeys)
+    if (step.kind === 'repeat') {
+      return {
+        ...step,
+        steps: mapAutomationSteps(step.steps, transform)
+      }
     }
-  }
-  return { ...step }
-}
+    return step
+  })
 
 const collectListRefs = (steps: AutomationStepForm[], map = new Map<string, AutomationStepForm[]>()) => {
   map.set(ROOT_STEP_LIST_ID, steps)
@@ -177,7 +182,7 @@ export const moveStepToList = (
   if (!source || !sourceStep) return steps
   if (nestedListIdsForStep(sourceStep).has(targetListId)) return steps
 
-  const nextTree = steps.map(cloneStepPreservingKeys)
+  const nextTree = mapAutomationSteps(steps, step => ({ ...step }))
   const sourceInNext = findStepLocation(nextTree, stepId)
   if (!sourceInNext) return steps
 

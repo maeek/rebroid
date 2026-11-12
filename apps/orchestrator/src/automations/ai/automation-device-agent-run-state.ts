@@ -6,6 +6,7 @@ import type { VisionDetection } from '../vision/vision-observation';
 import type { AiObservationCandidate } from './core/screen-state-policy';
 import type { DeviceTargetSession } from './automation-device-target-session';
 import { sanitizeAiText } from './automation-ai-observation.utils';
+import type { AutomationCommandOutcome } from '@rebroid/automation-core/command-registry';
 
 export interface DeviceAgentSubgoal {
   id: string;
@@ -23,6 +24,7 @@ export interface DeviceAgentEvidence {
   eligibleForCompletion?: boolean;
   command?: string;
   lookupMatches?: AiObservationCandidate[];
+  outcome?: AutomationCommandOutcome;
 }
 
 export interface DeviceAgentTrajectoryEntry {
@@ -154,25 +156,69 @@ export class DeviceAgentRunState implements DeviceAgentState {
             return this.lookupEvidence(item);
           if (item.command === 'vision.observe') return this.ocrEvidence(item);
         }
-        if (
-          !item.eligibleForCompletion ||
-          item.command !== 'android.listPackages'
-        )
-          return [];
-        const packages: unknown = item.data?.packages;
-        if (!Array.isArray(packages)) return [];
-        const names = packages
+        return item.eligibleForCompletion ? this.typedResultEvidence(item) : [];
+      });
+  }
+
+  private typedResultEvidence({
+    command,
+    data,
+    id,
+    outcome,
+  }: DeviceAgentEvidence) {
+    const fact = (text: string) => [`- ${text} [evidence=${id}]`];
+    switch (command) {
+      case 'android.listPackages': {
+        if (outcome === 'not_found')
+          return fact('Package discovery returned no matches.');
+        if (!Array.isArray(data?.packages)) return [];
+        const names = data.packages
           .filter(
             (name): name is string =>
               typeof name === 'string' && /^[A-Za-z0-9_.]{1,160}$/.test(name),
           )
           .slice(0, 30);
         return names.length
-          ? [
-              `- Observed package IDs: ${names.join(', ')} [evidence=${item.id}]`,
-            ]
+          ? fact(`Observed package IDs: ${names.join(', ')}`)
           : [];
-      });
+      }
+      case 'android.getClipboard':
+        return typeof data?.text === 'string'
+          ? fact(
+              `Clipboard text: ${JSON.stringify(sanitizeAiText(data.text, 300))}`,
+            )
+          : [];
+      case 'android.getSetting':
+        return typeof data?.value === 'string'
+          ? fact(
+              `Android setting value: ${JSON.stringify(sanitizeAiText(data.value, 300))}`,
+            )
+          : [];
+      case 'android.fileExists':
+        return typeof data?.exists === 'boolean'
+          ? fact(`Device file exists: ${data.exists}`)
+          : [];
+      case 'android.listFiles': {
+        if (!Array.isArray(data?.files)) return [];
+        const names = data.files.filter(
+          (name): name is string => typeof name === 'string',
+        );
+        if (!names.length)
+          return fact('The device directory contains no listed files.');
+        const entries = names
+          .slice(0, 30)
+          .map((name) => sanitizeAiText(name, 160));
+        return fact(
+          `Device files (${entries.length} of ${names.length}): ${JSON.stringify(entries)}`,
+        );
+      }
+      case 'android.pullFile':
+        return typeof data?.sizeBytes === 'number'
+          ? fact(`Read ${data.sizeBytes} bytes from the device file.`)
+          : [];
+      default:
+        return [];
+    }
   }
 
   private lookupEvidence(item: DeviceAgentEvidence) {
@@ -255,7 +301,9 @@ export class DeviceAgentRunState implements DeviceAgentState {
     this.evidenceLog.push(evidence);
     this.history.push({
       action,
-      outcome: evidence.summary,
+      outcome: evidence.outcome
+        ? `[${evidence.outcome}] ${evidence.summary}`
+        : evidence.summary,
       evidenceId: evidence.id,
       snapshotId: evidence.snapshotId,
       failed,

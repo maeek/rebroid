@@ -11,6 +11,7 @@ import type { VisionDetection } from '../vision/vision-observation';
 import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
 import type {
   AutomationCommandEditorMetadata,
+  AutomationCommandOutcome,
   AutomationCommandOutputMetadata,
 } from '@rebroid/automation-core/command-registry';
 
@@ -48,6 +49,7 @@ export type AutomationCommandExecutor = (request: {
 
 export interface AutomationCommandResult {
   summary: string;
+  outcome?: AutomationCommandOutcome;
   data?: Record<string, unknown>;
   snapshotMatches?: { snapshotId: string; matches: VisionDetection[] };
 }

@@ -14,7 +14,12 @@ const AutomationEditPageContent = async ({ params }: { params: Promise<{ id: str
   ])
 
   if (orchestratorError || !automation) {
-    return <AutomationPageUnavailable title='Workflow' />
+    return (
+      <AutomationPageUnavailable
+        title='Workflow'
+        workflow
+      />
+    )
   }
 
   return (

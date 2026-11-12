@@ -1,3 +1,4 @@
+import { hasCompleteUiHierarchy } from '@rebroid/android-application-core/ui-text';
 import { Injectable } from '@nestjs/common';
 import {
   extractUiDetections,
@@ -235,7 +236,9 @@ const boundsOverlap = (
 
 const readUiEvidence = ({ aiImage, ui }: AutomationVisionCapture) => {
   const preparedUi =
-    ui.status === 'available' && ui.xml ? prepareUiXml(ui.xml) : null;
+    ui.status === 'available' && ui.xml && hasCompleteUiHierarchy(ui.xml)
+      ? prepareUiXml(ui.xml)
+      : null;
   const detections = preparedUi
     ? extractUiDetections(preparedUi.xml, {
         width: aiImage.width ?? 1,

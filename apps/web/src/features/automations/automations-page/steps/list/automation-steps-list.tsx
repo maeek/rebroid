@@ -20,11 +20,8 @@ import {
 } from '../../editor/automation-editor-layout'
 import { AutomationStepInspector } from '../inspector/automation-step-inspector'
 import { AutomationStepOutlineListView } from '../outline/automation-step-outline-list-view'
-import {
-  isAutomationStepForm,
-  makeAutomationStepIdsUnique,
-  readAutomationStepFromText
-} from '../shared/automation-step-clipboard'
+import { isAutomationStepForm, readAutomationStepFromText } from '../shared/automation-step-clipboard'
+import { rewriteAutomationStepReferences } from '../shared/automation-step-reference-rewrite'
 import {
   findStepById,
   findStepLocation,
@@ -120,6 +117,17 @@ export function AutomationStepsList({
 
   const updateStep = useCallback(
     (listId: string, index: number, nextStep: AutomationStepForm) => {
+      const previousId = findStepById(safeSteps, nextStep.clientKey)?.id.trim()
+      const nextId = nextStep.id.trim()
+      if (previousId && nextId && previousId !== nextId) {
+        onChange(
+          rewriteAutomationStepReferences(
+            replaceStepInList(safeSteps, listId, index, nextStep),
+            new Map([[previousId, nextId]])
+          )
+        )
+        return
+      }
       if (listId === ROOT_STEP_LIST_ID) onStepChange(index, nextStep)
       else onChange(replaceStepInList(safeSteps, listId, index, nextStep))
     },
@@ -134,8 +142,7 @@ export function AutomationStepsList({
   )
 
   const pasteStepAtRoot = useCallback(
-    (step: AutomationStepForm) => {
-      const nextStep = makeAutomationStepIdsUnique(step, safeSteps)
+    (nextStep: AutomationStepForm) => {
       onChange([...safeSteps, nextStep])
       selectStep(nextStep.clientKey)
       if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
@@ -152,7 +159,7 @@ export function AutomationStepsList({
       const text = event.clipboardData?.getData('text/plain') ?? ''
       if (!text.trim()) return
 
-      const step = readAutomationStepFromText(text)
+      const step = readAutomationStepFromText(text, safeSteps)
       if (!step) return
 
       event.preventDefault()
@@ -161,7 +168,7 @@ export function AutomationStepsList({
 
     window.addEventListener('paste', handlePaste)
     return () => window.removeEventListener('paste', handlePaste)
-  }, [pasteStepAtRoot])
+  }, [pasteStepAtRoot, safeSteps])
 
   const stepsContext = useMemo(
     () => ({
@@ -240,8 +247,7 @@ export function AutomationStepsList({
                 onYamlStepKeyChange={onYamlStepKeyChange}
                 onChange={nextStep => {
                   if (!selectedLocation) return
-                  if (selectedLocation.listId === ROOT_STEP_LIST_ID) onStepChange(selectedLocation.index, nextStep)
-                  else onChange(replaceStepInList(safeSteps, selectedLocation.listId, selectedLocation.index, nextStep))
+                  updateStep(selectedLocation.listId, selectedLocation.index, nextStep)
                 }}
                 onClose={() => setInspectorOpen(false)}
               />

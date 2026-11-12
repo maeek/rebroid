@@ -23,6 +23,7 @@ import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
   defaultForm,
+  preferredWorkflowAction,
   definitionToForm,
   formToSaveInput,
   type AutomationFormState,
@@ -47,7 +48,9 @@ export function AutomationEditorPage({
   const router = useRouter()
   const [automation, setAutomation] = useState<Automation | null>(initialAutomation ?? null)
   const [form, setForm] = useState<AutomationFormState>(() =>
-    initialAutomation ? automationToForm(initialAutomation) : defaultForm()
+    initialAutomation
+      ? automationToForm(initialAutomation)
+      : defaultForm(preferredWorkflowAction(initialCommands, 'android.viewerCommand') ?? null)
   )
   const {
     openBlock,
@@ -68,13 +71,12 @@ export function AutomationEditorPage({
   const {
     currentYaml,
     setYamlDraft,
-    setYamlError,
     setYamlOpen,
-    setYamlValid,
     toggleYamlEditor,
     yamlDraft,
     yamlError,
     yamlOpen,
+    yamlPending,
     yamlValid
   } = useAutomationEditorYaml({ automation, form, setForm })
   const { commitEditorChange, currentSnapshot, hasUnsavedHistory, resetEditorHistory } = useAutomationEditorHistory({
@@ -116,8 +118,6 @@ export function AutomationEditorPage({
     canUseAi,
     commitEditorChange,
     setBusy,
-    setYamlError,
-    setYamlValid,
     workflowId: automation?.id ?? form.id
   })
   const { exportWorkflow, handleWorkflowImport, importWorkflow } = useAutomationWorkflowFiles({
@@ -128,8 +128,6 @@ export function AutomationEditorPage({
     importInputRef,
     resetSelectionForSteps,
     setBusy,
-    setYamlError,
-    setYamlValid,
     title,
     yamlDraft,
     yamlError,
@@ -152,8 +150,6 @@ export function AutomationEditorPage({
         setForm(nextForm)
         setYamlOpen(true)
         setYamlDraft(validation.yaml ?? pendingDraft.yaml)
-        setYamlValid(true)
-        setYamlError(null)
         resetSelectionForSteps(nextForm.steps)
         resetEditorHistory({
           form: nextForm,
@@ -170,16 +166,7 @@ export function AutomationEditorPage({
         })
       })
       .finally(() => setBusy(false))
-  }, [
-    form.id,
-    isNew,
-    resetEditorHistory,
-    resetSelectionForSteps,
-    setYamlDraft,
-    setYamlError,
-    setYamlOpen,
-    setYamlValid
-  ])
+  }, [form.id, isNew, resetEditorHistory, resetSelectionForSteps, setYamlDraft, setYamlOpen])
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
     commitEditorChange(() => ({
@@ -313,10 +300,16 @@ export function AutomationEditorPage({
         >
           <WorkflowEditorWorkspace
             details={
-              <AutomationDetailsSection
-                form={form}
-                onChange={updateForm}
-              />
+              <fieldset
+                disabled={yamlOpen}
+                inert={yamlOpen || undefined}
+                className='min-w-0'
+              >
+                <AutomationDetailsSection
+                  form={form}
+                  onChange={updateForm}
+                />
+              </fieldset>
             }
             yamlOpen={yamlOpen}
             disabled={busy}
@@ -327,10 +320,8 @@ export function AutomationEditorPage({
                 yaml={yamlDraft}
                 commands={initialCommands}
                 onYamlChange={yaml => commitEditorChange(() => ({ ...currentSnapshot(), yamlDraft: yaml }))}
-                onValidationChange={(valid, messages) => {
-                  setYamlValid(valid)
-                  setYamlError(valid ? null : (messages[0] ?? 'Workflow YAML is invalid.'))
-                }}
+                error={yamlError}
+                pending={yamlPending}
               />
             ) : (
               <AutomationStepsList

@@ -20,7 +20,7 @@ describe('vision core UI XML detection parsing', () => {
     assert.equal(detections[0].bounds.top, 20 / 300);
   });
 
-  it('matches detection query by label, text, role, and description', () => {
+  it('matches a hierarchy accessibility description case-insensitively', () => {
     const matches = matchesDetectionQuery(
       {
         id: '1',
@@ -41,6 +41,26 @@ describe('vision core UI XML detection parsing', () => {
       'Primary ACTION',
     );
     assert.equal(matches, true);
+  });
+
+  it('finds visible Unicode labels and ignores hidden nodes and resource IDs in text queries', () => {
+    const xml = `<hierarchy>
+      <node resource-id="Żappka" bounds="[0,0][50,50]" />
+      <node text="Żappka" visible-to-user="false" bounds="[0,0][50,50]" />
+      <node content-desc="Z&#x307;appka" bounds="[20,20][40,40]" />
+    </hierarchy>`;
+    const detections = extractUiDetections(xml, { width: 100, height: 100 });
+    expect(detections).toHaveLength(2);
+    expect(
+      detections.filter((detection) =>
+        matchesDetectionQuery(detection, 'Żappka'),
+      ),
+    ).toMatchObject([
+      {
+        description: 'Żappka',
+        center: { x: expect.closeTo(0.3), y: expect.closeTo(0.3) },
+      },
+    ]);
   });
 
   it('sorts by confidence then position', () => {

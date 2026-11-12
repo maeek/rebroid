@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
-import { ZodError, toJSONSchema } from 'zod';
+import { z, ZodError, toJSONSchema } from 'zod';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import {
   AutomationCommandContext,
@@ -54,11 +54,7 @@ export class AutomationCommandRegistryService implements OnModuleInit {
           outputs,
           editor,
         }) => {
-          const inputSchema = normalizeDefaultedJsonSchemaRequired(
-            toJSONSchema(this.get(uses).schema, {
-              unrepresentable: 'any',
-            }) as Record<string, unknown>,
-          );
+          const inputSchema = this.inputSchemaFor(uses);
 
           return {
             uses,
@@ -74,10 +70,32 @@ export class AutomationCommandRegistryService implements OnModuleInit {
       .sort((left, right) => left.uses.localeCompare(right.uses));
   }
 
-  normalizeInput(uses: string, input: Record<string, unknown>) {
-    const command = this.get(uses);
+  inputSchemaFor(uses: string) {
+    return normalizeDefaultedJsonSchemaRequired(
+      toJSONSchema(this.get(uses).schema, {
+        unrepresentable: 'any',
+      }) as Record<string, unknown>,
+    );
+  }
+
+  normalizeInput(
+    uses: string,
+    input: Record<string, unknown>,
+    boundFields: string[] = [],
+  ) {
+    const schema = this.get(uses).schema;
+    const literalSchema =
+      schema instanceof z.ZodObject && boundFields.length
+        ? z.strictObject(
+            Object.fromEntries(
+              Object.entries(schema.shape).filter(
+                ([key]) => !boundFields.includes(key),
+              ),
+            ),
+          )
+        : schema;
     try {
-      return command.schema.parse(input) as Record<string, unknown>;
+      return literalSchema.parse(input) as Record<string, unknown>;
     } catch (error) {
       if (error instanceof ZodError) {
         throw new BadRequestException(

@@ -15,8 +15,6 @@ export const useAutomationWorkflowFiles = ({
   importInputRef,
   resetSelectionForSteps,
   setBusy,
-  setYamlError,
-  setYamlValid,
   title,
   yamlDraft,
   yamlError,
@@ -30,8 +28,6 @@ export const useAutomationWorkflowFiles = ({
   importInputRef: RefObject<HTMLInputElement | null>
   resetSelectionForSteps: (steps: AutomationStepForm[]) => void
   setBusy: (busy: boolean) => void
-  setYamlError: (error: string | null) => void
-  setYamlValid: (valid: boolean) => void
   title: string
   yamlDraft: string
   yamlError: string | null
@@ -80,8 +76,6 @@ export const useAutomationWorkflowFiles = ({
           yamlDraft: validation.yaml ?? yaml
         }))
         resetSelectionForSteps(nextForm.steps)
-        setYamlValid(true)
-        setYamlError(null)
         toast({ title: 'Workflow imported' })
       } catch (error) {
         toast({
@@ -94,17 +88,7 @@ export const useAutomationWorkflowFiles = ({
         if (importInputRef.current) importInputRef.current.value = ''
       }
     },
-    [
-      automationId,
-      commitEditorChange,
-      form.id,
-      importInputRef,
-      resetSelectionForSteps,
-      setBusy,
-      setYamlError,
-      setYamlValid,
-      yamlOpen
-    ]
+    [automationId, commitEditorChange, form.id, importInputRef, resetSelectionForSteps, setBusy, yamlOpen]
   )
 
   return {

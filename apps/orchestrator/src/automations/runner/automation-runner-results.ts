@@ -1,4 +1,6 @@
 import { AutomationStepResult } from './automation-runner.types';
+import type { AutomationCommandOutcome } from '@rebroid/automation-core/command-registry';
+import type { AutomationCommandResult } from '../commands/automation-command.types';
 
 export interface StepResultOptions {
   stepId: string;
@@ -9,12 +11,10 @@ export interface StepResultOptions {
   completedAt: string;
 }
 
-export const buildStepOutput = (
-  summary: string,
-  data?: Record<string, unknown>,
-) => ({
-  summary,
-  ...(data ?? {}),
+export const buildStepOutput = (result: AutomationCommandResult) => ({
+  ...result.data,
+  summary: result.summary,
+  commandOutcome: result.outcome ?? 'succeeded',
 });
 
 export const buildSuccessfulStepResult = (
@@ -35,6 +35,7 @@ export const buildSuccessfulStepResult = (
 export const buildFailedStepResult = (
   options: StepResultOptions,
   error: string,
+  outcome?: AutomationCommandOutcome,
 ): AutomationStepResult => ({
   stepId: options.stepId,
   uses: options.uses,
@@ -43,7 +44,7 @@ export const buildFailedStepResult = (
   status: 'failed',
   startedAt: options.startedAt,
   completedAt: options.completedAt,
-  output: null,
+  output: outcome ? { summary: error, commandOutcome: outcome } : null,
   error,
 });
 

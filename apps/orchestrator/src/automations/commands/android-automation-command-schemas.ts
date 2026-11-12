@@ -132,5 +132,5 @@ export const fileSchema = z.object({
 
 export const filePushSchema = z.object({
   path: remotePathSchema,
-  contentBase64: z.string().min(1).max(8_000_000),
+  contentBase64: z.string().max(8_000_000),
 });

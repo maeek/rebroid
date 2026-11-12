@@ -24,7 +24,8 @@ describe("automation command registry helpers", () => {
     ]);
 
     assert.equal(normalized[0].key, "summary");
-    assert.equal(normalized[1].key, "status");
+    assert.equal(normalized[1].key, "commandOutcome");
+    assert.equal(normalized[2].key, "status");
     assert.equal(normalized[0], summaryOutput);
   });
 
@@ -48,7 +49,7 @@ describe("automation command registry helpers", () => {
 
     assert.deepEqual(
       normalized.map((output) => output.key),
-      ["summary", "status"],
+      ["summary", "commandOutcome", "status"],
     );
   });
 

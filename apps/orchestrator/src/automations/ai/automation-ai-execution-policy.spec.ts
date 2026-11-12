@@ -1,6 +1,7 @@
 import {
   resolveActionCommand,
-  resultIndicatesFailure,
+  expectsScreenChange,
+  outcomeAllowsEvidence,
 } from './automation-ai-action-policy';
 import {
   commandAllowedForRun,
@@ -11,6 +12,17 @@ import {
   assertTargetSession,
   createTargetSession,
 } from './automation-device-target-session';
+import type { AutomationCommandDto } from '../dto/automation-command.dto';
+
+const command = (uses: string): AutomationCommandDto => ({
+  uses,
+  label: uses,
+  description: '',
+  requiredPermissions: [],
+  inputSchema: {},
+  outputs: [],
+  editor: { inputDefaults: {}, inputFieldOrder: [], yamlSnippetFields: [] },
+});
 
 describe('automation AI execution policy', () => {
   it('rejects a changed target fingerprint', () => {
@@ -66,6 +78,74 @@ describe('automation AI execution policy', () => {
     ).toBe(false);
   });
 
+  it.each(['Open Żappka', 'Otwórz Żappkę'])(
+    'routes screen lookup and package discovery for "%s"',
+    (goal) => {
+      const commands = [
+        'android.getClipboard',
+        'android.getSetting',
+        'android.deleteFile',
+        'android.listFiles',
+        'android.rotateDisplay',
+        'android.listPackages',
+        'vision.observe',
+        'vision.locate',
+        'flow.stop',
+      ].map(command);
+      const defaultRoutes = routeCapabilities({ commands, goal, input: {} });
+      const explicitRoutes = routeCapabilities({
+        commands,
+        goal,
+        input: { capabilities: commands.map(({ uses }) => uses) },
+      });
+      expect(defaultRoutes.map(({ uses }) => uses)).toEqual([
+        'android.listPackages',
+        'vision.locate',
+      ]);
+      expect(explicitRoutes).toEqual(defaultRoutes);
+      expect(
+        routeCapabilities({ commands, goal, input: { capabilities: [] } }),
+      ).toEqual([]);
+      expect(
+        routeCapabilities({
+          commands,
+          goal,
+          input: { capabilities: ['android.deleteFile'] },
+        }),
+      ).toEqual([]);
+    },
+  );
+
+  it('routes relevant file operations only when explicitly granted', () => {
+    const commands = [
+      'android.deleteFile',
+      'android.listFiles',
+      'vision.locate',
+    ].map(command);
+    const capabilities = commands.map(({ uses }) => uses);
+    expect(
+      routeCapabilities({
+        commands,
+        goal: 'List files under /sdcard',
+        input: { capabilities },
+      }),
+    ).toEqual([command('android.listFiles')]);
+    expect(
+      routeCapabilities({
+        commands,
+        goal: 'Delete the file in /sdcard',
+        input: {},
+      }),
+    ).toEqual([command('vision.locate')]);
+    expect(
+      routeCapabilities({
+        commands,
+        goal: 'Delete the file in /sdcard',
+        input: { capabilities },
+      }),
+    ).toEqual([command('android.deleteFile')]);
+  });
+
   it.each([
     ['settings', 'android.openSystemSettings', {}],
     ['notifications', 'android.expandNotifications', {}],
@@ -84,14 +164,26 @@ describe('automation AI execution policy', () => {
   );
 
   it.each([
-    [{ failed: true }, true],
-    [{ success: false }, true],
-    [{ exitCode: 1 }, true],
-    [{ opened: false }, true],
-    [{ failureCategory: 'transport' }, true],
-    [{ success: true, exitCode: 0 }, false],
-  ])('classifies structured command outcomes', (result, expected) => {
-    expect(resultIndicatesFailure(result)).toBe(expected);
+    ['succeeded', true],
+    ['not_found', true],
+    ['unsupported', false],
+    ['failed', false],
+    ['uncertain', false],
+  ] as const)('admits evidence for outcome %s', (outcome, expected) => {
+    expect(outcomeAllowsEvidence(outcome)).toBe(expected);
+  });
+
+  it('refreshes the screen after writing the clipboard without requiring a visual change', () => {
+    const action = resolveActionCommand(
+      {
+        type: 'invoke_capability',
+        uses: 'android.setClipboard',
+        input: { text: 'Żappka' },
+      },
+      { candidates: [] },
+    );
+    expect(action?.screenMutating).toBe(true);
+    expect(action && expectsScreenChange(action)).toBe(false);
   });
 
   it('allows only validated read-only shell escalation commands', () => {

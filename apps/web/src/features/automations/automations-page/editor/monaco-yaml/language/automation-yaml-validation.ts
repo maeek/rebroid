@@ -1,4 +1,4 @@
-import { parseDocument } from 'yaml'
+import { isMap, parseDocument } from 'yaml'
 import {
   allowsAdditionalProperties,
   enumValues,
@@ -76,7 +76,9 @@ export const validateAutomationYamlModel = ({
     const propertySchema = schemaContext?.propertySchema ?? propertiesOf(schema)[propertyName]
     const values = enumValues(propertySchema)
     const value = rawValue.replace(/^['"]|['"]$/g, '')
-    if (values.length > 0 && !values.includes(value)) {
+    const standaloneValue = schemaContext ? undefined : parsed.get(propertyName, true)
+    const inputBinding = schemaContext?.inputBinding || (isMap(standaloneValue) && standaloneValue.has('$ref'))
+    if (values.length > 0 && !inputBinding && !values.includes(value)) {
       markers.push(
         enumMarker(
           monaco,

@@ -3,20 +3,25 @@ import {
   AUTOMATION_API_VERSION,
   AUTOMATION_KIND,
   AutomationDefinition,
+  AutomationCommandOutputMetadata,
+  forkAutomationStepScope,
   AutomationDefinitionMetadata,
   AutomationDefinitionStep,
   AutomationSwitchCase,
 } from '@rebroid/automation-core/definition';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
-import { AutomationConditionService } from '../condition/automation-condition.service';
+import {
+  AutomationConditionService,
+  type AvailableStepOutputs,
+} from '../condition/automation-condition.service';
+import { controlStepOutputs } from '@rebroid/automation-core/metadata';
+import { normalizeActionInputs } from './automation-action-input-bindings';
 import { normalizeAutomationTags } from '../tags/automation-tags';
 import {
-  cloneAvailableStepOutputs,
   isControlStepType,
   isRecord,
   normalizePositiveInteger,
   normalizeStepId,
-  outputKeysForUses,
 } from './automation-definition-normalizer.utils';
 
 @Injectable()
@@ -86,8 +91,9 @@ export class AutomationDefinitionNormalizerService {
     rawSteps: unknown[],
     seenIds: Set<string>,
     path: string,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ): AutomationDefinitionStep[] {
+    const scope = new Map(availableStepOutputs);
     const steps: AutomationDefinitionStep[] = [];
     for (const [index, rawStep] of rawSteps.entries()) {
       const step = this.normalizeStep(
@@ -95,10 +101,10 @@ export class AutomationDefinitionNormalizerService {
         index,
         seenIds,
         `${path}[${index}]`,
-        availableStepOutputs,
+        scope,
       );
       steps.push(step);
-      availableStepOutputs.set(step.id, this.outputKeysForStep(step));
+      scope.set(step.id, this.outputsForStep(step));
     }
     return steps;
   }
@@ -108,7 +114,7 @@ export class AutomationDefinitionNormalizerService {
     index: number,
     seenIds: Set<string>,
     path: string,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ): AutomationDefinitionStep {
     if (!isRecord(rawStep)) {
       throw new BadRequestException(`Step ${index + 1} must be an object.`);
@@ -154,7 +160,7 @@ export class AutomationDefinitionNormalizerService {
     if (typeof rawStep.uses !== 'string' || !rawStep.uses.trim()) {
       throw new BadRequestException(`Step ${index + 1} must define uses.`);
     }
-    return this.normalizeActionStep(rawStep, id);
+    return this.normalizeActionStep(rawStep, id, path, availableStepOutputs);
   }
 
   private normalizeConditionStep(
@@ -162,7 +168,7 @@ export class AutomationDefinitionNormalizerService {
     id: string,
     path: string,
     seenIds: Set<string>,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ) {
     const condition = this.conditions.normalizeExpression(
       rawStep.condition,
@@ -173,8 +179,11 @@ export class AutomationDefinitionNormalizerService {
       availableStepOutputs,
       `${path}.condition`,
     );
-    const branchOutputs = cloneAvailableStepOutputs(availableStepOutputs);
-    branchOutputs.set(id, outputKeysForUses('flow.condition'));
+    const branchOutputs = forkAutomationStepScope(availableStepOutputs, {
+      id,
+      kind: 'condition',
+      outputs: controlStepOutputs['flow.condition'],
+    });
     return {
       id,
       type: 'condition' as const,
@@ -184,7 +193,7 @@ export class AutomationDefinitionNormalizerService {
         seenIds,
         `${path}.then`,
         id,
-        cloneAvailableStepOutputs(branchOutputs),
+        branchOutputs,
       ),
       ...(rawStep.else === undefined
         ? {}
@@ -194,7 +203,7 @@ export class AutomationDefinitionNormalizerService {
               seenIds,
               `${path}.else`,
               id,
-              cloneAvailableStepOutputs(branchOutputs),
+              branchOutputs,
             ),
           }),
     };
@@ -205,13 +214,16 @@ export class AutomationDefinitionNormalizerService {
     id: string,
     path: string,
     seenIds: Set<string>,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ) {
     if (!Array.isArray(rawStep.cases)) {
       throw new BadRequestException(`Step "${id}" cases must be an array.`);
     }
-    const caseOutputs = cloneAvailableStepOutputs(availableStepOutputs);
-    caseOutputs.set(id, outputKeysForUses('flow.switch'));
+    const caseOutputs = forkAutomationStepScope(availableStepOutputs, {
+      id,
+      kind: 'switch',
+      outputs: controlStepOutputs['flow.switch'],
+    });
     const cases: AutomationSwitchCase[] = rawStep.cases.map(
       (rawCase, caseIndex) => {
         if (!isRecord(rawCase)) {
@@ -226,7 +238,7 @@ export class AutomationDefinitionNormalizerService {
             seenIds,
             `${path}.cases[${caseIndex}].steps`,
             id,
-            cloneAvailableStepOutputs(caseOutputs),
+            caseOutputs,
           ),
         };
       },
@@ -248,7 +260,7 @@ export class AutomationDefinitionNormalizerService {
               seenIds,
               `${path}.default`,
               id,
-              cloneAvailableStepOutputs(caseOutputs),
+              caseOutputs,
             ),
           }),
     };
@@ -259,7 +271,7 @@ export class AutomationDefinitionNormalizerService {
     id: string,
     path: string,
     seenIds: Set<string>,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ) {
     const count =
       rawStep.count === undefined
@@ -304,12 +316,17 @@ export class AutomationDefinitionNormalizerService {
         seenIds,
         `${path}.steps`,
         id,
-        cloneAvailableStepOutputs(availableStepOutputs),
+        availableStepOutputs,
       ),
     };
   }
 
-  private normalizeActionStep(rawStep: Record<string, unknown>, id: string) {
+  private normalizeActionStep(
+    rawStep: Record<string, unknown>,
+    id: string,
+    path: string,
+    scope: AvailableStepOutputs,
+  ) {
     const uses = typeof rawStep.uses === 'string' ? rawStep.uses.trim() : '';
     const input = rawStep.with === undefined ? {} : rawStep.with;
     if (!isRecord(input)) {
@@ -318,7 +335,14 @@ export class AutomationDefinitionNormalizerService {
     return {
       id,
       uses,
-      with: this.registry.normalizeInput(uses, input),
+      with: normalizeActionInputs(
+        this.registry,
+        this.conditions,
+        uses,
+        input,
+        scope,
+        `${path}.with`,
+      ),
     };
   }
 
@@ -327,7 +351,7 @@ export class AutomationDefinitionNormalizerService {
     seenIds: Set<string>,
     path: string,
     id: string,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ) {
     if (!Array.isArray(rawSteps) || rawSteps.length === 0) {
       throw new BadRequestException(`Step "${id}" ${path} must contain steps.`);
@@ -338,39 +362,18 @@ export class AutomationDefinitionNormalizerService {
   private normalizeSwitchValueRef(
     value: unknown,
     path: string,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
   ) {
-    const ref = this.conditions.normalizeExpression(
-      {
-        groups: [
-          {
-            conditions: [
-              {
-                value,
-                operator: 'exists',
-              },
-            ],
-          },
-        ],
-      },
-      path,
-    ).groups[0].conditions[0].value;
-    this.conditions.validateExpressionReferences(
-      {
-        groups: [{ conditions: [{ value: ref, operator: 'exists' }] }],
-      },
-      availableStepOutputs,
-      path,
-    );
+    const ref = this.conditions.normalizeValueRef(value, path);
+    this.conditions.validateValueRef(ref, availableStepOutputs, path);
     return ref;
   }
 
-  private outputKeysForStep(step: AutomationDefinitionStep) {
-    if ('uses' in step) {
-      return new Set(
-        this.registry.outputsFor(step.uses).map((output) => output.key),
-      );
-    }
-    return outputKeysForUses(`flow.${step.type}`);
+  private outputsForStep(
+    step: AutomationDefinitionStep,
+  ): readonly AutomationCommandOutputMetadata[] {
+    return 'uses' in step
+      ? this.registry.outputsFor(step.uses)
+      : (controlStepOutputs[`flow.${step.type}`] ?? []);
   }
 }

@@ -5,7 +5,7 @@ import {
   getDefaultActionInput,
   normalizeActionInput
 } from '../actions/action-registry'
-import type { Automation, SaveAutomationInput } from '@/shared/contracts/automation'
+import type { Automation, AutomationCommand, SaveAutomationInput } from '@/shared/contracts/automation'
 import type {
   AutomationActionStep,
   AutomationConditionStep,
@@ -73,8 +73,6 @@ export interface AutomationFormState {
   steps: AutomationStepForm[]
 }
 
-const defaultStepInput = (uses: string): Record<string, unknown> => getDefaultActionInput(uses)
-
 const createClientKey = (seed?: string) => seed ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 
 const stepIdBase = (uses: string) =>
@@ -85,11 +83,12 @@ const stepIdBase = (uses: string) =>
     .replace(/^-/, '') || 'step'
 
 export const defaultStep = (
-  uses = 'android.viewerCommand',
+  action: string | AutomationCommand = 'android.viewerCommand',
   index = 1,
   clientKey?: string
 ): AutomationActionStepForm => {
-  const input = defaultStepInput(uses)
+  const uses = typeof action === 'string' ? action : action.uses
+  const input = getDefaultActionInput(uses, typeof action === 'string' ? undefined : action)
 
   return {
     kind: 'action',
@@ -101,12 +100,17 @@ export const defaultStep = (
   }
 }
 
-export const defaultForm = (): AutomationFormState => ({
+export const preferredWorkflowAction = (commands: readonly AutomationCommand[], preferred: string) =>
+  commands.find(command => command.uses === preferred) ?? commands[0]
+
+export const defaultForm = (
+  action: string | AutomationCommand | null = 'android.viewerCommand'
+): AutomationFormState => ({
   id: null,
   name: 'New workflow',
   description: '',
   tags: [],
-  steps: [defaultStep('android.viewerCommand', 1, 'spec.steps[0]')]
+  steps: action ? [defaultStep(action, 1, 'spec.steps[0]')] : []
 })
 
 export const defaultConditionExpression = (): AutomationConditionExpression => ({
@@ -122,16 +126,24 @@ export const defaultConditionExpression = (): AutomationConditionExpression => (
   ]
 })
 
-export const defaultConditionStep = (index = 1, clientKey?: string): AutomationConditionStepForm => ({
+export const defaultConditionStep = (
+  index = 1,
+  clientKey?: string,
+  action: string | AutomationCommand = 'android.wait'
+): AutomationConditionStepForm => ({
   kind: 'condition',
   clientKey: createClientKey(clientKey),
   id: `condition-${index}`,
   condition: defaultConditionExpression(),
-  thenSteps: [defaultStep('android.wait', 1)],
+  thenSteps: [defaultStep(action, 1)],
   elseSteps: []
 })
 
-export const defaultSwitchStep = (index = 1, clientKey?: string): AutomationSwitchStepForm => ({
+export const defaultSwitchStep = (
+  index = 1,
+  clientKey?: string,
+  action: string | AutomationCommand = 'debug.log'
+): AutomationSwitchStepForm => ({
   kind: 'switch',
   clientKey: createClientKey(clientKey),
   id: `switch-${index}`,
@@ -140,13 +152,17 @@ export const defaultSwitchStep = (index = 1, clientKey?: string): AutomationSwit
     {
       clientKey: createClientKey(),
       value: 'default',
-      steps: [defaultStep('debug.log', 1)]
+      steps: [defaultStep(action, 1)]
     }
   ],
   defaultSteps: []
 })
 
-export const defaultRepeatStep = (index = 1, clientKey?: string): AutomationRepeatStepForm => ({
+export const defaultRepeatStep = (
+  index = 1,
+  clientKey?: string,
+  action: string | AutomationCommand = 'android.wait'
+): AutomationRepeatStepForm => ({
   kind: 'repeat',
   clientKey: createClientKey(clientKey),
   id: `repeat-${index}`,
@@ -154,7 +170,7 @@ export const defaultRepeatStep = (index = 1, clientKey?: string): AutomationRepe
   count: 2,
   while: defaultConditionExpression(),
   maxIterations: 2,
-  steps: [defaultStep('android.wait', 1)]
+  steps: [defaultStep(action, 1)]
 })
 
 export const definitionToForm = (definition: AutomationDefinition, id: string | null = null): AutomationFormState => ({

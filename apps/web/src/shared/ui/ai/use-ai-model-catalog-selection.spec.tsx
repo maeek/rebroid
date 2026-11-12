@@ -22,6 +22,31 @@ const catalog = [
 ] satisfies AutomationAiModelCatalogProvider[]
 
 describe('useAiModelCatalogSelection', () => {
+  it('keeps configured and omitted workflow model settings until explicitly edited', async () => {
+    const onSelectionChange = vi.fn()
+    const loadCatalog = () => Promise.resolve(catalog)
+    const { result } = renderHook(() =>
+      useAiModelCatalogSelection({
+        role: 'planner',
+        loadCatalog,
+        modelId: 'model-from-yaml',
+        onSelectionChange,
+        providerId: 'provider-from-yaml',
+        visionModelId: '',
+        visionProviderId: '',
+        selectionMode: 'explicit'
+      })
+    )
+
+    await waitFor(() => expect(result.current.isLoadingCatalog).toBe(false))
+    expect(onSelectionChange).not.toHaveBeenCalled()
+    expect(result.current.selectedProvider).toBeUndefined()
+    expect(result.current.selectedModel).toBeUndefined()
+    expect(result.current.selectedVisionModel).toBeUndefined()
+    act(() => result.current.setProviderId('local'))
+    expect(onSelectionChange).toHaveBeenCalledExactlyOnceWith({ providerId: 'local', modelId: 'qwen' })
+  })
+
   it('patches missing planner and vision selection from the catalog', async () => {
     const onSelectionChange = vi.fn()
     renderHook(() =>

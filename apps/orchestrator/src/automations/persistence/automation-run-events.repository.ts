@@ -48,17 +48,35 @@ export class AutomationRunEventsRepository {
     private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
   ) {}
 
-  async append(input: AutomationRunEventInput) {
-    const finishMetrics = this.metrics.beginAutomationEventPersistence();
-    const append = this.queue.run(() =>
-      this.dataSource.transaction((manager) =>
-        this.appendInTransaction(manager, input),
-      ),
+  append(input: AutomationRunEventInput) {
+    return this.persistAppend(async (manager) =>
+      toRecord(await this.appendInTransaction(manager, input)),
     );
+  }
+
+  appendWhileRunning(input: AutomationRunEventInput) {
+    return this.persistAppend(async (manager) => {
+      const running = await manager.getRepository(AutomationRun).existsBy({
+        id: input.runId,
+        ownerUserId: input.ownerUserId,
+        status: AutomationRunStatus.Running,
+      });
+      return running
+        ? toRecord(await this.appendInTransaction(manager, input))
+        : null;
+    });
+  }
+
+  private async persistAppend<T>(
+    append: (manager: EntityManager) => Promise<T>,
+  ) {
+    const finishMetrics = this.metrics.beginAutomationEventPersistence();
     try {
-      const event = await append;
-      finishMetrics('success');
-      return toRecord(event);
+      const event = await this.queue.run(() =>
+        this.dataSource.transaction(append),
+      );
+      if (event) finishMetrics('success');
+      return event;
     } catch (error) {
       finishMetrics('error');
       throw error;

@@ -11,7 +11,12 @@ export async function AutomationCreatePageEntry() {
   ])
 
   if (orchestratorError) {
-    return <AutomationPageUnavailable title='New workflow' />
+    return (
+      <AutomationPageUnavailable
+        title='New workflow'
+        workflow
+      />
+    )
   }
 
   return (

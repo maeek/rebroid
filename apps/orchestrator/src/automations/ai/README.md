@@ -85,6 +85,13 @@ Typed actions cover taps, swipes, text entry, keys, application launch, system s
 waits, and invocation of a capability routed into that run. The
 [decision contract](core/device-decision.ts) is the source of truth for their shapes.
 
+The workflow editor and the device agent use the same capability policy in `automation-core`.
+Ad hoc tasks use the default capabilities permitted for the current user. In a workflow, an
+explicit `ai.run` capability list replaces those defaults and can grant optional tools.
+The harness routes up to five relevant tools for each task. For example, opening an app by
+its label routes screen lookup and package discovery. The `ai.model.started` event records
+which tools were routed.
+
 ## Evidence and execution boundaries
 
 Actions bind to the current snapshot and target fingerprint. A stale snapshot, changed target,

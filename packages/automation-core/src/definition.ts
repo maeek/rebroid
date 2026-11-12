@@ -68,6 +68,22 @@ export type AutomationValueRef =
       outputKey: string;
     };
 
+export type AutomationStepOutputRef = Extract<
+  AutomationValueRef,
+  { source: "stepOutput" }
+>;
+
+export const forkAutomationStepScope = <T>(
+  scope: ReadonlyMap<string, T>,
+  parent?: { id: string; kind: string; outputs: T },
+) => {
+  const branch = new Map(scope);
+  if (parent?.id && (parent.kind === "condition" || parent.kind === "switch")) {
+    branch.set(parent.id, parent.outputs);
+  }
+  return branch;
+};
+
 export interface AutomationConditionRule {
   value: AutomationValueRef;
   operator: AutomationConditionOperator;

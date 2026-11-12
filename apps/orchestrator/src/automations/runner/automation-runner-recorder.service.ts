@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { AutomationCommandOutcome } from '@rebroid/automation-core/command-registry';
+import type { AutomationCommandResult } from '../commands/automation-command.types';
 import { AutomationRun } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
 import {
@@ -80,10 +82,10 @@ export class AutomationRunnerRecorderService {
     uses: string,
     options: StepRecorderOptions,
     startedAt: string,
-    result: { summary: string; data?: Record<string, unknown> },
+    result: AutomationCommandResult,
   ) {
     const completedAt = new Date().toISOString();
-    const output = buildStepOutput(result.summary, result.data);
+    const output = buildStepOutput(result);
     return this.recordOutcome(
       run,
       state,
@@ -95,6 +97,22 @@ export class AutomationRunnerRecorderService {
     );
   }
 
+  recordRepeatStarted(
+    run: AutomationRun,
+    stepId: string,
+    options: StepRecorderOptions,
+  ) {
+    return this.events.emitWhileRunning({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'step.started',
+      stepId,
+      parentStepId: options.parentStepId ?? null,
+      message: 'Starting repeat.',
+      data: { uses: 'flow.repeat', path: options.path },
+    });
+  }
+
   async recordStepFailed(
     run: AutomationRun,
     state: StepRecorderState,
@@ -103,6 +121,7 @@ export class AutomationRunnerRecorderService {
     options: StepRecorderOptions,
     startedAt: string,
     message: string,
+    outcome?: AutomationCommandOutcome,
   ) {
     return this.recordOutcome(
       run,
@@ -116,6 +135,7 @@ export class AutomationRunnerRecorderService {
           completedAt: new Date().toISOString(),
         },
         message,
+        outcome,
       ),
       message,
     );
@@ -128,14 +148,15 @@ export class AutomationRunnerRecorderService {
     uses: string,
     options: StepRecorderOptions,
     output: Record<string, unknown>,
+    startedAt = new Date().toISOString(),
   ) {
-    const now = new Date().toISOString();
+    const completedAt = new Date().toISOString();
     const result = buildControlStepOutput(uses, output);
     return this.recordOutcome(
       run,
       state,
       buildSuccessfulStepResult(
-        { stepId, uses, ...options, startedAt: now, completedAt: now },
+        { stepId, uses, ...options, startedAt, completedAt },
         result,
       ),
       result.summary,

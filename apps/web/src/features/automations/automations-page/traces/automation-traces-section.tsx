@@ -41,10 +41,10 @@ const triggerLabel = (run: AutomationRun) => {
 
 const stepProgressLabel = (run: AutomationRun) => {
   const failed = run.stepResults.filter(step => step.status === 'failed').length
-  const success = run.stepResults.filter(step => step.status === 'success').length
-  if (failed > 0) return `${success} passed, ${failed} failed`
+  const completed = run.stepResults.filter(step => step.status === 'success').length
+  if (failed > 0) return `${completed} completed, ${failed} failed`
 
-  return `${success} completed`
+  return `${completed} completed`
 }
 
 const runTime = (run: AutomationRun) => new Date(run.startedAt ?? run.createdAt).getTime()

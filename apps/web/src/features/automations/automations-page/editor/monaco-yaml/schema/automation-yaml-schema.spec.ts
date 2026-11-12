@@ -33,7 +33,10 @@ describe('automation YAML schema', () => {
     const withProperties = properties.with.properties as Record<string, Record<string, unknown>>
 
     expect(properties.uses.enum).toEqual(['android.viewerCommand'])
-    expect(withProperties.command.enum).toEqual(['back', 'home', 'wake'])
+    expect(withProperties.command.anyOf).toEqual([
+      { type: 'string', enum: ['back', 'home', 'wake'] },
+      expect.objectContaining({ required: ['$ref'] })
+    ])
   })
 
   it('keeps command defaults on the command input schema', () => {

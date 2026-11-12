@@ -54,12 +54,20 @@ or use **Sync all rules** to refresh host rules and remove stale entries.
 
 ## Workflow device steps
 
+The workflow editor and AI workflow drafting use the registered commands permitted for your
+account. Network policy steps manage restrictions and the CIDR allowlist. Deny-list steps
+are unavailable.
+
 `android.waitForText` and `android.tapText` match enabled Android UI labels or accessibility
 descriptions with tappable bounds. Both use case-sensitive exact matching by default and treat
 canonically equivalent Unicode spellings, such as composed and decomposed `Żappka`, as equal.
 Set `match: contains` on both steps when a label includes surrounding words. Saved waits that
 previously relied on substring matching need this setting. When several nodes match, both commands
 choose the first eligible node in the current UI hierarchy.
+
+`assert.textExists` and `assert.textMissing` check the current visible labels and accessibility
+descriptions once, using the same Unicode and match modes. They can find disabled labels that
+are still visible. To check an XML attribute deliberately, set `source: xml` and `match: contains`.
 
 `timeoutMs` covers target preparation, hierarchy polling, and tap dispatch. A dispatched tap has
 up to two additional seconds to acknowledge completion or cancellation. The workflow reports an
@@ -71,14 +79,46 @@ launch it. Set `requireSuccess: true` to fail the step if the package is missing
 the launch. The default returns `installed` and `launched` outputs for workflows that branch on them.
 
 `vision.observe` exposes `ocrStatus`, `ocrTextCount`, and `ocrDetections` to workflow conditions.
+`visionSummary` contains the model's description when one is available.
 `maxDetections` limits each returned detection list. `ocrTextCount` reports the total before that limit.
 For text drawn on the screen, use `vision.locate` and branch on `outcome`. It reports `found` for a
 match, `not_found` when screenshot recognition completes without a match, and `inconclusive`
 when the available evidence has no match and screenshot recognition is unavailable. `ocrStatus`
 explains whether OCR ran, and each match identifies its source.
+Hierarchy text matches use visible labels and accessibility descriptions.
 
 When an AI run invokes `vision.locate`, it searches the active snapshot. The next turn can use
 the returned candidate IDs until a new screen observation replaces that snapshot.
+For a task such as “Open Żappka,” the agent can look up the visible label and discover installed
+packages. The run's **Device agent started** event lists the tools selected for the task.
+To let a workflow's AI step perform optional actions such as file deletion or network policy
+changes, grant the specific capability in that step.
+
+The visual AI step editor preserves YAML settings, including conversation context and model IDs.
+Open the AI step to change its agent mode or read-only shell escalation policy.
+
+An action can use an earlier step's output through the field's **Source** selector or a
+`$ref` in YAML. The input and output must have the same scalar type. A branch can use earlier
+steps in its own scope and the outputs of its enclosing condition or switch. If a selected
+output is missing at runtime, the receiving step fails before dispatch.
+
+```yaml
+- id: tap-match
+  uses: android.tapNormalized
+  with:
+    x:
+      $ref: { source: stepOutput, stepId: locate, outputKey: centerX }
+    y:
+      $ref: { source: stepOutput, stepId: locate, outputKey: centerY }
+```
+
+Place the tap after `vision.locate` and use a condition to check that its search outcome is
+`found` before tapping. To copy a file, use `android.pullFile`'s `contentBase64` output in the
+corresponding `android.pushFile` input.
+
+Action outputs include `commandOutcome`. A completed step can report a negative observation
+such as `not_found`, an unsupported operation, or an uncertain result. Branch on that output
+when the command reports an outcome for the workflow to handle.
 
 ## Automation investigation
 

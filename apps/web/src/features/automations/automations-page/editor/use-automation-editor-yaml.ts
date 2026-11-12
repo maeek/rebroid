@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { validateAutomationYamlAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { buildYaml, definitionToForm, type AutomationFormState } from './builder-utils'
 import type { Automation } from '@/shared/contracts/automation'
+import type { AutomationDefinition } from '@rebroid/automation-core/definition'
+
+type YamlValidation = { draft: string } & ({ error: string } | { error: null; definition: AutomationDefinition })
 
 export const useAutomationEditorYaml = ({
   automation,
@@ -17,8 +21,11 @@ export const useAutomationEditorYaml = ({
 }) => {
   const [yamlOpen, setYamlOpen] = useState(false)
   const [yamlDraft, setYamlDraft] = useState('')
-  const [yamlValid, setYamlValid] = useState(true)
-  const [yamlError, setYamlError] = useState<string | null>(null)
+  const [validation, setValidation] = useState<YamlValidation | null>(null)
+  const currentValidation = validation?.draft === yamlDraft ? validation : null
+  const yamlPending = yamlOpen && !currentValidation
+  const yamlError = currentValidation?.error ?? null
+  const yamlValid = !yamlPending && !yamlError
 
   const currentYaml = useMemo(() => {
     try {
@@ -30,21 +37,26 @@ export const useAutomationEditorYaml = ({
 
   const openYamlEditor = () => {
     setYamlDraft(currentYaml)
-    setYamlValid(true)
-    setYamlError(null)
     setYamlOpen(true)
   }
 
   const openVisualEditor = () => {
+    if (yamlDraft === currentYaml) {
+      setYamlOpen(false)
+      return
+    }
     if (!yamlValid) {
       toast({
-        title: 'YAML is invalid',
-        description: yamlError ?? 'Fix the YAML before switching back to the visual editor.',
-        variant: 'danger'
+        title: yamlPending ? 'Checking workflow YAML' : 'YAML is invalid',
+        description: yamlError ?? undefined,
+        variant: yamlPending ? 'neutral' : 'danger'
       })
       return
     }
-    setYamlOpen(false)
+    if (currentValidation?.error === null) {
+      setForm(definitionToForm(currentValidation.definition, automation?.id ?? form.id))
+      setYamlOpen(false)
+    }
   }
 
   const toggleYamlEditor = () => {
@@ -57,18 +69,19 @@ export const useAutomationEditorYaml = ({
 
     let canceled = false
     const timeout = window.setTimeout(() => {
-      void validateAutomationYamlAction(yamlDraft).then(validation => {
-        if (canceled) return
-        if (!validation.valid || !validation.definition) {
-          setYamlValid(false)
-          setYamlError(validation.errors[0] ?? 'Automation YAML is invalid.')
-          return
-        }
-
-        setYamlValid(true)
-        setYamlError(null)
-        setForm(definitionToForm(validation.definition, automation?.id ?? form.id))
-      })
+      void validateAutomationYamlAction(yamlDraft)
+        .then(result => {
+          if (canceled) return
+          if (!result.valid || !result.definition) {
+            setValidation({ draft: yamlDraft, error: result.errors[0] ?? 'Automation YAML is invalid.' })
+            return
+          }
+          setForm(definitionToForm(result.definition, automation?.id ?? form.id))
+          setValidation({ draft: yamlDraft, error: null, definition: result.definition })
+        })
+        .catch(error => {
+          if (!canceled) setValidation({ draft: yamlDraft, error: getDisplayErrorMessage(error) })
+        })
     }, 450)
 
     return () => {
@@ -80,13 +93,12 @@ export const useAutomationEditorYaml = ({
   return {
     currentYaml,
     setYamlDraft,
-    setYamlError,
     setYamlOpen,
-    setYamlValid,
     toggleYamlEditor,
     yamlDraft,
     yamlError,
     yamlOpen,
+    yamlPending,
     yamlValid
   }
 }

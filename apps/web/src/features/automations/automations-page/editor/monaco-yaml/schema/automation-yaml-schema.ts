@@ -1,3 +1,4 @@
+import { actionInputBindingType } from '@rebroid/automation-core/command-registry'
 import { conditionOperators, runContextOutputs, unaryOperators } from '@rebroid/automation-core/metadata'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -36,6 +37,39 @@ const valueRefSchema: JsonSchema = {
       additionalProperties: false
     }
   ]
+}
+
+const inputBindingSchema = {
+  type: 'object',
+  required: ['$ref'],
+  properties: {
+    $ref: {
+      type: 'object',
+      required: ['source', 'stepId', 'outputKey'],
+      properties: {
+        source: { enum: ['stepOutput'] },
+        stepId: { type: 'string', minLength: 1 },
+        outputKey: { type: 'string', minLength: 1 }
+      },
+      additionalProperties: false
+    }
+  },
+  additionalProperties: false
+}
+
+const inputSchemaWithBindings = (command: AutomationCommand) => {
+  const schema = command.inputSchema
+  const properties = schema.properties
+  if (!properties || typeof properties !== 'object') return schema
+  return {
+    ...schema,
+    properties: Object.fromEntries(
+      Object.entries(properties).map(([key, property]) => [
+        key,
+        actionInputBindingType(command.uses, key, property) ? { anyOf: [property, inputBindingSchema] } : property
+      ])
+    )
+  }
 }
 
 const nonUnaryConditionOperators = conditionOperators.filter(operator => !unaryOperators.has(operator))
@@ -101,7 +135,7 @@ export const buildAutomationYamlSchema = (commands: AutomationCommand[]): JsonSc
         with: {
           description: `${command.label} input.`,
           default: command.editor.inputDefaults,
-          ...command.inputSchema
+          ...inputSchemaWithBindings(command)
         }
       },
       additionalProperties: false
@@ -230,7 +264,7 @@ export const buildAutomationActionInputYamlSchema = (command?: AutomationCommand
   $schema: 'http://json-schema.org/draft-07/schema#',
   $id: `rebroid-action-input-${command?.uses ?? 'unknown'}.schema.json`,
   title: command ? `${command.label} input` : 'Action input',
-  ...(command?.inputSchema ?? { type: 'object', additionalProperties: true })
+  ...(command ? inputSchemaWithBindings(command) : { type: 'object', additionalProperties: true })
 })
 
 const requiredPropertiesOf = (schema: unknown): string[] =>

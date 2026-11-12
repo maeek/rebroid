@@ -12,6 +12,7 @@ import {
 } from '@rebroid/automation-core/definition';
 import { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationCommandFailure } from '../commands/automation-command-failure';
 import type {
   AutomationCommandExecutor,
   AutomationCommandResult,
@@ -19,6 +20,7 @@ import type {
 } from '../commands/automation-command.types';
 import { adHocAiAutomationIdPrefix } from '../contracts/automation-run-kind';
 import { AutomationConditionService } from '../condition/automation-condition.service';
+import { resolveActionInputBindings } from '../definition/automation-action-input-bindings';
 import { AutomationRun } from '../entities/automation-run.entity';
 import { AutomationRunnerRecorderService } from './automation-runner-recorder.service';
 import {
@@ -162,15 +164,20 @@ export class AutomationStepExecutorService {
           ? execute(state.app)
           : withTarget(signal, execute);
       };
-      let commandInput = step.with;
-      if (step.uses === 'ai.run' && step.with.capabilities === undefined) {
+      let commandInput = resolveActionInputBindings(step.with, (ref) =>
+        this.conditions.resolveValueRef(ref, {
+          ...state,
+          app: state.app as unknown as Record<string, unknown>,
+        }),
+      );
+      if (step.uses === 'ai.run' && commandInput.capabilities === undefined) {
         if (state.defaultAiCapabilities === undefined) {
           throw new ConflictException(
             'Workflow authorization did not provide default AI capabilities.',
           );
         }
         commandInput = {
-          ...step.with,
+          ...commandInput,
           capabilities: state.defaultAiCapabilities,
         };
       }
@@ -203,6 +210,7 @@ export class AutomationStepExecutorService {
         options,
         startedAt,
         message,
+        error instanceof AutomationCommandFailure ? error.outcome : undefined,
       );
       return saved ? { failed: true, stopped: false } : stoppedExecution;
     }
@@ -303,21 +311,12 @@ export class AutomationStepExecutorService {
     options: AutomationStepExecutionOptions,
   ) {
     const totalIterations = step.count ?? step.maxIterations;
+    const startedAt = new Date().toISOString();
     let iterations = 0;
-    const recorded = await this.recorder.recordControlCompleted(
-      run,
-      state,
-      step.id,
-      'flow.repeat',
-      options,
-      {
-        maxIterations: step.maxIterations,
-        mode: step.count === undefined ? 'while' : 'count',
-      },
-    );
-    if (!recorded) return stoppedExecution;
-
+    if (!(await this.recorder.recordRepeatStarted(run, step.id, options)))
+      return stoppedExecution;
     while (iterations < totalIterations && iterations < step.maxIterations) {
+      if (runCanceled(run.id, options)) return stoppedExecution;
       if (
         step.while &&
         !this.conditions.evaluate(step.while, {
@@ -338,7 +337,20 @@ export class AutomationStepExecutorService {
       }
     }
 
-    state.outputsByStepId.set(step.id, { iterations });
-    return { failed: false, stopped: false };
+    if (runCanceled(run.id, options)) return stoppedExecution;
+    const recorded = await this.recorder.recordControlCompleted(
+      run,
+      state,
+      step.id,
+      'flow.repeat',
+      options,
+      {
+        iterations,
+        maxIterations: step.maxIterations,
+        mode: step.count === undefined ? 'while' : 'count',
+      },
+      startedAt,
+    );
+    return recorded ? { failed: false, stopped: false } : stoppedExecution;
   }
 }

@@ -57,7 +57,7 @@ export const schemaContextForCurrentProperty = (
   position: Monaco.Position,
   propertyName: string,
   commands: AutomationCommand[]
-): { parentSchema: JsonSchema | null; propertySchema: JsonSchema | null } | null => {
+): { parentSchema: JsonSchema | null; propertySchema: JsonSchema | null; inputBinding: boolean } | null => {
   const document = parseDocument(model.getValue(), { prettyErrors: false })
   const path = ensureCurrentPropertyPath(
     yamlPathAt(document.contents, Math.max(0, offsetAt(model, position) - 1)),
@@ -74,9 +74,11 @@ export const schemaContextForCurrentProperty = (
   const inputPath = path.slice(withIndex + 1)
   if (inputPath.length === 0) return null
 
+  const node = yamlNodeAtPath(document.contents, path)
   return {
     parentSchema: schemaAtPath(inputSchema, inputPath.slice(0, -1)),
-    propertySchema: schemaAtPath(inputSchema, inputPath)
+    propertySchema: schemaAtPath(inputSchema, inputPath),
+    inputBinding: isMap(node) && node.has('$ref')
   }
 }
 

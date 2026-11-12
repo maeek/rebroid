@@ -239,7 +239,12 @@ describe('AutomationAiHarnessService', () => {
       vision,
     ).list();
     const { service, chat, events, perception } = createHarness({
-      commandUses: ['vision.locate'],
+      commandUses: [
+        'vision.locate',
+        'android.listPackages',
+        'android.getClipboard',
+        'android.deleteFile',
+      ],
       observations: [current, observation('screen-2')],
       chatResponses: [
         decisionResponse({
@@ -286,10 +291,18 @@ describe('AutomationAiHarnessService', () => {
       )
       .mockResolvedValueOnce({ summary: 'Tapped Żappka.' });
     const result = await service.run(
-      { ...input, capabilities: ['vision.locate', 'android.tapNormalized'] },
+      { ...input, prompt: 'Open Żappka' },
       context(executeCommand),
     );
     expect(result.data.status).toBe('completed');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.model.started',
+        data: expect.objectContaining({
+          routedCapabilities: ['android.listPackages', 'vision.locate'],
+        }),
+      }),
+    );
     expect(capture).not.toHaveBeenCalled();
     expect(perception).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(chat.mock.calls[1]?.[0].messages)).toContain(
@@ -441,6 +454,7 @@ describe('AutomationAiHarnessService', () => {
   it.each([
     ['android.tap', { x: 216, y: 585 }],
     ['android.tapText', { text: 'Settings' }],
+    ['flow.stop', { reason: 'Done' }],
   ])('keeps %s out of AI capability routing', async (uses, toolInput) => {
     const { service, events, chat } = createHarness({
       commandUses: [uses],
@@ -466,7 +480,7 @@ describe('AutomationAiHarnessService', () => {
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'ai.guardrail.triggered',
-        message: `Capability ${uses} was not routed into this run.`,
+        message: `Tool ${uses} is outside this run's capability policy.`,
       }),
     );
   });
@@ -502,7 +516,11 @@ describe('AutomationAiHarnessService', () => {
       .mockRejectedValue(new Error('Lost response'));
 
     const result = await service.run(
-      { ...input, capabilities: [uses] },
+      {
+        ...input,
+        prompt: 'Rotate the display to landscape',
+        capabilities: [uses],
+      },
       context(executeCommand),
     );
 
@@ -677,7 +695,7 @@ describe('AutomationAiHarnessService', () => {
     });
     const executeCommand = jest.fn().mockResolvedValue({
       summary: 'Package query failed.',
-      data: { success: false },
+      outcome: 'failed',
     });
 
     const result = await service.run(

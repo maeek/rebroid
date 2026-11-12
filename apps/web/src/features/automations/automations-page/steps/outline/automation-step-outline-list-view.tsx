@@ -10,6 +10,7 @@ import {
   defaultRepeatStep,
   defaultStep,
   defaultSwitchStep,
+  preferredWorkflowAction,
   type AutomationStepForm
 } from '../../editor/builder-utils'
 import { getStepListDropId } from '../list/automation-step-drop-target'
@@ -17,7 +18,6 @@ import { useAutomationStepsContext } from '../list/automation-steps-context'
 import {
   cloneAutomationStep,
   copyAutomationStepToClipboard,
-  makeAutomationStepIdsUnique,
   readAutomationStepFromClipboard
 } from '../shared/automation-step-clipboard'
 import { collectStepKeys, selectionAfterDelete } from '../shared/automation-step-selection'
@@ -67,14 +67,24 @@ export function AutomationStepOutlineListView({
   }, [dropTargetIndex, steps])
 
   const addStep = (kind: AutomationStepForm['kind'] = 'action') => {
-    const step =
-      kind === 'condition'
-        ? defaultConditionStep(steps.length + 1)
-        : kind === 'switch'
-          ? defaultSwitchStep(steps.length + 1)
-          : kind === 'repeat'
-            ? defaultRepeatStep(steps.length + 1)
-            : defaultStep(commands[0]?.uses, steps.length + 1)
+    const action = preferredWorkflowAction(commands, kind === 'switch' ? 'debug.log' : 'android.wait')
+    if (!action) return
+    const index = steps.length + 1
+    let step: AutomationStepForm
+    switch (kind) {
+      case 'condition':
+        step = defaultConditionStep(index, undefined, action)
+        break
+      case 'switch':
+        step = defaultSwitchStep(index, undefined, action)
+        break
+      case 'repeat':
+        step = defaultRepeatStep(index, undefined, action)
+        break
+      case 'action':
+        step = defaultStep(action, index)
+        break
+    }
     onListChange(listId, [...steps, step])
     onSelectStep(step.clientKey)
     if (step.kind !== 'action') onOpenBlock(step.clientKey)
@@ -83,7 +93,7 @@ export function AutomationStepOutlineListView({
   const duplicateStep = (index: number) => {
     const source = steps[index]
     if (!source) return
-    const nextStep = makeAutomationStepIdsUnique(cloneAutomationStep(source, '-copy'), rootSteps)
+    const nextStep = cloneAutomationStep(source, rootSteps)
     onListChange(listId, [...steps.slice(0, index + 1), nextStep, ...steps.slice(index + 1)])
     onSelectStep(nextStep.clientKey)
     if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
@@ -91,15 +101,14 @@ export function AutomationStepOutlineListView({
 
   const pasteStep = async () => {
     try {
-      const step = await readAutomationStepFromClipboard()
-      if (!step) {
+      const nextStep = await readAutomationStepFromClipboard(rootSteps)
+      if (!nextStep) {
         toast({
           title: 'Clipboard does not contain a workflow block',
           variant: 'danger'
         })
         return
       }
-      const nextStep = makeAutomationStepIdsUnique(step, rootSteps)
       onListChange(listId, [...steps, nextStep])
       onSelectStep(nextStep.clientKey)
       if (nextStep.kind !== 'action') onOpenBlock(nextStep.clientKey)
@@ -185,6 +194,7 @@ export function AutomationStepOutlineListView({
         ) : null}
         <AutomationStepAddRow
           label={root ? 'Add step' : 'Drop or add step'}
+          canAdd={commands.length > 0}
           onAdd={addStep}
           onPaste={() => void pasteStep()}
         />

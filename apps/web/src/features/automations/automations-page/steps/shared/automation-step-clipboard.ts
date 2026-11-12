@@ -1,3 +1,5 @@
+import { mapAutomationSteps } from '../tree/automation-step-tree'
+import { rewriteAutomationStepReferences } from './automation-step-reference-rewrite'
 import type {
   AutomationActionStepForm,
   AutomationConditionStepForm,
@@ -26,59 +28,29 @@ export const copyAutomationStepToClipboard = async (step: AutomationStepForm) =>
   )
 }
 
-export const readAutomationStepFromClipboard = async () => {
+export const readAutomationStepFromClipboard = async (existingSteps: AutomationStepForm[]) => {
   const text = await navigator.clipboard.readText()
-  return readAutomationStepFromText(text)
+  return readAutomationStepFromText(text, existingSteps)
 }
 
-export const readAutomationStepFromText = (text: string) => {
+export const readAutomationStepFromText = (text: string, existingSteps: AutomationStepForm[]) => {
   const parsed = parseClipboardPayload(text)
-  return parsed ? cloneAutomationStep(parsed, '-copy') : null
+  return parsed ? cloneAutomationStep(parsed, existingSteps) : null
 }
 
-export const makeAutomationStepIdsUnique = (
-  step: AutomationStepForm,
-  existingSteps: AutomationStepForm[]
-): AutomationStepForm => {
+export const cloneAutomationStep = (step: AutomationStepForm, existingSteps: AutomationStepForm[]) => {
   const usedIds = collectAutomationStepIds(existingSteps)
-  return uniquifyStepIds(step, usedIds)
-}
-
-export const cloneAutomationStep = (step: AutomationStepForm, idSuffix = ''): AutomationStepForm => {
-  const nextKey = createClientKey()
-  const id = idSuffix && step.id ? `${step.id}${idSuffix}` : step.id
-
-  if (step.kind === 'action') {
-    return { ...step, id, clientKey: nextKey }
-  }
-  if (step.kind === 'condition') {
-    return {
-      ...step,
-      id,
-      clientKey: nextKey,
-      thenSteps: step.thenSteps.map(item => cloneAutomationStep(item, idSuffix)),
-      elseSteps: step.elseSteps.map(item => cloneAutomationStep(item, idSuffix))
-    }
-  }
-  if (step.kind === 'switch') {
-    return {
-      ...step,
-      id,
-      clientKey: nextKey,
-      cases: step.cases.map(item => ({
-        ...item,
-        clientKey: createClientKey(),
-        steps: item.steps.map(caseStep => cloneAutomationStep(caseStep, idSuffix))
-      })),
-      defaultSteps: step.defaultSteps.map(item => cloneAutomationStep(item, idSuffix))
-    }
-  }
-  return {
-    ...step,
-    id,
-    clientKey: nextKey,
-    steps: step.steps.map(item => cloneAutomationStep(item, idSuffix))
-  }
+  const ids = new Map<string, string>()
+  const steps = mapAutomationSteps([step], item => {
+    const id = item.id.trim()
+    const nextId = id ? uniqueStepId(`${id}-copy`, usedIds) : id
+    if (id) ids.set(id, nextId)
+    const clone = { ...item, id: nextId, clientKey: createClientKey() }
+    return clone.kind === 'switch'
+      ? { ...clone, cases: clone.cases.map(entry => ({ ...entry, clientKey: createClientKey() })) }
+      : clone
+  })
+  return rewriteAutomationStepReferences(steps, ids)[0]
 }
 
 export const isAutomationStepForm = (value: unknown): value is AutomationStepForm => parseStep(value) !== null
@@ -86,7 +58,7 @@ export const isAutomationStepForm = (value: unknown): value is AutomationStepFor
 const collectAutomationStepIds = (steps: AutomationStepForm[]) => {
   const ids = new Set<string>()
   const visit = (step: AutomationStepForm) => {
-    if (step.id) ids.add(step.id)
+    if (step.id.trim()) ids.add(step.id.trim())
     if (step.kind === 'condition') {
       step.thenSteps.forEach(visit)
       step.elseSteps.forEach(visit)
@@ -116,35 +88,6 @@ const uniqueStepId = (id: string, usedIds: Set<string>) => {
   }
   usedIds.add(candidate)
   return candidate
-}
-
-const uniquifyStepIds = (step: AutomationStepForm, usedIds: Set<string>): AutomationStepForm => {
-  const id = uniqueStepId(step.id, usedIds)
-  if (step.kind === 'action') return { ...step, id }
-  if (step.kind === 'condition') {
-    return {
-      ...step,
-      id,
-      thenSteps: step.thenSteps.map(item => uniquifyStepIds(item, usedIds)),
-      elseSteps: step.elseSteps.map(item => uniquifyStepIds(item, usedIds))
-    }
-  }
-  if (step.kind === 'switch') {
-    return {
-      ...step,
-      id,
-      cases: step.cases.map(item => ({
-        ...item,
-        steps: item.steps.map(caseStep => uniquifyStepIds(caseStep, usedIds))
-      })),
-      defaultSteps: step.defaultSteps.map(item => uniquifyStepIds(item, usedIds))
-    }
-  }
-  return {
-    ...step,
-    id,
-    steps: step.steps.map(item => uniquifyStepIds(item, usedIds))
-  }
 }
 
 const parseClipboardPayload = (text: string) => {

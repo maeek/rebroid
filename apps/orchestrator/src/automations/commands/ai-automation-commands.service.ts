@@ -1,10 +1,13 @@
-import { AUTOMATION_AI_RUN_MAX_TIMEOUT_MS } from '@rebroid/automation-core/ai-run';
+import {
+  AUTOMATION_AI_RUN_MAX_TIMEOUT_MS,
+  isSelectableAiCapability,
+} from '@rebroid/automation-core/ai-run';
 import { Injectable } from '@nestjs/common';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { z } from 'zod';
 import type { AutomationCommandDefinition } from './automation-command.types';
 
-const aiRunSchema = z.object({
+const aiRunSchema = z.strictObject({
   prompt: z.string().trim().min(1).max(12_000),
   conversation: z
     .array(
@@ -27,7 +30,14 @@ const aiRunSchema = z.object({
     .min(1_000)
     .max(AUTOMATION_AI_RUN_MAX_TIMEOUT_MS)
     .default(120_000),
-  capabilities: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
+  capabilities: z
+    .array(
+      z.string().trim().min(1).max(120).refine(isSelectableAiCapability, {
+        message: 'Command is unavailable to the device agent.',
+      }),
+    )
+    .max(100)
+    .optional(),
   agentMode: z.enum(['adaptive', 'controller', 'planned']).default('adaptive'),
   rawShellPolicy: z.enum(['deny', 'allowlisted']).default('deny'),
 });
@@ -54,13 +64,13 @@ export class AiAutomationCommandsService {
             key: 'status',
             label: 'Status',
             type: 'string',
-            description: 'AI run status: completed, blocked, or failed-to-run.',
+            description: 'AI run status: completed or blocked.',
           },
           {
             key: 'completed',
             label: 'Completed',
             type: 'boolean',
-            description: 'Whether the AI run reached a terminal result.',
+            description: 'Whether the AI agent verified the requested outcome.',
           },
           {
             key: 'toolCalls',

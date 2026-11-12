@@ -9,8 +9,8 @@ import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-
 import {
   assertAutomationPermission,
   assertDefinitionPermissions,
-  canUseAutomationCommand,
-  listPermittedAiTools,
+  listPermittedAutomationCommands,
+  listPermittedDraftCommands,
   recordAutomationAudit
 } from './action-helpers'
 import { orchestratorAutomationsClient } from './client'
@@ -19,8 +19,7 @@ import type { AutomationRunEvent, DraftAutomationYamlInput, SaveAutomationInput 
 export const listAutomationCommandsAction = async () => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
-  const commands = await orchestratorAutomationsClient.listCommands()
-  return commands.map(command => ({ ...command, permitted: canUseAutomationCommand(user, command) }))
+  return listPermittedAutomationCommands(user)
 }
 
 export const validateAutomationYamlAction = async (yaml: string) => {
@@ -141,7 +140,7 @@ export const draftWorkflowFromAdHocRunAction = async ({
     modelId,
     visionProviderId,
     visionModelId,
-    allowedTools: await listPermittedAiTools(user)
+    allowedTools: await listPermittedDraftCommands(user)
   })
   await assertDefinitionPermissions(user, draft.definition)
   await recordAutomationAudit('automation.ai.draft-from-run', run.automationId, 'Ad-hoc AI automation', { runId })

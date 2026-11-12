@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { normalizeIpv4Cidr } from '@rebroid/firewall-policy-core/policy';
 import {
@@ -27,12 +27,6 @@ const cidrSchema = z.object({
 const restrictionsSchema = z.object({
   enabled: z.boolean(),
 });
-
-const unsupportedBlockCommand = async () => {
-  throw new BadRequestException(
-    'Block CIDR commands require deny-list support in the firewall agent and are not available yet.',
-  );
-};
 
 @Injectable()
 export class ContainerNetworkAutomationCommandsService {
@@ -93,30 +87,6 @@ export class ContainerNetworkAutomationCommandsService {
           app.networkPolicyAllowCidrs = '[]';
           return { summary: 'Cleared allowed CIDRs.' };
         },
-      },
-      {
-        uses: 'container.network.blockCidr',
-        label: 'Block CIDR',
-        description: 'Reserved for future firewall deny-list support.',
-        requiredPermissions: ['automations:manage-network'],
-        schema: cidrSchema,
-        execute: unsupportedBlockCommand,
-      },
-      {
-        uses: 'container.network.removeBlockedCidr',
-        label: 'Remove blocked CIDR',
-        description: 'Reserved for future firewall deny-list support.',
-        requiredPermissions: ['automations:manage-network'],
-        schema: cidrSchema,
-        execute: unsupportedBlockCommand,
-      },
-      {
-        uses: 'container.network.clearBlockedCidrs',
-        label: 'Clear blocked CIDRs',
-        description: 'Reserved for future firewall deny-list support.',
-        requiredPermissions: ['automations:manage-network'],
-        schema: z.object({}),
-        execute: unsupportedBlockCommand,
       },
       {
         uses: 'container.network.setRestrictions',

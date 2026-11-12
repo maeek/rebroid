@@ -7,7 +7,8 @@ import { AutomationPerceptionService } from '../vision/automation-perception.ser
 import type { AutomationObservedScreen } from '../vision/automation-vision.types';
 import {
   resolveActionCommand,
-  resultIndicatesFailure,
+  expectsScreenChange,
+  outcomeAllowsEvidence,
   screenFingerprint,
   type ResolvedAiAction,
 } from './automation-ai-action-policy';
@@ -180,23 +181,24 @@ export class AutomationAiActionExecutor {
   ) {
     const { context, decision, state } = args;
     const observation = observed?.observation ?? state.observation;
-    const structuredFailure =
-      !(
-        resolved.uses === 'vision.locate' &&
-        result.data?.outcome === 'not_found'
-      ) && resultIndicatesFailure(result.data ?? {});
     const unchanged =
-      resolved.screenMutating &&
-      decision.action.type !== 'wait' &&
+      expectsScreenChange(resolved) &&
       beforeFingerprint === screenFingerprint(observation);
-    const failed = structuredFailure || unchanged;
+    const commandOutcome = result.outcome ?? 'succeeded';
+    const outcome =
+      unchanged && commandOutcome === 'succeeded'
+        ? 'uncertain'
+        : commandOutcome;
+    const failed = !outcomeAllowsEvidence(outcome);
     const lookupMatches =
       !failed && resolved.uses === 'vision.locate' && result.snapshotMatches
         ? state.admitLookupMatches(result.snapshotMatches)
         : undefined;
-    const data = lookupMatches
-      ? { ...result.data, lookupMatches }
-      : result.data;
+    const data: Record<string, unknown> = {
+      ...result.data,
+      ...(lookupMatches ? { lookupMatches } : {}),
+    };
+    if (resolved.uses === 'android.pullFile') delete data.contentBase64;
     const evidence = state.recordAction(
       `${resolved.uses} (${decision.intent})`,
       {
@@ -209,7 +211,8 @@ export class AutomationAiActionExecutor {
           ? { snapshotId: observation.snapshotId }
           : {}),
         ...(lookupMatches ? { lookupMatches } : {}),
-        ...(data ? { data } : {}),
+        data,
+        outcome,
       },
       failed,
       observed,
@@ -223,10 +226,12 @@ export class AutomationAiActionExecutor {
         uses: resolved.uses,
         evidenceId: evidence.id,
         failed,
+        commandOutcome,
+        evidenceOutcome: outcome,
         unchanged,
         targetFingerprint: state.target.fingerprint,
         snapshotId: state.observation.snapshotId,
-        data: data ?? {},
+        data,
       },
     );
   }
@@ -301,13 +306,15 @@ export class AutomationAiActionExecutor {
       signal: context.abortSignal,
       deadline: args.deadline,
     });
-    const failed = resultIndicatesFailure(result.data ?? {});
+    const outcome = result.outcome ?? 'succeeded';
+    const failed = !outcomeAllowsEvidence(outcome);
     const evidence = state.recordAction(
       `allowlisted:${decision.program}`,
       {
         kind: 'typed-result',
         summary: result.summary,
         data: result.data,
+        outcome,
       },
       failed,
     );
@@ -316,7 +323,12 @@ export class AutomationAiActionExecutor {
       context,
       failed ? 'ai.tool.failed' : 'ai.tool.completed',
       result.summary,
-      { uses: 'android.adbShell', evidenceId: evidence.id, failed },
+      {
+        uses: 'android.adbShell',
+        evidenceId: evidence.id,
+        failed,
+        commandOutcome: outcome,
+      },
     );
   }
 

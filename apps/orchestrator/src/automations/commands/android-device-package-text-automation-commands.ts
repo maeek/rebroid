@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AutomationCommandFailure } from './automation-command-failure';
 import {
   listPackagesSchema,
   openSystemSettingsSchema,
@@ -66,6 +67,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         }
         if (result.exitCode !== 0) {
           return {
+            outcome: 'failed',
             summary: `Package list unavailable: ${result.stderr || result.stdout || `exit ${result.exitCode}`}`,
             data: {
               packages: [],
@@ -91,6 +93,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         const visiblePackages = packages.slice(0, maxResults);
         return {
           summary: `Found ${packages.length} package(s)${query ? ` matching "${query}"` : ''}.`,
+          outcome: packages.length ? 'succeeded' : 'not_found',
           data: {
             packages: visiblePackages,
             total: packages.length,
@@ -153,6 +156,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         }
         return {
           summary: 'Android Settings could not be opened by typed routes.',
+          outcome: 'failed',
           data: {
             opened: false,
             screen: 'main',
@@ -213,6 +217,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           }
           return {
             summary: `Package ${packageName} is not installed. Ask the user to install it or choose another route.`,
+            outcome: 'failed',
             data: {
               packageName,
               installed: false,
@@ -261,6 +266,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           summary: launched
             ? `Launched ${packageName}.`
             : `Package ${packageName} could not be launched.`,
+          outcome: launched ? 'succeeded' : 'failed',
           data: {
             packageName,
             installed: true,
@@ -331,20 +337,27 @@ async function runTextOperation(
       case 'found':
         return result;
       case 'not_found':
-        throw new Error(
+        throw new AutomationCommandFailure(
           `Tappable text "${text}" was not found within ${timeoutMs}ms.`,
+          'not_found',
         );
       case 'hierarchy_unavailable':
-        throw new Error(
+        throw new AutomationCommandFailure(
           `Android UI hierarchy was unavailable while looking for "${text}".`,
+          'uncertain',
         );
       case 'tap_outcome_unknown':
-        throw new Error(`Could not confirm whether Android tapped "${text}".`);
+        throw new AutomationCommandFailure(
+          `Could not confirm whether Android tapped "${text}".`,
+          'uncertain',
+        );
     }
   } catch (error) {
     abortSignal?.throwIfAborted();
     if (error instanceof Error && error.name === 'TimeoutError') {
-      throw new Error(timeoutMessage, { cause: error });
+      throw new AutomationCommandFailure(timeoutMessage, 'uncertain', {
+        cause: error,
+      });
     }
     throw error;
   }

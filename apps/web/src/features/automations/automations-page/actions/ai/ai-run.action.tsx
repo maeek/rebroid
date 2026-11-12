@@ -1,16 +1,16 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
+import { hasActionInputBinding } from '@rebroid/automation-core/command-registry'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
-import { NumberField, TextareaField } from '../shared/action-fields'
+import { NumberField, SelectField, TextareaField } from '../shared/action-fields'
 import {
   defaultAiRunCapabilities,
   defaultAiRunInput,
   nextAiRunCapabilities,
-  normalizeAiRunInput,
   numberValue,
   selectableAiRunCommands,
   stringArrayValue,
@@ -27,7 +27,6 @@ export const aiRunAction: AutomationActionDefinition = {
   label: 'AI run',
   description: 'Runs an AI harness that can call permitted automation tools to satisfy a prompt.',
   defaultInput: defaultAiRunInput,
-  normalizeInput: normalizeAiRunInput,
   summary: summarizeAiRunInput,
   renderEditor: props => <AiRunEditor {...props} />
 }
@@ -38,6 +37,7 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
   const visionProviderId = stringValue(input, 'visionProviderId')
   const visionModelId = stringValue(input, 'visionModelId')
   const capabilities = Array.isArray(input.capabilities) ? stringArrayValue(input, 'capabilities') : undefined
+  const canAllowShell = commands.some(command => command.uses === 'android.adbShell')
   const selectableCommands = useMemo(() => selectableAiRunCommands(commands), [commands])
   const selectedCapabilities = capabilities ?? defaultAiRunCapabilities(selectableCommands)
   const loadCatalog = useCallback(
@@ -62,9 +62,15 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
     onSelectionChange: patchInput,
     providerId,
     visionModelId,
-    visionPatchMode: 'missing',
+    selectionMode: 'explicit',
     visionProviderId
   })
+  const unavailableModels = [
+    { id: providerId, selected: modelSelection.selectedProvider?.id, label: 'Device control provider' },
+    { id: modelId, selected: modelSelection.selectedModel?.id, label: 'Device control model' },
+    { id: visionProviderId, selected: modelSelection.selectedVisionProvider?.id, label: 'Vision provider' },
+    { id: visionModelId, selected: modelSelection.selectedVisionModel?.id, label: 'Vision model' }
+  ].filter(({ id, selected }) => id && id !== selected)
 
   const toggleTool = (uses: string, enabled: boolean) => {
     patchInput({ capabilities: nextAiRunCapabilities({ capabilities, commands: selectableCommands, enabled, uses }) })
@@ -72,11 +78,21 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
 
   return (
     <div className='grid gap-5'>
-      <TextareaField
-        label='Prompt'
-        value={stringValue(input, 'prompt')}
-        onChange={prompt => patchInput({ prompt })}
-      />
+      {!hasActionInputBinding(input.prompt) && (
+        <TextareaField
+          label='Prompt'
+          value={stringValue(input, 'prompt')}
+          onChange={prompt => patchInput({ prompt })}
+        />
+      )}
+      {!modelSelection.isLoadingCatalog && unavailableModels.length > 0 && (
+        <p
+          className='text-sm text-foreground-muted'
+          role='status'
+        >
+          Unavailable in the model catalog {unavailableModels.map(({ id, label }) => `${label} “${id}”`).join(', ')}.
+        </p>
+      )}
       <AiModelPickerFields
         catalog={modelSelection.primaryCatalog}
         selectedProvider={modelSelection.selectedProvider}
@@ -123,7 +139,6 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
                   <Checkbox
                     id={`ai-run-tool-${command.uses}`}
                     checked={checked}
-                    disabled={command.permitted === false && !checked}
                     onCheckedChange={value => toggleTool(command.uses, value === true)}
                   />
                   <span className='min-w-0'>
@@ -136,10 +151,31 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           </div>
         </div>
         <p className='text-xs text-foreground-muted'>
-          Defaults follow your group permissions. Edit the list to choose specific capabilities.
+          Defaults follow your permissions. The agent receives up to five relevant routed capabilities per run.
         </p>
       </div>
       <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-4'>
+        <SelectField
+          label='Agent mode'
+          value={stringValue(input, 'agentMode') || 'adaptive'}
+          options={[
+            { value: 'adaptive', label: 'Adaptive' },
+            { value: 'controller', label: 'Controller' },
+            { value: 'planned', label: 'Planned' }
+          ]}
+          onChange={agentMode => patchInput({ agentMode })}
+        />
+        {(input.rawShellPolicy === 'allowlisted' || canAllowShell) && (
+          <SelectField
+            label='Read-only shell escalation'
+            value={stringValue(input, 'rawShellPolicy') || 'deny'}
+            options={[
+              { value: 'deny', label: 'Deny' },
+              ...(canAllowShell ? [{ value: 'allowlisted', label: 'Allow listed commands' }] : [])
+            ]}
+            onChange={rawShellPolicy => patchInput({ rawShellPolicy })}
+          />
+        )}
         <NumberField
           label='Max actions'
           value={numberValue(input, 'maxActions', 20)}

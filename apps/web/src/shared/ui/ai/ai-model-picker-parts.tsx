@@ -5,12 +5,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { controlSurfaceClassName, focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import {
-  aiModelDisplayName,
-  aiModelRoleLabel,
-  aiProviderKindLabel,
-  nextCatalogProviderAndModel
-} from '@/shared/model/ai-model-catalog'
+import { aiModelDisplayName, aiModelRoleLabel, aiProviderKindLabel } from '@/shared/model/ai-model-catalog'
 import { AiHealthIcon, aiHealthLabel } from './ai-health-indicator'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
@@ -142,7 +137,7 @@ const PrimaryModelFields = ({
   selectedProvider?: AutomationAiModelCatalogProvider
 }) => (
   <>
-    {catalog.length > 1 ? (
+    {catalog.length > 0 && (catalog.length > 1 || !selectedProvider) ? (
       <ProviderSelect
         label='Provider'
         catalog={catalog}
@@ -177,18 +172,14 @@ export const VisionModelFields = ({
   visionCatalog: AutomationAiModelCatalogProvider[]
 }) => (
   <>
-    {visionCatalog.length > 1 ? (
+    {visionCatalog.length > 0 && (visionCatalog.length > 1 || !selectedVisionProvider) ? (
       <ProviderSelect
         label='Vision provider'
         catalog={visionCatalog}
         value={selectedVisionProvider?.id ?? ''}
         disabled={visionCatalog.length === 0}
         placeholder='Optional vision provider'
-        onChange={nextProviderId => {
-          const nextSelection = nextCatalogProviderAndModel(visionCatalog, nextProviderId, 'vision')
-          onVisionProviderChange(nextProviderId)
-          onVisionModelChange(nextSelection.model?.id ?? '')
-        }}
+        onChange={onVisionProviderChange}
       />
     ) : null}
     <ModelSelect

@@ -23,7 +23,7 @@ type AiModelCatalogSelectionInput = {
   role: Exclude<AiModelRole, 'vision'>
   visionModelId: string
   visionProviderId: string
-  visionPatchMode?: 'missing' | 'mismatch'
+  selectionMode?: 'automatic' | 'explicit'
 }
 
 const errorHealth = ({
@@ -50,7 +50,7 @@ export const useAiModelCatalogSelection = ({
   providerId,
   role,
   visionModelId,
-  visionPatchMode = 'mismatch',
+  selectionMode = 'automatic',
   visionProviderId
 }: AiModelCatalogSelectionInput) => {
   const [catalog, setCatalog] = useState<AutomationAiModelCatalogProvider[]>([])
@@ -67,8 +67,17 @@ export const useAiModelCatalogSelection = ({
   }, [modelId, onSelectionChange, providerId, visionModelId, visionProviderId])
 
   const selection = useMemo(
-    () => selectRoleVisionCatalog({ catalog, modelId, providerId, role, visionModelId, visionProviderId }),
-    [catalog, modelId, providerId, role, visionModelId, visionProviderId]
+    () =>
+      selectRoleVisionCatalog({
+        catalog,
+        modelId,
+        providerId,
+        role,
+        visionModelId,
+        visionProviderId,
+        preserveExplicitIds: selectionMode === 'explicit'
+      }),
+    [catalog, modelId, providerId, role, selectionMode, visionModelId, visionProviderId]
   )
 
   const patchSelectionFromCatalog = useCallback(
@@ -91,23 +100,16 @@ export const useAiModelCatalogSelection = ({
       }
       if (
         nextSelection.selectedVisionProvider &&
-        (visionPatchMode === 'mismatch'
-          ? nextSelection.selectedVisionProvider.id !== current.visionProviderId
-          : !current.visionProviderId)
+        nextSelection.selectedVisionProvider.id !== current.visionProviderId
       ) {
         patch.visionProviderId = nextSelection.selectedVisionProvider.id
       }
-      if (
-        nextSelection.selectedVisionModel &&
-        (visionPatchMode === 'mismatch'
-          ? nextSelection.selectedVisionModel.id !== current.visionModelId
-          : !current.visionModelId)
-      ) {
+      if (nextSelection.selectedVisionModel && nextSelection.selectedVisionModel.id !== current.visionModelId) {
         patch.visionModelId = nextSelection.selectedVisionModel.id
       }
       if (Object.keys(patch).length > 0) onSelectionChangeRef.current(patch)
     },
-    [role, visionPatchMode]
+    [role]
   )
 
   useEffect(() => {
@@ -117,7 +119,7 @@ export const useAiModelCatalogSelection = ({
       .then(nextCatalog => {
         if (cancelled) return
         setCatalog(nextCatalog)
-        patchSelectionFromCatalog(nextCatalog)
+        if (selectionMode === 'automatic') patchSelectionFromCatalog(nextCatalog)
       })
       .catch(() => undefined)
       .finally(() => {
@@ -126,7 +128,7 @@ export const useAiModelCatalogSelection = ({
     return () => {
       cancelled = true
     }
-  }, [loadCatalog, patchSelectionFromCatalog])
+  }, [loadCatalog, patchSelectionFromCatalog, selectionMode])
 
   const selectedProviderId = selection.selectedProvider?.id
   const selectedModelId = selection.selectedModel?.id
@@ -160,6 +162,10 @@ export const useAiModelCatalogSelection = ({
 
   const setPrimaryModelId = useCallback(
     (nextModelId: string) => {
+      if (selectionMode === 'explicit') {
+        onSelectionChange({ modelId: nextModelId })
+        return
+      }
       const nextModel = selection.selectedProvider?.models.find(model => model.id === nextModelId)
       const matchingVision = selectMatchingVisionPair({
         plannerModel: nextModel,
@@ -176,12 +182,16 @@ export const useAiModelCatalogSelection = ({
           : {})
       })
     },
-    [onSelectionChange, selection.selectedProvider, selection.visionCatalog]
+    [onSelectionChange, selection.selectedProvider, selection.visionCatalog, selectionMode]
   )
 
   const setPrimaryProviderId = useCallback(
     (nextProviderId: string) => {
       const nextSelection = nextCatalogProviderAndModel(selection.primaryCatalog, nextProviderId, role)
+      if (selectionMode === 'explicit') {
+        onSelectionChange({ providerId: nextProviderId, modelId: nextSelection.model?.id })
+        return
+      }
       const matchingVision = selectMatchingVisionPair({
         plannerModel: nextSelection.model,
         plannerProvider: nextSelection.provider,
@@ -198,7 +208,7 @@ export const useAiModelCatalogSelection = ({
           : {})
       })
     },
-    [onSelectionChange, role, selection.primaryCatalog, selection.visionCatalog]
+    [onSelectionChange, role, selection.primaryCatalog, selection.visionCatalog, selectionMode]
   )
 
   const setVisionProviderId = useCallback(
@@ -206,7 +216,7 @@ export const useAiModelCatalogSelection = ({
       const nextSelection = nextCatalogProviderAndModel(selection.visionCatalog, nextProviderId, 'vision')
       onSelectionChange({
         visionProviderId: nextProviderId,
-        visionModelId: nextSelection.model?.id ?? ''
+        visionModelId: nextSelection.model?.id
       })
     },
     [onSelectionChange, selection.visionCatalog]

@@ -1,3 +1,4 @@
+import { visibleUiNodes } from '@rebroid/android-application-core/ui-text';
 import {
   centerOfBox,
   normalizeBox,
@@ -70,9 +71,6 @@ export interface VisionObservation {
   };
 }
 
-const XML_NODE_PATTERN = /<node\b[^>]*>/g;
-const XML_ATTRIBUTE_PATTERN = /([\w:-]+)="([^"]*)"/g;
-
 interface UiXmlDetectionInput {
   width: number;
   height: number;
@@ -83,15 +81,19 @@ export const extractUiDetections = (
   image: UiXmlDetectionInput,
 ) => {
   const detections: VisionDetection[] = [];
-  for (const match of xml.matchAll(XML_NODE_PATTERN)) {
-    const attributes = attributesOf(match[0]);
-    const bounds = boundsOf(attributes.bounds, image);
-    if (!bounds) continue;
-
-    const text = cleanAttribute(attributes.text);
-    const description = cleanAttribute(attributes['content-desc']);
-    const resourceId = cleanAttribute(attributes['resource-id']);
-    const className = cleanAttribute(attributes.class);
+  if (!image.width || !image.height) return detections;
+  for (const node of visibleUiNodes(xml)) {
+    const { left, top, right, bottom } = node.bounds;
+    const bounds = {
+      left: left / image.width,
+      top: top / image.height,
+      width: (right - left) / image.width,
+      height: (bottom - top) / image.height,
+    };
+    const text = node.text?.trim();
+    const description = node.description?.trim();
+    const resourceId = node.resourceId?.trim();
+    const className = node.className?.trim();
     const label = text || description || resourceId || className;
     if (!label) continue;
 
@@ -142,6 +144,11 @@ export const matchesDetectionQuery = (
 ) => {
   const normalizedQuery = query.normalize().trim().toLowerCase();
   if (!normalizedQuery) return true;
+  if (detection.source === 'ui-xml') {
+    return [detection.text, detection.description].some((label) =>
+      label?.normalize().toLowerCase().includes(normalizedQuery),
+    );
+  }
   const haystack = [
     detection.label,
     detection.text,
@@ -153,50 +160,4 @@ export const matchesDetectionQuery = (
     .normalize()
     .toLowerCase();
   return haystack.includes(normalizedQuery);
-};
-
-const attributesOf = (node: string) => {
-  const attributes: Record<string, string> = {};
-  for (const match of node.matchAll(XML_ATTRIBUTE_PATTERN)) {
-    attributes[match[1]] = decodeXml(match[2]);
-  }
-  return attributes;
-};
-
-const decodeXml = (value: string) =>
-  value
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
-
-const cleanAttribute = (value: string | undefined) => {
-  const next = value?.trim();
-  return next && next !== 'false' && next !== 'true' ? next : '';
-};
-
-const boundsOf = (
-  value: string | undefined,
-  image: UiXmlDetectionInput,
-): NormalizedBox | null => {
-  if (!image.width || !image.height) {
-    return null;
-  }
-  const bounds = value?.match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)]$/);
-  if (!bounds) return null;
-  const left = Number(bounds[1]);
-  const top = Number(bounds[2]);
-  const right = Number(bounds[3]);
-  const bottom = Number(bounds[4]);
-  if (![left, top, right, bottom].every(Number.isFinite)) return null;
-
-  const width = Math.max(1, image.width);
-  const height = Math.max(1, image.height);
-  return {
-    left: left / width,
-    top: top / height,
-    width: Math.max(0, right - left) / width,
-    height: Math.max(0, bottom - top) / height,
-  };
 };

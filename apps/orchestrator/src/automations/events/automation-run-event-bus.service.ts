@@ -23,6 +23,12 @@ export class AutomationRunEventBus {
     return event;
   }
 
+  async emitWhileRunning(input: AutomationRunEventInput) {
+    const event = await this.events.appendWhileRunning(input);
+    if (event) this.publish(event);
+    return event !== null;
+  }
+
   async transitionRun(
     ...args: Parameters<AutomationRunEventsRepository['transitionRun']>
   ) {

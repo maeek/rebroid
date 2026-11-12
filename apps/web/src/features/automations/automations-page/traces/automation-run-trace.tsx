@@ -16,10 +16,31 @@ import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-sum
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { StateView } from '@/shared/ui/state-view'
-import type { AutomationRun } from '@/shared/contracts/automation'
+import type { AutomationRun, AutomationStepResult } from '@/shared/contracts/automation'
 
 const triggerLabels = { manual: 'Manual', schedule: 'Scheduled', webhook: 'Webhook', event: 'Event' } as const
 const ocrStepCommands = new Set(['vision.observe', 'vision.locate', 'ai.run'])
+
+const stepResultBadge = ({ status, output }: AutomationStepResult) => {
+  if (status === 'failed') {
+    if (output?.commandOutcome === 'not_found') return <Badge variant='danger'>Not found</Badge>
+    if (output?.commandOutcome === 'uncertain') return <Badge variant='danger'>Uncertain</Badge>
+    return <Badge variant='danger'>Failed</Badge>
+  }
+  if (status === 'skipped') return <Badge>Skipped</Badge>
+  switch (output?.commandOutcome) {
+    case 'not_found':
+      return <Badge>Not found</Badge>
+    case 'unsupported':
+      return <Badge variant='warning'>Unsupported</Badge>
+    case 'uncertain':
+      return <Badge variant='warning'>Uncertain</Badge>
+    case 'failed':
+      return <Badge variant='warning'>Command failed</Badge>
+    default:
+      return <Badge>Success</Badge>
+  }
+}
 
 const elapsed = (start: string | null, end: string | null) => {
   if (!start || !end) return '—'
@@ -177,7 +198,7 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
             <TableHeader>
               <TableRow>
                 <TableHead>Step</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Result</TableHead>
                 <TableHead>Duration</TableHead>
               </TableRow>
             </TableHeader>
@@ -206,14 +227,7 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
                       </Button>
                     ) : null}
                   </TableCell>
-                  <TableCell>
-                    <Badge
-                      className='capitalize'
-                      variant={step.status === 'failed' ? 'danger' : 'neutral'}
-                    >
-                      {step.status}
-                    </Badge>
-                  </TableCell>
+                  <TableCell>{stepResultBadge(step)}</TableCell>
                   <TableCell>{elapsed(step.startedAt, step.completedAt)}</TableCell>
                 </TableRow>
               ))}

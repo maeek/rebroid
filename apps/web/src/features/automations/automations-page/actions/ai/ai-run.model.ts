@@ -1,8 +1,4 @@
-import {
-  AUTOMATION_AI_RUN_MAX_TIMEOUT_MS,
-  isDefaultAiCapability,
-  isSelectableAiCapability
-} from '@rebroid/automation-core/ai-run'
+import { isDefaultAiCapability, isSelectableAiCapability } from '@rebroid/automation-core/ai-run'
 import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -28,20 +24,6 @@ export const stringArrayValue = (input: Record<string, unknown>, key: string) =>
 export const healthLabel = (health: AutomationAiProviderHealth) =>
   health.status === 'ok' ? 'Online' : health.status === 'disabled' ? 'Disabled' : 'Error'
 
-export const normalizeAiRunInput = (input: Record<string, unknown>) => ({
-  prompt: stringValue(input, 'prompt') || defaultPrompt,
-  ...(stringValue(input, 'providerId') ? { providerId: stringValue(input, 'providerId') } : {}),
-  ...(stringValue(input, 'modelId') ? { modelId: stringValue(input, 'modelId') } : {}),
-  ...(stringValue(input, 'visionProviderId') ? { visionProviderId: stringValue(input, 'visionProviderId') } : {}),
-  ...(stringValue(input, 'visionModelId') ? { visionModelId: stringValue(input, 'visionModelId') } : {}),
-  ...(Array.isArray(input.capabilities) ? { capabilities: stringArrayValue(input, 'capabilities') } : {}),
-  maxActions: Math.min(Math.max(numberValue(input, 'maxActions', defaultMaxActions), 1), 100),
-  timeoutMs: Math.min(
-    Math.max(numberValue(input, 'timeoutMs', defaultTimeoutMs), 1000),
-    AUTOMATION_AI_RUN_MAX_TIMEOUT_MS
-  )
-})
-
 export const summarizeAiRunInput = (input: Record<string, unknown>) => {
   const prompt = stringValue(input, 'prompt').trim()
   const provider = stringValue(input, 'providerId')
@@ -64,9 +46,7 @@ export const selectableAiRunCommands = (commands: AutomationCommand[]) =>
     .sort((left, right) => left.uses.localeCompare(right.uses))
 
 export const defaultAiRunCapabilities = (commands: AutomationCommand[]) =>
-  commands
-    .filter(command => command.permitted !== false && isDefaultAiCapability(command.uses))
-    .map(command => command.uses)
+  commands.filter(command => isDefaultAiCapability(command.uses)).map(command => command.uses)
 
 export const nextAiRunCapabilities = ({
   capabilities,

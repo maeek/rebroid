@@ -1,11 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import {
-  cloneAvailableStepOutputs,
   isControlStepType,
   isRecord,
   normalizePositiveInteger,
   normalizeStepId,
-  outputKeysForUses,
   stableStepId,
 } from './automation-definition-normalizer.utils';
 
@@ -33,20 +31,5 @@ describe('automation definition normalizer utils', () => {
       BadRequestException,
     );
     expect(normalizePositiveInteger(3, 'count')).toBe(3);
-  });
-
-  it('clones available output sets without sharing nested sets', () => {
-    const source = new Map([['step-1', new Set(['summary'])]]);
-    const clone = cloneAvailableStepOutputs(source);
-
-    clone.get('step-1')?.add('result');
-
-    expect([...source.get('step-1')!]).toEqual(['summary']);
-    expect([...clone.get('step-1')!]).toEqual(['summary', 'result']);
-  });
-
-  it('returns control step output keys by automation command use', () => {
-    expect(outputKeysForUses('flow.condition').has('matched')).toBe(true);
-    expect(outputKeysForUses('unknown.command').size).toBe(0);
   });
 });

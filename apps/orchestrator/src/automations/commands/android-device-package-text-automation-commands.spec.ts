@@ -217,6 +217,24 @@ describe('android package automation commands', () => {
 
 describe('android text automation commands', () => {
   it.each([
+    ['android.waitForText', 'not_found', 'not_found'],
+    ['android.tapText', 'tap_outcome_unknown', 'uncertain'],
+  ])(
+    'retains the %s outcome when the step fails',
+    async (uses, status, outcome) => {
+      const command = createAndroidDevicePackageTextAutomationCommands().find(
+        (item) => item.uses === uses,
+      )!;
+      const input = command.schema.parse({ text: 'Żappka' });
+      await expect(
+        command.execute(input, {
+          adb: { uiText: jest.fn().mockResolvedValue({ status }) },
+        } as never),
+      ).rejects.toMatchObject({ outcome });
+    },
+  );
+
+  it.each([
     ['android.waitForText', 'wait'],
     ['android.tapText', 'tap'],
   ])(

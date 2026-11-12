@@ -97,7 +97,6 @@ export const WorkflowEditorPreview = ({ creating = false }: { creating?: boolean
               yaml={yaml}
               commands={previewCommands}
               onYamlChange={setYaml}
-              onValidationChange={noop}
             />
           ) : (
             <AutomationStepsList

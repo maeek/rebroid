@@ -72,6 +72,52 @@ spec:
     ).toThrow('Unsupported automation command');
   });
 
+  it.each([
+    'container.network.blockCidr',
+    'container.network.removeBlockedCidr',
+    'container.network.clearBlockedCidrs',
+  ])(
+    'omits the unimplemented %s from the registry and workflow definitions',
+    (uses) => {
+      const { registry, service } = createService();
+      expect(
+        registry.listCommands().map((command) => command.uses),
+      ).not.toContain(uses);
+      expect(() =>
+        service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Unavailable command
+spec:
+  steps:
+    - uses: ${uses}
+`),
+      ).toThrow('Unsupported automation command');
+    },
+  );
+
+  it.each(['flow.stop', 'android.tapText', 'android.adbShell'])(
+    'rejects %s as a grant on an AI workflow step',
+    (uses) => {
+      const { service } = createService();
+      expect(() =>
+        service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: AI capability check
+spec:
+  steps:
+    - uses: ai.run
+      with:
+        prompt: Inspect the screen
+        capabilities: [${uses}]
+`),
+      ).toThrow('Command is unavailable to the device agent.');
+    },
+  );
+
   it('rejects malformed command inputs', () => {
     const { service } = createService();
 
@@ -88,6 +134,138 @@ spec:
         cidr: not-a-cidr
 `),
     ).toThrow('Invalid input for container.network.allowCidr');
+  });
+
+  it.each([
+    'Inspect the screen',
+    '{ $ref: { source: stepOutput, stepId: note, outputKey: summary } }',
+  ])(
+    'reports unrecognized AI settings instead of dropping them from %s',
+    (prompt) => {
+      const { service } = createService();
+      expect(() =>
+        service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata: { name: AI settings }
+spec:
+  steps:
+    - id: note
+      uses: debug.log
+      with: { message: Inspect the screen }
+    - uses: ai.run
+      with:
+        prompt: ${prompt}
+        rawShellPolciy: allowlisted
+`),
+      ).toThrow('rawShellPolciy');
+    },
+  );
+
+  it('accepts type-compatible earlier outputs and rejects wrong types or authorization inputs', () => {
+    const { service } = createService();
+    const yaml = `
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata:
+  name: Copy a file
+spec:
+  steps:
+    - id: source
+      uses: android.pullFile
+      with:
+        path: /sdcard/source.txt
+    - id: copy
+      uses: android.pushFile
+      with:
+        path: /sdcard/copy.txt
+        contentBase64:
+          $ref: { source: stepOutput, stepId: source, outputKey: contentBase64 }
+`;
+    expect(service.parseYaml(yaml).spec.steps[1]).toMatchObject({
+      with: {
+        path: '/sdcard/copy.txt',
+        contentBase64: {
+          $ref: {
+            source: 'stepOutput',
+            stepId: 'source',
+            outputKey: 'contentBase64',
+          },
+        },
+      },
+    });
+    expect(() =>
+      service.parseYaml(
+        yaml.replace('outputKey: contentBase64', 'outputKey: sizeBytes'),
+      ),
+    ).toThrow('needs a string output');
+    expect(() =>
+      service.parseYaml(yaml.replace('stepId: source', 'stepId: copy')),
+    ).toThrow('must reference an earlier step');
+    expect(() =>
+      service.parseYaml(
+        yaml
+          .replace('android.pushFile', 'ai.run')
+          .replace('path: /sdcard/copy.txt', 'prompt: Inspect')
+          .replace('contentBase64:\n', 'rawShellPolicy:\n'),
+      ),
+    ).toThrow('does not accept a step output');
+  });
+
+  it('publishes the outputs actually returned by Pull file', async () => {
+    const { registry } = createService();
+    const path = '/sdcard/source.txt';
+    const data = { path, contentBase64: 'YQ==', sizeBytes: 1 };
+    await expect(
+      registry.execute('android.pullFile', { path }, {
+        adb: { pullFile: jest.fn().mockResolvedValue(data) },
+      } as never),
+    ).resolves.toMatchObject({ data });
+    expect(
+      registry.outputsFor('android.pullFile').map(({ key }) => key),
+    ).toEqual([
+      'summary',
+      'commandOutcome',
+      'contentBase64',
+      'path',
+      'sizeBytes',
+    ]);
+    const pushFile = jest.fn().mockResolvedValue({ pushed: true });
+    await registry.execute('android.pushFile', { path, contentBase64: '' }, {
+      app: {},
+      adb: { pushFile },
+    } as never);
+    expect(pushFile).toHaveBeenCalledWith({}, path, '', undefined);
+  });
+
+  it('rejects outputs from a sibling branch for command inputs', () => {
+    const { service } = createService();
+    expect(() =>
+      service.parseYaml(`
+apiVersion: rebroid.io/automation/v1
+kind: AndroidAutomation
+metadata: { name: Branch scope }
+spec:
+  steps:
+    - id: choose
+      type: condition
+      condition:
+        groups:
+          - conditions:
+              - value: { source: literal, value: true }
+                operator: isTrue
+      then:
+        - id: source
+          uses: debug.log
+          with: { message: yes }
+      else:
+        - id: copy
+          uses: debug.log
+          with:
+            message:
+              $ref: { source: stepOutput, stepId: source, outputKey: summary }
+`),
+    ).toThrow('must reference an earlier step');
   });
 
   it('normalizes tags and nested flow blocks', () => {

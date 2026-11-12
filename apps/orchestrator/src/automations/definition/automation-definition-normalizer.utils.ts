@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { controlStepOutputs } from '@rebroid/automation-core/metadata';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -35,14 +34,3 @@ export const normalizePositiveInteger = (value: unknown, label: string) => {
   }
   return value;
 };
-
-export const outputKeysForUses = (uses: string) =>
-  new Set((controlStepOutputs[uses] ?? []).map((output) => output.key));
-
-export const cloneAvailableStepOutputs = (source: Map<string, Set<string>>) =>
-  new Map(
-    [...source.entries()].map(([stepId, outputs]) => [
-      stepId,
-      new Set(outputs),
-    ]),
-  );

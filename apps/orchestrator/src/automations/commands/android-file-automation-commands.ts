@@ -38,13 +38,13 @@ export const createAndroidFileAutomationCommands = () =>
           description: 'Pulled file content encoded as base64.',
         },
         {
-          key: 'mimeType',
-          label: 'MIME type',
+          key: 'path',
+          label: 'Path',
           type: 'string',
-          description: 'Detected file media type.',
+          description: 'Device path read by the command.',
         },
         {
-          key: 'size',
+          key: 'sizeBytes',
           label: 'Size',
           type: 'number',
           description: 'Pulled file size in bytes.',
@@ -93,6 +93,7 @@ export const createAndroidFileAutomationCommands = () =>
         const exists = await adb.fileExists(app, path, abortSignal);
         return {
           summary: exists ? `${path} exists.` : `${path} does not exist.`,
+          outcome: exists ? 'succeeded' : 'not_found',
           data: { exists },
         };
       },

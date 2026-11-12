@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -18,13 +19,15 @@ export function AutomationYamlEditorSection({
   yaml,
   commands,
   onYamlChange,
-  onValidationChange,
+  error = null,
+  pending = false,
   className
 }: {
   yaml: string
   commands: AutomationCommand[]
   onYamlChange: (yaml: string) => void
-  onValidationChange: (valid: boolean, messages: string[]) => void
+  error?: string | null
+  pending?: boolean
   className?: string
 }) {
   return (
@@ -37,8 +40,16 @@ export function AutomationYamlEditorSection({
         commands={commands}
         className='min-h-112 w-full flex-1'
         onChange={onYamlChange}
-        onValidationChange={onValidationChange}
       />
+      {pending && (
+        <p
+          className='text-sm text-foreground-muted'
+          role='status'
+        >
+          Checking workflow YAML…
+        </p>
+      )}
+      {error && <Notice tone='danger'>{error}</Notice>}
     </Section>
   )
 }

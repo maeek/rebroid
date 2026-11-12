@@ -1,44 +1,199 @@
 import {
   isDefaultAiCapability,
   isRoutedAiCapability,
+  isSelectableAiCapability,
+  type RoutedAiCapability,
 } from '@rebroid/automation-core/ai-run';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import type { AutomationCommandDto } from '../dto/automation-command.dto';
 
 export type RoutedAiCapabilities = readonly AutomationCommandDto[];
 
+const appNavigation = [
+  'open',
+  'launch',
+  'start',
+  'app',
+  'apps',
+  'drawer',
+  'launcher',
+  'otworz',
+  'uruchom',
+  'aplikacja',
+  'aplikacje',
+  'aplikacji',
+];
+const fileTerms = [
+  'file',
+  'files',
+  'folder',
+  'directory',
+  'sdcard',
+  'download',
+  'downloads',
+  'plik',
+  'pliki',
+];
+const networkTerms = [
+  'network',
+  'firewall',
+  'cidr',
+  'allowlist',
+  'restrictions',
+  'internet',
+];
+const clipboardTerms = ['clipboard', 'schowek', 'schowka'];
+const discoveryTools = new Set<string>([
+  'vision.locate',
+  'android.listPackages',
+  'vision.observe',
+]);
+
+const routingHints: Record<
+  RoutedAiCapability,
+  {
+    terms: readonly string[];
+    context?: readonly string[];
+  }
+> = {
+  'vision.locate': {
+    terms: [
+      ...appNavigation,
+      'find',
+      'locate',
+      'tap',
+      'click',
+      'label',
+      'text',
+      'ocr',
+      'znajdz',
+      'kliknij',
+      'tekst',
+    ],
+  },
+  'vision.observe': {
+    terms: ['screen', 'observe', 'inspect', 'visible', 'ocr', 'ekran'],
+  },
+  'android.listPackages': {
+    terms: [
+      ...appNavigation,
+      'package',
+      'packages',
+      'installed',
+      'pakiet',
+      'pakiety',
+    ],
+  },
+  'android.getSetting': {
+    terms: [
+      'setting',
+      'settings',
+      'preference',
+      'preferences',
+      'ustawienie',
+      'ustawienia',
+    ],
+  },
+  'android.getClipboard': { terms: clipboardTerms },
+  'android.setClipboard': {
+    terms: ['set', 'write', 'copy', 'replace', 'clear', 'zapisz'],
+    context: clipboardTerms,
+  },
+  'android.collapsePanels': {
+    terms: ['collapse', 'dismiss', 'close', 'hide'],
+    context: ['panel', 'panels', 'notifications', 'shade'],
+  },
+  'android.rotateDisplay': {
+    terms: [
+      'rotate',
+      'rotation',
+      'orientation',
+      'portrait',
+      'landscape',
+      'obroc',
+    ],
+  },
+  'android.fileExists': {
+    terms: ['find', 'check', 'exists', 'verify', 'present'],
+    context: fileTerms,
+  },
+  'android.listFiles': {
+    terms: ['list', 'show', 'browse', 'enumerate', 'contents'],
+    context: fileTerms,
+  },
+  'android.pullFile': {
+    terms: ['pull', 'read', 'export', 'download', 'retrieve'],
+    context: fileTerms,
+  },
+  'android.pushFile': {
+    terms: ['push', 'write', 'upload', 'save', 'import'],
+    context: fileTerms,
+  },
+  'android.deleteFile': {
+    terms: ['delete', 'remove', 'erase', 'unlink', 'usun'],
+    context: fileTerms,
+  },
+  'container.network.allowCidr': {
+    terms: ['allow', 'add', 'permit'],
+    context: networkTerms,
+  },
+  'container.network.removeAllowedCidr': {
+    terms: ['remove', 'revoke', 'delete'],
+    context: networkTerms,
+  },
+  'container.network.clearAllowedCidrs': {
+    terms: ['clear', 'empty'],
+    context: networkTerms,
+  },
+  'container.network.setRestrictions': {
+    terms: ['set', 'enable', 'disable', 'restrict', 'unrestrict'],
+    context: networkTerms,
+  },
+  'container.network.resetPolicy': {
+    terms: ['reset', 'restore'],
+    context: networkTerms,
+  },
+};
+
 export const routeCapabilities = ({
   commands,
   goal,
   input,
 }: {
-  commands: AutomationCommandDto[];
+  commands: readonly AutomationCommandDto[];
   goal: string;
   input: Pick<AutomationAiRunInput, 'capabilities'>;
 }): RoutedAiCapabilities => {
   const terms = new Set(
     goal
+      .normalize('NFD')
       .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((term) => term.length >= 3),
+      .replace(/\p{M}/gu, '')
+      .match(/[\p{L}\p{N}]+/gu),
   );
-  return commands
-    .filter(
-      (command) =>
-        isRoutedAiCapability(command.uses) &&
-        commandAllowedForRun(input, command.uses),
-    )
-    .map((command) => ({
-      command,
-      score: scoreCapability(command, terms),
-    }))
-    .sort(
-      (left, right) =>
-        right.score - left.score ||
-        left.command.uses.localeCompare(right.command.uses),
-    )
-    .slice(0, 5)
-    .map(({ command }) => command);
+  const allowed = commands.flatMap((command) => {
+    const { uses } = command;
+    if (!isRoutedAiCapability(uses) || !commandAllowedForRun(input, uses))
+      return [];
+    return [{ command, score: scoreCapability(uses, terms) }];
+  });
+  const relevant = allowed.filter(({ score }) => score > 0);
+  if (relevant.length > 0) {
+    return relevant
+      .sort(
+        (left, right) =>
+          right.score - left.score ||
+          left.command.uses.localeCompare(right.command.uses),
+      )
+      .slice(0, 5)
+      .map(({ command }) => command);
+  }
+  const defaults = allowed
+    .map(({ command }) => command)
+    .filter(({ uses }) => isDefaultAiCapability(uses));
+  const discovery = defaults.filter(({ uses }) => discoveryTools.has(uses));
+  if (discovery.length > 0) return discovery;
+  return defaults;
 };
 
 export const capabilityPrompt = (capabilities: RoutedAiCapabilities) => {
@@ -55,7 +210,9 @@ export const capabilityPrompt = (capabilities: RoutedAiCapabilities) => {
 export const commandAllowedForRun = (
   input: Pick<AutomationAiRunInput, 'capabilities'>,
   uses: string,
-) => input.capabilities?.includes(uses) ?? isDefaultAiCapability(uses);
+) =>
+  isSelectableAiCapability(uses) &&
+  (input.capabilities?.includes(uses) ?? isDefaultAiCapability(uses));
 
 export const validatedEscalationCommand = (program: string, args: string[]) => {
   const safeToken = /^[a-zA-Z0-9._:/=-]+$/;
@@ -74,11 +231,11 @@ export const validatedEscalationCommand = (program: string, args: string[]) => {
   return null;
 };
 
-const scoreCapability = (command: AutomationCommandDto, terms: Set<string>) => {
-  const haystack =
-    `${command.uses} ${command.label} ${command.description}`.toLowerCase();
-  return [...terms].reduce(
-    (score, term) => score + (haystack.includes(term) ? 1 : 0),
-    isDefaultAiCapability(command.uses) ? 0.25 : 0,
-  );
+const scoreCapability = (
+  uses: RoutedAiCapability,
+  goalTerms: ReadonlySet<string>,
+) => {
+  const { terms, context } = routingHints[uses];
+  if (context && !context.some((term) => goalTerms.has(term))) return 0;
+  return terms.filter((term) => goalTerms.has(term)).length;
 };

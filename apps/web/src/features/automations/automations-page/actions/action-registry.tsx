@@ -1,3 +1,4 @@
+import { hasActionInputBinding } from '@rebroid/automation-core/command-registry'
 import { aiRunAction } from './ai/ai-run.action'
 import { adbShellAction } from './android/adb-shell.action'
 import { getClipboardAction } from './android/get-clipboard.action'
@@ -17,8 +18,7 @@ import { viewerCommandAction } from './android/viewer-command.action'
 import { waitForTextAction } from './android/wait-for-text.action'
 import { waitAction } from './android/wait.action'
 import { assertFileExistsAction } from './assertions/file-exists.action'
-import { textExistsAction } from './assertions/text-exists.action'
-import { textMissingAction } from './assertions/text-missing.action'
+import { textExistsAction, textMissingAction } from './assertions/text-assertions.action'
 import { logAction } from './debug/log.action'
 import { saveScreenshotAction } from './debug/save-screenshot.action'
 import { deleteFileAction } from './files/delete-file.action'
@@ -29,14 +29,11 @@ import { pushFileAction } from './files/push-file.action'
 import { failAction } from './flow/fail.action'
 import { stopAction } from './flow/stop.action'
 import { allowCidrAction } from './network/allow-cidr.action'
-import { blockCidrAction } from './network/block-cidr.action'
 import { clearAllowedCidrsAction } from './network/clear-allowed-cidrs.action'
-import { clearBlockedCidrsAction } from './network/clear-blocked-cidrs.action'
 import { removeAllowedCidrAction } from './network/remove-allowed-cidr.action'
-import { removeBlockedCidrAction } from './network/remove-blocked-cidr.action'
 import { resetPolicyAction } from './network/reset-policy.action'
 import { setRestrictionsAction } from './network/set-restrictions.action'
-import { NoInputState } from './shared/action-fields'
+import { SchemaActionFields } from './shared/schema-action-fields'
 import { visionLocateAction } from './vision/locate.action'
 import { visionObserveAction } from './vision/observe.action'
 import type {
@@ -85,9 +82,6 @@ const actionDefinitions = [
   allowCidrAction,
   removeAllowedCidrAction,
   clearAllowedCidrsAction,
-  blockCidrAction,
-  removeBlockedCidrAction,
-  clearBlockedCidrsAction,
   setRestrictionsAction,
   resetPolicyAction,
   textExistsAction,
@@ -156,7 +150,7 @@ const createFallbackDefinition = (uses: string, command?: AutomationCommand): Au
     iconKey: fallbackIconKey(category),
     label: command?.label ?? uses,
     description: command?.description ?? 'This action does not have a visual editor yet.',
-    defaultInput: () => ({}),
+    defaultInput: () => ({ ...command?.editor.inputDefaults }),
     summary: input => {
       const entries = Object.entries(input)
       if (entries.length === 0) return 'No input'
@@ -166,9 +160,7 @@ const createFallbackDefinition = (uses: string, command?: AutomationCommand): Au
         .map(([key, value]) => `${key}: ${String(value)}`)
         .join(', ')
     },
-    renderEditor: () => (
-      <NoInputState message='No visual editor for this action yet. Use Edit YAML from the step menu.' />
-    )
+    renderEditor: props => <SchemaActionFields {...props} />
   }
 }
 
@@ -183,11 +175,13 @@ export const getAutomationActionCategory = (uses: string) => getAutomationAction
 
 export const getAutomationActionIconKey = (uses: string) => getAutomationActionDefinition(uses).iconKey
 
-export const getDefaultActionInput = (uses: string) => getAutomationActionDefinition(uses).defaultInput()
+export const getDefaultActionInput = (uses: string, command?: AutomationCommand) =>
+  getAutomationActionDefinition(uses, command).defaultInput()
 
 export const normalizeActionInput = (uses: string, input: Record<string, unknown>) => {
+  if (Object.values(input).some(hasActionInputBinding)) return input
   const definition = getAutomationActionDefinition(uses)
-  return definition.normalizeInput ? definition.normalizeInput(input) : input
+  return definition.normalizeInput ? { ...input, ...definition.normalizeInput(input) } : input
 }
 
 export const getActionUiStateFromInput = (uses: string, input: Record<string, unknown>) => {
@@ -200,9 +194,12 @@ export const getBackendActionInput = (
   input: Record<string, unknown>,
   uiState: Record<string, unknown> = {}
 ) => {
+  if (Object.values(input).some(hasActionInputBinding)) return input
   const definition = getAutomationActionDefinition(uses)
   const normalizedInput = normalizeActionInput(uses, input)
-  return definition.toBackendInput ? definition.toBackendInput(normalizedInput, uiState) : normalizedInput
+  return definition.toBackendInput
+    ? { ...normalizedInput, ...definition.toBackendInput(normalizedInput, uiState) }
+    : normalizedInput
 }
 
 export const summarizeActionInput = (uses: string, input: Record<string, unknown>, command?: AutomationCommand) =>

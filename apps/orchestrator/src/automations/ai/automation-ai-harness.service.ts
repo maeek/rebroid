@@ -137,6 +137,7 @@ export class AutomationAiHarnessService {
         modelId: model.id,
         protocol: providerProtocol(provider),
         capabilityCount: capabilities.length,
+        routedCapabilities: capabilities.map(({ uses }) => uses),
         actionLimit: input.maxActions,
         clientMessageId: input.clientMessageId ?? null,
       },
@@ -332,6 +333,7 @@ export class AutomationAiHarnessService {
     );
     return {
       summary: finalText,
+      outcome: completed ? ('succeeded' as const) : ('uncertain' as const),
       data: {
         finalText,
         status: result.status,

@@ -85,7 +85,8 @@ export const selectRoleVisionCatalog = <TProvider extends AiModelCatalogProvider
   providerId,
   role,
   visionModelId,
-  visionProviderId
+  visionProviderId,
+  preserveExplicitIds = false
 }: {
   catalog: TProvider[]
   modelId: string
@@ -93,13 +94,23 @@ export const selectRoleVisionCatalog = <TProvider extends AiModelCatalogProvider
   role: Exclude<AiModelRole, 'vision'>
   visionModelId: string
   visionProviderId: string
+  preserveExplicitIds?: boolean
 }): AiRoleCatalogSelection<TProvider> => {
   const primaryCatalog = catalogByRole(catalog, role)
   const visionCatalog = catalogByRole(catalog, 'vision')
-  const selectedProvider = selectCatalogProvider(primaryCatalog, providerId)
-  const selectedModel = selectCatalogModel(selectedProvider, modelId, role)
-  const selectedVisionProvider = selectCatalogProvider(visionCatalog, visionProviderId)
-  const selectedVisionModel = selectCatalogModel(selectedVisionProvider, visionModelId, 'vision')
+  const providerFor = (entries: TProvider[], id: string) =>
+    preserveExplicitIds && id ? entries.find(provider => provider.id === id) : selectCatalogProvider(entries, id)
+  const modelFor = (provider: TProvider | undefined, id: string, modelRole: AiModelRole) =>
+    preserveExplicitIds && id
+      ? provider?.models.find(model => model.id === id)
+      : selectCatalogModel(provider, id, modelRole)
+  const selectedProvider = providerFor(primaryCatalog, providerId)
+  const selectedModel = modelFor(selectedProvider, modelId, role)
+  const selectedVisionProvider = providerFor(visionCatalog, visionProviderId)
+  const selectedVisionModel =
+    preserveExplicitIds && !visionProviderId && !visionModelId
+      ? undefined
+      : modelFor(selectedVisionProvider, visionModelId, 'vision')
 
   return {
     primaryCatalog,

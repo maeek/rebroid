@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   AutomationConditionExpression,
+  AutomationCommandOutputMetadata,
   AutomationConditionOperator,
   AutomationConditionRule,
   AutomationValueRef,
@@ -27,6 +28,11 @@ export interface AutomationConditionRuntimeState {
   app: Record<string, unknown>;
   outputsByStepId: Map<string, Record<string, unknown> | null>;
 }
+
+export type AvailableStepOutputs = ReadonlyMap<
+  string,
+  readonly AutomationCommandOutputMetadata[]
+>;
 
 @Injectable()
 export class AutomationConditionService {
@@ -104,7 +110,7 @@ export class AutomationConditionService {
 
   validateExpressionReferences(
     expression: AutomationConditionExpression,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
     path: string,
   ) {
     expression.groups.forEach((group, groupIndex) => {
@@ -148,7 +154,7 @@ export class AutomationConditionService {
     };
   }
 
-  private normalizeValueRef(value: unknown, path: string): AutomationValueRef {
+  normalizeValueRef(value: unknown, path: string): AutomationValueRef {
     if (!isRecord(value)) {
       throw new BadRequestException(`${path} must be an object.`);
     }
@@ -177,9 +183,9 @@ export class AutomationConditionService {
     throw new BadRequestException(`${path}.source is invalid.`);
   }
 
-  private validateValueRef(
+  validateValueRef(
     ref: AutomationValueRef,
-    availableStepOutputs: Map<string, Set<string>>,
+    availableStepOutputs: AvailableStepOutputs,
     path: string,
   ) {
     if (ref.source === 'literal') return;
@@ -196,11 +202,13 @@ export class AutomationConditionService {
         `${path}.stepId "${ref.stepId}" must reference an earlier step.`,
       );
     }
-    if (!outputs.has(ref.outputKey)) {
+    const output = outputs.find((item) => item.key === ref.outputKey);
+    if (!output) {
       throw new BadRequestException(
         `${path}.outputKey "${ref.outputKey}" is not available on step "${ref.stepId}".`,
       );
     }
+    return output;
   }
 
   private evaluateRule(
@@ -226,7 +234,7 @@ export class AutomationConditionService {
       if (Array.isArray(current) && /^\d+$/.test(segment)) {
         return current[Number(segment)];
       }
-      if (typeof current === 'object') {
+      if (typeof current === 'object' && Object.hasOwn(current, segment)) {
         return (current as Record<string, unknown>)[segment];
       }
       return undefined;

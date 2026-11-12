@@ -145,6 +145,7 @@ function AutomationStepInspectorContent({
             <AutomationStepEditor
               step={step}
               commands={commands}
+              stepOptions={stepOptions}
               surface='plain'
               onChange={onChange}
             />

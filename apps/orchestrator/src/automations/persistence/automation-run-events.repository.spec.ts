@@ -101,6 +101,41 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
   return { db, runs, events, run };
 };
 
+it('publishes repeat admission only while the owning run is active', async () => {
+  const { db, events, run } = await createRunPersistence();
+  try {
+    const bus = new AutomationRunEventBus(events);
+    const event = {
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'step.started' as const,
+    };
+    const received = jest.fn();
+    bus.subscribe(run.id, received);
+    await expect(
+      bus.emitWhileRunning({ ...event, ownerUserId: 'another-user' }),
+    ).resolves.toBe(false);
+    await expect(bus.emitWhileRunning(event)).resolves.toBe(true);
+    await bus.transitionRun(
+      run.id,
+      [AutomationRunStatus.Running],
+      {
+        status: AutomationRunStatus.Canceled,
+        completedAt: new Date(),
+        error: null,
+      },
+      { type: 'run.canceled' },
+    );
+    await expect(bus.emitWhileRunning(event)).resolves.toBe(false);
+    expect(received.mock.calls.map(([item]) => item.type)).toEqual([
+      'step.started',
+      'run.canceled',
+    ]);
+  } finally {
+    await db.destroy();
+  }
+});
+
 it('publishes workflow history after an unrelated SQLite rollback and preserves ordinary writes', async () => {
   const { db, events, run } = await createRunPersistence();
   let resume!: () => void;

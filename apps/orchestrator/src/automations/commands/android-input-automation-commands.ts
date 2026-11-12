@@ -228,6 +228,7 @@ export const createAndroidInputAutomationCommands = () =>
       ) => {
         const result = await adb.getClipboard(app, abortSignal);
         return {
+          outcome: result.supported ? 'succeeded' : 'unsupported',
           summary: result.supported
             ? 'Clipboard read.'
             : 'Clipboard read is unsupported.',
