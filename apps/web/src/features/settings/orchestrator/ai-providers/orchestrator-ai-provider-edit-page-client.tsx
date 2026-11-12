@@ -29,7 +29,7 @@ export const OrchestratorAiProviderEditPageClient = ({
         <>
           {isDirty ? (
             <span
-              className='text-xs text-foreground-muted'
+              className='self-center text-xs text-foreground-muted'
               role='status'
             >
               Unsaved changes
