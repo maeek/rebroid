@@ -25,7 +25,7 @@ export const AppLogsContent = ({ app, className, outputClassName }: AppLogsConte
       loading={false}
       isLoading={isLoading}
       refreshDisabled={!app}
-      onRefresh={() => void loadLogs()}
+      onRefresh={isLive ? undefined : () => void loadLogs()}
       className={className}
       outputClassName={outputClassName}
       controls={
@@ -45,6 +45,7 @@ export const AppLogsLoading = () => (
   <FormLoadingBoundary>
     <AppLogsLayout
       loading
+      onRefresh={() => undefined}
       controls={
         <AppLogsControls
           source='orchestrator'
@@ -64,7 +65,7 @@ const AppLogsLayout = ({
   loading,
   isLoading = false,
   refreshDisabled = false,
-  onRefresh = () => undefined,
+  onRefresh,
   className,
   outputClassName
 }: AppLogsContentProps & {
@@ -82,7 +83,7 @@ const AppLogsLayout = ({
       isRefreshing={isLoading}
       refreshDisabled={refreshDisabled}
       onRefresh={onRefresh}
-      emptyMessage='Refresh logs to inspect container startup failures or Android logcat output.'
+      emptyMessage='No log output yet.'
       className={className}
       outputClassName={cn('h-[40dvh] min-h-80 max-h-[32rem]', outputClassName)}
       controls={controls}

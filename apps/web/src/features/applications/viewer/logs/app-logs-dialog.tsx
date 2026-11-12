@@ -95,8 +95,8 @@ export const AppLogsDialog = ({
           log={log}
           isRefreshing={isLoading}
           refreshDisabled={!app}
-          onRefresh={() => void loadLogs()}
-          emptyMessage='Refresh logs to inspect container startup failures or Android logcat output.'
+          onRefresh={isLive ? undefined : () => void loadLogs()}
+          emptyMessage='No log output yet.'
           controls={
             <AppLogsControls
               source={source}
