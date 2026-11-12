@@ -1,6 +1,5 @@
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import { ConflictException, Injectable } from '@nestjs/common';
-import pLimit from 'p-limit';
 import { DataSource, In, IsNull, type EntityManager } from 'typeorm';
 import { AndroidApplication } from '../../android-application.entity';
 import {
@@ -63,8 +62,6 @@ const openStatuses = [
 
 @Injectable()
 export class AndroidAppsLifecycleTransitionService {
-  private readonly serializeTransition = pLimit(1);
-
   constructor(
     private readonly dataSource: DataSource,
     private readonly logs: AndroidAppsLogService,
@@ -186,8 +183,9 @@ export class AndroidAppsLifecycleTransitionService {
   }
 
   async claimJob(reservation: AndroidAppLifecycleReservation) {
-    const claimed = await this.serializeTransition(() =>
-      this.dataSource.getRepository(AndroidAppLifecycleJob).update(
+    const claimed = await this.dataSource
+      .getRepository(AndroidAppLifecycleJob)
+      .update(
         {
           ...reservationKey(reservation),
           status: AndroidAppLifecycleJobStatus.Pending,
@@ -197,8 +195,7 @@ export class AndroidAppsLifecycleTransitionService {
           status: AndroidAppLifecycleJobStatus.Running,
           attempts: () => 'attempts + 1',
         },
-      ),
-    );
+      );
     return claimed.affected === 1;
   }
 
@@ -209,23 +206,19 @@ export class AndroidAppsLifecycleTransitionService {
   }
 
   async requeueInterruptedJob(job: AndroidAppLifecycleJob) {
-    const result = await this.serializeTransition(() =>
-      this.dataSource
-        .getRepository(AndroidAppLifecycleJob)
-        .update(
-          { ...reservationKey(job), status: job.status },
-          { status: AndroidAppLifecycleJobStatus.Pending, lastError: null },
-        ),
-    );
+    const result = await this.dataSource
+      .getRepository(AndroidAppLifecycleJob)
+      .update(
+        { ...reservationKey(job), status: job.status },
+        { status: AndroidAppLifecycleJobStatus.Pending, lastError: null },
+      );
     return result.affected === 1;
   }
 
   discardJob(reservation: AndroidAppLifecycleReservation) {
-    return this.serializeTransition(() =>
-      this.dataSource
-        .getRepository(AndroidAppLifecycleJob)
-        .delete(reservationKey(reservation)),
-    );
+    return this.dataSource
+      .getRepository(AndroidAppLifecycleJob)
+      .delete(reservationKey(reservation));
   }
 
   async completeRemoval(reservation: AndroidAppLifecycleReservation) {
@@ -379,9 +372,7 @@ export class AndroidAppsLifecycleTransitionService {
   }
 
   private transaction<T>(operation: (manager: EntityManager) => Promise<T>) {
-    return this.serializeTransition(() =>
-      this.dataSource.transaction(operation),
-    );
+    return this.dataSource.transaction(operation);
   }
 
   private async assertOpenAppSlot(

@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { SerializedSqliteDataSource } from '../../../database/serialized-sqlite-data-source';
 import { InitializeSqliteSchema1800000005000 } from '../../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
@@ -24,7 +24,7 @@ const deferred = () => {
 
 describe('Android application power commands', () => {
   it('drains container creation before Stop and fences callbacks from the old Start', async () => {
-    const db = await new DataSource({
+    const db = await new SerializedSqliteDataSource({
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],

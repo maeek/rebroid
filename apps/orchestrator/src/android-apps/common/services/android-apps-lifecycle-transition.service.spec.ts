@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { SerializedSqliteDataSource } from '../../../database/serialized-sqlite-data-source';
 import { InitializeSqliteSchema1800000005000 } from '../../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import {
@@ -15,7 +15,7 @@ import { AndroidAppsLifecycleTransitionService } from './android-apps-lifecycle-
 
 describe('open application admission', () => {
   it('allows one concurrent Create, Start or Recreate at the owner limit', async () => {
-    const database = await new DataSource({
+    const database = await new SerializedSqliteDataSource({
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AndroidApplication, AndroidAppLifecycleJob],
