@@ -69,13 +69,13 @@ describe('runtime page outage matrix', () => {
   it.each([
     ['Overview', () => PlatformOverviewPageEntry()],
     ['Create app', () => CreateAppPageEntry()],
-    ['Image builder', () => RuntimeImageBuilderPageEntry()],
-    ['Custom image builder', () => CustomRuntimeImageBuilderPageEntry()],
-    ['Features', () => PlatformFeaturesPageEntry()],
+    ['Build Google Play image', () => RuntimeImageBuilderPageEntry()],
+    ['Build custom image', () => CustomRuntimeImageBuilderPageEntry()],
+    ['Feature management', () => PlatformFeaturesPageEntry()],
     ['Display sessions', () => PlatformDisplaySessionsPageEntry()],
-    ['Network policies', () => SecurityNetworkPoliciesPageEntry()],
+    ['App network policies', () => SecurityNetworkPoliciesPageEntry()],
     ['AI provider', () => AiProviderDetailPageEntry({ params: Promise.resolve({ providerId: 'example' }) })],
-    ['Workflow runs', () => AutomationTracesPageEntry({ params: Promise.resolve({ id: 'example' }) })]
+    ['Run history', () => AutomationTracesPageEntry({ params: Promise.resolve({ id: 'example' }) })]
   ] as const)('%s renders one page failure without starting dependent loaders', async (title, entry) => {
     render(await resolveBoundary(entry()))
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeVisible()
