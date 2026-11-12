@@ -127,10 +127,15 @@ is not persisted; only its presence is recorded.
 Vision lookup filters local detections before applying the result cap and enforces the requested
 region on model matches. OCR health reports when the expected language differs from the deployment.
 
-Perception captures the screen and UI data, sends the original lossless image to the OCR adapter,
-and optionally asks a vision model to describe it. Fusion ranks candidates and prepares the marked
-screenshot and text summary used by the controller. OCR is feature-gated and uses the deployment's
-single configured language. Capture, OCR, model description, and fusion remain separate concerns.
+Perception holds Android target admission while reading the screenshot and UI hierarchy.
+It releases admission before sending the lossless screenshot to OCR or asking a vision model
+to describe it. Action dispatch checks the target again. Fusion ranks candidates and prepares
+the marked screenshot and text summary used by the controller.
+
+The orchestrator's OCR sidecar module owns feature gating, request deadlines, and the deployment
+language check for both health and recognition. Workflow steps buffer bounded OCR diagnostics
+and publish them in order before recording the step outcome. Cancellation discards exchanges
+that have yet to be published.
 
 ## Code map
 

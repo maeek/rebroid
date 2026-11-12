@@ -48,6 +48,7 @@ export class AutomationVisionService {
   ): Promise<AutomationScreenObservation> {
     const signal = observationSignal(context.abortSignal, deadline);
     if (context.visionSnapshot) {
+      await context.withTarget?.(signal, async () => undefined);
       const snapshot = context.visionSnapshot;
       if (!visionModel || !snapshot.aiImage) return snapshot;
       const described = await this.modelService.describeSafe({
@@ -60,14 +61,10 @@ export class AutomationVisionService {
       signal?.throwIfAborted();
       return { ...snapshot, ...described };
     }
-    const captureTarget = (app: VisionContext['app']) =>
-      this.captureService.capture(
-        { ...context, app, abortSignal: signal },
-        deadline,
-      );
-    const capture = await (context.withTarget
-      ? context.withTarget(signal, captureTarget)
-      : captureTarget(context.app));
+    const capture = await this.captureService.capture(
+      { ...context, abortSignal: signal },
+      deadline,
+    );
     const described = visionModel
       ? await this.modelService.describeSafe({
           image: capture.aiImage,
@@ -95,6 +92,8 @@ export class AutomationVisionService {
   ): Promise<AutomationVisionLocateOutput> {
     const signal = observationSignal(context.abortSignal, deadline);
     const { visionSnapshot } = context;
+    if (visionSnapshot)
+      await context.withTarget?.(signal, async () => undefined);
     const evidence = visionSnapshot
       ? {
           detections: visionSnapshot.lookupDetections ?? [
@@ -102,12 +101,12 @@ export class AutomationVisionService {
             ...(visionSnapshot.ocr?.detections ?? []),
           ],
           image: visionSnapshot.aiImage,
-          ocrStatus: visionSnapshot.ocr?.status,
+          ocr: visionSnapshot.ocr,
         }
       : await this.captureForLookup(context, signal, deadline);
     signal?.throwIfAborted();
     const ocrStatus: AutomationVisionLocateOutput['ocrStatus'] =
-      evidence.ocrStatus ?? 'unavailable';
+      evidence.ocr?.status ?? 'unavailable';
     const base = { query: input.query, threshold: input.threshold, ocrStatus };
     const matches = sortDetections(
       evidence.detections.filter(
@@ -134,14 +133,20 @@ export class AutomationVisionService {
         reason: result.reason,
       };
     }
-    const complete = ocrStatus === 'available' && !visionModel;
+    const incompleteOcr = evidence.ocr?.searchComplete === false;
+    const complete =
+      ocrStatus === 'available' && !incompleteOcr && !visionModel;
+    let reason =
+      'No match in the available evidence and screenshot recognition was unavailable.';
+    if (complete) reason = 'No match in the available screen evidence.';
+    else if (incompleteOcr)
+      reason =
+        'No match in the available evidence and OCR preprocessing was incomplete.';
     return {
       ...base,
       matches,
       outcome: complete ? 'not_found' : 'inconclusive',
-      reason: complete
-        ? 'No match in the available screen evidence.'
-        : 'No match in the available evidence and screenshot recognition was unavailable.',
+      reason,
     };
   }
 
@@ -157,7 +162,7 @@ export class AutomationVisionService {
     return {
       detections: this.fusionService.lookupDetections(capture),
       image: capture.aiImage,
-      ocrStatus: capture.ocr.status,
+      ocr: capture.ocr,
     };
   }
 

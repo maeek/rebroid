@@ -116,6 +116,7 @@ synchronized state before admitting new work.
 | Resource quota   | On      | Suspends per-user open-app, CPU, memory, and session quota enforcement for subsequent operations. Saved quotas apply again when enabled. |
 | WebRTC streaming | On      | New viewer connections use WebSocket. Existing WebRTC connections can finish.                                                            |
 
+OCR readiness and recognition responses must both report the configured deployment language.
 Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can
 finish, existing virtual displays drain, and disabling the firewall feature does not remove
 existing host rules. Feature flags do not replace authentication, permissions, or health checks.

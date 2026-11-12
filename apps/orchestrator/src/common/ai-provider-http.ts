@@ -1,3 +1,8 @@
+import {
+  readBoundedResponseBody,
+  ResponseBodyLimitError,
+} from './bounded-response-body';
+
 interface AiProviderHttpCredentials {
   apiKey?: string | null;
 }
@@ -111,36 +116,25 @@ export const readProviderJson = async (
   response: Response,
   { strict = false }: { strict?: boolean } = {},
 ): Promise<unknown> => {
-  const reader = response.body?.getReader();
-  if (!reader) {
+  const body = await readBoundedResponseBody(
+    response,
+    maximumProviderJsonBytes,
+  ).catch((error: unknown) => {
+    if (error instanceof ResponseBodyLimitError)
+      throw new ProviderResponseLimitError('JSON body size');
+    throw error;
+  });
+  if (!body) {
     if (strict) throw new SyntaxError('Provider returned an empty JSON body.');
     return null;
   }
-  const decoder = new TextDecoder();
-  let text = '';
-  let bytes = 0;
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > maximumProviderJsonBytes) {
-        throw new ProviderResponseLimitError('JSON body size');
-      }
-      text += decoder.decode(value, { stream: true });
-    }
-    text += decoder.decode();
-    try {
-      return JSON.parse(text) as unknown;
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) throw error;
-    }
-    if (strict) throw new SyntaxError('Provider returned malformed JSON.');
-    return null;
-  } finally {
-    void reader.cancel().catch(() => undefined);
-    reader.releaseLock();
+    return JSON.parse(body.text) as unknown;
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
   }
+  if (strict) throw new SyntaxError('Provider returned malformed JSON.');
+  return null;
 };
 
 export const readBoundedProviderText = async (

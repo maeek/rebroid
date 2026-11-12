@@ -5,6 +5,10 @@ import type { AutomationScreenObservation } from '../vision/automation-vision.ty
 import { AutomationStepExecutorService } from './automation-step-executor.service';
 import type { AndroidAppsAutomationPort } from '../../android-apps/contracts/android-apps-automation.port';
 import type { AutomationExecutionState } from './automation-runner-execution.types';
+import { AutomationVisionCaptureService } from '../vision/automation-vision-capture.service';
+import { AutomationVisionFusionService } from '../vision/automation-vision-fusion.service';
+import { AutomationVisionService } from '../vision/automation-vision.service';
+import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 
 const withAutomationTarget: AndroidAppsAutomationPort['withAutomationTarget'] =
   (app, _signal, operation) => operation(app);
@@ -24,6 +28,7 @@ const createService = ({
   evaluate = jest.fn(),
   resolveValueRef = jest.fn(),
   withAutomationTarget: withTarget = withAutomationTarget,
+  adb = {},
 } = {}) => {
   const service = new AutomationStepExecutorService(
     { execute: registryExecute } as never,
@@ -39,7 +44,7 @@ const createService = ({
     { evaluate, resolveValueRef } as never,
     {
       withAutomationTarget: withTarget,
-      automationAdapters: () => ({ adb: {}, display: {}, networkPolicy: {} }),
+      automationAdapters: () => ({ adb, display: {}, networkPolicy: {} }),
     } as never,
   );
 
@@ -363,7 +368,9 @@ describe('AutomationStepExecutorService', () => {
       snapshotId: 'screen-1',
     } as AutomationScreenObservation;
     const recordOcrExchange = jest.fn();
-    const ocrExchangeRecorder = jest.fn().mockReturnValue(recordOcrExchange);
+    const ocrExchangeRecorder = jest
+      .fn()
+      .mockReturnValue({ record: recordOcrExchange });
     const { signal } = new AbortController();
     const request = {
       uses: 'vision.locate',
@@ -414,7 +421,95 @@ describe('AutomationStepExecutorService', () => {
         abortSignal: signal,
         visionSnapshot,
         recordOcrExchange,
+        withTarget: expect.any(Function),
       }),
     );
   });
+
+  it.each(['vision.observe', 'vision.locate'])(
+    'releases Android target admission while workflow %s awaits OCR',
+    async (uses) => {
+      const recognitionStarted = deferred();
+      const finishRecognition = deferred();
+      const ocr = {
+        recognize: jest.fn(async () => {
+          recognitionStarted.resolve();
+          await finishRecognition.promise;
+          return { result: { status: 'available', detections: [] } };
+        }),
+      };
+      const vision = new AutomationVisionService(
+        new AutomationVisionCaptureService(ocr as never),
+        new AutomationVisionFusionService(),
+        {} as never,
+      );
+      const command = new VisionAutomationCommandsService({} as never, vision)
+        .list()
+        .find((command) => command.uses === uses)!;
+      const tap = jest.fn();
+      const registryExecute = jest.fn(
+        (name: string, input: unknown, context: AutomationCommandContext) =>
+          name === uses ? command.execute(input, context) : tap(),
+      );
+      const adb = {
+        screenshot: jest.fn().mockResolvedValue({
+          dataUrl: '',
+          mimeType: 'image/png',
+          capturedAt: 'now',
+        }),
+        dumpUi: jest.fn().mockResolvedValue({ status: 'failed' }),
+      };
+      let admitted = 0;
+      let replaced = false;
+      const withAutomationTarget: AndroidAppsAutomationPort['withAutomationTarget'] =
+        async (target, _signal, operation) => {
+          if (replaced) throw new Error('Target runtime changed.');
+          admitted++;
+          try {
+            return await operation(target);
+          } finally {
+            admitted--;
+          }
+        };
+      const { service, recordStepFailed } = createService({
+        registryExecute,
+        withAutomationTarget,
+        adb,
+      });
+      const execution = service.executeSteps(
+        [
+          {
+            id: 'vision',
+            uses,
+            with: uses === 'vision.locate' ? { query: 'Settings' } : {},
+          },
+          { id: 'tap', uses: 'android.tap', with: { x: 0.5, y: 0.5 } },
+        ],
+        createState(),
+        createRun(),
+        { ...stepOptions, isRunCanceled: () => false },
+      );
+      await recognitionStarted.promise;
+      try {
+        expect(adb.dumpUi).toHaveBeenCalledTimes(1);
+        expect(admitted).toBe(0);
+        replaced = true;
+      } finally {
+        finishRecognition.resolve();
+        await execution;
+      }
+      await expect(execution).resolves.toEqual({
+        failed: true,
+        stopped: false,
+      });
+      expect(recordStepFailed).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.any(Object),
+        expect.objectContaining({ stepId: 'tap' }),
+        'Target runtime changed.',
+        undefined,
+      );
+      expect(tap).not.toHaveBeenCalled();
+    },
+  );
 });

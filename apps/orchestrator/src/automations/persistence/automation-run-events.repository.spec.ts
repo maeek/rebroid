@@ -334,6 +334,35 @@ it('reads the failure code and request ID from the owner’s terminal event', as
   }
 });
 
+it('pages WebSocket replay by payload bytes and the captured sequence', async () => {
+  const { db, events, run } = await createRunPersistence();
+  try {
+    const append = (text: string) =>
+      events.append({
+        runId: run.id,
+        ownerUserId: run.ownerUserId,
+        type: 'step.progress',
+        data: { text },
+      });
+    await append('é'.repeat(300_000));
+    await append('é'.repeat(300_000));
+    await append('x'.repeat(1_100_000));
+    await append('arrived after replay began');
+
+    const replay = (after: number) =>
+      events.listReplayPage(run.ownerUserId, run.id, after, 3);
+    await expect(replay(0)).resolves.toMatchObject([{ sequence: 1 }]);
+    await expect(replay(1)).resolves.toMatchObject([{ sequence: 2 }]);
+    await expect(replay(2)).resolves.toMatchObject([{ sequence: 3 }]);
+    await expect(replay(3)).resolves.toEqual([]);
+    await expect(
+      events.listReplayPage('other-owner', run.id, 0, 3),
+    ).resolves.toEqual([]);
+  } finally {
+    await db.destroy();
+  }
+});
+
 it('projects ordered step results through the run and fences writes after cancellation', async () => {
   const { db, runs, events, run } = await createRunPersistence();
   try {
@@ -362,7 +391,9 @@ it('projects ordered step results through the run and fences writes after cancel
     expect(run.stepResultsJson).toBe('[]');
     const first = result('first');
     const second = result('second');
-    await expect(runs.findById(run.id)).resolves.toMatchObject({
+    await expect(
+      runs.findByOwnerAndId(run.ownerUserId, run.id),
+    ).resolves.toMatchObject({
       stepResultsJson: '[]',
     });
     await db.query(`CREATE TRIGGER reject_event BEFORE INSERT ON automation_run_events
@@ -395,10 +426,15 @@ it('projects ordered step results through the run and fences writes after cancel
       first,
       second,
     ]);
-    expect(JSON.parse(canceled?.run.stepResultsJson ?? 'null')).toEqual([
-      first,
-      second,
-    ]);
+    expect(canceled?.run.status).toBe(AutomationRunStatus.Canceled);
+    expect(canceled?.run.stepResultsJson).toBeUndefined();
+    expect((await runs.findById(run.id))?.stepResultsJson).toBeUndefined();
+    await expect(runs.existsForOwner(run.ownerUserId, run.id)).resolves.toBe(
+      true,
+    );
+    await expect(runs.existsForOwner('other-owner', run.id)).resolves.toBe(
+      false,
+    );
     await runs.deleteByIds(run.ownerUserId, [run.id]);
     expect(await db.query('SELECT * FROM automation_run_step_results')).toEqual(
       [],

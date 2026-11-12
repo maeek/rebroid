@@ -107,7 +107,11 @@ export class VisionAutomationCommandsService {
         ) => {
           const input = observeSchema.parse(rawInput);
           const visionModel = await this.resolveVisionModel(input);
-          const observation = await this.vision.observe(context, visionModel);
+          const observation = await this.vision.observe(
+            context,
+            visionModel,
+            context.deadline,
+          );
           const detections = observation.detections.slice(
             0,
             input.maxDetections,
@@ -217,6 +221,7 @@ export class VisionAutomationCommandsService {
               ...(input.region ? { region: input.region } : {}),
             },
             visionModel,
+            context.deadline,
           );
           const { visionSnapshot } = context;
           const found = result.outcome === 'found';

@@ -51,7 +51,9 @@ export class AutomationsDtoMapper {
       status: run.status,
       startedAt: toIso(run.startedAt),
       completedAt: toIso(run.completedAt),
-      stepResults: JSON.parse(run.stepResultsJson) as AutomationStepResult[],
+      stepResults: JSON.parse(
+        run.stepResultsJson ?? '[]',
+      ) as AutomationStepResult[],
       error: run.error,
       createdAt: toIso(run.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(run.updatedAt) ?? new Date().toISOString(),

@@ -18,12 +18,14 @@ import { AutomationVisionFusionService } from '../vision/automation-vision-fusio
 import { AutomationVisionModelService } from '../vision/automation-vision-model.service';
 import { MetricsModule } from '../../metrics/metrics.module';
 import { AUTOMATION_OCR } from '../vision/automation-ocr.port';
+import { OcrSidecarModule } from '../../ocr-sidecar/ocr-sidecar.module';
 import { FeatureFlagsModule } from '../../feature-flags/feature-flags.module';
 
 @Module({
   imports: [
     SettingsModule,
     FeatureFlagsModule,
+    OcrSidecarModule,
     MetricsModule,
     AutomationCommandsModule,
     AutomationEventsModule,

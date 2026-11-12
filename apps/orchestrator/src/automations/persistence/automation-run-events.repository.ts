@@ -20,6 +20,9 @@ import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsService } from '../../metrics/metrics.service';
 import type { AutomationStepResult } from '../runner/automation-runner.types';
 
+const eventPageSize = 1_000;
+const replayPageBytes = 1024 * 1024;
+
 type RunTransition =
   | {
       status: AutomationRunStatus.Running;
@@ -183,8 +186,47 @@ export class AutomationRunEventsRepository {
           sequence: MoreThan(Math.max(0, Math.trunc(after))),
         },
         order: { sequence: 'ASC' },
-        take: 1000,
+        take: eventPageSize,
       });
+      return rows.map(toRecord);
+    });
+  }
+
+  listReplayPage(
+    ownerUserId: string,
+    runId: string,
+    after: number,
+    through: number,
+  ) {
+    return this.queue.run(async () => {
+      // Keep the first event even if a legacy payload exceeds a page on its own.
+      const rows = await this.events
+        .createQueryBuilder('event')
+        .where(
+          `event.id IN (
+             SELECT id FROM (
+               SELECT id, ROW_NUMBER() OVER (ORDER BY sequence) AS position,
+                 SUM(payloadBytes) OVER (ORDER BY sequence) AS pageBytes
+               FROM (
+                 SELECT id, sequence, octet_length(dataJson) + octet_length(message) AS payloadBytes
+                 FROM automation_run_events
+                 WHERE ownerUserId = :ownerUserId AND runId = :runId
+                   AND sequence > :after AND sequence <= :through
+                 ORDER BY sequence LIMIT :pageSize
+               )
+             ) WHERE position = 1 OR pageBytes <= :pageBytes
+           )`,
+          {
+            ownerUserId,
+            runId,
+            after,
+            through,
+            pageSize: eventPageSize,
+            pageBytes: replayPageBytes,
+          },
+        )
+        .orderBy('event.sequence', 'ASC')
+        .getMany();
       return rows.map(toRecord);
     });
   }

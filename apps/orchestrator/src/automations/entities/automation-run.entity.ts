@@ -59,12 +59,13 @@ export class AutomationRun {
 
   @VirtualColumn({
     type: 'text',
+    select: false,
     query: (alias) =>
       `SELECT COALESCE(json_group_array(json(result.resultJson)), '[]')
        FROM (SELECT resultJson FROM automation_run_step_results
              WHERE runId = ${alias}."id" ORDER BY sequence) result`,
   })
-  stepResultsJson!: string;
+  stepResultsJson?: string;
 
   @Column({ type: 'text', nullable: true })
   error!: string | null;

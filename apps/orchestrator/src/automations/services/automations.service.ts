@@ -353,7 +353,15 @@ export class AutomationsService {
   }
 
   async cancelRun(ownerUserId: string, id: string) {
-    return this.mapper.run(await this.runner.cancel(ownerUserId, id));
+    const canceled = await this.runner.cancel(ownerUserId, id);
+    const run = await this.runs.findByOwnerAndId(ownerUserId, id);
+    return this.mapper.run(run ?? canceled);
+  }
+
+  private async assertOwnedRun(ownerUserId: string, id: string) {
+    if (!(await this.runs.existsForOwner(ownerUserId, id))) {
+      throw new NotFoundException(`Automation run "${id}" was not found.`);
+    }
   }
 
   async listRunEvents(
@@ -362,7 +370,7 @@ export class AutomationsService {
     after?: number,
     view?: string,
   ): Promise<AutomationRunEventDto[]> {
-    await this.getOwnedRun(ownerUserId, runId);
+    await this.assertOwnedRun(ownerUserId, runId);
     return view === 'conversation'
       ? this.events.listConversationEvents(ownerUserId, [runId])
       : this.events.list(ownerUserId, runId, after);
@@ -372,7 +380,7 @@ export class AutomationsService {
     ownerUserId: string,
     runId: string,
   ): Promise<AutomationRunEventStreamTokenDto> {
-    await this.getOwnedRun(ownerUserId, runId);
+    await this.assertOwnedRun(ownerUserId, runId);
     return this.eventStream.createSubscribeToken(ownerUserId, runId);
   }
 

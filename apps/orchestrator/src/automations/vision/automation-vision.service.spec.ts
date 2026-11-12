@@ -7,6 +7,48 @@ import { AutomationConditionService } from '../condition/automation-condition.se
 import { AutomationDefinitionNormalizerService } from '../definition/automation-definition-normalizer.service';
 
 describe('AutomationVisionService', () => {
+  it.each(['fresh capture', 'existing snapshot'])(
+    'keeps matches from incomplete OCR and reports an inconclusive miss from a %s',
+    async (source) => {
+      const detection = createDetection({
+        id: 'ocr-1',
+        label: 'Settings',
+        confidence: 0.9,
+        bounds: { left: 0.1, top: 0.1, width: 0.2, height: 0.2 },
+        source: 'ocr',
+      });
+      const ocr = {
+        status: 'available',
+        detections: [detection],
+        searchComplete: false,
+      };
+      const service = new AutomationVisionService(
+        { capture: async () => ({ ocr }) } as never,
+        { lookupDetections: () => [detection] } as never,
+        {} as never,
+      );
+      const context =
+        source === 'existing snapshot'
+          ? { visionSnapshot: { detections: [], ocr } }
+          : {};
+
+      await expect(
+        service.locate(context as never, {
+          query: 'Settings',
+          threshold: 0.5,
+          maxResults: 1,
+        }),
+      ).resolves.toMatchObject({ outcome: 'found', matches: [detection] });
+      await expect(
+        service.locate(context as never, {
+          query: 'Network',
+          threshold: 0.5,
+          maxResults: 1,
+        }),
+      ).resolves.toMatchObject({ outcome: 'inconclusive', matches: [] });
+    },
+  );
+
   it('finds a matching OCR detection beyond the planner shortlist', async () => {
     const bounds = { left: 0.1, top: 0.1, width: 0.2, height: 0.2 };
     const detections = Array.from({ length: 31 }, (_, index) =>

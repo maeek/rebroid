@@ -299,12 +299,12 @@ describe('AutomationRunnerService', () => {
       completedAt: new Date(),
     };
     const transition = jest.fn().mockResolvedValue(canceled);
-    const findByOwnerAndId = jest
+    const findMetadataByOwnerAndId = jest
       .fn()
       .mockResolvedValueOnce(run)
       .mockResolvedValueOnce(canceled);
     const { service, events } = createService({
-      runs: { findByOwnerAndId },
+      runs: { findMetadataByOwnerAndId },
       events: { transitionRun: transition },
     });
 
@@ -359,7 +359,7 @@ describe('AutomationRunnerService', () => {
             reserved = queued;
             return queued;
           }),
-          findByOwnerAndId: jest.fn(() => reserved),
+          findMetadataByOwnerAndId: jest.fn(() => reserved),
         },
         events: { transitionRun: transition },
         execution: { execute },
@@ -397,7 +397,7 @@ describe('AutomationRunnerService', () => {
       runs: {
         create: jest.fn().mockReturnValue(queued),
         save: jest.fn().mockResolvedValue(queued),
-        findByOwnerAndId: jest.fn().mockResolvedValue(queued),
+        findMetadataByOwnerAndId: jest.fn().mockResolvedValue(queued),
       },
       events: {
         transitionRun: jest.fn(async () => {
@@ -432,18 +432,18 @@ describe('AutomationRunnerService', () => {
 
   it('handles missing runs and cancellation transition races', async () => {
     const missing = createService({
-      runs: { findByOwnerAndId: jest.fn().mockResolvedValue(null) },
+      runs: { findMetadataByOwnerAndId: jest.fn().mockResolvedValue(null) },
     });
     await expect(missing.service.cancel('owner-1', 'missing')).rejects.toThrow(
       'was not found',
     );
 
-    const findByOwnerAndId = jest
+    const findMetadataByOwnerAndId = jest
       .fn()
       .mockResolvedValueOnce(run)
       .mockResolvedValueOnce(null);
     const raced = createService({
-      runs: { findByOwnerAndId },
+      runs: { findMetadataByOwnerAndId },
       events: { transitionRun: jest.fn().mockResolvedValue(null) },
     });
     await expect(raced.service.cancel('owner-1', run.id)).resolves.toBe(run);

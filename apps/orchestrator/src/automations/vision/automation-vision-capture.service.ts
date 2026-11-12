@@ -1,10 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 import { optimizeAiScreenshot } from '../ai/automation-ai-screenshot.utils';
-import {
-  createOcrInputPreview,
-  type AutomationOcrExchange,
-} from './automation-ocr-exchange';
 import {
   AUTOMATION_OCR,
   type AutomationOcrResult,
@@ -38,40 +34,32 @@ export class AutomationVisionCaptureService {
   async capture(
     context: Pick<
       AutomationCommandContext,
-      'adb' | 'app' | 'abortSignal' | 'recordOcrExchange'
+      'adb' | 'app' | 'abortSignal' | 'recordOcrExchange' | 'withTarget'
     >,
     deadline?: number,
   ): Promise<AutomationVisionCapture> {
-    if (context.abortSignal?.aborted) {
-      throw new BadRequestException(
-        'Automation vision operation was canceled.',
-      );
-    }
-
-    const screenshot = await context.adb.screenshot(
-      context.app,
-      context.abortSignal,
-    );
-    context.abortSignal?.throwIfAborted();
-    const uiPromise = context.adb
-      .dumpUi(context.app, context.abortSignal)
-      .catch((error: unknown) => ({
+    const { abortSignal, adb, withTarget, recordOcrExchange } = context;
+    abortSignal?.throwIfAborted();
+    const readScreen = async (app: AutomationCommandContext['app']) => {
+      const screenshot = await adb.screenshot(app, abortSignal);
+      abortSignal?.throwIfAborted();
+      const ui = await adb.dumpUi(app, abortSignal).catch((error: unknown) => ({
         status: 'failed' as const,
         error:
           error instanceof Error ? error.message : 'UI hierarchy dump failed.',
       }));
-    const { recordOcrExchange } = context;
-    const onExchange = recordOcrExchange
-      ? async (exchange: AutomationOcrExchange) =>
-          recordOcrExchange(exchange, await createOcrInputPreview(screenshot))
-      : undefined;
-    const [aiImage, ui, ocr] = await Promise.all([
+      return { screenshot, ui };
+    };
+    const { screenshot, ui } = await (withTarget
+      ? withTarget(abortSignal, readScreen)
+      : readScreen(context.app));
+    abortSignal?.throwIfAborted();
+    const [aiImage, { result: ocr, trace }] = await Promise.all([
       optimizeAiScreenshot(screenshot),
-      uiPromise,
-      this.ocr.recognize(screenshot, context.abortSignal, deadline, onExchange),
+      this.ocr.recognize(screenshot, abortSignal, deadline),
     ]);
-
-    context.abortSignal?.throwIfAborted();
+    if (trace) recordOcrExchange?.(ocr, trace, screenshot);
+    abortSignal?.throwIfAborted();
     return { screenshot, aiImage, ui, ocr };
   }
 }

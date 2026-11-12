@@ -118,7 +118,12 @@ export class AutomationRunEventBus {
     try {
       const through = await this.events.latestSequence(ownerUserId, runId);
       while (lastSequence < through && !signal?.aborted) {
-        const replay = await this.list(ownerUserId, runId, lastSequence);
+        const replay = await this.events.listReplayPage(
+          ownerUserId,
+          runId,
+          lastSequence,
+          through,
+        );
         if (overflow)
           throw new Error('Automation event replay buffer exceeded its limit.');
         if (signal?.aborted) break;

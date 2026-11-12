@@ -1,63 +1,24 @@
 from __future__ import annotations
 
-import base64
-import binascii
-import io
 import time
-from typing import Any, Callable
+from typing import Any, Callable, TypedDict
 
 from PIL import Image, ImageEnhance, ImageOps
 
-SUPPORTED_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp"}
 CASCADE_MODES = ("raw", "grayscale", "contrast", "threshold")
 
 
-class ImagePayloadError(ValueError):
-    pass
+class Bounds(TypedDict):
+    left: float
+    top: float
+    width: float
+    height: float
 
 
-def decode_image(
-    *,
-    data_url: str | None,
-    image_base64: str | None,
-    media_type: str | None,
-    max_encoded_bytes: int,
-    max_decoded_bytes: int,
-    max_pixels: int,
-) -> Image.Image:
-    encoded = image_base64
-    declared_type = media_type
-    if data_url:
-        if "," not in data_url or not data_url.startswith("data:"):
-            raise ImagePayloadError("Invalid data URL.")
-        metadata, encoded = data_url.split(",", 1)
-        declared_type = metadata[5:].split(";", 1)[0].lower()
-        if ";base64" not in metadata.lower():
-            raise ImagePayloadError("Image data URL must use base64 encoding.")
-    if not encoded:
-        raise ImagePayloadError("Missing image payload.")
-    if declared_type not in SUPPORTED_MEDIA_TYPES:
-        raise ImagePayloadError("Unsupported image media type.")
-    if len(encoded.encode("ascii", errors="ignore")) > max_encoded_bytes:
-        raise ImagePayloadError("Encoded image payload is too large.")
-    try:
-        raw = base64.b64decode(encoded, validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise ImagePayloadError("Invalid base64 image.") from exc
-    if len(raw) > max_decoded_bytes:
-        raise ImagePayloadError("Decoded image payload is too large.")
-    try:
-        with Image.open(io.BytesIO(raw)) as source:
-            width, height = source.size
-            if width <= 0 or height <= 0 or width * height > max_pixels:
-                raise ImagePayloadError("Image dimensions exceed the pixel limit.")
-            source.verify()
-        with Image.open(io.BytesIO(raw)) as source:
-            return source.convert("RGB")
-    except ImagePayloadError:
-        raise
-    except Exception as exc:
-        raise ImagePayloadError("Unsupported or malformed image payload.") from exc
+class TextDetection(TypedDict):
+    text: str
+    confidence: float
+    bounds: Bounds
 
 
 def resize_image(image: Image.Image, max_dimension: int) -> Image.Image:
@@ -84,31 +45,17 @@ def preprocess(image: Image.Image, mode: str) -> Image.Image:
     return contrasted.point(lambda pixel: 255 if pixel >= 150 else 0).convert("RGB")
 
 
-def detections_from_result(raw_result: Any, width: int, height: int, min_confidence: float):
-    batches = raw_result[0] if isinstance(raw_result, list) and len(raw_result) == 1 else raw_result
+def select_detections(candidates: list[TextDetection], min_confidence: float):
     detections: list[dict[str, Any]] = []
-    for item in batches or []:
-        if not isinstance(item, (list, tuple)) or len(item) < 2:
+    for detection in candidates:
+        if detection["confidence"] < min_confidence:
             continue
-        box, text_conf = item[0], item[1]
-        if not isinstance(text_conf, (list, tuple)) or len(text_conf) < 2:
-            continue
-        text = " ".join(str(text_conf[0]).split())
-        confidence = float(text_conf[1])
-        points = [point for point in box if isinstance(point, (list, tuple)) and len(point) >= 2]
-        if not text or confidence < min_confidence or not points:
-            continue
-        xs, ys = [float(point[0]) for point in points], [float(point[1]) for point in points]
-        left, top = max(0.0, min(xs) / width), max(0.0, min(ys) / height)
-        right, bottom = min(1.0, max(xs) / width), min(1.0, max(ys) / height)
-        bounds = {"left": left, "top": top, "width": max(0.0, right - left), "height": max(0.0, bottom - top)}
+        bounds = detection["bounds"]
         detections.append({
+            **detection,
             "id": f"ocr-{len(detections) + 1}",
-            "text": text,
-            "label": text,
-            "confidence": max(0.0, min(1.0, confidence)),
-            "bounds": bounds,
-            "center": {"x": left + bounds["width"] / 2, "y": top + bounds["height"] / 2},
+            "label": detection["text"],
+            "center": {"x": bounds["left"] + bounds["width"] / 2, "y": bounds["top"] + bounds["height"] / 2},
             "source": "ocr",
         })
     return deduplicate(detections)
@@ -139,11 +86,10 @@ class RecognitionStopped(Exception):
 
 def run_cascade(
     image: Image.Image,
-    infer: Callable[[Image.Image], Any],
+    infer: Callable[[Image.Image], list[TextDetection]],
     min_confidence: float,
     check_active: Callable[[], None] = lambda: None,
 ):
-    width, height = image.size
     target = max(0.65, min_confidence)
     attempts: list[dict[str, Any]] = []
     best: dict[str, Any] | None = None
@@ -153,9 +99,9 @@ def run_cascade(
         try:
             prepared = preprocess(image, mode)
             check_active()
-            raw_result = infer(prepared)
+            candidates = infer(prepared)
             check_active()
-            detections = detections_from_result(raw_result, width, height, min_confidence)
+            detections = select_detections(candidates, min_confidence)
             score = quality(detections)
             attempts.append({
                 "mode": mode,

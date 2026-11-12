@@ -1,5 +1,8 @@
+import type {
+  OcrPreprocessingAttempt,
+  OcrSidecarTrace,
+} from '../../ocr-sidecar/ocr-sidecar.protocol';
 import type { AiScreenshot } from '../ai/automation-ai-screenshot.utils';
-import type { AutomationOcrExchange } from './automation-ocr-exchange';
 import type { VisionDetection } from './vision-observation';
 
 export const AUTOMATION_OCR = Symbol('AUTOMATION_OCR');
@@ -7,6 +10,7 @@ export const AUTOMATION_OCR = Symbol('AUTOMATION_OCR');
 export interface AutomationOcrResult {
   status: 'available' | 'disabled' | 'failed';
   detections: VisionDetection[];
+  searchComplete?: boolean;
   elapsedMs?: number;
   engine?: string;
   model?: string;
@@ -16,21 +20,21 @@ export interface AutomationOcrResult {
   error?: string;
 }
 
-export interface OcrPreprocessingAttempt {
-  mode: string;
-  status: string;
-  textBoxCount?: number;
-  averageConfidence?: number;
-  qualityScore?: number;
-  elapsedMs?: number;
-  error?: string;
+export interface AutomationOcrReading {
+  result: AutomationOcrResult;
+  trace?: OcrSidecarTrace;
 }
+
+export type AutomationOcrExchangeRecorder = (
+  result: AutomationOcrResult,
+  trace: OcrSidecarTrace,
+  image: AiScreenshot,
+) => void;
 
 export interface AutomationOcrPort {
   recognize(
     image: AiScreenshot,
     abortSignal?: AbortSignal,
     deadline?: number,
-    onExchange?: (exchange: AutomationOcrExchange) => Promise<void>,
-  ): Promise<AutomationOcrResult>;
+  ): Promise<AutomationOcrReading>;
 }

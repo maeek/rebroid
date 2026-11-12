@@ -38,6 +38,9 @@ const commandsWithoutTargetWork = new Set([
   'flow.fail',
 ]);
 
+const capturesScreen = (uses: string) =>
+  uses === 'vision.observe' || uses === 'vision.locate';
+
 const runCanceled = (runId: string, options: AutomationStepExecutionOptions) =>
   options.abortSignal?.aborted || options.isRunCanceled(runId);
 
@@ -115,15 +118,19 @@ export class AutomationStepExecutorService {
     if (runCanceled(run.id, options)) return stoppedExecution;
     let result: AutomationCommandResult;
     const pendingAiWork = new Set<Promise<unknown>>();
+    const ocrExchanges =
+      run.automationId &&
+      !run.automationId.startsWith(adHocAiAutomationIdPrefix)
+        ? this.recorder.ocrExchangeRecorder(
+            run,
+            occurrence,
+            options.abortSignal,
+          )
+        : undefined;
     try {
-      const recordOcrExchange =
-        run.automationId &&
-        !run.automationId.startsWith(adHocAiAutomationIdPrefix)
-          ? this.recorder.ocrExchangeRecorder(run, occurrence)
-          : undefined;
       const commandContext = {
         ...this.applications.automationAdapters(state.canUseInternet),
-        recordOcrExchange,
+        recordOcrExchange: ocrExchanges?.record,
       };
       const withTarget: AutomationTargetExecutor = async (
         signal,
@@ -164,8 +171,9 @@ export class AutomationStepExecutorService {
             abortSignal: signal,
             deadline,
             visionSnapshot,
+            withTarget: capturesScreen(uses) ? withTarget : undefined,
           });
-        return commandsWithoutTargetWork.has(uses)
+        return commandsWithoutTargetWork.has(uses) || capturesScreen(uses)
           ? execute(state.app)
           : withTarget(signal, execute);
       };
@@ -198,13 +206,19 @@ export class AutomationStepExecutorService {
           path: options.path,
           abortSignal: options.abortSignal,
           executeCommand,
-          withTarget: step.uses === 'ai.run' ? withTarget : undefined,
+          withTarget:
+            step.uses === 'ai.run' || capturesScreen(step.uses)
+              ? withTarget
+              : undefined,
         });
-      result = await (commandsWithoutTargetWork.has(step.uses)
+      result = await (commandsWithoutTargetWork.has(step.uses) ||
+      capturesScreen(step.uses)
         ? execute(state.app)
         : withTarget(options.abortSignal, execute));
     } catch (error) {
       await Promise.allSettled(pendingAiWork);
+      if (runCanceled(run.id, options)) return stoppedExecution;
+      await ocrExchanges?.flush();
       if (runCanceled(run.id, options)) return stoppedExecution;
       const message = getErrorMessage(error);
       const saved = await this.recorder.recordStepFailed(
@@ -217,6 +231,8 @@ export class AutomationStepExecutorService {
       return saved ? { failed: true, stopped: false } : stoppedExecution;
     }
     await Promise.allSettled(pendingAiWork);
+    if (runCanceled(run.id, options)) return stoppedExecution;
+    await ocrExchanges?.flush();
     if (runCanceled(run.id, options)) return stoppedExecution;
     const saved = await this.recorder.recordActionCompleted(
       run,

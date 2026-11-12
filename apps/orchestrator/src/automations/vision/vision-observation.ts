@@ -54,6 +54,7 @@ export interface VisionObservation {
   ocr?: {
     status: 'available' | 'disabled' | 'failed';
     detections: VisionDetection[];
+    searchComplete?: boolean;
     elapsedMs?: number;
     engine?: string;
     model?: string;

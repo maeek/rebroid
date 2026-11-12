@@ -23,7 +23,7 @@ describe('AutomationRunEventBus', () => {
     });
     const repository = {
       latestSequence: jest.fn().mockResolvedValue(2),
-      listForRun: jest.fn().mockReturnValue(replay),
+      listReplayPage: jest.fn().mockReturnValue(replay),
       append: jest.fn().mockResolvedValue(event(2)),
     } as unknown as AutomationRunEventsRepository;
     const bus = new AutomationRunEventBus(repository);
@@ -51,11 +51,11 @@ describe('AutomationRunEventBus', () => {
     const page = Array.from({ length: 1000 }, (_, index) => event(index + 1));
     const repository = {
       latestSequence: jest.fn().mockResolvedValue(1002),
-      listForRun: jest.fn(),
+      listReplayPage: jest.fn(),
       append: jest.fn().mockResolvedValue(event(1003)),
     };
     const bus = new AutomationRunEventBus(repository as never);
-    repository.listForRun
+    repository.listReplayPage
       .mockResolvedValueOnce(page)
       .mockImplementationOnce(async () => {
         await bus.emit({
@@ -72,9 +72,9 @@ describe('AutomationRunEventBus', () => {
       0,
       (record) => received.push(record.sequence),
     );
-    expect(repository.listForRun.mock.calls).toEqual([
-      ['owner-1', 'run-1', 0],
-      ['owner-1', 'run-1', 1000],
+    expect(repository.listReplayPage.mock.calls).toEqual([
+      ['owner-1', 'run-1', 0, 1002],
+      ['owner-1', 'run-1', 1000, 1002],
     ]);
     expect(received).toEqual(
       Array.from({ length: 1003 }, (_, index) => index + 1),

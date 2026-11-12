@@ -4,11 +4,14 @@ import io
 import pytest
 from PIL import Image
 
-from ocr_sidecar.preprocessing import ImagePayloadError, decode_image, deduplicate, run_cascade
+from ocr_sidecar.config import Settings
+from ocr_sidecar.image_input import ImagePayloadError, OcrRequest, decode_image
+from ocr_sidecar.preprocessing import deduplicate, run_cascade
 
 
-def paddle_result(text: str, confidence: float):
-    return [[[[[0, 0], [80, 0], [80, 20], [0, 20]], [text, confidence]]]]
+def result(text: str, confidence: float):
+    return [{"text": text, "confidence": confidence,
+             "bounds": {"left": 0, "top": 0, "width": 0.8, "height": 0.4}}]
 
 
 def image_data_url(width: int = 100, height: int = 50) -> str:
@@ -22,7 +25,7 @@ def test_cascade_stops_after_raw_quality_reaches_target():
 
     def infer(_image):
         calls.append("infer")
-        return paddle_result("Settings", 0.99)
+        return result("Settings", 0.99)
 
     best, attempts = run_cascade(Image.new("RGB", (100, 50)), infer, 0.4)
     assert best["mode"] == "raw"
@@ -31,7 +34,7 @@ def test_cascade_stops_after_raw_quality_reaches_target():
 
 
 def test_cascade_uses_fallbacks_and_returns_best_attempt():
-    results = iter([paddle_result("weak", 0.2), paddle_result("best", 0.9)])
+    results = iter([result("weak", 0.2), result("best", 0.9)])
     best, attempts = run_cascade(Image.new("RGB", (100, 50)), lambda _image: next(results), 0.4)
     assert best["mode"] == "grayscale"
     assert [attempt["mode"] for attempt in attempts] == ["raw", "grayscale"]
@@ -46,13 +49,8 @@ def test_deduplication_keeps_highest_confidence_detection():
 
 
 def test_decode_rejects_media_type_malformed_data_and_pixel_limit():
+    config = Settings("en", 0.4, 1600, 100_000, 100_000, 100, 1)
     with pytest.raises(ImagePayloadError, match="media type"):
-        decode_image(
-            data_url="data:text/plain;base64,SGVsbG8=", image_base64=None, media_type=None,
-            max_encoded_bytes=1024, max_decoded_bytes=1024, max_pixels=1000,
-        )
+        decode_image(OcrRequest(dataUrl="data:text/plain;base64,SGVsbG8="), config)
     with pytest.raises(ImagePayloadError, match="pixel limit"):
-        decode_image(
-            data_url=image_data_url(), image_base64=None, media_type=None,
-            max_encoded_bytes=100_000, max_decoded_bytes=100_000, max_pixels=100,
-        )
+        decode_image(OcrRequest(dataUrl=image_data_url()), config)

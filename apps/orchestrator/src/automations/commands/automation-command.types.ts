@@ -8,7 +8,7 @@ import type {
 import type { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
 import type { AutomationScreenObservation } from '../vision/automation-vision.types';
 import type { VisionDetection } from '../vision/vision-observation';
-import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
+import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr.port';
 import type {
   AutomationCommandEditorMetadata,
   AutomationCommandOutcome,

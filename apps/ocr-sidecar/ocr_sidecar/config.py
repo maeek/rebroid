@@ -27,6 +27,8 @@ class Settings:
     max_decoded_bytes: int
     max_pixels: int
     inference_concurrency: int
+    request_concurrency: int = 2
+    request_read_timeout_ms: int = 5000
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -41,4 +43,6 @@ class Settings:
             max_decoded_bytes=_integer("OCR_MAX_DECODED_BYTES", 24 * 1024 * 1024, 1024, 48 * 1024 * 1024),
             max_pixels=_integer("OCR_MAX_PIXELS", 16_000_000, 1024, 64_000_000),
             inference_concurrency=_integer("OCR_INFERENCE_CONCURRENCY", 1, 1, 8),
+            request_concurrency=_integer("OCR_REQUEST_CONCURRENCY", 2, 1, 8),
+            request_read_timeout_ms=_integer("OCR_REQUEST_READ_TIMEOUT_MS", 5000, 100, 60_000),
         )

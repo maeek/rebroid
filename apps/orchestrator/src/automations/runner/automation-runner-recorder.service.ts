@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { waitForOperation } from '../../common/wait-for-operation';
 import type { AutomationCommandOutcome } from '@rebroid/automation-core/command-registry';
 import type { AutomationCommandResult } from '../commands/automation-command.types';
 import { AutomationRun } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import type { AutomationRunEventInput } from '../events/automation-run-events.types';
 import {
   buildControlStepOutput,
   buildFailedStepResult,
@@ -11,7 +13,14 @@ import {
   type StepResultOptions,
 } from './automation-runner-results';
 import { AutomationStepResult } from './automation-runner.types';
-import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
+import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr.port';
+import {
+  createOcrExchange,
+  createOcrInputPreview,
+} from './automation-ocr-exchange';
+
+const maxPendingOcrExchanges = 4;
+const maxOcrExchangesPerStep = 128;
 
 interface StepRecorderState {
   outputsByStepId: Map<string, Record<string, unknown> | null>;
@@ -28,28 +37,70 @@ export class AutomationRunnerRecorderService {
   ocrExchangeRecorder(
     run: AutomationRun,
     step: StepOccurrence,
-  ): AutomationOcrExchangeRecorder {
-    return async ({ request, response }, preview) => {
-      let message = 'OCR request failed.';
-      if (response.status === 'canceled') message = 'OCR request canceled.';
-      if (response.status === 'available') {
-        message = `OCR returned ${response.detectionCount} text box(es).`;
-      }
-      try {
-        await this.events.emit({
-          runId: run.id,
-          ownerUserId: run.ownerUserId,
-          type: 'vision.ocr.exchange',
-          stepId: step.stepId,
-          parentStepId: step.parentStepId ?? null,
-          message,
-          data: { path: step.path, request, response, preview },
+    signal?: AbortSignal,
+  ) {
+    let pending = Promise.resolve();
+    let queued = 0;
+    const exchanges: AutomationRunEventInput[] = [];
+    const warn = () => {
+      this.logger.warn(
+        `Could not record OCR exchange for workflow run ${run.id}.`,
+      );
+    };
+    const record: AutomationOcrExchangeRecorder = (result, trace, image) => {
+      if (
+        signal?.aborted ||
+        queued >= maxPendingOcrExchanges ||
+        exchanges.length + queued >= maxOcrExchangesPerStep
+      )
+        return;
+      queued++;
+      pending = pending
+        .then(async () => {
+          if (signal?.aborted) return;
+          const { request, response } = createOcrExchange(result, trace, image);
+          const preview = await createOcrInputPreview(image);
+          if (signal?.aborted) return;
+          let message = 'OCR request failed.';
+          if (response.status === 'canceled') message = 'OCR request canceled.';
+          if (response.status === 'available') {
+            message = `OCR returned ${response.detectionCount} text box(es).`;
+          }
+          exchanges.push({
+            runId: run.id,
+            ownerUserId: run.ownerUserId,
+            type: 'vision.ocr.exchange',
+            stepId: step.stepId,
+            parentStepId: step.parentStepId ?? null,
+            message,
+            data: { path: step.path, request, response, preview },
+          });
+        })
+        .catch(warn)
+        .finally(() => {
+          queued--;
         });
-      } catch {
-        this.logger.warn(
-          `Could not record OCR exchange for workflow run ${run.id}.`,
-        );
+    };
+    const publish = async () => {
+      await pending;
+      for (const exchange of exchanges.splice(0)) {
+        if (signal?.aborted) break;
+        try {
+          if (!(await this.events.emitWhileRunning(exchange))) break;
+        } catch {
+          warn();
+        }
       }
+    };
+    return {
+      record,
+      // Perception events share the same writer. Publish OCR exchanges only after the command settles.
+      flush: () => {
+        const writing = publish();
+        return signal
+          ? waitForOperation(writing, signal).catch(() => undefined)
+          : writing;
+      },
     };
   }
 

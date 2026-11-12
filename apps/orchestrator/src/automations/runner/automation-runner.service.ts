@@ -188,7 +188,7 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
   }
 
   async cancel(ownerUserId: string, runId: string) {
-    const run = await this.runs.findByOwnerAndId(ownerUserId, runId);
+    const run = await this.runs.findMetadataByOwnerAndId(ownerUserId, runId);
     if (!run) {
       throw new NotFoundException(`Automation run "${runId}" was not found.`);
     }
@@ -212,7 +212,9 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         { type: 'run.canceled', message: 'Automation canceled.' },
       );
       if (!canceled) {
-        return (await this.runs.findByOwnerAndId(ownerUserId, runId)) ?? run;
+        return (
+          (await this.runs.findMetadataByOwnerAndId(ownerUserId, runId)) ?? run
+        );
       }
       this.metrics.automationRunFinished(
         canceled.trigger,
