@@ -41,17 +41,6 @@ export const schemaForCurrentProperty = (
   return propertiesOf(schema)[propertyName]
 }
 
-export const inputSchemaForCurrentProperty = (
-  model: Monaco.editor.ITextModel,
-  position: Monaco.Position,
-  commands: AutomationCommand[]
-) => {
-  const context = workflowContext(model, position)
-  if (!context?.uses) return null
-
-  return commands.find(command => command.uses === context.uses)?.inputSchema ?? null
-}
-
 export const schemaContextForCurrentProperty = (
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,

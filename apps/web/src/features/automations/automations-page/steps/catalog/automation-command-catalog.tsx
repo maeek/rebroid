@@ -26,19 +26,14 @@ import {
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import {
-  getAutomationActionCategories,
   getAutomationActionCategory,
   getAutomationActionIconKey,
   type AutomationActionCategory,
   type AutomationActionIconKey
 } from '../../actions/action-registry'
 
-export type { AutomationActionCategory as AutomationCommandCategory }
-
 export const getAutomationCommandCategory = (uses: string): AutomationActionCategory =>
   getAutomationActionCategory(uses)
-
-export const getAutomationCommandCategories = () => getAutomationActionCategories()
 
 export function AutomationCommandIcon({ uses, className }: { uses: string; className?: string }) {
   return (

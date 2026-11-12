@@ -40,14 +40,6 @@ export function splitAnnexBPacket(
   return nals;
 }
 
-export function annexBAccessUnit(
-  nals: Uint8Array<ArrayBufferLike>[],
-): Uint8Array<ArrayBufferLike> {
-  return concatBytes(
-    nals.map((nal) => concatBytes([new Uint8Array([0, 0, 0, 1]), nal])),
-  );
-}
-
 export function codecConfiguration(bytes: Uint8Array<ArrayBufferLike>): {
   codec: string;
   profileLevelId: string;

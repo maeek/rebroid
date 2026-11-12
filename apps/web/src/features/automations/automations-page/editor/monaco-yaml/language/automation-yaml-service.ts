@@ -85,5 +85,3 @@ export const disableAutomationYamlLanguage = () => {
   yamlLanguage?.dispose()
   yamlLanguage = null
 }
-
-export const automationYamlLanguageIsDisabled = () => yamlLanguageDisabled

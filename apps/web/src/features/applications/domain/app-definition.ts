@@ -67,5 +67,3 @@ export interface AppDefinition {
   profileMode: ApplicationProfileMode
   savedProfiles: Array<{ mode: ApplicationProfileMode; name: string }>
 }
-
-export const yourApps = [] as AppDefinition[]

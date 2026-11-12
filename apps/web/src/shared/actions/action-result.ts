@@ -66,6 +66,3 @@ export const unwrapActionResult = <T>(result: ActionResult<T>): T => {
   if (result.ok) return result.data
   throw new ActionResultError(result.error)
 }
-
-export const actionResultErrorMessage = (result: ActionResult<unknown>, fallback = 'The action failed.') =>
-  result.ok ? null : result.error.message || fallback

@@ -6,8 +6,6 @@ import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { listVisibleRecentApps } from './service'
 import { rememberStoredRecentApp } from './store'
 
-export const listRecentAppsAction = listVisibleRecentApps
-
 export const rememberRecentAppAction = async (appId: string) => {
   const user = await getCurrentUserContext()
   const app = await orchestratorAppCatalogClient.getApplication(appId)

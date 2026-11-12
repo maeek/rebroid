@@ -125,15 +125,6 @@ export const orchestratorAutomationsClient = {
     return jsonRequest<AiPromptSuggestions>('/automations/ai/suggestions', 'POST', { ...input, ownerUserId })
   },
 
-  listAdHocAiRuns(ownerUserId: string, targetApplicationId: string, limit = 20) {
-    const query = new URLSearchParams({
-      ownerUserId,
-      targetApplicationId,
-      limit: String(limit)
-    })
-    return emptyRequest<AutomationRun[]>(`/automations/ai/runs?${query.toString()}`)
-  },
-
   listAdHocAiRunHistory(ownerUserId: string, targetApplicationId: string, limit: number) {
     const query = new URLSearchParams({ ownerUserId, targetApplicationId, limit: String(limit) })
     return emptyRequest<Array<{ run: AutomationRun; events: AutomationRunEvent[] }>>(

@@ -108,6 +108,3 @@ export const parseAutomationTagsJson = (value: string | null | undefined) => {
     return [];
   }
 };
-
-export const automationTagNames = (tags: AutomationTag[]) =>
-  tags.map((tag) => tag.name);

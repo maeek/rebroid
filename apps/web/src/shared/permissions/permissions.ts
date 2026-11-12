@@ -1,5 +1,3 @@
-import { isRedroidImageName } from '@rebroid/android-application-core/redroid-runtime'
-
 export const permissionCategories = [
   {
     id: 'application-lifecycle',
@@ -247,7 +245,3 @@ export const normalizeGroupQuota = ({
 }: Partial<ResourceQuota>): ResourceQuota => ({ maxOpenApps, maxSessionSeconds, maxMemoryMb, maxCpuCpus })
 
 export const hasPermission = (permissions: PermissionMap, permission: PermissionId) => permissions[permission] === true
-
-export const isRedroidImage = (image: string) => {
-  return isRedroidImageName(image)
-}

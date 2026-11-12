@@ -96,8 +96,6 @@ export const findStepById = (steps: AutomationStepForm[], stepId: string): Autom
   return collectListRefs(steps).get(location.listId)?.[location.index] ?? null
 }
 
-export const hasStepList = (steps: AutomationStepForm[], listId: string) => collectListRefs(steps).has(listId)
-
 export const getStepListLength = (steps: AutomationStepForm[], listId: string) =>
   collectListRefs(steps).get(listId)?.length ?? 0
 

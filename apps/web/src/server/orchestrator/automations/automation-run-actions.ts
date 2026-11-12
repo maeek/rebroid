@@ -79,14 +79,6 @@ export const cancelAutomationRunAction = async (runId: string) => {
   return run
 }
 
-export const listAdHocAiAutomationRunsAction = async (targetApplicationId: string, limit = 20) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  assertAutomationPermission(user, 'automations:run-ai')
-  await assertTargetApplication(targetApplicationId)
-  return orchestratorAutomationsClient.listAdHocAiRuns(user.ownerUserId, targetApplicationId, limit)
-}
-
 export const listAdHocAiAutomationRunHistoryAction = async (targetApplicationId: string, limit = 20) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:run')
