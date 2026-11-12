@@ -44,6 +44,7 @@ test('loading toolbar keeps its search expanded under the pointer', async ({ pag
   await page.goto('/skeleton-contract-test?editor=services-loading')
   const search = page.getByRole('searchbox', { name: 'Search services' })
   await expect(search).toBeDisabled()
+  await page.mouse.move(1, 1)
   await page.locator('[data-slot="search-field"]').hover()
   await expect.poll(async () => (await search.boundingBox())!.width, { timeout: 1500 }).toBeGreaterThan(180)
 })
@@ -59,23 +60,36 @@ test('a stationary pointer does not expand search on reload or navigation', asyn
         target instanceof HTMLElement &&
         target.dataset.slot === 'search-field'
       ) {
-        target.dataset.widthTransitionStarted = ''
+        document.documentElement.dataset.searchWidthTransitionStarted = ''
       }
     })
   })
   await page.goto('/skeleton-contract-test?editor=services')
   const search = page.getByRole('searchbox', { name: 'Search services' })
-  const field = page.locator('[data-slot="search-field"]')
-  await search.hover()
+  const { x, y, width, height } = (await search.boundingBox())!
+  const pointer = { x: x + width / 2, y: y + height / 2 }
+  await page.mouse.move(1, 1)
+  await page.mouse.move(pointer.x, pointer.y)
   await expect.poll(async () => (await search.boundingBox())!.width).toBeGreaterThan(180)
 
-  for (const navigate of [() => page.reload(), () => page.goto('/skeleton-contract-test?editor=services-loading')]) {
-    await navigate()
+  const assertStationarySearch = async () => {
     await expect(page.locator('[data-slot="search-field"]:hover')).toBeVisible()
-    await field.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-    expect(await field.getAttribute('data-width-transition-started')).toBeNull()
+    // A pointer event at the existing coordinates must not open a newly mounted search.
+    await page.mouse.move(pointer.x, pointer.y)
+    await search.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await expect(page.locator('html')).not.toHaveAttribute('data-search-width-transition-started')
     await expect(search).toHaveCSS('width', '36px')
   }
+
+  await page.reload()
+  await assertStationarySearch()
+  await page.evaluate(() => {
+    const { next } = window as Window & { next?: { router: { push: (href: string) => void } } }
+    if (!next?.router) throw new Error('The client router has not mounted')
+    next.router.push('/skeleton-contract-test?editor=services-loading')
+  })
+  await expect(search).toBeDisabled()
+  await assertStationarySearch()
 })
 
 test('wide page search expands from the breadcrumb row and keeps an active query visible', async ({ page }) => {
@@ -93,6 +107,7 @@ test('wide page search expands from the breadcrumb row and keeps an active query
   expect((await search.boundingBox())!.y).toBeLessThan((await breadcrumb.boundingBox())!.y + 10)
   expect((await search.boundingBox())!.x).toBeLessThan((await refresh.boundingBox())!.x)
   if (await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)) {
+    await page.mouse.move(1, 1)
     await search.hover()
     await expect.poll(async () => (await search.boundingBox())!.width).toBeGreaterThan(180)
     await page.mouse.move(1, 1)

@@ -66,8 +66,10 @@ export const SearchField = ({
       data-has-value={value ? '' : undefined}
       data-pointer-hover={pointerHover ? '' : undefined}
       onPointerMove={event => {
-        // Layout changes can hover a newly mounted field without any pointer movement.
-        if (!pointerHover && event.pointerType !== 'touch') setPointerHover(true)
+        // A pointer event can arrive over a newly mounted field at the same coordinates.
+        if (!pointerHover && event.pointerType !== 'touch' && (event.movementX || event.movementY)) {
+          setPointerHover(true)
+        }
       }}
       onPointerLeave={() => setPointerHover(false)}
       onPointerCancel={() => setPointerHover(false)}
