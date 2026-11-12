@@ -1,7 +1,7 @@
 import type Dockerode from 'dockerode';
 import type {
   ContainerResourceUsage,
-  ManagedContainerResourceUsage,
+  ManagedContainerResourceSample,
 } from '../docker.types';
 
 export const DOCKER_RESOURCE_RUNTIME = Symbol('DOCKER_RESOURCE_RUNTIME');
@@ -37,5 +37,5 @@ export interface DockerResourceRuntimePort {
   ): Promise<ContainerResourceUsage>;
   getManagedContainerResourceUsage(
     containers?: Dockerode.ContainerInfo[],
-  ): Promise<ManagedContainerResourceUsage>;
+  ): Promise<ManagedContainerResourceSample>;
 }

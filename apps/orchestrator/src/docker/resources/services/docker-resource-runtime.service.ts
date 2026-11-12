@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import Dockerode from 'dockerode';
+import { waitForOperation } from '../../../common/wait-for-operation';
 import { DockerEngineService } from '../../docker-engine.service';
 import {
   ContainerResourceUsage,
-  ManagedContainerResourceUsage,
+  ManagedContainerResourceSample,
 } from '../../docker.types';
 import {
   calculateContainerCpuUsagePercent,
@@ -12,8 +13,29 @@ import {
 } from '../../utils/docker-runtime.utils';
 import type { DockerResourceRuntimePort } from '../../contracts/docker-resource-runtime.port';
 
+const STATS_FRESHNESS_MS = 5_000;
+const CAPACITY_FRESHNESS_MS = 30_000;
+const MAX_CACHED_STATS = 256;
+const STATS_SWEEP_CONCURRENCY = 4;
+const STATS_SWEEP_TIMEOUT_MS = 7_000;
+
+type HostCapacity = Awaited<
+  ReturnType<DockerResourceRuntimePort['hostCapacity']>
+>;
+
 @Injectable()
 export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
+  private readonly pendingStats = new Map<
+    string,
+    Promise<ContainerResourceUsage>
+  >();
+  private readonly stats = new Map<
+    string,
+    { expiresAt: number; value: ContainerResourceUsage }
+  >();
+  private capacity?: { expiresAt: number; value: HostCapacity };
+  private pendingCapacity?: Promise<HostCapacity>;
+
   constructor(private readonly engine: DockerEngineService) {}
 
   get hasPendingDockerWork() {
@@ -34,7 +56,25 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     };
   }
 
-  async hostCapacity() {
+  hostCapacity() {
+    if (this.capacity && this.capacity.expiresAt > performance.now()) {
+      return Promise.resolve(this.capacity.value);
+    }
+    this.pendingCapacity ??= this.collectHostCapacity()
+      .then((value) => {
+        this.capacity = {
+          expiresAt: performance.now() + CAPACITY_FRESHNESS_MS,
+          value,
+        };
+        return value;
+      })
+      .finally(() => {
+        this.pendingCapacity = undefined;
+      });
+    return this.pendingCapacity;
+  }
+
+  private async collectHostCapacity() {
     const info = await this.engine.info();
 
     return {
@@ -120,14 +160,44 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     );
   }
 
-  async getContainerResourceUsage(
+  getContainerResourceUsage(
     containerId: string,
   ): Promise<ContainerResourceUsage> {
-    const stats = await this.engine.read(
-      () =>
-        this.engine.docker.getContainer(containerId).stats({ stream: false }),
-      `Collect resource usage for container ${containerId}`,
-    );
+    // A name or short ID may resolve to a different container on the next read.
+    if (!/^[a-f0-9]{64}$/.test(containerId))
+      return this.collectStats(containerId);
+    const cached = this.stats.get(containerId);
+    if (cached && cached.expiresAt > performance.now())
+      return Promise.resolve(cached.value);
+    this.stats.delete(containerId);
+
+    const pending = this.pendingStats.get(containerId);
+    if (pending) return pending;
+    const request = this.collectStats(containerId)
+      .then((value) => {
+        if (this.stats.size >= MAX_CACHED_STATS) {
+          const oldest = this.stats.keys().next();
+          if (!oldest.done) this.stats.delete(oldest.value);
+        }
+        this.stats.set(containerId, {
+          expiresAt: performance.now() + STATS_FRESHNESS_MS,
+          value,
+        });
+        return value;
+      })
+      .finally(() => this.pendingStats.delete(containerId));
+    this.pendingStats.set(containerId, request);
+    return request;
+  }
+
+  private async collectStats(
+    containerId: string,
+  ): Promise<ContainerResourceUsage> {
+    const stats = await this.engine.readStats((abortSignal) => {
+      // Dockerode forwards abortSignal but its published stats overload omits it.
+      const options = { stream: false as const, abortSignal };
+      return this.engine.docker.getContainer(containerId).stats(options);
+    });
     const networkUsage = calculateContainerNetworkUsageBytes(stats);
 
     return {
@@ -142,49 +212,66 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
 
   /**
    * Aggregates CPU and memory usage across currently running managed containers.
-   * Containers that disappear during stats collection are skipped.
+   * Returns the samples available before the sweep deadline and their coverage.
    */
   async getManagedContainerResourceUsage(
     containers?: Dockerode.ContainerInfo[],
   ) {
     const managedContainers =
       containers ?? (await this.listManagedContainers());
-    const runningContainers = managedContainers.filter(
-      (container) => container.State === 'running',
+    const totals: ManagedContainerResourceSample = {
+      cpuUsagePercent: 0,
+      memoryUsageBytes: 0,
+      collectedAt: null,
+      sampledContainers: 0,
+    };
+    const addSample = (sample: ContainerResourceUsage) => {
+      totals.cpuUsagePercent += sample.cpuUsagePercent;
+      totals.memoryUsageBytes += sample.memoryUsageBytes;
+      totals.sampledContainers += 1;
+      if (!totals.collectedAt || sample.collectedAt < totals.collectedAt) {
+        totals.collectedAt = sample.collectedAt;
+      }
+    };
+    const now = performance.now();
+    const remaining: Dockerode.ContainerInfo[] = [];
+    for (const container of managedContainers) {
+      if (container.State !== 'running') continue;
+      const cached = this.stats.get(container.Id);
+      if (cached && cached.expiresAt > now) addSample(cached.value);
+      else remaining.push(container);
+    }
+    // Refresh containers without recent samples first when the fleet outgrows a sweep.
+    remaining.sort(
+      (a, b) =>
+        (this.stats.get(a.Id)?.expiresAt ?? 0) -
+        (this.stats.get(b.Id)?.expiresAt ?? 0),
     );
+    const containersToSample = remaining.values();
+    const signal = AbortSignal.timeout(STATS_SWEEP_TIMEOUT_MS);
 
-    const stats = await Promise.all(
-      runningContainers.map(async (container) => {
+    const sampleContainers = async () => {
+      for (const container of containersToSample) {
+        if (signal.aborted) return;
         try {
-          return await this.getContainerResourceUsage(container.Id);
-        } catch (error) {
-          if (this.engine.isDockerNotFound(error)) {
-            return null;
-          }
-
-          throw error;
+          const sample = await waitForOperation(
+            this.getContainerResourceUsage(container.Id),
+            signal,
+          );
+          addSample(sample);
+        } catch {
+          // Docker diagnostics record failed reads. Coverage accounts for missing samples.
         }
-      }),
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(STATS_SWEEP_CONCURRENCY, remaining.length) },
+        sampleContainers,
+      ),
     );
 
-    return stats.reduce<ManagedContainerResourceUsage>(
-      (totals, containerStats) => {
-        if (!containerStats) {
-          return totals;
-        }
-
-        return {
-          cpuUsagePercent:
-            totals.cpuUsagePercent + containerStats.cpuUsagePercent,
-          memoryUsageBytes:
-            totals.memoryUsageBytes + containerStats.memoryUsageBytes,
-        };
-      },
-      {
-        cpuUsagePercent: 0,
-        memoryUsageBytes: 0,
-      },
-    );
+    return totals;
   }
 
   private async findVolumeByName(name: string) {

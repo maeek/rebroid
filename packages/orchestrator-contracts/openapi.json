@@ -11654,6 +11654,10 @@
             "type": "string",
             "nullable": true
           },
+          "containerStatsSampled": {
+            "type": "number",
+            "description": "Number of running containers represented in the usage totals."
+          },
           "containers": {
             "type": "array",
             "items": {
@@ -11671,6 +11675,7 @@
           "managedContainersCpuUsagePercent",
           "managedContainersMemoryUsageBytes",
           "containerStatsCollectedAt",
+          "containerStatsSampled",
           "containers"
         ]
       },

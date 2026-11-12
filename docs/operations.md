@@ -41,7 +41,7 @@ recovery failure. The next authenticated policy command first restores the commi
 
 ## Docker troubleshooting
 
-Open **Services → Docker → Infrastructure diagnostics** for failures, retries, queue depth, and slow operations. Local engine requests
+Open **Services → Docker → Infrastructure diagnostics** for failures, retries, queue depth, and slow operations. Ordinary local engine requests
 log slow work without terminating it; remote HTTP/TCP requests have bounded ordinary request timeouts.
 Archive transfers, image pulls, builds, and exec streams have separate concurrency limits and deadlines.
 
@@ -52,6 +52,12 @@ the initial defaults. Updating concurrency retains running and queued work; runn
 long operations retain their deadlines. Mutations stay serialized. Runtime-default resets preserve
 these separately managed Docker limits. Remote request timeouts and Docker connection settings remain
 deployment-managed.
+
+The system overview and Docker container details share recent stats samples by container ID for five seconds.
+An overview refresh reports how many running containers contributed when a sweep reaches its deadline
+or some stats reads fail. Stats reads have a bounded queue and a four-second deadline, including time
+spent waiting to start. They yield to ordinary reads such as lifecycle
+inspections. When the configured read limit is greater than one, at least one slot is reserved for ordinary reads.
 
 On the Linux host, collect evidence around the failure time:
 

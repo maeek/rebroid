@@ -99,6 +99,10 @@ export class DockerEngineService implements DockerEnginePort {
     return this.executor.read(operation, description);
   }
 
+  readStats<T>(operation: (signal: AbortSignal) => Promise<T>) {
+    return this.executor.readStats(operation);
+  }
+
   coalesceRead<T>(
     key: string,
     operation: () => Promise<T>,

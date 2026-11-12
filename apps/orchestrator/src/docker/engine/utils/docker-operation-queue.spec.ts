@@ -41,4 +41,59 @@ describe('Docker operation queue reconfiguration', () => {
     expect(() => queue.setConcurrency(0)).toThrow(RangeError);
     expect(() => queue.setConcurrency(1.5)).toThrow(RangeError);
   });
+
+  it('reserves a slot for foreground reads and removes expired background work', async () => {
+    const queue = new DockerOperationQueue();
+    queue.setConcurrency(2);
+    const signal = new AbortController();
+    let release!: () => void;
+    const active = queue.runBackground(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+      signal.signal,
+    );
+    const background = jest.fn().mockResolvedValue('late stats');
+    const queued = queue.runBackground(background, signal.signal);
+    await expect(queue.run(async () => 'inspect')).resolves.toBe('inspect');
+    expect(background).not.toHaveBeenCalled();
+
+    const reason = new Error('Stats deadline');
+    signal.abort(reason);
+    await expect(queued).rejects.toBe(reason);
+    release();
+    await active;
+    await expect(
+      queue.runBackground(background, new AbortController().signal),
+    ).resolves.toBe('late stats');
+    expect(background).toHaveBeenCalledTimes(1);
+  });
+
+  it('limits the backlog and dispatches foreground work before queued stats', async () => {
+    const queue = new DockerOperationQueue();
+    let release!: () => void;
+    const active = queue.run(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const started: string[] = [];
+    const stats = Array.from({ length: 32 }, () =>
+      queue.runBackground(async () => {
+        started.push('stats');
+      }, new AbortController().signal),
+    );
+    await expect(
+      queue.runBackground(async () => undefined, new AbortController().signal),
+    ).rejects.toThrow('queue is full');
+    const inspect = queue.run(async () => {
+      started.push('inspect');
+    });
+    release();
+    await Promise.all([active, inspect, ...stats]);
+    expect(started[0]).toBe('inspect');
+    expect(started).toHaveLength(33);
+  });
 });

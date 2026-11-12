@@ -3698,6 +3698,8 @@ export interface components {
             managedContainersCpuUsagePercent: number;
             managedContainersMemoryUsageBytes: number;
             containerStatsCollectedAt: string | null;
+            /** @description Number of running containers represented in the usage totals. */
+            containerStatsSampled: number;
             containers: components["schemas"]["ManagedContainerUsageDto"][];
         };
         OrchestratorDiagnosticsServicesDto: {

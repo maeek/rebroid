@@ -66,6 +66,30 @@ export class DockerOperationExecutor {
     });
   }
 
+  async readStats<T>(operation: (signal: AbortSignal) => Promise<T>) {
+    const signal = AbortSignal.timeout(4_000);
+    let queued = true;
+    this.metrics.queueDockerOperation('read', 1);
+    try {
+      return await this.limitRead.runBackground(async () => {
+        queued = false;
+        this.metrics.queueDockerOperation('read', -1);
+        return this.observe(
+          'read',
+          'container_stats',
+          'Collect Docker container resource usage',
+          () => {
+            signal.throwIfAborted();
+            return operation(signal);
+          },
+          () => signal.aborted,
+        );
+      }, signal);
+    } finally {
+      if (queued) this.metrics.queueDockerOperation('read', -1);
+    }
+  }
+
   coalesceRead<T>(
     key: string,
     operation: () => Promise<T>,
@@ -161,6 +185,8 @@ export class DockerOperationExecutor {
     operationName: string,
     description: string,
     operation: () => Promise<T>,
+    isTimeout: (error: unknown) => boolean = (error) =>
+      error instanceof DockerLongOperationTimeoutError,
   ) {
     return this.metrics.observe(
       className,
@@ -168,7 +194,7 @@ export class DockerOperationExecutor {
       description,
       this.transport,
       this.slowRequestWarningMs,
-      (error) => error instanceof DockerLongOperationTimeoutError,
+      isTimeout,
       operation,
     );
   }

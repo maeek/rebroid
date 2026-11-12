@@ -42,6 +42,12 @@ export class SystemResourcesDto {
   @ApiProperty({ type: String, nullable: true })
   containerStatsCollectedAt!: string | null;
 
+  @ApiProperty({
+    description:
+      'Number of running containers represented in the usage totals.',
+  })
+  containerStatsSampled!: number;
+
   @ApiProperty({ type: [ManagedContainerUsageDto] })
   containers!: ManagedContainerUsageDto[];
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { Notice } from '@/components/ui/notice'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatDateLocale } from '@/lib/format'
+import { getContainerStatsCoverage } from '@/shared/model/platform/container-stats-coverage'
 import { useSystemResources } from '@/shared/model/platform/use-system-resources'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
@@ -65,14 +66,15 @@ export const PlatformCapacityContent = ({
     )
   }
 
+  const coverage = getContainerStatsCoverage(resources)
+  const sampled = resources?.containerStatsSampled ?? resources?.containersRunning ?? 0
   const cpuHint = () => {
     if (!resources) {
       return 'Collecting live Docker stats'
     }
 
-    return resources.containersRunning > 0
-      ? `Aggregated live usage across ${resources.containersRunning} running containers`
-      : 'No running managed containers'
+    if (coverage?.unavailable) return 'No samples were collected'
+    return sampled > 0 ? `Usage across ${sampled} sampled containers` : 'No running managed containers'
   }
 
   const memoryHint = () => {
@@ -80,9 +82,15 @@ export const PlatformCapacityContent = ({
       return 'Collecting live Docker stats'
     }
 
-    return resources.containersRunning > 0
-      ? 'Aggregated working-set memory from live Docker container stats'
-      : 'No running managed containers'
+    if (coverage?.unavailable) return 'No samples were collected'
+    return sampled > 0 ? 'Working-set memory from sampled containers' : 'No running managed containers'
+  }
+
+  let cpuValue = resources ? formatPercent(resources.managedContainersCpuUsagePercent) : 'Loading...'
+  let memoryValue = resources ? formatBytes(resources.managedContainersMemoryUsageBytes) : 'Loading...'
+  if (coverage?.unavailable) {
+    cpuValue = 'Unavailable'
+    memoryValue = 'Unavailable'
   }
 
   return (
@@ -100,14 +108,14 @@ export const PlatformCapacityContent = ({
         <QuickGlanceCard
           loading={loading}
           label='Managed container CPU'
-          value={resources ? formatPercent(resources.managedContainersCpuUsagePercent) : 'Loading...'}
+          value={cpuValue}
           hint={cpuHint()}
           tone='primary'
         />
         <QuickGlanceCard
           loading={loading}
           label='Managed container memory'
-          value={resources ? formatBytes(resources.managedContainersMemoryUsageBytes) : 'Loading...'}
+          value={memoryValue}
           hint={memoryHint()}
           tone='primary'
         />
@@ -120,7 +128,7 @@ export const PlatformCapacityContent = ({
         />
       </div>
       <div className='text-xs text-foreground-muted'>
-        Container stats are sampled live when this panel refreshes.
+        {coverage ? `${coverage.label}.` : 'Container stats refresh on demand and may reuse a recent sample.'}
         {resources?.containerStatsCollectedAt
           ? ` Last sample: ${formatDateLocale(resources.containerStatsCollectedAt)}`
           : ''}

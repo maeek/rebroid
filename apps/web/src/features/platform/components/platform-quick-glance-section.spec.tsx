@@ -41,4 +41,15 @@ describe('overview capacity failures', () => {
     expect(screen.queryByRole('status')).toBeNull()
     expect(screen.getByText('12.0%')).toBeVisible()
   })
+
+  it('shows partial coverage and displays unavailable values when every sample is missing', () => {
+    const { rerender } = render(<PlatformCapacityContent resources={{ ...resources, containerStatsSampled: 1 }} />)
+    expect(screen.getByText('Sampled 1 of 2 running containers.')).toBeVisible()
+    expect(screen.getByText('12.0%')).toBeVisible()
+
+    rerender(<PlatformCapacityContent resources={{ ...resources, containerStatsSampled: 0 }} />)
+    expect(screen.getByText('Sampled 0 of 2 running containers.')).toBeVisible()
+    expect(screen.getAllByText('Unavailable')).toHaveLength(2)
+    expect(screen.queryByText('12.0%')).toBeNull()
+  })
 })

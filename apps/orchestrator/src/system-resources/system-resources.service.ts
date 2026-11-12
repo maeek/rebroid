@@ -61,7 +61,8 @@ export class SystemResourcesService {
         managedContainerResourceUsage.cpuUsagePercent,
       managedContainersMemoryUsageBytes:
         managedContainerResourceUsage.memoryUsageBytes,
-      containerStatsCollectedAt: new Date().toISOString(),
+      containerStatsCollectedAt: managedContainerResourceUsage.collectedAt,
+      containerStatsSampled: managedContainerResourceUsage.sampledContainers,
       containers: containers.map((container) => ({
         id: container.Id,
         name:
@@ -117,6 +118,8 @@ export class SystemResourcesService {
       return {
         cpuUsagePercent: 0,
         memoryUsageBytes: 0,
+        collectedAt: null,
+        sampledContainers: 0,
       };
     }
   }

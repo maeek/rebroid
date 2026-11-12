@@ -23,5 +23,6 @@ export interface SystemResources extends SystemResourceCapacity {
   managedContainersCpuUsagePercent: number
   managedContainersMemoryUsageBytes: number
   containerStatsCollectedAt: string | null
+  containerStatsSampled?: number
   containers: ManagedContainerUsage[]
 }
