@@ -32,8 +32,8 @@ Controls use solid surfaces and subtle resting borders, with fainter outlines in
 decorative elevation. Glass effects belong to shared elevated panels and overlays.
 Canvas, panels, controls, secondary actions, and floating layers use one low-saturation neutral
 family. These surfaces stay stable when the accent changes; use accent color for primary actions,
-links, focus, and selection. The default page backdrop is transparent, with no global accent wash.
-Editor panels are opaque so image backdrops do not tint their fields inconsistently. Light controls
+links, focus, and selection. Protected pages use the neutral canvas background. App icons and
+profile photos appear in identity and preview elements. Editor panels are opaque. Light controls
 are white on a soft gray panel; dark controls sit one restrained step above their panel.
 Dialogs, sheets, and drawers use `surface-dialog`: a soft gray surface in light mode and a darker neutral surface in dark
 and OLED modes so controls remain distinct. Menus and popovers use `surface-elevated` with a

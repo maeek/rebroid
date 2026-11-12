@@ -5,8 +5,6 @@ import { AppPageFailure } from '@/features/applications/components/app-page-fail
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { AppManage } from '@/features/applications/manage/app-manage'
 import { AppManageProfiles } from '@/features/applications/manage/app-manage-profiles'
-import { resolveAppIconUrl } from '@/shared/model/media/image-url'
-import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { StandardPageSplit } from '@/shared/ui/page/page-layout'
 import { AppDeviceLayout } from './app-device-layout'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
@@ -87,10 +85,6 @@ const AppViewerPageContent = ({
         viewer={<AppViewerPane placement='top' />}
         contained={view === 'ai-agent'}
       >
-        <PageBackdrop
-          imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
-          opacity={0.08}
-        />
         <AppResourceBody
           view={view}
           activity={activity}
@@ -104,10 +98,6 @@ const AppViewerPageContent = ({
 
   return (
     <StandardPageSplit className='h-auto items-start'>
-      <PageBackdrop
-        imageSrc={app.icon ? resolveAppIconUrl(app.icon) : null}
-        opacity={0.08}
-      />
       <AppViewerContent />
       <AppViewerPane />
     </StandardPageSplit>

@@ -44,7 +44,7 @@ export const ProtectedShell = ({
     <div
       data-sidebar-collapsed={sidebarCollapsed}
       data-sidebar-motion={animateSidebar}
-      className='main-layout relative z-10 flex flex-col pt-(--console-top-inset) [--shell-sidebar-duration:0ms] data-[sidebar-motion=true]:[--shell-sidebar-duration:220ms] [--shell-sidebar-inset:0.5rem] [--shell-sidebar-offset:calc(var(--shell-sidebar-width)+var(--shell-sidebar-inset))] [--shell-sidebar-width:18rem] data-[sidebar-collapsed=true]:[--shell-sidebar-width:4rem]'
+      className='main-layout relative flex flex-col pt-(--console-top-inset) [--shell-sidebar-duration:0ms] data-[sidebar-motion=true]:[--shell-sidebar-duration:220ms] [--shell-sidebar-inset:0.5rem] [--shell-sidebar-offset:calc(var(--shell-sidebar-width)+var(--shell-sidebar-inset))] [--shell-sidebar-width:18rem] data-[sidebar-collapsed=true]:[--shell-sidebar-width:4rem]'
     >
       <a
         href='#main-content'

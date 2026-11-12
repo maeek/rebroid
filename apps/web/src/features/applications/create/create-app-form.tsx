@@ -22,7 +22,6 @@ import { runtimeKindForImageReference } from '@/shared/model/runtime-image/runti
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
-import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { CreateAppDeviceSection } from './create-app-device-section'
@@ -320,12 +319,6 @@ export const CreateAppForm = ({
           </MutationButton>
         }
       />
-      <Visible when={iconPreview}>
-        <PageBackdrop
-          imageSrc={iconPreview}
-          opacity={0.08}
-        />
-      </Visible>
       <PageContent>
         <form
           ref={form}

@@ -12,7 +12,6 @@ import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageBackdrop } from '@/shared/ui/page/page-backdrop'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
@@ -57,10 +56,6 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
 
   return (
     <EditorPage className='gap-2'>
-      <PageBackdrop
-        imageSrc={draft.avatarDataUrl}
-        opacity={0.08}
-      />
       <PageHeader
         section={{ label: 'Security' }}
         trail={[{ label: 'Users', href: '/security/users' }]}
