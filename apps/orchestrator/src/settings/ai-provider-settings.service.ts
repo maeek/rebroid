@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { isOfficialOpenAiProvider } from '../common/ai-provider-request';
+import { getOpenAiBillingIssue } from '../common/openai-billing';
 import {
   maskProvider,
   normalizeAiModel,
@@ -12,6 +14,7 @@ import {
   resolveUpdatedApiKey,
 } from './ai-provider-settings';
 import type {
+  AutomationAiProvider,
   AutomationAiProviderModel,
   AutomationAiProviderModelRole,
 } from './contracts/ai-provider';
@@ -19,12 +22,25 @@ import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type {
+  AutomationAiProviderResponseDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
   UpdateAutomationAiProviderModelDto,
 } from './dto/automation-ai-provider.dto';
 import type { AutomationAiProviderHealthDto } from './dto/automation-ai-provider-health.dto';
+
+const providerResponse = (
+  provider: AutomationAiProvider,
+): AutomationAiProviderResponseDto => {
+  const billingIssue = isOfficialOpenAiProvider(provider)
+    ? getOpenAiBillingIssue(provider)
+    : undefined;
+  return {
+    ...maskProvider(provider),
+    ...(billingIssue && { billingIssue }),
+  };
+};
 
 @Injectable()
 export class AiProviderSettingsService {
@@ -36,7 +52,7 @@ export class AiProviderSettingsService {
 
   async listProviders() {
     const settings = await this.getStoredSettings();
-    return settings.aiProviders.map((provider) => maskProvider(provider));
+    return settings.aiProviders.map(providerResponse);
   }
 
   async listEnabledModelCatalog() {
@@ -152,7 +168,7 @@ export class AiProviderSettingsService {
         aiProviders: normalizeAiProviders([...settings.aiProviders, provider]),
       };
     });
-    return maskProvider(provider);
+    return providerResponse(provider);
   }
 
   async updateProvider(providerId: string, dto: UpdateAutomationAiProviderDto) {
@@ -191,7 +207,7 @@ export class AiProviderSettingsService {
     });
     if (!next)
       throw new NotFoundException(`AI provider "${providerId}" was not found.`);
-    return maskProvider(next);
+    return providerResponse(next);
   }
 
   async deleteProvider(providerId: string) {

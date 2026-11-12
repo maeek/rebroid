@@ -14,8 +14,8 @@ import {
 import { ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import {
   AutomationAiProviderCandidateHealthDto,
-  AutomationAiProviderDto,
   AutomationAiProviderModelDto,
+  AutomationAiProviderResponseDto,
   CreateAutomationAiProviderDto,
   CreateAutomationAiProviderModelDto,
   UpdateAutomationAiProviderDto,
@@ -73,14 +73,14 @@ export class SettingsController {
 
   @RequiresFeature('feature.ai')
   @Get('ai-providers')
-  @ApiOkResponse({ type: AutomationAiProviderDto, isArray: true })
+  @ApiOkResponse({ type: AutomationAiProviderResponseDto, isArray: true })
   listAiProviders() {
     return this.settings.listAiProviders();
   }
 
   @RequiresFeature('feature.ai')
   @Post('ai-providers')
-  @ApiOkResponse({ type: AutomationAiProviderDto })
+  @ApiOkResponse({ type: AutomationAiProviderResponseDto })
   createAiProvider(@Body() dto: CreateAutomationAiProviderDto) {
     return this.settings.createAiProvider(dto);
   }
@@ -114,7 +114,7 @@ export class SettingsController {
 
   @RequiresFeature('feature.ai')
   @Patch('ai-providers/:providerId')
-  @ApiOkResponse({ type: AutomationAiProviderDto })
+  @ApiOkResponse({ type: AutomationAiProviderResponseDto })
   updateAiProvider(
     @Param('providerId') providerId: string,
     @Body() dto: UpdateAutomationAiProviderDto,

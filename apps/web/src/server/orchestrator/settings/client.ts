@@ -37,8 +37,8 @@ export const orchestratorSettingsClient = {
     return jsonRequest<FeatureFlagManifest>('/features', 'PATCH', input)
   },
 
-  listAiProviders() {
-    return emptyRequest<AutomationAiProvider[]>('/settings/ai-providers')
+  listAiProviders(signal?: AbortSignal) {
+    return emptyRequest<AutomationAiProvider[]>('/settings/ai-providers', { signal })
   },
 
   createAiProvider(input: AutomationAiProvider) {

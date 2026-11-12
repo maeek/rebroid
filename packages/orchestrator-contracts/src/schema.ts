@@ -2250,7 +2250,13 @@ export interface components {
             /** @default [] */
             defaultFor: ("controller" | "planner" | "vision")[];
         };
-        AutomationAiProviderDto: {
+        OpenAiBillingIssueDto: {
+            /** @enum {string} */
+            code: "credit_balance_exhausted" | "organization_spend_limit_exceeded" | "project_spend_limit_exceeded" | "organization_usage_limit_exceeded" | "insufficient_quota";
+            /** Format: date-time */
+            observedAt: string;
+        };
+        AutomationAiProviderResponseDto: {
             /** @example local-ollama */
             id: string;
             /** @example Local Ollama */
@@ -2274,6 +2280,7 @@ export interface components {
             models: components["schemas"]["AutomationAiProviderModelDto"][];
             /** @default true */
             enabled: boolean;
+            billingIssue?: components["schemas"]["OpenAiBillingIssueDto"];
         };
         CreateAutomationAiProviderDto: {
             /** @example local-ollama */
@@ -4064,7 +4071,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderDto"][];
+                    "application/json": components["schemas"]["AutomationAiProviderResponseDto"][];
                 };
             };
         };
@@ -4087,7 +4094,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderDto"];
+                    "application/json": components["schemas"]["AutomationAiProviderResponseDto"];
                 };
             };
         };
@@ -4199,7 +4206,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationAiProviderDto"];
+                    "application/json": components["schemas"]["AutomationAiProviderResponseDto"];
                 };
             };
         };

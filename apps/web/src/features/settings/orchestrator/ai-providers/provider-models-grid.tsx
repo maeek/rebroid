@@ -228,7 +228,7 @@ export const ProviderModelsGrid = ({
                 disabled={disabled}
                 onSelect={() => setSettingsRowId(row.original.rowId)}
               >
-                <IconSettings className='mr-2 size-4' /> Edit model
+                <IconSettings className='size-4' /> Edit model
               </ContextMenuItem>
               {initialProvider.kind === 'ollama' ? (
                 <ContextMenuItem
@@ -242,7 +242,7 @@ export const ProviderModelsGrid = ({
                     void onDownloadModel(row.original.id, row.original.label).catch(() => undefined)
                   }}
                 >
-                  <IconDownload className='mr-2 size-4' />
+                  <IconDownload className='size-4' />
                   {modelDownloads[row.original.id]?.status === 'failed' ? 'Retry download' : 'Download or update model'}
                 </ContextMenuItem>
               ) : null}
@@ -250,7 +250,7 @@ export const ProviderModelsGrid = ({
                 disabled={disabled}
                 onSelect={() => onRemoveModel(row.original.index)}
               >
-                <IconTrash className='mr-2 size-4' /> Remove from provider
+                <IconTrash className='size-4' /> Remove from provider
               </ContextMenuItem>
             </>
           )}

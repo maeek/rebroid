@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { getOpenAiBillingIssue } from '../../common/openai-billing';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -135,6 +136,45 @@ describe('AutomationAiChatClientService', () => {
     expect(body).not.toHaveProperty('top_p');
     expect(body).not.toHaveProperty('chat_template_kwargs');
   });
+
+  it.each([
+    ['Chat Completions', { error: { code: 'credit_balance_exhausted' } }],
+    [
+      'Responses',
+      {
+        type: 'response.failed',
+        response: { error: { code: 'credit_balance_exhausted' } },
+      },
+    ],
+  ])(
+    'records billing errors delivered inside a %s stream',
+    async (name, event) => {
+      const openAiProvider: AutomationAiProvider = {
+        ...provider,
+        id: name,
+        kind: 'openai',
+        baseUrl: 'https://api.openai.com/v1',
+      };
+      jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValue(
+          new Response(streamFromText([`data: ${JSON.stringify(event)}\n\n`])),
+        );
+      await expect(
+        new AutomationAiChatClientService().chat({
+          provider: openAiProvider,
+          model,
+          messages: [],
+          tools: [],
+          deadline: Date.now() + 10_000,
+          ...(name === 'Responses' && { responsesHistory: new WeakMap() }),
+        }),
+      ).rejects.toThrow('credit_balance_exhausted');
+      expect(getOpenAiBillingIssue(openAiProvider)?.code).toBe(
+        'credit_balance_exhausted',
+      );
+    },
+  );
 
   it.each(['openai-chat-completions', 'ollama-native-chat'] as const)(
     'serializes a named schema for %s without adding tools',

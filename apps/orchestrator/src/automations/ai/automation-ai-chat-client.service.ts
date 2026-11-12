@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   withProviderChatResponse,
+  isOfficialOpenAiProvider,
   providerProtocol,
   type ChatResponseFormat,
   type ChatMessage,
@@ -89,6 +90,7 @@ export class AutomationAiChatClientService {
             : consumeChatCompletionStream({
                 body,
                 format: providerStreamFormat(provider),
+                officialOpenAi: isOfficialOpenAiProvider(provider),
                 onUpdate: ({ contentDelta }) => onDelta(contentDelta),
               }),
         );

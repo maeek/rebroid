@@ -2,6 +2,7 @@ import {
   providerRequestHeaders,
   withProviderResponse,
 } from './ai-provider-http';
+import { observeOpenAiBilling } from './openai-billing';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -99,7 +100,8 @@ export const withProviderChatResponse = <T>(
   options: Parameters<typeof withProviderResponse>[2],
   consume: (response: Response) => Promise<T>,
 ) =>
-  withProviderResponse(
+  withProviderModelResponse(
+    request.provider,
     chatCompletionsEndpoint(request.provider),
     {
       method: 'POST',
@@ -108,6 +110,22 @@ export const withProviderChatResponse = <T>(
     },
     options,
     consume,
+  );
+
+export const withProviderModelResponse = <T>(
+  provider: AutomationAiProvider,
+  url: string,
+  init: RequestInit,
+  options: Parameters<typeof withProviderResponse>[2],
+  consume: (response: Response) => Promise<T>,
+) =>
+  withProviderResponse(
+    url,
+    init,
+    options,
+    isOfficialOpenAiProvider(provider)
+      ? observeOpenAiBilling(provider, consume)
+      : consume,
   );
 
 export const providerAssistantMessage = (body: unknown) => {

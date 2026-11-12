@@ -8,13 +8,15 @@ import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
+import { ProviderBillingIssueBadge } from './provider-billing-issue'
 import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
-import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
+import type { AutomationAiProvider, OpenAiBillingIssue } from '@/shared/contracts/ai-provider'
 import type { ColumnDef } from '@tanstack/react-table'
 
 export const ProvidersGrid = ({
   providers,
+  billingIssues,
   busyId,
   selectedIds,
   onSelectedIdsChange,
@@ -27,6 +29,7 @@ export const ProvidersGrid = ({
 }: {
   loading?: boolean
   providers: AutomationAiProvider[]
+  billingIssues?: ReadonlyMap<string, OpenAiBillingIssue>
   busyId: string | null
   selectedIds: Set<string>
   onSelectedIdsChange: (selectedIds: Set<string>) => void
@@ -62,17 +65,22 @@ export const ProvidersGrid = ({
         header: 'Connection',
         size: 320,
         meta: { label: 'Connection', skeleton: { kind: 'stacked' } },
-        cell: ({ row }) => (
-          <div className='grid min-w-0 gap-1'>
-            <span
-              className='truncate text-sm'
-              title={row.original.baseUrl}
-            >
-              {row.original.baseUrl}
-            </span>
-            <span className='text-xs text-foreground-muted'>{aiProviderKindLabel(row.original.kind)}</span>
-          </div>
-        )
+        cell: ({ row }) => {
+          const { id, baseUrl, kind, billingIssue } = row.original
+          const issue = billingIssues ? billingIssues.get(id) : billingIssue
+          return (
+            <div className='grid min-w-0 gap-1'>
+              <span
+                className='truncate text-sm'
+                title={baseUrl}
+              >
+                {baseUrl}
+              </span>
+              <span className='text-xs text-foreground-muted'>{aiProviderKindLabel(kind)}</span>
+              {issue ? <ProviderBillingIssueBadge issue={issue} /> : null}
+            </div>
+          )
+        }
       },
       {
         id: 'models',
@@ -111,7 +119,7 @@ export const ProvidersGrid = ({
         )
       }
     ],
-    []
+    [billingIssues]
   )
   const visibleProviders = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -187,7 +195,7 @@ export const ProvidersGrid = ({
             return (
               <>
                 <ContextMenuItem onSelect={() => onEdit(provider)}>
-                  <IconPencil className='mr-2 size-4' />
+                  <IconPencil className='size-4' />
                   Edit
                 </ContextMenuItem>
                 <ContextMenuItem
@@ -195,7 +203,7 @@ export const ProvidersGrid = ({
                   disabled={busyId === provider.id}
                   onSelect={() => onDelete(provider)}
                 >
-                  <IconTrash className='mr-2 size-4' />
+                  <IconTrash className='size-4' />
                   Delete
                 </ContextMenuItem>
               </>

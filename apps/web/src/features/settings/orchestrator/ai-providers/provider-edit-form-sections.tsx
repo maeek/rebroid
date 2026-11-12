@@ -2,16 +2,20 @@ import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ProviderBillingIssueNotice } from './provider-billing-issue'
 import { ProviderConnectionFields } from './provider-connection-fields'
 import type { ProviderFormState } from './provider-form-model'
+import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 
 export const ProviderConnectionSection = ({
   provider,
+  billingIssue,
   containerId,
   onChange,
   disabled = false
 }: {
   provider: ProviderFormState
+  billingIssue?: AutomationAiProvider['billingIssue']
   containerId?: string
   onChange: (patch: Partial<ProviderFormState>) => void
   disabled?: boolean
@@ -29,6 +33,7 @@ export const ProviderConnectionSection = ({
       ) : undefined
     }
   >
+    {billingIssue ? <ProviderBillingIssueNotice issue={billingIssue} /> : null}
     <fieldset
       disabled={disabled}
       className='grid min-w-0 gap-6'

@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { StoredOrchestratorSettings } from './orchestrator-settings-store';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
 import { viewerTransport } from '@rebroid/android-application-core/viewer-control';
+import { withProviderChatResponse } from '../common/ai-provider-request';
 
 const createSettings = (): StoredOrchestratorSettings => ({
   androidRendering: { mode: 'software', renderDevice: null },
@@ -106,6 +107,82 @@ const createService = (settings = createSettings()) => {
 };
 
 describe('AiProviderSettingsService', () => {
+  it('exposes only the observed billing code and time for the matching OpenAI connection', async () => {
+    const settings = createSettings();
+    const provider = settings.aiProviders[0];
+    Object.assign(provider, {
+      kind: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+    });
+    const compatibleProvider = {
+      ...provider,
+      id: 'compatible',
+      baseUrl: 'https://example.test/v1',
+    };
+    settings.aiProviders.push(compatibleProvider);
+    const { service } = createService(settings);
+    const fetch = jest.spyOn(global, 'fetch');
+    const modelResponse = (target = provider) =>
+      withProviderChatResponse(
+        { provider: target, model: target.models[0], messages: [] },
+        {},
+        (response) => response.text(),
+      );
+    const billingError = () =>
+      Response.json(
+        {
+          error: {
+            type: 'insufficient_quota',
+            code: 'project_spend_limit_exceeded',
+            message: 'Private upstream detail',
+          },
+        },
+        { status: 429 },
+      );
+
+    try {
+      fetch.mockResolvedValueOnce(billingError());
+      await modelResponse();
+      const [listed] = await service.listProviders();
+      expect(listed.billingIssue).toEqual({
+        code: 'project_spend_limit_exceeded',
+        observedAt: expect.any(String),
+      });
+      expect(JSON.stringify(listed)).not.toContain('Private upstream detail');
+      expect(listed.apiKey).not.toBe(provider.apiKey);
+
+      fetch.mockResolvedValueOnce(billingError());
+      await modelResponse(compatibleProvider);
+      const [, compatible] = await service.listProviders();
+      expect(compatible.billingIssue).toBeUndefined();
+
+      fetch.mockResolvedValueOnce(
+        Response.json(
+          { error: { code: 'rate_limit_exceeded' } },
+          { status: 429 },
+        ),
+      );
+      await modelResponse();
+      expect((await service.listProviders())[0].billingIssue).toEqual(
+        listed.billingIssue,
+      );
+
+      fetch.mockResolvedValueOnce(Response.json({ choices: [] }));
+      await modelResponse();
+      expect((await service.listProviders())[0].billingIssue).toBeUndefined();
+
+      fetch.mockResolvedValueOnce(billingError());
+      await modelResponse();
+      const updated = await service.updateProvider(provider.id, {
+        apiKey: 'replacement',
+      });
+      expect(updated.billingIssue).toBeUndefined();
+      expect((await service.listProviders())[0].billingIssue).toBeUndefined();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
   it('selects the default enabled planner model for execution', async () => {
     const { service } = createService();
 

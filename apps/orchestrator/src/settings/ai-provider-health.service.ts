@@ -449,6 +449,7 @@ const readProbeBody = async (
   const result = await consumeChatCompletionStream({
     body: response.body,
     format: providerStreamFormat(provider),
+    officialOpenAi: isOfficialOpenAiProvider(provider),
   });
   return { message: result.message };
 };

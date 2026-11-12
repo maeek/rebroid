@@ -2,9 +2,12 @@ import { z } from 'zod';
 import {
   ProviderResponseLimitError,
   providerRequestHeaders,
-  withProviderResponse,
 } from './ai-provider-http';
-import type { ChatMessage } from './ai-provider-request';
+import {
+  withProviderModelResponse,
+  type ChatMessage,
+} from './ai-provider-request';
+import { openAiBillingError } from './openai-billing';
 import {
   providerStreamLimits,
   readProviderSseEvents,
@@ -61,11 +64,12 @@ export const withOpenAiResponsesStream = <T>(
     tools: unknown[];
     history: OpenAiResponsesHistory;
   },
-  options: Parameters<typeof withProviderResponse>[2],
+  options: Parameters<typeof withProviderModelResponse>[3],
   consume: (response: Response) => Promise<T>,
 ) => {
   const root = providerBaseUrl(provider).replace(/\/v1$/, '');
-  return withProviderResponse(
+  return withProviderModelResponse(
+    provider,
     `${root}/v1/responses`,
     {
       method: 'POST',
@@ -145,8 +149,9 @@ export const consumeOpenAiResponsesStream = async (
         throw new Error('OpenAI returned an incomplete response.');
       case 'response.failed':
       case 'error':
-        throw new Error(
-          'OpenAI reported a failure while streaming the response.',
+        throw (
+          openAiBillingError(event.type === 'error' ? event : event.response) ??
+          new Error('OpenAI reported a failure while streaming the response.')
         );
     }
   }

@@ -12,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { openAiBillingCodes } from '../../common/openai-billing';
 
 export class AutomationAiProviderModelSettingsDto {
   @ApiPropertyOptional({ type: String, nullable: true })
@@ -206,6 +207,19 @@ export class AutomationAiProviderDto {
   @ApiProperty({ default: true })
   @IsBoolean()
   enabled!: boolean;
+}
+
+export class OpenAiBillingIssueDto {
+  @ApiProperty({ enum: [...openAiBillingCodes] })
+  code!: (typeof openAiBillingCodes)[number];
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  observedAt!: string;
+}
+
+export class AutomationAiProviderResponseDto extends AutomationAiProviderDto {
+  @ApiPropertyOptional({ type: OpenAiBillingIssueDto })
+  billingIssue?: OpenAiBillingIssueDto;
 }
 
 export class CreateAutomationAiProviderDto extends AutomationAiProviderDto {}

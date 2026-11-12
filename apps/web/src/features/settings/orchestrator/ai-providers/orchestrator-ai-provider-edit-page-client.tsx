@@ -8,6 +8,7 @@ import { ProviderEditorLayout, type ProviderEditorView } from './provider-editor
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelDefaults } from './provider-model-defaults'
 import { ProviderModelsGrid } from './provider-models-grid'
+import { useAiProviderBillingIssues } from './use-ai-provider-billing-issues'
 import { useAiProviderEditController } from './use-ai-provider-edit-controller'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 
@@ -22,7 +23,14 @@ export const OrchestratorAiProviderEditPageClient = ({
 }) => {
   const controller = useAiProviderEditController(initialProvider)
   const { provider, savedProvider, isDirty, isSaving, isDownloadingModel } = controller
+  const { issues: billingIssues, resetIssues } = useAiProviderBillingIssues(
+    view === 'connection' && savedProvider.kind === 'openai'
+  )
+  const billingIssue = billingIssues ? billingIssues.get(savedProvider.id) : savedProvider.billingIssue
   const busy = isSaving || isDownloadingModel
+  const saveProvider = async () => {
+    if (await controller.saveProvider()) resetIssues()
+  }
   return (
     <ProviderEditorLayout
       provider={savedProvider}
@@ -50,7 +58,7 @@ export const OrchestratorAiProviderEditPageClient = ({
             pending={isSaving}
             pendingLabel='Saving…'
             disabled={!isDirty || isDownloadingModel}
-            onClick={() => void controller.saveProvider()}
+            onClick={() => void saveProvider()}
           >
             <IconDeviceFloppy className='size-4' /> Save
           </MutationButton>
@@ -66,6 +74,7 @@ export const OrchestratorAiProviderEditPageClient = ({
       {view === 'connection' ? (
         <ProviderConnectionSection
           provider={provider}
+          billingIssue={billingIssue}
           containerId={provider.baseUrl === initialProvider.baseUrl ? containerId : undefined}
           disabled={busy}
           onChange={controller.updateProvider}

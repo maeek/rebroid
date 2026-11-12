@@ -283,6 +283,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       } else {
         router.refresh()
       }
+      return saved
     } catch (error) {
       toast({
         title: 'Could not save AI provider',

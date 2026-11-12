@@ -151,6 +151,11 @@ Record image IDs, payload validation, duration, disk usage, and peak memory.
   `none` for compatibility. The model's custom instructions still apply.
 - OpenAI workflow drafts stream through Responses with storage disabled. If generated YAML needs
   repair, Rebroid sends the previous response items and validation feedback in the next request.
+- When the official OpenAI API rejects a model request because of billing or quota, the provider's
+  Connection tab and the providers grid show the observed error. The orchestrator caches the
+  error in memory for that connection until a later model request succeeds or the orchestrator
+  restarts. While either view is visible, the browser reads the cached result from Rebroid every
+  10 seconds using the current admin session. These reads use no additional OpenAI requests or credentials.
 
 - Choose Ollama for native chat or OpenAI-compatible server for llama.cpp, Lemonade, and other
   compatible servers. Use a URL reachable from the orchestrator. Transport and generation

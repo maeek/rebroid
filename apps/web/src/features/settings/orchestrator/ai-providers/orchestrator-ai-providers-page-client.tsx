@@ -21,6 +21,7 @@ import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { createProviderDraft, normalizeProviderForm, type ProviderFormState } from './provider-form-model'
 import { ProvidersGrid } from './providers-grid'
+import { useAiProviderBillingIssues } from './use-ai-provider-billing-issues'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -42,6 +43,7 @@ export const OrchestratorAiProvidersPageClient = ({
   const [busyId, setBusyId] = useState<string | null>(null)
   const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(() => new Set())
   const [pendingDeleteProviders, setPendingDeleteProviders] = useState<AutomationAiProvider[]>([])
+  const { issues: billingIssues } = useAiProviderBillingIssues(providers.some(provider => provider.kind === 'openai'))
 
   useEffect(() => {
     setProviders(initialProviders)
@@ -190,6 +192,7 @@ export const OrchestratorAiProvidersPageClient = ({
         providers={
           <ProvidersGrid
             providers={providers}
+            billingIssues={billingIssues}
             busyId={busyId}
             selectedIds={selectedProviderIds}
             onSelectedIdsChange={setSelectedProviderIds}

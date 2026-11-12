@@ -4,6 +4,7 @@ import {
   type ChatMessage,
   type ChatToolCall,
 } from './ai-provider-request';
+import { openAiBillingError } from './openai-billing';
 
 export const providerStreamFormat = (
   provider: Parameters<typeof providerProtocol>[0],
@@ -73,10 +74,12 @@ export interface ChatCompletionStreamResult {
 export const consumeChatCompletionStream = async ({
   body,
   format = 'openai-sse',
+  officialOpenAi = false,
   onUpdate,
 }: {
   body: ReadableStream<Uint8Array>;
   format?: ChatStreamFormat;
+  officialOpenAi?: boolean;
   onUpdate?: (update: ChatCompletionStreamUpdate) => Promise<void> | void;
 }): Promise<ChatCompletionStreamResult> => {
   const pendingToolCalls = new Map<number, PendingToolCall>();
@@ -92,6 +95,10 @@ export const consumeChatCompletionStream = async ({
     if (event === '[DONE]') break;
     const parsed = parseJsonObject(event);
     if (!parsed) continue;
+    if (officialOpenAi && parsed.error) {
+      const billingError = openAiBillingError(parsed);
+      if (billingError) throw billingError;
+    }
     const update =
       format === 'ollama-ndjson'
         ? parseOllamaUpdate(parsed)
