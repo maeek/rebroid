@@ -29,7 +29,7 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
       `Build GApps package for job ${request.jobId}`,
       (docker, timeoutSignal) => this.runWorker(docker, request, timeoutSignal),
       workerTimeoutMs,
-      { waitForCleanup: true },
+      { waitForCleanup: true, changesInventory: true },
     );
   }
 

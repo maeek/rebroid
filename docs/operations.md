@@ -59,6 +59,12 @@ or some stats reads fail. Stats reads have a bounded queue and a four-second dea
 spent waiting to start. They yield to ordinary reads such as lifecycle
 inspections. When the configured read limit is greater than one, at least one slot is reserved for ordinary reads.
 
+Docker inventory views and the system overview share bounded summary snapshots for five seconds. The
+overview can use a recent host-wide container list and otherwise asks Docker for managed containers
+only. Docker writes through Rebroid invalidate snapshots, and direct Docker changes appear on the
+next refresh after expiration. Details still inspect the selected object, and lifecycle operations
+use fresh Docker reads.
+
 On the Linux host, collect evidence around the failure time:
 
 ```bash

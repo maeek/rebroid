@@ -100,6 +100,8 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
           );
         });
       },
+      undefined,
+      { changesInventory: true },
     );
     await this.markPulledImageAsManaged(image);
   }
@@ -165,6 +167,7 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
           }
         },
         request.timeoutMs,
+        { changesInventory: true },
       );
     } finally {
       request.context.destroy();

@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import Dockerode from 'dockerode';
 import { waitForOperation } from '../../../common/wait-for-operation';
 import { DockerEngineService } from '../../docker-engine.service';
 import {
   ContainerResourceUsage,
   ManagedContainerResourceSample,
+  ManagedContainerSummary,
 } from '../../docker.types';
+import { DockerInventoryService } from '../../inventory/docker-inventory.service';
 import {
   calculateContainerCpuUsagePercent,
   calculateContainerMemoryUsageBytes,
@@ -36,7 +37,10 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
   private capacity?: { expiresAt: number; value: HostCapacity };
   private pendingCapacity?: Promise<HostCapacity>;
 
-  constructor(private readonly engine: DockerEngineService) {}
+  constructor(
+    private readonly engine: DockerEngineService,
+    private readonly inventory: DockerInventoryService,
+  ) {}
 
   get hasPendingDockerWork() {
     return this.engine.hasPendingDockerWork;
@@ -147,17 +151,8 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     }
   }
 
-  async listManagedContainers() {
-    return this.engine.read(
-      () =>
-        this.engine.docker.listContainers({
-          all: true,
-          filters: {
-            label: ['com.rebroid.managed=true'],
-          },
-        }),
-      'List managed containers',
-    );
+  listManagedContainers() {
+    return this.inventory.listManagedContainers();
   }
 
   getContainerResourceUsage(
@@ -215,7 +210,7 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
    * Returns the samples available before the sweep deadline and their coverage.
    */
   async getManagedContainerResourceUsage(
-    containers?: Dockerode.ContainerInfo[],
+    containers?: ManagedContainerSummary[],
   ) {
     const managedContainers =
       containers ?? (await this.listManagedContainers());
@@ -234,18 +229,18 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
       }
     };
     const now = performance.now();
-    const remaining: Dockerode.ContainerInfo[] = [];
+    const remaining: ManagedContainerSummary[] = [];
     for (const container of managedContainers) {
-      if (container.State !== 'running') continue;
-      const cached = this.stats.get(container.Id);
+      if (container.state !== 'running') continue;
+      const cached = this.stats.get(container.id);
       if (cached && cached.expiresAt > now) addSample(cached.value);
       else remaining.push(container);
     }
     // Refresh containers without recent samples first when the fleet outgrows a sweep.
     remaining.sort(
       (a, b) =>
-        (this.stats.get(a.Id)?.expiresAt ?? 0) -
-        (this.stats.get(b.Id)?.expiresAt ?? 0),
+        (this.stats.get(a.id)?.expiresAt ?? 0) -
+        (this.stats.get(b.id)?.expiresAt ?? 0),
     );
     const containersToSample = remaining.values();
     const signal = AbortSignal.timeout(STATS_SWEEP_TIMEOUT_MS);
@@ -255,7 +250,7 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
         if (signal.aborted) return;
         try {
           const sample = await waitForOperation(
-            this.getContainerResourceUsage(container.Id),
+            this.getContainerResourceUsage(container.id),
             signal,
           );
           addSample(sample);

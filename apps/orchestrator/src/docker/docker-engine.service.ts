@@ -26,6 +26,7 @@ export class DockerEngineService implements DockerEnginePort {
   readonly transport: DockerConnection['transport'];
   private operationLimits: DockerOperationLimits;
   private readonly remoteRequestTimeoutMs: number;
+  private inventoryRevision = 0;
 
   constructor(
     config: ConfigService,
@@ -95,6 +96,10 @@ export class DockerEngineService implements DockerEnginePort {
     return this.executor.hasPendingDockerWork;
   }
 
+  get currentInventoryRevision() {
+    return this.inventoryRevision;
+  }
+
   read<T>(operation: () => Promise<T>, description = 'Docker read') {
     return this.executor.read(operation, description);
   }
@@ -112,7 +117,10 @@ export class DockerEngineService implements DockerEnginePort {
   }
 
   mutate<T>(operation: () => Promise<T>, description = 'Docker mutation') {
-    return this.executor.mutate(operation, description);
+    return this.executor.mutate(
+      () => this.trackInventoryMutation(operation),
+      description,
+    );
   }
 
   longOperation<T>(
@@ -120,16 +128,29 @@ export class DockerEngineService implements DockerEnginePort {
     description: string,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs?: number,
-    options?: { waitForCleanup?: boolean },
+    options?: { waitForCleanup?: boolean; changesInventory?: boolean },
   ) {
     return this.executor.longOperation(
       operationName,
       description,
       this.streamDocker,
-      operation,
+      options?.changesInventory
+        ? (docker, signal) =>
+            this.trackInventoryMutation(() => operation(docker, signal))
+        : operation,
       timeoutMs,
       options,
     );
+  }
+
+  private async trackInventoryMutation<T>(operation: () => Promise<T>) {
+    this.inventoryRevision += 1;
+    try {
+      return await operation();
+    } finally {
+      // A failed or interrupted write may have changed Docker before it failed.
+      this.inventoryRevision += 1;
+    }
   }
 
   labels(applicationId: string, component: string) {

@@ -10,12 +10,8 @@ import {
   PlatformContainerDetails,
   PlatformContainerLog,
 } from '../../docker.types';
-import {
-  platformContainerFromInfo,
-  platformContainerFromInspect,
-} from '../utils/platform-container.utils';
-import { platformImageFromSummary } from '../../images/utils/platform-image.utils';
-import { platformNetworkFromSummary } from '../../networks/utils/platform-network.utils';
+import { platformContainerFromInspect } from '../utils/platform-container.utils';
+import { DockerInventoryService } from '../../inventory/docker-inventory.service';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 import { DockerResourceRuntimeService } from '../../resources/services/docker-resource-runtime.service';
 import type {
@@ -33,14 +29,11 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
     private readonly engine: DockerEngineService,
     private readonly lifecycle: DockerContainerLifecycleService,
     private readonly resources: DockerResourceRuntimeService,
+    private readonly inventory: DockerInventoryService,
   ) {}
 
-  async listPlatformContainers(): Promise<PlatformContainer[]> {
-    const containers = await this.engine.read(
-      () => this.engine.docker.listContainers({ all: true }),
-      'List platform containers',
-    );
-    return containers.map((container) => platformContainerFromInfo(container));
+  listPlatformContainers(): Promise<PlatformContainer[]> {
+    return this.inventory.listContainers();
   }
 
   async getPlatformContainerDetails(
@@ -51,35 +44,37 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
       () => container.inspect(),
       `Inspect platform container ${containerId}`,
     );
-    const listItem =
-      (await this.findContainerByIdOrName(containerId)) ??
-      platformContainerFromInspect(inspect);
-    const [images, networks] = await Promise.all([
-      this.engine
-        .read(() => this.engine.docker.listImages({ all: true }), 'List images')
-        .then((items) => items.map((item) => platformImageFromSummary(item))),
-      this.engine
-        .read(() => this.engine.docker.listNetworks(), 'List networks')
-        .then((items) =>
-          items.map((item) => platformNetworkFromSummary(item as never)),
-        ),
+    const [containers, images, networks] = await Promise.all([
+      this.inventory.listContainers(),
+      this.inventory.listImages(),
+      this.inventory.listNetworks(),
     ]);
+    const live = platformContainerFromInspect(inspect);
+    const listItem = containers.find((item) => item.id === live.id);
     const relatedImage =
-      images.find(
-        (image) =>
-          image.id === inspect.Image ||
-          image.id === listItem.imageId ||
-          image.repoTags.includes(listItem.image),
-      ) ?? null;
-    const containerNetworkNames = new Set(listItem.networks);
+      images.find((image) => image.id === inspect.Image) ??
+      images.find((image) => image.repoTags.includes(live.image)) ??
+      null;
+    const connectedNetworks = new Map(
+      Object.entries(inspect.NetworkSettings?.Networks ?? {}),
+    );
 
     return {
-      container: listItem,
+      container: {
+        ...(listItem ?? live),
+        state: live.state,
+        status: listItem?.state === live.state ? listItem.status : live.status,
+        networks: live.networks,
+      },
       inspect,
       relatedImage,
-      relatedNetworks: networks.filter((network) =>
-        containerNetworkNames.has(network.name),
-      ),
+      relatedNetworks: networks.filter((network) => {
+        const connected = connectedNetworks.get(network.name);
+        return (
+          connected &&
+          (!connected.NetworkID || connected.NetworkID === network.id)
+        );
+      }),
     };
   }
 
@@ -137,21 +132,6 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
       this.lifecycle.removeContainer(target.id, { force }),
     );
     return { id: containerId, removed: true };
-  }
-
-  private async findContainerByIdOrName(idOrName: string) {
-    const containers = await this.engine.read(
-      () => this.engine.docker.listContainers({ all: true }),
-      `Find platform container ${idOrName}`,
-    );
-    const dockerName = `/${idOrName}`;
-    const found = containers.find(
-      (container) =>
-        container.Id === idOrName ||
-        container.Id.startsWith(idOrName) ||
-        container.Names.includes(dockerName),
-    );
-    return found ? platformContainerFromInfo(found) : null;
   }
 
   private async resolvePlatformChangeTarget(containerId: string) {

@@ -7,11 +7,8 @@ import {
 import { DockerEngineService } from '../../docker-engine.service';
 import { PlatformImage, PlatformImageDetails } from '../../docker.types';
 import { shortDockerId } from '../../docker.utils';
-import { platformContainerFromInfo } from '../../containers/utils/platform-container.utils';
-import {
-  platformImageFromInspect,
-  platformImageFromSummary,
-} from '../utils/platform-image.utils';
+import { DockerInventoryService } from '../../inventory/docker-inventory.service';
+import { platformImageFromInspect } from '../utils/platform-image.utils';
 import { DockerImageRuntimeService } from './docker-image-runtime.service';
 import { DockerImageRuntimeMetadataService } from './docker-image-runtime-metadata.service';
 import type {
@@ -25,6 +22,7 @@ export class DockerPlatformImagesService implements DockerPlatformImagesPort {
     private readonly engine: DockerEngineService,
     private readonly images: DockerImageRuntimeService,
     private readonly metadata: DockerImageRuntimeMetadataService,
+    private readonly inventory: DockerInventoryService,
   ) {}
 
   async listPlatformImages(): Promise<PlatformImage[]> {
@@ -33,29 +31,22 @@ export class DockerPlatformImagesService implements DockerPlatformImagesPort {
 
   private async loadInventory() {
     const [images, containers] = await Promise.all([
-      this.engine.read(
-        () => this.engine.docker.listImages({ all: true }),
-        'List platform images',
-      ),
-      this.engine.read(
-        () => this.engine.docker.listContainers({ all: true }),
-        'List containers for platform image ownership',
-      ),
+      this.inventory.listImages(),
+      this.inventory.listContainers(),
     ]);
     const managedImageIds = new Set(
       containers
-        .filter(
-          (container) => container.Labels?.['com.rebroid.managed'] === 'true',
-        )
-        .map((container) => container.ImageID),
+        .filter((container) => container.managed)
+        .map((container) => container.imageId),
     );
     return {
       images: await this.metadata.enrichPlatformImages(
-        images.map((image) =>
-          platformImageFromSummary(image, managedImageIds.has(image.Id)),
-        ),
+        images.map((image) => ({
+          ...image,
+          managed: image.managed || managedImageIds.has(image.id),
+        })),
       ),
-      containers: containers.map((item) => platformContainerFromInfo(item)),
+      containers,
     };
   }
 

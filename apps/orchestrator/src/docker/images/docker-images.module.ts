@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DockerEngineModule } from '../engine/docker-engine.module';
+import { DockerInventoryModule } from '../inventory/docker-inventory.module';
 import { ContainerImageRuntimeMetadata } from './entities/container-image-runtime-metadata.entity';
 import { DockerImageRuntimeMetadataService } from './services/docker-image-runtime-metadata.service';
 import { DockerImageRuntimeService } from './services/docker-image-runtime.service';
@@ -12,6 +13,7 @@ import { DOCKER_PLATFORM_IMAGES } from '../contracts/docker-platform-images.port
 @Module({
   imports: [
     DockerEngineModule,
+    DockerInventoryModule,
     TypeOrmModule.forFeature([ContainerImageRuntimeMetadata]),
   ],
   providers: [

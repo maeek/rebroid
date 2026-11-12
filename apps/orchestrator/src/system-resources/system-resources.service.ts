@@ -42,7 +42,7 @@ export class SystemResourcesService {
       this.docker.listManagedContainers(),
     ]);
     const running = containers.filter(
-      (container) => container.State === 'running',
+      (container) => container.state === 'running',
     ).length;
     const [managedContainerResourceUsage, dockerRootAvailableBytes] =
       await Promise.all([
@@ -63,13 +63,7 @@ export class SystemResourcesService {
         managedContainerResourceUsage.memoryUsageBytes,
       containerStatsCollectedAt: managedContainerResourceUsage.collectedAt,
       containerStatsSampled: managedContainerResourceUsage.sampledContainers,
-      containers: containers.map((container) => ({
-        id: container.Id,
-        name:
-          container.Names[0]?.replace(/^\//, '') ?? container.Id.slice(0, 12),
-        state: container.State,
-        status: container.Status,
-      })),
+      containers,
     };
   }
 

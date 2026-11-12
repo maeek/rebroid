@@ -44,6 +44,13 @@ export interface ManagedContainerResourceSample extends ManagedContainerResource
   sampledContainers: number;
 }
 
+export interface ManagedContainerSummary {
+  id: string;
+  name: string;
+  state: string;
+  status: string;
+}
+
 export interface ContainerResourceUsage extends ManagedContainerResourceUsage {
   memoryLimitBytes: number | null;
   networkRxBytes: number;

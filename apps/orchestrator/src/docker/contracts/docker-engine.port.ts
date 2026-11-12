@@ -36,7 +36,7 @@ export interface DockerEnginePort {
     description: string,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs?: number,
-    options?: { waitForCleanup?: boolean },
+    options?: { waitForCleanup?: boolean; changesInventory?: boolean },
   ): Promise<T>;
   labels(applicationId: string, component: string): Record<string, string>;
   isDockerConflict(error: unknown): boolean;

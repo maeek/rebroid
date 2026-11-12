@@ -53,6 +53,9 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
       );
       return;
     }
+    if (orchestrator.NetworkSettings?.Networks?.[networkName]?.EndpointID) {
+      return;
+    }
 
     // Network attachment APIs can require the full ID even if inspect accepts a short ID.
     await this.connectContainerToNetwork(orchestrator.Id, networkName);
@@ -154,28 +157,24 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
         `Connect container ${containerId} to network ${networkName}`,
       );
     } catch (error) {
+      const transportError = this.engine.isTransientDockerTransportError(error);
       if (
-        this.engine.isDockerConflict(error) ||
-        this.engine.isContainerAlreadyConnectedToNetwork(error)
+        !transportError &&
+        !this.engine.isDockerConflict(error) &&
+        !this.engine.isContainerAlreadyConnectedToNetwork(error)
       ) {
-        return;
+        throw error;
       }
 
-      if (this.engine.isTransientDockerTransportError(error)) {
-        await delay(300);
-        const inspect = await this.engine.read(
-          () => network.inspect(),
-          `Inspect network ${networkName} after ambiguous connect`,
+      if (transportError) await delay(300);
+      if (!(await this.observeNetworkMembership(containerId, networkName))) {
+        throw error;
+      }
+      if (transportError) {
+        this.logger.warn(
+          `Accepted container ${containerId} network attachment after a transient Docker transport error.`,
         );
-        if (inspect.Containers?.[containerId]) {
-          this.logger.warn(
-            `Accepted container ${containerId} network attachment after a transient Docker transport error.`,
-          );
-          return;
-        }
       }
-
-      throw error;
     }
   }
 
@@ -194,14 +193,24 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
         `Disconnect container ${containerId} from network ${networkName}`,
       );
     } catch (error) {
+      if (this.engine.isDockerNotFound(error)) return;
+      const transportError = this.engine.isTransientDockerTransportError(error);
       if (
-        this.engine.isDockerNotFound(error) ||
-        this.engine.isContainerAlreadyDisconnectedFromNetwork(error)
+        !transportError &&
+        !this.engine.isDockerConflict(error) &&
+        !this.engine.isContainerAlreadyDisconnectedFromNetwork(error)
       ) {
-        return;
+        throw error;
       }
 
-      throw error;
+      if (transportError) await delay(300);
+      const attached = await this.observeNetworkMembership(
+        containerId,
+        networkName,
+      );
+      if (attached !== false) {
+        throw error;
+      }
     }
   }
 
@@ -238,6 +247,17 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
   async listNetworkContainerIds(networkName: string) {
     const inspect = await this.inspectNetworkIfPresent(networkName);
     return Object.keys(inspect?.Containers ?? {});
+  }
+
+  private async observeNetworkMembership(
+    containerId: string,
+    networkName: string,
+  ) {
+    const inspect = await this.inspectNetworkIfPresent(networkName).catch(
+      () => undefined,
+    );
+    if (inspect === undefined) return undefined;
+    return Object.hasOwn(inspect?.Containers ?? {}, containerId);
   }
 
   private async inspectNetworkIfPresent(networkName: string) {

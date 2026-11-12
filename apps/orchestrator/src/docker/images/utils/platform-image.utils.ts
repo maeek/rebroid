@@ -4,7 +4,6 @@ import { isManagedImageTag, shortDockerId } from '../../docker.utils';
 
 export const platformImageFromSummary = (
   image: Dockerode.ImageInfo,
-  managed = false,
 ): PlatformImage => ({
   id: image.Id,
   shortId: shortDockerId(image.Id),
@@ -19,7 +18,6 @@ export const platformImageFromSummary = (
   createdAt: new Date((image.Created ?? 0) * 1000).toISOString(),
   labels: image.Labels ?? {},
   managed:
-    managed ||
     image.Labels?.['com.rebroid.managed'] === 'true' ||
     image.RepoTags?.some(isManagedImageTag) === true,
   containers: image.Containers ?? 0,

@@ -1,4 +1,5 @@
 import { DockerEngineService } from '../../docker-engine.service';
+import { DockerErrorClassifier } from '../../engine/services/docker-error-classifier.service';
 import { DockerNetworkRuntimeService } from './docker-network-runtime.service';
 
 const managedLabels = (applicationId: string) => ({
@@ -9,6 +10,7 @@ const managedLabels = (applicationId: string) => ({
 });
 
 const createEngine = () => {
+  const errors = new DockerErrorClassifier();
   const docker = {
     getContainer: jest.fn(),
     listNetworks: jest.fn(),
@@ -31,14 +33,14 @@ const createEngine = () => {
       'com.rebroid.resource-prefix': 'rebroid',
     })),
     isResourceAlreadyExists: jest.fn(() => false),
-    isDockerConflict: jest.fn(() => false),
-    isDockerNotFound: jest.fn(
-      (error: unknown) =>
-        (error as { statusCode?: number })?.statusCode === 404,
-    ),
-    isContainerAlreadyConnectedToNetwork: jest.fn(() => false),
-    isContainerAlreadyDisconnectedFromNetwork: jest.fn(() => false),
-    isTransientDockerTransportError: jest.fn(() => false),
+    isDockerConflict: (error: unknown) => errors.isDockerConflict(error),
+    isDockerNotFound: (error: unknown) => errors.isDockerNotFound(error),
+    isContainerAlreadyConnectedToNetwork: (error: unknown) =>
+      errors.isContainerAlreadyConnectedToNetwork(error),
+    isContainerAlreadyDisconnectedFromNetwork: (error: unknown) =>
+      errors.isContainerAlreadyDisconnectedFromNetwork(error),
+    isTransientDockerTransportError: (error: unknown) =>
+      errors.isTransientDockerTransportError(error),
   } as unknown as DockerEngineService & { docker: typeof docker };
 };
 
@@ -46,6 +48,12 @@ describe('DockerNetworkRuntimeService', () => {
   const notFound = Object.assign(new Error('Network or container not found'), {
     statusCode: 404,
   });
+  const duplicateEndpoint = Object.assign(
+    new Error(
+      'endpoint with name orchestrator already exists in network app-network',
+    ),
+    { statusCode: 403 },
+  );
 
   it('does not attempt attachment when the orchestrator is missing from the engine', async () => {
     const engine = createEngine();
@@ -66,9 +74,11 @@ describe('DockerNetworkRuntimeService', () => {
     const connect = jest.fn().mockResolvedValue(undefined);
     const id = engine.orchestratorHostname.padEnd(64, 'a');
     engine.docker.getContainer.mockReturnValue({
-      inspect: jest
-        .fn()
-        .mockResolvedValue({ Id: id, Name: '/custom-compose-name' }),
+      inspect: jest.fn().mockResolvedValue({
+        Id: id,
+        Name: '/custom-compose-name',
+        NetworkSettings: { Networks: { 'app-network': { EndpointID: '' } } },
+      }),
     });
     engine.docker.getNetwork.mockReturnValue({ connect });
 
@@ -81,6 +91,26 @@ describe('DockerNetworkRuntimeService', () => {
     );
     expect(connect).toHaveBeenCalledTimes(1);
     expect(connect).toHaveBeenCalledWith({ Container: id });
+  });
+
+  it('skips a redundant attachment when the identified orchestrator already has an endpoint', async () => {
+    const engine = createEngine();
+    const id = engine.orchestratorHostname.padEnd(64, 'a');
+    const inspect = jest.fn().mockResolvedValue({
+      Id: id,
+      NetworkSettings: {
+        Networks: { 'app-network': { EndpointID: 'attached-endpoint' } },
+      },
+    });
+    engine.docker.getContainer.mockReturnValue({ inspect });
+
+    await new DockerNetworkRuntimeService(engine).connectOrchestratorToNetwork(
+      'app-network',
+    );
+
+    expect(inspect).toHaveBeenCalledTimes(1);
+    expect(engine.docker.getNetwork).not.toHaveBeenCalled();
+    expect(engine.mutate).not.toHaveBeenCalled();
   });
 
   it('does not attach a container that merely has the same name as the local hostname', async () => {
@@ -251,16 +281,128 @@ describe('DockerNetworkRuntimeService', () => {
       }),
     };
     engine.docker.getNetwork.mockReturnValue(network);
-    (
-      engine.isTransientDockerTransportError as jest.MockedFunction<
-        DockerEngineService['isTransientDockerTransportError']
-      >
-    ).mockReturnValue(true);
 
     await expect(
       service.connectContainerToNetwork('container-id', 'app-network'),
     ).resolves.toBeUndefined();
     expect(network.connect).toHaveBeenCalledTimes(1);
     expect(network.inspect).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a duplicate endpoint only when inspection reports the exact container ID', async () => {
+    const engine = createEngine();
+    const service = new DockerNetworkRuntimeService(engine);
+    const id = engine.orchestratorHostname.padEnd(64, 'a');
+    const endpoint = { Name: 'orchestrator', EndpointID: 'endpoint' };
+    const inspect = jest
+      .fn()
+      .mockResolvedValueOnce({
+        Containers: { [id.slice(0, 12)]: endpoint, 'stale-id': endpoint },
+      })
+      .mockResolvedValueOnce({ Containers: { [id]: endpoint } });
+    engine.docker.getNetwork.mockReturnValue({
+      connect: jest.fn().mockRejectedValue(duplicateEndpoint),
+      inspect,
+    });
+
+    await expect(
+      service.connectContainerToNetwork(id, 'app-network'),
+    ).rejects.toBe(duplicateEndpoint);
+    await expect(
+      service.connectContainerToNetwork(id, 'app-network'),
+    ).resolves.toBeUndefined();
+    expect(inspect).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves the original conflict when membership cannot be verified', async () => {
+    const engine = createEngine();
+    const conflict = Object.assign(new Error('Network is in conflict'), {
+      statusCode: 409,
+    });
+    engine.docker.getNetwork.mockReturnValue({
+      connect: jest.fn().mockRejectedValue(conflict),
+      inspect: jest.fn().mockRejectedValue(new Error('Verification failed')),
+    });
+
+    await expect(
+      new DockerNetworkRuntimeService(engine).connectContainerToNetwork(
+        'container-id',
+        'app-network',
+      ),
+    ).rejects.toBe(conflict);
+  });
+
+  it('treats an already disconnected endpoint as success only if the exact ID is absent', async () => {
+    const engine = createEngine();
+    const service = new DockerNetworkRuntimeService(engine);
+    const absent = Object.assign(
+      new Error(
+        'container container-id is not connected to network app-network',
+      ),
+      { statusCode: 500 },
+    );
+    const inspect = jest
+      .fn()
+      .mockResolvedValueOnce({ Containers: { 'container-id': {} } })
+      .mockResolvedValueOnce({ Containers: { 'another-id': {} } });
+    engine.docker.getNetwork.mockReturnValue({
+      disconnect: jest.fn().mockRejectedValue(absent),
+      inspect,
+    });
+
+    await expect(
+      service.disconnectContainerFromNetwork('container-id', 'app-network'),
+    ).rejects.toBe(absent);
+    await expect(
+      service.disconnectContainerFromNetwork('container-id', 'app-network'),
+    ).resolves.toBeUndefined();
+    expect(inspect).toHaveBeenCalledTimes(2);
+  });
+
+  it('confirms a detach committed after Docker lost the response', async () => {
+    const engine = createEngine();
+    const disconnected = Object.assign(new Error('connection reset'), {
+      code: 'ECONNRESET',
+    });
+    const inspect = jest.fn().mockResolvedValue({ Containers: {} });
+    engine.docker.getNetwork.mockReturnValue({
+      disconnect: jest.fn().mockRejectedValue(disconnected),
+      inspect,
+    });
+
+    await expect(
+      new DockerNetworkRuntimeService(engine).disconnectContainerFromNetwork(
+        'container-id',
+        'app-network',
+      ),
+    ).resolves.toBeUndefined();
+    expect(inspect).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a missing network idempotent and surfaces unrelated detach errors', async () => {
+    const engine = createEngine();
+    const service = new DockerNetworkRuntimeService(engine);
+    const unrelated = Object.assign(
+      new Error('Authorization plugin not found'),
+      {
+        statusCode: 500,
+      },
+    );
+    const inspect = jest.fn();
+    engine.docker.getNetwork.mockReturnValue({
+      disconnect: jest
+        .fn()
+        .mockRejectedValueOnce(notFound)
+        .mockRejectedValueOnce(unrelated),
+      inspect,
+    });
+
+    await expect(
+      service.disconnectContainerFromNetwork('container-id', 'app-network'),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.disconnectContainerFromNetwork('container-id', 'app-network'),
+    ).rejects.toBe(unrelated);
+    expect(inspect).not.toHaveBeenCalled();
   });
 });

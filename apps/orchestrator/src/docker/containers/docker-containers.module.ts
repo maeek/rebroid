@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DockerEngineModule } from '../engine/docker-engine.module';
 import { DockerImagesModule } from '../images/docker-images.module';
+import { DockerInventoryModule } from '../inventory/docker-inventory.module';
 import { DockerResourcesModule } from '../resources/docker-resources.module';
 import { DockerContainerArchiveService } from './services/docker-container-archive.service';
 import { DockerContainerExecService } from './services/docker-container-exec.service';
@@ -17,7 +18,12 @@ import { DOCKER_GAPPS_WORKER } from '../contracts/docker-gapps-worker.port';
 import { DockerGappsWorkerService } from './services/docker-gapps-worker.service';
 
 @Module({
-  imports: [DockerEngineModule, DockerImagesModule, DockerResourcesModule],
+  imports: [
+    DockerEngineModule,
+    DockerImagesModule,
+    DockerInventoryModule,
+    DockerResourcesModule,
+  ],
   providers: [
     DockerGappsWorkerService,
     { provide: DOCKER_GAPPS_WORKER, useExisting: DockerGappsWorkerService },

@@ -7,6 +7,7 @@ it('caps log reads by line count and bytes and rejects invalid tail values', asy
     {} as never,
     { getBoundedContainerLogs } as never,
     {} as never,
+    {} as never,
   );
 
   await expect(
@@ -34,6 +35,7 @@ it('reads a shorter tail when the requested tail exceeds the byte limit', async 
   const docker = new DockerPlatformContainersService(
     {} as never,
     { getBoundedContainerLogs } as never,
+    {} as never,
     {} as never,
   );
 
@@ -74,6 +76,7 @@ it.each(['stop', 'remove'] as const)(
           },
         }),
       } as never,
+      {} as never,
       {} as never,
     );
     const entered = deferred();

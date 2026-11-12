@@ -4,6 +4,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
+import { DockerInventoryService } from '../../inventory/docker-inventory.service';
 import { DockerPlatformImagesService } from './docker-platform-images.service';
 import { DockerImageRuntimeMetadataService } from './docker-image-runtime-metadata.service';
 import { DockerImageRuntimeService } from './docker-image-runtime.service';
@@ -47,6 +48,7 @@ const createService = (
     engine as DockerEngineService,
     images as DockerImageRuntimeService,
     metadata as DockerImageRuntimeMetadataService,
+    {} as DockerInventoryService,
   );
 };
 
@@ -86,6 +88,7 @@ describe('DockerPlatformImagesService', () => {
       engine as never,
       {} as never,
       metadata as never,
+      new DockerInventoryService(engine as never),
     );
 
     const details = await service.getPlatformImageDetails(imageInfo.Id);
