@@ -12,11 +12,18 @@ import {
 } from '../../../feature-flags/feature-flags.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
+import { AndroidAppsController } from '../../common/controllers/android-apps.controller';
+import type { AndroidApplicationResponseDto } from '../../common/dto/android-application-response.dto';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
-import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import { AndroidAppsStatusService } from '../../common/services/android-apps-status.service';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../../contracts/android-application-status';
+import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
 import { AndroidAppsNetworkPolicyService } from '../services/android-apps-network-policy.service';
 import { AndroidAppsRuntimeNetworkService } from '../services/android-apps-runtime-network.service';
 import { AndroidAppsNetworkController } from './android-apps-network.controller';
@@ -37,6 +44,7 @@ describe('application network policy', () => {
       networkPolicyEnabled: true,
       networkPolicyAllowCidrs: '[]',
       status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
     } as AndroidApplication;
     save.mockReset().mockImplementation((_id, patch) => {
       Object.assign(app, patch);
@@ -45,10 +53,21 @@ describe('application network policy', () => {
     reconcilePolicy.mockReset().mockResolvedValue(undefined);
     reapplyRunningPolicy.mockReset().mockResolvedValue(undefined);
     const module = await Test.createTestingModule({
-      controllers: [AndroidAppsNetworkController],
+      controllers: [AndroidAppsNetworkController, AndroidAppsController],
       providers: [
         AndroidAppsNetworkPolicyService,
         AndroidAppsPolicyGate,
+        {
+          provide: AndroidAppsQueryService,
+          useValue: new AndroidAppsQueryService(
+            {
+              findById: async () => ({ ...app }),
+              findForList: async () => [{ ...app }],
+            } as never,
+            new AndroidAppsStatusService(),
+          ),
+        },
+        { provide: AndroidAppsLifecycleService, useValue: {} },
         {
           provide: FeatureFlagsService,
           useValue: {
@@ -63,12 +82,8 @@ describe('application network policy', () => {
           useValue: { reconcilePolicy, reapplyRunningPolicy },
         },
         {
-          provide: AndroidAppsQueryService,
-          useValue: { decorate: (value: AndroidApplication) => value },
-        },
-        {
           provide: AndroidAppsRuntimeStateReconciler,
-          useValue: { reconcileById: () => Promise.resolve(app) },
+          useValue: { reconcileById: async () => ({ ...app }) },
         },
         {
           provide: AndroidAppsStateWriter,
@@ -92,6 +107,41 @@ describe('application network policy', () => {
 
   afterEach(() => server.close());
 
+  it('reports the same enforcement on the app and list reads after a successful retry', async () => {
+    firewallEnabled = true;
+    app.status = AndroidApplicationStatus.Running;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+    reapplyRunningPolicy.mockImplementationOnce(
+      (runtime: AndroidApplication) => {
+        const result = {
+          networkPolicyStatus: 'applied',
+          networkPolicyMessage: 'Firewall rules applied.',
+          networkPolicyAppliedAt: new Date(),
+        };
+        Object.assign(app, result);
+        Object.assign(runtime, result);
+        return Promise.resolve();
+      },
+    );
+
+    const retried = await server.inject({
+      method: 'POST',
+      url: '/apps/app-1/network-policy/apply',
+    });
+    expect(retried.statusCode).toBe(201);
+    expect(retried.json().networkPolicy.status).toBe('applied');
+
+    const list = await server.inject({ method: 'GET', url: '/apps' });
+    const detail = await server.inject({ method: 'GET', url: '/apps/app-1' });
+    expect(list.statusCode).toBe(200);
+    expect(detail.statusCode).toBe(200);
+    const [listed] = list.json<AndroidApplicationResponseDto[]>();
+    expect(listed.network.policy.result?.status).toBe('applied');
+    expect(detail.json<AndroidApplicationResponseDto>().network.policy).toEqual(
+      listed.network.policy,
+    );
+  });
+
   it('saves a disabled policy and retained allowlist through the API', async () => {
     const response = await server.inject({
       method: 'PATCH',
@@ -111,7 +161,7 @@ describe('application network policy', () => {
       networkPolicyEnabled: false,
       networkPolicyAllowCidrs: '["10.0.0.0/8"]',
     });
-    expect(reconcilePolicy).toHaveBeenCalledWith(app, {
+    expect(reconcilePolicy).toHaveBeenCalledWith(expect.objectContaining(app), {
       generation: expect.any(Number),
     });
     expect(reapplyRunningPolicy).not.toHaveBeenCalled();
@@ -196,7 +246,10 @@ describe('application network policy', () => {
       payload: { networkPolicyEnabled: true },
     });
     expect(response.statusCode).toBe(200);
-    expect(reapplyRunningPolicy).toHaveBeenCalledWith(app, expect.any(Number));
+    expect(reapplyRunningPolicy).toHaveBeenCalledWith(
+      expect.objectContaining(app),
+      expect.any(Number),
+    );
     expect(reconcilePolicy).not.toHaveBeenCalled();
   });
 });

@@ -1,24 +1,23 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
+import { getBff } from '@/lib/http/bff'
 import {
   applyNetworkPolicyAction,
   updateNetworkPolicyAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
-import { actionError, actionOk } from '@/shared/actions/action-result'
+import { ActionResultError, actionError, actionOk } from '@/shared/actions/action-result'
 import { applicationPreview } from '@/shared/testing/application-preview'
-import { AppManageNetworkPolicySettings } from './app-manage-network-policy-settings'
+import { AppManageNetworkPolicySettings, AppNetworkPolicySettingsLoading } from './app-manage-network-policy-settings'
 
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/network-policy-actions', () => ({
   applyNetworkPolicyAction: vi.fn(),
   updateNetworkPolicyAction: vi.fn()
 }))
-vi.mock('@/server/orchestrator/applications/actions/queries/get-application-action', () => ({
-  getApplicationAction: vi.fn()
-}))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 
 const updateWithDestinations = (allowCidrs: string[]) => ({
   ...applicationPreview,
@@ -105,12 +104,47 @@ describe('App network policy settings', () => {
     vi.mocked(updateNetworkPolicyAction).mockResolvedValue(
       actionError({ message: 'The firewall is unavailable.', code: 'upstream_error' })
     )
-    vi.mocked(getApplicationAction).mockResolvedValue(updateWithDestinations(cidrs))
+    vi.mocked(getBff).mockResolvedValue(updateWithDestinations(cidrs))
     const { onUpdated } = renderSettings()
     saveDestinations('10.0.0.0/24\n192.0.2.10')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Settings saved. Check firewall enforcement.')
+    expect(getBff).toHaveBeenCalledWith(`/api/bff/applications/${applicationPreview.id}`)
     expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ networkPolicyAllowCidrs: cidrs }))
     expect(toast).not.toHaveBeenCalled()
+  })
+
+  it('keeps the draft and exposes both request IDs when recovery also fails', async () => {
+    vi.mocked(updateNetworkPolicyAction).mockResolvedValue(
+      actionError({ message: 'The firewall is unavailable.', code: 'upstream_error' }, 'save-1')
+    )
+    vi.mocked(getBff).mockRejectedValue(
+      new ActionResultError({
+        message: 'The application is unavailable.',
+        code: 'upstream_unavailable',
+        requestId: 'read-2'
+      })
+    )
+    renderSettings()
+    const draft = '10.0.0.0/24\n192.0.2.10'
+    saveDestinations(draft)
+
+    const notice = await screen.findByRole('alert')
+    expect(notice).toHaveTextContent('Request ID save-1')
+    expect(notice).toHaveTextContent('Request ID read-2')
+    expect(screen.getByRole('textbox', { name: 'Additional IPv4 destinations' })).toHaveValue(draft)
+  })
+
+  it('shows the Network settings shell without revealing an assumed outbound mode while loading', () => {
+    render(
+      <FormLoadingBoundary>
+        <AppNetworkPolicySettingsLoading />
+      </FormLoadingBoundary>
+    )
+    expect(screen.getByRole('heading', { name: 'Firewall enforcement' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Network access' })).toBeVisible()
+    expect(screen.queryByText('Allow managed destinations and any IPv4 destinations you add.')).toBeNull()
+    expect(screen.queryByText('Approved destinations only')).toBeNull()
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 })

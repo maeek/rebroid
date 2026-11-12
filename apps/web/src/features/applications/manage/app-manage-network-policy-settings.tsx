@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
@@ -11,15 +11,15 @@ import { AppNetworkPolicyEditorSection } from '@/features/applications/component
 import { parseOutboundDestinations } from '@/features/applications/components/outbound-destinations'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { toast } from '@/hooks/use-toast'
+import { getBff } from '@/lib/http/bff'
 import {
   applyNetworkPolicyAction,
   updateNetworkPolicyAction
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
 import { ActionResultError, unwrapActionResult } from '@/shared/actions/action-result'
 import { outboundEnforcement } from '@/shared/model/network/outbound-policy'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
+import type { AndroidApplication, UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 const sameDestinations = (left: string[], right: string[]) =>
   left.length === right.length && left.every((cidr, index) => cidr === right[index])
@@ -39,7 +39,12 @@ export const AppManageNetworkPolicySettings = ({
   const [accessDraft, setAccessDraft] = useState<boolean>()
   const [destinationDraft, setDestinationDraft] = useState<string>()
   const [destinationsError, setDestinationsError] = useState<string>()
-  const [failure, setFailure] = useState<{ message: string; requestId?: string; saved?: boolean }>()
+  const [failure, setFailure] = useState<{
+    message: string
+    requestId?: string
+    saved?: boolean
+    recovery?: { requestId?: string }
+  }>()
   const [pending, setPending] = useState<'save' | 'retry'>()
   const submitting = useRef(false)
   const restricted = accessDraft ?? app.networkPolicyEnabled
@@ -79,10 +84,11 @@ export const AppManageNetworkPolicySettings = ({
     } catch (error) {
       const details = error instanceof ActionResultError ? error.failure : undefined
       let saved = false
+      let recovery: { requestId?: string } | undefined
       // The orchestrator can persist the draft before live enforcement fails.
       if (!details || ['upstream_error', 'upstream_unavailable', 'internal'].includes(details.code)) {
-        const current = await getApplicationAction(app.id).catch(() => undefined)
-        if (current) {
+        try {
+          const current = await getBff<AndroidApplication>(`/api/bff/applications/${encodeURIComponent(app.id)}`)
           const next = mapAndroidApplicationToAppDefinition(current)
           onUpdated(next)
           saved = Boolean(
@@ -92,12 +98,15 @@ export const AppManageNetworkPolicySettings = ({
               sameDestinations(input.networkPolicyAllowCidrs, next.networkPolicyAllowCidrs))
           )
           if (saved) resetDraft()
+        } catch (readError) {
+          recovery = { requestId: readError instanceof ActionResultError ? readError.failure.requestId : undefined }
         }
       }
       setFailure({
         message: details?.message ?? 'The request could not be completed. Try again.',
         requestId: details?.requestId,
-        saved
+        saved,
+        recovery
       })
       setDestinationsError(details?.fieldErrors?.networkPolicyAllowCidrs?.join(' '))
     } finally {
@@ -122,33 +131,40 @@ export const AppManageNetworkPolicySettings = ({
   }
 
   return (
-    <div className='grid min-w-0 gap-6'>
-      <FirewallEnforcementSection
-        state={enforcement}
-        actions={
-          canRetry && !dirty ? (
-            <MutationButton
-              type='button'
-              variant='secondary'
-              pending={pending === 'retry'}
-              pendingLabel='Retrying…'
-              disabled={Boolean(pending)}
-              onClick={() => void submit()}
-            >
-              Retry enforcement
-            </MutationButton>
-          ) : undefined
-        }
-      />
-      {failure ? (
-        <Notice
-          tone='danger'
-          title={failure.saved ? 'Settings saved. Check firewall enforcement.' : 'Could not update network access'}
-          description={failure.message}
-        >
-          {failure.requestId ? <p className='text-xs text-foreground-muted'>Request ID {failure.requestId}</p> : null}
-        </Notice>
-      ) : null}
+    <NetworkPolicyLayout
+      enforcement={enforcement}
+      actions={
+        canRetry && !dirty ? (
+          <MutationButton
+            type='button'
+            variant='secondary'
+            pending={pending === 'retry'}
+            pendingLabel='Retrying…'
+            disabled={Boolean(pending)}
+            onClick={() => void submit()}
+          >
+            Retry enforcement
+          </MutationButton>
+        ) : undefined
+      }
+      feedback={
+        failure ? (
+          <Notice
+            tone='danger'
+            title={failure.saved ? 'Settings saved. Check firewall enforcement.' : 'Could not update network access'}
+            description={failure.message}
+          >
+            {failure.requestId ? <p className='text-xs text-foreground-muted'>Request ID {failure.requestId}</p> : null}
+            {failure.recovery ? (
+              <p className='text-sm'>
+                Could not verify the saved policy.
+                {failure.recovery.requestId ? ` Request ID ${failure.recovery.requestId}` : null}
+              </p>
+            ) : null}
+          </Notice>
+        ) : null
+      }
+    >
       <form onSubmit={handleSave}>
         <AppNetworkPolicyEditorSection
           restricted={restricted}
@@ -192,7 +208,7 @@ export const AppManageNetworkPolicySettings = ({
           </div>
         </AppNetworkPolicyEditorSection>
       </form>
-    </div>
+    </NetworkPolicyLayout>
   )
 }
 
@@ -201,7 +217,7 @@ const FirewallEnforcementSection = ({
   actions
 }: {
   state?: ReturnType<typeof outboundEnforcement>
-  actions?: React.ReactNode
+  actions?: ReactNode
 }) => (
   <Section
     title='Firewall enforcement'
@@ -224,13 +240,32 @@ const FirewallEnforcementSection = ({
   </Section>
 )
 
+const NetworkPolicyLayout = ({
+  enforcement,
+  actions,
+  feedback,
+  children
+}: {
+  enforcement?: ReturnType<typeof enforcementForApp>
+  actions?: ReactNode
+  feedback?: ReactNode
+  children: ReactNode
+}) => (
+  <div className='grid min-w-0 gap-6'>
+    <FirewallEnforcementSection
+      state={enforcement}
+      actions={actions}
+    />
+    {feedback}
+    {children}
+  </div>
+)
+
 const noop = () => undefined
 
 export const AppNetworkPolicySettingsLoading = () => (
-  <div className='grid min-w-0 gap-6'>
-    <FirewallEnforcementSection />
+  <NetworkPolicyLayout>
     <AppNetworkPolicyEditorSection
-      restricted
       onRestrictedChange={noop}
       destinations=''
       onDestinationsChange={noop}
@@ -239,5 +274,5 @@ export const AppNetworkPolicySettingsLoading = () => (
     >
       <Button disabled>Save network access</Button>
     </AppNetworkPolicyEditorSection>
-  </div>
+  </NetworkPolicyLayout>
 )

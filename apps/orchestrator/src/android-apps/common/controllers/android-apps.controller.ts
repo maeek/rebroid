@@ -198,9 +198,8 @@ export class AndroidAppsController {
   @Get(':id')
   @ApiOkResponse({ type: AndroidApplicationResponseDto })
   async get(@Param('id') id: string) {
-    return AndroidApplicationResponseDto.fromEntity(
-      await this.queries.getStored(id),
-    );
+    const app = await this.queries.getStored(id);
+    return AndroidApplicationResponseDto.fromEntity(this.queries.decorate(app));
   }
 
   @Patch(':id')
