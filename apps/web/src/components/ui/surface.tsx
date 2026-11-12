@@ -91,7 +91,7 @@ export const actionMenuSurfaceClassName =
   'min-w-48 rounded-menu border border-surface-border/60 bg-surface-menu/92 p-1 text-foreground shadow-floating'
 export const actionMenuItemClassName = cn(
   interactiveItemStateClassName,
-  'gap-2 rounded-sm px-2.5 py-1.5 text-xs/4 touch:text-sm/5'
+  'gap-2 rounded-control px-2.5 py-1.5 text-xs/4 touch:text-sm/5'
 )
 export const selectableActionMenuItemClassName = cn(actionMenuItemClassName, selectableItemStateClassName)
 export const panelSurfaceClassName = surfaceVariants({ level: 'panel' })
