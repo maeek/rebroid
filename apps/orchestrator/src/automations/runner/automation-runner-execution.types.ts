@@ -1,9 +1,13 @@
-import type { AndroidAutomationApplication } from '../../android-apps/contracts/android-apps-automation.port';
+import type {
+  AndroidAutomationApplication,
+  AndroidAutomationTarget,
+} from '../../android-apps/contracts/android-apps-automation.port';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import type { AdmitAutomationTargetWork } from './automation-runner-options';
 
 export interface AutomationExecutionState {
   app: AndroidAutomationApplication;
+  readonly target: AndroidAutomationTarget;
   canUseInternet: boolean;
   defaultAiCapabilities?: string[];
   runId: string;

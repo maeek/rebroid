@@ -41,6 +41,18 @@ const commandsWithoutTargetWork = new Set([
 const runCanceled = (runId: string, options: AutomationStepExecutionOptions) =>
   options.abortSignal?.aborted || options.isRunCanceled(runId);
 
+const stepOccurrence = (
+  stepId: string,
+  uses: string,
+  { path, parentStepId }: AutomationStepExecutionOptions,
+) => ({
+  stepId,
+  uses,
+  path,
+  parentStepId,
+  startedAt: new Date().toISOString(),
+});
+
 @Injectable()
 export class AutomationStepExecutorService {
   constructor(
@@ -98,14 +110,8 @@ export class AutomationStepExecutorService {
     step: Extract<AutomationDefinitionStep, { uses: string }>,
     options: AutomationStepExecutionOptions,
   ): Promise<AutomationStepExecutionResult> {
-    const startedAt = new Date().toISOString();
-    await this.recorder.recordActionStarted(
-      run,
-      state,
-      step.id,
-      step.uses,
-      options,
-    );
+    const occurrence = stepOccurrence(step.id, step.uses, options);
+    await this.recorder.recordActionStarted(run, occurrence);
     if (runCanceled(run.id, options)) return stoppedExecution;
     let result: AutomationCommandResult;
     const pendingAiWork = new Set<Promise<unknown>>();
@@ -113,13 +119,12 @@ export class AutomationStepExecutorService {
       const recordOcrExchange =
         run.automationId &&
         !run.automationId.startsWith(adHocAiAutomationIdPrefix)
-          ? this.recorder.ocrExchangeRecorder(run, step.id, options)
+          ? this.recorder.ocrExchangeRecorder(run, occurrence)
           : undefined;
       const commandContext = {
         ...this.applications.automationAdapters(state.canUseInternet),
         recordOcrExchange,
       };
-      const expectedTarget = state.app;
       const withTarget: AutomationTargetExecutor = async (
         signal,
         operation,
@@ -127,7 +132,7 @@ export class AutomationStepExecutorService {
         signal?.throwIfAborted();
         const pending = options.admitTargetWork(() =>
           this.applications.withAutomationTarget(
-            expectedTarget,
+            state.target,
             signal,
             (app) => {
               state.app = app;
@@ -205,10 +210,7 @@ export class AutomationStepExecutorService {
       const saved = await this.recorder.recordStepFailed(
         run,
         state,
-        step.id,
-        step.uses,
-        options,
-        startedAt,
+        occurrence,
         message,
         error instanceof AutomationCommandFailure ? error.outcome : undefined,
       );
@@ -219,10 +221,7 @@ export class AutomationStepExecutorService {
     const saved = await this.recorder.recordActionCompleted(
       run,
       state,
-      step.id,
-      step.uses,
-      options,
-      startedAt,
+      occurrence,
       result,
     );
     return saved
@@ -243,9 +242,7 @@ export class AutomationStepExecutorService {
     const recorded = await this.recorder.recordControlCompleted(
       run,
       state,
-      step.id,
-      'flow.condition',
-      options,
+      stepOccurrence(step.id, 'flow.condition', options),
       {
         matched,
         branch: matched ? 'then' : 'else',
@@ -284,9 +281,7 @@ export class AutomationStepExecutorService {
     const recorded = await this.recorder.recordControlCompleted(
       run,
       state,
-      step.id,
-      'flow.switch',
-      options,
+      stepOccurrence(step.id, 'flow.switch', options),
       {
         value,
         matchedCaseIndex: matchingIndex === -1 ? null : matchingIndex,
@@ -311,9 +306,9 @@ export class AutomationStepExecutorService {
     options: AutomationStepExecutionOptions,
   ) {
     const totalIterations = step.count ?? step.maxIterations;
-    const startedAt = new Date().toISOString();
+    const occurrence = stepOccurrence(step.id, 'flow.repeat', options);
     let iterations = 0;
-    if (!(await this.recorder.recordRepeatStarted(run, step.id, options)))
+    if (!(await this.recorder.recordRepeatStarted(run, occurrence)))
       return stoppedExecution;
     while (iterations < totalIterations && iterations < step.maxIterations) {
       if (runCanceled(run.id, options)) return stoppedExecution;
@@ -341,15 +336,12 @@ export class AutomationStepExecutorService {
     const recorded = await this.recorder.recordControlCompleted(
       run,
       state,
-      step.id,
-      'flow.repeat',
-      options,
+      occurrence,
       {
         iterations,
         maxIterations: step.maxIterations,
         mode: step.count === undefined ? 'while' : 'count',
       },
-      startedAt,
     );
     return recorded ? { failed: false, stopped: false } : stoppedExecution;
   }

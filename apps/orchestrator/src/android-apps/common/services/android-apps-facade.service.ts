@@ -24,6 +24,7 @@ import type {
   AndroidAppsAutomationPort,
   AndroidAutomationAdapters,
   AndroidAutomationApplication,
+  AndroidAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
 import { AndroidAppsRuntimeOperationGate } from './android-apps-runtime-operation-gate.service';
 
@@ -100,8 +101,15 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     };
   }
 
+  captureAutomationTarget(
+    app: AndroidAutomationApplication,
+    signal: AbortSignal,
+  ) {
+    return this.runtimeOperations.capture(app, signal);
+  }
+
   withAutomationTarget<T>(
-    expected: AndroidAutomationApplication,
+    expected: AndroidAutomationTarget,
     signal: AbortSignal | undefined,
     operation: (app: AndroidAutomationApplication) => Promise<T>,
   ) {

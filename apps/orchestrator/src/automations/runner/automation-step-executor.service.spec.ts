@@ -55,6 +55,11 @@ const createService = ({
 
 const createState = (): AutomationExecutionState => ({
   app: { id: 'app-1', name: 'Demo' } as never,
+  target: {
+    id: 'app-1',
+    name: 'Demo',
+    containerStartedAt: '2026-11-12T10:00:00Z',
+  } as never,
   canUseInternet: false,
   runId: 'run-1',
   trigger: AutomationRunTrigger.Manual,
@@ -113,7 +118,7 @@ describe('AutomationStepExecutorService', () => {
       expect(result.failed).toBe(x === undefined);
       if (x === undefined) {
         expect(registryExecute).not.toHaveBeenCalled();
-        expect(recordStepFailed.mock.calls[0]?.[6]).toContain(
+        expect(recordStepFailed.mock.calls[0]?.[3]).toContain(
           'the step returned no value',
         );
       } else {
@@ -294,22 +299,17 @@ describe('AutomationStepExecutorService', () => {
         path: 'steps[0]',
       }),
     );
-    expect(recordActionStarted).toHaveBeenCalledWith(
-      run,
-      state,
-      'tap',
-      'android.tap',
-      expect.objectContaining({ path: 'steps[0]' }),
-    );
-    expect(recordActionCompleted).toHaveBeenCalledWith(
-      run,
-      state,
-      'tap',
-      'android.tap',
-      expect.objectContaining({ path: 'steps[0]' }),
-      expect.any(String),
-      { summary: 'Tapped.', data: { touched: true } },
-    );
+    const occurrence = expect.objectContaining({
+      stepId: 'tap',
+      uses: 'android.tap',
+      path: 'steps[0]',
+      startedAt: expect.any(String),
+    });
+    expect(recordActionStarted).toHaveBeenCalledWith(run, occurrence);
+    expect(recordActionCompleted).toHaveBeenCalledWith(run, state, occurrence, {
+      summary: 'Tapped.',
+      data: { touched: true },
+    });
   });
 
   it('dispatches fresh AI defaults and preserves explicit capability lists', async () => {

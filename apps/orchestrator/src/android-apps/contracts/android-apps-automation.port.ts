@@ -20,6 +20,10 @@ export interface AndroidAutomationApplication {
   networkPolicyAllowCidrs: string;
 }
 
+export interface AndroidAutomationTarget extends AndroidAutomationApplication {
+  readonly containerStartedAt: string;
+}
+
 export interface AndroidAutomationDisplaySession {
   id: string;
   surfaceId: string;
@@ -234,8 +238,12 @@ export interface AndroidAppsAutomationPort {
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
     maxOpenApps?: number,
   ): Promise<AndroidAutomationApplication>;
+  captureAutomationTarget(
+    app: AndroidAutomationApplication,
+    signal: AbortSignal,
+  ): Promise<AndroidAutomationTarget>;
   withAutomationTarget<T>(
-    expected: AndroidAutomationApplication,
+    expected: AndroidAutomationTarget,
     signal: AbortSignal | undefined,
     operation: (app: AndroidAutomationApplication) => Promise<T>,
   ): Promise<T>;

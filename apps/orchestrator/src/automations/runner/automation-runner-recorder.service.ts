@@ -8,19 +8,16 @@ import {
   buildFailedStepResult,
   buildStepOutput,
   buildSuccessfulStepResult,
+  type StepResultOptions,
 } from './automation-runner-results';
 import { AutomationStepResult } from './automation-runner.types';
 import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
 
 interface StepRecorderState {
-  runId: string;
   outputsByStepId: Map<string, Record<string, unknown> | null>;
 }
 
-interface StepRecorderOptions {
-  parentStepId?: string | null;
-  path: string;
-}
+type StepOccurrence = Omit<StepResultOptions, 'completedAt'>;
 
 @Injectable()
 export class AutomationRunnerRecorderService {
@@ -30,8 +27,7 @@ export class AutomationRunnerRecorderService {
 
   ocrExchangeRecorder(
     run: AutomationRun,
-    stepId: string,
-    options: StepRecorderOptions,
+    step: StepOccurrence,
   ): AutomationOcrExchangeRecorder {
     return async ({ request, response }, preview) => {
       let message = 'OCR request failed.';
@@ -44,10 +40,10 @@ export class AutomationRunnerRecorderService {
           runId: run.id,
           ownerUserId: run.ownerUserId,
           type: 'vision.ocr.exchange',
-          stepId,
-          parentStepId: options.parentStepId ?? null,
+          stepId: step.stepId,
+          parentStepId: step.parentStepId ?? null,
           message,
-          data: { path: options.path, request, response, preview },
+          data: { path: step.path, request, response, preview },
         });
       } catch {
         this.logger.warn(
@@ -57,31 +53,22 @@ export class AutomationRunnerRecorderService {
     };
   }
 
-  async recordActionStarted(
-    run: AutomationRun,
-    state: Pick<StepRecorderState, 'runId'>,
-    stepId: string,
-    uses: string,
-    options: StepRecorderOptions,
-  ) {
+  async recordActionStarted(run: AutomationRun, step: StepOccurrence) {
     await this.events.emit({
-      runId: state.runId,
+      runId: run.id,
       ownerUserId: run.ownerUserId,
       type: 'step.started',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
-      message: `Starting ${uses}.`,
-      data: { uses, path: options.path },
+      stepId: step.stepId,
+      parentStepId: step.parentStepId ?? null,
+      message: `Starting ${step.uses}.`,
+      data: { uses: step.uses, path: step.path },
     });
   }
 
   async recordActionCompleted(
     run: AutomationRun,
     state: StepRecorderState,
-    stepId: string,
-    uses: string,
-    options: StepRecorderOptions,
-    startedAt: string,
+    step: StepOccurrence,
     result: AutomationCommandResult,
   ) {
     const completedAt = new Date().toISOString();
@@ -89,37 +76,27 @@ export class AutomationRunnerRecorderService {
     return this.recordOutcome(
       run,
       state,
-      buildSuccessfulStepResult(
-        { stepId, uses, ...options, startedAt, completedAt },
-        output,
-      ),
+      buildSuccessfulStepResult({ ...step, completedAt }, output),
       result.summary,
     );
   }
 
-  recordRepeatStarted(
-    run: AutomationRun,
-    stepId: string,
-    options: StepRecorderOptions,
-  ) {
+  recordRepeatStarted(run: AutomationRun, step: StepOccurrence) {
     return this.events.emitWhileRunning({
       runId: run.id,
       ownerUserId: run.ownerUserId,
       type: 'step.started',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
+      stepId: step.stepId,
+      parentStepId: step.parentStepId ?? null,
       message: 'Starting repeat.',
-      data: { uses: 'flow.repeat', path: options.path },
+      data: { uses: step.uses, path: step.path },
     });
   }
 
   async recordStepFailed(
     run: AutomationRun,
     state: StepRecorderState,
-    stepId: string,
-    uses: string,
-    options: StepRecorderOptions,
-    startedAt: string,
+    step: StepOccurrence,
     message: string,
     outcome?: AutomationCommandOutcome,
   ) {
@@ -128,10 +105,7 @@ export class AutomationRunnerRecorderService {
       state,
       buildFailedStepResult(
         {
-          stepId,
-          uses,
-          ...options,
-          startedAt,
+          ...step,
           completedAt: new Date().toISOString(),
         },
         message,
@@ -144,21 +118,15 @@ export class AutomationRunnerRecorderService {
   async recordControlCompleted(
     run: AutomationRun,
     state: StepRecorderState,
-    stepId: string,
-    uses: string,
-    options: StepRecorderOptions,
+    step: StepOccurrence,
     output: Record<string, unknown>,
-    startedAt = new Date().toISOString(),
   ) {
     const completedAt = new Date().toISOString();
-    const result = buildControlStepOutput(uses, output);
+    const result = buildControlStepOutput(step.uses, output);
     return this.recordOutcome(
       run,
       state,
-      buildSuccessfulStepResult(
-        { stepId, uses, ...options, startedAt, completedAt },
-        result,
-      ),
+      buildSuccessfulStepResult({ ...step, completedAt }, result),
       result.summary,
     );
   }

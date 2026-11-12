@@ -77,7 +77,14 @@ const createExecution = ({
     { resolve } as never,
     { executeSteps } as never,
     new AutomationRunnerTargetService(
-      { get: getTarget, start } as never,
+      {
+        get: getTarget,
+        start,
+        captureAutomationTarget: async (app: typeof target) => ({
+          ...app,
+          containerStartedAt: '2026-11-12T10:00:00Z',
+        }),
+      } as never,
       { assertAllowed } as never,
     ),
     ephemeral as never,

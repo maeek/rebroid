@@ -94,9 +94,10 @@ A queued run reserves its target before preparation. The runner owns enqueue, ca
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
 Target preparation authorizes either attaching or starting, then verifies the requested profile on the
-ready runtime. Android admits each device command and AI capture against the current container, profile,
-and start time. Runtime changes fence new admissions and drain work in progress. Cancellation stops
-new workflow admissions and keeps the target reserved until admitted work settles.
+ready runtime. The workflow captures Docker's start timestamp when it attaches. Android checks that
+timestamp, the container ID, and the stored profile before admitting each device command and AI capture.
+Runtime changes fence new admissions and drain work in progress. Cancellation stops new workflow
+admissions and keeps the target reserved until admitted work settles, including in-flight ADB setup.
 Docker inventory Stop and Remove use the same gate for managed Android containers.
 An AI deadline can finish the decision while the workflow waits for a dispatched command to settle.
 Workflow CIDR additions and removals use the latest stored allowlist inside the Android policy gate.

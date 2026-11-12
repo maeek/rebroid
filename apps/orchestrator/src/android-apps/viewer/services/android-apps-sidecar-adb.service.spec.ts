@@ -1,3 +1,6 @@
+import { setTimeout as delay } from 'node:timers/promises';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { AndroidAppsSidecarAdbService } from './android-apps-sidecar-adb.service';
 
 describe('AndroidAppsSidecarAdbService target cache', () => {
@@ -88,26 +91,74 @@ describe('AndroidAppsSidecarAdbService UI text deadline', () => {
   afterEach(() => jest.restoreAllMocks());
 
   it.each(['wait', 'tap'] as const)(
-    'times out during target preparation for %s without sending a late request',
+    'drains target preparation before reporting a %s timeout',
     async (operation) => {
       const prepare = deferred<void>();
       const service = createService(() => prepare.promise);
       const fetch = jest.spyOn(globalThis, 'fetch');
-      const keepAlive = setTimeout(() => {}, 500);
+      const settled = jest.fn();
+      const command = service.uiText(app as never, { ...input, operation });
+      void command.then(settled, settled);
       try {
-        await expect(
-          service.uiText(app as never, { ...input, operation }),
-        ).rejects.toMatchObject({
-          name: 'TimeoutError',
-        });
-        prepare.resolve();
-        await new Promise<void>((resolve) => setImmediate(resolve));
-        expect(fetch).not.toHaveBeenCalled();
+        await delay(input.timeoutMs + 25);
+        expect(settled).not.toHaveBeenCalled();
       } finally {
-        clearTimeout(keepAlive);
+        prepare.resolve();
       }
+      await expect(command).rejects.toMatchObject({ name: 'TimeoutError' });
+      expect(fetch).not.toHaveBeenCalled();
     },
   );
+
+  it('keeps Stop fenced while canceled text-command preparation drains', async () => {
+    const started = deferred<void>();
+    const prepare = deferred<void>();
+    const service = createService(() => {
+      started.resolve();
+      return prepare.promise;
+    });
+    const target = {
+      ...app,
+      status: AndroidApplicationStatus.Running,
+      containerId: 'container',
+      containerStartedAt: '2026-11-12T10:00:00Z',
+    };
+    const gate = new AndroidAppsRuntimeOperationGate(
+      { getStored: async () => target } as never,
+      {
+        inspectContainer: async () => ({
+          Id: target.containerId,
+          State: { Running: true, StartedAt: target.containerStartedAt },
+        }),
+      } as never,
+    );
+    const controller = new AbortController();
+    const fetch = jest.spyOn(globalThis, 'fetch');
+    const command = gate.run(target as never, controller.signal, () =>
+      service.uiText(
+        target as never,
+        { ...input, timeoutMs: 2000 },
+        controller.signal,
+      ),
+    );
+    const canceled = expect(command).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    await started.promise;
+    controller.abort();
+    const stop = jest.fn();
+    const stopping = gate.interrupt(target.id, stop);
+    try {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(stop).not.toHaveBeenCalled();
+    } finally {
+      prepare.resolve();
+      await canceled;
+      await stopping;
+    }
+    expect(stop).toHaveBeenCalledTimes(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 
   it('passes the remaining timeout to the sidecar and aborts an in-flight wait on cancellation', async () => {
     const service = createService(async () => {});
@@ -181,6 +232,36 @@ describe('AndroidAppsSidecarAdbService UI text deadline', () => {
     await canceled;
     expect(settled).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('accepts a confirmed tap during the acknowledgement grace period', async () => {
+    const service = createService(async () => {});
+    const response = deferred<Response>();
+    const deadlineReached = deferred<void>();
+    const fetch = jest
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation((_url, init) => {
+        if (init?.method === 'DELETE') {
+          deadlineReached.resolve();
+          return Promise.resolve(new Response(null, { status: 204 }));
+        }
+        return response.promise;
+      });
+    const tap = service.uiText(app as never, input);
+    const confirmed = expect(tap).resolves.toEqual({
+      status: 'found',
+      x: 10,
+      y: 20,
+    });
+    const keepAlive = setTimeout(() => {}, 2000);
+    try {
+      await deadlineReached.promise;
+      response.resolve(Response.json({ status: 'found', x: 10, y: 20 }));
+      await confirmed;
+      expect(fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      clearTimeout(keepAlive);
+    }
   });
 
   it('caps the sidecar shell budget after target preparation consumes part of an AI deadline', async () => {

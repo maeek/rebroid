@@ -49,13 +49,13 @@ export class AutomationRunEventsRepository {
   ) {}
 
   append(input: AutomationRunEventInput) {
-    return this.persistAppend(async (manager) =>
+    return this.persistEvent(async (manager) =>
       toRecord(await this.appendInTransaction(manager, input)),
     );
   }
 
   appendWhileRunning(input: AutomationRunEventInput) {
-    return this.persistAppend(async (manager) => {
+    return this.persistEvent(async (manager) => {
       const running = await manager.getRepository(AutomationRun).existsBy({
         id: input.runId,
         ownerUserId: input.ownerUserId,
@@ -67,13 +67,13 @@ export class AutomationRunEventsRepository {
     });
   }
 
-  private async persistAppend<T>(
-    append: (manager: EntityManager) => Promise<T>,
+  private async persistEvent<T>(
+    operation: (manager: EntityManager) => Promise<T>,
   ) {
     const finishMetrics = this.metrics.beginAutomationEventPersistence();
     try {
       const event = await this.queue.run(() =>
-        this.dataSource.transaction(append),
+        this.dataSource.transaction(operation),
       );
       if (event) finishMetrics('success');
       return event;
@@ -83,72 +83,52 @@ export class AutomationRunEventsRepository {
     }
   }
 
-  async transitionRun(
+  transitionRun(
     id: string,
     expectedStatuses: AutomationRunStatus[],
     patch: RunTransition,
     event: Omit<AutomationRunEventInput, 'runId' | 'ownerUserId'>,
   ) {
-    const finishMetrics = this.metrics.beginAutomationEventPersistence();
-    try {
-      const result = await this.queue.run(() =>
-        this.dataSource.transaction(async (manager) => {
-          const runs = manager.getRepository(AutomationRun);
-          const updated = await runs.update(
-            { id, status: In(expectedStatuses) },
-            patch,
-          );
-          if (!updated.affected) return null;
-          const run = await runs.findOneByOrFail({ id });
-          const record = await this.appendInTransaction(manager, {
-            ...event,
-            runId: id,
-            ownerUserId: run.ownerUserId,
-          });
-          run.lastEventSequence = record.sequence;
-          return { run, event: toRecord(record) };
-        }),
+    return this.persistEvent(async (manager) => {
+      const runs = manager.getRepository(AutomationRun);
+      const updated = await runs.update(
+        { id, status: In(expectedStatuses) },
+        patch,
       );
-      if (result) finishMetrics('success');
-      return result;
-    } catch (error) {
-      finishMetrics('error');
-      throw error;
-    }
+      if (!updated.affected) return null;
+      const run = await runs.findOneByOrFail({ id });
+      const record = await this.appendInTransaction(manager, {
+        ...event,
+        runId: id,
+        ownerUserId: run.ownerUserId,
+      });
+      run.lastEventSequence = record.sequence;
+      return { run, event: toRecord(record) };
+    });
   }
 
-  async recordStepOutcome(
+  recordStepOutcome(
     input: AutomationRunEventInput & { type: 'step.completed' | 'step.failed' },
     result: AutomationStepResult,
   ) {
-    const finishMetrics = this.metrics.beginAutomationEventPersistence();
-    try {
-      const event = await this.queue.run(() =>
-        this.dataSource.transaction(async (manager) => {
-          const updated = await manager.getRepository(AutomationRun).update(
-            {
-              id: input.runId,
-              ownerUserId: input.ownerUserId,
-              status: AutomationRunStatus.Running,
-            },
-            { error: result.error },
-          );
-          if (!updated.affected) return null;
-          await manager.query(
-            `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
-             SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?
-             FROM automation_run_step_results WHERE runId = ?`,
-            [input.runId, JSON.stringify(result), input.runId],
-          );
-          return toRecord(await this.appendInTransaction(manager, input));
-        }),
+    return this.persistEvent(async (manager) => {
+      const updated = await manager.getRepository(AutomationRun).update(
+        {
+          id: input.runId,
+          ownerUserId: input.ownerUserId,
+          status: AutomationRunStatus.Running,
+        },
+        { error: result.error },
       );
-      if (event) finishMetrics('success');
-      return event;
-    } catch (error) {
-      finishMetrics('error');
-      throw error;
-    }
+      if (!updated.affected) return null;
+      await manager.query(
+        `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
+         SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?
+         FROM automation_run_step_results WHERE runId = ?`,
+        [input.runId, JSON.stringify(result), input.runId],
+      );
+      return toRecord(await this.appendInTransaction(manager, input));
+    });
   }
 
   private async appendInTransaction(

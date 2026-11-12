@@ -158,7 +158,7 @@ describe('Android application power commands', () => {
         {} as never,
         power,
         {} as never,
-        new AndroidAppsRuntimeOperationGate(queries as never),
+        new AndroidAppsRuntimeOperationGate(queries as never, docker as never),
       );
 
       await commands.start(app.id);

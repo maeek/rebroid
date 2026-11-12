@@ -59,7 +59,7 @@ export class AutomationRunExecutionService {
         return;
       }
 
-      const { app, ...permissions } = await this.targets.prepareTarget({
+      const { target, ...permissions } = await this.targets.prepareTarget({
         ownerUserId: queuedRun.ownerUserId,
         targetApplicationId: queuedRun.targetApplicationId,
         definition: runnable.definition,
@@ -74,8 +74,8 @@ export class AutomationRunExecutionService {
         [AutomationRunStatus.Queued],
         {
           status: AutomationRunStatus.Running,
-          targetProfileMode: app.profileMode,
-          targetProfileName: app.profileName || 'default',
+          targetProfileMode: target.profileMode,
+          targetProfileName: target.profileName || 'default',
           startedAt: new Date(),
           error: null,
         },
@@ -93,7 +93,8 @@ export class AutomationRunExecutionService {
       this.metrics.automationRunStarted();
 
       const state: AutomationExecutionState = {
-        app,
+        app: target,
+        target,
         ...permissions,
         runId: run.id,
         trigger: run.trigger,
