@@ -10,6 +10,9 @@ gates calls with `feature.ocr`.
 - `/health/live` reports process liveness; `/health` returns `503` until model warmup finishes.
 - Inference is bounded; saturation returns `429` with `ocr_busy`.
 - A quality-gated cascade tries raw input, grayscale, contrast, and threshold, returning the best result.
+- A request can pass its remaining budget as `timeoutMs`. An expired or disconnected request skips later
+  passes. An active Paddle inference keeps its slot until it returns. Expiration returns `504` with
+  `ocr_deadline_exceeded`.
 - PNG, JPEG, and WebP inputs are validated against encoded/decoded size, pixel, and dimension limits.
 
 | Variable                    |    Default |

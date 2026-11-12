@@ -1,10 +1,14 @@
 import base64
 import io
+from concurrent.futures import ThreadPoolExecutor
+from threading import BoundedSemaphore, Event
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from PIL import Image
 
 from ocr_sidecar.api import create_app
+from ocr_sidecar import api
 from ocr_sidecar.config import Settings
 
 
@@ -76,3 +80,43 @@ def test_valid_request_reports_selected_pass_without_internal_errors():
         assert payload["language"] == "en"
         assert payload["preprocessingMode"] == "raw"
         assert payload["detections"][0]["text"] == "Settings"
+
+
+def test_expired_request_skips_later_passes_and_holds_capacity_until_inference_returns(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(api, "time", SimpleNamespace(monotonic=lambda: now[0], perf_counter=api.time.perf_counter))
+    entered = Event()
+    resume = Event()
+    capacity = BoundedSemaphore(1)
+
+    class PausedRuntime(FakeRuntime):
+        calls = 0
+
+        def try_acquire(self):
+            return capacity.acquire(blocking=False)
+
+        def release(self):
+            capacity.release()
+
+        def recognize(self, _image):
+            self.calls += 1
+            entered.set()
+            assert resume.wait(5)
+            return []
+
+    runtime = PausedRuntime()
+    with TestClient(create_app(settings(), runtime)) as client, ThreadPoolExecutor(1) as executor:
+        payload = {"dataUrl": image_data_url()}
+        in_flight = executor.submit(client.post, "/ocr/screenshot", json={**payload, "timeoutMs": 1000})
+        try:
+            assert entered.wait(5)
+            now[0] = 2.0
+            assert client.post("/ocr/screenshot", json=payload).status_code == 429
+        finally:
+            resume.set()
+        response = in_flight.result(timeout=5)
+        assert response.status_code == 504
+        assert response.json()["detail"]["code"] == "ocr_deadline_exceeded"
+        assert runtime.calls == 1
+        assert runtime.try_acquire()
+        runtime.release()

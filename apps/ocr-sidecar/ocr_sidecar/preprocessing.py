@@ -133,15 +133,29 @@ def quality(detections: list[dict[str, Any]]) -> tuple[float, float, int]:
     return (average * 0.6 + unique / len(detections) * 0.25 + coverage * 0.15, average, unique)
 
 
-def run_cascade(image: Image.Image, infer: Callable[[Image.Image], Any], min_confidence: float):
+class RecognitionStopped(Exception):
+    pass
+
+
+def run_cascade(
+    image: Image.Image,
+    infer: Callable[[Image.Image], Any],
+    min_confidence: float,
+    check_active: Callable[[], None] = lambda: None,
+):
     width, height = image.size
     target = max(0.65, min_confidence)
     attempts: list[dict[str, Any]] = []
     best: dict[str, Any] | None = None
     for mode in CASCADE_MODES:
+        check_active()
         started = time.perf_counter()
         try:
-            detections = detections_from_result(infer(preprocess(image, mode)), width, height, min_confidence)
+            prepared = preprocess(image, mode)
+            check_active()
+            raw_result = infer(prepared)
+            check_active()
+            detections = detections_from_result(raw_result, width, height, min_confidence)
             score = quality(detections)
             attempts.append({
                 "mode": mode,
@@ -156,6 +170,9 @@ def run_cascade(image: Image.Image, infer: Callable[[Image.Image], Any], min_con
                 best = candidate
             if score[0] >= target:
                 break
+        except RecognitionStopped:
+            raise
         except Exception:
             attempts.append({"mode": mode, "status": "failed", "error": "OCR pass failed.", "elapsedMs": round((time.perf_counter() - started) * 1000)})
+    check_active()
     return best, attempts

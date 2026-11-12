@@ -3,13 +3,15 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import asynccontextmanager
+from threading import Event
+from typing import Callable
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from .config import Settings
-from .preprocessing import CASCADE_MODES, ImagePayloadError, decode_image, resize_image, run_cascade
+from .preprocessing import CASCADE_MODES, ImagePayloadError, RecognitionStopped, decode_image, resize_image, run_cascade
 from .runtime import OcrRuntime
 
 
@@ -20,6 +22,7 @@ class OcrRequest(BaseModel):
     language: str | None = None
     minConfidence: float | None = Field(default=None, ge=0, le=1)
     maxImageDimension: int | None = Field(default=None, ge=320, le=4096)
+    timeoutMs: int | None = Field(default=None, ge=1, le=120_000)
 
 
 def create_app(settings: Settings | None = None, runtime: OcrRuntime | None = None) -> FastAPI:
@@ -54,8 +57,8 @@ def create_app(settings: Settings | None = None, runtime: OcrRuntime | None = No
         }
         return payload if engine.ready else JSONResponse(status_code=503, content=payload)
 
-    @app.post("/ocr/screenshot")
-    def ocr_screenshot(payload: OcrRequest):
+    def recognize(payload: OcrRequest, check_active: Callable[[], None]):
+        check_active()
         language = payload.language or config.language
         if language != config.language:
             raise HTTPException(status_code=422, detail={"code": "unsupported_language", "message": "Requested OCR language is not deployed."})
@@ -65,6 +68,7 @@ def create_app(settings: Settings | None = None, runtime: OcrRuntime | None = No
             raise HTTPException(status_code=429, detail={"code": "ocr_busy", "message": "OCR inference capacity is busy."})
         started = time.perf_counter()
         try:
+            check_active()
             try:
                 image = decode_image(
                     data_url=payload.dataUrl,
@@ -79,8 +83,9 @@ def create_app(settings: Settings | None = None, runtime: OcrRuntime | None = No
                 raise HTTPException(status_code=status, detail={"code": "invalid_image", "message": str(exc)}) from exc
             max_dimension = min(payload.maxImageDimension or config.max_image_dimension, config.max_image_dimension)
             min_confidence = payload.minConfidence if payload.minConfidence is not None else config.min_confidence
+            check_active()
             image = resize_image(image, max_dimension)
-            best, attempts = run_cascade(image, engine.recognize, min_confidence)
+            best, attempts = run_cascade(image, engine.recognize, min_confidence, check_active)
             if best is None:
                 raise HTTPException(status_code=500, detail={"code": "ocr_failed", "message": "OCR execution failed.", "attempts": attempts})
             return {
@@ -96,5 +101,33 @@ def create_app(settings: Settings | None = None, runtime: OcrRuntime | None = No
             }
         finally:
             engine.release()
+
+    @app.post("/ocr/screenshot")
+    async def ocr_screenshot(payload: OcrRequest, request: Request):
+        deadline = time.monotonic() + payload.timeoutMs / 1000 if payload.timeoutMs is not None else None
+        stopped = Event()
+
+        def check_active():
+            if stopped.is_set() or (deadline is not None and time.monotonic() >= deadline):
+                raise RecognitionStopped()
+
+        async def watch_disconnect():
+            while (await request.receive())["type"] != "http.disconnect":
+                pass
+            stopped.set()
+
+        disconnect = asyncio.create_task(watch_disconnect())
+        try:
+            # The worker owns the slot until its active native inference returns.
+            return await asyncio.to_thread(recognize, payload, check_active)
+        except RecognitionStopped as exc:
+            raise HTTPException(
+                status_code=504,
+                detail={"code": "ocr_deadline_exceeded", "message": "OCR request expired or was canceled."},
+            ) from exc
+        finally:
+            stopped.set()
+            disconnect.cancel()
+            await asyncio.gather(disconnect, return_exceptions=True)
 
     return app
