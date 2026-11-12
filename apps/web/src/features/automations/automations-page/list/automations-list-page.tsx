@@ -7,6 +7,7 @@ import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { AutomationsTable } from './automations-table'
+import { WorkflowHistoryRetentionControl } from './workflow-history-retention-control'
 import type { AutomationsListPageProps } from '../editor/types'
 
 export function AutomationsListPage({
@@ -14,6 +15,7 @@ export function AutomationsListPage({
   automationsPage,
   gridQuery,
   initialTriggers,
+  workflowHistoryRetention,
   loading = false
 }: AutomationsListPageProps) {
   return (
@@ -26,22 +28,25 @@ export function AutomationsListPage({
         title='Workflows'
         description='Create reusable workflows and review their latest execution.'
         actions={
-          <Button
-            asChild={!loading}
-            disabled={loading}
-          >
-            {loading ? (
-              <span>
-                <IconPlus className='size-4' />
-                New workflow
-              </span>
-            ) : (
-              <Link href='/automations/create'>
-                <IconPlus className='size-4' />
-                New workflow
-              </Link>
-            )}
-          </Button>
+          <>
+            {workflowHistoryRetention ? <WorkflowHistoryRetentionControl initial={workflowHistoryRetention} /> : null}
+            <Button
+              asChild={!loading}
+              disabled={loading}
+            >
+              {loading ? (
+                <span>
+                  <IconPlus className='size-4' />
+                  New workflow
+                </span>
+              ) : (
+                <Link href='/automations/create'>
+                  <IconPlus className='size-4' />
+                  New workflow
+                </Link>
+              )}
+            </Button>
+          </>
         }
       />
 

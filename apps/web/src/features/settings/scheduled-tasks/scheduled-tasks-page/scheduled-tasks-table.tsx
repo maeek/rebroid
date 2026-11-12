@@ -261,7 +261,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
                         disabled={busyTaskId !== null}
                         onSelect={() => void runSelected()}
                       >
-                        <IconPlayerPlayFilled className='mr-2 size-4' />
+                        <IconPlayerPlayFilled className='size-4' />
                         Run selected ({selectedTasks.length})
                       </ContextMenuItem>
                       <ContextMenuItem
@@ -281,17 +281,17 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
                         disabled={busyTaskId !== null || !selectedTasksAreCustom}
                         onSelect={() => setPendingDelete(selectedTasks)}
                       >
-                        <IconTrash className='mr-2 size-4' />
+                        <IconTrash className='size-4' />
                         Delete selected ({selectedTasks.length})
                       </ContextMenuItem>
                     </>
                   ) : null}
                   <ContextMenuItem onSelect={() => openEditForm(row.original)}>
-                    <IconEdit className='mr-2 size-4' />
+                    <IconEdit className='size-4' />
                     Edit
                   </ContextMenuItem>
                   <ContextMenuItem onSelect={() => void runNow(row.original)}>
-                    <IconPlayerPlayFilled className='mr-2 size-4' />
+                    <IconPlayerPlayFilled className='size-4' />
                     Run now
                   </ContextMenuItem>
                   {row.original.kind === 'custom' ? (
@@ -299,7 +299,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
                       className='text-danger focus:text-danger'
                       onSelect={() => setPendingDelete([row.original])}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Delete
                     </ContextMenuItem>
                   ) : null}

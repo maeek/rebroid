@@ -11,6 +11,10 @@ import {
   DOCKER_PLATFORM_PRUNE,
   type DockerPlatformPrunePort,
 } from '../../docker/contracts/docker-platform-prune.port';
+import {
+  CONTAINER_IMAGE_BUILD_MAINTENANCE,
+  type ContainerImageBuildMaintenancePort,
+} from '../../container-images/contracts/container-image-build-maintenance.port';
 import { ScheduledTaskActionType } from '../entities/scheduled-task.entity';
 import { ScheduledTaskActionDto } from '../dto/scheduled-task.dto';
 import {
@@ -19,6 +23,8 @@ import {
 } from '../../automations/contracts/workflow-history-maintenance.port';
 
 type ScheduledTaskPayload = Record<string, unknown> | null | undefined;
+
+const defaultWorkflowHistoryRetentionDays = 7;
 
 type ScheduledTaskActionDefinition = ScheduledTaskActionDto & {
   normalizePayload: (
@@ -72,6 +78,8 @@ export class ScheduledTaskActionsService {
     private readonly prune: DockerPlatformPrunePort,
     @Inject(WORKFLOW_HISTORY_MAINTENANCE)
     private readonly workflowHistory: WorkflowHistoryMaintenancePort,
+    @Inject(CONTAINER_IMAGE_BUILD_MAINTENANCE)
+    private readonly imageBuilds: ContainerImageBuildMaintenancePort,
   ) {}
 
   listActions(): ScheduledTaskActionDto[] {
@@ -173,11 +181,46 @@ export class ScheduledTaskActionsService {
         description:
           'Remove finished workflow runs and their step results and events after the retention period.',
         normalizePayload: (payload) => ({
+          retentionDays: integerValue(
+            payload,
+            'retentionDays',
+            defaultWorkflowHistoryRetentionDays,
+            1,
+            3650,
+          ),
+        }),
+        run: (payload) => {
+          const days = integerValue(
+            payload,
+            'retentionDays',
+            defaultWorkflowHistoryRetentionDays,
+            1,
+            3650,
+          );
+          return this.workflowHistory.pruneWorkflowHistory(
+            new Date(Date.now() - days * 86_400_000),
+          );
+        },
+      },
+      {
+        type: ScheduledTaskActionType.CleanInterruptedImageBuilds,
+        label: 'Clean interrupted image builds',
+        description:
+          'Remove GApps build staging files older than 24 hours when the build is no longer active.',
+        normalizePayload: () => null,
+        run: () => this.imageBuilds.cleanInterruptedBuilds(),
+      },
+      {
+        type: ScheduledTaskActionType.CleanImageBuildHistory,
+        label: 'Image build history retention',
+        description:
+          'Remove old completed image builds and their logs while keeping the latest completed build for each target image.',
+        normalizePayload: (payload) => ({
           retentionDays: integerValue(payload, 'retentionDays', 30, 1, 3650),
         }),
         run: (payload) => {
           const days = integerValue(payload, 'retentionDays', 30, 1, 3650);
-          return this.workflowHistory.pruneWorkflowHistory(
+          return this.imageBuilds.pruneBuildHistory(
             new Date(Date.now() - days * 86_400_000),
           );
         },

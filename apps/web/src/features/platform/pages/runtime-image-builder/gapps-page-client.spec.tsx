@@ -13,24 +13,21 @@ vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
 }))
 
 const presetResponse: GappsBuildPresetsResponse = {
-  presets: [
-    {
-      androidVersion: '14',
-      baseImage: 'redroid/redroid:14.0.0-latest',
-      sourceBranch: 'upsilon',
-      sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-      sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/upsilon',
-      defaultTargetImage: 'local/redroid-gapps:14'
-    },
-    {
-      androidVersion: '13',
-      baseImage: 'redroid/redroid:13.0.0-latest',
-      sourceBranch: 'tau',
-      sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-      sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/tau',
-      defaultTargetImage: 'local/redroid-gapps:13'
-    }
-  ],
+  presets: (
+    [
+      ['16', 'baklava'],
+      ['15', 'vic'],
+      ['14', 'upsilon'],
+      ['13', 'tau']
+    ] as const
+  ).map(([androidVersion, sourceBranch]) => ({
+    androidVersion,
+    baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
+    sourceBranch,
+    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
+    sourceLink: `https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/${sourceBranch}`,
+    defaultTargetImage: `local/redroid-gapps:${androidVersion}`
+  })),
   resources: {
     canBuild: true,
     diskAvailableBytes: 20 * 1024 ** 3,
@@ -103,13 +100,14 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     }
   })
 
-  it('starts a build through the validated BFF endpoint', async () => {
+  it.each(['14', '15', '16'])('starts an Android %s build through the BFF', async androidVersion => {
+    const targetImage = `local/redroid-gapps:${androidVersion}`
     const queuedJob = {
       id: 'job-2',
       buildKind: 'redroid_gapps_patch',
       status: 'queued',
       phase: 'queued',
-      targetImage: 'local/redroid-gapps:14',
+      targetImage,
       logTail: ''
     } as ContainerImageBuildJob
     vi.mocked(sendBff).mockResolvedValue(queuedJob)
@@ -121,12 +119,19 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       />
     )
 
+    if (androidVersion !== '14') {
+      fireEvent.click(screen.getByRole('combobox', { name: 'Android version' }))
+      const option = await screen.findByRole('option', { name: `Android ${androidVersion}` })
+      fireEvent.pointerDown(option, { pointerType: 'mouse' })
+      fireEvent.click(option)
+    }
+    expect(screen.getByRole('textbox', { name: 'Target image' })).toHaveValue(targetImage)
     fireEvent.click(screen.getByRole('button', { name: 'Build image' }))
 
     await waitFor(() => {
       expect(sendBff).toHaveBeenCalledWith('/api/bff/platform/image-builds/gapps', {
-        androidVersion: '14',
-        targetImage: 'local/redroid-gapps:14'
+        androidVersion,
+        targetImage
       })
     })
     expect(screen.getByRole('button', { name: 'Build in progress' })).toBeDisabled()

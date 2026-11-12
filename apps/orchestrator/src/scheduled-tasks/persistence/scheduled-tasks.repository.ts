@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { ScheduledTask } from '../entities/scheduled-task.entity';
+import {
+  ScheduledTask,
+  type ScheduledTaskActionType,
+} from '../entities/scheduled-task.entity';
 
 @Injectable()
 export class ScheduledTasksRepository {
@@ -18,15 +21,26 @@ export class ScheduledTasksRepository {
     return this.tasks.save(task);
   }
 
-  updateConfiguration(task: ScheduledTask) {
+  updateConfiguration(
+    task: ScheduledTask,
+    { includePayload = true }: { includePayload?: boolean } = {},
+  ) {
     return this.tasks.update(task.id, {
       name: task.name,
       enabled: task.enabled,
       cronExpression: task.cronExpression,
       actionType: task.actionType,
-      payloadJson: task.payloadJson,
+      ...(includePayload ? { payloadJson: task.payloadJson } : {}),
       nextRunAt: task.nextRunAt,
     });
+  }
+
+  updatePayload(
+    id: string,
+    actionType: ScheduledTaskActionType,
+    payloadJson: string | null,
+  ) {
+    return this.tasks.update({ id, actionType }, { payloadJson });
   }
 
   recordRunResult(

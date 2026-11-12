@@ -11,7 +11,11 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { SupportedGappsAndroidVersion } from '../dto/gapps-build.dto';
+import {
+  supportedGappsAndroidVersions,
+  type SupportedGappsAndroidVersion,
+} from '../dto/gapps-build.dto';
+import { gappsTemporaryPackageDirectory } from '../utils/gapps-staging-paths';
 
 @Injectable()
 export class ContainerImageGappsCacheService {
@@ -41,10 +45,8 @@ export class ContainerImageGappsCacheService {
   }
 
   async createTemporaryPath(jobId: string) {
-    const directory = join(
+    const directory = gappsTemporaryPackageDirectory(
       this.config.getOrThrow<string>('app.uploadsDir'),
-      'image-build-gapps-cache',
-      'temporary',
     );
     await mkdir(directory, { recursive: true });
     return join(directory, `${jobId}.zip`);
@@ -81,8 +83,14 @@ export class ContainerImageGappsCacheService {
   }
 
   async clear(androidVersion: string) {
-    if (androidVersion !== '13' && androidVersion !== '14') {
-      throw new ConflictException('Android version must be 13 or 14.');
+    if (
+      !supportedGappsAndroidVersions.some(
+        (version) => version === androidVersion,
+      )
+    ) {
+      throw new ConflictException(
+        `Unsupported GApps Android version. Supported versions: ${supportedGappsAndroidVersions.join(', ')}.`,
+      );
     }
     const directory = join(
       this.config.getOrThrow<string>('app.uploadsDir'),

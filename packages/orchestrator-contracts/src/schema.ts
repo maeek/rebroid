@@ -3411,7 +3411,7 @@ export interface components {
         };
         GappsBuildPresetDto: {
             /** @enum {string} */
-            androidVersion: "14" | "13";
+            androidVersion: "16" | "15" | "14" | "13";
             baseImage: string;
             sourceBranch: string;
             sourceRepository: string;
@@ -3434,7 +3434,7 @@ export interface components {
         };
         StartGappsBuildDto: {
             /** @enum {string} */
-            androidVersion: "14" | "13";
+            androidVersion: "16" | "15" | "14" | "13";
             /** @example local/redroid-gapps:14 */
             targetImage?: string;
         };
@@ -3615,7 +3615,7 @@ export interface components {
         };
         ScheduledTaskActionDto: {
             /** @enum {string} */
-            type: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history";
+            type: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             label: string;
             description: string;
         };
@@ -3628,7 +3628,7 @@ export interface components {
             predefinedKey: string | null;
             cronExpression: string;
             /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history";
+            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload: Record<string, never> | null;
             lastRunAt: string | null;
             nextRunAt: string | null;
@@ -3645,7 +3645,7 @@ export interface components {
              */
             danglingOnly?: boolean;
             /**
-             * @description Age in days for clean_runtime_logs and clean_workflow_history.
+             * @description Retention period in days for runtime logs and build or workflow history.
              * @example 30
              */
             retentionDays?: number;
@@ -3661,7 +3661,7 @@ export interface components {
             /** @example 0 3 * * 0 */
             cronExpression: string;
             /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history";
+            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
         };
         UpdateScheduledTaskDto: {
@@ -3675,7 +3675,7 @@ export interface components {
             /** @example 0 3 * * 0 */
             cronExpression?: string;
             /** @enum {string} */
-            actionType?: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history";
+            actionType?: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
         };
         SystemResourceCapacityDto: {
@@ -6491,7 +6491,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                androidVersion: "13" | "14";
+                androidVersion: "16" | "15" | "14" | "13";
             };
             cookie?: never;
         };

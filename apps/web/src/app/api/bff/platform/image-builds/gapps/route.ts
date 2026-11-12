@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { runRouteHandler } from '@/server/http/route-handler'
-import { startGappsBuild } from '@/server/platform/image-build-service'
+import { gappsAndroidVersionSchema, startGappsBuild } from '@/server/platform/image-build-service'
 
 const startBuildSchema = z.object({
-  androidVersion: z.enum(['13', '14']),
+  androidVersion: gappsAndroidVersionSchema,
   targetImage: z.string().trim().min(1).max(512)
 })
 

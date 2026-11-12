@@ -23,6 +23,7 @@ import {
   validateGappsArchivePath,
   validateGappsSymlinkTarget,
 } from '../utils/gapps-package-paths';
+import { gappsWorkDirectory } from '../utils/gapps-staging-paths';
 
 const maxArchiveEntries = 50_000;
 const maxExtractedBytes = 4 * 1024 ** 3;
@@ -43,8 +44,7 @@ export class ContainerImageGappsPackageService {
 
   async extract(packagePath: string, jobId: string) {
     const workDirectory = join(
-      this.config.getOrThrow<string>('app.uploadsDir'),
-      'image-build-gapps-work',
+      gappsWorkDirectory(this.config.getOrThrow<string>('app.uploadsDir')),
       jobId,
     );
     await rm(workDirectory, { recursive: true, force: true });

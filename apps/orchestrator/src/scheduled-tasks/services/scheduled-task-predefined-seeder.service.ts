@@ -51,6 +51,22 @@ const predefinedTasks: PredefinedScheduledTask[] = [
     enabled: true,
     cronExpression: '30 2 * * *',
     actionType: ScheduledTaskActionType.CleanWorkflowHistory,
+    payload: null,
+  },
+  {
+    key: 'clean-interrupted-image-builds',
+    name: 'Clean interrupted image builds',
+    enabled: true,
+    cronExpression: '15 2 * * *',
+    actionType: ScheduledTaskActionType.CleanInterruptedImageBuilds,
+    payload: null,
+  },
+  {
+    key: 'clean-image-build-history',
+    name: 'Image build history retention',
+    enabled: true,
+    cronExpression: '45 2 * * *',
+    actionType: ScheduledTaskActionType.CleanImageBuildHistory,
     payload: { retentionDays: 30 },
   },
   {

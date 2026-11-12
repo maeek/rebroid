@@ -42,6 +42,7 @@ import { ContainerImageRecipeService } from './services/container-image-recipe.s
 import {
   GappsBuildPresetsResponseDto,
   StartGappsBuildDto,
+  supportedGappsAndroidVersions,
 } from './dto/gapps-build.dto';
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
 import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
@@ -196,7 +197,7 @@ export class ContainerImagesController {
   @Delete('gapps-cache/:androidVersion')
   @RequiresFeature('feature.image-builder')
   @ApiOperation({ summary: 'Clear the managed GApps package cache.' })
-  @ApiParam({ name: 'androidVersion', enum: ['13', '14'] })
+  @ApiParam({ name: 'androidVersion', enum: supportedGappsAndroidVersions })
   clearGappsCache(@Param('androidVersion') androidVersion: string) {
     return this.gappsBuilder.clearCache(androidVersion);
   }

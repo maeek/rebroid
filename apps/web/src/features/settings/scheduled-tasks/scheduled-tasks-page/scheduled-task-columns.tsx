@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
+import { actionKeepsHistory, defaultRetentionDaysFor } from './schedule-utils'
 import { ScheduledTaskLastRun } from './scheduled-task-last-run'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -39,7 +40,9 @@ export const scheduledTaskColumns = ({
           <span className='text-xs text-foreground-muted'>
             {task.kind === 'predefined' ? 'Built-in' : 'Custom'}
             {showAction ? ` · ${action}` : null}
-            {task.actionType === 'clean_workflow_history' ? ` · ${task.payload?.retentionDays ?? 30} days` : null}
+            {actionKeepsHistory(task.actionType)
+              ? ` · ${task.payload?.retentionDays ?? defaultRetentionDaysFor(task.actionType)} days`
+              : null}
           </span>
         </div>
       )

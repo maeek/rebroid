@@ -20,7 +20,8 @@ import { Switch } from '@/components/ui/switch'
 import { Visible } from '@/components/ui/visible'
 import {
   actionNeedsDanglingOnly,
-  actionNeedsRetentionDays
+  defaultRetentionDaysFor,
+  retentionLabelFor
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
 import {
   useScheduledTasksContext,
@@ -34,6 +35,7 @@ export const ScheduledTaskFormDialog = () => {
     useScheduledTasksControllerContext()
   const isEditing = Boolean(form.id)
   const isEditingPredefined = form.kind === 'predefined'
+  const retentionLabel = retentionLabelFor(form.actionType)
 
   return (
     <Dialog
@@ -138,13 +140,9 @@ export const ScheduledTaskFormDialog = () => {
               />
             </FormField>
           </Visible>
-          <Visible when={actionNeedsRetentionDays(form.actionType)}>
+          {retentionLabel ? (
             <FormField
-              label={
-                form.actionType === 'clean_workflow_history'
-                  ? 'Keep finished workflow runs for'
-                  : 'Remove logs older than'
-              }
+              label={retentionLabel}
               description={
                 form.actionType === 'clean_workflow_history'
                   ? 'The task removes expired runs, step results, and events on its schedule.'
@@ -158,7 +156,7 @@ export const ScheduledTaskFormDialog = () => {
                 type='number'
                 min={1}
                 max={3650}
-                value={form.payload?.retentionDays ?? 30}
+                value={form.payload?.retentionDays ?? defaultRetentionDaysFor(form.actionType)}
                 onChange={event =>
                   setForm(current => ({
                     ...current,
@@ -167,7 +165,7 @@ export const ScheduledTaskFormDialog = () => {
                 }
               />
             </FormField>
-          </Visible>
+          ) : null}
           <DialogFooter>
             <Button
               type='button'

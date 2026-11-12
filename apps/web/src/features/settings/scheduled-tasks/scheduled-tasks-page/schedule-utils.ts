@@ -1,3 +1,4 @@
+import { defaultWorkflowHistoryRetentionDays } from '@/shared/contracts/scheduled-task'
 import {
   cronToSchedule,
   dateLabel,
@@ -16,8 +17,19 @@ export type { ScheduleDraft }
 
 export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) => type === 'prune_images'
 
-export const actionNeedsRetentionDays = (type: ScheduledTaskActionType) =>
-  type === 'clean_runtime_logs' || type === 'clean_workflow_history'
+export const actionKeepsHistory = (type: ScheduledTaskActionType) =>
+  type === 'clean_workflow_history' || type === 'clean_image_build_history'
+
+export const defaultRetentionDaysFor = (type: ScheduledTaskActionType) =>
+  type === 'clean_workflow_history' ? defaultWorkflowHistoryRetentionDays : 30
+
+const retentionLabels: Partial<Record<ScheduledTaskActionType, string>> = {
+  clean_runtime_logs: 'Remove logs older than',
+  clean_workflow_history: 'Keep finished workflow runs for',
+  clean_image_build_history: 'Keep completed image builds for'
+}
+
+export const retentionLabelFor = (type: ScheduledTaskActionType) => retentionLabels[type]
 
 export const defaultForm = (actionType: ScheduledTaskActionType): FormState => ({
   name: '',
@@ -43,8 +55,8 @@ export const normalizePayload = (form: FormState) => {
     return { danglingOnly: form.payload?.danglingOnly ?? true }
   }
 
-  if (actionNeedsRetentionDays(form.actionType)) {
-    return { retentionDays: Number(form.payload?.retentionDays ?? 30) }
+  if (retentionLabelFor(form.actionType)) {
+    return { retentionDays: Number(form.payload?.retentionDays ?? defaultRetentionDaysFor(form.actionType)) }
   }
 
   return null

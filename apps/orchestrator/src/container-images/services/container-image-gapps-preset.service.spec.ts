@@ -8,19 +8,21 @@ describe('ContainerImageGappsPresetService', () => {
     {} as DockerEnginePort,
   );
 
-  it('maps Android 14 to upsilon and the official ReDroid base', () => {
-    expect(service.getPreset('14')).toMatchObject({
-      baseImage: 'redroid/redroid:14.0.0-latest',
-      sourceBranch: 'upsilon',
-      defaultTargetImage: 'local/redroid-gapps:14',
-    });
-  });
-
-  it('maps Android 13 to tau and the official ReDroid base', () => {
-    expect(service.getPreset('13')).toMatchObject({
-      baseImage: 'redroid/redroid:13.0.0-latest',
-      sourceBranch: 'tau',
-      defaultTargetImage: 'local/redroid-gapps:13',
-    });
-  });
+  it.each([
+    ['16', 'baklava'],
+    ['15', 'vic'],
+    ['14', 'upsilon'],
+    ['13', 'tau'],
+  ] as const)(
+    'maps Android %s to %s and the official ReDroid base',
+    (androidVersion, sourceBranch) => {
+      expect(service.getPreset(androidVersion)).toMatchObject({
+        androidVersion,
+        baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
+        sourceBranch,
+        sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
+        defaultTargetImage: `local/redroid-gapps:${androidVersion}`,
+      });
+    },
+  );
 });

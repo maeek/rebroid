@@ -5,9 +5,8 @@ import { AutomationPageUnavailable } from '../../automations-page/shared/automat
 import { loadAutomationsListPageData, type AutomationsSearchParams } from './page-data.server'
 
 const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) => {
-  const { applications, automationsPage, gridQuery, orchestratorError, triggers } = await loadAutomationsListPageData(
-    (await searchParams) ?? {}
-  )
+  const { applications, automationsPage, gridQuery, orchestratorError, triggers, workflowHistoryRetention } =
+    await loadAutomationsListPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
     return <AutomationPageUnavailable title='Workflows' />
@@ -19,6 +18,7 @@ const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Pro
       automationsPage={automationsPage}
       gridQuery={gridQuery}
       initialTriggers={triggers}
+      workflowHistoryRetention={workflowHistoryRetention}
     />
   )
 }

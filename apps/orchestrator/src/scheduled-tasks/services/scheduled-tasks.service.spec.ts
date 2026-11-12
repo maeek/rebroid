@@ -167,6 +167,44 @@ describe('ScheduledTasksService', () => {
     );
   });
 
+  it('changes retention without rewriting or re-registering the schedule', async () => {
+    const existing = task({
+      actionType: ScheduledTaskActionType.CleanWorkflowHistory,
+      payloadJson: '{"retentionDays":7}',
+    });
+    const rescheduled = task({
+      ...existing,
+      cronExpression: '15 4 * * *',
+      enabled: false,
+      payloadJson: '{"retentionDays":14}',
+    });
+    const { service, tasks, cronRegistry } = createService({
+      repository: {
+        findById: jest
+          .fn()
+          .mockResolvedValueOnce(existing)
+          .mockResolvedValueOnce(rescheduled),
+        updatePayload: jest.fn().mockResolvedValue({ affected: 1 }),
+        updateConfiguration: jest.fn(),
+      },
+    });
+
+    await expect(
+      service.update(existing.id, { payload: { retentionDays: 14 } }),
+    ).resolves.toMatchObject({
+      cronExpression: rescheduled.cronExpression,
+      enabled: false,
+      payload: { retentionDays: 14 },
+    });
+    expect(tasks.updatePayload).toHaveBeenCalledWith(
+      existing.id,
+      existing.actionType,
+      '{"retentionDays":14}',
+    );
+    expect(tasks.updateConfiguration).not.toHaveBeenCalled();
+    expect(cronRegistry.registerTask).not.toHaveBeenCalled();
+  });
+
   it('records run-now failures on the task', async () => {
     const existing = task();
     const { service, taskRunner } = createService({

@@ -21,6 +21,7 @@ interface GappsBuildControllerInput {
 export interface GappsBuildController {
   activeJob: ContainerImageBuildJob | null
   androidVersion: SupportedGappsAndroidVersion
+  presets: GappsBuildPreset[]
   createAppHref: string
   currentPhaseIndex: number
   isClearing: boolean
@@ -115,6 +116,7 @@ export const useGappsBuildController = ({
   return {
     activeJob,
     androidVersion,
+    presets: presetResponse.presets,
     createAppHref: `/apps/create?${createAppQuery.toString()}`,
     currentPhaseIndex,
     isClearing,

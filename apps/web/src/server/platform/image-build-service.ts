@@ -1,9 +1,12 @@
 import 'server-only'
+import { z } from 'zod'
 import { requireFeature } from '@/server/orchestrator/features'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
 import { runAuditedPlatformAction } from '@/server/orchestrator/platform/platform-audit'
 import { requireAdminUser } from '@/server/orchestrator/shared'
 import type { StartGappsBuildInput } from '@/shared/contracts/platform'
+
+export const gappsAndroidVersionSchema = z.enum(['16', '15', '14', '13'])
 
 export const getImageBuildJob = async (id: string) => {
   await requireAdminUser()

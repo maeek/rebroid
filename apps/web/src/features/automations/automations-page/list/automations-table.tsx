@@ -254,7 +254,7 @@ export function AutomationsTable({
                     disabled={busy}
                     onSelect={() => setBulkDeleteOpen(true)}
                   >
-                    <IconTrash className='mr-2 size-4' />
+                    <IconTrash className='size-4' />
                     Delete selected ({selectedAutomations.length})
                   </ContextMenuItem>
                 ) : null}
@@ -262,7 +262,7 @@ export function AutomationsTable({
                   disabled={busy}
                   onSelect={() => router.push(`/automations/${encodeURIComponent(row.original.id)}/traces`)}
                 >
-                  <IconActivityHeartbeat className='mr-2 size-4' />
+                  <IconActivityHeartbeat className='size-4' />
                   Run history
                 </ContextMenuItem>
                 <ContextMenuItem
@@ -270,7 +270,7 @@ export function AutomationsTable({
                   disabled={busy}
                   onSelect={() => setPendingDelete(row.original)}
                 >
-                  <IconTrash className='mr-2 size-4' />
+                  <IconTrash className='size-4' />
                   Delete
                 </ContextMenuItem>
               </>

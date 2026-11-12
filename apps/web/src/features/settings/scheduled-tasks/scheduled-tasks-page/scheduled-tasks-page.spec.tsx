@@ -42,6 +42,40 @@ describe('Scheduler page', () => {
     expect(await screen.findByRole('switch', { name: 'Enable Clean APK uploads' })).not.toBeChecked()
   })
 
+  it('shows and saves image build history retention on the built-in task', async () => {
+    const task = {
+      ...schedulerPreviewTasks[0],
+      id: 'build-history',
+      name: 'Image build history retention',
+      actionType: 'clean_image_build_history',
+      payload: { retentionDays: 30 }
+    } as const
+    vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, payload: { retentionDays: 60 } })
+    render(
+      <ScheduledTasksPage
+        initialActions={[{ type: task.actionType, label: task.name, description: 'Remove old completed builds.' }]}
+        initialTasks={[task]}
+      />
+    )
+
+    const row = screen.getByRole('row', { name: /Image build history retention/ })
+    expect(within(row).getByText('Built-in · 30 days')).toBeVisible()
+    fireEvent.click(within(row).getByRole('button', { name: task.name }))
+    const dialog = await screen.findByRole('dialog')
+    const retention = within(dialog).getByRole('spinbutton', { name: 'Keep completed image builds for' })
+    expect(retention).toHaveValue(30)
+    fireEvent.change(retention, { target: { value: '60' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+
+    await waitFor(() =>
+      expect(updateScheduledTaskAction).toHaveBeenCalledWith(
+        task.id,
+        expect.objectContaining({ payload: { retentionDays: 60 } })
+      )
+    )
+    expect(await screen.findByText('Built-in · 60 days')).toBeVisible()
+  })
+
   it('shows availability only on the switch and avoids repeating built-in action names', () => {
     renderPage()
     const paused = screen.getByRole('row', { name: /Full Docker cleanup/ })

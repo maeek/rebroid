@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AndroidAppsCommonModule } from '../android-apps/common/android-apps-common.module';
 import { ApkModule } from '../apk/apk.module';
 import { AutomationsPersistenceModule } from '../automations/persistence/automations-persistence.module';
+import { ContainerImagesModule } from '../container-images/container-images.module';
 import { DockerModule } from '../docker/docker.module';
 import { ScheduledTasksController } from './controllers/scheduled-tasks.controller';
 import { ScheduledTask } from './entities/scheduled-task.entity';
@@ -20,6 +21,7 @@ import { ScheduledTasksService } from './services/scheduled-tasks.service';
     DockerModule,
     AndroidAppsCommonModule,
     AutomationsPersistenceModule,
+    ContainerImagesModule,
   ],
   controllers: [ScheduledTasksController],
   providers: [

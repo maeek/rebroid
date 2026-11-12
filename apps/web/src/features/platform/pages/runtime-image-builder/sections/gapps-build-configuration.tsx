@@ -15,6 +15,7 @@ import type { GappsBuildPresetsResponse } from '@/shared/contracts/platform'
 type GappsConfigurationState = Pick<
   GappsBuildController,
   | 'preset'
+  | 'presets'
   | 'androidVersion'
   | 'selectVersion'
   | 'targetImage'
@@ -36,7 +37,12 @@ export const GappsBuildConfiguration = ({
   loading?: boolean
 }) => {
   const disabled =
-    loading || controller.isRunning || controller.isStarting || controller.isCancelling || controller.isClearing
+    loading ||
+    !controller.preset ||
+    controller.isRunning ||
+    controller.isStarting ||
+    controller.isCancelling ||
+    controller.isClearing
   return (
     <PlatformResourceSection
       surface='plain'
@@ -55,11 +61,17 @@ export const GappsBuildConfiguration = ({
           onValueChange={controller.selectVersion}
         >
           <SelectTrigger className='w-full'>
-            <SelectValue />
+            <SelectValue>{loading ? `Android ${controller.androidVersion}` : undefined}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='14'>Android 14</SelectItem>
-            <SelectItem value='13'>Android 13</SelectItem>
+            {controller.presets.map(({ androidVersion }) => (
+              <SelectItem
+                key={androidVersion}
+                value={androidVersion}
+              >
+                Android {androidVersion}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FormField>

@@ -67,6 +67,10 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     this.scheduleDrain();
   }
 
+  activeBuildIds() {
+    return [...this.active.keys()];
+  }
+
   async startBuild(dto: StartGappsBuildDto) {
     this.features.assertEnabled('feature.image-builder');
     const resources = await this.presets.list();
@@ -281,9 +285,16 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         await this.jobs.markFailed(current, getErrorMessage(error));
       }
     } finally {
-      if (temporaryPackage) await this.cache.removeTemporary(temporaryPackage);
-      if (workDirectory) await this.packages.cleanup(workDirectory);
-      this.active.delete(id);
+      try {
+        if (temporaryPackage)
+          await this.cache.removeTemporary(temporaryPackage);
+      } finally {
+        try {
+          if (workDirectory) await this.packages.cleanup(workDirectory);
+        } finally {
+          this.active.delete(id);
+        }
+      }
     }
   }
 
@@ -351,7 +362,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     };
     return dockerfileWithRequiredLabels(
       `FROM ${baseImage}
-USER root
+USER 0:0
 COPY system/ /system/
 COPY rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint
 ENTRYPOINT ["/usr/local/bin/rebroid-gapps-entrypoint"]

@@ -7,6 +7,16 @@ export type ScheduledTaskActionType =
   | 'prune_all'
   | 'clean_runtime_logs'
   | 'clean_workflow_history'
+  | 'clean_interrupted_image_builds'
+  | 'clean_image_build_history'
+
+export const workflowHistoryRetentionKey = 'clean-workflow-history'
+export const defaultWorkflowHistoryRetentionDays = 7
+
+export interface WorkflowHistoryRetention {
+  retentionDays: number
+  enabled: boolean
+}
 
 export type ScheduledTaskLastStatus = 'never_run' | 'success' | 'failed'
 export type ScheduledTaskKind = 'predefined' | 'custom'
@@ -32,6 +42,11 @@ export interface ScheduledTask {
   createdAt: string
   updatedAt: string
 }
+
+export const isWorkflowHistoryRetentionTask = (task: ScheduledTask) =>
+  task.kind === 'predefined' &&
+  task.predefinedKey === workflowHistoryRetentionKey &&
+  task.actionType === 'clean_workflow_history'
 
 export interface ScheduledTaskAction {
   type: ScheduledTaskActionType

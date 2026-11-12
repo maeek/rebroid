@@ -13,6 +13,7 @@ import {
   configureFastifyPlatform,
   createFastifyAdapter,
 } from './platform/http-platform';
+import type { ScheduledTaskDto } from './scheduled-tasks/dto/scheduled-task.dto';
 
 const envKeys = [
   'DATABASE_PATH',
@@ -121,6 +122,53 @@ describe('AppModule', () => {
     await configureFastifyPlatform(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
+
+    const scheduledTasks = await app.inject({
+      method: 'GET',
+      url: '/api/v1/scheduled-tasks',
+      headers: { 'x-orchestrator-secret': 'test-secret' },
+    });
+    expect(scheduledTasks.statusCode).toBe(200);
+    const historyTask = scheduledTasks
+      .json<ScheduledTaskDto[]>()
+      .find((task) => task.predefinedKey === 'clean-workflow-history');
+    expect(historyTask).toMatchObject({
+      enabled: true,
+      payload: { retentionDays: 7 },
+    });
+    const retentionUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/scheduled-tasks/${historyTask?.id}`,
+      headers: { 'x-orchestrator-secret': 'test-secret' },
+      payload: { payload: { retentionDays: 14 } },
+    });
+    expect(retentionUpdate.statusCode).toBe(200);
+    expect(retentionUpdate.json()).toMatchObject({
+      enabled: true,
+      cronExpression: historyTask?.cronExpression,
+      nextRunAt: historyTask?.nextRunAt,
+      payload: { retentionDays: 14 },
+    });
+    const database = app.get(DataSource);
+    await database.query(
+      `INSERT INTO automation_runs
+         (id, automationId, ownerUserId, targetApplicationId, trigger, status, completedAt)
+       VALUES
+         ('expired', 'workflow', 'owner', 'app', 'manual', 'success', datetime('now', '-15 days')),
+         ('retained', 'workflow', 'owner', 'app', 'manual', 'success', datetime('now', '-10 days'))`,
+    );
+    const retentionRun = await app.inject({
+      method: 'POST',
+      url: `/api/v1/scheduled-tasks/${historyTask?.id}/run`,
+      headers: { 'x-orchestrator-secret': 'test-secret' },
+    });
+    expect(retentionRun.statusCode).toBe(201);
+    expect(retentionRun.json()).toMatchObject({ lastStatus: 'success' });
+    const runs = app.get(AutomationRunsRepository);
+    await expect(runs.findByOwnerAndId('owner', 'expired')).resolves.toBeNull();
+    await expect(
+      runs.findByOwnerAndId('owner', 'retained'),
+    ).resolves.toMatchObject({ id: 'retained' });
 
     const response = await app.inject({
       method: 'GET',

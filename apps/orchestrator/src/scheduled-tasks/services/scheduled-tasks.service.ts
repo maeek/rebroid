@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -88,6 +89,28 @@ export class ScheduledTasksService implements OnModuleInit {
 
   async update(id: string, dto: UpdateScheduledTaskDto) {
     const task = await this.getEntity(id);
+    if (
+      dto.payload !== undefined &&
+      dto.name === undefined &&
+      dto.enabled === undefined &&
+      dto.cronExpression === undefined &&
+      dto.actionType === undefined
+    ) {
+      const payload = this.actions.normalizePayload(
+        task.actionType,
+        dto.payload ? { ...dto.payload } : null,
+      );
+      const result = await this.tasks.updatePayload(
+        id,
+        task.actionType,
+        payload ? JSON.stringify(payload) : null,
+      );
+      const current = await this.getEntity(id);
+      if (!result.affected) {
+        throw new ConflictException('The scheduled task action changed.');
+      }
+      return this.toDto(current);
+    }
     if (dto.name !== undefined) {
       task.name = dto.name.trim();
     }
@@ -100,7 +123,9 @@ export class ScheduledTasksService implements OnModuleInit {
     if (dto.actionType !== undefined) {
       task.actionType = dto.actionType;
     }
-    if (dto.payload !== undefined || dto.actionType !== undefined) {
+    const includePayload =
+      dto.payload !== undefined || dto.actionType !== undefined;
+    if (includePayload) {
       const payload = this.actions.normalizePayload(
         task.actionType,
         dto.payload !== undefined
@@ -113,7 +138,9 @@ export class ScheduledTasksService implements OnModuleInit {
     }
     task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
 
-    const updated = await this.tasks.updateConfiguration(task);
+    const updated = await this.tasks.updateConfiguration(task, {
+      includePayload,
+    });
     if (!updated.affected) {
       throw new NotFoundException(`Scheduled task "${id}" was not found.`);
     }

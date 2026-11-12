@@ -89,6 +89,7 @@ describe('ContainerImageGappsBuilderService', () => {
       '14',
     );
 
+    expect(dockerfile).toMatch(/^USER 0:0$/m);
     expect(dockerfile).toContain(
       'COPY rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint',
     );

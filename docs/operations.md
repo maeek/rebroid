@@ -115,8 +115,9 @@ targeted reset: it also removes web state and generated credentials.
 
 ## Google Play image patching
 
-Open **Runtime → Images** to build a local Android 13 or 14 image with Google Play components.
-The managed builder uses prebuilt ReDroid and a pinned MindTheGapps revision; it does not compile AOSP.
+Open **Docker → Images → Google Play builder** to build a local Android 13, 14, 15, or 16 image with
+Google Play components. The builder patches the official ReDroid base with an x86-64 MindTheGapps
+package built from a pinned GitLab revision. Android 15 uses `vic` and Android 16 uses `baklava`.
 
 | Requirement   | Value                            |
 | ------------- | -------------------------------- |
@@ -130,14 +131,15 @@ secrets. The pulled image digest, source revision, and package checksum are reco
 and APK/XML validation complete before the final image is accepted.
 
 Canceling removes the worker and temporary files while retaining verified cache entries. A patch
-job interrupted by restart is marked failed; a retry can reuse the cache. **Advanced cache options**
-removes cached Android 13 or 14 packages. The **Custom builder** remains available for Dockerfile workflows.
+job interrupted by restart is marked failed. A retry can reuse the cache. Under **Package cache**,
+**Clear cache** removes verified packages for the selected Android version. The **Custom builder**
+remains available for Dockerfile workflows.
 
 APK dependency analysis is advisory: it can suggest a matching Google Play image without rejecting
 an otherwise valid upload. Built images are local; Rebroid does not redistribute patched images
 or guarantee Google login, Play Protect certification, or Play Integrity compatibility.
 
-For builder changes, run `pnpm test:gapps-patcher` and manually build both supported Android versions.
+For builder changes, run `pnpm test:gapps-patcher` and manually build the affected Android versions.
 Record image IDs, payload validation, duration, disk usage, and peak memory.
 
 ## AI provider compatibility

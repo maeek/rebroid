@@ -6,6 +6,7 @@ import {
   DOCKER_ENGINE,
   type DockerEnginePort,
 } from '../../docker/contracts/docker-engine.port';
+import { supportedGappsAndroidVersions } from '../dto/gapps-build.dto';
 import type {
   GappsBuildPresetDto,
   GappsBuildPresetsResponseDto,
@@ -18,6 +19,22 @@ const requiredMemoryBytes = 3 * gibibyte;
 const recommendedCpuCount = 2;
 
 const presets: Record<SupportedGappsAndroidVersion, GappsBuildPresetDto> = {
+  '16': {
+    androidVersion: '16',
+    baseImage: 'redroid/redroid:16.0.0-latest',
+    sourceBranch: 'baklava',
+    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
+    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/baklava',
+    defaultTargetImage: 'local/redroid-gapps:16',
+  },
+  '15': {
+    androidVersion: '15',
+    baseImage: 'redroid/redroid:15.0.0-latest',
+    sourceBranch: 'vic',
+    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
+    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/vic',
+    defaultTargetImage: 'local/redroid-gapps:15',
+  },
   '14': {
     androidVersion: '14',
     baseImage: 'redroid/redroid:14.0.0-latest',
@@ -77,7 +94,7 @@ export class ContainerImageGappsPresetService {
     }
 
     return {
-      presets: [presets['14'], presets['13']],
+      presets: supportedGappsAndroidVersions.map((version) => presets[version]),
       resources: {
         canBuild: diskRequirementMet && memoryRequirementMet,
         diskAvailableBytes,

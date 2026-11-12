@@ -44,6 +44,10 @@ export class ContainerImageBuilderService {
     return this.jobs.listJobs();
   }
 
+  activeBuildIds() {
+    return [...this.activeBuilds.keys()];
+  }
+
   getJob(id: string) {
     return this.jobs.getJob(id);
   }

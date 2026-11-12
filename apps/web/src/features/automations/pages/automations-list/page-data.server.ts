@@ -1,6 +1,7 @@
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationsGridAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { listAutomationTriggersAction } from '@/server/orchestrator/automations/automation-trigger-actions'
+import { loadWorkflowHistoryRetention } from '@/server/orchestrator/scheduled-tasks/workflow-history-retention'
 import { firstSearchParamValue, positiveIntegerSearchParam, validatedSearchParam } from '@/shared/model/search-params'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
@@ -49,7 +50,7 @@ export const loadAutomationsListPageData = async (searchParams: AutomationsSearc
     orchestratorError ??= errorMessage(error)
   }
 
-  const [automationsPage, applications, triggers] = await Promise.all([
+  const [automationsPage, applications, triggers, workflowHistoryRetention] = await Promise.all([
     listAutomationsGridAction(gridQuery).catch(error => {
       captureError(error)
       return emptyAutomationsGridPage(gridQuery)
@@ -61,7 +62,8 @@ export const loadAutomationsListPageData = async (searchParams: AutomationsSearc
     listAutomationTriggersAction().catch(error => {
       captureError(error)
       return [] as AutomationTrigger[]
-    })
+    }),
+    loadWorkflowHistoryRetention()
   ])
 
   return {
@@ -69,6 +71,7 @@ export const loadAutomationsListPageData = async (searchParams: AutomationsSearc
     automationsPage,
     gridQuery,
     orchestratorError,
-    triggers
+    triggers,
+    workflowHistoryRetention
   }
 }

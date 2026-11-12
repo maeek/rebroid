@@ -77,6 +77,7 @@ const noop = () => undefined
 const pendingController: GappsBuildController = {
   activeJob: null,
   androidVersion: '14',
+  presets: [],
   createAppHref: '/apps/create',
   currentPhaseIndex: -1,
   isClearing: false,

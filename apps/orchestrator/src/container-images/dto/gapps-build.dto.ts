@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, Matches } from 'class-validator';
 
-export const supportedGappsAndroidVersions = ['14', '13'] as const;
+export const supportedGappsAndroidVersions = ['16', '15', '14', '13'] as const;
 export type SupportedGappsAndroidVersion =
   (typeof supportedGappsAndroidVersions)[number];
 

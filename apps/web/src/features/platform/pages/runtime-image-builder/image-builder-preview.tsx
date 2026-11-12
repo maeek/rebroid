@@ -8,17 +8,25 @@ import { CustomBuilderContent, RuntimeImageBuilderPageLoading } from './page-cli
 import type {
   ContainerImageBuildContextFile,
   ContainerImageBuildJob,
-  GappsBuildPresetsResponse
+  GappsBuildPresetsResponse,
+  SupportedGappsAndroidVersion
 } from '@/shared/contracts/platform'
 
+const previewSources: [SupportedGappsAndroidVersion, string][] = [
+  ['16', 'baklava'],
+  ['15', 'vic'],
+  ['14', 'upsilon'],
+  ['13', 'tau']
+]
+
 export const builderPreviewPresets: GappsBuildPresetsResponse = {
-  presets: ['14', '13'].map(version => ({
-    androidVersion: version as '14' | '13',
-    baseImage: `redroid/redroid:${version}.0.0-latest`,
-    sourceBranch: version === '14' ? 'upsilon' : 'tau',
+  presets: previewSources.map(([androidVersion, sourceBranch]) => ({
+    androidVersion,
+    baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
+    sourceBranch,
     sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/upsilon',
-    defaultTargetImage: `local/redroid-gapps:${version}`
+    sourceLink: `https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/${sourceBranch}`,
+    defaultTargetImage: `local/redroid-gapps:${androidVersion}`
   })),
   resources: {
     canBuild: true,

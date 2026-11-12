@@ -29,7 +29,7 @@ export class ScheduledTaskPayloadDto {
 
   @ApiPropertyOptional({
     description:
-      'Age in days for clean_runtime_logs and clean_workflow_history.',
+      'Retention period in days for runtime logs and build or workflow history.',
     example: 30,
     minimum: 1,
     maximum: 3650,

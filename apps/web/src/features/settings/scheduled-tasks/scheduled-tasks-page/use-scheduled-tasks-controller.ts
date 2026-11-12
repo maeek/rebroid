@@ -14,6 +14,7 @@ import {
   runScheduledTaskNowAction,
   updateScheduledTaskAction
 } from '@/server/orchestrator/scheduled-tasks/actions'
+import { isWorkflowHistoryRetentionTask } from '@/shared/contracts/scheduled-task'
 import type { FormState, ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 
@@ -60,8 +61,26 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     setIsSaving(true)
     try {
       const payload = normalizePayload(form)
-      const input = { ...form, cronExpression: scheduleToCron(form.schedule), payload }
-      const saved = form.id ? await updateScheduledTaskAction(form.id, input) : await createScheduledTaskAction(input)
+      const cronExpression = scheduleToCron(form.schedule)
+      const input = { ...form, cronExpression, payload }
+      const workflowHistoryTask = tasks.find(task => task.id === form.id && isWorkflowHistoryRetentionTask(task))
+      const update = workflowHistoryTask
+        ? {
+            ...(form.enabled !== workflowHistoryTask.enabled && { enabled: form.enabled }),
+            ...(cronExpression !== workflowHistoryTask.cronExpression && { cronExpression }),
+            ...(payload?.retentionDays !== normalizePayload(taskToForm(workflowHistoryTask))?.retentionDays && {
+              payload
+            })
+          }
+        : input
+      let saved: ScheduledTask
+      if (workflowHistoryTask && !Object.keys(update).length) {
+        saved = workflowHistoryTask
+      } else if (form.id) {
+        saved = await updateScheduledTaskAction(form.id, update)
+      } else {
+        saved = await createScheduledTaskAction(input)
+      }
       replaceTask(saved)
       setIsFormOpen(false)
       resetForm()

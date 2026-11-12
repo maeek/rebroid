@@ -1,3 +1,4 @@
+import type { ActionResult } from '@/shared/actions/action-result'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
   Automation,
@@ -8,6 +9,7 @@ import type {
   AutomationTriggersGridQuery,
   AutomationTrigger
 } from '@/shared/contracts/automation'
+import type { WorkflowHistoryRetention } from '@/shared/contracts/scheduled-task'
 
 export interface AutomationsListPageProps {
   loading?: boolean
@@ -15,6 +17,7 @@ export interface AutomationsListPageProps {
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
   initialTriggers: AutomationTrigger[]
+  workflowHistoryRetention?: ActionResult<WorkflowHistoryRetention> | null
 }
 
 export interface AutomationEditorPageProps {

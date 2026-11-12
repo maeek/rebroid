@@ -51,6 +51,43 @@ export class ContainerImageBuildJobService {
     });
   }
 
+  hasUnfinishedGappsJob(id: string) {
+    return this.jobs.existsBy({
+      id,
+      status: In(['queued', 'running']),
+      buildKind: 'redroid_gapps_patch',
+    });
+  }
+
+  async pruneHistory(cutoff: Date, activeIds: readonly string[]) {
+    const rankedJobs = this.jobs
+      .createQueryBuilder('job')
+      .select('job.id', 'id')
+      .addSelect('COALESCE(job.finishedAt, job.updatedAt)', 'completedAt')
+      .addSelect(
+        `ROW_NUMBER() OVER (
+          PARTITION BY job.targetImage
+          ORDER BY COALESCE(job.finishedAt, job.updatedAt) DESC,
+            job.createdAt DESC, job.id DESC
+        )`,
+        'resultRank',
+      )
+      .where('job.status IN (:...terminalStatuses)', { terminalStatuses });
+    const deletion = this.jobs
+      .createQueryBuilder()
+      .delete()
+      .where(
+        `id IN (SELECT id FROM (${rankedJobs.getQuery()}) AS completed
+          WHERE resultRank > 1 AND completedAt < :cutoff)`,
+        { cutoff, ...rankedJobs.getParameters() },
+      );
+    if (activeIds.length) {
+      deletion.andWhere('id NOT IN (:...activeIds)', { activeIds });
+    }
+    const result = await deletion.execute();
+    return result.affected ?? 0;
+  }
+
   async failInterruptedGappsJobs() {
     const jobs = await this.jobs.find({
       where: { status: 'running', buildKind: 'redroid_gapps_patch' },
