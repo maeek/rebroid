@@ -13,12 +13,17 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
+import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { saveWebSettingsAction } from '@/server/web-settings/actions/save-web-settings-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import {
+  isPasswordMinimumLength,
+  passwordMinimumLengthError,
+  passwordMinimumLengthLimits
+} from '@/shared/model/settings/password-minimum-length'
 
 export const PasswordPolicyDialog = ({
   initialPasswordMinimumLength,
@@ -28,22 +33,25 @@ export const PasswordPolicyDialog = ({
   disabled?: boolean
 }) => {
   const [open, setOpen] = useState(false)
-  const [passwordMinimumLength, setPasswordMinimumLength] = useState(initialPasswordMinimumLength)
+  const [draft, setDraft] = useState(String(initialPasswordMinimumLength))
   const [savedPasswordMinimumLength, setSavedPasswordMinimumLength] = useState(initialPasswordMinimumLength)
   const [isSaving, setIsSaving] = useState(false)
-  const isDirty = passwordMinimumLength !== savedPasswordMinimumLength
+  const hasValue = draft.trim() !== ''
+  const passwordMinimumLength = Number(draft)
+  const isValid = hasValue && isPasswordMinimumLength(passwordMinimumLength)
+  const canSave = isValid && passwordMinimumLength !== savedPasswordMinimumLength
 
   const setDialogOpen = (nextOpen: boolean) => {
     if (isSaving) return
-    if (nextOpen) setPasswordMinimumLength(savedPasswordMinimumLength)
+    if (nextOpen) setDraft(String(savedPasswordMinimumLength))
     setOpen(nextOpen)
   }
 
   const savePasswordPolicy = async () => {
+    if (!canSave || isSaving) return
     setIsSaving(true)
     try {
       const saved = unwrapActionResult(await saveWebSettingsAction({ passwordMinimumLength }))
-      setPasswordMinimumLength(saved.passwordMinimumLength)
       setSavedPasswordMinimumLength(saved.passwordMinimumLength)
       setOpen(false)
       toast({ title: 'Password policy saved', variant: 'success' })
@@ -87,16 +95,20 @@ export const PasswordPolicyDialog = ({
         <FormField
           controlId='password-policy-minimum-length'
           label='Minimum password length'
-          description='Applies to new users, admin password resets, and profile password changes.'
+          description='Applies to new passwords and resets. Set to 0 to allow passwords as short as one character.'
+          error={hasValue && !isValid ? passwordMinimumLengthError : undefined}
           layout='vertical'
         >
-          <NumberSliderField
-            value={String(passwordMinimumLength)}
-            min={8}
-            max={128}
-            inputSuffix='characters'
-            showSlider={false}
-            onValueChange={value => setPasswordMinimumLength(Number(value) || savedPasswordMinimumLength)}
+          <Input
+            className='max-w-48'
+            type='number'
+            inputMode='numeric'
+            value={draft}
+            min={passwordMinimumLengthLimits.min}
+            max={passwordMinimumLengthLimits.max}
+            step={1}
+            disabled={isSaving}
+            onChange={event => setDraft(event.target.value)}
           />
         </FormField>
         <DialogFooter className='border-t border-surface-border/55 pt-4'>
@@ -112,7 +124,7 @@ export const PasswordPolicyDialog = ({
             type='button'
             pending={isSaving}
             pendingLabel='Saving…'
-            disabled={!isDirty}
+            disabled={!canSave}
             onClick={() => void savePasswordPolicy()}
           >
             <IconDeviceFloppy className='size-4' />

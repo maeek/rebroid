@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -24,7 +24,15 @@ import { buildUserUpdateInput, toUserDraft } from './user-edit-page-model'
 import type { UserDraft } from './user-edit-page-model'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 
-export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }) => {
+export const UserEditPage = ({
+  user,
+  groups,
+  children
+}: {
+  user: PublicUser
+  groups: UserGroup[]
+  children?: ReactNode
+}) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toUserDraft(user))
   const [isSaving, setIsSaving] = useState(false)
@@ -123,6 +131,7 @@ export const UserEditPage = ({ user, groups }: { user: PublicUser; groups: UserG
             quotas={<EffectiveQuotaFields quotas={effectiveAccess.quotas} />}
           />
         </fieldset>
+        {children}
       </PageContent>
     </EditorPage>
   )

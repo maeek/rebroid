@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { getCurrentUser } from '@/server/auth/authorization'
+import { isCurrentAccountSession } from '@/server/auth/account-sessions'
+import { getCurrentSessionIdentity, getCurrentUser } from '@/server/auth/authorization'
 import { hasInternalSecret } from '@/server/auth/internal-secret'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { viewerCapabilitiesFor } from '@/server/orchestrator/applications/viewer-capabilities'
@@ -21,8 +22,10 @@ export const GET = async (request: Request) => {
     ownerUserId: request.headers.get('x-rebroid-viewer-owner')
   })
   if (!target.success) return new Response(null, { status: 403, headers })
-  const account = await getCurrentUser().catch(() => null)
-  if (!account || account.id !== target.data.ownerUserId || hasPendingViewerRevocation(account.id)) {
+  const authorized = await Promise.all([getCurrentUser(), getCurrentSessionIdentity()]).catch(() => null)
+  if (!authorized) return new Response(null, { status: 403, headers })
+  const [account, identity] = authorized
+  if (account.id !== target.data.ownerUserId || hasPendingViewerRevocation(account.id)) {
     return new Response(null, { status: 403, headers })
   }
 
@@ -32,7 +35,8 @@ export const GET = async (request: Request) => {
     app.ownerUserId !== account.id ||
     app.status.currentStatus !== 'running' ||
     app.runtime.containerId !== target.data.runtimeId ||
-    hasPendingViewerRevocation(account.id)
+    hasPendingViewerRevocation(account.id) ||
+    !isCurrentAccountSession(account, identity)
   ) {
     return new Response(null, { status: 403, headers })
   }

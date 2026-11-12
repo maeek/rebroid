@@ -128,3 +128,43 @@ test("an active viewer closes when current permissions no longer allow its grant
   t.mock.timers.tick(10_000);
   await revoked;
 });
+
+test("revoking one browser closes only its connection to a shared display session", async (t) => {
+  const { access, grant, sessions } = setup();
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  let revoked = false;
+  let otherRechecked = false;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      const cookie = new Headers(init?.headers).get("cookie");
+      if (revoked && cookie?.endsWith("=first-browser")) {
+        return new Response(null, { status: 403 });
+      }
+      if (revoked && cookie?.endsWith("=second-browser")) {
+        otherRechecked = true;
+      }
+      return Response.json({
+        ownerUserId: "alice",
+        capabilities: { control: false, clipboard: true, screenshot: false },
+      });
+    },
+  );
+  const first = await access.admit(grant.id, headersFor("first-browser"));
+  const second = await access.admit(grant.id, headersFor("second-browser"));
+  let notifyFirstClosed!: () => void;
+  const firstClosed = new Promise<void>((resolve) => {
+    notifyFirstClosed = resolve;
+  });
+  const secondClosed = t.mock.fn();
+  t.after(first.watch(notifyFirstClosed));
+  t.after(second.watch(secondClosed));
+
+  revoked = true;
+  t.mock.timers.tick(10_000);
+  await firstClosed;
+  assert.equal(otherRechecked, true);
+  assert.equal(secondClosed.mock.callCount(), 0);
+  assert.equal(sessions.get(grant.id).status, "active");
+});

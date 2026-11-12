@@ -79,12 +79,25 @@ df -i /var/lib/docker
 | Android exits immediately              | [ReDroid host checks](deployment.md#redroid-host-checks).  |
 | Viewer reconnects repeatedly           | [Display diagnostics](display-streaming.md#diagnostics).   |
 
+## Android notification sampling
+
+The navigation badge and application detail poll every 10 seconds while visible. The orchestrator
+shares a successful notification sample for the same Android runtime for up to five seconds. It
+collects on demand, with a bounded number of concurrent Docker inspections and ADB dumps.
+
+To verify on a ReDroid host, compare Docker container inspections and display-sidecar ADB
+notification command launches with the same set of running apps and the same foreground clients
+before and after the change. Stagger the clients so their requests do not always overlap. Post and
+dismiss a test notification at different points in the polling cycle and measure when the badge
+updates. The healthy foreground target is 15 seconds at p95 for both operations. Count a missed
+update as a failure.
+
 ## Stored state
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema
 changes require a clean database. The commands below delete data when `--execute` is supplied.
-Preview the reported paths and resources first. The group-based authorization schema requires a
-fresh web database. Older web databases are rejected at startup.
+Preview the reported paths and resources first. The account-session schema requires a fresh web
+database. Older web databases are rejected at startup.
 
 ### Orchestrator reset
 

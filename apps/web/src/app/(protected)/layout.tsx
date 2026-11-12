@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
+import { SessionStatusMonitor } from '@/features/auth/session-status-monitor'
 import { getAuthenticatedUser } from '@/server/auth/authorization'
 import { passwordChangeRedirectPath } from '@/server/auth/password-change-routing'
 import { loadFeatureFlags } from '@/server/orchestrator/features'
@@ -21,5 +22,10 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   }
 
   const featureFlags = await loadFeatureFlags()
-  return <FeatureFlagsProvider manifest={featureFlags}>{children}</FeatureFlagsProvider>
+  return (
+    <FeatureFlagsProvider manifest={featureFlags}>
+      <SessionStatusMonitor />
+      {children}
+    </FeatureFlagsProvider>
+  )
 }

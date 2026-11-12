@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetDatabaseForTests } from '@/server/persistence/database'
 import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { revokeViewerSessionsForUsers } from '@/server/users/revoke-viewer-sessions'
+import { getWebSettings, saveWebSettings } from '@/server/web-settings/store'
 import { encryptMfaSecret } from './mfa-crypto'
 import { completeTestAdministratorSetup } from './test-administrator'
 import { userService } from './user'
@@ -51,6 +52,32 @@ describe('userService.changeOwnPassword', () => {
     await expect(userService.changeOwnPassword(user.id, 'original-password', 'short')).rejects.toThrow(
       'Password must be at least 8 characters.'
     )
+  })
+
+  it('persists a zero minimum and accepts short credentials while requiring a password', async () => {
+    const admin = await administrator()
+    await expect(saveWebSettings({ passwordMinimumLength: 0 })).resolves.toMatchObject({ passwordMinimumLength: 0 })
+    await saveWebSettings({ removeDataOnDelete: false })
+    await expect(getWebSettings()).resolves.toMatchObject({ passwordMinimumLength: 0 })
+
+    await expect(createUser({ username: 'empty', password: '' })).rejects.toThrow('Password is required.')
+    const user = await createUser({ username: 'user', password: 'a' })
+    await userService.completeRequiredPasswordChange(user.id, 'a', 'b')
+    await expect(userService.changeOwnPassword(user.id, 'b', '')).rejects.toThrow('Password is required.')
+    await userService.changeOwnPassword(user.id, 'b', 'c')
+    await userService.updateUser(user.id, { password: 'd' }, admin)
+    await expect(userService.authenticate('user', 'd')).resolves.toMatchObject({ passwordChangeRequired: true })
+  })
+
+  it('rejects invalid password policy values without replacing the saved minimum', async () => {
+    await saveWebSettings({ passwordMinimumLength: 12 })
+    for (const value of [undefined, null, '', '0', -1, 0.5, 129]) {
+      await expect(saveWebSettings({ passwordMinimumLength: value as number })).rejects.toMatchObject({
+        code: 'validation',
+        status: 422
+      })
+    }
+    await expect(getWebSettings()).resolves.toMatchObject({ passwordMinimumLength: 12 })
   })
 
   it('rejects passwords longer than the policy maximum', async () => {

@@ -91,7 +91,7 @@ test('preferences use a consistent form column gap and stack fields on narrow sc
   const password = page.getByRole('region', { name: 'Change password', exact: true })
   const mfa = page.getByRole('region', { name: 'Multi-factor authentication', exact: true })
   const pairs = [
-    [mfa, password],
+    [password, mfa],
     [password.getByLabel('New password', { exact: true }), password.getByLabel('Confirm new password', { exact: true })]
   ]
 
@@ -105,6 +105,8 @@ test('preferences use a consistent form column gap and stack fields on narrow sc
       expect(secondBox.y).toBeGreaterThan(firstBox.y + firstBox.height)
     } else {
       expect(secondBox.x - firstBox.x - firstBox.width).toBeCloseTo(32, 0)
+      expect(secondBox.y).toBeCloseTo(firstBox.y, 0)
+      expect(secondBox.height).toBeCloseTo(firstBox.height, 0)
     }
   }
 })

@@ -4,7 +4,7 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { defaultAccentColor, isAccentColor } from '@/shared/model/theme/accent-color'
 import { defaultUserGroupId } from '@/shared/permissions/effective-access'
 import { hashPassword } from './password-hashing'
-import { assertPasswordMeetsPolicy, getPasswordMinimumLength } from './password-policy'
+import { assertPasswordMeetsPolicy } from './password-policy'
 import { assertCanChangeAdministrator } from './user-admin-guard'
 import { nowIso, toPublicUser, validateAvatarDataUrl, validateGroupIds } from './user-model'
 import { mutateAdministratorUsersFile, mutateUsersFile, type AdministratorMutation } from './user-store'
@@ -21,13 +21,9 @@ const createUser = async (
   administrator: AdministratorMutation
 ) => {
   const { value } = await mutateAdministratorUsersFile(administrator, async file => {
-    const passwordMinimumLength = await getPasswordMinimumLength()
     const normalizedUsername = username.trim()
     if (!normalizedUsername) {
-      throw new PublicActionError(
-        `Username is required and password must be at least ${passwordMinimumLength} characters.`,
-        { code: 'validation', status: 422 }
-      )
+      throw new PublicActionError('Username is required.', { code: 'validation', status: 422 })
     }
     await assertPasswordMeetsPolicy(password)
     validateAvatarDataUrl(input.avatarDataUrl)

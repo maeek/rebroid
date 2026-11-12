@@ -1,7 +1,8 @@
 import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { administratorsGroupId } from '@/shared/permissions/effective-access'
-import { isCurrentAccountSession, type AccountSessionIdentity } from './session-identity'
+import { isCurrentAccountSession } from './account-sessions'
+import type { AccountSessionIdentity } from './session-identity'
 import type { StoredUser, UsersFile } from './user-model'
 
 export const assertAdministratorForMutation = (file: UsersFile, identity: AccountSessionIdentity) => {

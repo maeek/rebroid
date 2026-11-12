@@ -1,16 +1,27 @@
 import 'server-only'
-import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
 
 export type AccountSessionIdentity = {
   userId: string
+  sessionId: string
   sessionVersion: number
   authEpoch: string
 }
 
-type AccountSessionState = { id: string; sessionVersion: number; disabled: boolean }
-
-export const isCurrentAccountSession = (account: AccountSessionState, session: AccountSessionIdentity) =>
-  account.id === session.userId &&
-  !account.disabled &&
-  account.sessionVersion === session.sessionVersion &&
-  session.authEpoch === getAuthEpoch()
+export const readAccountSessionIdentity = (
+  value: { userId?: string; sessionId?: string; sessionVersion?: number; authEpoch?: string } | null | undefined
+): AccountSessionIdentity | null => {
+  if (
+    !value?.userId ||
+    typeof value.sessionId !== 'string' ||
+    typeof value.sessionVersion !== 'number' ||
+    typeof value.authEpoch !== 'string'
+  ) {
+    return null
+  }
+  return {
+    userId: value.userId,
+    sessionId: value.sessionId,
+    sessionVersion: value.sessionVersion,
+    authEpoch: value.authEpoch
+  }
+}

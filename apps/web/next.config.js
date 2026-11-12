@@ -13,6 +13,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   devIndicators: { position: 'bottom-right' },
+  // Server Function traces include raw arguments such as login passwords.
+  logging: { serverFunctions: false },
   allowedDevOrigins,
   output: 'standalone',
   // The display sidecar serves the viewer directly. Keep slash normalization

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { AccountSessionsSection } from '../security/ui/account-sessions-section'
 import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupMembershipEditor } from './components/group-membership-editor'
 import { GroupDetailsSections, UserAccountSections } from './components/identity-fields'
@@ -121,5 +122,11 @@ const EditBodySkeleton = ({ variant }: { variant: 'user' | 'group' }) => (
         )
       }
     />
+    {variant === 'user' ? (
+      <AccountSessionsSection
+        userId={null}
+        loading
+      />
+    ) : null}
   </PageContent>
 )

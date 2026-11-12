@@ -1,6 +1,6 @@
 import 'server-only'
+import { isCurrentAccountSession } from '@/server/auth/account-sessions'
 import { getCurrentSessionIdentity } from '@/server/auth/authorization'
-import { isCurrentAccountSession } from '@/server/auth/session-identity'
 import { userService } from '@/server/auth/user'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'

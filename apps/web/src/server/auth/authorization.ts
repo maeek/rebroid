@@ -1,21 +1,15 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
+import { isCurrentAccountSession } from './account-sessions'
 import { getServerAuthSession } from './auth'
 import { requiredPasswordChangePath } from './password-change-routing'
-import { isCurrentAccountSession } from './session-identity'
+import { readAccountSessionIdentity } from './session-identity'
 import { userService } from './user'
 
 const getAuthenticatedAccount = cache(async () => {
   const session = await getServerAuthSession()
-  if (!session?.user || typeof session.user.sessionVersion !== 'number' || typeof session.user.authEpoch !== 'string') {
-    redirect('/login')
-  }
-
-  const identity = {
-    userId: session.user.id,
-    sessionVersion: session.user.sessionVersion,
-    authEpoch: session.user.authEpoch
-  }
+  const identity = readAccountSessionIdentity({ ...session?.user, userId: session?.user?.id })
+  if (!identity) redirect('/login')
   const user = await userService.getUserById(identity.userId)
   if (!user || !isCurrentAccountSession(user, identity)) redirect('/login')
   return { user, identity }

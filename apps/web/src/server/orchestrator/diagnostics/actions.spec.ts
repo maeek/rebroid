@@ -9,7 +9,9 @@ const { getServerAuthSession, getUserById } = vi.hoisted(() => ({
 }))
 vi.mock('@/server/auth/auth', () => ({ getServerAuthSession }))
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById } }))
-vi.mock('@/server/persistence/auth-security-repository', () => ({ getAuthEpoch: () => 'test-epoch' }))
+vi.mock('@/server/persistence/account-sessions-repository', () => ({
+  findActiveAccountSession: () => ({ lastActiveAt: 0, passwordChangeRequired: 0 })
+}))
 vi.mock('next/navigation', () => ({
   redirect: (path: string) => {
     throw new Error(`Redirect to ${path}`)
@@ -26,7 +28,12 @@ const account = { id: 'test-user', sessionVersion: 1, disabled: false, passwordC
 describe('orchestrator diagnostics actions', () => {
   beforeEach(() => {
     getServerAuthSession.mockResolvedValue({
-      user: { id: account.id, sessionVersion: account.sessionVersion, authEpoch: 'test-epoch' }
+      user: {
+        id: account.id,
+        sessionId: 'test-session',
+        sessionVersion: account.sessionVersion,
+        authEpoch: 'test-epoch'
+      }
     })
     getUserById.mockResolvedValue({ ...account, isPlatformAdmin: false })
   })

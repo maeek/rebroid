@@ -1,3 +1,4 @@
+import { passwordMinimumLengthLimits } from '@/shared/model/settings/password-minimum-length'
 import type { ScrcpyTransport } from '@/shared/contracts/application'
 import type { OrchestratorSettingsResponse, WebSettingsResponse } from '@/shared/contracts/ui-settings'
 import type { ViewerStreamingPreset } from '@/shared/model/settings/viewer-streaming-preset'
@@ -102,7 +103,7 @@ export const defaultOrchestratorUiSettings: OrchestratorUiSettings = {
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30,
-  passwordMinimumLength: 8,
+  passwordMinimumLength: passwordMinimumLengthLimits.default,
   services: {
     ocr: {
       endpoint: null,

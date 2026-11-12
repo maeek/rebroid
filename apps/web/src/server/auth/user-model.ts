@@ -31,8 +31,6 @@ export type UsersFile = {
   groups: UserGroup[]
 }
 
-export const defaultPasswordMinimumLength = 8
-
 const maxAvatarBytes = 2 * 1024 * 1024
 
 export const nowIso = () => new Date().toISOString()

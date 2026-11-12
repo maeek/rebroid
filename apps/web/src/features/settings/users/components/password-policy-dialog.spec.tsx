@@ -42,7 +42,12 @@ describe('PasswordPolicyDialog', () => {
     render(<PasswordPolicyDialog initialPasswordMinimumLength={8} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Password policy' }))
-    fireEvent.change(screen.getByLabelText('Minimum password length'), { target: { value: '12' } })
+    const minimum = screen.getByRole('spinbutton', { name: 'Minimum password length' })
+    fireEvent.change(minimum, { target: { value: '' } })
+    expect(minimum).toHaveValue(null)
+    expect(screen.getByRole('button', { name: 'Save policy' })).toBeDisabled()
+    fireEvent.change(minimum, { target: { value: '1' } })
+    fireEvent.change(minimum, { target: { value: '12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save policy' }))
 
     expect(screen.getByRole('button', { name: 'Saving…' })).toHaveAttribute('aria-busy', 'true')
@@ -51,5 +56,27 @@ describe('PasswordPolicyDialog', () => {
     resolveSave?.({ ok: true, data: { passwordMinimumLength: 12 }, requestId: 'request-1' })
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(mocks.toast).toHaveBeenCalledWith({ title: 'Password policy saved', variant: 'success' })
+  })
+
+  it('saves zero explicitly and shows the saved value when reopened', async () => {
+    mocks.saveWebSettingsAction.mockResolvedValue({
+      ok: true,
+      data: { passwordMinimumLength: 0 },
+      requestId: 'request-1'
+    })
+    render(<PasswordPolicyDialog initialPasswordMinimumLength={8} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Password policy' }))
+    const minimum = screen.getByRole('spinbutton', { name: 'Minimum password length' })
+    fireEvent.change(minimum, { target: { value: '0' } })
+    fireEvent.blur(minimum)
+    expect(minimum).toHaveValue(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Save policy' }))
+
+    expect(mocks.saveWebSettingsAction).toHaveBeenCalledWith({ passwordMinimumLength: 0 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Password policy' }))
+    expect(screen.getByRole('spinbutton', { name: 'Minimum password length' })).toHaveValue(0)
+    expect(screen.getByRole('button', { name: 'Save policy' })).toBeDisabled()
   })
 })

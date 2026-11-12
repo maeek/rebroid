@@ -4,8 +4,8 @@ import { getPreferencesSecurityPageData } from './page-data.server'
 import { PreferencesSecurityPageSkeleton } from './page-skeleton'
 
 const PreferencesSecurityContent = async () => {
-  const { mfaEnabled } = await getPreferencesSecurityPageData()
-  return <PreferencesSecurityPageClient mfaEnabled={mfaEnabled} />
+  const data = await getPreferencesSecurityPageData()
+  return <PreferencesSecurityPageClient {...data} />
 }
 
 export default function PreferencesSecurityPageEntry() {

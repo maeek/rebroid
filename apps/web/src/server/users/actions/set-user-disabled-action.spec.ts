@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { recordAuditEvent } from '@/server/audit/events'
+import { createTestSessionIdentity } from '@/server/auth/test-administrator'
 import { userService } from '@/server/auth/user'
 import { mutateUsersFile } from '@/server/auth/user-store'
 import { runDueWebMaintenance } from '@/server/maintenance/web-maintenance'
-import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
 import { resetDatabaseForTests } from '@/server/persistence/database'
 import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { revokeViewerSessionsForUsers } from '@/server/users/revoke-viewer-sessions'
@@ -24,7 +24,7 @@ const revoke = vi.mocked(revokeViewerSessionsForUsers)
 const currentAdmin = async (id = 'admin') => {
   const user = await userService.getUserById(id)
   if (!user?.isPlatformAdmin || user.disabled || user.passwordChangeRequired) throw new Error('Access denied')
-  return { ...user, identity: { userId: id, sessionVersion: user.sessionVersion, authEpoch: getAuthEpoch() } }
+  return { ...user, identity: createTestSessionIdentity(user) }
 }
 
 const administrator = async () => ({ identity: (await currentAdmin()).identity, requestId: 'test-request' })

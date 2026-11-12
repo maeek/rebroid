@@ -1,6 +1,7 @@
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
+import { AccountSessionsSection } from '../../../security/ui/account-sessions-section'
 import { UserEditPage } from '../../user-edit-page'
 import { getUserDetailPageData } from './page-data.server'
 
@@ -10,7 +11,7 @@ type UserDetailPageEntryProps = {
 
 export default async function UserDetailPageEntry({ params }: UserDetailPageEntryProps) {
   const { id } = await params
-  const { user, groups } = await getUserDetailPageData(id)
+  const { user, groups, sessions } = await getUserDetailPageData(id)
 
   if (!user) {
     return (
@@ -42,6 +43,13 @@ export default async function UserDetailPageEntry({ params }: UserDetailPageEntr
     <UserEditPage
       user={user}
       groups={groups}
-    />
+    >
+      {sessions ? (
+        <AccountSessionsSection
+          userId={id}
+          sessions={sessions}
+        />
+      ) : null}
+    </UserEditPage>
   )
 }

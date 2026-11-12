@@ -22,7 +22,8 @@ type RequiredPasswordChangeProps =
 
 export const RequiredPasswordChangePageClient = (props: RequiredPasswordChangeProps) => {
   const router = useRouter()
-  const passwordMinimumLength = props.loading ? undefined : props.passwordMinimumLength
+  const passwordMinimumLength =
+    props.loading || props.passwordMinimumLength <= 1 ? undefined : props.passwordMinimumLength
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -87,13 +88,13 @@ export const RequiredPasswordChangePageClient = (props: RequiredPasswordChangePr
         label='New password'
         layout='vertical'
         description={
-          passwordMinimumLength === undefined ? (
+          props.loading ? (
             <Skeleton
               as='span'
               className='inline-block h-3 w-32'
             />
           ) : (
-            `Use at least ${passwordMinimumLength} characters.`
+            passwordMinimumLength && `Use at least ${passwordMinimumLength} characters.`
           )
         }
       >

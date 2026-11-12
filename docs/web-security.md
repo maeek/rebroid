@@ -5,11 +5,20 @@ be reported through the [security policy](../SECURITY.md).
 
 ## Sessions and account access
 
-- `getCurrentUser()` validates auth epoch, per-user session version, disabled state, and required
-  password changes. Only the protected layout and forced-password-change completion use `getAuthenticatedUser()`.
+- `getCurrentUser()` validates the persisted account session, auth epoch, per-user session version,
+  disabled state, and required password changes. Only the protected layout and forced-password-change
+  completion use `getAuthenticatedUser()`.
+- Each browser sign-in creates its own account session. Revocation takes effect on the next authenticated
+  request, even if the browser retains the cookie. Visible protected tabs check every 15 seconds and
+  when they regain focus. This status check leaves the existing 30-day rolling cookie lifetime alone.
+- Session lists record browser and operating system labels, sign-in time, and last activity. The
+  activity timestamp is updated at most every five minutes per session.
 - The bootstrap admin replaces its initial password before normal access. Password replacement
   invalidates the old session and requires a fresh login.
 - New password hashes use Argon2id. Existing bcrypt hashes upgrade after successful login.
+- Administrators can change the minimum password length under **Users & groups → Users → Password policy**.
+  The default is 8 characters. Set it to 0 to allow passwords from 1 to 128 characters.
+  The policy applies when creating users, resetting passwords, and changing passwords.
 - Login throttling persists in SQLite and applies to both account and source-address keys.
   Successful sign-in clears the account limit. The source budget lasts through its window.
 - TOTP secrets use AES-256-GCM with `MFA_ENCRYPTION_KEY`; recovery codes are shown once and stored
@@ -75,8 +84,9 @@ The web service validates the proposed change before revocation and commits pend
 with the access change. The display sidecar closes sessions for the affected owners through an
 authenticated command. A failed pre-commit revocation blocks the account change. Pending
 revocation survives a restart and retries in the background. Self-service password and MFA changes
-commit the same revocation job with the credential change. Signing out closes the account's active
-viewers across browsers. Other signed-in browsers can open new viewers once revocation completes.
+commit the same revocation job with the credential change. Signing out a browser session revokes its
+own access. Its viewer connections close at the next sidecar authorization check, which runs every
+10 seconds. Viewers attached from other authorized browsers can stay connected.
 
 The sidecar authenticates viewer attachments and HTTP controls through the private web
 authorization route. Web checks the browser's current session, app ownership, and the stored

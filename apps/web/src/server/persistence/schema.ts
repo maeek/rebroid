@@ -1,4 +1,4 @@
-export const webSchemaVersion = 4
+export const webSchemaVersion = 5
 
 export const freshWebSchema = `
   CREATE TABLE groups (
@@ -79,6 +79,17 @@ export const freshWebSchema = `
     epoch TEXT NOT NULL
   );
 
+  CREATE TABLE account_sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_version INTEGER NOT NULL,
+    browser TEXT NOT NULL,
+    operating_system TEXT NOT NULL,
+    signed_in_at INTEGER NOT NULL,
+    last_active_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  );
+
   CREATE TABLE login_rate_limits (
     key_hash TEXT PRIMARY KEY NOT NULL,
     attempt_count INTEGER NOT NULL CHECK (attempt_count > 0),
@@ -113,6 +124,8 @@ export const freshWebSchema = `
   CREATE INDEX audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
   CREATE INDEX automation_drafts_expiry ON automation_drafts(expires_at);
   CREATE INDEX login_rate_limits_reset_at ON login_rate_limits(reset_at);
+  CREATE INDEX account_sessions_user_activity ON account_sessions(user_id, last_active_at DESC);
+  CREATE INDEX account_sessions_expiry ON account_sessions(expires_at);
   CREATE INDEX mfa_setup_tokens_expires_at ON mfa_setup_tokens(expires_at);
   PRAGMA user_version = ${webSchemaVersion};
 `

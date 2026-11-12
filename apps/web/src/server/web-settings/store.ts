@@ -1,8 +1,14 @@
+import { PublicActionError } from '@/server/errors/public-action-error'
 import {
   readSettingsDocument,
   updateSettingsDocument,
   writeSettingsDocument
 } from '@/server/persistence/settings-repository'
+import {
+  isPasswordMinimumLength,
+  passwordMinimumLengthError,
+  passwordMinimumLengthLimits
+} from '@/shared/model/settings/password-minimum-length'
 import type { WebSettings } from './types'
 
 const defaultWebSettings: WebSettings = {
@@ -17,7 +23,7 @@ const defaultWebSettings: WebSettings = {
   defaultViewerSoundEnabled: true,
   aiContextualSuggestionsEnabled: true,
   auditRetentionDays: 30,
-  passwordMinimumLength: 8
+  passwordMinimumLength: passwordMinimumLengthLimits.default
 }
 
 const numberInRange = (value: unknown, fallback: number, minimum: number, maximum: number) => {
@@ -64,7 +70,9 @@ const normalize = (value: Partial<WebSettings>): WebSettings => ({
       ? value.aiContextualSuggestionsEnabled
       : defaultWebSettings.aiContextualSuggestionsEnabled,
   auditRetentionDays: numberInRange(value.auditRetentionDays, defaultWebSettings.auditRetentionDays, 1, 3650),
-  passwordMinimumLength: numberInRange(value.passwordMinimumLength, defaultWebSettings.passwordMinimumLength, 8, 128)
+  passwordMinimumLength: isPasswordMinimumLength(value.passwordMinimumLength)
+    ? value.passwordMinimumLength
+    : defaultWebSettings.passwordMinimumLength
 })
 
 export const getWebSettings = () =>
@@ -79,6 +87,9 @@ export const getWebSettings = () =>
   })
 
 export const saveWebSettings = async (settings: Partial<WebSettings>) => {
+  if (Object.hasOwn(settings, 'passwordMinimumLength') && !isPasswordMinimumLength(settings.passwordMinimumLength)) {
+    throw new PublicActionError(passwordMinimumLengthError, { code: 'validation', status: 422 })
+  }
   await getWebSettings()
   return updateSettingsDocument<WebSettings>(current => {
     const normalized = normalize({ ...(current as Partial<WebSettings> | null), ...settings })

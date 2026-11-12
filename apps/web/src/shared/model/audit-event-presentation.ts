@@ -29,6 +29,7 @@ const actionLabels: Record<string, string> = {
   'auth.login.success': 'Sign in',
   'auth.login.failure': 'Sign in',
   'auth.login.lockout': 'Sign-in lockout',
+  'auth.sessions.revoke': 'Sign out sessions',
   'auth.primary_credentials.success': 'Verify sign-in credentials',
   'auth.primary_credentials.failure': 'Verify sign-in credentials',
   'settings.features.update': 'Update platform features',

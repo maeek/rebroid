@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { getServerSession, type NextAuthOptions } from 'next-auth'
+import { getServerSession, type NextAuthOptions, type Session } from 'next-auth'
+import { encode, type JWT } from 'next-auth/jwt'
 import Credentials from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { recordAuditEvent } from '@/server/audit/events'
-import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
-import { revokeViewersOnSignOut } from '@/server/users/viewer-revocation-job'
+import { deleteAccountSession, extendAccountSession } from '@/server/persistence/account-sessions-repository'
 import { isAccentColor } from '@/shared/model/theme/accent-color'
+import { accountSessionMaxAgeSeconds, checkAccountSession, startAccountSession } from './account-sessions'
 import { clearLoginAccountAttempts, consumeLoginAttempt, loginSourceFromHeaderRecord } from './login-security'
+import { readAccountSessionIdentity } from './session-identity'
 import { userService } from './user'
 
 const credentialsSchema = z.object({
@@ -19,23 +21,47 @@ const credentialsSchema = z.object({
   mfaCode: z.string().trim().max(32).optional()
 })
 
-export const authOptions: NextAuthOptions = {
+const resolveSession = async (session: Session, token: JWT): Promise<Session> => {
+  const identity = readAccountSessionIdentity(token)
+  if (!identity) return { expires: session.expires }
+
+  const currentUser = await userService.getUserById(identity.userId)
+  const active = checkAccountSession(identity, { recordActivity: true })
+  if (!currentUser || !active) return { expires: session.expires }
+
+  session.user = {
+    id: currentUser.id,
+    name: currentUser.name,
+    sessionId: identity.sessionId,
+    sessionVersion: identity.sessionVersion,
+    authEpoch: identity.authEpoch,
+    passwordChangeRequired: active.passwordChangeRequired,
+    image: currentUser.avatarDataUrl,
+    accentColor: currentUser.accentColor
+  }
+  return session
+}
+
+const serverAuthOptions: NextAuthOptions = {
   events: {
     async signOut({ token }) {
-      if (token?.userId) await revokeViewersOnSignOut(token.userId)
+      const identity = readAccountSessionIdentity(token)
+      if (identity) deleteAccountSession(identity.userId, identity.sessionId)
     }
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
+    maxAge: accountSessionMaxAgeSeconds
   },
   callbacks: {
     async jwt({ token, account, profile: _profile, user }) {
       if (account && account.type === 'credentials') {
         token.userId = account.providerAccountId
       }
-      if (user && 'sessionVersion' in user) {
+      if (user?.sessionId) {
+        token.sessionId = user.sessionId
         token.sessionVersion = user.sessionVersion
-        token.authEpoch = getAuthEpoch()
+        token.authEpoch = user.authEpoch
       }
       if (user && 'passwordChangeRequired' in user) {
         token.passwordChangeRequired = user.passwordChangeRequired
@@ -48,26 +74,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token
     },
-    async session({ session, token, user: _user }) {
-      const currentUser = token.userId ? await userService.getUserById(token.userId).catch(() => null) : null
-      if (
-        !currentUser ||
-        currentUser.disabled ||
-        currentUser.sessionVersion !== token.sessionVersion ||
-        token.authEpoch !== getAuthEpoch()
-      ) {
-        return { expires: session.expires }
-      }
-
-      session.user.id = currentUser.id
-      session.user.name = currentUser.name
-      session.user.sessionVersion = token.sessionVersion
-      session.user.authEpoch = token.authEpoch
-      session.user.passwordChangeRequired = currentUser.passwordChangeRequired
-      session.user.image = currentUser.avatarDataUrl
-      session.user.accentColor = currentUser.accentColor
-      return session
-    }
+    session: ({ session, token }) => resolveSession(session, token)
   },
   pages: {
     signIn: '/login'
@@ -99,19 +106,48 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await userService.authenticate(username, password, mfaCode)
-        if (user) clearLoginAccountAttempts(attempt.accountKey)
+        const identity = user ? startAccountSession(user, req.headers?.['user-agent']) : null
+        if (identity) clearLoginAccountAttempts(attempt.accountKey)
         recordAuditEvent({
-          actorUserId: user?.id,
+          actorUserId: identity?.userId,
           actorLabel: user?.name || username,
           category: 'auth',
-          action: user ? 'auth.login.success' : 'auth.login.failure',
-          outcome: user ? 'success' : 'failure',
+          action: identity ? 'auth.login.success' : 'auth.login.failure',
+          outcome: identity ? 'success' : 'failure',
           details: { username }
         })
-        return user
+        return user && identity ? { ...user, sessionId: identity.sessionId, authEpoch: identity.authEpoch } : null
       }
     })
   ]
 }
 
-export const getServerAuthSession = () => getServerSession(authOptions)
+export const authOptions: NextAuthOptions = {
+  ...serverAuthOptions,
+  jwt: {
+    async encode(params) {
+      const encoded = await encode(params)
+      const identity = readAccountSessionIdentity(params.token)
+      // Only the NextAuth HTTP handler writes the renewed cookie back to the browser.
+      if (identity) extendAccountSession(identity, Date.now() + accountSessionMaxAgeSeconds * 1000)
+      return encoded
+    }
+  }
+}
+
+export const getServerAuthSession = () => getServerSession(serverAuthOptions)
+
+export const getServerAuthSessionStatus = () =>
+  getServerSession({
+    ...serverAuthOptions,
+    callbacks: {
+      ...serverAuthOptions.callbacks,
+      async session({ session, token }) {
+        const identity = readAccountSessionIdentity(token)
+        return {
+          expires: session.expires,
+          user: identity && checkAccountSession(identity) ? { id: identity.userId } : undefined
+        }
+      }
+    }
+  })

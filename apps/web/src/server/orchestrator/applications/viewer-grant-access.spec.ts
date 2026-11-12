@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCurrentSessionIdentity } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
-import { getAuthEpoch } from '@/server/persistence/auth-security-repository'
+import { findActiveAccountSession } from '@/server/persistence/account-sessions-repository'
 import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { defaultUserQuota } from '@/shared/permissions/permissions'
@@ -12,7 +12,7 @@ import type { PublicUser } from '@/shared/contracts/auth-user'
 
 vi.mock('@/server/auth/authorization', () => ({ getCurrentSessionIdentity: vi.fn() }))
 vi.mock('@/server/auth/user', () => ({ userService: { getUserById: vi.fn() } }))
-vi.mock('@/server/persistence/auth-security-repository', () => ({ getAuthEpoch: vi.fn() }))
+vi.mock('@/server/persistence/account-sessions-repository', () => ({ findActiveAccountSession: vi.fn() }))
 vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingViewerRevocation: vi.fn() }))
 vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeUserViewerSessions: vi.fn() }))
 vi.mock('../features', () => ({ requireFeature: vi.fn() }))
@@ -38,10 +38,11 @@ describe('viewer grant issuance', () => {
     vi.resetAllMocks()
     vi.mocked(getCurrentSessionIdentity).mockResolvedValue({
       userId: account.id,
+      sessionId: 'current-session',
       sessionVersion: account.sessionVersion,
       authEpoch: 'current-epoch'
     })
-    vi.mocked(getAuthEpoch).mockReturnValue('current-epoch')
+    vi.mocked(findActiveAccountSession).mockReturnValue({ lastActiveAt: 0, passwordChangeRequired: 0 })
     vi.mocked(userService.getUserById).mockResolvedValue(account)
     vi.mocked(assertCanUseOwnedApplicationRuntime).mockResolvedValue({
       app: { id: 'app' } as never,
@@ -90,13 +91,14 @@ describe('viewer grant issuance', () => {
     }
   )
 
-  it('rejects a grant when the authentication epoch changes during mint', async () => {
+  it('withholds a grant when the initiating session is revoked during mint', async () => {
     await expect(
       issueViewerGrant('app', 'main', () => {
-        vi.mocked(getAuthEpoch).mockReturnValue('rotated-epoch')
+        vi.mocked(findActiveAccountSession).mockReturnValue(undefined)
         return Promise.resolve({})
       })
     ).rejects.toThrow('authorization changed')
+    expect(revokeUserViewerSessions).not.toHaveBeenCalled()
   })
 
   it('checks pending revocation before and after mint', async () => {

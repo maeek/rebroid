@@ -25,7 +25,11 @@ Open **Preferences** from the account menu to manage settings for your own accou
 Open **Security** from the same menu to manage sign-in settings.
 
 - **General** (`/preferences/general`): theme, accent color, viewer layout, and profile photo.
-- **Security** (`/preferences/security`): password changes, multi-factor authentication, and recovery codes.
+- **Security** (`/preferences/security`): change your password, manage multi-factor authentication and
+  recovery codes, and sign out one or all other browser sessions.
+
+Platform administrators can open **Users & groups → Users**, edit another account, and sign out its
+browser sessions individually or together. Signing out a session also disconnects its Android viewers.
 
 Administrators manage shared list refresh and streaming defaults in
 **Administration → General → Console defaults** (`/platform/console`). Save defaults and Restore defaults
