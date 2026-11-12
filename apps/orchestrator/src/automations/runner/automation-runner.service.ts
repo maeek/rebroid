@@ -15,7 +15,7 @@ import { AutomationRunEventBus } from '../events/automation-run-event-bus.servic
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
 import type {
-  AdmitAutomationTargetStart,
+  AdmitAutomationTargetWork,
   AutomationRunTargetOptions,
 } from './automation-runner-options';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
@@ -31,7 +31,7 @@ const terminalStatuses = new Set<AutomationRunStatus>([
 
 type ActiveRun = {
   abortController: AbortController;
-  pendingTargetStart?: Promise<void>;
+  pendingTargetWork: Set<Promise<unknown>>;
 };
 
 @Injectable()
@@ -199,10 +199,8 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     const active = this.getOrCreateActiveRun(run.id);
     try {
       active.abortController.abort();
-      if (active.pendingTargetStart) {
-        // Keep the run's reservation until Android has finished admitting the start.
-        await active.pendingTargetStart.catch(() => undefined);
-      }
+      // Keep the run's reservation while admitted Android operations settle.
+      await Promise.allSettled(active.pendingTargetWork);
       const canceled = await this.events.transitionRun(
         run.id,
         [AutomationRunStatus.Queued, AutomationRunStatus.Running],
@@ -236,16 +234,16 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
   ) {
     const active = this.getOrCreateActiveRun(runId);
     const abortSignal = active.abortController.signal;
-    const admitTargetStart: AdmitAutomationTargetStart = async (start) => {
-      const pending = Promise.resolve().then(async () => {
+    const admitTargetWork: AdmitAutomationTargetWork = async (operation) => {
+      const pending = Promise.resolve().then(() => {
         abortSignal.throwIfAborted();
-        await start();
+        return operation();
       });
-      active.pendingTargetStart = pending;
+      active.pendingTargetWork.add(pending);
       try {
-        await pending;
+        return await pending;
       } finally {
-        active.pendingTargetStart = undefined;
+        active.pendingTargetWork.delete(pending);
       }
     };
     void this.execution
@@ -254,7 +252,10 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
         automationId,
         targetOptions,
         abortSignal,
-        admitTargetStart,
+        admitTargetWork,
+        admitTargetStart: async (start) => {
+          await admitTargetWork(start);
+        },
       })
       .catch((error: unknown) => {
         this.logger.error(
@@ -268,7 +269,10 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     const current = this.activeRuns.get(runId);
     if (current) return current;
 
-    const active: ActiveRun = { abortController: new AbortController() };
+    const active: ActiveRun = {
+      abortController: new AbortController(),
+      pendingTargetWork: new Set(),
+    };
     this.activeRuns.set(runId, active);
     return active;
   }

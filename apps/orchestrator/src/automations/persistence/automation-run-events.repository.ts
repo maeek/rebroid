@@ -18,6 +18,7 @@ import {
 } from '../entities/automation-run.entity';
 import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { MetricsService } from '../../metrics/metrics.service';
+import type { AutomationStepResult } from '../runner/automation-runner.types';
 
 type RunTransition =
   | {
@@ -92,6 +93,40 @@ export class AutomationRunEventsRepository {
       );
       if (result) finishMetrics('success');
       return result;
+    } catch (error) {
+      finishMetrics('error');
+      throw error;
+    }
+  }
+
+  async recordStepOutcome(
+    input: AutomationRunEventInput & { type: 'step.completed' | 'step.failed' },
+    result: AutomationStepResult,
+  ) {
+    const finishMetrics = this.metrics.beginAutomationEventPersistence();
+    try {
+      const event = await this.queue.run(() =>
+        this.dataSource.transaction(async (manager) => {
+          const updated = await manager.getRepository(AutomationRun).update(
+            {
+              id: input.runId,
+              ownerUserId: input.ownerUserId,
+              status: AutomationRunStatus.Running,
+            },
+            { error: result.error },
+          );
+          if (!updated.affected) return null;
+          await manager.query(
+            `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
+             SELECT ?, COALESCE(MAX(sequence), 0) + 1, ?
+             FROM automation_run_step_results WHERE runId = ?`,
+            [input.runId, JSON.stringify(result), input.runId],
+          );
+          return toRecord(await this.appendInTransaction(manager, input));
+        }),
+      );
+      if (event) finishMetrics('success');
+      return event;
     } catch (error) {
       finishMetrics('error');
       throw error;

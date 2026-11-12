@@ -36,15 +36,9 @@ export interface ChatMessage {
   tool_calls?: ChatToolCall[];
 }
 
-export interface ChatResponseFormat {
-  type: 'json_object' | 'json_schema';
-  schema?: Record<string, unknown>;
-  json_schema?: {
-    name: string;
-    strict?: boolean;
-    schema: Record<string, unknown>;
-  };
-}
+export type ChatResponseFormat =
+  | { type: 'json_object' }
+  | { type: 'json_schema'; name?: string; schema: Record<string, unknown> };
 
 export const modelSupportsStructuredOutput = (
   model: AutomationAiProviderModel,
@@ -150,8 +144,8 @@ export const buildChatRequestBody = ({
       model: model.id,
       messages: ollamaMessages(messages),
       ...(hasTools ? { tools } : {}),
-      ...(ollamaResponseSchema(responseFormat)
-        ? { format: ollamaResponseSchema(responseFormat) }
+      ...(responseFormat?.type === 'json_schema'
+        ? { format: responseFormat.schema }
         : {}),
       stream,
       options: {
@@ -204,17 +198,14 @@ export const buildChatRequestBody = ({
   };
 };
 
-const ollamaResponseSchema = (responseFormat?: ChatResponseFormat) =>
-  responseFormat?.schema ?? responseFormat?.json_schema?.schema;
-
 const openAiResponseFormat = (responseFormat: ChatResponseFormat) => {
   if (responseFormat.type === 'json_object') return { type: 'json_object' };
   return {
     type: 'json_schema',
-    json_schema: responseFormat.json_schema ?? {
-      name: 'structured_response',
+    json_schema: {
+      name: responseFormat.name ?? 'structured_response',
       strict: true,
-      schema: responseFormat.schema ?? {},
+      schema: responseFormat.schema,
     },
   };
 };

@@ -27,11 +27,11 @@ import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import {
   CreateDisplaySessionDto,
   CreateDisplaySurfaceDto,
+  DisplayActionAcknowledgmentDto,
   DisplayActionDto,
   DisplayCapabilitiesDto,
   DisplayClipboardDto,
   DisplayClipboardResultDto,
-  DisplayCommandResultDto,
   DisplayHealthDto,
   DisplayLogcatDto,
   DisplaySessionDto,
@@ -288,21 +288,16 @@ export class DisplayController {
 
   @UseGuards(SidecarAuthGuard)
   @Post("rebroid/display/sessions/:id/actions")
+  @HttpCode(200)
   @ApiOperation({
     summary: "Execute a viewer control action for a display session.",
   })
   @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
   @ApiParam({ name: "id", description: "Display session id." })
   @ApiBody({ type: DisplayActionDto })
-  @ApiOkResponse({ type: DisplayCommandResultDto })
-  async action(@Param("id") id: string, @Body() body: DisplayActionDto) {
-    return {
-      ok: true,
-      ...(await this.controls.execute(id, {
-        type: "action",
-        command: body.command,
-      })),
-    };
+  @ApiOkResponse({ type: DisplayActionAcknowledgmentDto })
+  action(@Param("id") id: string, @Body() body: DisplayActionDto) {
+    return this.controls.executeAction(id, body?.command);
   }
 
   @UseGuards(SidecarAuthGuard)

@@ -6,6 +6,9 @@ import type {
   AndroidAutomationNetworkPolicyPort,
 } from '../../android-apps/contracts/android-apps-automation.port';
 import type { AutomationAiHarnessService } from '../ai/automation-ai-harness.service';
+import type { AutomationScreenObservation } from '../vision/automation-vision.types';
+import type { VisionDetection } from '../vision/vision-observation';
+import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
 import type {
   AutomationCommandEditorMetadata,
   AutomationCommandOutputMetadata,
@@ -23,18 +26,30 @@ export interface AutomationCommandContext {
   parentStepId?: string | null;
   path?: string;
   abortSignal?: AbortSignal;
-  toolExecutor?: (
-    tool: {
-      name: string;
-      arguments: Record<string, unknown>;
-    },
-    signal?: AbortSignal,
-  ) => Promise<AutomationCommandResult>;
+  deadline?: number;
+  visionSnapshot?: AutomationScreenObservation;
+  recordOcrExchange?: AutomationOcrExchangeRecorder;
+  executeCommand?: AutomationCommandExecutor;
+  withTarget?: AutomationTargetExecutor;
 }
+
+export type AutomationTargetExecutor = <T>(
+  signal: AbortSignal | undefined,
+  operation: (app: AndroidAutomationApplication) => Promise<T>,
+) => Promise<T>;
+
+export type AutomationCommandExecutor = (request: {
+  uses: string;
+  input: Record<string, unknown>;
+  signal?: AbortSignal;
+  deadline?: number;
+  visionSnapshot?: AutomationScreenObservation;
+}) => Promise<AutomationCommandResult>;
 
 export interface AutomationCommandResult {
   summary: string;
   data?: Record<string, unknown>;
+  snapshotMatches?: { snapshotId: string; matches: VisionDetection[] };
 }
 
 export interface AutomationCommandEditorExample {

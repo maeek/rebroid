@@ -94,8 +94,12 @@ A queued run reserves its target before preparation. The runner owns enqueue, ca
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
 Target preparation authorizes either attaching or starting, then verifies the requested profile on the
-ready runtime. Cancellation fences new Start calls and holds the reservation until any in-flight
-Start admission settles. Android owns the lifecycle of work it has already admitted.
+ready runtime. Android admits each device command and AI capture against the current container, profile,
+and start time. Runtime changes fence new admissions and drain work in progress. Cancellation stops
+new workflow admissions and keeps the target reserved until admitted work settles.
+Docker inventory Stop and Remove use the same gate for managed Android containers.
+An AI deadline can finish the decision while the workflow waits for a dispatched command to settle.
+Workflow CIDR additions and removals use the latest stored allowlist inside the Android policy gate.
 
 These are correctness guarantees:
 
@@ -104,9 +108,11 @@ These are correctness guarantees:
 - Event sequence allocation and insertion happen in the same transaction, backed by a unique run/sequence index.
   The Running transition and terminal transitions each commit with their corresponding event.
   Subscribers receive those events after commit.
+- The orchestrator's SQLite adapter gives each query runner independent transaction state and
+  coordinates access to the shared connection. Queries outside an open transaction wait for it to finish.
 - Live listeners subscribe before replay. Replay reads bounded pages through a fixed sequence, then sends
   buffered live events in order and skips duplicates.
-- Step results are appended in execution order and assembled for run reads.
+- Step results commit with their events, in execution order, and are assembled for run reads.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.

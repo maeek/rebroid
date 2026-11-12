@@ -27,13 +27,14 @@ export const createAndroidDeviceShellAutomationCommands = () =>
       ],
       execute: async (
         { key, namespace, timeoutMs }: z.infer<typeof androidSettingSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
         const result = await adb.shell(
           app,
           `settings get ${namespace} ${key}`,
           timeoutMs,
           abortSignal,
+          deadline,
         );
         if (result.exitCode !== 0) {
           throw new Error(
@@ -75,9 +76,15 @@ export const createAndroidDeviceShellAutomationCommands = () =>
       ],
       execute: async (
         { command, timeoutMs }: z.infer<typeof shellSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
-        const result = await adb.shell(app, command, timeoutMs, abortSignal);
+        const result = await adb.shell(
+          app,
+          command,
+          timeoutMs,
+          abortSignal,
+          deadline,
+        );
         const stdout = result.stdout.trim();
         const stderr = result.stderr.trim();
         const helpOutput = looksLikeShellHelp(stdout || stderr);

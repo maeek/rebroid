@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { emitAutomationAiEvent } from '../ai/automation-ai-events';
 import { AutomationAiProviderService } from '../ai/automation-ai-provider.service';
 import type { AutomationAiHarnessContext } from '../ai/automation-ai.types';
-import type { AutomationVisionContext } from './automation-vision.types';
+import type { AutomationObservedScreen } from './automation-vision.types';
 import { AutomationVisionService } from './automation-vision.service';
 import {
   perceptionEventData,
@@ -24,15 +26,16 @@ export class AutomationPerceptionService {
     deadline,
     reason,
     uses,
-    visionContext,
   }: {
     context: AutomationAiHarnessContext;
-    input: { visionProviderId?: string; visionModelId?: string };
-    deadline?: number;
+    input: Pick<
+      AutomationAiRunInput,
+      'prompt' | 'clientMessageId' | 'visionProviderId' | 'visionModelId'
+    >;
+    deadline: number;
     reason: string;
     uses?: string;
-    visionContext?: AutomationVisionContext;
-  }) {
+  }): Promise<AutomationObservedScreen> {
     const visionModel =
       input.visionProviderId || input.visionModelId
         ? await this.aiProviders.getProvider(
@@ -45,37 +48,29 @@ export class AutomationPerceptionService {
       context,
       visionModel,
       deadline,
-      visionContext,
+      { goal: input.prompt },
     );
-    await this.events.emit({
-      runId: context.runId,
-      ownerUserId: context.ownerUserId,
-      type: 'ai.perception.observed',
-      stepId: context.stepId,
-      parentStepId: context.parentStepId ?? null,
-      message: perceptionObservationMessage(observation),
-      data: perceptionEventData(observation, {
-        clientMessageId: context.clientMessageId,
-        reason,
-        uses,
-        goal: visionContext?.goal,
-      }),
-    });
+    const details = {
+      clientMessageId: input.clientMessageId ?? null,
+      reason,
+      uses,
+      goal: input.prompt,
+    };
+    await emitAutomationAiEvent(
+      this.events,
+      context,
+      'ai.perception.observed',
+      perceptionObservationMessage(observation),
+      perceptionEventData(observation, details),
+    );
     if (observation.summary) {
-      await this.events.emit({
-        runId: context.runId,
-        ownerUserId: context.ownerUserId,
-        type: 'ai.perception.summary',
-        stepId: context.stepId,
-        parentStepId: context.parentStepId ?? null,
-        message: 'Vision summary received.',
-        data: perceptionSummaryData(observation, {
-          clientMessageId: context.clientMessageId,
-          reason,
-          uses,
-          goal: visionContext?.goal,
-        }),
-      });
+      await emitAutomationAiEvent(
+        this.events,
+        context,
+        'ai.perception.summary',
+        'Vision summary received.',
+        perceptionSummaryData(observation, details),
+      );
     }
     return {
       observation,

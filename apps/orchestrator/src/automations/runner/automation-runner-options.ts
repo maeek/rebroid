@@ -15,3 +15,7 @@ export interface AutomationRunTargetOptions {
 export type AdmitAutomationTargetStart = (
   start: () => Promise<unknown>,
 ) => Promise<void>;
+
+export type AdmitAutomationTargetWork = <T>(
+  operation: () => Promise<T>,
+) => Promise<T>;

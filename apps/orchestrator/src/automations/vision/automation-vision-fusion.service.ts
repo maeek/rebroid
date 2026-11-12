@@ -14,15 +14,10 @@ import { createMarkedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import type {
   AutomationScreenObservation,
   AutomationVisionContext,
+  AutomationVisionDescription,
   AutomationVisionScreenState,
 } from './automation-vision.types';
 import type { AutomationVisionCapture } from './automation-vision-capture.service';
-
-export interface AutomationVisionDescription {
-  screenState?: AutomationVisionScreenState;
-  summary?: string;
-  visionSummaryError?: string;
-}
 
 @Injectable()
 export class AutomationVisionFusionService {
@@ -106,6 +101,7 @@ export class AutomationVisionFusionService {
         : {}),
       ocr,
       candidates,
+      lookupDetections: [...detections, ...ocr.detections],
       markedScreenshotId: `som-${image.capturedAt}`,
       ...(reconciliation
         ? {

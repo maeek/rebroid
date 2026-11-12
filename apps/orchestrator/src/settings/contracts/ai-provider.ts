@@ -87,15 +87,6 @@ export interface AutomationAiConversationMessage {
   content: string;
 }
 
-export interface AutomationAiToolRequest {
-  name: string;
-  arguments: Record<string, unknown>;
-  intent?: string;
-  expectedOutcome?: string;
-  envelopeValid?: boolean;
-  toolCallId?: string;
-}
-
 export class AiProviderConfigurationError extends Error {
   constructor(message: string) {
     super(message);

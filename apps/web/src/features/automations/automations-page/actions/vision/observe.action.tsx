@@ -1,5 +1,6 @@
 import { NumberField } from '../shared/action-fields'
 import { numberInputValue } from '../shared/input-values'
+import { readVisionModelInput } from './vision-model-input'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 
 export const visionObserveAction: AutomationActionDefinition = {
@@ -9,6 +10,7 @@ export const visionObserveAction: AutomationActionDefinition = {
   label: 'Observe screen',
   defaultInput: () => ({ maxDetections: 40 }),
   normalizeInput: input => ({
+    ...readVisionModelInput(input),
     maxDetections: Math.min(100, Math.max(1, numberInputValue(input, 'maxDetections', 40)))
   }),
   summary: input => `max detections: ${numberInputValue(input, 'maxDetections', 40)}`,

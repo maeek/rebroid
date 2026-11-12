@@ -8,6 +8,7 @@ export type AutomationRunEventType =
   | 'step.completed'
   | 'step.failed'
   | 'step.progress'
+  | 'vision.ocr.exchange'
   | 'ai.model.started'
   | 'ai.model.completed'
   | 'ai.plan.proposed'

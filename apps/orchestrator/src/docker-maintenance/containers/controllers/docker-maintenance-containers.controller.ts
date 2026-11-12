@@ -21,6 +21,7 @@ import {
   DockerPlatformStopResponseDto,
 } from '../../dto/docker-maintenance-response.dto';
 import { DockerMaintenanceContainerQueryService } from '../services/docker-maintenance-container-query.service';
+import { DockerMaintenanceContainerCommandService } from '../services/docker-maintenance-container-command.service';
 
 @ApiTags('platform-docker')
 @Controller('platform/docker/containers')
@@ -29,6 +30,7 @@ export class DockerMaintenanceContainersController {
     @Inject(DOCKER_PLATFORM_CONTAINERS)
     private readonly containers: DockerPlatformContainersPort,
     private readonly queries: DockerMaintenanceContainerQueryService,
+    private readonly commands: DockerMaintenanceContainerCommandService,
   ) {}
 
   @Get()
@@ -68,13 +70,13 @@ export class DockerMaintenanceContainersController {
   @ApiOperation({ summary: 'Stop a Docker container.' })
   @ApiOkResponse({ type: DockerPlatformStopResponseDto })
   stopContainer(@Param('id') id: string) {
-    return this.containers.stopPlatformContainer(id);
+    return this.commands.stop(id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remove a Docker container.' })
   @ApiOkResponse({ type: DockerPlatformRemovalResponseDto })
   removeContainer(@Param('id') id: string, @Query('force') force?: string) {
-    return this.containers.removePlatformContainer(id, force === 'true');
+    return this.commands.remove(id, force === 'true');
   }
 }

@@ -1,16 +1,16 @@
-import type { AutomationAiToolRequest } from '../../settings/contracts/ai-provider';
-import type { AutomationCommandContext } from '../commands/automation-command.types';
+import type {
+  AutomationCommandContext,
+  AutomationCommandExecutor,
+  AutomationTargetExecutor,
+} from '../commands/automation-command.types';
 
-export interface AutomationAiHarnessContext extends AutomationCommandContext {
+export interface AutomationAiHarnessContext extends Pick<
+  AutomationCommandContext,
+  'app' | 'adb' | 'abortSignal' | 'parentStepId' | 'recordOcrExchange'
+> {
   runId: string;
   ownerUserId: string;
   stepId: string;
-  parentStepId?: string | null;
-  path: string;
-  clientMessageId?: string | null;
-  abortSignal?: AbortSignal;
-  toolExecutor: (
-    tool: AutomationAiToolRequest,
-    signal?: AbortSignal,
-  ) => Promise<{ summary: string; data?: Record<string, unknown> }>;
+  executeCommand: AutomationCommandExecutor;
+  withTarget: AutomationTargetExecutor;
 }

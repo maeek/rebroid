@@ -8,6 +8,7 @@ export interface AutomationScreenObservation extends VisionObservation {
   markedImage?: OptimizedAiScreenshot;
   screenState?: AutomationVisionScreenState;
   candidates: AiObservationCandidate[];
+  lookupDetections?: VisionDetection[];
   markedScreenshotId: string;
   reconciliation?: {
     rawScreenKind: AutomationVisionScreenState['screenKind'];
@@ -15,6 +16,11 @@ export interface AutomationScreenObservation extends VisionObservation {
     visionReliable: boolean;
     contradictionReason?: string;
   };
+}
+
+export interface AutomationObservedScreen {
+  observation: AutomationScreenObservation;
+  plannerText: string;
 }
 
 export interface AutomationVisionScreenControl {
@@ -51,6 +57,12 @@ export interface AutomationVisionScreenState {
   settingsAccessVisible?: boolean;
 }
 
+export interface AutomationVisionDescription {
+  screenState?: AutomationVisionScreenState;
+  summary?: string;
+  visionSummaryError?: string;
+}
+
 export interface AutomationVisionContext {
   goal?: string;
   lastAction?: string;
@@ -78,5 +90,12 @@ export interface AutomationVisionLocateOutput {
   matches: VisionDetection[];
   query: string;
   threshold: number;
+  outcome: 'found' | 'not_found' | 'inconclusive';
+  ocrStatus: NonNullable<VisionObservation['ocr']>['status'] | 'unavailable';
   reason?: string;
 }
+
+export type AutomationVisionModelLocateResult = Pick<
+  AutomationVisionLocateOutput,
+  'matches' | 'reason'
+> & { failed?: true };

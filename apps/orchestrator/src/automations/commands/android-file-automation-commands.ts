@@ -18,9 +18,9 @@ export const createAndroidFileAutomationCommands = () =>
       schema: filePushSchema,
       execute: async (
         { path, contentBase64 }: z.infer<typeof filePushSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.pushFile(app, path, contentBase64);
+        await adb.pushFile(app, path, contentBase64, abortSignal);
         return { summary: `Pushed file to ${path}.` };
       },
     },
@@ -52,9 +52,9 @@ export const createAndroidFileAutomationCommands = () =>
       ],
       execute: async (
         { path }: z.infer<typeof fileSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        const result = await adb.pullFile(app, path);
+        const result = await adb.pullFile(app, path, abortSignal);
         return { summary: `Pulled file ${path}.`, data: result };
       },
     },
@@ -66,9 +66,9 @@ export const createAndroidFileAutomationCommands = () =>
       schema: fileSchema,
       execute: async (
         { path }: z.infer<typeof fileSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.deleteFile(app, path);
+        await adb.deleteFile(app, path, abortSignal);
         return { summary: `Deleted ${path}.` };
       },
     },
@@ -88,9 +88,9 @@ export const createAndroidFileAutomationCommands = () =>
       ],
       execute: async (
         { path }: z.infer<typeof fileSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        const exists = await adb.fileExists(app, path);
+        const exists = await adb.fileExists(app, path, abortSignal);
         return {
           summary: exists ? `${path} exists.` : `${path} does not exist.`,
           data: { exists },
@@ -113,9 +113,9 @@ export const createAndroidFileAutomationCommands = () =>
       ],
       execute: async (
         { path }: z.infer<typeof fileSchema>,
-        { app, adb }: AutomationCommandContext,
+        { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        const files = await adb.listFiles(app, path);
+        const files = await adb.listFiles(app, path, abortSignal);
         return {
           summary: `Listed ${files.length} file(s).`,
           data: { files },

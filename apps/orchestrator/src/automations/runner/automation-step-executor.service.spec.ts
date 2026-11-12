@@ -1,15 +1,27 @@
+import type { AutomationCommandContext } from '../commands/automation-command.types';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
+import type { AutomationScreenObservation } from '../vision/automation-vision.types';
 import { AutomationStepExecutorService } from './automation-step-executor.service';
+import type { AndroidAppsAutomationPort } from '../../android-apps/contracts/android-apps-automation.port';
 import type { AutomationExecutionState } from './automation-runner-execution.types';
+
+const withAutomationTarget: AndroidAppsAutomationPort['withAutomationTarget'] =
+  (app, _signal, operation) => operation(app);
+const stepOptions = {
+  path: 'steps',
+  admitTargetWork: <T>(operation: () => Promise<T>) => operation(),
+};
 
 const createService = ({
   registryExecute = jest.fn(),
   recordActionStarted = jest.fn(),
-  recordActionCompleted = jest.fn(),
-  recordStepFailed = jest.fn(),
-  recordControlCompleted = jest.fn(),
+  recordActionCompleted = jest.fn().mockResolvedValue(true),
+  recordStepFailed = jest.fn().mockResolvedValue(true),
+  recordControlCompleted = jest.fn().mockResolvedValue(true),
+  ocrExchangeRecorder = jest.fn(),
   evaluate = jest.fn(),
   resolveValueRef = jest.fn(),
+  withAutomationTarget: withTarget = withAutomationTarget,
 } = {}) => {
   const service = new AutomationStepExecutorService(
     { execute: registryExecute } as never,
@@ -19,9 +31,11 @@ const createService = ({
       recordActionCompleted,
       recordStepFailed,
       recordControlCompleted,
+      ocrExchangeRecorder,
     } as never,
     { evaluate, resolveValueRef } as never,
     {
+      withAutomationTarget: withTarget,
       automationAdapters: () => ({ adb: {}, display: {}, networkPolicy: {} }),
     } as never,
   );
@@ -43,17 +57,80 @@ const createState = (): AutomationExecutionState => ({
   trigger: AutomationRunTrigger.Manual,
   targetProfileMode: null,
   targetProfileName: null,
-  results: [],
   outputsByStepId: new Map(),
 });
 
-const createRun = () =>
+const createRun = (automationId?: string) =>
   ({
     id: 'run-1',
     ownerUserId: 'user-1',
+    automationId,
   }) as never;
 
+const deferred = () => {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
+
 describe('AutomationStepExecutorService', () => {
+  it('lets an AI deadline finish the decision while keeping later steps behind the admitted command', async () => {
+    const deadline = new AbortController();
+    const dispatch = deferred();
+    const release = deferred();
+    const blocked = deferred();
+    const registryExecute = jest
+      .fn()
+      .mockImplementationOnce(
+        async (_uses, _input, context: AutomationCommandContext) => {
+          await expect(
+            context.executeCommand!({
+              uses: 'android.tapNormalized',
+              input: { x: 0.5, y: 0.5 },
+              signal: deadline.signal,
+            }),
+          ).rejects.toMatchObject({ name: 'TimeoutError' });
+          blocked.resolve();
+          return { summary: 'Timed out.' };
+        },
+      )
+      .mockImplementationOnce(async () => {
+        dispatch.resolve();
+        await release.promise;
+        return { summary: 'Tap settled.' };
+      })
+      .mockResolvedValueOnce({ summary: 'Waited.' });
+    const { service, recordActionCompleted } = createService({
+      registryExecute,
+    });
+    const execution = service.executeSteps(
+      [
+        {
+          id: 'agent',
+          uses: 'ai.run',
+          with: { capabilities: ['android.tapNormalized'] },
+        },
+        { id: 'next', uses: 'android.wait', with: { durationMs: 1 } },
+      ],
+      createState(),
+      createRun(),
+      { ...stepOptions, isRunCanceled: () => false },
+    );
+    await dispatch.promise;
+    deadline.abort(new DOMException('Task deadline reached.', 'TimeoutError'));
+    try {
+      await blocked.promise;
+      expect(registryExecute).toHaveBeenCalledTimes(2);
+      expect(recordActionCompleted).not.toHaveBeenCalled();
+    } finally {
+      release.resolve();
+      await execution;
+    }
+    expect(registryExecute).toHaveBeenCalledTimes(3);
+  });
+
   it('stops before executing a step when the run is canceled', async () => {
     const { service, registryExecute } = createService();
 
@@ -62,12 +139,76 @@ describe('AutomationStepExecutorService', () => {
       createState(),
       createRun(),
       {
-        path: 'steps',
+        ...stepOptions,
         isRunCanceled: () => true,
       },
     );
 
     expect(result).toEqual({ failed: false, stopped: true });
+    expect(registryExecute).not.toHaveBeenCalled();
+  });
+
+  it('does not dispatch a command if cancellation arrives while recording its start', async () => {
+    const cancellation = new AbortController();
+    const { service, registryExecute, recordStepFailed } = createService({
+      recordActionStarted: jest.fn(async () => cancellation.abort()),
+    });
+    await expect(
+      service.executeSteps(
+        [{ id: 'tap', uses: 'android.tap', with: { x: 1, y: 2 } }],
+        createState(),
+        createRun(),
+        {
+          ...stepOptions,
+          abortSignal: cancellation.signal,
+          isRunCanceled: () => false,
+        },
+      ),
+    ).resolves.toEqual({ failed: false, stopped: true });
+    expect(registryExecute).not.toHaveBeenCalled();
+    expect(recordStepFailed).not.toHaveBeenCalled();
+  });
+
+  it('propagates history write failures without recording a command failure', async () => {
+    const { service, recordStepFailed } = createService({
+      registryExecute: jest.fn().mockResolvedValue({ summary: 'Tapped.' }),
+      recordActionCompleted: jest
+        .fn()
+        .mockRejectedValue(new Error('Write failed.')),
+    });
+    await expect(
+      service.executeSteps(
+        [{ id: 'tap', uses: 'android.tap', with: { x: 1, y: 2 } }],
+        createState(),
+        createRun(),
+        { ...stepOptions, isRunCanceled: () => false },
+      ),
+    ).rejects.toThrow('Write failed.');
+    expect(recordStepFailed).not.toHaveBeenCalled();
+  });
+
+  it('does not enter a repeat when the run stopped before recording it', async () => {
+    const { service, registryExecute } = createService({
+      recordControlCompleted: jest.fn().mockResolvedValue(false),
+    });
+    await expect(
+      service.executeSteps(
+        [
+          {
+            id: 'repeat',
+            type: 'repeat',
+            count: 1,
+            maxIterations: 1,
+            steps: [
+              { id: 'wait', uses: 'android.wait', with: { durationMs: 1 } },
+            ],
+          },
+        ],
+        createState(),
+        createRun(),
+        { ...stepOptions, isRunCanceled: () => false },
+      ),
+    ).resolves.toEqual({ failed: false, stopped: true });
     expect(registryExecute).not.toHaveBeenCalled();
   });
 
@@ -86,7 +227,7 @@ describe('AutomationStepExecutorService', () => {
       state,
       run,
       {
-        path: 'steps',
+        ...stepOptions,
         isRunCanceled: () => false,
       },
     );
@@ -138,7 +279,7 @@ describe('AutomationStepExecutorService', () => {
         ],
         state,
         createRun(),
-        { path: 'steps', isRunCanceled: () => false },
+        { ...stepOptions, isRunCanceled: () => false },
       ),
     ).resolves.toEqual({ failed: false, stopped: false });
     expect(registryExecute).toHaveBeenNthCalledWith(
@@ -160,10 +301,70 @@ describe('AutomationStepExecutorService', () => {
     const step = { id: 'default-ai', uses: 'ai.run', with: { prompt: 'Wait' } };
     await expect(
       service.executeSteps([step], createState(), createRun(), {
-        path: 'steps',
+        ...stepOptions,
         isRunCanceled: () => false,
       }),
     ).resolves.toEqual({ failed: true, stopped: false });
     expect(registryExecute).not.toHaveBeenCalled();
+  });
+
+  it('dispatches a grounded AI command with workflow OCR tracing and cancellation', async () => {
+    const visionSnapshot = {
+      snapshotId: 'screen-1',
+    } as AutomationScreenObservation;
+    const recordOcrExchange = jest.fn();
+    const ocrExchangeRecorder = jest.fn().mockReturnValue(recordOcrExchange);
+    const { signal } = new AbortController();
+    const request = {
+      uses: 'vision.locate',
+      input: { query: 'Żappka' },
+      signal,
+      visionSnapshot,
+    };
+    let canceled = false;
+    const registryExecute = jest
+      .fn()
+      .mockImplementationOnce(
+        async (_uses, _input, context: AutomationCommandContext) => {
+          const { executeCommand } = context;
+          if (!executeCommand) throw new Error('Command dispatch is missing.');
+          const result = await executeCommand(request);
+          canceled = true;
+          await expect(executeCommand(request)).rejects.toThrow(
+            'Automation run was canceled.',
+          );
+          return result;
+        },
+      )
+      .mockResolvedValueOnce({ summary: 'Located Żappka.' });
+    const { service } = createService({ registryExecute, ocrExchangeRecorder });
+    const state = createState();
+
+    await expect(
+      service.executeSteps(
+        [
+          {
+            id: 'agent',
+            uses: 'ai.run',
+            with: { prompt: 'Find Żappka', capabilities: ['vision.locate'] },
+          },
+        ],
+        state,
+        createRun('workflow-1'),
+        { ...stepOptions, isRunCanceled: () => canceled },
+      ),
+    ).resolves.toEqual({ failed: false, stopped: true });
+    expect(registryExecute).toHaveBeenCalledTimes(2);
+    expect(registryExecute).toHaveBeenNthCalledWith(
+      2,
+      'vision.locate',
+      request.input,
+      expect.objectContaining({
+        app: state.app,
+        abortSignal: signal,
+        visionSnapshot,
+        recordOcrExchange,
+      }),
+    );
   });
 });

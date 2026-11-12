@@ -1,5 +1,6 @@
 import { NumberField, TextField } from '../shared/action-fields'
 import { numberInputValue, stringInputValue } from '../shared/input-values'
+import { readVisionModelInput } from './vision-model-input'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 
 export const visionLocateAction: AutomationActionDefinition = {
@@ -9,6 +10,8 @@ export const visionLocateAction: AutomationActionDefinition = {
   label: 'Locate on screen',
   defaultInput: () => ({ query: '', threshold: 0.5, maxResults: 5 }),
   normalizeInput: input => ({
+    ...readVisionModelInput(input),
+    ...(input.region === undefined ? {} : { region: input.region }),
     query: stringInputValue(input, 'query'),
     threshold: Math.min(1, Math.max(0, numberInputValue(input, 'threshold', 0.5))),
     maxResults: Math.min(50, Math.max(1, numberInputValue(input, 'maxResults', 5)))

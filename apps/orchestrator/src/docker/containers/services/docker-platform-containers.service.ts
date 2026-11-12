@@ -13,7 +13,10 @@ import { platformImageFromSummary } from '../../images/utils/platform-image.util
 import { platformNetworkFromSummary } from '../../networks/utils/platform-network.utils';
 import { DockerContainerLifecycleService } from './docker-container-lifecycle.service';
 import { DockerResourceRuntimeService } from '../../resources/services/docker-resource-runtime.service';
-import type { DockerPlatformContainersPort } from '../../contracts/docker-platform-containers.port';
+import type {
+  AdmitPlatformContainerChange,
+  DockerPlatformContainersPort,
+} from '../../contracts/docker-platform-containers.port';
 
 @Injectable()
 export class DockerPlatformContainersService implements DockerPlatformContainersPort {
@@ -86,15 +89,24 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
     return this.resources.getContainerResourceUsage(containerId);
   }
 
-  async stopPlatformContainer(containerId: string) {
-    await this.assertNotOrchestratorContainer(containerId);
-    await this.lifecycle.stopContainer(containerId);
+  async stopPlatformContainer(
+    containerId: string,
+    admit: AdmitPlatformContainerChange,
+  ) {
+    const target = await this.resolvePlatformChangeTarget(containerId);
+    await admit(target, () => this.lifecycle.stopContainer(target.id));
     return { id: containerId, stopped: true };
   }
 
-  async removePlatformContainer(containerId: string, force = false) {
-    await this.assertNotOrchestratorContainer(containerId);
-    await this.lifecycle.removeContainer(containerId, { force });
+  async removePlatformContainer(
+    containerId: string,
+    force: boolean,
+    admit: AdmitPlatformContainerChange,
+  ) {
+    const target = await this.resolvePlatformChangeTarget(containerId);
+    await admit(target, () =>
+      this.lifecycle.removeContainer(target.id, { force }),
+    );
     return { id: containerId, removed: true };
   }
 
@@ -113,7 +125,7 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
     return found ? platformContainerFromInfo(found) : null;
   }
 
-  private async assertNotOrchestratorContainer(containerId: string) {
+  private async resolvePlatformChangeTarget(containerId: string) {
     const inspect = await this.lifecycle.inspectContainer(containerId);
     const hostname = this.engine.orchestratorHostname;
     if (
@@ -124,5 +136,13 @@ export class DockerPlatformContainersService implements DockerPlatformContainers
         'The orchestrator container cannot stop or remove itself.',
       );
     }
+    const labels = inspect.Config?.Labels;
+    return {
+      id: inspect.Id,
+      applicationId:
+        labels?.['com.rebroid.managed'] === 'true'
+          ? labels['com.rebroid.application-id'] || null
+          : null,
+    };
   }
 }

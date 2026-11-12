@@ -1,5 +1,5 @@
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
-import { DataSource } from 'typeorm';
+import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import { MetricsService } from '../../metrics/metrics.service';
 import {
   AutomationRun,
@@ -14,7 +14,7 @@ import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import { AutomationRunEventsRepository } from './automation-run-events.repository';
 
 it('projects the original prompt and terminal outcome past the first event page', async () => {
-  const database = await new DataSource({
+  const database = await new SerializedSqliteDataSource({
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [AutomationRunEvent],
@@ -71,7 +71,7 @@ it('projects the original prompt and terminal outcome past the first event page'
 });
 
 const createRunPersistence = async (status = AutomationRunStatus.Running) => {
-  const db = await new DataSource({
+  const db = await new SerializedSqliteDataSource({
     type: 'better-sqlite3',
     database: ':memory:',
     entities: [AutomationRun, AutomationRunEvent],
@@ -100,6 +100,58 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
   );
   return { db, runs, events, run };
 };
+
+it('publishes workflow history after an unrelated SQLite rollback and preserves ordinary writes', async () => {
+  const { db, events, run } = await createRunPersistence();
+  let resume!: () => void;
+  let entered!: () => void;
+  const held = new Promise<void>((resolve) => {
+    resume = resolve;
+  });
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  try {
+    await db.query('CREATE TABLE lifecycle_fixture (state TEXT NOT NULL)');
+    const transaction = db.transaction(async (manager) => {
+      await manager.query("INSERT INTO lifecycle_fixture VALUES ('rollback')");
+      entered();
+      await held;
+      throw new Error('lifecycle failed');
+    });
+    const rolledBack = expect(transaction).rejects.toThrow('lifecycle failed');
+    await started;
+
+    const bus = new AutomationRunEventBus(events);
+    const received = jest.fn();
+    bus.subscribe(run.id, received);
+    const event = bus.emit({
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'step.started',
+    });
+    const ordinary = db.query(
+      "INSERT INTO lifecycle_fixture VALUES ('committed')",
+    );
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(received).not.toHaveBeenCalled();
+
+    resume();
+    await rolledBack;
+    await expect(event).resolves.toMatchObject({ sequence: 1 });
+    await ordinary;
+    expect(received).toHaveBeenCalledTimes(1);
+    expect(await events.listForRun(run.ownerUserId, run.id)).toMatchObject([
+      { sequence: 1 },
+    ]);
+    expect(await db.query('SELECT state FROM lifecycle_fixture')).toEqual([
+      { state: 'committed' },
+    ]);
+  } finally {
+    resume();
+    await db.destroy();
+  }
+});
 
 it('commits the start event with the runtime profile and rolls both back on failure', async () => {
   const { db, runs, events, run } = await createRunPersistence(
@@ -250,6 +302,9 @@ it('reads the failure code and request ID from the owner’s terminal event', as
 it('projects ordered step results through the run and fences writes after cancellation', async () => {
   const { db, runs, events, run } = await createRunPersistence();
   try {
+    const bus = new AutomationRunEventBus(events);
+    const received = jest.fn();
+    bus.subscribe(run.id, received);
     const result = (stepId: string): AutomationStepResult => ({
       stepId,
       uses: 'android.wait',
@@ -259,18 +314,32 @@ it('projects ordered step results through the run and fences writes after cancel
       output: { stepId },
       error: null,
     });
+    const record = (outcome: AutomationStepResult) =>
+      bus.recordStepOutcome(
+        {
+          runId: run.id,
+          ownerUserId: run.ownerUserId,
+          stepId: outcome.stepId,
+          type: 'step.completed',
+        },
+        outcome,
+      );
     expect(run.stepResultsJson).toBe('[]');
     const first = result('first');
     const second = result('second');
     await expect(runs.findById(run.id)).resolves.toMatchObject({
       stepResultsJson: '[]',
     });
-    await expect(
-      runs.appendStepResults(run.id, 1, [first], null),
-    ).resolves.toBe(true);
-    await expect(
-      runs.appendStepResults(run.id, 2, [second], null),
-    ).resolves.toBe(true);
+    await db.query(`CREATE TRIGGER reject_event BEFORE INSERT ON automation_run_events
+      BEGIN SELECT RAISE(ABORT, 'fixture rejected event'); END`);
+    await expect(record(first)).rejects.toThrow('fixture rejected event');
+    expect(await db.query('SELECT * FROM automation_run_step_results')).toEqual(
+      [],
+    );
+    expect(received).not.toHaveBeenCalled();
+    await db.query('DROP TRIGGER reject_event');
+    await expect(record(first)).resolves.toBe(true);
+    await expect(record(second)).resolves.toBe(true);
     const canceled = await events.transitionRun(
       run.id,
       [AutomationRunStatus.Running],
@@ -281,9 +350,11 @@ it('projects ordered step results through the run and fences writes after cancel
       },
       { type: 'run.canceled' },
     );
-    await expect(
-      runs.appendStepResults(run.id, 3, [result('late')], null),
-    ).resolves.toBe(false);
+    await expect(record(result('late'))).resolves.toBe(false);
+    expect(received.mock.calls.map(([event]) => event)).toMatchObject([
+      { sequence: 1, type: 'step.completed', stepId: 'first' },
+      { sequence: 2, type: 'step.completed', stepId: 'second' },
+    ]);
     const history = await runs.findByOwnerAndId(run.ownerUserId, run.id);
     expect(JSON.parse(history?.stepResultsJson ?? 'null')).toEqual([
       first,

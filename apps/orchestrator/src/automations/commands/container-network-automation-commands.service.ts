@@ -1,9 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
-import {
-  parseAllowCidrs,
-  normalizeIpv4Cidr,
-} from '../../network-policy/utils/network-policy.utils';
+import { normalizeIpv4Cidr } from '@rebroid/firewall-policy-core/policy';
 import {
   AutomationCommandContext,
   AutomationCommandDefinition,
@@ -37,8 +34,6 @@ const unsupportedBlockCommand = async () => {
   );
 };
 
-const unique = (values: string[]) => [...new Set(values)];
-
 @Injectable()
 export class ContainerNetworkAutomationCommandsService {
   list(): AutomationCommandDefinition[] {
@@ -54,12 +49,11 @@ export class ContainerNetworkAutomationCommandsService {
           { cidr }: z.infer<typeof cidrSchema>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
-          const current = parseAllowCidrs(app.networkPolicyAllowCidrs);
-          const next = unique([...current, cidr]);
-          await networkPolicy.updateNetworkPolicy(app.id, {
-            networkPolicyAllowCidrs: next,
+          const updated = await networkPolicy.changeAllowedCidr(app.id, {
+            operation: 'add',
+            cidr,
           });
-          app.networkPolicyAllowCidrs = JSON.stringify(next);
+          app.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
           return { summary: `Allowed ${cidr}.` };
         },
       },
@@ -74,13 +68,11 @@ export class ContainerNetworkAutomationCommandsService {
           { cidr }: z.infer<typeof cidrSchema>,
           { app, networkPolicy }: AutomationCommandContext,
         ) => {
-          const next = parseAllowCidrs(app.networkPolicyAllowCidrs).filter(
-            (item) => item !== cidr,
-          );
-          await networkPolicy.updateNetworkPolicy(app.id, {
-            networkPolicyAllowCidrs: next,
+          const updated = await networkPolicy.changeAllowedCidr(app.id, {
+            operation: 'remove',
+            cidr,
           });
-          app.networkPolicyAllowCidrs = JSON.stringify(next);
+          app.networkPolicyAllowCidrs = updated.networkPolicyAllowCidrs;
           return { summary: `Removed allowed CIDR ${cidr}.` };
         },
       },

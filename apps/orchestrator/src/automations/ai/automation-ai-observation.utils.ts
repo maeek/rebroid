@@ -4,23 +4,6 @@ export interface PreparedUiXml {
   truncated: boolean;
 }
 
-export const SCREEN_MUTATING_TOOLS = new Set([
-  'android.adbShell',
-  'android.inputText',
-  'android.key',
-  'android.rotateDisplay',
-  'android.setClipboard',
-  'android.collapsePanels',
-  'android.expandNotifications',
-  'android.expandQuickSettings',
-  'android.launchPackage',
-  'android.swipe',
-  'android.swipeNormalized',
-  'android.tap',
-  'android.tapNormalized',
-  'android.viewerCommand',
-]);
-
 const UI_XML_MAX_CHARS = 80_000;
 const PROVIDER_ERROR_MAX_CHARS = 500;
 const EVENT_STRING_MAX_CHARS = 4_000;

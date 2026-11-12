@@ -397,6 +397,20 @@ export class DisplayCommandResultDto {
   message?: string;
 }
 
+export class DisplayActionAcknowledgmentDto {
+  @ApiProperty({ enum: [true] })
+  ok!: true;
+
+  @ApiProperty({ enum: viewerCommands, example: "home" })
+  command!: (typeof viewerCommands)[number];
+
+  @ApiProperty({ enum: [true] })
+  executed!: true;
+
+  @ApiProperty({ enum: ["stream-control", "adb"] })
+  transport!: "stream-control" | "adb";
+}
+
 export class DisplayCapabilitiesDto {
   @ApiProperty({
     example: {

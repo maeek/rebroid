@@ -1,39 +1,18 @@
-import { NumberField, TextField } from '../shared/action-fields'
-import { normalizeStringInput, numberInputValue, stringInputValue } from '../shared/input-values'
+import { stringInputValue } from '../shared/input-values'
+import { defaultUiTextInput, normalizeUiTextInput, UiTextActionFields } from './ui-text-action-fields'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 
 export const tapTextAction: AutomationActionDefinition = {
   uses: 'android.tapText',
   category: 'Text',
   iconKey: 'click',
-  defaultInput: () => ({ text: '', timeoutMs: 10000, intervalMs: 1000 }),
-  normalizeInput: input => ({
-    ...normalizeStringInput(input, 'text'),
-    timeoutMs: numberInputValue(input, 'timeoutMs', 10000),
-    intervalMs: numberInputValue(input, 'intervalMs', 1000)
-  }),
+  defaultInput: defaultUiTextInput,
+  normalizeInput: normalizeUiTextInput,
   summary: input => stringInputValue(input, 'text') || 'text:',
   renderEditor: ({ input, patchInput }) => (
-    <div className='grid gap-3'>
-      <TextField
-        label='Text'
-        value={stringInputValue(input, 'text')}
-        onChange={value => patchInput({ text: value })}
-      />
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] gap-x-form-column gap-y-3'>
-        <NumberField
-          label='Timeout'
-          suffix='ms'
-          value={numberInputValue(input, 'timeoutMs', 10000)}
-          onChange={value => patchInput({ timeoutMs: value })}
-        />
-        <NumberField
-          label='Interval'
-          suffix='ms'
-          value={numberInputValue(input, 'intervalMs', 1000)}
-          onChange={value => patchInput({ intervalMs: value })}
-        />
-      </div>
-    </div>
+    <UiTextActionFields
+      input={input}
+      patchInput={patchInput}
+    />
   )
 }

@@ -1,4 +1,5 @@
 import type { AiScreenshot } from '../ai/automation-ai-screenshot.utils';
+import type { AutomationOcrExchange } from './automation-ocr-exchange';
 import type { VisionDetection } from './vision-observation';
 
 export const AUTOMATION_OCR = Symbol('AUTOMATION_OCR');
@@ -29,5 +30,7 @@ export interface AutomationOcrPort {
   recognize(
     image: AiScreenshot,
     abortSignal?: AbortSignal,
+    deadline?: number,
+    onExchange?: (exchange: AutomationOcrExchange) => Promise<void>,
   ): Promise<AutomationOcrResult>;
 }

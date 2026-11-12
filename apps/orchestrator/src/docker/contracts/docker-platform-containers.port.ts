@@ -7,6 +7,11 @@ import type {
 
 export const DOCKER_PLATFORM_CONTAINERS = Symbol('DOCKER_PLATFORM_CONTAINERS');
 
+export type AdmitPlatformContainerChange = (
+  target: { id: string; applicationId: string | null },
+  operation: () => Promise<void>,
+) => Promise<void>;
+
 export interface DockerPlatformContainersPort {
   listPlatformContainers(): Promise<PlatformContainer[]>;
   getPlatformContainerDetails(
@@ -21,9 +26,11 @@ export interface DockerPlatformContainersPort {
   ): Promise<ContainerResourceUsage>;
   stopPlatformContainer(
     containerId: string,
+    admit: AdmitPlatformContainerChange,
   ): Promise<{ id: string; stopped: boolean }>;
   removePlatformContainer(
     containerId: string,
-    force?: boolean,
+    force: boolean,
+    admit: AdmitPlatformContainerChange,
   ): Promise<{ id: string; removed: boolean }>;
 }

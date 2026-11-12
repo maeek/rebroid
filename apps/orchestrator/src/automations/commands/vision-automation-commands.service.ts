@@ -32,6 +32,13 @@ const locateSchema = visionModelSchema.extend({
   region: normalizedRegionSchema,
 });
 
+const ocrStatusOutput = {
+  key: 'ocrStatus',
+  label: 'OCR status',
+  type: 'string',
+  description: 'Whether OCR was available, disabled, failed, or unavailable.',
+} as const;
+
 @Injectable()
 export class VisionAutomationCommandsService {
   constructor(
@@ -73,6 +80,20 @@ export class VisionAutomationCommandsService {
             type: 'string',
             description: 'Optional vision model summary.',
           },
+          ocrStatusOutput,
+          {
+            key: 'ocrTextCount',
+            label: 'OCR text box count',
+            type: 'number',
+            description: 'Total OCR text boxes before the output limit.',
+          },
+          {
+            key: 'ocrDetections',
+            label: 'OCR detections',
+            type: 'array',
+            description:
+              'Detected text with normalized bounds, limited by maxDetections.',
+          },
         ],
         editor: {
           category: 'Vision',
@@ -94,16 +115,21 @@ export class VisionAutomationCommandsService {
           const uiStatus = observation.uiXml
             ? `UI hierarchy ${observation.uiXml.status}, ${observation.uiXml.nodeCount} node(s), ${observation.uiXml.detectionCount ?? detections.length} labeled detection(s)`
             : 'UI hierarchy unavailable';
-          const ocrStatus = observation.ocr
+          const ocrSummary = observation.ocr
             ? `OCR ${observation.ocr.status}, ${observation.ocr.detections.length} text box(es)`
             : 'OCR unavailable';
+          const ocrDetections =
+            observation.ocr?.detections.slice(0, input.maxDetections) ?? [];
           const visionStatus = observation.summary
             ? 'Vision summary available'
             : observation.visionSummaryError
               ? `Vision summary failed: ${observation.visionSummaryError}`
               : 'Vision summary unavailable';
+          const screenSummary = context.visionSnapshot
+            ? 'Screen observed'
+            : 'Screen captured';
           return {
-            summary: `Screen captured. ${uiStatus}. ${ocrStatus}. ${visionStatus}.`,
+            summary: `${screenSummary}. ${uiStatus}. ${ocrSummary}. ${visionStatus}.`,
             data: {
               width: observation.image.width,
               height: observation.image.height,
@@ -111,7 +137,12 @@ export class VisionAutomationCommandsService {
               detections,
               summary: observation.summary ?? null,
               uiXml: observation.uiXml ?? null,
-              ocr: observation.ocr ?? null,
+              ocrStatus: observation.ocr?.status ?? 'unavailable',
+              ocrTextCount: observation.ocr?.detections.length ?? 0,
+              ocrDetections,
+              ocr: observation.ocr
+                ? { ...observation.ocr, detections: ocrDetections }
+                : null,
             },
           };
         },
@@ -136,6 +167,14 @@ export class VisionAutomationCommandsService {
             type: 'boolean',
             description: 'Whether at least one match was found.',
           },
+          {
+            key: 'outcome',
+            label: 'Search outcome',
+            type: 'string',
+            description:
+              'found, not_found after a completed screen search, or inconclusive when recognition was unavailable.',
+          },
+          ocrStatusOutput,
         ],
         editor: {
           category: 'Vision',
@@ -158,20 +197,32 @@ export class VisionAutomationCommandsService {
             {
               query: input.query,
               threshold: input.threshold,
-              maxResults: input.maxResults,
+              maxResults: context.visionSnapshot
+                ? Math.min(input.maxResults, 5)
+                : input.maxResults,
               ...(input.region ? { region: input.region } : {}),
             },
             visionModel,
           );
+          const { visionSnapshot } = context;
+          const found = result.outcome === 'found';
+          const summary = found
+            ? `Found ${result.matches.length} match(es) for "${input.query}".`
+            : `Search for "${input.query}" returned ${result.outcome}.${result.reason ? ` ${result.reason}` : ''}`;
           return {
-            summary:
-              result.matches.length > 0
-                ? `Found ${result.matches.length} match(es) for "${input.query}".`
-                : `No matches found for "${input.query}".${result.reason ? ` ${result.reason}` : ''}`,
+            summary,
             data: {
               ...result,
-              found: result.matches.length > 0,
+              found,
             },
+            ...(visionSnapshot && found
+              ? {
+                  snapshotMatches: {
+                    snapshotId: visionSnapshot.snapshotId,
+                    matches: result.matches,
+                  },
+                }
+              : {}),
           };
         },
       },

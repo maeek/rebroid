@@ -58,15 +58,11 @@ export const createAndroidInputAutomationCommands = () =>
       },
       execute: async (
         input: z.infer<typeof tapNormalizedSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        context: AutomationCommandContext,
       ) => {
-        const screenshot = await readAiScreenshotMetadata(
-          await adb.screenshot(app, abortSignal),
-        );
-        const point = normalizedPointToPixels(input, {
-          width: screenshot.width ?? 1,
-          height: screenshot.height ?? 1,
-        });
+        const { app, adb, abortSignal } = context;
+        const image = await readDisplaySize(context);
+        const point = normalizedPointToPixels(input, image);
         await adb.tap(app, point.x, point.y, abortSignal);
         return {
           summary: `Tapped normalized ${input.x}, ${input.y}.`,
@@ -133,15 +129,10 @@ export const createAndroidInputAutomationCommands = () =>
       },
       execute: async (
         input: z.infer<typeof swipeNormalizedSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        context: AutomationCommandContext,
       ) => {
-        const screenshot = await readAiScreenshotMetadata(
-          await adb.screenshot(app, abortSignal),
-        );
-        const image = {
-          width: screenshot.width ?? 1,
-          height: screenshot.height ?? 1,
-        };
+        const { app, adb, abortSignal } = context;
+        const image = await readDisplaySize(context);
         const start = normalizedPointToPixels(input.start, image);
         const end = normalizedPointToPixels(input.end, image);
         await adb.swipe(
@@ -204,7 +195,10 @@ export const createAndroidInputAutomationCommands = () =>
         { text }: z.infer<typeof textSchema>,
         { app, adb, abortSignal }: AutomationCommandContext,
       ) => {
-        await adb.setClipboard(app, text, abortSignal);
+        const result = await adb.setClipboard(app, text, abortSignal);
+        if (result?.supported !== true) {
+          throw new Error('Android clipboard write is unavailable.');
+        }
         return { summary: `Set clipboard to ${text.length} character(s).` };
       },
     },
@@ -242,3 +236,19 @@ export const createAndroidInputAutomationCommands = () =>
       },
     },
   ] as unknown as AutomationCommandDefinition[];
+
+const readDisplaySize = async ({
+  app,
+  adb,
+  abortSignal,
+}: AutomationCommandContext) => {
+  const { width, height } = await readAiScreenshotMetadata(
+    await adb.screenshot(app, abortSignal),
+  );
+  if (!width || !height) {
+    throw new Error(
+      'Could not determine Android display dimensions from the screenshot.',
+    );
+  }
+  return { width, height };
+};

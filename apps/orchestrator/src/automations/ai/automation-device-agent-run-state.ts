@@ -1,5 +1,11 @@
-import type { AutomationScreenObservation } from '../vision/automation-vision.types';
-import type { DeviceTargetSession } from './automation-device-agent-state';
+import type {
+  AutomationObservedScreen,
+  AutomationScreenObservation,
+} from '../vision/automation-vision.types';
+import type { VisionDetection } from '../vision/vision-observation';
+import type { AiObservationCandidate } from './core/screen-state-policy';
+import type { DeviceTargetSession } from './automation-device-target-session';
+import { sanitizeAiText } from './automation-ai-observation.utils';
 
 export interface DeviceAgentSubgoal {
   id: string;
@@ -16,6 +22,7 @@ export interface DeviceAgentEvidence {
   data?: Record<string, unknown>;
   eligibleForCompletion?: boolean;
   command?: string;
+  lookupMatches?: AiObservationCandidate[];
 }
 
 export interface DeviceAgentTrajectoryEntry {
@@ -38,11 +45,6 @@ export interface DeviceAgentState {
   readonly planAttempts: number;
 }
 
-type ObservedScreen = {
-  observation: AutomationScreenObservation;
-  plannerText: string;
-};
-
 export class DeviceAgentRunState implements DeviceAgentState {
   private readonly history: DeviceAgentTrajectoryEntry[] = [];
   private readonly evidenceLog: DeviceAgentEvidence[];
@@ -50,10 +52,11 @@ export class DeviceAgentRunState implements DeviceAgentState {
   private actionCount = 0;
   private failureCount = 0;
   private planningCount = 0;
+  private lookupMatches: AiObservationCandidate[] = [];
 
   constructor(
     readonly target: DeviceTargetSession,
-    private screen: ObservedScreen,
+    private screen: AutomationObservedScreen,
   ) {
     const { snapshotId, summary } = screen.observation;
     this.evidenceLog = [
@@ -91,6 +94,51 @@ export class DeviceAgentRunState implements DeviceAgentState {
     return this.planningCount;
   }
 
+  observationForAction(): AutomationScreenObservation {
+    return {
+      ...this.observation,
+      candidates: [...this.observation.candidates, ...this.lookupMatches],
+    };
+  }
+
+  admitLookupMatches({
+    snapshotId,
+    matches,
+  }: {
+    snapshotId: string;
+    matches: VisionDetection[];
+  }) {
+    if (snapshotId !== this.observation.snapshotId) return [];
+    const candidates = matches
+      .slice(0, 5)
+      .flatMap((match, index): AiObservationCandidate[] => {
+        if (
+          match.source === 'cv' ||
+          match.bounds.width <= 0 ||
+          match.bounds.height <= 0
+        ) {
+          return [];
+        }
+        const label = sanitizeAiText(
+          match.label ?? match.text ?? match.description ?? '',
+          120,
+        );
+        if (!label) return [];
+        return [
+          {
+            id: `lookup-${this.actionCount}-${index + 1}`,
+            label,
+            source: match.source,
+            confidence: match.confidence,
+            bounds: match.bounds,
+            ...(match.role ? { role: match.role } : {}),
+          },
+        ];
+      });
+    this.lookupMatches = [...this.lookupMatches, ...candidates].slice(-20);
+    return candidates;
+  }
+
   controllerEvidence() {
     return this.evidenceLog
       .slice(-12)
@@ -98,6 +146,14 @@ export class DeviceAgentRunState implements DeviceAgentState {
       .flatMap((item) => {
         if (item.kind === 'snapshot')
           return [`- Observed screen [evidence=${item.id}]`];
+        if (
+          item.eligibleForCompletion &&
+          item.snapshotId === this.observation.snapshotId
+        ) {
+          if (item.command === 'vision.locate')
+            return this.lookupEvidence(item);
+          if (item.command === 'vision.observe') return this.ocrEvidence(item);
+        }
         if (
           !item.eligibleForCompletion ||
           item.command !== 'android.listPackages'
@@ -119,9 +175,46 @@ export class DeviceAgentRunState implements DeviceAgentState {
       });
   }
 
+  private lookupEvidence(item: DeviceAgentEvidence) {
+    if (item.data?.outcome === 'not_found') {
+      return [
+        `- Screen lookup found no match in available evidence [evidence=${item.id}]`,
+      ];
+    }
+    return (item.lookupMatches ?? [])
+      .filter((match) => this.lookupMatches.includes(match))
+      .map((match) => {
+        const bounds = match.bounds
+          ? [
+              match.bounds.left,
+              match.bounds.top,
+              match.bounds.width,
+              match.bounds.height,
+            ]
+              .map((value) => value.toFixed(3))
+              .join(',')
+          : 'none';
+        return `- ${match.id} | ${JSON.stringify(match.label)} | source=${match.source} | confidence=${match.confidence.toFixed(2)} | bounds=${bounds} [evidence=${item.id}]`;
+      });
+  }
+
+  private ocrEvidence(item: DeviceAgentEvidence) {
+    const { ocrStatus, ocrTextCount, ocrDetections } = item.data ?? {};
+    if (typeof ocrStatus !== 'string' || typeof ocrTextCount !== 'number')
+      return [];
+    const labels = Array.isArray(ocrDetections)
+      ? ocrDetections.slice(0, 8).flatMap((entry) => {
+          const label: unknown = entry?.text;
+          return typeof label === 'string' ? [sanitizeAiText(label, 120)] : [];
+        })
+      : [];
+    return [
+      `- OCR ${ocrStatus}, ${ocrTextCount} text boxes: ${JSON.stringify(labels)} [evidence=${item.id}]`,
+    ];
+  }
+
   beginAction() {
     this.actionCount += 1;
-    return this.actionCount;
   }
 
   beginPlan() {
@@ -137,9 +230,10 @@ export class DeviceAgentRunState implements DeviceAgentState {
     action: string,
     result: Omit<DeviceAgentEvidence, 'id'>,
     failed: boolean,
-    screen?: ObservedScreen,
+    screen?: AutomationObservedScreen,
   ) {
     if (screen) {
+      this.lookupMatches = [];
       this.screen = screen;
       const { snapshotId, summary } = screen.observation;
       if (

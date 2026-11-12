@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildYaml, defaultStep } from '../editor/builder-utils'
+import { parse } from 'yaml'
+import { buildYaml, defaultStep, definitionToForm } from '../editor/builder-utils'
 import {
   getAutomationActionDefinitions,
   getBackendActionInput,
@@ -106,6 +107,46 @@ describe('automation action registry', () => {
 })
 
 describe('automation builder serialization', () => {
+  it('round-trips the search region and vision model selection when editing a saved workflow', () => {
+    const model = { visionProviderId: 'provider-1', visionModelId: 'model-1' }
+    const region = { left: 0.2, top: 0.3, width: 0.4, height: 0.5 }
+    const form = definitionToForm({
+      apiVersion: 'rebroid.io/automation/v1',
+      kind: 'AndroidAutomation',
+      metadata: { name: 'Locate Żappka' },
+      spec: {
+        steps: [
+          { id: 'observe', uses: 'vision.observe', with: { ...model, maxDetections: 8 } },
+          { id: 'locate', uses: 'vision.locate', with: { ...model, region, query: 'Żappka' } }
+        ]
+      }
+    })
+
+    const yaml = buildYaml({ ...form, description: 'Edited description' })
+    expect(parse(yaml) as unknown).toMatchObject({
+      spec: {
+        steps: [{ with: { ...model, maxDetections: 8 } }, { with: { ...model, region, query: 'Żappka' } }]
+      }
+    })
+  })
+
+  it('preserves label matching and required launch success in workflow YAML', () => {
+    const textInput = { text: 'Żappka', match: 'contains', timeoutMs: 15000, intervalMs: 500 }
+    const steps = [
+      { ...defaultStep('android.waitForText'), withJson: JSON.stringify(textInput) },
+      { ...defaultStep('android.tapText'), withJson: JSON.stringify(textInput) },
+      {
+        ...defaultStep('android.launchPackage'),
+        withJson: JSON.stringify({ packageName: 'com.example.app', requireSuccess: true })
+      }
+    ]
+    const yaml = buildYaml({ name: 'Device steps', description: '', tags: [], steps })
+
+    expect(yaml.match(/match: contains/g)).toHaveLength(2)
+    expect(yaml).toContain('text: Żappka')
+    expect(yaml).toContain('requireSuccess: true')
+  })
+
   it('does not persist UI-only step state in YAML', () => {
     const step = {
       ...defaultStep('android.tap'),

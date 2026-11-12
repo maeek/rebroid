@@ -17,7 +17,7 @@ type DisplaySessionResponse =
 type DisplaySessionListResponse =
   DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
 type DisplayActionResponse =
-  DisplaySidecarApiSchemas['DisplayCommandResultDto'];
+  DisplaySidecarApiSchemas['DisplayActionAcknowledgmentDto'];
 type DisplayClipboardResponse =
   DisplaySidecarApiSchemas['DisplayClipboardResultDto'];
 
@@ -31,6 +31,7 @@ interface CreateVirtualSurfaceInput {
 
 interface ErrorResponse {
   message?: string;
+  code?: string;
 }
 
 @Injectable()
@@ -99,20 +100,62 @@ export class AndroidAppsDisplaySidecarService {
     signal?: AbortSignal,
   ) {
     const session = await this.ensureSession(app, signal);
-    const response = await this.request<DisplayActionResponse>(
-      `/sessions/${session.id}/actions`,
-      {
-        signal,
-        method: 'POST',
-        body: JSON.stringify({ command }),
-      },
-    );
-    if (!response.session || response.executed !== true) {
-      throw new ConflictException(
-        'Display sidecar returned a malformed control response.',
+    await this.requestAction(session.id, command, signal);
+    return { session, command, executed: true };
+  }
+
+  private async requestAction(
+    sessionId: string,
+    command: ApplicationViewerControlCommand,
+    signal?: AbortSignal,
+  ) {
+    signal?.throwIfAborted();
+    let response: Response;
+    let payload: ErrorResponse & Partial<DisplayActionResponse>;
+    try {
+      response = await this.fetchDisplay(
+        `/sessions/${encodeURIComponent(sessionId)}/actions`,
+        {
+          method: 'POST',
+          redirect: 'error',
+          body: JSON.stringify({ command }),
+        },
       );
+      payload = this.parseJson(await response.text());
+    } catch {
+      throw this.unknownActionOutcome(command);
     }
-    return { session: response.session, command, executed: true };
+    if (!response.ok) {
+      if (
+        response.status >= 500 ||
+        payload.code === 'control_outcome_unknown'
+      ) {
+        throw this.unknownActionOutcome(command);
+      }
+      throw new ConflictException({
+        code:
+          typeof payload.code === 'string' ? payload.code : 'control_rejected',
+        message:
+          typeof payload.message === 'string'
+            ? payload.message
+            : `Display sidecar rejected control "${command}" (HTTP ${response.status}).`,
+      });
+    }
+    if (
+      payload.ok !== true ||
+      payload.executed !== true ||
+      payload.command !== command ||
+      (payload.transport !== 'adb' && payload.transport !== 'stream-control')
+    ) {
+      throw this.unknownActionOutcome(command);
+    }
+  }
+
+  private unknownActionOutcome(command: ApplicationViewerControlCommand) {
+    return new ConflictException({
+      code: 'control_outcome_unknown',
+      message: `Display sidecar could not confirm whether control "${command}" executed.`,
+    });
   }
 
   async setClipboard(app: AndroidApplication, text: string) {

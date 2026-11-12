@@ -19,6 +19,19 @@ const fileSchema = z.object({
     }),
 });
 
+const readUiXml = async ({
+  app,
+  adb,
+  abortSignal,
+}: AutomationCommandContext) => {
+  const dump = await adb.dumpUi(app, abortSignal);
+  abortSignal?.throwIfAborted();
+  if (dump.status !== 'available' || !dump.xml?.trim()) {
+    throw new Error('Android UI hierarchy is unavailable.');
+  }
+  return dump.xml;
+};
+
 @Injectable()
 export class GenericAutomationCommandsService {
   list(): AutomationCommandDefinition[] {
@@ -31,10 +44,10 @@ export class GenericAutomationCommandsService {
         schema: textSchema,
         execute: async (
           { text }: z.infer<typeof textSchema>,
-          { app, adb }: AutomationCommandContext,
+          context: AutomationCommandContext,
         ) => {
-          const dump = await adb.dumpUi(app);
-          if (dump.status !== 'available' || !dump.xml?.includes(text)) {
+          const xml = await readUiXml(context);
+          if (!xml.includes(text)) {
             throw new Error(`Text "${text}" was not found.`);
           }
           return { summary: `Text "${text}" exists.` };
@@ -48,10 +61,10 @@ export class GenericAutomationCommandsService {
         schema: textSchema,
         execute: async (
           { text }: z.infer<typeof textSchema>,
-          { app, adb }: AutomationCommandContext,
+          context: AutomationCommandContext,
         ) => {
-          const dump = await adb.dumpUi(app);
-          if (dump.status === 'available' && dump.xml?.includes(text)) {
+          const xml = await readUiXml(context);
+          if (xml.includes(text)) {
             throw new Error(`Text "${text}" was found.`);
           }
           return { summary: `Text "${text}" is missing.` };
@@ -65,9 +78,9 @@ export class GenericAutomationCommandsService {
         schema: fileSchema,
         execute: async (
           { path }: z.infer<typeof fileSchema>,
-          { app, adb }: AutomationCommandContext,
+          { app, adb, abortSignal }: AutomationCommandContext,
         ) => {
-          if (!(await adb.fileExists(app, path))) {
+          if (!(await adb.fileExists(app, path, abortSignal))) {
             throw new Error(`File "${path}" was not found.`);
           }
           return { summary: `File "${path}" exists.` };
@@ -143,9 +156,9 @@ export class GenericAutomationCommandsService {
         ],
         execute: async (
           _input: Record<string, never>,
-          { app, adb }: AutomationCommandContext,
+          { app, adb, abortSignal }: AutomationCommandContext,
         ) => {
-          const result = await adb.screenshot(app);
+          const result = await adb.screenshot(app, abortSignal);
           return {
             summary: 'Screenshot artifact saved.',
             data: {

@@ -12,6 +12,7 @@ import {
   AutomationRunStatusBadge,
   type AutomationRunDisplayStatus
 } from '@/shared/ui/automation/automation-run-status-badge'
+import { WorkflowOcrExchangeDetails } from '@/shared/ui/automation/workflow-ocr-exchange-details'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { JsonViewer } from '@/shared/ui/json-viewer'
 import { StateView } from '@/shared/ui/state-view'
@@ -114,6 +115,8 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
                 </p>
               ) : null}
             </div>
+          ) : event.type === 'vision.ocr.exchange' ? (
+            <WorkflowOcrExchangeDetails data={event.data} />
           ) : Object.keys(event.data).length ? (
             <JsonViewer
               value={event.data}
@@ -138,6 +141,8 @@ export function AutomationRunLiveEvents({
   showHeader = true,
   allowCancel = true,
   presentation = 'panel',
+  ocrStep,
+  onClearOcrStep,
   onStatusChange
 }: {
   run: Pick<AutomationRun, 'id' | 'status' | 'trigger' | 'startedAt' | 'createdAt'>
@@ -145,6 +150,8 @@ export function AutomationRunLiveEvents({
   showHeader?: boolean
   allowCancel?: boolean
   presentation?: 'panel' | 'flat'
+  ocrStep?: { stepId: string; path?: string | null }
+  onClearOcrStep?: () => void
   onStatusChange?: (status: AutomationRun['status']) => void
 }) {
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
@@ -218,8 +225,18 @@ export function AutomationRunLiveEvents({
   }, [recorded, runId])
 
   const visibleEvents = useMemo(
-    () => events.filter(event => event.type !== 'heartbeat' && (flat || event.message.trim().length > 0)),
-    [events, flat]
+    () =>
+      events.filter(event => {
+        if (ocrStep) {
+          return (
+            event.type === 'vision.ocr.exchange' &&
+            event.stepId === ocrStep.stepId &&
+            (!ocrStep.path || event.data.path === ocrStep.path)
+          )
+        }
+        return event.type !== 'heartbeat' && (flat || event.message.trim().length > 0)
+      }),
+    [events, flat, ocrStep]
   )
 
   const cancel = async () => {
@@ -246,6 +263,8 @@ export function AutomationRunLiveEvents({
   const displayStatus: AutomationRunDisplayStatus = isCanceling ? 'canceling' : localStatus
   const canCancel = allowCancel && activeStatuses.has(localStatus)
   const waitingForEvents = !hasLoadedEvents || activeStatuses.has(localStatus)
+  const emptyEventTitle = ocrStep ? 'No OCR exchange recorded' : 'No recorded events'
+  const emptyEventDescription = ocrStep ? undefined : 'Use Summary to inspect the run outcome.'
 
   return (
     <div
@@ -289,6 +308,18 @@ export function AutomationRunLiveEvents({
         </div>
       ) : null}
 
+      {ocrStep ? (
+        <div className='flex flex-wrap items-center justify-between gap-2 pb-2'>
+          <span className='text-sm font-medium'>OCR events for {ocrStep.stepId}</span>
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={onClearOcrStep}
+          >
+            Show all events
+          </Button>
+        </div>
+      ) : null}
       <div
         role='log'
         aria-label={`Events for run ${runId.slice(0, 8)}`}
@@ -301,11 +332,9 @@ export function AutomationRunLiveEvents({
           <StateView
             scope='section'
             kind={waitingForEvents ? 'loading' : 'empty'}
-            title={waitingForEvents ? 'Waiting for events' : 'No recorded events'}
+            title={waitingForEvents ? 'Waiting for events' : emptyEventTitle}
             description={
-              activeStatuses.has(localStatus)
-                ? 'Events will appear as the workflow runs.'
-                : 'Use Summary to inspect the run outcome.'
+              activeStatuses.has(localStatus) ? 'Events will appear as the workflow runs.' : emptyEventDescription
             }
           />
         ) : null}

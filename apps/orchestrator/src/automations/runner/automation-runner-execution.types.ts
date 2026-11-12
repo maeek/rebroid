@@ -1,6 +1,6 @@
 import type { AndroidAutomationApplication } from '../../android-apps/contracts/android-apps-automation.port';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
-import { AutomationStepResult } from './automation-runner.types';
+import type { AdmitAutomationTargetWork } from './automation-runner-options';
 
 export interface AutomationExecutionState {
   app: AndroidAutomationApplication;
@@ -10,7 +10,6 @@ export interface AutomationExecutionState {
   trigger: AutomationRunTrigger;
   targetProfileMode: string | null;
   targetProfileName: string | null;
-  results: AutomationStepResult[];
   outputsByStepId: Map<string, Record<string, unknown> | null>;
 }
 
@@ -19,6 +18,7 @@ export interface AutomationStepExecutionOptions {
   parentStepId?: string | null;
   path: string;
   isRunCanceled: (runId: string) => boolean;
+  admitTargetWork: AdmitAutomationTargetWork;
 }
 
 export interface AutomationStepExecutionResult {

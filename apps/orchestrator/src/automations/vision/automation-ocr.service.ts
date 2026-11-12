@@ -10,8 +10,16 @@ import type {
   OcrPreprocessingAttempt,
 } from './automation-ocr.port';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
+import {
+  projectOcrResponse,
+  type AutomationOcrExchange,
+} from './automation-ocr-exchange';
 
 const normalizedCoordinate = z.number().finite().min(0).max(1);
+const ocrImageSchema = z.object({
+  width: z.number().int().min(1).max(4096),
+  height: z.number().int().min(1).max(4096),
+});
 const ocrSuccessSchema = z.object({
   status: z.literal('available'),
   detections: z.array(
@@ -52,37 +60,75 @@ export class AutomationOcrService implements AutomationOcrPort {
   async recognize(
     image: AiScreenshot,
     abortSignal?: AbortSignal,
+    deadline?: number,
+    onExchange?: (exchange: AutomationOcrExchange) => Promise<void>,
   ): Promise<AutomationOcrResult> {
     abortSignal?.throwIfAborted();
     const settings = (await this.settingsStore.getStoredSettings()).services
       .ocr;
     const baseUrl = settings.endpoint ?? '';
-    if (!this.features.isEnabled('feature.ocr') || !baseUrl) {
+    if (!this.features.isEnabled('feature.ocr')) {
       return { status: 'disabled', detections: [] };
+    }
+    if (!baseUrl) {
+      return {
+        status: 'failed',
+        detections: [],
+        error: 'OCR is enabled but no endpoint is configured.',
+      };
     }
 
     abortSignal?.throwIfAborted();
-    const timeoutMs = settings.timeoutMs;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    const onAbort = () => controller.abort();
-    abortSignal?.addEventListener('abort', onAbort, { once: true });
+    const timeoutMs = Math.min(
+      settings.timeoutMs,
+      deadline === undefined ? Infinity : deadline - Date.now(),
+    );
+    if (timeoutMs <= 0) {
+      return {
+        status: 'failed',
+        detections: [],
+        error: 'OCR request timed out.',
+      };
+    }
+    const timeout = AbortSignal.timeout(timeoutMs);
+    const signal = abortSignal
+      ? AbortSignal.any([abortSignal, timeout])
+      : timeout;
+    const parameters = {
+      language: settings.language,
+      minConfidence: settings.minConfidence,
+      maxImageDimension: settings.maxImageDimension,
+      timeoutMs,
+    };
+    const body = JSON.stringify({ dataUrl: image.dataUrl, ...parameters });
+    const started = performance.now();
+    let result: AutomationOcrResult | undefined;
+    let httpStatus: number | null = null;
+    let responseBytes: number | null = null;
+    let responseImage: AutomationOcrExchange['response']['image'] = null;
+    let code: string | null = null;
+    let canceled = false;
     try {
       const response = await fetch(`${baseUrl}/ocr/screenshot`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          dataUrl: image.dataUrl,
-          language: settings.language,
-          minConfidence: settings.minConfidence,
-          maxImageDimension: settings.maxImageDimension,
-        }),
-        signal: controller.signal,
+        body,
+        signal,
       });
+      httpStatus = response.status;
       const text = await response.text();
+      if (onExchange) responseBytes = Buffer.byteLength(text);
       const payload = this.parsePayload(text);
       if (!response.ok) {
-        return {
+        const detail = payload?.detail;
+        const returnedCode =
+          detail && typeof detail === 'object' ? detail.code : null;
+        if (
+          typeof returnedCode === 'string' &&
+          /^[a-z_]{1,60}$/.test(returnedCode)
+        )
+          code = returnedCode;
+        result = {
           status: 'failed',
           detections: [],
           error: sanitizeAiText(
@@ -96,6 +142,7 @@ export class AutomationOcrService implements AutomationOcrPort {
               payload?.preprocessingAttempts,
           ),
         };
+        return result;
       }
       const success = ocrSuccessSchema.safeParse(payload);
       if (
@@ -103,32 +150,72 @@ export class AutomationOcrService implements AutomationOcrPort {
         (success.data.language !== undefined &&
           success.data.language !== settings.language)
       ) {
-        return {
+        code = 'ocr_invalid_response';
+        result = {
           status: 'failed',
           detections: [],
           error: 'OCR sidecar returned an invalid response.',
         };
+        return result;
       }
-      return this.normalizePayload(success.data);
+      const returnedImage = ocrImageSchema.safeParse(payload?.image);
+      if (returnedImage.success) responseImage = returnedImage.data;
+      result = this.normalizePayload(success.data);
+      return result;
     } catch (error) {
-      return {
+      canceled = abortSignal?.aborted === true;
+      code = timeout.aborted ? 'ocr_timeout' : 'ocr_transport_error';
+      result = {
         status: 'failed',
         detections: [],
-        error: sanitizeAiText(
-          error instanceof Error ? error.message : String(error),
-          1000,
-        ),
+        error: timeout.aborted
+          ? 'OCR request timed out.'
+          : sanitizeAiText(
+              error instanceof Error ? error.message : String(error),
+              1000,
+            ),
       };
+      abortSignal?.throwIfAborted();
+      return result;
     } finally {
-      clearTimeout(timeout);
-      abortSignal?.removeEventListener('abort', onAbort);
+      if (result && onExchange) {
+        await onExchange({
+          request: {
+            method: 'POST',
+            path: '/ocr/screenshot',
+            image: {
+              mimeType: image.mimeType,
+              capturedAt: image.capturedAt,
+              dataUrlBytes:
+                typeof image.dataUrl === 'string'
+                  ? Buffer.byteLength(image.dataUrl)
+                  : 0,
+            },
+            bodyBytes: Buffer.byteLength(body),
+            ...parameters,
+          },
+          response: projectOcrResponse(
+            result,
+            {
+              httpStatus,
+              code,
+              bodyBytes: responseBytes,
+              image: responseImage,
+              durationMs: Math.round(performance.now() - started),
+            },
+            canceled,
+          ),
+        });
+      }
     }
   }
 
   private parsePayload(text: string):
     | (Partial<OcrSidecarResponse> & {
-        detail?: { message?: string; attempts?: unknown } | string;
+        detail?:
+          { message?: string; attempts?: unknown; code?: unknown } | string;
         message?: string;
+        image?: unknown;
       })
     | null {
     try {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunLiveEvents } from './automation-run-live-events'
@@ -41,6 +41,51 @@ const failedEvent: AutomationRunEvent = {
 }
 
 describe('AutomationRunLiveEvents', () => {
+  it('shows the OCR request and response for the selected step occurrence', async () => {
+    const exchange: AutomationRunEvent = {
+      ...failedEvent,
+      type: 'vision.ocr.exchange',
+      stepId: 'locate',
+      message: 'OCR returned 1 text box(es).',
+      data: {
+        path: 'steps[0].iterations[2].steps[0]',
+        request: { language: 'pl', timeoutMs: 500 },
+        response: { httpStatus: 200, detections: [{ text: 'Żappka' }] },
+        preview: { dataUrl: 'data:image/jpeg;base64,/9j/2Q==', width: 1, height: 1 }
+      }
+    }
+    vi.mocked(getBff).mockResolvedValue({
+      events: [
+        exchange,
+        {
+          ...exchange,
+          id: 'event_2',
+          sequence: 2,
+          message: 'Another iteration',
+          data: { path: 'steps[0].iterations[3].steps[0]' }
+        }
+      ],
+      streamUrl: 'ws://example.test/events'
+    })
+    const clear = vi.fn()
+    render(
+      <AutomationRunLiveEvents
+        run={{ ...run, status: 'success' }}
+        presentation='flat'
+        ocrStep={{ stepId: 'locate', path: 'steps[0].iterations[2].steps[0]' }}
+        onClearOcrStep={clear}
+      />
+    )
+
+    fireEvent.click(await screen.findByText(exchange.message))
+    expect(await screen.findByText('OCR request')).toBeTruthy()
+    expect(screen.getByText('OCR response')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Android screenshot sent for text recognition' })).toBeTruthy()
+    expect(screen.queryByText('Another iteration')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all events' }))
+    expect(clear).toHaveBeenCalledOnce()
+  })
+
   it('removes Stop and avoids opening a live socket after replay reaches a terminal status', async () => {
     vi.mocked(getBff).mockResolvedValue({ events: [failedEvent], streamUrl: 'ws://example.test/events' })
     vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'canceled' })

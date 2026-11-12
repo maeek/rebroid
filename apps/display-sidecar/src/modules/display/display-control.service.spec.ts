@@ -6,6 +6,8 @@ import type { ScrcpyService } from "../scrcpy/scrcpy.service";
 import type { DisplaySessionService } from "./display-session.service";
 import type { DisplayControlRequest } from "./display.types";
 import { setImmediate } from "node:timers/promises";
+import { DisplayController } from "./display.controller";
+import { ScrcpyControlDispatchError } from "../scrcpy/scrcpy-control-dispatch-error";
 
 const requests: DisplayControlRequest[] = [
   { type: "action", command: "home" },
@@ -49,6 +51,43 @@ test("all control kinds share stream and ADB fallback semantics", async () => {
     assert.equal(
       (await service(false).execute("session", request)).transport,
       "adb",
+    );
+  }
+});
+
+test("authenticated Home action returns the same acknowledgment shape for either transport", async () => {
+  for (const [stream, transport] of [
+    [true, "stream-control"],
+    [false, "adb"],
+  ] as const) {
+    const controller = new DisplayController(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      service(stream),
+      {} as never,
+    );
+    assert.deepEqual(await controller.action("session", { command: "home" }), {
+      ok: true,
+      command: "home",
+      executed: true,
+      transport,
+    });
+  }
+});
+
+test("authenticated Home keeps pre-dispatch rejection and uncertain outcomes distinct", async () => {
+  for (const code of [
+    "control_not_dispatched",
+    "control_outcome_unknown",
+  ] as const) {
+    const dispatch = Promise.reject(new ScrcpyControlDispatchError(code, code));
+    await assert.rejects(
+      service(dispatch).executeAction("session", "home"),
+      (error: unknown) =>
+        (error as { getResponse: () => { code: string } }).getResponse()
+          .code === code,
     );
   }
 });

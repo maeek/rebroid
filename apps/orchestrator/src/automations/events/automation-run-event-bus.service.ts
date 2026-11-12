@@ -32,6 +32,14 @@ export class AutomationRunEventBus {
     return result.run;
   }
 
+  async recordStepOutcome(
+    ...args: Parameters<AutomationRunEventsRepository['recordStepOutcome']>
+  ) {
+    const event = await this.events.recordStepOutcome(...args);
+    if (event) this.publish(event);
+    return event !== null;
+  }
+
   private publish(event: AutomationRunEventRecord) {
     for (const listener of this.emitter.listeners(event.runId)) {
       try {

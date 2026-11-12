@@ -34,6 +34,15 @@ test("ADB command runner bounds binary output", async () => {
   );
 });
 
+test("ADB command runner rejects a process terminated by a signal", async () => {
+  await assert.rejects(
+    runner().text(["-e", "process.kill(process.pid, 'SIGTERM')"], 1_000, {
+      rejectOnNonZero: false,
+    }),
+    /was terminated by SIGTERM/,
+  );
+});
+
 test("ADB command runner handles timeout and cancellation", async () => {
   await assert.rejects(
     runner().text(["-e", "setInterval(() => {}, 1000)"], 20),

@@ -22,8 +22,14 @@ const browserKeyEvents: Record<string, string> = {
 const finiteNumber = (value: number | undefined) =>
   typeof value === "number" && Number.isFinite(value) ? value : 0;
 
-export const escapeAdbInputText = (value: string) =>
-  value.replace(/%/g, "%25").replace(/\s/g, "%s");
+export const quoteAdbShellArgument = (value: string) =>
+  `'${value.replace(/'/g, `'\\''`)}'`;
+
+export const inputTextCommand = (value: string) => [
+  "input",
+  "text",
+  quoteAdbShellArgument(value.replace(/%/g, "%25").replace(/\s/g, "%s")),
+];
 
 export const clampDuration = (
   value: number | undefined,
@@ -49,7 +55,7 @@ export const keyboardCommand = (event: KeyboardControlPayload) => {
   const specialKey = event.key ? browserKeyEvents[event.key] : undefined;
   if (specialKey) return ["input", "keyevent", specialKey];
   if (event.key?.length === 1) {
-    return ["input", "text", escapeAdbInputText(event.key)];
+    return inputTextCommand(event.key);
   }
   return null;
 };

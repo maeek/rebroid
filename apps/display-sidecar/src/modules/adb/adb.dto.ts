@@ -169,6 +169,45 @@ export class AdbTapTextResultDto {
   y!: number | null;
 }
 
+export class AdbUiTextDto {
+  @ApiPropertyOptional({ type: String, format: "uuid" })
+  operationId?: string;
+
+  @ApiProperty({ example: "Żappka", maxLength: 500 })
+  text!: string;
+
+  @ApiProperty({ enum: ["exact", "contains"] })
+  match!: "exact" | "contains";
+
+  @ApiProperty({ enum: ["wait", "tap"] })
+  operation!: "wait" | "tap";
+
+  @ApiProperty({ example: 10000, minimum: 1, maximum: 120000 })
+  timeoutMs!: number;
+
+  @ApiProperty({ example: 500, minimum: 250, maximum: 10000 })
+  intervalMs!: number;
+}
+
+export class AdbUiTextResultDto {
+  @ApiProperty({
+    enum: [
+      "found",
+      "not_found",
+      "hierarchy_unavailable",
+      "tap_outcome_unknown",
+    ],
+  })
+  status!:
+    "found" | "not_found" | "hierarchy_unavailable" | "tap_outcome_unknown";
+
+  @ApiPropertyOptional({ type: Number })
+  x?: number;
+
+  @ApiPropertyOptional({ type: Number })
+  y?: number;
+}
+
 export class AdbFileDto {
   @ApiProperty({ example: "/sdcard/Download/example.txt" })
   path!: string;

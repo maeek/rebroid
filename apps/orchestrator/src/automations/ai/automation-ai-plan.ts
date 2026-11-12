@@ -1,6 +1,20 @@
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import type { DeviceAgentSubgoal } from './automation-device-agent-run-state';
 
+export const shouldPlanInitially = (
+  mode: AutomationAiRunInput['agentMode'],
+  prompt: string,
+) => {
+  if (mode === 'planned') return true;
+  if (mode === 'controller') return false;
+  const normalized = prompt.toLowerCase();
+  return (
+    /\bthen\b|\bafter that\b|\bfinally\b/.test(normalized) ||
+    prompt.split(/\r?\n/).filter((line) => /^\s*(?:[-*]|\d+[.)])\s+/.test(line))
+      .length >= 2
+  );
+};
+
 export const devicePlanSchema: Record<string, unknown> = {
   type: 'object',
   properties: {

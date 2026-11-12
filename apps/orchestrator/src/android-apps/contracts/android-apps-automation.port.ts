@@ -15,6 +15,7 @@ export interface AndroidAutomationApplication {
   containerName: string;
   networkName: string;
   adbPort: number;
+  lastStartedAt: Date | null;
   networkPolicyEnabled: boolean;
   networkPolicyAllowCidrs: string;
 }
@@ -35,6 +36,11 @@ export interface AndroidAutomationNotification {
 export interface AndroidAutomationNetworkPolicyUpdate {
   networkPolicyEnabled?: boolean;
   networkPolicyAllowCidrs?: string[];
+}
+
+export interface AndroidAutomationCidrChange {
+  operation: 'add' | 'remove';
+  cidr: string;
 }
 
 export interface AndroidAutomationAdbPort {
@@ -85,6 +91,7 @@ export interface AndroidAutomationAdbPort {
     command: string,
     timeoutMs: number,
     signal?: AbortSignal,
+    deadline?: number,
   ): Promise<{ stdout: string; stderr: string; exitCode: number }>;
   dumpUi(
     app: AndroidAutomationApplication,
@@ -97,25 +104,37 @@ export interface AndroidAutomationAdbPort {
     diagnostics?: AndroidAutomationUiDumpAttempt;
     attempts?: AndroidAutomationUiDumpAttempt[];
   }>;
-  tapText(
+  uiText(
     app: AndroidAutomationApplication,
-    text: string,
-  ): Promise<{ found: boolean; x: number | null; y: number | null }>;
+    input: AndroidAutomationUiTextInput,
+    signal?: AbortSignal,
+  ): Promise<AndroidAutomationUiTextResult>;
   pushFile(
     app: AndroidAutomationApplication,
     path: string,
     contentBase64: string,
+    signal?: AbortSignal,
   ): Promise<{ pushed: boolean }>;
   pullFile(
     app: AndroidAutomationApplication,
     path: string,
+    signal?: AbortSignal,
   ): Promise<{ path: string; contentBase64: string; sizeBytes: number }>;
   deleteFile(
     app: AndroidAutomationApplication,
     path: string,
+    signal?: AbortSignal,
   ): Promise<{ deleted: boolean }>;
-  fileExists(app: AndroidAutomationApplication, path: string): Promise<boolean>;
-  listFiles(app: AndroidAutomationApplication, path: string): Promise<string[]>;
+  fileExists(
+    app: AndroidAutomationApplication,
+    path: string,
+    signal?: AbortSignal,
+  ): Promise<boolean>;
+  listFiles(
+    app: AndroidAutomationApplication,
+    path: string,
+    signal?: AbortSignal,
+  ): Promise<string[]>;
   logcat(
     app: AndroidAutomationApplication,
     tail: number,
@@ -128,6 +147,18 @@ export interface AndroidAutomationAdbPort {
     signal?: AbortSignal,
   ): Promise<{ mimeType: string; dataUrl: string; capturedAt: string }>;
 }
+
+export interface AndroidAutomationUiTextInput {
+  text: string;
+  match: 'exact' | 'contains';
+  operation: 'wait' | 'tap';
+  timeoutMs: number;
+  intervalMs: number;
+}
+
+export type AndroidAutomationUiTextResult =
+  | { status: 'found'; x: number; y: number }
+  | { status: 'not_found' | 'hierarchy_unavailable' | 'tap_outcome_unknown' };
 
 export interface AndroidAutomationUiDumpAttempt {
   command: string;
@@ -184,6 +215,10 @@ export interface AndroidAutomationNetworkPolicyPort {
     id: string,
     input: AndroidAutomationNetworkPolicyUpdate,
   ): Promise<AndroidAutomationApplication>;
+  changeAllowedCidr(
+    id: string,
+    change: AndroidAutomationCidrChange,
+  ): Promise<AndroidAutomationApplication>;
 }
 
 export interface AndroidAutomationAdapters {
@@ -199,5 +234,10 @@ export interface AndroidAppsAutomationPort {
     dto?: { profileMode?: ApplicationProfileMode; profileName?: string },
     maxOpenApps?: number,
   ): Promise<AndroidAutomationApplication>;
+  withAutomationTarget<T>(
+    expected: AndroidAutomationApplication,
+    signal: AbortSignal | undefined,
+    operation: (app: AndroidAutomationApplication) => Promise<T>,
+  ): Promise<T>;
   automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters;
 }

@@ -2,6 +2,10 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { AutomationCommandContext } from '../commands/automation-command.types';
 import { optimizeAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import {
+  createOcrInputPreview,
+  type AutomationOcrExchange,
+} from './automation-ocr-exchange';
+import {
   AUTOMATION_OCR,
   type AutomationOcrResult,
   type AutomationOcrPort,
@@ -32,7 +36,11 @@ export class AutomationVisionCaptureService {
   ) {}
 
   async capture(
-    context: Pick<AutomationCommandContext, 'adb' | 'app' | 'abortSignal'>,
+    context: Pick<
+      AutomationCommandContext,
+      'adb' | 'app' | 'abortSignal' | 'recordOcrExchange'
+    >,
+    deadline?: number,
   ): Promise<AutomationVisionCapture> {
     if (context.abortSignal?.aborted) {
       throw new BadRequestException(
@@ -45,7 +53,6 @@ export class AutomationVisionCaptureService {
       context.abortSignal,
     );
     context.abortSignal?.throwIfAborted();
-    const aiImage = await optimizeAiScreenshot(screenshot);
     const uiPromise = context.adb
       .dumpUi(context.app, context.abortSignal)
       .catch((error: unknown) => ({
@@ -53,9 +60,15 @@ export class AutomationVisionCaptureService {
         error:
           error instanceof Error ? error.message : 'UI hierarchy dump failed.',
       }));
-    const [ui, ocr] = await Promise.all([
+    const { recordOcrExchange } = context;
+    const onExchange = recordOcrExchange
+      ? async (exchange: AutomationOcrExchange) =>
+          recordOcrExchange(exchange, await createOcrInputPreview(screenshot))
+      : undefined;
+    const [aiImage, ui, ocr] = await Promise.all([
+      optimizeAiScreenshot(screenshot),
       uiPromise,
-      this.ocr.recognize(screenshot, context.abortSignal),
+      this.ocr.recognize(screenshot, context.abortSignal, deadline, onExchange),
     ]);
 
     context.abortSignal?.throwIfAborted();

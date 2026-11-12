@@ -11,7 +11,7 @@ type FinishVerification =
 
 export const verifyAutomationAiFinish = (
   decision: FinishDecision,
-  state: DeviceAgentState,
+  state: Pick<DeviceAgentState, 'evidence' | 'subgoals'>,
 ): FinishVerification => {
   const knownEvidence = new Set(state.evidence.map((evidence) => evidence.id));
   const unknownEvidence = decision.evidenceIds.filter(

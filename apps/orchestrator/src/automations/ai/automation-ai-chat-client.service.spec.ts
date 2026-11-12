@@ -136,6 +136,56 @@ describe('AutomationAiChatClientService', () => {
     expect(body).not.toHaveProperty('chat_template_kwargs');
   });
 
+  it.each(['openai-chat-completions', 'ollama-native-chat'] as const)(
+    'serializes a named schema for %s without adding tools',
+    async (protocol) => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            streamFromText([
+              protocol === 'ollama-native-chat'
+                ? '{"done":true,"message":{"role":"assistant","content":"{}"}}\n'
+                : 'data: [DONE]\n\n',
+            ]),
+          ),
+        );
+      global.fetch = fetchMock;
+      const schema = {
+        type: 'object',
+        properties: {},
+        additionalProperties: false,
+      };
+
+      await new AutomationAiChatClientService().chat({
+        provider: { ...provider, protocol },
+        model,
+        messages: [],
+        tools: [],
+        deadline: Date.now() + 10_000,
+        responseFormat: {
+          type: 'json_schema',
+          name: 'device_decision',
+          schema,
+        },
+      });
+
+      const request = (fetchMock.mock.calls[0] as [string, RequestInit])[1];
+      const body = JSON.parse(String(request.body));
+      if (protocol === 'ollama-native-chat') {
+        expect(body).toHaveProperty('format', schema);
+        expect(body).not.toHaveProperty('response_format');
+      } else {
+        expect(body).toHaveProperty('response_format', {
+          type: 'json_schema',
+          json_schema: { name: 'device_decision', strict: true, schema },
+        });
+        expect(body).not.toHaveProperty('format');
+      }
+      expect(body).not.toHaveProperty('tools');
+    },
+  );
+
   it.each(['controller', 'planner'] as const)(
     'attributes %s requests and failures to the supplied role',
     async (role) => {

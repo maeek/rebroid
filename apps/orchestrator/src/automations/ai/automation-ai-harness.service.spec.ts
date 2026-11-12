@@ -4,6 +4,9 @@ import { AutomationAiDecisionService } from './automation-ai-decision.service';
 import { AutomationAiHarnessService } from './automation-ai-harness.service';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import type { AutomationRunEventInput } from '../events/automation-run-events.types';
+import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
+import { AutomationVisionService } from '../vision/automation-vision.service';
+import { createDetection } from '../vision/vision-observation';
 
 const provider = {
   id: 'provider',
@@ -176,15 +179,15 @@ const createHarness = ({
     eventBus as never,
     decisions,
     actions,
+    { observe: perception } as never,
   );
   return { service, events, chat, perception };
 };
 
-const context = (toolExecutor = jest.fn()): AutomationAiHarnessContext => ({
+const context = (executeCommand = jest.fn()): AutomationAiHarnessContext => ({
   runId: 'run-1',
   ownerUserId: 'owner-1',
   stepId: 'ai-run',
-  path: '$',
   app: {
     id: 'app-1',
     containerId: 'container-1',
@@ -193,9 +196,8 @@ const context = (toolExecutor = jest.fn()): AutomationAiHarnessContext => ({
     adbPort: 5555,
   } as never,
   adb: {} as never,
-  display: {} as never,
-  networkPolicy: {} as never,
-  toolExecutor,
+  executeCommand,
+  withTarget: jest.fn(),
 });
 
 const input = {
@@ -207,6 +209,112 @@ const input = {
 };
 
 describe('AutomationAiHarnessService', () => {
+  it('grounds an OCR lookup outside the initial shortlist and rejects its ID after a new snapshot', async () => {
+    const initial = observation('screen-1');
+    const current = {
+      ...initial,
+      observation: {
+        ...initial.observation,
+        lookupDetections: [
+          createDetection({
+            id: 'ocr-31',
+            label: 'Żappka',
+            text: 'Żappka',
+            source: 'ocr',
+            confidence: 0.8,
+            bounds: { left: 0.25, top: 0.5, width: 0.25, height: 0.25 },
+          }),
+        ],
+        ocr: { status: 'available' as const, detections: [] },
+      },
+    };
+    const capture = jest.fn();
+    const vision = new AutomationVisionService(
+      { capture } as never,
+      {} as never,
+      {} as never,
+    );
+    const [, locate] = new VisionAutomationCommandsService(
+      {} as never,
+      vision,
+    ).list();
+    const { service, chat, events, perception } = createHarness({
+      commandUses: ['vision.locate'],
+      observations: [current, observation('screen-2')],
+      chatResponses: [
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Locate Żappka',
+          expectedOutcome: 'A candidate is located.',
+          action: {
+            type: 'invoke_capability',
+            uses: 'vision.locate',
+            input: { query: 'Żappka' },
+          },
+        }),
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-1',
+          intent: 'Open Żappka',
+          expectedOutcome: 'The screen changes.',
+          action: { type: 'tap', candidateId: 'lookup-1-1' },
+        }),
+        decisionResponse({
+          kind: 'act',
+          snapshotId: 'screen-2',
+          intent: 'Repeat the tap',
+          expectedOutcome: 'The screen changes.',
+          action: { type: 'tap', candidateId: 'lookup-1-1' },
+        }),
+        decisionResponse({
+          kind: 'finish',
+          status: 'completed',
+          finalText: 'Żappka was opened.',
+          evidenceIds: ['action:2'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const executeCommand = jest
+      .fn()
+      .mockImplementationOnce(({ input, signal, visionSnapshot }) =>
+        locate.execute(input, {
+          abortSignal: signal,
+          visionSnapshot,
+        } as never),
+      )
+      .mockResolvedValueOnce({ summary: 'Tapped Żappka.' });
+    const result = await service.run(
+      { ...input, capabilities: ['vision.locate', 'android.tapNormalized'] },
+      context(executeCommand),
+    );
+    expect(result.data.status).toBe('completed');
+    expect(capture).not.toHaveBeenCalled();
+    expect(perception).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(chat.mock.calls[1]?.[0].messages)).toContain(
+      'lookup-1-1',
+    );
+    expect(JSON.stringify(chat.mock.calls[1]?.[0].messages)).toContain(
+      'Żappka',
+    );
+    expect(executeCommand).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        uses: 'android.tapNormalized',
+        input: { x: 0.375, y: 0.625 },
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(executeCommand).toHaveBeenCalledTimes(2);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.guardrail.triggered',
+        message: 'Tap target is missing or stale.',
+      }),
+    );
+  });
+
   it('uses a single planner tool when structured output is not declared', async () => {
     const { service, chat } = createHarness({
       chatResponses: [
@@ -266,22 +374,22 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn().mockResolvedValue({
+    const executeCommand = jest.fn().mockResolvedValue({
       summary: 'Tapped Settings.',
       data: { x: 216, y: 585 },
     });
 
     const result = await service.run(
       { ...input, maxActions: 1 },
-      context(toolExecutor),
+      context(executeCommand),
     );
 
-    expect(toolExecutor).toHaveBeenCalledWith(
+    expect(executeCommand).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'android.tapNormalized',
-        arguments: { x: 0.2, y: 0.25 },
+        uses: 'android.tapNormalized',
+        input: { x: 0.2, y: 0.25 },
+        signal: expect.any(AbortSignal),
       }),
-      expect.any(AbortSignal),
     );
     expect(result.data).toMatchObject({
       status: 'completed',
@@ -315,11 +423,11 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn();
+    const executeCommand = jest.fn();
 
-    const result = await service.run(input, context(toolExecutor));
+    const result = await service.run(input, context(executeCommand));
 
-    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(executeCommand).not.toHaveBeenCalled();
     expect(result.data.status).toBe('blocked');
     expect(
       events.some(
@@ -346,15 +454,15 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn();
+    const executeCommand = jest.fn();
 
     await service.run(
       { ...input, capabilities: [uses], maxActions: 1 },
-      context(toolExecutor),
+      context(executeCommand),
     );
 
     expect(JSON.stringify(chat.mock.calls[0]?.[0])).not.toContain(`${uses}:`);
-    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(executeCommand).not.toHaveBeenCalled();
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'ai.guardrail.triggered',
@@ -389,13 +497,13 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest
+    const executeCommand = jest
       .fn()
       .mockRejectedValue(new Error('Lost response'));
 
     const result = await service.run(
       { ...input, capabilities: [uses] },
-      context(toolExecutor),
+      context(executeCommand),
     );
 
     expect(result.data.status).toBe('blocked');
@@ -405,9 +513,8 @@ describe('AutomationAiHarnessService', () => {
         message: 'Completed status requires observed evidence.',
       }),
     );
-    expect(toolExecutor).toHaveBeenCalledWith(
-      expect.objectContaining({ name: uses }),
-      expect.any(AbortSignal),
+    expect(executeCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ uses, signal: expect.any(AbortSignal) }),
     );
     expect(perception).toHaveBeenCalledWith(
       expect.objectContaining({ reason: `after:${uses}` }),
@@ -430,17 +537,17 @@ describe('AutomationAiHarnessService', () => {
         action: { type: 'wait', durationMs: 1000 },
       });
     });
-    const toolExecutor = jest.fn();
+    const executeCommand = jest.fn();
     try {
       const result = await service.run(
         { ...input, timeoutMs: 1000 },
-        context(toolExecutor),
+        context(executeCommand),
       );
       expect(result.data).toMatchObject({
         status: 'blocked',
         blockedReason: 'Agent timeout reached.',
       });
-      expect(toolExecutor).not.toHaveBeenCalled();
+      expect(executeCommand).not.toHaveBeenCalled();
     } finally {
       now.mockRestore();
     }
@@ -458,11 +565,11 @@ describe('AutomationAiHarnessService', () => {
       observations: [observation('screen-1'), new Error('Capture failed')],
       chatResponses: [tap, tap],
     });
-    const toolExecutor = jest
+    const executeCommand = jest
       .fn()
       .mockResolvedValue({ summary: 'Tapped Settings.' });
 
-    const result = await service.run(input, context(toolExecutor));
+    const result = await service.run(input, context(executeCommand));
 
     expect(result.data).toMatchObject({
       status: 'blocked',
@@ -470,7 +577,7 @@ describe('AutomationAiHarnessService', () => {
       toolCalls: 1,
     });
     expect(chat).toHaveBeenCalledTimes(1);
-    expect(toolExecutor).toHaveBeenCalledTimes(1);
+    expect(executeCommand).toHaveBeenCalledTimes(1);
     expect(events).toContainEqual(
       expect.objectContaining({
         type: 'ai.tool.failed',
@@ -498,11 +605,11 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn();
+    const executeCommand = jest.fn();
 
-    await service.run(input, context(toolExecutor));
+    await service.run(input, context(executeCommand));
 
-    expect(toolExecutor).not.toHaveBeenCalled();
+    expect(executeCommand).not.toHaveBeenCalled();
     expect(
       events.some(
         (event) =>
@@ -536,12 +643,12 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn().mockResolvedValue({
+    const executeCommand = jest.fn().mockResolvedValue({
       summary: 'Tapped Settings.',
       data: { x: 216, y: 585 },
     });
 
-    await service.run(input, context(toolExecutor));
+    await service.run(input, context(executeCommand));
 
     expect(
       events.some(
@@ -568,19 +675,19 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn().mockResolvedValue({
+    const executeCommand = jest.fn().mockResolvedValue({
       summary: 'Package query failed.',
       data: { success: false },
     });
 
     const result = await service.run(
       { ...input, maxActions: 1 },
-      context(toolExecutor),
+      context(executeCommand),
     );
 
     expect(result.data).toMatchObject({ status: 'blocked', toolCalls: 1 });
     expect(chat).toHaveBeenCalledTimes(2);
-    expect(toolExecutor).toHaveBeenCalledTimes(1);
+    expect(executeCommand).toHaveBeenCalledTimes(1);
     expect(events.some((event) => event.type === 'ai.tool.failed')).toBe(true);
   });
 
@@ -602,25 +709,25 @@ describe('AutomationAiHarnessService', () => {
         }),
       ],
     });
-    const toolExecutor = jest.fn().mockResolvedValue({
+    const executeCommand = jest.fn().mockResolvedValue({
       summary: 'Android 14',
       data: { output: '14' },
     });
 
     await service.run(
       { ...input, rawShellPolicy: 'allowlisted' },
-      context(toolExecutor),
+      context(executeCommand),
     );
 
-    expect(toolExecutor).toHaveBeenCalledWith(
+    expect(executeCommand).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: 'android.adbShell',
-        arguments: {
+        uses: 'android.adbShell',
+        input: {
           command: 'getprop ro.build.version.release',
           timeoutMs: 10_000,
         },
+        signal: expect.any(AbortSignal),
       }),
-      expect.any(AbortSignal),
     );
   });
 });

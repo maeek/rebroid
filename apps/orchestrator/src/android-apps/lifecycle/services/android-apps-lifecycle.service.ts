@@ -3,6 +3,7 @@ import { CloneAndroidApplicationDto } from '../../common/dto/clone-android-appli
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-application.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
+import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
 import { UpdateAndroidApplicationApkDto } from '../dto/update-android-application-apk.dto';
@@ -19,6 +20,7 @@ export class AndroidAppsLifecycleService {
     private readonly configuration: AndroidAppsConfigurationService,
     private readonly power: AndroidAppsPowerService,
     private readonly removal: AndroidAppsRemovalService,
+    private readonly runtimeOperations: AndroidAppsRuntimeOperationGate,
   ) {}
 
   create(
@@ -43,7 +45,9 @@ export class AndroidAppsLifecycleService {
   }
 
   switchProfile(id: string, dto: SwitchApplicationProfileDto) {
-    return this.runCommand(id, () => this.configuration.switchProfile(id, dto));
+    return this.runRuntimeCommand(id, () =>
+      this.configuration.switchProfile(id, dto),
+    );
   }
 
   deleteSavedProfile(id: string, profileName: string) {
@@ -57,18 +61,22 @@ export class AndroidAppsLifecycleService {
     dto: StartAndroidApplicationDto = {},
     maxOpenApps?: number,
   ) {
-    return this.runCommand(id, () => this.power.start(id, dto, maxOpenApps));
+    return this.runRuntimeCommand(id, () =>
+      this.power.start(id, dto, maxOpenApps),
+    );
   }
 
   recreate(id: string, maxOpenApps?: number) {
-    return this.runCommand(id, () => this.power.recreate(id, maxOpenApps));
+    return this.runRuntimeCommand(id, () =>
+      this.power.recreate(id, maxOpenApps),
+    );
   }
 
   stop(
     id: string,
     options: { reason?: string; details?: Record<string, unknown> } = {},
   ) {
-    return this.runCommand(id, () => this.power.stop(id, options));
+    return this.runRuntimeCommand(id, () => this.power.stop(id, options));
   }
 
   updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
@@ -76,7 +84,13 @@ export class AndroidAppsLifecycleService {
   }
 
   remove(id: string, query: RemoveAndroidApplicationDto) {
-    return this.runCommand(id, () => this.removal.request(id, query));
+    return this.runRuntimeCommand(id, () => this.removal.request(id, query));
+  }
+
+  private runRuntimeCommand<T>(id: string, operation: () => Promise<T>) {
+    return this.runCommand(id, () =>
+      this.runtimeOperations.interrupt(id, operation),
+    );
   }
 
   private async runCommand<T>(id: string, operation: () => Promise<T>) {

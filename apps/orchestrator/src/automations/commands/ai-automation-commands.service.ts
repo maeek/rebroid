@@ -118,17 +118,22 @@ export class AiAutomationCommandsService {
             !context.ownerUserId ||
             !context.stepId ||
             !context.path ||
-            !context.toolExecutor
+            !context.executeCommand ||
+            !context.withTarget
           ) {
             throw new Error('AI harness context is incomplete.');
           }
           return context.aiHarness.run(input as AutomationAiRunInput, {
-            ...context,
+            app: context.app,
+            adb: context.adb,
+            abortSignal: context.abortSignal,
+            recordOcrExchange: context.recordOcrExchange,
             runId: context.runId,
             ownerUserId: context.ownerUserId,
             stepId: context.stepId,
-            path: context.path,
-            toolExecutor: context.toolExecutor,
+            parentStepId: context.parentStepId,
+            executeCommand: context.executeCommand,
+            withTarget: context.withTarget,
           });
         },
       },

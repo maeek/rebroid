@@ -1,38 +1,32 @@
-import type { AutomationAiHarnessContext } from './automation-ai.types';
+import {
+  resolveActionCommand,
+  resultIndicatesFailure,
+} from './automation-ai-action-policy';
+import {
+  commandAllowedForRun,
+  routeCapabilities,
+  validatedEscalationCommand,
+} from './automation-ai-capability-policy';
 import {
   assertTargetSession,
   createTargetSession,
-  resultIndicatesFailure,
-  routeCapabilities,
-  toolAllowedForRun,
-  validatedEscalationCommand,
-} from './automation-device-agent-state';
+} from './automation-device-target-session';
 
-const context = (): AutomationAiHarnessContext =>
-  ({
-    runId: 'run-1',
-    ownerUserId: 'owner-1',
-    stepId: 'ai-run',
-    path: '$',
-    app: {
+describe('automation AI execution policy', () => {
+  it('rejects a changed target fingerprint', () => {
+    const app = {
       id: 'app-1',
       containerId: 'container-1',
       containerName: 'runtime-1',
       networkName: 'network-1',
       adbPort: 5555,
-    },
-    toolExecutor: jest.fn(),
-  }) as never;
+      lastStartedAt: new Date(0),
+    };
+    const target = createTargetSession(app);
 
-describe('automation device agent state', () => {
-  it('rejects a changed target fingerprint', () => {
-    const current = context();
-    const target = createTargetSession(current);
-    current.app.containerId = 'container-2';
-
-    expect(() => assertTargetSession(target, current)).toThrow(
-      'a fresh observation is required',
-    );
+    expect(() =>
+      assertTargetSession(target, { ...app, containerId: 'container-2' }),
+    ).toThrow('a fresh observation is required');
   });
 
   it('routes only explicitly permitted typed capabilities', () => {
@@ -61,16 +55,33 @@ describe('automation device agent state', () => {
       routeCapabilities({
         commands,
         goal: 'List installed packages',
-        input: { capabilities: ['android.listPackages'] },
+        input: { capabilities: ['android.listPackages', 'android.adbShell'] },
       }).map((command) => command.uses),
     ).toEqual(['android.listPackages']);
     expect(
-      toolAllowedForRun(
+      commandAllowedForRun(
         { capabilities: ['android.listPackages'] },
         'android.getClipboard',
       ),
     ).toBe(false);
   });
+
+  it.each([
+    ['settings', 'android.openSystemSettings', {}],
+    ['notifications', 'android.expandNotifications', {}],
+    ['quick_settings', 'android.expandQuickSettings', {}],
+    ['home', 'android.viewerCommand', { command: 'home' }],
+  ] as const)(
+    'resolves the %s surface with fresh observation',
+    (surface, uses, input) => {
+      expect(
+        resolveActionCommand(
+          { type: 'open_system_surface', surface },
+          { candidates: [] },
+        ),
+      ).toEqual({ uses, input, screenMutating: true });
+    },
+  );
 
   it.each([
     [{ failed: true }, true],

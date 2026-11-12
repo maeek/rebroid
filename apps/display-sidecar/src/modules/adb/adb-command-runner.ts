@@ -93,14 +93,18 @@ export class AdbCommandRunner {
       const stdout = this.output();
       const stderr = this.output();
       let termination: "timeout" | "cancelled" | null = null;
+      let killTimer: NodeJS.Timeout | undefined;
       const terminate = (reason: "timeout" | "cancelled") => {
+        if (termination) return;
         termination = reason;
         child.kill("SIGTERM");
+        killTimer = setTimeout(() => child.kill("SIGKILL"), 500);
       };
       const timer = setTimeout(() => terminate("timeout"), timeoutMs);
       const cancel = () => terminate("cancelled");
       const cleanup = () => {
         clearTimeout(timer);
+        clearTimeout(killTimer);
         signal?.removeEventListener("abort", cancel);
       };
       signal?.addEventListener("abort", cancel, { once: true });
@@ -115,7 +119,7 @@ export class AdbCommandRunner {
         cleanup();
         reject(this.failure("could not be started."));
       });
-      child.on("close", (code) => {
+      child.on("close", (code, signal) => {
         cleanup();
         if (termination) {
           const detail =
@@ -125,7 +129,17 @@ export class AdbCommandRunner {
           reject(this.failure(detail));
           return;
         }
-        resolve({ stdout, stderr, exitCode: code ?? 0 });
+        if (code === null) {
+          reject(
+            this.failure(
+              signal
+                ? `was terminated by ${signal}.`
+                : "returned no exit code.",
+            ),
+          );
+          return;
+        }
+        resolve({ stdout, stderr, exitCode: code });
       });
     });
   }

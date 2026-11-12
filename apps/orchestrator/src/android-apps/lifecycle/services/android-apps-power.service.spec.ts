@@ -2,6 +2,7 @@ import { SerializedSqliteDataSource } from '../../../database/serialized-sqlite-
 import { InitializeSqliteSchema1800000005000 } from '../../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLifecycleTransitionService } from '../../common/services/android-apps-lifecycle-transition.service';
+import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import {
   AndroidApplicationLifecycleStage,
@@ -74,14 +75,14 @@ describe('Android application power commands', () => {
         cancel(id);
         stopping.release();
       });
-      const runner = new LifecycleBackgroundJobRunner(
-        { maxConcurrentJobs: 1 } as never,
-        tracker,
-      );
       const queries = {
         getStored: (id: string) => apps.findOneByOrFail({ id }),
         decorate: (stored: AndroidApplication) => stored,
       };
+      const runner = new LifecycleBackgroundJobRunner(
+        { maxConcurrentJobs: 1 } as never,
+        tracker,
+      );
       const docker = {
         startContainer: jest.fn(async () => {
           startingAgain.release();
@@ -157,6 +158,7 @@ describe('Android application power commands', () => {
         {} as never,
         power,
         {} as never,
+        new AndroidAppsRuntimeOperationGate(queries as never),
       );
 
       await commands.start(app.id);

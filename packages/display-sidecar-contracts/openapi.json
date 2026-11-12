@@ -673,6 +673,54 @@
         "tags": ["adb"]
       }
     },
+    "/rebroid/adb/{udid}/ui-text": {
+      "post": {
+        "operationId": "AdbController_uiText",
+        "parameters": [
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "description": "Required when sidecar shared-secret auth is configured.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "udid",
+            "required": true,
+            "in": "path",
+            "description": "ADB serial or host:port target reachable from the sidecar.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdbUiTextDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdbUiTextResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["adb"]
+      }
+    },
     "/rebroid/adb/{udid}/files": {
       "put": {
         "operationId": "AdbController_pushFile",
@@ -1407,7 +1455,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DisplayCommandResultDto"
+                  "$ref": "#/components/schemas/DisplayActionAcknowledgmentDto"
                 }
               }
             }
@@ -1987,6 +2035,58 @@
           }
         },
         "required": ["found", "x", "y"]
+      },
+      "AdbUiTextDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Żappka",
+            "maxLength": 500
+          },
+          "match": {
+            "type": "string",
+            "enum": ["exact", "contains"]
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["wait", "tap"]
+          },
+          "timeoutMs": {
+            "type": "number",
+            "example": 10000,
+            "minimum": 1,
+            "maximum": 120000
+          },
+          "intervalMs": {
+            "type": "number",
+            "example": 500,
+            "minimum": 250,
+            "maximum": 10000
+          }
+        },
+        "required": ["text", "match", "operation", "timeoutMs", "intervalMs"]
+      },
+      "AdbUiTextResultDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "found",
+              "not_found",
+              "hierarchy_unavailable",
+              "tap_outcome_unknown"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": ["status"]
       },
       "AdbPushFileDto": {
         "type": "object",
@@ -2584,6 +2684,57 @@
           }
         }
       },
+      "DisplayActionAcknowledgmentDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "command": {
+            "type": "string",
+            "enum": [
+              "back",
+              "home",
+              "recents",
+              "power",
+              "wake",
+              "sleep",
+              "volume-up",
+              "volume-down",
+              "mute",
+              "rotate",
+              "expand-notifications",
+              "expand-settings",
+              "collapse-panels"
+            ],
+            "example": "home"
+          },
+          "executed": {
+            "type": "boolean",
+            "enum": [true]
+          },
+          "transport": {
+            "type": "string",
+            "enum": ["stream-control", "adb"]
+          }
+        },
+        "required": ["ok", "command", "executed", "transport"]
+      },
+      "DisplayLogcatDto": {
+        "type": "object",
+        "properties": {
+          "collectedAt": {
+            "type": "string",
+            "example": "2026-05-25T20:30:00.000Z"
+          },
+          "output": {
+            "type": "string",
+            "example": "05-25 20:30:00.000 ..."
+          }
+        },
+        "required": ["collectedAt", "output"]
+      },
       "DisplayCommandResultDto": {
         "type": "object",
         "properties": {
@@ -2635,20 +2786,6 @@
           }
         },
         "required": ["ok"]
-      },
-      "DisplayLogcatDto": {
-        "type": "object",
-        "properties": {
-          "collectedAt": {
-            "type": "string",
-            "example": "2026-05-25T20:30:00.000Z"
-          },
-          "output": {
-            "type": "string",
-            "example": "05-25 20:30:00.000 ..."
-          }
-        },
-        "required": ["collectedAt", "output"]
       },
       "DisplayWebrtcOfferDto": {
         "type": "object",

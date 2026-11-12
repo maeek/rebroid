@@ -10,7 +10,6 @@ import {
   withProviderChatResponse,
   type ChatMessage,
 } from '../../common/ai-provider-request';
-import { correctScreenStateHypothesis } from '../ai/core/screen-state-policy';
 import type {
   AutomationAiProvider,
   AutomationAiProviderModel,
@@ -29,11 +28,15 @@ import { textContent } from '../ai/automation-ai-message.utils';
 import type { OptimizedAiScreenshot } from '../ai/automation-ai-screenshot.utils';
 import type {
   AutomationVisionContext,
+  AutomationVisionDescription,
   AutomationVisionLocateInput,
-  AutomationVisionLocateOutput,
+  AutomationVisionModelLocateResult,
   AutomationVisionScreenState,
 } from './automation-vision.types';
-import type { AutomationVisionDescription } from './automation-vision-fusion.service';
+import {
+  parseVisionLocateResponse,
+  parseVisionScreenStateResponse,
+} from './automation-vision-model-response';
 
 interface VisionModelRequest {
   image: OptimizedAiScreenshot;
@@ -65,14 +68,13 @@ export class AutomationVisionModelService {
 
   async locateSafe(
     request: VisionModelRequest & { input: AutomationVisionLocateInput },
-  ): Promise<AutomationVisionLocateOutput> {
+  ): Promise<AutomationVisionModelLocateResult> {
     try {
       return await this.locate(request);
     } catch (error) {
       return {
         matches: [],
-        query: request.input.query,
-        threshold: request.input.threshold,
+        failed: true,
         reason: sanitizeAiText(
           error instanceof Error ? error.message : String(error),
           600,
@@ -139,7 +141,7 @@ export class AutomationVisionModelService {
 
   private async locate(
     request: VisionModelRequest & { input: AutomationVisionLocateInput },
-  ): Promise<AutomationVisionLocateOutput> {
+  ): Promise<AutomationVisionModelLocateResult> {
     const messages: ChatMessage[] = [
       {
         role: 'system',
@@ -192,8 +194,6 @@ export class AutomationVisionModelService {
       .slice(0, request.input.maxResults);
     return {
       matches,
-      query: request.input.query,
-      threshold: request.input.threshold,
       ...(matches.length === 0 || parsed.reason
         ? { reason: parsed.reason || 'Vision model found no visible match.' }
         : {}),
@@ -252,224 +252,3 @@ export class AutomationVisionModelService {
     }
   }
 }
-
-interface VisionLocateModelMatch {
-  label?: string;
-  description?: string;
-  confidence: number;
-  bounds: { left: number; top: number; width: number; height: number };
-}
-
-const screenKinds = new Set([
-  'home',
-  'app_drawer',
-  'quick_settings',
-  'notification_shade',
-  'settings_app',
-  'app_screen',
-  'unknown',
-]);
-
-const parseVisionScreenStateResponse = (
-  text: string,
-): AutomationVisionScreenState => {
-  const parsed = parseJsonObject(extractJsonObject(text));
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return {
-      screenKind: 'unknown',
-      confidence: 0.25,
-      visibleText: [],
-      controls: [],
-      evidence: [],
-      uncertainty: ['Vision model did not return structured JSON.'],
-      summary: sanitizeAiText(text || 'Vision model returned no summary.', 800),
-    };
-  }
-  const record = parsed as Record<string, unknown>;
-  const requestedKind =
-    typeof record.screenKind === 'string' ? record.screenKind : 'unknown';
-  const rawScreenKind = screenKinds.has(requestedKind)
-    ? (requestedKind as AutomationVisionScreenState['screenKind'])
-    : 'unknown';
-  const rawSummary =
-    typeof record.summary === 'string'
-      ? sanitizeAiText(record.summary, 800)
-      : sanitizeAiText(text, 800);
-  const baseState: AutomationVisionScreenState = {
-    screenKind: rawScreenKind,
-    confidence: clamp01(Number(record.confidence)),
-    visibleText: stringArray(record.visibleText, 30, 120),
-    controls: (Array.isArray(record.controls) ? record.controls : []).flatMap(
-      normalizeVisionControl,
-    ),
-    evidence: stringArray(record.evidence, 12, 180),
-    uncertainty: stringArray(record.uncertainty, 12, 180),
-    summary: rawSummary,
-  };
-  const correction = correctScreenStateHypothesis(baseState);
-  return {
-    ...baseState,
-    controls: withSettingsAccessControl(
-      baseState.controls,
-      correction.settingsAccessVisible,
-    ),
-    screenKind: correction.screenKind,
-    confidence: correction.confidence,
-    settingsAccessVisible: correction.settingsAccessVisible,
-    ...(correction.screenKind !== rawScreenKind
-      ? {
-          rawScreenKind,
-          rawSummary,
-          correctionReason: correction.correctionReason,
-          uncertainty: [
-            ...baseState.uncertainty,
-            correction.correctionReason ??
-              'Screen kind was corrected by deterministic policy.',
-          ].slice(0, 12),
-        }
-      : {}),
-  };
-};
-
-const withSettingsAccessControl = (
-  controls: AutomationVisionScreenState['controls'],
-  settingsAccessVisible: boolean,
-) => {
-  if (!settingsAccessVisible) return controls;
-  if (
-    controls.some((control) =>
-      /\b(settings?|gear|cog|settings access)\b/i.test(control.label),
-    )
-  ) {
-    return controls;
-  }
-  return [
-    {
-      label: 'Settings access candidate',
-      role: 'icon',
-      confidence: 0.5,
-      evidence: ['Screen-state evidence mentions settings or gear access.'],
-    },
-    ...controls,
-  ].slice(0, 30);
-};
-
-const normalizeVisionControl = (
-  value: unknown,
-): AutomationVisionScreenState['controls'] => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
-  const record = value as Record<string, unknown>;
-  const label =
-    typeof record.label === 'string' ? sanitizeAiText(record.label, 120) : '';
-  if (!label) return [];
-  const bounds =
-    record.bounds && typeof record.bounds === 'object'
-      ? (record.bounds as Record<string, unknown>)
-      : null;
-  const values = [
-    Number(bounds?.left),
-    Number(bounds?.top),
-    Number(bounds?.width),
-    Number(bounds?.height),
-  ];
-  const normalizedBounds =
-    values.every(Number.isFinite) &&
-    values[0] >= 0 &&
-    values[1] >= 0 &&
-    values[2] > 0 &&
-    values[3] > 0
-      ? { left: values[0], top: values[1], width: values[2], height: values[3] }
-      : undefined;
-  return [
-    {
-      label,
-      ...(typeof record.role === 'string'
-        ? { role: sanitizeAiText(record.role, 40) }
-        : {}),
-      ...(normalizedBounds ? { bounds: normalizedBounds } : {}),
-      ...(Number.isFinite(Number(record.confidence))
-        ? { confidence: clamp01(Number(record.confidence)) }
-        : {}),
-      ...(Array.isArray(record.evidence)
-        ? { evidence: stringArray(record.evidence, 4, 120) }
-        : {}),
-    },
-  ];
-};
-
-const parseVisionLocateResponse = (text: string) => {
-  const parsed = parseJsonObject(extractJsonObject(text));
-  const record =
-    parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  const matches = Array.isArray(record.matches) ? record.matches : [];
-  return {
-    matches: matches.flatMap((match): VisionLocateModelMatch[] => {
-      if (!match || typeof match !== 'object') return [];
-      const item = match as Record<string, unknown>;
-      const bounds =
-        item.bounds && typeof item.bounds === 'object'
-          ? (item.bounds as Record<string, unknown>)
-          : null;
-      const values = [
-        Number(bounds?.left),
-        Number(bounds?.top),
-        Number(bounds?.width),
-        Number(bounds?.height),
-        Number(item.confidence),
-      ];
-      if (!values.every(Number.isFinite) || values[2] <= 0 || values[3] <= 0) {
-        return [];
-      }
-      return [
-        {
-          label:
-            typeof item.label === 'string'
-              ? sanitizeAiText(item.label, 120)
-              : 'Visual match',
-          description:
-            typeof item.description === 'string'
-              ? sanitizeAiText(item.description, 240)
-              : undefined,
-          confidence: values[4],
-          bounds: {
-            left: values[0],
-            top: values[1],
-            width: values[2],
-            height: values[3],
-          },
-        },
-      ];
-    }),
-    ...(typeof record.reason === 'string'
-      ? { reason: sanitizeAiText(record.reason, 500) }
-      : {}),
-  };
-};
-
-const stringArray = (value: unknown, maxItems: number, maxLength: number) =>
-  (Array.isArray(value) ? value : [])
-    .filter((item): item is string => typeof item === 'string')
-    .slice(0, maxItems)
-    .map((item) => sanitizeAiText(item, maxLength));
-
-const clamp01 = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
-
-const extractJsonObject = (text: string) => {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) return fenced[1].trim();
-  const start = trimmed.indexOf('{');
-  const end = trimmed.lastIndexOf('}');
-  return start >= 0 && end > start ? trimmed.slice(start, end + 1) : trimmed;
-};
-
-const parseJsonObject = (text: string) => {
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return null;
-  }
-};

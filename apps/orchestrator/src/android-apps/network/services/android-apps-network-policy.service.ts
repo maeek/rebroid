@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
 import {
   allowsBroadInternetAccess,
+  normalizeIpv4Cidr,
   parseAllowCidrs,
 } from '@rebroid/firewall-policy-core/policy';
 import { AndroidApplication } from '../../android-application.entity';
@@ -15,6 +17,7 @@ import { AndroidAppsStateWriter } from '../../common/services/android-apps-state
 import { UpdateNetworkPolicyDto } from '../dto/update-network-policy.dto';
 import { AndroidAppsRuntimeNetworkService } from './android-apps-runtime-network.service';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import type { AndroidAutomationCidrChange } from '../../contracts/android-apps-automation.port';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 
@@ -37,16 +40,39 @@ export class AndroidAppsNetworkPolicyService {
     canUseInternet: boolean,
   ) {
     return this.policyGate.run(id, () =>
-      this.saveAndApplyPolicy(id, dto, canUseInternet),
+      this.saveAndApplyPolicy(id, () => dto, canUseInternet),
+    );
+  }
+
+  changeAllowedCidr(
+    id: string,
+    change: AndroidAutomationCidrChange,
+    canUseInternet: boolean,
+  ) {
+    const cidr = normalizeIpv4Cidr(change.cidr);
+    if (!cidr)
+      throw new BadRequestException('CIDR must be an IPv4 address or CIDR.');
+    return this.policyGate.run(id, () =>
+      this.saveAndApplyPolicy(
+        id,
+        (app) => {
+          const cidrs = new Set(parseAllowCidrs(app.networkPolicyAllowCidrs));
+          if (change.operation === 'add') cidrs.add(cidr);
+          else cidrs.delete(cidr);
+          return { networkPolicyAllowCidrs: [...cidrs] };
+        },
+        canUseInternet,
+      ),
     );
   }
 
   private async saveAndApplyPolicy(
     id: string,
-    dto: UpdateNetworkPolicyDto,
+    resolveUpdate: (app: AndroidApplication) => UpdateNetworkPolicyDto,
     canUseInternet: boolean,
   ) {
     const app = await this.reconciler.reconcileById(id);
+    const dto = resolveUpdate(app);
     const restricted = dto.networkPolicyEnabled ?? app.networkPolicyEnabled;
     if (restricted) {
       this.features.assertEnabled('feature.firewall');

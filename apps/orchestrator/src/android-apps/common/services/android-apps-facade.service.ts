@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import type { BufferedUploadFile } from '../../../common/http-upload';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
@@ -23,7 +23,9 @@ import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps
 import type {
   AndroidAppsAutomationPort,
   AndroidAutomationAdapters,
+  AndroidAutomationApplication,
 } from '../../contracts/android-apps-automation.port';
+import { AndroidAppsRuntimeOperationGate } from './android-apps-runtime-operation-gate.service';
 
 @Injectable()
 export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
@@ -36,6 +38,7 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     private readonly viewer: AndroidAppsViewerService,
     private readonly display: AndroidAppsDisplaySidecarService,
     private readonly adb: AndroidAppsSidecarAdbService,
+    private readonly runtimeOperations: AndroidAppsRuntimeOperationGate,
   ) {}
 
   /** Creates a new app record and starts setup. */
@@ -65,6 +68,24 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     return this.reconciler.reconcileResultById(id);
   }
 
+  async applyPlatformContainerChange(
+    applicationId: string,
+    containerId: string,
+    operation: () => Promise<void>,
+  ) {
+    await this.runtimeOperations.interrupt(applicationId, async () => {
+      const app = await this.queries
+        .getStored(applicationId)
+        .catch((error: unknown) => {
+          if (error instanceof NotFoundException) return null;
+          throw error;
+        });
+      await operation();
+      if (app?.containerId === containerId)
+        await this.reconciler.reconcileOne(app);
+    });
+  }
+
   /** Provides the narrow Android runtime capabilities used by automations. */
   automationAdapters(canUseInternet: boolean): AndroidAutomationAdapters {
     return {
@@ -73,8 +94,18 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
       networkPolicy: {
         updateNetworkPolicy: (id, input) =>
           this.network.updateNetworkPolicy(id, input, canUseInternet),
+        changeAllowedCidr: (id, change) =>
+          this.network.changeAllowedCidr(id, change, canUseInternet),
       },
     };
+  }
+
+  withAutomationTarget<T>(
+    expected: AndroidAutomationApplication,
+    signal: AbortSignal | undefined,
+    operation: (app: AndroidAutomationApplication) => Promise<T>,
+  ) {
+    return this.runtimeOperations.run(expected, signal, operation);
   }
 
   /** Updates app settings. */

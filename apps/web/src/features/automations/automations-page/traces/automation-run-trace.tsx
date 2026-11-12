@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { IconFileText, IconListCheck, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -18,6 +19,7 @@ import { StateView } from '@/shared/ui/state-view'
 import type { AutomationRun } from '@/shared/contracts/automation'
 
 const triggerLabels = { manual: 'Manual', schedule: 'Scheduled', webhook: 'Webhook', event: 'Event' } as const
+const ocrStepCommands = new Set(['vision.observe', 'vision.locate', 'ai.run'])
 
 const elapsed = (start: string | null, end: string | null) => {
   if (!start || !end) return '—'
@@ -28,6 +30,7 @@ const elapsed = (start: string | null, end: string | null) => {
 
 export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; targetName?: string }) {
   const [tab, setTab] = useState('summary')
+  const [ocrStep, setOcrStep] = useState<{ stepId: string; path?: string | null }>()
   const [stopError, setStopError] = useState(false)
   const [stopping, startStopping] = useTransition()
   const router = useRouter()
@@ -189,6 +192,19 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
                         {workflowRunFailureMessage(step.error, step.startedAt)}
                       </p>
                     ) : null}
+                    {ocrStepCommands.has(step.uses) ? (
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        aria-label={`OCR events for ${step.stepId}`}
+                        onClick={() => {
+                          setOcrStep({ stepId: step.stepId, path: step.path })
+                          setTab('events')
+                        }}
+                      >
+                        OCR events
+                      </Button>
+                    ) : null}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -219,6 +235,8 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
             presentation='flat'
             showHeader={false}
             allowCancel={false}
+            ocrStep={ocrStep}
+            onClearOcrStep={() => setOcrStep(undefined)}
           />
         ) : null}
       </TabsPanel>

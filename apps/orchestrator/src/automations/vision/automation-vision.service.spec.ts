@@ -1,6 +1,10 @@
 import { createDetection } from './vision-observation';
 import { AutomationVisionFusionService } from './automation-vision-fusion.service';
 import { AutomationVisionService } from './automation-vision.service';
+import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
+import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
+import { AutomationConditionService } from '../condition/automation-condition.service';
+import { AutomationDefinitionNormalizerService } from '../definition/automation-definition-normalizer.service';
 
 describe('AutomationVisionService', () => {
   it('finds a matching OCR detection beyond the planner shortlist', async () => {
@@ -17,9 +21,10 @@ describe('AutomationVisionService', () => {
     const model = { locateSafe: jest.fn() };
     const service = new AutomationVisionService(
       {
-        capture: jest
-          .fn()
-          .mockResolvedValue({ ui: { status: 'failed' }, ocr: { detections } }),
+        capture: jest.fn().mockResolvedValue({
+          ui: { status: 'failed' },
+          ocr: { status: 'available', detections },
+        }),
       } as never,
       new AutomationVisionFusionService(),
       model as never,
@@ -57,7 +62,9 @@ describe('AutomationVisionService', () => {
     };
     const model = { locateSafe: jest.fn() };
     const service = new AutomationVisionService(
-      { capture: jest.fn().mockResolvedValue({}) } as never,
+      {
+        capture: jest.fn().mockResolvedValue({ ocr: { status: 'available' } }),
+      } as never,
       {
         lookupDetections: jest.fn().mockReturnValue(observation.candidates),
       } as never,
@@ -73,5 +80,147 @@ describe('AutomationVisionService', () => {
     expect(result.matches).toHaveLength(1);
     expect(result.matches[0]).toMatchObject({ id: 'ocr-1', source: 'ocr' });
     expect(model.locateSafe).not.toHaveBeenCalled();
+  });
+
+  it('declares bounded OCR output and distinguishes an unavailable source in a workflow branch', async () => {
+    const screenshot = {
+      dataUrl: '',
+      capturedAt: 'now',
+      mimeType: 'image/png',
+    };
+    const detections = ['Z\u0307appka', 'Other'].map((text, index) =>
+      createDetection({
+        id: `ocr-${index}`,
+        text,
+        source: 'ocr',
+        confidence: 0.9,
+        bounds: { left: 0.1, top: 0.1, width: 0.2, height: 0.2 },
+      }),
+    );
+    const capture = {
+      screenshot,
+      aiImage: { ...screenshot, width: 100, height: 100 },
+      ui: { status: 'failed' },
+      ocr: { status: 'available', detections },
+    };
+    const vision = new AutomationVisionService(
+      { capture: async () => capture } as never,
+      new AutomationVisionFusionService(),
+      {} as never,
+    );
+    const registry = new AutomationCommandRegistryService(
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    registry.register(
+      new VisionAutomationCommandsService({} as never, vision).list(),
+    );
+    const conditions = new AutomationConditionService();
+    const definition = new AutomationDefinitionNormalizerService(
+      registry,
+      conditions,
+    ).normalize({
+      apiVersion: 'rebroid.io/automation/v1',
+      kind: 'AndroidAutomation',
+      metadata: { name: 'Check OCR' },
+      spec: {
+        steps: [
+          { id: 'observe', uses: 'vision.observe', with: { maxDetections: 1 } },
+          { id: 'search', uses: 'vision.locate', with: { query: 'Żappka' } },
+          {
+            id: 'check',
+            type: 'condition',
+            condition: {
+              groups: [
+                {
+                  conditions: [
+                    {
+                      value: {
+                        source: 'stepOutput',
+                        stepId: 'observe',
+                        outputKey: 'ocrStatus',
+                      },
+                      operator: 'equals',
+                      compare: { source: 'literal', value: 'available' },
+                    },
+                    {
+                      value: {
+                        source: 'stepOutput',
+                        stepId: 'search',
+                        outputKey: 'outcome',
+                      },
+                      operator: 'equals',
+                      compare: { source: 'literal', value: 'not_found' },
+                    },
+                  ],
+                },
+              ],
+            },
+            then: [{ id: 'confirmed-miss', uses: 'vision.observe', with: {} }],
+          },
+        ],
+      },
+    });
+    const observed = await registry.execute(
+      'vision.observe',
+      { maxDetections: 1 },
+      {} as never,
+    );
+    expect(observed.data).toMatchObject({
+      detections: [],
+      ocrStatus: 'available',
+      ocrTextCount: 2,
+      ocrDetections: [expect.objectContaining({ source: 'ocr' })],
+      ocr: { detections: [expect.any(Object)] },
+    });
+    expect(
+      registry.outputsFor('vision.observe').map((output) => output.key),
+    ).toContain('ocrDetections');
+    const matched = await registry.execute(
+      'vision.locate',
+      { query: 'Żappka' },
+      {} as never,
+    );
+    expect(matched.data).toMatchObject({
+      found: true,
+      outcome: 'found',
+      matches: [{ source: 'ocr' }],
+    });
+
+    const branch = definition.spec.steps[2];
+    if (!('type' in branch) || branch.type !== 'condition')
+      throw new Error('Expected a condition.');
+    for (const [status, outcome] of [
+      ['available', 'not_found'],
+      ['failed', 'inconclusive'],
+      ['disabled', 'inconclusive'],
+    ]) {
+      capture.ocr = { status, detections: [] };
+      const result = await registry.execute(
+        'vision.locate',
+        { query: 'Żappka' },
+        {} as never,
+      );
+      expect(result.data).toMatchObject({
+        found: false,
+        outcome,
+        ocrStatus: status,
+      });
+      expect(
+        conditions.evaluate(branch.condition, {
+          runId: 'run',
+          trigger: 'manual',
+          targetProfileMode: null,
+          targetProfileName: null,
+          app: {},
+          outputsByStepId: new Map([
+            ['observe', observed.data!],
+            ['search', result.data!],
+          ]),
+        }),
+      ).toBe(status === 'available');
+    }
   });
 });

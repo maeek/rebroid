@@ -9,12 +9,14 @@ describe('AutomationOcrService', () => {
   });
 
   it('sends the lossless source screenshot to the configured OCR adapter', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(10_000);
     const fetchMock = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: 'available', detections: [] }), {
         status: 200,
       }),
     );
     global.fetch = fetchMock;
+    const recordExchange = jest.fn();
     const service = new AutomationOcrService(
       {
         getStoredSettings: jest.fn().mockResolvedValue({
@@ -34,17 +36,47 @@ describe('AutomationOcrService', () => {
       } as never,
     );
 
-    await service.recognize({
-      dataUrl: 'data:image/png;base64,original-lossless-pixels',
-      mimeType: 'image/png',
-      capturedAt: '2026-07-10T00:00:00.000Z',
-    });
+    await service.recognize(
+      {
+        dataUrl: 'data:image/png;base64,original-lossless-pixels',
+        mimeType: 'image/png',
+        capturedAt: '2026-07-10T00:00:00.000Z',
+      },
+      undefined,
+      10_250,
+      recordExchange,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       'http://ocr.test/ocr/screenshot',
       expect.objectContaining({
         body: expect.stringContaining('original-lossless-pixels'),
       }),
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      timeoutMs: 250,
+    });
+    expect(recordExchange).toHaveBeenCalledTimes(1);
+    expect(recordExchange.mock.calls[0][0]).toMatchObject({
+      request: {
+        method: 'POST',
+        path: '/ocr/screenshot',
+        timeoutMs: 250,
+        language: 'en',
+        minConfidence: 0.4,
+        maxImageDimension: 1600,
+        image: { mimeType: 'image/png', dataUrlBytes: expect.any(Number) },
+        bodyBytes: Buffer.byteLength(fetchMock.mock.calls[0][1].body as string),
+      },
+      response: {
+        httpStatus: 200,
+        status: 'available',
+        detectionCount: 0,
+        detections: [],
+      },
+    });
+    expect(JSON.stringify(recordExchange.mock.calls[0][0])).not.toContain(
+      'original-lossless-pixels',
     );
   });
   it.each([

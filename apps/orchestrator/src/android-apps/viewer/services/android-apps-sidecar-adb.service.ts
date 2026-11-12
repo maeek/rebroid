@@ -1,9 +1,38 @@
+import { randomUUID } from 'node:crypto';
+import { addAbortListener } from 'node:events';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
+import { z } from 'zod';
 import { getErrorMessage } from '../../../common/error-message';
+import { waitForOperation } from '../../../common/wait-for-operation';
 import { AndroidApplication } from '../../android-application.entity';
+import type {
+  AndroidAutomationUiTextInput,
+  AndroidAutomationUiTextResult,
+} from '../../contracts/android-apps-automation.port';
 import { parseAndroidNotifications } from '../../runtime/utils/android-apps-notification.utils';
 import { AndroidAppsViewerNetworkService } from './android-apps-viewer-network.service';
+
+const uiTextResponseSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('found'),
+    x: z.number().int().min(0),
+    y: z.number().int().min(0),
+  }),
+  z.object({
+    status: z.enum([
+      'not_found',
+      'hierarchy_unavailable',
+      'tap_outcome_unknown',
+    ]),
+  }),
+]);
+
+interface AdbRequestOptions extends RequestInit {
+  requestTimeoutMs?: number;
+  awaitMutation?: boolean;
+}
 
 @Injectable()
 export class AndroidAppsSidecarAdbService {
@@ -37,6 +66,7 @@ export class AndroidAppsSidecarAdbService {
         signal,
         method: 'PUT',
         body: JSON.stringify({ text }),
+        awaitMutation: true,
       },
     );
   }
@@ -47,11 +77,7 @@ export class AndroidAppsSidecarAdbService {
     y: number,
     signal?: AbortSignal,
   ) {
-    return this.request<{ executed: boolean }>(app, '/tap', {
-      signal,
-      method: 'POST',
-      body: JSON.stringify({ x, y }),
-    });
+    return this.executeInput(app, '/tap', { x, y }, signal);
   }
 
   async swipe(
@@ -65,27 +91,15 @@ export class AndroidAppsSidecarAdbService {
     },
     signal?: AbortSignal,
   ) {
-    return this.request<{ executed: boolean }>(app, '/swipe', {
-      signal,
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
+    return this.executeInput(app, '/swipe', input, signal);
   }
 
   async inputText(app: AndroidApplication, text: string, signal?: AbortSignal) {
-    return this.request<{ executed: boolean }>(app, '/input-text', {
-      signal,
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    });
+    return this.executeInput(app, '/input-text', { text }, signal);
   }
 
   async key(app: AndroidApplication, key: string, signal?: AbortSignal) {
-    return this.request<{ executed: boolean }>(app, '/key', {
-      signal,
-      method: 'POST',
-      body: JSON.stringify({ key }),
-    });
+    return this.executeInput(app, '/key', { key }, signal);
   }
 
   async rotateDisplay(
@@ -94,11 +108,7 @@ export class AndroidAppsSidecarAdbService {
       'portrait' | 'landscape' | 'reverse-portrait' | 'reverse-landscape',
     signal?: AbortSignal,
   ) {
-    return this.request<{ executed: boolean }>(app, '/rotate-display', {
-      signal,
-      method: 'POST',
-      body: JSON.stringify({ orientation }),
-    });
+    return this.executeInput(app, '/rotate-display', { orientation }, signal);
   }
 
   async shell(
@@ -106,15 +116,32 @@ export class AndroidAppsSidecarAdbService {
     command: string,
     timeoutMs: number,
     signal?: AbortSignal,
+    deadline?: number,
   ) {
-    return this.request<{
+    signal?.throwIfAborted();
+    const cacheKey = this.targetCacheKey(app);
+    const udid = await this.prepareUdid(app, cacheKey);
+    signal?.throwIfAborted();
+    const budget =
+      deadline === undefined
+        ? timeoutMs
+        : Math.min(timeoutMs, Math.floor(deadline - Date.now()));
+    if (budget <= 0) {
+      throw new DOMException('ADB command deadline reached.', 'TimeoutError');
+    }
+    return this.requestPrepared<{
       stdout: string;
       stderr: string;
       exitCode: number;
-    }>(app, '/shell', {
+    }>(udid, cacheKey, '/shell', {
       signal,
       method: 'POST',
-      body: JSON.stringify({ command, timeoutMs }),
+      body: JSON.stringify({ command, timeoutMs: budget }),
+      requestTimeoutMs:
+        deadline === undefined
+          ? Math.max(20_000, budget + 2_000)
+          : budget + 2_000,
+      awaitMutation: true,
     });
   }
 
@@ -147,51 +174,129 @@ export class AndroidAppsSidecarAdbService {
     }>(app, '/ui-dump', { signal });
   }
 
-  async tapText(app: AndroidApplication, text: string) {
-    return this.request<{ found: boolean; x: number | null; y: number | null }>(
-      app,
-      '/tap-text',
-      {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      },
+  async uiText(
+    app: AndroidApplication,
+    input: AndroidAutomationUiTextInput,
+    runSignal?: AbortSignal,
+  ): Promise<AndroidAutomationUiTextResult> {
+    const deadline = performance.now() + input.timeoutMs;
+    const timeout = AbortSignal.timeout(input.timeoutMs);
+    const signal = runSignal ? AbortSignal.any([runSignal, timeout]) : timeout;
+    const timedOut = () =>
+      new DOMException('UI text request timed out.', 'TimeoutError');
+    signal.throwIfAborted();
+    const cacheKey = this.targetCacheKey(app);
+    const udid = await waitForOperation(
+      this.prepareUdid(app, cacheKey),
+      signal,
     );
+    const remaining = Math.floor(deadline - performance.now());
+    if (remaining <= 0) throw timedOut();
+
+    const operationId = input.operation === 'tap' ? randomUUID() : undefined;
+    const payload = {
+      ...input,
+      timeoutMs: remaining,
+      ...(operationId ? { operationId } : {}),
+    } satisfies DisplaySidecarApiSchemas['AdbUiTextDto'];
+    const request = this.requestPrepared(udid, cacheKey, '/ui-text', {
+      signal,
+      method: 'POST',
+      redirect: 'error',
+      requestTimeoutMs: remaining + (operationId ? 2_000 : 0),
+      awaitMutation: operationId !== undefined,
+      body: JSON.stringify(payload),
+    });
+    // Cancel the sidecar poll without dropping the response that confirms it settled.
+    const cancel = operationId
+      ? addAbortListener(signal, () => {
+          void this.requestPrepared(udid, cacheKey, `/ui-text/${operationId}`, {
+            method: 'DELETE',
+            redirect: 'error',
+            requestTimeoutMs: 2_000,
+          }).catch(() => undefined);
+        })
+      : undefined;
+    try {
+      const response = await (operationId
+        ? request
+        : waitForOperation(request, signal));
+      signal.throwIfAborted();
+      if (performance.now() >= deadline) throw timedOut();
+      const parsed = uiTextResponseSchema.safeParse(response);
+      if (!parsed.success) {
+        throw new ConflictException(
+          'Display sidecar returned a malformed UI text response.',
+        );
+      }
+      return parsed.data;
+    } catch (error) {
+      signal.throwIfAborted();
+      throw error;
+    } finally {
+      cancel?.[Symbol.dispose]();
+    }
   }
 
-  async pushFile(app: AndroidApplication, path: string, contentBase64: string) {
+  async pushFile(
+    app: AndroidApplication,
+    path: string,
+    contentBase64: string,
+    signal?: AbortSignal,
+  ) {
     return this.request<{ pushed: boolean }>(app, '/files', {
       method: 'PUT',
       body: JSON.stringify({ path, contentBase64 }),
+      requestTimeoutMs: 35_000,
+      awaitMutation: true,
+      signal,
     });
   }
 
-  async pullFile(app: AndroidApplication, path: string) {
+  async pullFile(app: AndroidApplication, path: string, signal?: AbortSignal) {
     return this.request<{
       path: string;
       contentBase64: string;
       sizeBytes: number;
-    }>(app, `/files?path=${encodeURIComponent(path)}`);
+    }>(app, `/files?path=${encodeURIComponent(path)}`, { signal });
   }
 
-  async deleteFile(app: AndroidApplication, path: string) {
+  async deleteFile(
+    app: AndroidApplication,
+    path: string,
+    signal?: AbortSignal,
+  ) {
     return this.request<{ deleted: boolean }>(app, '/files', {
       method: 'DELETE',
       body: JSON.stringify({ path }),
+      awaitMutation: true,
+      signal,
     });
   }
 
-  async fileExists(app: AndroidApplication, path: string) {
-    const result = await this.request<{ exists: boolean }>(
+  async fileExists(
+    app: AndroidApplication,
+    path: string,
+    signal?: AbortSignal,
+  ) {
+    const result = await this.request<{ exists?: unknown } | null>(
       app,
       `/files/exists?path=${encodeURIComponent(path)}`,
+      { signal },
     );
+    if (typeof result?.exists !== 'boolean') {
+      throw new ConflictException(
+        'Display sidecar returned a malformed file existence response.',
+      );
+    }
     return result.exists;
   }
 
-  async listFiles(app: AndroidApplication, path: string) {
+  async listFiles(app: AndroidApplication, path: string, signal?: AbortSignal) {
     const result = await this.request<{ files: string[] }>(
       app,
       `/files/list?path=${encodeURIComponent(path)}`,
+      { signal },
     );
     return result.files;
   }
@@ -219,24 +324,59 @@ export class AndroidAppsSidecarAdbService {
     }>(app, '/screenshot', { signal });
   }
 
+  private async executeInput(
+    app: AndroidApplication,
+    path: string,
+    input: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) {
+    const result = await this.request<{ executed?: unknown } | null>(
+      app,
+      path,
+      {
+        signal,
+        method: 'POST',
+        body: JSON.stringify(input),
+        awaitMutation: true,
+      },
+    );
+    if (result?.executed !== true) {
+      throw new ConflictException(
+        'Display sidecar did not confirm the ADB input command.',
+      );
+    }
+    return { executed: true };
+  }
+
   private async request<T = unknown>(
     app: AndroidApplication,
     path: string,
-    init: RequestInit = {},
+    options: AdbRequestOptions = {},
   ): Promise<T> {
-    init.signal?.throwIfAborted();
+    options.signal?.throwIfAborted();
     const cacheKey = this.targetCacheKey(app);
     const udid = await this.prepareUdid(app, cacheKey);
+    return this.requestPrepared(udid, cacheKey, path, options);
+  }
+
+  private async requestPrepared<T = unknown>(
+    udid: string,
+    cacheKey: string,
+    path: string,
+    {
+      requestTimeoutMs = 20_000,
+      awaitMutation = false,
+      ...init
+    }: AdbRequestOptions,
+  ): Promise<T> {
     init.signal?.throwIfAborted();
-    const timeout = AbortSignal.timeout(20_000);
+    const timeout = AbortSignal.timeout(requestTimeoutMs);
+    const body = init.body;
     const baseUrl = this.config
       .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
       .replace(/\/$/, '');
     const secret = this.config.get<string>('app.sharedSecret');
-    const hasBody =
-      init.body !== undefined &&
-      init.body !== null &&
-      `${init.body}`.length > 0;
+    const hasBody = body !== undefined && body !== null && `${body}`.length > 0;
     const headers = new Headers(init.headers);
     if (hasBody && !headers.has('content-type')) {
       headers.set('content-type', 'application/json');
@@ -248,8 +388,13 @@ export class AndroidAppsSidecarAdbService {
       `${baseUrl}/rebroid/adb/${encodeURIComponent(udid)}${path}`,
       {
         ...init,
+        body,
         headers,
-        signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
+        // Once sent, a mutation holds its admission until acknowledgement or transport failure.
+        signal:
+          init.signal && !awaitMutation
+            ? AbortSignal.any([init.signal, timeout])
+            : timeout,
       },
     ).catch((error) => {
       this.preparedTargets.delete(cacheKey);
@@ -312,6 +457,7 @@ export class AndroidAppsSidecarAdbService {
       app.containerName,
       app.networkName,
       app.adbPort,
+      app.lastStartedAt?.getTime() ?? 'no-start',
     ].join(':');
   }
 }

@@ -52,6 +52,34 @@ tab shows the last reported state and offers **Retry enforcement** for the saved
 Administrators can monitor apps under **Network policies**, open an app's policy from its row,
 or use **Sync all rules** to refresh host rules and remove stale entries.
 
+## Workflow device steps
+
+`android.waitForText` and `android.tapText` match enabled Android UI labels or accessibility
+descriptions with tappable bounds. Both use case-sensitive exact matching by default and treat
+canonically equivalent Unicode spellings, such as composed and decomposed `Żappka`, as equal.
+Set `match: contains` on both steps when a label includes surrounding words. Saved waits that
+previously relied on substring matching need this setting. When several nodes match, both commands
+choose the first eligible node in the current UI hierarchy.
+
+`timeoutMs` covers target preparation, hierarchy polling, and tap dispatch. A dispatched tap has
+up to two additional seconds to acknowledge completion or cancellation. The workflow reports an
+uncertain outcome if confirmation is lost. Deploy the orchestrator and display sidecar together
+to use the text commands.
+
+Use `android.launchPackage` when the Android package ID is known and the workflow only needs to
+launch it. Set `requireSuccess: true` to fail the step if the package is missing or Android rejects
+the launch. The default returns `installed` and `launched` outputs for workflows that branch on them.
+
+`vision.observe` exposes `ocrStatus`, `ocrTextCount`, and `ocrDetections` to workflow conditions.
+`maxDetections` limits each returned detection list. `ocrTextCount` reports the total before that limit.
+For text drawn on the screen, use `vision.locate` and branch on `outcome`. It reports `found` for a
+match, `not_found` when screenshot recognition completes without a match, and `inconclusive`
+when the available evidence has no match and screenshot recognition is unavailable. `ocrStatus`
+explains whether OCR ran, and each match identifies its source.
+
+When an AI run invokes `vision.locate`, it searches the active snapshot. The next turn can use
+the returned candidate IDs until a new screen observation replaces that snapshot.
+
 ## Automation investigation
 
 Workflow Run history opens the existing traces URL. Activate a row to inspect its persisted failure,
@@ -59,6 +87,13 @@ step results, target, profile, and recorded events. `?run=[id]` provides a share
 run is loaded independently of the latest 50 only after checking ownership and workflow membership.
 The inspector does not retry or cancel a run. Existing live-run controls retain their own authorization.
 Historical replay cannot regress a known terminal status to running.
+Cancel stops dispatching new commands. If a command has already reached Android, cancellation can take
+until the command settles. If the device restarts or switches profiles, the next device command fails
+against the original workflow target.
+
+Open an OCR event to inspect the submitted image preview, request settings, response status,
+preprocessing passes, and returned text boxes. In the full trace, **Steps → OCR events** filters the
+log to that execution of the step. Each event keeps a resized preview and up to 30 detections.
 
 ## Platform overview
 

@@ -251,6 +251,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/adb/{udid}/ui-text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AdbController_uiText"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/adb/{udid}/files": {
         parameters: {
             query?: never;
@@ -720,6 +736,24 @@ export interface components {
             x: number | null;
             y: number | null;
         };
+        AdbUiTextDto: {
+            /** @example Żappka */
+            text: string;
+            /** @enum {string} */
+            match: "exact" | "contains";
+            /** @enum {string} */
+            operation: "wait" | "tap";
+            /** @example 10000 */
+            timeoutMs: number;
+            /** @example 500 */
+            intervalMs: number;
+        };
+        AdbUiTextResultDto: {
+            /** @enum {string} */
+            status: "found" | "not_found" | "hierarchy_unavailable" | "tap_outcome_unknown";
+            x?: number;
+            y?: number;
+        };
         AdbPushFileDto: {
             /** @example /sdcard/Download/example.txt */
             path: string;
@@ -1029,6 +1063,25 @@ export interface components {
              */
             command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
         };
+        DisplayActionAcknowledgmentDto: {
+            /** @enum {boolean} */
+            ok: true;
+            /**
+             * @example home
+             * @enum {string}
+             */
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            /** @enum {boolean} */
+            executed: true;
+            /** @enum {string} */
+            transport: "stream-control" | "adb";
+        };
+        DisplayLogcatDto: {
+            /** @example 2026-05-25T20:30:00.000Z */
+            collectedAt: string;
+            /** @example 05-25 20:30:00.000 ... */
+            output: string;
+        };
         DisplayCommandResultDto: {
             /** @example true */
             ok: boolean;
@@ -1048,12 +1101,6 @@ export interface components {
             stderr?: string;
             /** @example Unsupported display action command: foo */
             message?: string;
-        };
-        DisplayLogcatDto: {
-            /** @example 2026-05-25T20:30:00.000Z */
-            collectedAt: string;
-            /** @example 05-25 20:30:00.000 ... */
-            output: string;
         };
         DisplayWebrtcOfferDto: {
             /**
@@ -1592,6 +1639,35 @@ export interface operations {
             };
         };
     };
+    AdbController_uiText: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Required when sidecar shared-secret auth is configured. */
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description ADB serial or host:port target reachable from the sidecar. */
+                udid: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdbUiTextDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdbUiTextResultDto"];
+                };
+            };
+        };
+    };
     AdbController_pullFile: {
         parameters: {
             query: {
@@ -2063,7 +2139,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DisplayCommandResultDto"];
+                    "application/json": components["schemas"]["DisplayActionAcknowledgmentDto"];
                 };
             };
         };

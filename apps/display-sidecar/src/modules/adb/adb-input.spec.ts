@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { escapeAdbInputText, keyboardCommand, touchCommand } from "./adb-input";
+import { inputTextCommand, keyboardCommand, touchCommand } from "./adb-input";
 
 test("keyboard command construction handles special, text, and ignored events", () => {
   assert.deepEqual(keyboardCommand({ eventType: "keydown", key: "Enter" }), [
@@ -11,14 +11,18 @@ test("keyboard command construction handles special, text, and ignored events", 
   assert.deepEqual(keyboardCommand({ eventType: "keydown", key: "a" }), [
     "input",
     "text",
-    "a",
+    "'a'",
   ]);
   assert.equal(keyboardCommand({ eventType: "keyup", key: "a" }), null);
   assert.equal(
     keyboardCommand({ eventType: "keydown", key: "a", ctrlKey: true }),
     null,
   );
-  assert.equal(escapeAdbInputText("50% done"), "50%25%sdone");
+  assert.deepEqual(inputTextCommand("50% done; '$HOME'"), [
+    "input",
+    "text",
+    "'50%25%sdone;%s'\\''$HOME'\\'''",
+  ]);
 });
 
 test("touch command construction scales coordinates and bounds duration", () => {

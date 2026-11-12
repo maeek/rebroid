@@ -11,6 +11,7 @@ import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { VIEWER_CONTROL_COMMANDS } from "../scrcpy/scrcpy-control-codec";
 import { ScrcpyControlDispatchError } from "../scrcpy/scrcpy-control-dispatch-error";
 import { DisplaySessionService } from "./display-session.service";
+import type { DisplayActionAcknowledgmentDto } from "./display.dto";
 import { validateDisplayControl } from "./display-control-validation";
 import type { DisplayControlRequest, DisplaySession } from "./display.types";
 
@@ -21,6 +22,24 @@ export class DisplayControlService {
     private readonly adb: AdbService,
     private readonly scrcpy: ScrcpyService,
   ) {}
+
+  async executeAction(
+    sessionId: string,
+    command: string | undefined,
+  ): Promise<DisplayActionAcknowledgmentDto> {
+    const result = await this.execute(sessionId, { type: "action", command });
+    if (!result.command) {
+      throw new InternalServerErrorException(
+        "Display action acknowledgment was incomplete.",
+      );
+    }
+    return {
+      ok: true,
+      command: result.command,
+      executed: result.executed,
+      transport: result.transport,
+    };
+  }
 
   async execute(sessionId: string, request: DisplayControlRequest) {
     request = validateDisplayControl(request);
@@ -118,7 +137,11 @@ export class DisplayControlService {
     command?: ViewerCommand,
   ) {
     if (await handledByStream) {
-      return { command, executed: true, transport: "stream-control" as const };
+      return {
+        command,
+        executed: true as const,
+        transport: "stream-control" as const,
+      };
     }
     this.sessions.get(session.id);
     if (
@@ -132,6 +155,6 @@ export class DisplayControlService {
       });
     }
     await executeAdb();
-    return { command, executed: true, transport: "adb" as const };
+    return { command, executed: true as const, transport: "adb" as const };
   }
 }

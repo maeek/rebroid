@@ -320,65 +320,68 @@ describe('AutomationRunnerService', () => {
     expect(transition).toHaveBeenCalledTimes(1);
   });
 
-  it('holds the target reservation during cancellation until an admitted Start settles', async () => {
-    const automation = {
-      ...run,
-      definitionJson: JSON.stringify({ spec: { steps: [] } }),
-    } as never;
-    const queued = { ...run, status: AutomationRunStatus.Queued };
-    let reserved: typeof queued | undefined;
-    const startEntered = deferred();
-    const startResponse = deferred();
-    const abortReceived = deferred();
-    const transition = jest.fn(() => {
-      reserved = undefined;
-      return { ...queued, status: AutomationRunStatus.Canceled };
-    });
-    const execute = jest.fn(
-      async (
-        input: Parameters<AutomationRunExecutionService['execute']>[0],
-      ) => {
-        input.abortSignal.addEventListener(
-          'abort',
-          () => abortReceived.resolve(),
-          { once: true },
-        );
-        await input.admitTargetStart(() => {
-          startEntered.resolve();
-          return startResponse.promise;
-        });
-      },
-    );
-    const { service } = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn(() => {
-          if (reserved) throw { code: 'SQLITE_CONSTRAINT_UNIQUE' };
-          reserved = queued;
-          return queued;
-        }),
-        findByOwnerAndId: jest.fn(() => reserved),
-      },
-      events: { transitionRun: transition },
-      execution: { execute },
-    });
-    const enqueue = () =>
-      service.enqueue(automation, AutomationRunTrigger.Manual, {
-        targetApplicationId: queued.targetApplicationId,
+  it.each(['admitTargetStart', 'admitTargetWork'] as const)(
+    'holds the target reservation during cancellation until %s settles',
+    async (admit) => {
+      const automation = {
+        ...run,
+        definitionJson: JSON.stringify({ spec: { steps: [] } }),
+      } as never;
+      const queued = { ...run, status: AutomationRunStatus.Queued };
+      let reserved: typeof queued | undefined;
+      const startEntered = deferred();
+      const startResponse = deferred();
+      const abortReceived = deferred();
+      const transition = jest.fn(() => {
+        reserved = undefined;
+        return { ...queued, status: AutomationRunStatus.Canceled };
       });
-    await enqueue();
-    await startEntered.promise;
+      const execute = jest.fn(
+        async (
+          input: Parameters<AutomationRunExecutionService['execute']>[0],
+        ) => {
+          input.abortSignal.addEventListener(
+            'abort',
+            () => abortReceived.resolve(),
+            { once: true },
+          );
+          await input[admit](() => {
+            startEntered.resolve();
+            return startResponse.promise;
+          });
+        },
+      );
+      const { service } = createService({
+        runs: {
+          create: jest.fn().mockReturnValue(queued),
+          save: jest.fn(() => {
+            if (reserved) throw { code: 'SQLITE_CONSTRAINT_UNIQUE' };
+            reserved = queued;
+            return queued;
+          }),
+          findByOwnerAndId: jest.fn(() => reserved),
+        },
+        events: { transitionRun: transition },
+        execution: { execute },
+      });
+      const enqueue = () =>
+        service.enqueue(automation, AutomationRunTrigger.Manual, {
+          targetApplicationId: queued.targetApplicationId,
+        });
+      await enqueue();
+      await startEntered.promise;
 
-    const cancellation = service.cancel(queued.ownerUserId, queued.id);
-    await abortReceived.promise;
+      const cancellation = service.cancel(queued.ownerUserId, queued.id);
+      await abortReceived.promise;
 
-    expect(transition).not.toHaveBeenCalled();
-    await expect(enqueue()).rejects.toThrow('already active');
-    startResponse.resolve();
-    await expect(cancellation).resolves.toMatchObject({
-      status: AutomationRunStatus.Canceled,
-    });
-  });
+      expect(transition).not.toHaveBeenCalled();
+      await expect(enqueue()).rejects.toThrow('already active');
+      startResponse.resolve();
+      await expect(cancellation).resolves.toMatchObject({
+        status: AutomationRunStatus.Canceled,
+      });
+    },
+  );
 
   it('shares a cancellation signal with dispatch while the queued event is still publishing', async () => {
     const automation = {

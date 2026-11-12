@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
+import { adHocAiAutomationIdPrefix } from '../contracts/automation-run-kind';
 import { AutomationsRepository } from '../persistence/automations.repository';
 import { RunnableAutomation } from './automation-runnable';
 
@@ -13,7 +14,7 @@ export class EphemeralAutomationRegistryService {
   create(ownerUserId: string, definition: AutomationDefinition) {
     const now = new Date();
     const automation = this.repository.create({
-      id: `ephemeral-ai-${randomUUID()}`,
+      id: `${adHocAiAutomationIdPrefix}${randomUUID()}`,
       ownerUserId: ownerUserId.trim(),
       name: definition.metadata.name,
       description: definition.metadata.description ?? null,

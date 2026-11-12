@@ -133,7 +133,9 @@ single configured language. Capture, OCR, model description, and fusion remain s
 | Controller/planner requests and decision retries          | [Decision service](automation-ai-decision.service.ts).                                                                |
 | Action validation, execution, and post-action observation | [Action executor](automation-ai-action-executor.service.ts).                                                          |
 | Run state, action evidence, and budgets                   | [Run state](automation-device-agent-run-state.ts).                                                                    |
-| Target identity, capabilities, and shell allowlist        | [Agent state and policy](automation-device-agent-state.ts).                                                           |
+| Target identity                                           | [Target session](automation-device-target-session.ts).                                                                |
+| Command mapping and screen refresh                        | [Action policy](automation-ai-action-policy.ts).                                                                      |
+| Capability routing and shell allowlist                    | [Capability policy](automation-ai-capability-policy.ts).                                                              |
 | Typed decisions and controller/planner prompts            | [Decision contract](core/device-decision.ts), [messages](core/device-messages.ts).                                    |
 | Terminal evidence checks                                  | [Finish verifier](automation-ai-finish-verifier.ts).                                                                  |
 | Provider streaming                                        | [Chat client](automation-ai-chat-client.service.ts), [stream parser](../../common/ai-provider-stream.ts).             |

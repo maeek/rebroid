@@ -140,7 +140,7 @@ export const matchesDetectionQuery = (
   detection: VisionDetection,
   query: string,
 ) => {
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = query.normalize().trim().toLowerCase();
   if (!normalizedQuery) return true;
   const haystack = [
     detection.label,
@@ -150,6 +150,7 @@ export const matchesDetectionQuery = (
   ]
     .filter(Boolean)
     .join(' ')
+    .normalize()
     .toLowerCase();
   return haystack.includes(normalizedQuery);
 };

@@ -1,18 +1,6 @@
 import { verifyAutomationAiFinish } from './automation-ai-finish-verifier';
-import type { DeviceAgentState } from './automation-device-agent-run-state';
 
-const state = (): DeviceAgentState => ({
-  target: {
-    id: 'target-1',
-    fingerprint: 'fingerprint-1',
-    applicationId: 'app-1',
-    containerId: 'container-1',
-    containerName: 'runtime-1',
-    networkName: 'network-1',
-    adbPort: 5555,
-  },
-  observation: { snapshotId: 'screen-1' } as never,
-  plannerText: '',
+const state = (): Parameters<typeof verifyAutomationAiFinish>[1] => ({
   subgoals: [
     {
       id: 'open-settings',
@@ -29,10 +17,6 @@ const state = (): DeviceAgentState => ({
       snapshotId: 'screen-1',
     },
   ],
-  trajectory: [],
-  actions: 0,
-  consecutiveFailures: 0,
-  planAttempts: 1,
 });
 
 const finish = (patch: Record<string, unknown> = {}) =>

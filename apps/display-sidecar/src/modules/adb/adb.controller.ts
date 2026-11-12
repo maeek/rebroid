@@ -1,23 +1,29 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
   ApiBody,
   ApiHeader,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
   ApiTags,
 } from "@nestjs/swagger";
+import type { FastifyReply } from "fastify";
+import { z } from "zod";
 import { SidecarAuthGuard } from "../shared/sidecar-auth.guard";
 import { AdbService } from "./adb.service";
 import {
@@ -41,7 +47,23 @@ import {
   AdbTapTextDto,
   AdbTapTextResultDto,
   AdbUiDumpDto,
+  AdbUiTextDto,
+  AdbUiTextResultDto,
 } from "./adb.dto";
+import { AdbTextService } from "./adb-text.service";
+
+const uiTextSchema = z.strictObject({
+  text: z
+    .string()
+    .min(1)
+    .max(500)
+    .refine((text) => text.trim().length > 0),
+  match: z.enum(["exact", "contains"]),
+  operation: z.enum(["wait", "tap"]),
+  timeoutMs: z.number().int().min(1).max(120_000),
+  intervalMs: z.number().int().min(250).max(10_000),
+  operationId: z.uuid().optional(),
+});
 
 const clampTail = (value: string | undefined) => {
   const parsed = Number(value ?? 300);
@@ -65,7 +87,10 @@ const clampTail = (value: string | undefined) => {
   description: "ADB serial or host:port target reachable from the sidecar.",
 })
 export class AdbController {
-  constructor(private readonly adb: AdbService) {}
+  constructor(
+    private readonly adb: AdbService,
+    private readonly text: AdbTextService,
+  ) {}
 
   @Get("clipboard")
   @ApiOperation({ summary: "Read Android clipboard text through ADB." })
@@ -167,7 +192,7 @@ export class AdbController {
     return this.adb.shellCommand(
       udid,
       body.command ?? "",
-      Math.max(100, Math.min(Number(body.timeoutMs ?? 15_000), 120_000)),
+      Math.max(1, Math.min(Number(body.timeoutMs ?? 15_000), 120_000)),
     );
   }
 
@@ -184,7 +209,44 @@ export class AdbController {
   @ApiBody({ type: AdbTapTextDto })
   @ApiOkResponse({ type: AdbTapTextResultDto })
   tapText(@Param("udid") udid: string, @Body() body: AdbTapTextDto) {
-    return this.adb.tapText(udid, body.text ?? "");
+    return this.text.tapOnce(udid, body.text ?? "");
+  }
+
+  @Post("ui-text")
+  @HttpCode(200)
+  @ApiBody({ type: AdbUiTextDto })
+  @ApiOkResponse({ type: AdbUiTextResultDto })
+  async uiText(
+    @Param("udid") udid: string,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<AdbUiTextResultDto> {
+    const result = uiTextSchema.safeParse(body);
+    if (!result.success)
+      throw new BadRequestException("Invalid UI text request.");
+    const disconnected = new AbortController();
+    const abort = () => disconnected.abort();
+    reply.raw.once("close", abort);
+    if (reply.raw.destroyed) abort();
+    try {
+      return await this.text.poll(udid, result.data, disconnected.signal);
+    } finally {
+      reply.raw.off("close", abort);
+    }
+  }
+
+  @Delete("ui-text/:operationId")
+  @HttpCode(204)
+  @ApiParam({ name: "operationId", format: "uuid" })
+  @ApiNoContentResponse()
+  cancelUiText(
+    @Param("udid") udid: string,
+    @Param("operationId") operationId: string,
+  ) {
+    if (!z.uuid().safeParse(operationId).success) {
+      throw new BadRequestException("Invalid UI text operation ID.");
+    }
+    this.text.cancel(udid, operationId);
   }
 
   @Put("files")

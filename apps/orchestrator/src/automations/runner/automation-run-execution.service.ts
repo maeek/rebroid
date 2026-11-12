@@ -6,13 +6,13 @@ import { AutomationRunsRepository } from '../persistence/automation-runs.reposit
 import { AutomationRunnableResolverService } from './automation-runnable-resolver.service';
 import { AutomationExecutionState } from './automation-runner-execution.types';
 import { AutomationStepExecutorService } from './automation-step-executor.service';
-import { AutomationStepResult } from './automation-runner.types';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { MetricsService } from '../../metrics/metrics.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
 import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import type {
   AdmitAutomationTargetStart,
+  AdmitAutomationTargetWork,
   AutomationRunTargetOptions,
 } from './automation-runner-options';
 
@@ -22,6 +22,7 @@ interface AutomationRunExecutionInput {
   abortSignal: AbortSignal;
   targetOptions: AutomationRunTargetOptions;
   admitTargetStart: AdmitAutomationTargetStart;
+  admitTargetWork: AdmitAutomationTargetWork;
 }
 
 @Injectable()
@@ -91,7 +92,6 @@ export class AutomationRunExecutionService {
         return;
       this.metrics.automationRunStarted();
 
-      const results: AutomationStepResult[] = [];
       const state: AutomationExecutionState = {
         app,
         ...permissions,
@@ -99,7 +99,6 @@ export class AutomationRunExecutionService {
         trigger: run.trigger,
         targetProfileMode: run.targetProfileMode,
         targetProfileName: run.targetProfileName,
-        results,
         outputsByStepId: new Map(),
       };
       const execution = await this.stepExecutor.executeSteps(
@@ -109,6 +108,7 @@ export class AutomationRunExecutionService {
         {
           path: 'steps',
           abortSignal: input.abortSignal,
+          admitTargetWork: input.admitTargetWork,
           isRunCanceled: () => input.abortSignal.aborted,
         },
       );

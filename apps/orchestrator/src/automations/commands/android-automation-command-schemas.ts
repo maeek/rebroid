@@ -70,6 +70,7 @@ export const packageNameSchema = z.object({
       message: 'Package name must be a valid Android package identifier.',
     }),
   timeoutMs: timeoutSchema,
+  requireSuccess: z.boolean().optional().default(false),
 });
 
 export const openSystemSettingsSchema = z.object({
@@ -89,7 +90,12 @@ export const waitSchema = z.object({
 });
 
 export const textWaitSchema = z.object({
-  text: z.string().min(1).max(500),
+  text: z
+    .string()
+    .min(1)
+    .max(500)
+    .refine((text) => text.trim().length > 0),
+  match: z.enum(['exact', 'contains']).optional().default('exact'),
   timeoutMs: timeoutSchema,
   intervalMs: z.number().int().min(250).max(10_000).optional().default(1_000),
 });

@@ -41,30 +41,6 @@ export class AutomationRunsRepository {
     });
   }
 
-  appendStepResults(
-    id: string,
-    firstSequence: number,
-    results: AutomationStepResult[],
-    error: string | null,
-  ) {
-    return this.queue.run(() =>
-      this.runs.manager.transaction(async (manager) => {
-        const updated = await manager
-          .getRepository(AutomationRun)
-          .update({ id, status: AutomationRunStatus.Running }, { error });
-        if (!updated.affected) return false;
-        for (const [index, result] of results.entries()) {
-          await manager.query(
-            `INSERT INTO automation_run_step_results (runId, sequence, resultJson)
-             VALUES (?, ?, ?)`,
-            [id, firstSequence + index, JSON.stringify(result)],
-          );
-        }
-        return true;
-      }),
-    );
-  }
-
   listForAutomation(ownerUserId: string, automationId: string, limit = 50) {
     return this.runs
       .createQueryBuilder('run')

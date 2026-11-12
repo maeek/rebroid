@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,8 +15,9 @@ import {
 } from "./adb-command-runner";
 import {
   clampDuration,
-  escapeAdbInputText,
+  inputTextCommand,
   keyboardCommand,
+  quoteAdbShellArgument,
   touchCommand,
 } from "./adb-input";
 import type {
@@ -103,13 +108,24 @@ export class AdbService {
     );
   }
 
-  async shell(udid: string, args: string[], timeoutMs = 15_000) {
-    return this.adb(["-s", udid, "shell", ...args], timeoutMs);
+  async shell(
+    udid: string,
+    args: string[],
+    timeoutMs = 15_000,
+    signal?: AbortSignal,
+  ) {
+    return this.adb(["-s", udid, "shell", ...args], timeoutMs, { signal });
   }
 
-  async shellResult(udid: string, args: string[], timeoutMs = 15_000) {
+  async shellResult(
+    udid: string,
+    args: string[],
+    timeoutMs = 15_000,
+    signal?: AbortSignal,
+  ) {
     return this.adb(["-s", udid, "shell", ...args], timeoutMs, {
       rejectOnNonZero: false,
+      signal,
     });
   }
 
@@ -146,13 +162,17 @@ export class AdbService {
   }
 
   async deleteFile(udid: string, path: string) {
-    return this.shell(udid, ["rm", "-f", path], 10_000);
+    return this.shell(
+      udid,
+      ["rm", "-f", "--", quoteAdbShellArgument(path)],
+      10_000,
+    );
   }
 
   async fileExists(udid: string, path: string) {
     const result = await this.shell(
       udid,
-      ["sh", "-lc", `[ -e ${this.shellQuote(path)} ] && echo yes || echo no`],
+      [`[ -e ${quoteAdbShellArgument(path)} ] && echo yes || echo no`],
       5_000,
     );
     return result.stdout.trim() === "yes";
@@ -161,7 +181,7 @@ export class AdbService {
   async listFiles(udid: string, path: string) {
     const result = await this.shell(
       udid,
-      ["sh", "-lc", `ls -1A ${this.shellQuote(path)}`],
+      ["ls", "-1A", "--", quoteAdbShellArgument(path)],
       10_000,
     );
     return result.stdout
@@ -225,7 +245,7 @@ export class AdbService {
     try {
       await this.shell(
         udid,
-        ["sh", "-lc", `cmd clipboard set ${this.shellQuote(text)}`],
+        ["cmd", "clipboard", "set", quoteAdbShellArgument(text)],
         5_000,
       );
       return {
@@ -278,8 +298,13 @@ export class AdbService {
     return args ? this.shell(udid, args, 5_000) : this.noop();
   }
 
-  async tap(udid: string, x: number, y: number) {
-    return this.shell(udid, ["input", "tap", String(x), String(y)], 5_000);
+  async tap(udid: string, x: number, y: number, signal?: AbortSignal) {
+    return this.shell(
+      udid,
+      ["input", "tap", String(x), String(y)],
+      5_000,
+      signal,
+    );
   }
 
   async swipe(
@@ -308,18 +333,20 @@ export class AdbService {
   }
 
   async inputText(udid: string, text: string) {
-    return this.shell(
-      udid,
-      ["input", "text", escapeAdbInputText(text)],
-      10_000,
-    );
+    return this.shell(udid, inputTextCommand(text), 10_000);
   }
 
   async keyEvent(udid: string, key: string) {
-    const normalized = key
-      .trim()
-      .toUpperCase()
-      .replace(/^KEYCODE_/, "");
+    const normalized =
+      typeof key === "string"
+        ? key
+            .trim()
+            .toUpperCase()
+            .replace(/^KEYCODE_/, "")
+        : "";
+    if (!/^[A-Z0-9_]{1,80}$/.test(normalized)) {
+      throw new BadRequestException("Invalid Android key code.");
+    }
     return this.shell(
       udid,
       ["input", "keyevent", `KEYCODE_${normalized}`],
@@ -360,12 +387,18 @@ export class AdbService {
     return this.shellResult(udid, ["sh", "-c", command], timeoutMs);
   }
 
-  async dumpUi(udid: string) {
+  async dumpUi(udid: string, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const dumpPath = `/data/local/tmp/rebroid-window-${Date.now()}-${Math.random().toString(36).slice(2)}.xml`;
     const attempts: UiDumpDiagnostics[] = [];
     try {
       for (const compressed of [false, true]) {
-        const attempt = await this.runUiDumpAttempt(udid, dumpPath, compressed);
+        const attempt = await this.runUiDumpAttempt(
+          udid,
+          dumpPath,
+          compressed,
+          signal,
+        );
         attempts.push(attempt.diagnostics);
         if (attempt.xml) {
           return {
@@ -383,41 +416,25 @@ export class AdbService {
         attempts,
       };
     } catch (error) {
+      signal?.throwIfAborted();
       return {
         status: "failed" as const,
         error: `UI hierarchy dump failed: ${this.errorMessage(error)}`,
         attempts,
       };
     } finally {
-      await this.shell(udid, ["rm", "-f", dumpPath], 5_000).catch(() => {});
+      const cleanup = this.shell(udid, ["rm", "-f", dumpPath], 5_000).catch(
+        () => {},
+      );
+      if (!signal) await cleanup;
     }
-  }
-
-  async tapText(udid: string, text: string) {
-    const dump = await this.dumpUi(udid).catch(() => null);
-    const xml = dump?.status === "available" ? (dump.xml ?? "") : "";
-    if (!xml) {
-      return { found: false, x: null, y: null };
-    }
-    const escaped = this.escapeRegExp(this.escapeXml(text));
-    const pattern = new RegExp(
-      `<node\\b[^>]*(?:text="${escaped}"|content-desc="${escaped}")[^>]*bounds="\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]"`,
-    );
-    const match = xml.match(pattern);
-    if (!match) {
-      return { found: false, x: null, y: null };
-    }
-
-    const x = Math.round((Number(match[1]) + Number(match[3])) / 2);
-    const y = Math.round((Number(match[2]) + Number(match[4])) / 2);
-    await this.tap(udid, x, y);
-    return { found: true, x, y };
   }
 
   private async runUiDumpAttempt(
     udid: string,
     dumpPath: string,
     compressed: boolean,
+    signal?: AbortSignal,
   ): Promise<{ xml?: string; diagnostics: UiDumpDiagnostics }> {
     const dumpArgs = [
       "uiautomator",
@@ -425,14 +442,19 @@ export class AdbService {
       ...(compressed ? ["--compressed"] : []),
       dumpPath,
     ];
-    const command = dumpArgs.map((arg) => this.shellQuote(arg)).join(" ");
+    const command = dumpArgs.map(quoteAdbShellArgument).join(" ");
     const started = Date.now();
-    await this.shellResult(udid, ["rm", "-f", dumpPath], 5_000);
-    const dump = await this.shellResult(udid, dumpArgs, 10_000);
+    await this.shellResult(udid, ["rm", "-f", dumpPath], 5_000, signal);
+    const dump = await this.shellResult(udid, dumpArgs, 10_000, signal);
     let xml = "";
     let catResult: CommandResult | null = null;
     if (dump.exitCode === 0) {
-      catResult = await this.shellResult(udid, ["cat", dumpPath], 10_000);
+      catResult = await this.shellResult(
+        udid,
+        ["cat", dumpPath],
+        10_000,
+        signal,
+      );
       if (catResult.exitCode === 0) {
         xml = catResult.stdout.trim();
       }
@@ -526,22 +548,6 @@ export class AdbService {
     };
   }
 
-  private shellQuote(value: string) {
-    return `'${value.replace(/'/g, `'\\''`)}'`;
-  }
-
-  private escapeXml(value: string) {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
-  private escapeRegExp(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-
   private errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
   }
@@ -557,7 +563,7 @@ export class AdbService {
   private adb(
     args: string[],
     timeoutMs: number,
-    options: { rejectOnNonZero?: boolean } = {},
+    options: { rejectOnNonZero?: boolean; signal?: AbortSignal } = {},
   ) {
     return this.runner.text(args, timeoutMs, options);
   }

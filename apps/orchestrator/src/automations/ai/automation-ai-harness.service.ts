@@ -4,10 +4,16 @@ import {
   RequestTimeoutException,
 } from '@nestjs/common';
 import type { DeviceAgentDecision } from './core/device-decision';
+import { providerProtocol } from '../../common/ai-provider-request';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import { AutomationCommandRegistryService } from '../commands/automation-command-registry.service';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationPerceptionService } from '../vision/automation-perception.service';
 import { AutomationAiActionExecutor } from './automation-ai-action-executor.service';
+import {
+  routeCapabilities,
+  type RoutedAiCapabilities,
+} from './automation-ai-capability-policy';
 import {
   AutomationAiDecisionService,
   type AutomationAiDecisionContext,
@@ -15,13 +21,10 @@ import {
 import { emitAutomationAiEvent } from './automation-ai-events';
 import { verifyAutomationAiFinish } from './automation-ai-finish-verifier';
 import { sanitizeAiText } from './automation-ai-observation.utils';
+import { shouldPlanInitially } from './automation-ai-plan';
 import { AutomationAiProviderService } from './automation-ai-provider.service';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
-import {
-  createTargetSession,
-  routeCapabilities,
-  shouldPlanInitially,
-} from './automation-device-agent-state';
+import { createTargetSession } from './automation-device-target-session';
 import {
   DeviceAgentRunState,
   type DeviceAgentState,
@@ -36,6 +39,11 @@ type AutomationAiOutcome = {
   evidenceIds?: string[];
 };
 
+type DecisionLoopContext = AutomationAiDecisionContext & {
+  context: AutomationAiHarnessContext & { abortSignal: AbortSignal };
+  capabilities: RoutedAiCapabilities;
+};
+
 @Injectable()
 export class AutomationAiHarnessService {
   constructor(
@@ -44,6 +52,7 @@ export class AutomationAiHarnessService {
     private readonly events: AutomationRunEventBus,
     private readonly decisions: AutomationAiDecisionService,
     private readonly actions: AutomationAiActionExecutor,
+    private readonly perception: AutomationPerceptionService,
   ) {}
 
   async run(
@@ -62,24 +71,29 @@ export class AutomationAiHarnessService {
     let outcome: AutomationAiOutcome;
     try {
       context.abortSignal.throwIfAborted();
-      const maxActions = input.maxActions;
       const { provider, model, capabilities } = await this.start(
         input,
         context,
-        maxActions,
       );
-      const observed = await this.actions.observe({
+      const observed = await this.perception.observe({
         input,
         context,
         deadline,
         reason: 'initial',
       });
-      state = new DeviceAgentRunState(createTargetSession(context), observed);
-      outcome = await this.runDecisions(
-        { input, context, provider, model, deadline, state },
-        capabilities,
-        maxActions,
+      state = new DeviceAgentRunState(
+        createTargetSession(context.app),
+        observed,
       );
+      outcome = await this.runDecisions({
+        input,
+        context,
+        provider,
+        model,
+        deadline,
+        state,
+        capabilities,
+      });
     } catch (error) {
       this.assertNotCanceled(runContext.abortSignal);
       if (
@@ -102,7 +116,6 @@ export class AutomationAiHarnessService {
   private async start(
     input: AutomationAiRunInput,
     context: AutomationAiHarnessContext,
-    maxActions: number,
   ) {
     const { provider, model } = await this.aiProviders.getProvider(
       input.providerId,
@@ -122,9 +135,9 @@ export class AutomationAiHarnessService {
       {
         providerId: provider.id,
         modelId: model.id,
-        protocol: provider.protocol ?? 'openai-chat-completions',
+        protocol: providerProtocol(provider),
         capabilityCount: capabilities.length,
-        actionLimit: maxActions,
+        actionLimit: input.maxActions,
         clientMessageId: input.clientMessageId ?? null,
       },
     );
@@ -133,13 +146,10 @@ export class AutomationAiHarnessService {
   }
 
   private async runDecisions(
-    decisionContext: AutomationAiDecisionContext & {
-      context: AutomationAiHarnessContext & { abortSignal: AbortSignal };
-    },
-    capabilities: ReturnType<typeof routeCapabilities>,
-    maxActions: number,
+    decisionContext: DecisionLoopContext,
   ): Promise<AutomationAiOutcome> {
     const { input, context, deadline, state } = decisionContext;
+    const { maxActions } = input;
     if (shouldPlanInitially(input.agentMode ?? 'adaptive', input.prompt)) {
       await this.decisions.updatePlan(decisionContext);
     }
@@ -150,26 +160,10 @@ export class AutomationAiHarnessService {
       this.assertNotCanceled(context.abortSignal);
       const decision = await this.decisions.requestDecision({
         ...decisionContext,
-        capabilities,
         terminalOnly,
       });
       context.abortSignal.throwIfAborted();
-      await emitAutomationAiEvent(
-        this.events,
-        context,
-        'ai.action.decided',
-        decisionSummary(decision),
-        {
-          kind: decision.kind,
-          snapshotId:
-            decision.kind === 'act'
-              ? decision.snapshotId
-              : state.observation.snapshotId,
-          targetFingerprint: state.target.fingerprint,
-          clientMessageId: input.clientMessageId ?? null,
-        },
-      );
-
+      await this.recordDecision(decisionContext, decision);
       context.abortSignal.throwIfAborted();
       if (Date.now() >= deadline) break;
       if (
@@ -179,85 +173,9 @@ export class AutomationAiHarnessService {
       )
         break;
 
-      if (decision.kind === 'needs_plan') {
-        if (state.planAttempts >= MAX_PLAN_ATTEMPTS) {
-          state.recordRejectedDecision(
-            'needs_plan',
-            'Planner budget exhausted; choose a concrete action or finish blocked.',
-            false,
-          );
-          continue;
-        }
-        await this.decisions.updatePlan({
-          ...decisionContext,
-          reason: decision.reason,
-        });
-        continue;
-      }
-      if (decision.kind === 'ask_user') {
-        return {
-          status: 'blocked',
-          finalText: decision.question,
-          blockedReason: decision.reason,
-        };
-      }
-      if (decision.kind === 'finish') {
-        const verified = verifyAutomationAiFinish(decision, state);
-        if (!verified.ok) {
-          await this.rejectFinish(context, input, state, verified.reason);
-          if (terminalOnly) break;
-          continue;
-        }
-        state.setSubgoals(verified.subgoals);
-        return {
-          status: decision.status,
-          finalText: decision.finalText,
-          evidenceIds: verified.evidenceIds,
-          blockedReason:
-            decision.status === 'blocked'
-              ? (decision.reason ?? decision.finalText)
-              : null,
-        };
-      }
-      if (decision.kind === 'request_escalation') {
-        await this.actions.executeEscalation({
-          decision,
-          input,
-          context,
-          state,
-        });
-        continue;
-      }
-
-      const actionResult = await this.actions.executeAction({
-        decision,
-        input,
-        context,
-        deadline,
-        state,
-        capabilities,
-      });
-      context.abortSignal.throwIfAborted();
-      if (actionResult === 'observation-unavailable') {
-        this.assertNotCanceled(context.abortSignal);
-        return {
-          status: 'blocked',
-          finalText:
-            'The device agent could not observe the screen after the last action.',
-          blockedReason: 'A fresh screen observation is unavailable.',
-        };
-      }
-      if (
-        state.actions < maxActions &&
-        state.consecutiveFailures >= 2 &&
-        state.planAttempts < MAX_PLAN_ATTEMPTS &&
-        input.agentMode !== 'controller'
-      ) {
-        await this.decisions.updatePlan({
-          ...decisionContext,
-          reason: 'Two consecutive actions failed verification.',
-        });
-      }
+      const result = await this.handleDecision(decisionContext, decision);
+      if (result) return result;
+      if (terminalOnly) break;
     }
 
     let blockedReason = 'Controller turn limit reached.';
@@ -270,20 +188,120 @@ export class AutomationAiHarnessService {
     };
   }
 
-  private async rejectFinish(
-    context: AutomationAiHarnessContext,
-    input: AutomationAiRunInput,
-    state: DeviceAgentRunState,
-    reason: string,
+  private recordDecision(
+    { input, context, state }: DecisionLoopContext,
+    decision: DeviceAgentDecision,
   ) {
-    await emitAutomationAiEvent(
+    return emitAutomationAiEvent(
       this.events,
       context,
-      'ai.guardrail.triggered',
-      reason,
-      { clientMessageId: input.clientMessageId ?? null },
+      'ai.action.decided',
+      decisionSummary(decision),
+      {
+        kind: decision.kind,
+        snapshotId:
+          decision.kind === 'act'
+            ? decision.snapshotId
+            : state.observation.snapshotId,
+        targetFingerprint: state.target.fingerprint,
+        clientMessageId: input.clientMessageId ?? null,
+      },
     );
-    state.recordRejectedDecision('finish', reason);
+  }
+
+  private async handleDecision(
+    decisionContext: DecisionLoopContext,
+    decision: DeviceAgentDecision,
+  ): Promise<AutomationAiOutcome | undefined> {
+    const { input, context, state } = decisionContext;
+    switch (decision.kind) {
+      case 'needs_plan':
+        if (state.planAttempts >= MAX_PLAN_ATTEMPTS) {
+          state.recordRejectedDecision(
+            'needs_plan',
+            'Planner budget exhausted; choose a concrete action or finish blocked.',
+            false,
+          );
+          return;
+        }
+        await this.decisions.updatePlan({
+          ...decisionContext,
+          reason: decision.reason,
+        });
+        return;
+      case 'ask_user':
+        return {
+          status: 'blocked',
+          finalText: decision.question,
+          blockedReason: decision.reason,
+        };
+      case 'finish': {
+        const verified = verifyAutomationAiFinish(decision, state);
+        if (!verified.ok) {
+          await emitAutomationAiEvent(
+            this.events,
+            context,
+            'ai.guardrail.triggered',
+            verified.reason,
+            { clientMessageId: input.clientMessageId ?? null },
+          );
+          state.recordRejectedDecision('finish', verified.reason);
+          return;
+        }
+        state.setSubgoals(verified.subgoals);
+        return {
+          status: decision.status,
+          finalText: decision.finalText,
+          evidenceIds: verified.evidenceIds,
+          blockedReason:
+            decision.status === 'blocked'
+              ? (decision.reason ?? decision.finalText)
+              : null,
+        };
+      }
+      case 'request_escalation':
+        await this.actions.executeEscalation({
+          decision,
+          deadline: decisionContext.deadline,
+          input,
+          context,
+          state,
+        });
+        return;
+      case 'act':
+        return this.executeAction(decisionContext, decision);
+    }
+  }
+
+  private async executeAction(
+    decisionContext: DecisionLoopContext,
+    decision: Extract<DeviceAgentDecision, { kind: 'act' }>,
+  ): Promise<AutomationAiOutcome | undefined> {
+    const { input, context, state } = decisionContext;
+    const actionResult = await this.actions.executeAction({
+      ...decisionContext,
+      decision,
+    });
+    context.abortSignal.throwIfAborted();
+    if (actionResult === 'observation-unavailable') {
+      return {
+        status: 'blocked',
+        finalText:
+          'The device agent could not observe the screen after the last action.',
+        blockedReason: 'A fresh screen observation is unavailable.',
+      };
+    }
+    if (
+      state.actions < input.maxActions &&
+      state.consecutiveFailures >= 2 &&
+      state.planAttempts < MAX_PLAN_ATTEMPTS &&
+      input.agentMode !== 'controller'
+    ) {
+      await this.decisions.updatePlan({
+        ...decisionContext,
+        reason: 'Two consecutive actions failed verification.',
+      });
+    }
   }
 
   private async finish(
@@ -293,7 +311,13 @@ export class AutomationAiHarnessService {
     result: AutomationAiOutcome,
   ) {
     const finalText = sanitizeAiText(result.finalText, 4_000);
-    const evidenceIds = result.evidenceIds ?? [];
+    const completed = result.status === 'completed';
+    const actionCount = state?.actions ?? 0;
+    const screenEvidence = {
+      evidenceIds: result.evidenceIds ?? [],
+      targetFingerprint: state?.target.fingerprint ?? null,
+      lastSnapshotId: state?.observation.snapshotId ?? null,
+    };
     await emitAutomationAiEvent(
       this.events,
       context,
@@ -301,11 +325,9 @@ export class AutomationAiHarnessService {
       finalText,
       {
         status: result.status,
-        completed: result.status === 'completed',
+        completed,
         clientMessageId: input.clientMessageId ?? null,
-        evidenceIds,
-        targetFingerprint: state?.target.fingerprint ?? null,
-        lastSnapshotId: state?.observation.snapshotId ?? null,
+        ...screenEvidence,
       },
     );
     return {
@@ -313,17 +335,15 @@ export class AutomationAiHarnessService {
       data: {
         finalText,
         status: result.status,
-        completed: result.status === 'completed',
-        toolCalls: state?.actions ?? 0,
+        completed,
+        toolCalls: actionCount,
         blockedReason: result.blockedReason,
         evidence: {
-          actionCount: state?.actions ?? 0,
-          actionLimitReached: (state?.actions ?? 0) >= input.maxActions,
-          lastSnapshotId: state?.observation.snapshotId ?? null,
-          targetFingerprint: state?.target.fingerprint ?? null,
+          ...screenEvidence,
+          actionCount,
+          actionLimitReached: actionCount >= input.maxActions,
           verifierFailures:
             state?.trajectory.filter((entry) => entry.failed).length ?? 0,
-          evidenceIds,
         },
       },
     };

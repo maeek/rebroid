@@ -1,4 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
 import { z } from 'zod';
 import {
   listPackagesSchema,
@@ -47,13 +46,14 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           query,
           timeoutMs,
         }: z.infer<typeof listPackagesSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
         let result = await adb.shell(
           app,
           `pm list packages${includeSystem ? '' : ' -3'}`,
           timeoutMs,
           abortSignal,
+          deadline,
         );
         if (result.exitCode !== 0) {
           result = await adb.shell(
@@ -61,6 +61,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
             `cmd package list packages${includeSystem ? '' : ' -3'}`,
             timeoutMs,
             abortSignal,
+            deadline,
           );
         }
         if (result.exitCode !== 0) {
@@ -123,7 +124,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       ],
       execute: async (
         { timeoutMs }: z.infer<typeof openSystemSettingsSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
         const attempts = [];
         for (const command of [
@@ -131,7 +132,13 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           'cmd activity start-activity -a android.settings.SETTINGS',
           'am start -a android.settings.SETTINGS',
         ]) {
-          const result = await adb.shell(app, command, timeoutMs, abortSignal);
+          const result = await adb.shell(
+            app,
+            command,
+            timeoutMs,
+            abortSignal,
+            deadline,
+          );
           attempts.push({
             command,
             exitCode: result.exitCode,
@@ -161,7 +168,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
       uses: 'android.launchPackage',
       label: 'Launch package',
       description:
-        'Checks whether an Android package is installed, then attempts to launch its launcher activity.',
+        'Launches an installed Android package. Enable requireSuccess to fail the step if Android cannot launch it.',
       requiredPermissions: ['automations:run'],
       schema: packageNameSchema,
       outputs: [
@@ -185,8 +192,12 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         },
       ],
       execute: async (
-        { packageName, timeoutMs }: z.infer<typeof packageNameSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        {
+          packageName,
+          timeoutMs,
+          requireSuccess,
+        }: z.infer<typeof packageNameSchema>,
+        { app, adb, abortSignal, deadline }: AutomationCommandContext,
       ) => {
         const installCheck = await checkPackageInstalled(
           app,
@@ -194,8 +205,12 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           packageName,
           timeoutMs,
           abortSignal,
+          deadline,
         );
         if (!installCheck.installed) {
+          if (requireSuccess) {
+            throw new Error(`Package ${packageName} is not installed.`);
+          }
           return {
             summary: `Package ${packageName} is not installed. Ask the user to install it or choose another route.`,
             data: {
@@ -212,6 +227,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           `monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`,
           timeoutMs,
           abortSignal,
+          deadline,
         );
         let output = [launchResult.stdout, launchResult.stderr]
           .map((part) => part.trim())
@@ -226,6 +242,7 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
             'cmd activity start-activity -a android.settings.SETTINGS',
             timeoutMs,
             abortSignal,
+            deadline,
           );
           output = [settingsResult.stdout, settingsResult.stderr]
             .map((part) => part.trim())
@@ -235,6 +252,11 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
           exitCode = settingsResult.exitCode;
         }
 
+        if (!launched && requireSuccess) {
+          throw new Error(
+            `Android could not launch package ${packageName} (exit code ${exitCode}).`,
+          );
+        }
         return {
           summary: launched
             ? `Launched ${packageName}.`
@@ -252,22 +274,15 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
     {
       uses: 'android.waitForText',
       label: 'Wait for text',
-      description: 'Polls the UI hierarchy until text appears.',
+      description: 'Waits for a visible, tappable Android label.',
       requiredPermissions: ['automations:run'],
       schema: textWaitSchema,
       execute: async (
-        { text, timeoutMs, intervalMs }: z.infer<typeof textWaitSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        input: z.infer<typeof textWaitSchema>,
+        context: AutomationCommandContext,
       ) => {
-        const deadline = Date.now() + timeoutMs;
-        do {
-          const dump = await adb.dumpUi(app, abortSignal);
-          if (dump.status === 'available' && dump.xml?.includes(text)) {
-            return { summary: `Found text "${text}".` };
-          }
-          await delay(intervalMs, undefined, { signal: abortSignal });
-        } while (Date.now() < deadline);
-        throw new Error(`Text "${text}" was not found within ${timeoutMs}ms.`);
+        await runTextOperation('wait', input, context);
+        return { summary: `Found text "${input.text}".` };
       },
     },
     {
@@ -291,24 +306,49 @@ export const createAndroidDevicePackageTextAutomationCommands = () =>
         },
       ],
       execute: async (
-        { text, timeoutMs, intervalMs }: z.infer<typeof textWaitSchema>,
-        { app, adb, abortSignal }: AutomationCommandContext,
+        input: z.infer<typeof textWaitSchema>,
+        context: AutomationCommandContext,
       ) => {
-        const deadline = Date.now() + timeoutMs;
-        do {
-          const result = await adb.tapText(app, text);
-          if (result.found) {
-            return {
-              summary: `Tapped text "${text}".`,
-              data: { x: result.x, y: result.y },
-            };
-          }
-          await delay(intervalMs, undefined, { signal: abortSignal });
-        } while (Date.now() < deadline);
-        throw new Error(`Text "${text}" was not found within ${timeoutMs}ms.`);
+        const { x, y } = await runTextOperation('tap', input, context);
+        return { summary: `Tapped text "${input.text}".`, data: { x, y } };
       },
     },
   ] as unknown as AutomationCommandDefinition[];
+
+async function runTextOperation(
+  operation: 'wait' | 'tap',
+  input: z.infer<typeof textWaitSchema>,
+  { app, adb, abortSignal }: AutomationCommandContext,
+) {
+  const { text, timeoutMs } = input;
+  const timeoutMessage =
+    operation === 'tap'
+      ? `Could not confirm a tap on "${text}" within ${timeoutMs}ms.`
+      : `Timed out waiting for tappable text "${text}" after ${timeoutMs}ms.`;
+  try {
+    const result = await adb.uiText(app, { ...input, operation }, abortSignal);
+    switch (result.status) {
+      case 'found':
+        return result;
+      case 'not_found':
+        throw new Error(
+          `Tappable text "${text}" was not found within ${timeoutMs}ms.`,
+        );
+      case 'hierarchy_unavailable':
+        throw new Error(
+          `Android UI hierarchy was unavailable while looking for "${text}".`,
+        );
+      case 'tap_outcome_unknown':
+        throw new Error(`Could not confirm whether Android tapped "${text}".`);
+    }
+  } catch (error) {
+    abortSignal?.throwIfAborted();
+    if (error instanceof Error && error.name === 'TimeoutError') {
+      throw new Error(timeoutMessage, { cause: error });
+    }
+    throw error;
+  }
+}
 
 const checkPackageInstalled = async (
   app: AutomationCommandContext['app'],
@@ -316,12 +356,14 @@ const checkPackageInstalled = async (
   packageName: string,
   timeoutMs: number,
   abortSignal?: AbortSignal,
+  deadline?: number,
 ) => {
   const pathResult = await adb.shell(
     app,
     `pm path ${packageName}`,
     timeoutMs,
     abortSignal,
+    deadline,
   );
   if (pathResult.exitCode === 0 && pathResult.stdout.trim()) {
     return { installed: true, reason: null };
@@ -331,7 +373,13 @@ const checkPackageInstalled = async (
     `pm list packages ${packageName}`,
     `cmd package list packages ${packageName}`,
   ]) {
-    const listResult = await adb.shell(app, command, timeoutMs, abortSignal);
+    const listResult = await adb.shell(
+      app,
+      command,
+      timeoutMs,
+      abortSignal,
+      deadline,
+    );
     if (
       listResult.exitCode === 0 &&
       listResult.stdout

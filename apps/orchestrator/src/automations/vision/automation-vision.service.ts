@@ -22,6 +22,16 @@ interface VisionModelSelection {
   model: AutomationAiProviderModel;
 }
 
+type VisionContext = Pick<
+  AutomationCommandContext,
+  | 'adb'
+  | 'app'
+  | 'abortSignal'
+  | 'visionSnapshot'
+  | 'recordOcrExchange'
+  | 'withTarget'
+>;
+
 @Injectable()
 export class AutomationVisionService {
   constructor(
@@ -31,16 +41,33 @@ export class AutomationVisionService {
   ) {}
 
   async observe(
-    context: Pick<AutomationCommandContext, 'adb' | 'app' | 'abortSignal'>,
+    context: VisionContext,
     visionModel?: VisionModelSelection,
     deadline?: number,
     visionContext?: AutomationVisionContext,
   ): Promise<AutomationScreenObservation> {
     const signal = observationSignal(context.abortSignal, deadline);
-    const capture = await this.captureService.capture({
-      ...context,
-      abortSignal: signal,
-    });
+    if (context.visionSnapshot) {
+      const snapshot = context.visionSnapshot;
+      if (!visionModel || !snapshot.aiImage) return snapshot;
+      const described = await this.modelService.describeSafe({
+        image: snapshot.aiImage,
+        abortSignal: signal,
+        deadline,
+        visionContext,
+        ...visionModel,
+      });
+      signal?.throwIfAborted();
+      return { ...snapshot, ...described };
+    }
+    const captureTarget = (app: VisionContext['app']) =>
+      this.captureService.capture(
+        { ...context, app, abortSignal: signal },
+        deadline,
+      );
+    const capture = await (context.withTarget
+      ? context.withTarget(signal, captureTarget)
+      : captureTarget(context.app));
     const described = visionModel
       ? await this.modelService.describeSafe({
           image: capture.aiImage,
@@ -61,48 +88,76 @@ export class AutomationVisionService {
   }
 
   async locate(
-    context: Pick<AutomationCommandContext, 'adb' | 'app' | 'abortSignal'>,
+    context: VisionContext,
     input: AutomationVisionLocateInput,
     visionModel?: VisionModelSelection,
     deadline?: number,
   ): Promise<AutomationVisionLocateOutput> {
     const signal = observationSignal(context.abortSignal, deadline);
-    const capture = await this.captureService.capture({
-      ...context,
-      abortSignal: signal,
-    });
+    const { visionSnapshot } = context;
+    const evidence = visionSnapshot
+      ? {
+          detections: visionSnapshot.lookupDetections ?? [
+            ...visionSnapshot.detections,
+            ...(visionSnapshot.ocr?.detections ?? []),
+          ],
+          image: visionSnapshot.aiImage,
+          ocrStatus: visionSnapshot.ocr?.status,
+        }
+      : await this.captureForLookup(context, signal, deadline);
     signal?.throwIfAborted();
+    const ocrStatus: AutomationVisionLocateOutput['ocrStatus'] =
+      evidence.ocrStatus ?? 'unavailable';
+    const base = { query: input.query, threshold: input.threshold, ocrStatus };
     const matches = sortDetections(
-      this.fusionService
-        .lookupDetections(capture)
-        .filter(
-          (detection) =>
-            matchesDetectionQuery(detection, input.query) &&
-            matchesVisionLocateBounds(detection, input),
-        ),
+      evidence.detections.filter(
+        (detection) =>
+          matchesDetectionQuery(detection, input.query) &&
+          matchesVisionLocateBounds(detection, input),
+      ),
     ).slice(0, input.maxResults);
-    if (matches.length === 0 && visionModel) {
+    if (matches.length > 0) return { ...base, matches, outcome: 'found' };
+    if (visionModel && evidence.image) {
       const result = await this.modelService.locateSafe({
-        image: capture.aiImage,
+        image: evidence.image,
         abortSignal: signal,
         deadline,
         input,
         ...visionModel,
       });
       signal?.throwIfAborted();
-      return result;
+      const emptyOutcome = result.failed ? 'inconclusive' : 'not_found';
+      return {
+        ...base,
+        matches: result.matches,
+        outcome: result.matches.length ? 'found' : emptyOutcome,
+        reason: result.reason,
+      };
     }
-
+    const complete = ocrStatus === 'available' && !visionModel;
     return {
+      ...base,
       matches,
-      query: input.query,
-      threshold: input.threshold,
-      ...(matches.length === 0
-        ? {
-            reason:
-              'No matching fused UI, OCR, or visual candidates were found on the current screen.',
-          }
-        : {}),
+      outcome: complete ? 'not_found' : 'inconclusive',
+      reason: complete
+        ? 'No match in the available screen evidence.'
+        : 'No match in the available evidence and screenshot recognition was unavailable.',
+    };
+  }
+
+  private async captureForLookup(
+    context: VisionContext,
+    abortSignal?: AbortSignal,
+    deadline?: number,
+  ) {
+    const capture = await this.captureService.capture(
+      { ...context, abortSignal },
+      deadline,
+    );
+    return {
+      detections: this.fusionService.lookupDetections(capture),
+      image: capture.aiImage,
+      ocrStatus: capture.ocr.status,
     };
   }
 

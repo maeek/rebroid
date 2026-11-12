@@ -51,6 +51,7 @@ const runInput = () => ({
   automationId: queuedRun.automationId,
   abortSignal: new AbortController().signal,
   targetOptions: {},
+  admitTargetWork: <T>(operation: () => Promise<T>) => operation(),
   admitTargetStart: async (start: () => Promise<unknown>) => {
     await start();
   },

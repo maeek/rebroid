@@ -1,7 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AutomationRun } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
-import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import {
   buildControlStepOutput,
   buildFailedStepResult,
@@ -9,11 +8,10 @@ import {
   buildSuccessfulStepResult,
 } from './automation-runner-results';
 import { AutomationStepResult } from './automation-runner.types';
+import type { AutomationOcrExchangeRecorder } from '../vision/automation-ocr-exchange';
 
 interface StepRecorderState {
   runId: string;
-  results: AutomationStepResult[];
-  persistedResultCount?: number;
   outputsByStepId: Map<string, Record<string, unknown> | null>;
 }
 
@@ -24,10 +22,38 @@ interface StepRecorderOptions {
 
 @Injectable()
 export class AutomationRunnerRecorderService {
-  constructor(
-    private readonly runs: AutomationRunsRepository,
-    private readonly events: AutomationRunEventBus,
-  ) {}
+  private readonly logger = new Logger(AutomationRunnerRecorderService.name);
+
+  constructor(private readonly events: AutomationRunEventBus) {}
+
+  ocrExchangeRecorder(
+    run: AutomationRun,
+    stepId: string,
+    options: StepRecorderOptions,
+  ): AutomationOcrExchangeRecorder {
+    return async ({ request, response }, preview) => {
+      let message = 'OCR request failed.';
+      if (response.status === 'canceled') message = 'OCR request canceled.';
+      if (response.status === 'available') {
+        message = `OCR returned ${response.detectionCount} text box(es).`;
+      }
+      try {
+        await this.events.emit({
+          runId: run.id,
+          ownerUserId: run.ownerUserId,
+          type: 'vision.ocr.exchange',
+          stepId,
+          parentStepId: options.parentStepId ?? null,
+          message,
+          data: { path: options.path, request, response, preview },
+        });
+      } catch {
+        this.logger.warn(
+          `Could not record OCR exchange for workflow run ${run.id}.`,
+        );
+      }
+    };
+  }
 
   async recordActionStarted(
     run: AutomationRun,
@@ -58,30 +84,15 @@ export class AutomationRunnerRecorderService {
   ) {
     const completedAt = new Date().toISOString();
     const output = buildStepOutput(result.summary, result.data);
-    state.outputsByStepId.set(stepId, output);
-    state.results.push(
+    return this.recordOutcome(
+      run,
+      state,
       buildSuccessfulStepResult(
-        {
-          stepId,
-          uses,
-          parentStepId: options.parentStepId ?? null,
-          path: options.path,
-          startedAt,
-          completedAt,
-        },
+        { stepId, uses, ...options, startedAt, completedAt },
         output,
       ),
+      result.summary,
     );
-    await this.saveRunResults(run, state);
-    await this.events.emit({
-      runId: state.runId,
-      ownerUserId: run.ownerUserId,
-      type: 'step.completed',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
-      message: result.summary,
-      data: { uses, output },
-    });
   }
 
   async recordStepFailed(
@@ -92,37 +103,22 @@ export class AutomationRunnerRecorderService {
     options: StepRecorderOptions,
     startedAt: string,
     message: string,
-    emitEvent: boolean,
   ) {
-    const completedAt = new Date().toISOString();
-    state.outputsByStepId.set(stepId, null);
-    state.results.push(
+    return this.recordOutcome(
+      run,
+      state,
       buildFailedStepResult(
         {
           stepId,
           uses,
-          parentStepId: options.parentStepId ?? null,
-          path: options.path,
+          ...options,
           startedAt,
-          completedAt,
+          completedAt: new Date().toISOString(),
         },
         message,
       ),
-    );
-    run.error = message;
-    await this.saveRunResults(run, state);
-    if (!emitEvent) {
-      return;
-    }
-    await this.events.emit({
-      runId: state.runId,
-      ownerUserId: run.ownerUserId,
-      type: 'step.failed',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
       message,
-      data: { uses },
-    });
+    );
   }
 
   async recordControlCompleted(
@@ -135,40 +131,41 @@ export class AutomationRunnerRecorderService {
   ) {
     const now = new Date().toISOString();
     const result = buildControlStepOutput(uses, output);
-    state.outputsByStepId.set(stepId, result);
-    state.results.push(
+    return this.recordOutcome(
+      run,
+      state,
       buildSuccessfulStepResult(
-        {
-          stepId,
-          uses,
-          parentStepId: options.parentStepId ?? null,
-          path: options.path,
-          startedAt: now,
-          completedAt: now,
-        },
+        { stepId, uses, ...options, startedAt: now, completedAt: now },
         result,
       ),
+      result.summary,
     );
-    await this.saveRunResults(run, state);
-    await this.events.emit({
-      runId: state.runId,
-      ownerUserId: run.ownerUserId,
-      type: 'step.completed',
-      stepId,
-      parentStepId: options.parentStepId ?? null,
-      message: result.summary,
-      data: { uses, output: result },
-    });
   }
 
-  private async saveRunResults(run: AutomationRun, state: StepRecorderState) {
-    const persisted = state.persistedResultCount ?? 0;
-    const saved = await this.runs.appendStepResults(
-      run.id,
-      persisted + 1,
-      state.results.slice(persisted),
-      run.error,
+  private async recordOutcome(
+    run: AutomationRun,
+    state: StepRecorderState,
+    result: AutomationStepResult,
+    message: string,
+  ) {
+    const saved = await this.events.recordStepOutcome(
+      {
+        runId: run.id,
+        ownerUserId: run.ownerUserId,
+        type: result.status === 'failed' ? 'step.failed' : 'step.completed',
+        stepId: result.stepId,
+        parentStepId: result.parentStepId,
+        message,
+        data: result.output
+          ? { uses: result.uses, output: result.output }
+          : { uses: result.uses },
+      },
+      result,
     );
-    if (saved) state.persistedResultCount = state.results.length;
+    if (saved) {
+      run.error = result.error;
+      state.outputsByStepId.set(result.stepId, result.output);
+    }
+    return saved;
   }
 }

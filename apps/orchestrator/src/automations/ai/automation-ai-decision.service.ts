@@ -19,6 +19,10 @@ import type {
   AutomationAiRunInput,
 } from '../../settings/contracts/ai-provider';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import {
+  capabilityPrompt,
+  type RoutedAiCapabilities,
+} from './automation-ai-capability-policy';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
 import { emitAutomationAiEvent } from './automation-ai-events';
 import { textContent } from './automation-ai-message.utils';
@@ -32,10 +36,6 @@ import {
   fallbackDevicePlan,
   parseDevicePlan,
 } from './automation-ai-plan';
-import {
-  capabilityPrompt,
-  routeCapabilities,
-} from './automation-device-agent-state';
 import type { DeviceAgentRunState } from './automation-device-agent-run-state';
 
 const MAX_DECISION_ATTEMPTS = 2;
@@ -49,6 +49,11 @@ export type AutomationAiDecisionContext = {
   state: DeviceAgentRunState;
 };
 
+type ControllerTurn = AutomationAiDecisionContext & {
+  capabilities: RoutedAiCapabilities;
+  terminalOnly: boolean;
+};
+
 @Injectable()
 export class AutomationAiDecisionService {
   constructor(
@@ -56,12 +61,7 @@ export class AutomationAiDecisionService {
     private readonly events: AutomationRunEventBus,
   ) {}
 
-  async requestDecision(
-    args: AutomationAiDecisionContext & {
-      capabilities: ReturnType<typeof routeCapabilities>;
-      terminalOnly?: boolean;
-    },
-  ) {
+  async requestDecision(args: ControllerTurn) {
     let validationError = '';
     for (let attempt = 0; attempt < MAX_DECISION_ATTEMPTS; attempt += 1) {
       const response = await this.requestControllerTurn(
@@ -102,21 +102,11 @@ export class AutomationAiDecisionService {
   }
 
   private async requestControllerTurn(
-    args: AutomationAiDecisionContext & {
-      capabilities: ReturnType<typeof routeCapabilities>;
-      terminalOnly?: boolean;
-    },
+    args: ControllerTurn,
     attempt: number,
     validationError: string,
   ) {
-    const messages = this.controllerMessages({
-      input: args.input,
-      model: args.model,
-      state: args.state,
-      capabilities: args.capabilities,
-      validationError,
-      terminalOnly: args.terminalOnly,
-    });
+    const messages = this.controllerMessages(args, validationError);
     const mode = deviceControllerResponseMode(args.model);
     if (!mode) {
       throw new BadRequestException(
@@ -143,11 +133,7 @@ export class AutomationAiDecisionService {
         ? {
             responseFormat: {
               type: 'json_schema' as const,
-              json_schema: {
-                name: 'device_decision',
-                strict: true,
-                schema: deviceDecisionJsonSchema,
-              },
+              name: 'device_decision',
               schema: deviceDecisionJsonSchema,
             },
           }
@@ -193,12 +179,8 @@ export class AutomationAiDecisionService {
         ? {
             responseFormat: {
               type: 'json_schema' as const,
+              name: 'device_plan',
               schema: devicePlanSchema,
-              json_schema: {
-                name: 'device_plan',
-                strict: true,
-                schema: devicePlanSchema,
-              },
             },
           }
         : {}),
@@ -228,21 +210,10 @@ export class AutomationAiDecisionService {
     );
   }
 
-  private controllerMessages({
-    input,
-    model,
-    state,
-    capabilities,
-    validationError,
-    terminalOnly,
-  }: {
-    input: AutomationAiRunInput;
-    model: AutomationAiProviderModel;
-    state: DeviceAgentRunState;
-    capabilities: ReturnType<typeof routeCapabilities>;
-    validationError: string;
-    terminalOnly?: boolean;
-  }) {
+  private controllerMessages(
+    { input, model, state, capabilities, terminalOnly }: ControllerTurn,
+    validationError: string,
+  ) {
     const messages = buildDeviceControllerMessages({
       goal: conversationGoal(input),
       snapshot: boundedAiText(
