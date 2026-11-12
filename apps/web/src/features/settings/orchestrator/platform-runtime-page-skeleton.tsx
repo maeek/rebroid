@@ -1,3 +1,5 @@
+'use client'
+
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { PlatformRuntimeFieldsSection } from './platform-runtime-fields-section'
 import { PlatformRuntimeMaintenanceSection } from './platform-runtime-maintenance-section'

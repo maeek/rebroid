@@ -53,6 +53,7 @@ export const PlatformRuntimeForm = ({
   const [form, setForm] = useState({ settings: initialSettings, savedSettings: initialSettings })
   const { settings, savedSettings } = form
   const [operation, setOperation] = useState<'save' | 'restore' | null>(null)
+  const [renderingSaveOpen, setRenderingSaveOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
   const initialSnapshot = useRef(JSON.stringify(initialSettings))
   const patch = getRuntimeSettingsPatch(settings, savedSettings)
@@ -76,6 +77,7 @@ export const PlatformRuntimeForm = ({
     try {
       const saved = await saveOrchestratorUiSettings(patch)
       setForm({ settings: saved, savedSettings: saved })
+      setRenderingSaveOpen(false)
       toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
       toast({
@@ -143,12 +145,30 @@ export const PlatformRuntimeForm = ({
         }
         onSubmit={event => {
           event.preventDefault()
-          void saveSettings()
+          if (isBusy || !hasChanges || !renderingValid) return
+          if (patch.androidRendering) {
+            setRenderingSaveOpen(true)
+          } else {
+            void saveSettings()
+          }
         }}
       />
       <PlatformRuntimeMaintenanceSection
         disabled={isBusy}
         onRestore={() => setRestoreOpen(true)}
+      />
+      <ConfirmMutationDialog
+        open={renderingSaveOpen}
+        onOpenChange={setRenderingSaveOpen}
+        title='Save Android rendering changes?'
+        description='Stop and start affected Redroid apps to apply the new rendering setting. Persistent profiles are kept, but replacing a container can clear temporary data.'
+        consequence='If an app still cannot connect to ADB after starting, use Restart sidecar in Platform settings → Services → Display sessions, then retry the app. Restarting the sidecar interrupts active display sessions.'
+        confirmLabel='Save changes'
+        confirmDisabled={isBusy || !patch.androidRendering || !renderingValid}
+        tone='warning'
+        pending={operation === 'save'}
+        pendingLabel='Saving…'
+        onConfirm={() => void saveSettings()}
       />
       <ConfirmMutationDialog
         open={restoreOpen}

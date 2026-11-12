@@ -48,6 +48,7 @@ import {
 import { AiProvidersPreview } from '@/features/settings/orchestrator/ai-providers/ai-providers-preview'
 import { FirewallSettingsPageClient } from '@/features/settings/orchestrator/firewall-settings-page-client'
 import { SecurityNetworkPoliciesPageLoading } from '@/features/settings/orchestrator/firewall-settings-page-loading'
+import { PlatformRuntimePageSkeleton } from '@/features/settings/orchestrator/platform-runtime-page-skeleton'
 import { PlatformRuntimeUnavailable } from '@/features/settings/orchestrator/platform-runtime-unavailable'
 import { RuntimeSettingsPreview } from '@/features/settings/orchestrator/runtime-settings-preview'
 import { ScheduledTasksPageSkeleton } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-page-skeleton'
@@ -268,7 +269,7 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
     )
   if (editor === 'operations') return <PlatformOperationsPreview />
   if (editor === 'runtime') return <RuntimeSettingsPreview />
-  if (editor === 'runtime-loading') return <RuntimeSettingsPreview loading />
+  if (editor === 'runtime-loading') return <PlatformRuntimePageSkeleton />
   if (editor === 'app-resource') return <AppResourcePreview activity={<AppActivityPreview />} />
   if (editor === 'failed-run') return <AutomationRunPreview />
   if (editor === 'app')

@@ -5,12 +5,10 @@ import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestra
 import { PlatformRuntimeFieldsSection } from './platform-runtime-fields-section'
 import { PlatformRuntimeMaintenanceSection } from './platform-runtime-maintenance-section'
 import { PlatformRuntimePageLayout } from './platform-runtime-page-layout'
-import { PlatformRuntimePageSkeleton } from './platform-runtime-page-skeleton'
 
-export const RuntimeSettingsPreview = ({ loading = false }: { loading?: boolean }) => {
+export const RuntimeSettingsPreview = () => {
   const [settings, setSettings] = useState(defaultOrchestratorUiSettings)
   const [saved, setSaved] = useState(settings)
-  if (loading) return <PlatformRuntimePageSkeleton />
   return (
     <PlatformRuntimePageLayout
       hasChanges={JSON.stringify(settings) !== JSON.stringify(saved)}
