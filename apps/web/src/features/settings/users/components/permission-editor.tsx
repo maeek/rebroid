@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { permissionCategories, permissionDefinitions, type PermissionMap } from '@/shared/permissions/permissions'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
-import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import {
   PermissionEditorContext,
@@ -17,6 +16,9 @@ import {
 } from './permission-cells'
 import type { EffectiveAccess } from '@/shared/permissions/effective-access'
 import type { ColumnDef } from '@tanstack/react-table'
+
+const getPermissionCategory = (permission: (typeof permissionDefinitions)[number]) =>
+  permissionCategories[permission.category]
 
 export const PermissionEditor = ({
   permissions = {},
@@ -33,8 +35,6 @@ export const PermissionEditor = ({
 }) => {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
-  const [pageIndex, setPageIndex] = useState(0)
-  const [pageSize, setPageSize] = useState(10)
   const editable = onChange !== undefined
   const grantedCount = permissionDefinitions.filter(permission =>
     editable ? permissions[permission.id] === true : decisions[permission.id]?.allowed
@@ -42,13 +42,11 @@ export const PermissionEditor = ({
   const query = search.trim().toLowerCase()
   const visible = permissionDefinitions.filter(permission => {
     if (category !== 'all' && permission.category !== category) return false
-    const categoryName = permissionCategories.find(item => item.id === permission.category)?.name ?? ''
-    return `${permission.name} ${permission.id} ${permission.description} ${categoryName} ${decisions[permission.id]?.groupName ?? ''}`
+    return `${permission.name} ${permission.id} ${permission.description} ${getPermissionCategory(permission)} ${decisions[permission.id]?.groupName ?? ''}`
       .toLowerCase()
       .includes(query)
   })
 
-  const currentPage = Math.min(pageIndex, Math.max(0, Math.ceil(visible.length / pageSize) - 1))
   const columns = useMemo<ColumnDef<(typeof permissionDefinitions)[number]>[]>(
     () => [
       {
@@ -58,7 +56,7 @@ export const PermissionEditor = ({
         minSize: 260,
         enableSorting: false,
         enableHiding: false,
-        meta: { skeleton: { kind: 'stacked' } },
+        meta: { cellContentClassName: 'lg:ps-3', skeleton: { kind: 'stacked' } },
         cell: PermissionIdentityCell
       },
       ...(!editable
@@ -111,7 +109,6 @@ export const PermissionEditor = ({
               />
             ) : (
               <>
-                {' '}
                 {grantedCount} of {permissionDefinitions.length} permissions granted
               </>
             )}
@@ -120,79 +117,54 @@ export const PermissionEditor = ({
         <DataGridWorkspace
           search={search}
           searchPlaceholder='Search permissions'
-          onSearchChange={value => {
-            setSearch(value)
-            setPageIndex(0)
-          }}
+          onSearchChange={setSearch}
           onSearch={() => undefined}
           disabled={loading || disabled}
           actions={
-            <div className='flex max-w-full flex-wrap items-end gap-3'>
-              <FormField
-                label='Permission category'
-                className='w-52 max-w-full'
-                layout='vertical'
+            <FormField
+              label='Permission category'
+              className='w-52 max-w-full'
+              layout='vertical'
+            >
+              <Select
+                value={category}
+                disabled={loading || disabled}
+                onValueChange={setCategory}
               >
-                <Select
-                  value={category}
-                  disabled={loading}
-                  onValueChange={value => {
-                    setCategory(value)
-                    setPageIndex(0)
-                  }}
-                >
-                  <SelectTrigger className='w-full'>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value='all'>All categories</SelectItem>
-                    {permissionCategories.map(item => (
-                      <SelectItem
-                        key={item.id}
-                        value={item.id}
-                      >
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormField>
-            </div>
+                <SelectTrigger className='w-full'>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value='all'>All categories</SelectItem>
+                  {Object.entries(permissionCategories).map(([id, name]) => (
+                    <SelectItem
+                      key={id}
+                      value={id}
+                    >
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
           }
         >
           <DataGrid
             columns={columns}
-            data={visible.slice(currentPage * pageSize, (currentPage + 1) * pageSize)}
+            data={visible}
             totalItems={visible.length}
-            pageIndex={currentPage}
-            pageSize={pageSize}
+            pageIndex={0}
+            pageSize={permissionDefinitions.length}
             getRowId={permission => permission.id}
-            loading={loading && { rowCount: 6 }}
+            getRowGroupLabel={getPermissionCategory}
+            loading={loading}
             emptyState={
               <DataGridEmptyState
                 title='No matching permissions'
                 filtered={Boolean(search.trim()) || category !== 'all'}
-                onReset={
-                  category !== 'all'
-                    ? () => {
-                        setCategory('all')
-                        setPageIndex(0)
-                      }
-                    : undefined
-                }
+                onReset={category !== 'all' ? () => setCategory('all') : undefined}
               />
             }
-          />
-          <DataGridPagination
-            pageIndex={currentPage}
-            pageSize={pageSize}
-            totalItems={visible.length}
-            onPageIndexChange={setPageIndex}
-            onPageSizeChange={size => {
-              setPageSize(size)
-              setPageIndex(0)
-            }}
-            loading={loading}
           />
         </DataGridWorkspace>
         {editable ? <p className='text-xs text-foreground-muted'>Changes apply when you save.</p> : null}

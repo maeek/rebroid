@@ -1,25 +1,12 @@
-export const permissionCategories = [
-  {
-    id: 'application-lifecycle',
-    name: 'Application lifecycle'
-  },
-  {
-    id: 'runtime-configuration',
-    name: 'Runtime configuration'
-  },
-  {
-    id: 'network-access',
-    name: 'Network access'
-  },
-  {
-    id: 'profiles-observability',
-    name: 'Profiles and observability'
-  },
-  {
-    id: 'automations',
-    name: 'Automations'
-  }
-] as const
+export const permissionCategories = {
+  'application-lifecycle': 'Application lifecycle',
+  'apk-management': 'APK management',
+  'runtime-configuration': 'Runtime configuration',
+  'network-access': 'Network access',
+  'profiles-diagnostics': 'Profiles and diagnostics',
+  'viewer-files': 'Viewer and files',
+  automations: 'Automations'
+} as const
 
 export const permissionDefinitions = [
   {
@@ -48,13 +35,13 @@ export const permissionDefinitions = [
   },
   {
     id: 'applications:update-apk',
-    category: 'application-lifecycle',
+    category: 'apk-management',
     name: 'Update APK',
     description: 'Upload or replace APK artifacts for owned applications.'
   },
   {
     id: 'applications:upload-apk',
-    category: 'application-lifecycle',
+    category: 'apk-management',
     name: 'Upload APK',
     description: 'Upload APK artifacts into owned application storage.'
   },
@@ -108,50 +95,50 @@ export const permissionDefinitions = [
   },
   {
     id: 'applications:switch-profile',
-    category: 'profiles-observability',
+    category: 'profiles-diagnostics',
     name: 'Switch profiles',
     description: 'Run an app with another persistent or temporary profile.'
   },
   {
     id: 'applications:view-logs',
-    category: 'profiles-observability',
+    category: 'profiles-diagnostics',
     name: 'View logs',
     description: 'Read container and ADB logs for owned applications.'
   },
   {
     id: 'applications:transfer-files',
-    category: 'profiles-observability',
+    category: 'viewer-files',
     name: 'Transfer files',
     description: 'Upload and download files through the live viewer workspace.'
   },
   {
     id: 'applications:manage-files',
-    category: 'profiles-observability',
+    category: 'viewer-files',
     name: 'Manage files',
     description:
       'Create folders, rename entries, and permanently delete files in live application storage. Requires Transfer files.'
   },
   {
     id: 'applications:sync-clipboard',
-    category: 'profiles-observability',
+    category: 'viewer-files',
     name: 'Sync clipboard',
     description: 'Read and write the application clipboard from the browser.'
   },
   {
     id: 'applications:control-viewer',
-    category: 'profiles-observability',
+    category: 'viewer-files',
     name: 'Control viewer',
     description: 'Send navigation, rotation, power, and volume commands to owned viewer sessions.'
   },
   {
     id: 'applications:capture-screenshot',
-    category: 'profiles-observability',
+    category: 'viewer-files',
     name: 'Capture screenshots',
     description: 'Save screenshots from the live viewer workspace.'
   },
   {
     id: 'applications:view-backend-details',
-    category: 'profiles-observability',
+    category: 'profiles-diagnostics',
     name: 'View backend details',
     description: 'See container IDs, names, network names, volume names, and ADB endpoints.'
   },

@@ -93,7 +93,7 @@ const usePermissionEditor = () => {
 }
 export const PermissionIdentityCell = ({ row }: CellContext<PermissionDefinition, unknown>) => (
   <div className='grid gap-1'>
-    <span className='font-medium'>{row.original.name}</span>
+    <span className='font-normal'>{row.original.name}</span>
     <span className='break-words text-xs leading-5 text-foreground-muted'>{row.original.description}</span>
   </div>
 )

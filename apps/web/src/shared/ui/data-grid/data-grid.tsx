@@ -18,6 +18,7 @@ declare module '@tanstack/react-table' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string
+    cellContentClassName?: string
     skeleton?: DataGridCellSkeleton
   }
 }
@@ -60,6 +61,8 @@ export type DataGridProps<TData> = {
   pageIndex: number
   pageSize: number
   getRowId: (row: TData) => string
+  /** Group rows by label. Supplied rows also determine the groups and placeholder counts during loading. */
+  getRowGroupLabel?: (row: TData) => string
   onPageIndexChange?: (pageIndex: number) => void
   onPageSizeChange?: (pageSize: number) => void
   sorting?: SortingState
@@ -82,6 +85,7 @@ export function DataGrid<TData>({
   pageIndex,
   pageSize,
   getRowId,
+  getRowGroupLabel,
   sorting = [],
   onSortingChange,
   columnVisibility,
@@ -138,6 +142,7 @@ export function DataGrid<TData>({
         columnVisibilityMenu={columnVisibilityMenu}
         selection={selection}
         getRowId={getRowId}
+        getRowGroupLabel={getRowGroupLabel}
         emptyState={emptyState}
         rowContextMenu={rowContextMenu}
         rowActivation={rowActivation}

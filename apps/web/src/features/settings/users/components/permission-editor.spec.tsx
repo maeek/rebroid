@@ -34,21 +34,42 @@ const selectOption = async (name: string, option: string) => {
   fireEvent.click(item)
   await waitFor(() => expect(screen.getByRole('combobox', { name })).toHaveTextContent(option))
 }
-const row = (name: string) => screen.getAllByRole('row').find(item => within(item).queryByText(name, { exact: true }))!
-
 describe('PermissionEditor', () => {
   it('shows the source of an effective permission without a user-level editor', () => {
     const { decisions } = resolveEffectiveAccess([operators], ['operators'])
     render(<PermissionEditor decisions={decisions} />)
-    expect(within(row('Create applications')).getByText('Granted', { exact: true })).toBeVisible()
-    expect(within(row('Create applications')).getByText('From Operators')).toBeVisible()
-    expect(within(row('Create applications')).queryByRole('combobox')).toBeNull()
+    const lifecycle = within(screen.getByRole('rowgroup', { name: 'Application lifecycle' }))
+    const create = lifecycle.getByRole('row', { name: /Create applications/ })
+    expect(within(create).getByText('Granted', { exact: true })).toBeVisible()
+    expect(within(create).getByText('From Operators')).toBeVisible()
+    expect(within(create).queryByRole('combobox')).toBeNull()
+  })
+
+  it('shows permission categories together and can narrow to one category', async () => {
+    render(<Harness />)
+    const viewer = within(screen.getByRole('rowgroup', { name: 'Viewer and files' }))
+    expect(viewer.getByRole('rowheader', { name: 'Viewer and files' })).toBeVisible()
+    expect(viewer.getByRole('combobox', { name: 'Set Transfer files' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Set Run AI automations' })).toBeVisible()
+
+    await selectOption('Permission category', 'Viewer and files')
+    expect(screen.queryByRole('rowgroup', { name: 'Automations' })).toBeNull()
+    expect(viewer.getByRole('combobox', { name: 'Set Transfer files' })).toBeVisible()
+
+    const search = screen.getByRole('searchbox', { name: 'Search permissions' })
+    fireEvent.change(search, { target: { value: 'Run ADB' } })
+    expect(screen.queryByRole('rowgroup', { name: 'Viewer and files' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset view' }))
+    expect(screen.getByRole('combobox', { name: 'Set Run ADB shell steps' })).toBeVisible()
   })
 
   it('searches all categories and edits only the chosen permission', async () => {
     render(<Harness />)
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search permissions' }), { target: { value: 'Run ADB' } })
-    expect(screen.queryByText('Create applications', { exact: true })).toBeNull()
+    expect(screen.queryByRole('rowgroup', { name: 'Application lifecycle' })).toBeNull()
+    expect(
+      within(screen.getByRole('rowgroup', { name: 'Automations' })).getByRole('row', { name: /Run ADB/ })
+    ).toBeVisible()
     await selectOption('Set Run ADB shell steps', 'Grant')
     expect(screen.getByTestId('payload')).toHaveTextContent('"automations:run-adb-shell":true')
     expect(screen.getByTestId('payload')).toHaveTextContent('"applications:delete":false')

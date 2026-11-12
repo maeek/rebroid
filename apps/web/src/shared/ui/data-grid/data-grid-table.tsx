@@ -24,6 +24,7 @@ type DataGridTableProps<TData> = {
   columnVisibilityMenu: ReactNode
   selection?: DataGridSelectionState
   getRowId: (row: TData) => string
+  getRowGroupLabel?: (row: TData) => string
   emptyState?: ReactNode
   rowContextMenu?: (row: Row<TData>) => ReactNode
   rowActivation?: DataGridRowActivation<TData>
@@ -88,14 +89,29 @@ export const DataGridTable = <TData,>({
   columnVisibilityMenu,
   selection,
   getRowId,
+  getRowGroupLabel,
   emptyState,
   rowContextMenu,
   rowActivation,
   onContextMenuRow,
   loading
 }: DataGridTableProps<TData>) => {
+  'use no memo'
+
+  // TanStack updates the row model in place while keeping the table instance stable.
   const rows = table.getRowModel().rows
   const isEmpty = !loading && rows.length === 0
+  const rowGroups = new Map<string | undefined, Row<TData>[]>()
+  if (getRowGroupLabel && rows.length > 0) {
+    for (const row of rows) {
+      const label = getRowGroupLabel(row.original)
+      const group = rowGroups.get(label)
+      if (group) group.push(row)
+      else rowGroups.set(label, [row])
+    }
+  } else {
+    rowGroups.set(undefined, rows)
+  }
 
   return (
     <>
@@ -195,117 +211,137 @@ export const DataGridTable = <TData,>({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
-          {loading
-            ? Array.from({ length: loading.rowCount ?? 6 }).map((_, rowIndex) => (
-                <TableRow
-                  key={rowIndex}
-                  aria-hidden='true'
-                  data-testid='data-grid-skeleton-row'
+        {Array.from(rowGroups, ([label, groupRows]) => (
+          <TableBody
+            key={label ?? ''}
+            aria-label={label}
+            className={label ? 'border-t border-surface-border/40 first-of-type:border-t-0' : undefined}
+          >
+            {label ? (
+              <TableRow className='border-b-0 hover:bg-transparent'>
+                <TableHead
+                  scope='rowgroup'
+                  colSpan={table.getVisibleLeafColumns().length}
+                  className='h-auto px-4 pt-4 pb-1 text-sm font-medium text-foreground'
                 >
-                  {table.getVisibleLeafColumns().map(column => {
-                    const widthPx = getColumnPixelWidth(column)
-                    const isSelectColumn = column.id === '__select'
-                    const isSpacerColumn = column.id === '__spacer'
-                    const isRowMenuColumn = column.id === '__row_menu'
-                    return (
-                      <TableCell
-                        key={column.id}
-                        className={cn(
-                          'overflow-hidden py-2 align-middle',
-                          isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2 text-center' : 'px-4'
-                        )}
-                        style={{ width: widthPx, maxWidth: widthPx }}
-                      >
-                        <div
-                          className={cn(
-                            'min-w-0 overflow-hidden',
-                            isSelectColumn && 'flex min-h-10 w-12 items-center justify-center overflow-visible',
-                            isRowMenuColumn && 'flex min-h-10 items-center justify-end overflow-visible'
-                          )}
-                        >
-                          {isSpacerColumn ? null : isSelectColumn ? (
-                            <Skeleton className='size-4 rounded-control' />
-                          ) : isRowMenuColumn ? (
-                            <Skeleton className='size-8 rounded-control' />
-                          ) : (
-                            renderLoadingCell(column.columnDef.meta?.skeleton, rowIndex)
-                          )}
-                        </div>
-                      </TableCell>
-                    )
-                  })}
-                </TableRow>
-              ))
-            : rows.map(row => {
-                const rowContent = (
+                  {label}
+                </TableHead>
+              </TableRow>
+            ) : null}
+            {loading
+              ? Array.from({ length: label ? groupRows.length : (loading.rowCount ?? 6) }).map((_, rowIndex) => (
                   <TableRow
-                    key={row.id}
-                    aria-label={rowActivation?.getLabel(row.original)}
-                    className={cn(
-                      'transition-none hover:bg-surface-band/50',
-                      '[clip-path:inset(0_round_var(--shape-control))]',
-                      'data-[state=selected]:bg-primary/8',
-                      'data-[state=selected]:hover:bg-primary/12 dark:data-[state=selected]:bg-primary/10',
-                      'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16',
-                      rowActivation &&
-                        'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
-                    )}
-                    data-state={selection?.selectedIds.has(getRowId(row.original)) ? 'selected' : undefined}
-                    tabIndex={rowActivation ? 0 : undefined}
-                    onClick={event => {
-                      if (!rowActivation || isNestedInteractiveTarget(event.target, event.currentTarget)) return
-                      rowActivation.onActivate(row.original)
-                    }}
-                    onContextMenu={() => onContextMenuRow(row)}
-                    onKeyDown={event => {
-                      if (!rowActivation || event.target !== event.currentTarget) return
-                      if (event.key !== 'Enter' && event.key !== ' ') return
-                      event.preventDefault()
-                      rowActivation.onActivate(row.original)
-                    }}
+                    key={rowIndex}
+                    aria-hidden='true'
+                    data-testid='data-grid-skeleton-row'
                   >
-                    {row.getVisibleCells().map(cell => (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          'overflow-hidden py-2 align-middle',
-                          cell.column.id === '__select' || cell.column.id === '__spacer'
-                            ? 'px-0'
-                            : cell.column.id === '__row_menu'
-                              ? 'px-2 text-center'
-                              : 'px-4'
-                        )}
-                        style={{
-                          width: getColumnPixelWidth(cell.column),
-                          maxWidth: getColumnPixelWidth(cell.column)
-                        }}
-                      >
-                        <div
+                    {table.getVisibleLeafColumns().map(column => {
+                      const widthPx = getColumnPixelWidth(column)
+                      const isSelectColumn = column.id === '__select'
+                      const isSpacerColumn = column.id === '__spacer'
+                      const isRowMenuColumn = column.id === '__row_menu'
+                      return (
+                        <TableCell
+                          key={column.id}
                           className={cn(
-                            'min-w-0 overflow-hidden',
-                            cell.column.id === '__select' &&
-                              'flex min-h-10 w-12 items-center justify-center overflow-visible',
-                            cell.column.id === '__row_menu' && 'flex min-h-10 items-center justify-end overflow-visible'
+                            'overflow-hidden py-2 align-middle',
+                            isSelectColumn || isSpacerColumn ? 'px-0' : isRowMenuColumn ? 'px-2 text-center' : 'px-4'
                           )}
+                          style={{ width: widthPx, maxWidth: widthPx }}
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </div>
-                      </TableCell>
-                    ))}
+                          <div
+                            className={cn(
+                              'min-w-0 overflow-hidden',
+                              isSelectColumn && 'flex min-h-10 w-12 items-center justify-center overflow-visible',
+                              isRowMenuColumn && 'flex min-h-10 items-center justify-end overflow-visible',
+                              column.columnDef.meta?.cellContentClassName
+                            )}
+                          >
+                            {isSpacerColumn ? null : isSelectColumn ? (
+                              <Skeleton className='size-4 rounded-control' />
+                            ) : isRowMenuColumn ? (
+                              <Skeleton className='size-8 rounded-control' />
+                            ) : (
+                              renderLoadingCell(column.columnDef.meta?.skeleton, rowIndex)
+                            )}
+                          </div>
+                        </TableCell>
+                      )
+                    })}
                   </TableRow>
-                )
+                ))
+              : groupRows.map(row => {
+                  const rowContent = (
+                    <TableRow
+                      key={row.id}
+                      aria-label={rowActivation?.getLabel(row.original)}
+                      className={cn(
+                        'transition-none hover:bg-surface-band/50',
+                        '[clip-path:inset(0_round_var(--shape-control))]',
+                        'data-[state=selected]:bg-primary/8',
+                        'data-[state=selected]:hover:bg-primary/12 dark:data-[state=selected]:bg-primary/10',
+                        'oled:data-[state=selected]:bg-primary/12 oled:data-[state=selected]:hover:bg-primary/16',
+                        rowActivation &&
+                          'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
+                      )}
+                      data-state={selection?.selectedIds.has(getRowId(row.original)) ? 'selected' : undefined}
+                      tabIndex={rowActivation ? 0 : undefined}
+                      onClick={event => {
+                        if (!rowActivation || isNestedInteractiveTarget(event.target, event.currentTarget)) return
+                        rowActivation.onActivate(row.original)
+                      }}
+                      onContextMenu={() => onContextMenuRow(row)}
+                      onKeyDown={event => {
+                        if (!rowActivation || event.target !== event.currentTarget) return
+                        if (event.key !== 'Enter' && event.key !== ' ') return
+                        event.preventDefault()
+                        rowActivation.onActivate(row.original)
+                      }}
+                    >
+                      {row.getVisibleCells().map(cell => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            'overflow-hidden py-2 align-middle',
+                            cell.column.id === '__select' || cell.column.id === '__spacer'
+                              ? 'px-0'
+                              : cell.column.id === '__row_menu'
+                                ? 'px-2 text-center'
+                                : 'px-4'
+                          )}
+                          style={{
+                            width: getColumnPixelWidth(cell.column),
+                            maxWidth: getColumnPixelWidth(cell.column)
+                          }}
+                        >
+                          <div
+                            className={cn(
+                              'min-w-0 overflow-hidden',
+                              cell.column.id === '__select' &&
+                                'flex min-h-10 w-12 items-center justify-center overflow-visible',
+                              cell.column.id === '__row_menu' &&
+                                'flex min-h-10 items-center justify-end overflow-visible',
+                              cell.column.columnDef.meta?.cellContentClassName
+                            )}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </div>
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  )
 
-                return rowContextMenu ? (
-                  <ContextMenu key={row.id}>
-                    <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
-                    <ContextMenuContent>{rowContextMenu(row)}</ContextMenuContent>
-                  </ContextMenu>
-                ) : (
-                  rowContent
-                )
-              })}
-        </TableBody>
+                  return rowContextMenu ? (
+                    <ContextMenu key={row.id}>
+                      <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
+                      <ContextMenuContent>{rowContextMenu(row)}</ContextMenuContent>
+                    </ContextMenu>
+                  ) : (
+                    rowContent
+                  )
+                })}
+          </TableBody>
+        ))}
       </Table>
       {isEmpty ? <div className='border-b border-surface-border/40'>{emptyState ?? <DataGridEmptyState />}</div> : null}
     </>

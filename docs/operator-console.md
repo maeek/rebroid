@@ -12,6 +12,13 @@ Administrator shortcuts beside Users and Groups open the corresponding creation 
 On mobile, the bottom bar links to Apps and, when enabled, Workflows. Tap **More** for the full navigation list.
 Swipe down from the grip or tap **Close navigation** to dismiss the drawer.
 
+## Finding permissions
+
+Open a user or group under **Users & groups**, then choose **Permissions** to browse by category. Use
+**Permission category** to narrow the list or **Search permissions** to find a specific capability.
+The group editor lets you set each permission individually. The user editor shows the effective
+permission and the group that supplies it.
+
 ## Preferences and platform settings
 
 Open **Preferences** from the account menu to manage settings for your own account and browser.
