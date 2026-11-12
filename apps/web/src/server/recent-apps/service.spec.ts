@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStoredAppIcon } from '@/server/app-icons/store'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
 import { listRecentlyOpenedApps, listVisibleRecentApps } from './service'
-import { listStoredRecentApps } from './store'
+import { listDismissedRecentAppIds, listStoredRecentApps } from './store'
 import type { AndroidApplicationSummary } from '@/shared/contracts/application'
 
 vi.mock('@/server/app-icons/store', () => ({ getStoredAppIcon: vi.fn() }))
@@ -11,9 +12,13 @@ vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
   orchestratorAppCatalogClient: { listApplicationSummaries: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
-vi.mock('./store', () => ({ listStoredRecentApps: vi.fn() }))
+vi.mock('@/server/users/owner-display-names', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/server/users/owner-display-names')>()),
+  getVisibleOwnerDisplayNames: vi.fn()
+}))
+vi.mock('./store', () => ({ listStoredRecentApps: vi.fn(), listDismissedRecentAppIds: vi.fn() }))
 
-const summary = (id: string, currentStatus: 'running' | 'stopped' = 'stopped') =>
+const summary = (id: string, currentStatus: AndroidApplicationSummary['currentStatus'] = 'stopped') =>
   ({ id, name: `App ${id}`, currentStatus, detail: null }) as AndroidApplicationSummary
 
 beforeEach(() => {
@@ -24,6 +29,8 @@ beforeEach(() => {
     quotas: {}
   } as Awaited<ReturnType<typeof getCurrentUserContext>>)
   vi.mocked(getStoredAppIcon).mockResolvedValue(null)
+  vi.mocked(listDismissedRecentAppIds).mockReturnValue(new Set())
+  vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map())
   vi.mocked(listStoredRecentApps).mockReturnValue([
     { id: 'older', openedAt: 100 },
     { id: 'inaccessible', openedAt: 400 },
@@ -56,11 +63,24 @@ describe('authorized recent application reads', () => {
     expect(vi.mocked(getStoredAppIcon).mock.calls.map(([id]) => id)).toEqual(['newest', 'older'])
   })
 
-  it('allows administrators to revisit other owners while retaining personal history', async () => {
+  it('provides gallery ownership and clone access for other owners in personal visit order', async () => {
     const user = await getCurrentUserContext()
-    vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user, isPlatformAdmin: true })
+    vi.mocked(getCurrentUserContext).mockResolvedValue({
+      ...user,
+      isPlatformAdmin: true,
+      permissions: { 'applications:create': true }
+    })
+    vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map([['another-user', 'Operations']]))
+    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+      { ...summary('older'), ownerUserId: 'signed-in-user' },
+      { ...summary('newest', 'error'), ownerUserId: 'another-user' },
+      summary('unvisited', 'running')
+    ])
 
-    expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
+    expect(await listRecentlyOpenedApps()).toMatchObject([
+      { id: 'newest', ownerDisplayName: 'Operations', canClone: true, canStart: false, statusLabel: 'Error' },
+      { id: 'older', ownerDisplayName: null, canClone: false }
+    ])
     expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledWith(undefined)
     expect(listStoredRecentApps).toHaveBeenCalledWith('signed-in-user')
   })
@@ -68,5 +88,25 @@ describe('authorized recent application reads', () => {
   it('keeps the sidebar running-first selection distinct from overview visit order', async () => {
     expect((await listVisibleRecentApps()).map(app => app.id)).toEqual(['unvisited', 'newest', 'older'])
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
+  })
+
+  it('omits dismissed running apps and labels other owners without exposing start', async () => {
+    const user = await getCurrentUserContext()
+    vi.mocked(getCurrentUserContext).mockResolvedValue({
+      ...user,
+      isPlatformAdmin: true,
+      permissions: { 'applications:start': true, 'applications:create': true }
+    })
+    vi.mocked(listDismissedRecentAppIds).mockReturnValue(new Set(['unvisited']))
+    vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map([['another-user', 'Operations']]))
+    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+      { ...summary('older'), ownerUserId: 'signed-in-user' },
+      { ...summary('newest'), ownerUserId: 'another-user' },
+      summary('unvisited', 'running')
+    ])
+    expect(await listVisibleRecentApps()).toMatchObject([
+      { id: 'newest', ownerDisplayName: 'Operations', canStart: false, canClone: true },
+      { id: 'older', ownerDisplayName: null, canStart: true, canClone: false }
+    ])
   })
 })

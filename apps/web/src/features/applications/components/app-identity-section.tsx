@@ -1,4 +1,4 @@
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, Ref } from 'react'
 import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ type AppIdentitySectionProps = {
   nameLabel?: string
   nameMinLength?: number
   nameError?: string
+  nameInputRef?: Ref<HTMLInputElement>
   apkError?: string
   surface?: 'plain' | 'band' | 'panel'
 }
@@ -36,6 +37,7 @@ export const AppIdentitySection = ({
   nameLabel = 'Name',
   nameMinLength = 2,
   nameError,
+  nameInputRef,
   apkError,
   surface = 'plain'
 }: AppIdentitySectionProps) => {
@@ -66,6 +68,8 @@ export const AppIdentitySection = ({
             error={nameError}
           >
             <Input
+              ref={nameInputRef}
+              className='aria-invalid:border-danger'
               value={valuesName}
               required={nameRequired}
               aria-required={nameRequired ? 'true' : 'false'}

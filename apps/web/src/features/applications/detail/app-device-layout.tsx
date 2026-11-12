@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useViewerPlacement } from '@/shared/model/settings/viewer-placement-context'
-import { AppViewerPlacementMenu } from './app-viewer-placement-menu'
+import { AppViewerPlacementButton } from './app-viewer-placement-button'
 
 export const AppDeviceLayout = ({
   breadcrumbs,
@@ -33,7 +33,7 @@ export const AppDeviceLayout = ({
     >
       <div className='col-start-1 row-start-1 mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) min-w-0 items-center gap-2 px-6 max-sm:px-4'>
         <div className='min-w-0 flex-1'>{breadcrumbs}</div>
-        <AppViewerPlacementMenu
+        <AppViewerPlacementButton
           placement={placement}
           onPlacementChange={setPlacement}
           disabled={loading}

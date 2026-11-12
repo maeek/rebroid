@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
-import { floatingLayerClassName, menuSurfaceClassName, interactiveItemClassName } from '@/components/ui/surface'
+import { actionMenuItemClassName, actionMenuSurfaceClassName, floatingLayerClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 
 type MenuSelectEvent = React.MouseEvent<HTMLElement> & {
@@ -55,8 +55,8 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot='context-menu-content'
           className={cn(
-            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] min-w-32 overflow-x-hidden overflow-y-auto rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-            menuSurfaceClassName,
+            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+            actionMenuSurfaceClassName,
             className
           )}
           {...props}
@@ -91,8 +91,8 @@ function ContextMenuItem({
       data-variant={variant}
       render={view}
       className={cn(
-        "relative flex cursor-default items-center gap-2 px-2 py-1.5 text-sm select-none data-[variant=danger]:text-danger data-[variant=danger]:data-[highlighted]:bg-danger/10 data-[variant=danger]:data-[highlighted]:text-danger data-[variant=danger]:*:[svg]:!text-danger [&_svg:not([class*='text-'])]:text-foreground-muted data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        interactiveItemClassName,
+        "relative flex cursor-default items-center select-none data-[variant=danger]:text-danger data-[variant=danger]:data-[highlighted]:bg-danger/10 data-[variant=danger]:data-[highlighted]:text-danger data-[variant=danger]:*:[svg]:!text-danger [&_svg:not([class*='text-'])]:text-foreground-muted data-inset:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        actionMenuItemClassName,
         className
       )}
       onClick={event => {

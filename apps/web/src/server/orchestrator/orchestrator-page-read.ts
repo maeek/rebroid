@@ -2,10 +2,14 @@ import { cache } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import 'server-only'
 import { normalizeRequestId } from '@/server/observability/request-id'
-import { getOrchestratorHealthSummaryAction } from './diagnostics/actions'
+import { orchestratorDiagnosticsClient } from './diagnostics/client'
 import { OrchestratorRequestError } from './request'
+import { requireUser } from './shared'
 
-export const getOrchestratorPageHealth = cache(getOrchestratorHealthSummaryAction)
+export const getOrchestratorPageHealth = cache(async () => {
+  await requireUser()
+  return orchestratorDiagnosticsClient.healthSummary()
+})
 
 export type OrchestratorPageFailure = {
   kind: 'unavailable' | 'missing'

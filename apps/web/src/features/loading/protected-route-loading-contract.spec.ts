@@ -12,6 +12,7 @@ const renderableRoutes = [
   '(standard)/automations/[id]',
   '(standard)/automations/[id]/traces',
   '(standard)/automations/create',
+  '(standard)/automations/runs/active',
   '(standard)/automations/triggers',
   '(standard)/platform/(overview)',
   '(standard)/platform/ai/(providers)',
@@ -46,6 +47,7 @@ const renderableRoutes = [
 
 const dataGridLoadingOwners = [
   'features/automations/automations-page/automation-page-skeletons.tsx',
+  'features/automations/pages/active-workflow-runs/active-workflow-runs-grid.tsx',
   'features/platform/components/platform-page-skeletons/platform-container-detail-page-skeleton.tsx',
   'features/platform/components/platform-page-skeletons/platform-resource-detail-page-skeleton.tsx',
   'features/platform/pages/firewall/page-loading.tsx',

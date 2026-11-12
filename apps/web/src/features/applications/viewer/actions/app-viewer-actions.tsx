@@ -41,7 +41,7 @@ export const AppViewerActions = ({
           hideTrigger
         />
       </Visible>
-      <Visible when={isForeignOwnedApp}>
+      <Visible when={isForeignOwnedApp && hasPermission(permissions, 'applications:create')}>
         <AppViewerOpenAsMeAction app={app} />
       </Visible>
       <Visible when={canUseRuntime && (canStart || canStop)}>

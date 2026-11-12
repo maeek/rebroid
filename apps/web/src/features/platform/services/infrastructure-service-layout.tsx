@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Section } from '@/components/ui/section'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import { ServiceDetailLayout } from './service-detail-layout'
 
 export const InfrastructureServiceLayout = ({
   serviceId,
   actions,
   health,
+  healthNotice,
   limits,
   diagnostics,
   apiUrl,
@@ -17,7 +18,8 @@ export const InfrastructureServiceLayout = ({
 }: {
   serviceId: 'orchestrator' | 'docker'
   actions: ReactNode
-  health: ReactNode
+  health?: ComponentProps<typeof ServiceDetailLayout>['health']
+  healthNotice?: ComponentProps<typeof ServiceDetailLayout>['healthNotice']
   limits?: ReactNode
   diagnostics?: ReactNode
   apiUrl?: string
@@ -28,8 +30,10 @@ export const InfrastructureServiceLayout = ({
     title={serviceId === 'docker' ? 'Docker' : 'Orchestrator'}
     navigation={serviceId === 'docker' ? { section: { label: 'Docker' }, breadcrumbLabel: 'Overview' } : undefined}
     refresh={actions}
+    health={health}
+    healthNotice={healthNotice}
+    loading={loading}
   >
-    {health}
     {serviceId === 'docker' ? (
       <>
         {limits}

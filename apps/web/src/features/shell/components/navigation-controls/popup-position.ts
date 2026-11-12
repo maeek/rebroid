@@ -5,4 +5,4 @@ export const navigationPopupPositions = {
   rail: { side: 'right', align: 'end', sideOffset: 20 }
 } as const
 
-export type NavigationPopupPosition = (typeof navigationPopupPositions)[keyof typeof navigationPopupPositions]
+export type NavigationPopupPosition = { side: 'top' | 'right' | 'bottom'; align: 'start' | 'end'; sideOffset: number }

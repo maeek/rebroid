@@ -189,13 +189,13 @@ export const RuntimeNetworksSection = ({
                         disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
                         onSelect={() => setPendingRemove(selectedNetworks)}
                       >
-                        <IconTrash className='mr-2 size-4' />
+                        <IconTrash className='size-4' />
                         Remove selected ({selectedNetworks.length})
                       </ContextMenuItem>
                     ) : null}
                     <ContextMenuItem asChild>
                       <Link href={`/runtime/networks/${row.original.id}`}>
-                        <IconEye className='mr-2 size-4' />
+                        <IconEye className='size-4' />
                         Details
                       </Link>
                     </ContextMenuItem>
@@ -204,7 +204,7 @@ export const RuntimeNetworksSection = ({
                       disabled={networkHasAttachedContainers(row.original)}
                       onSelect={() => setPendingRemove([row.original])}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Remove
                     </ContextMenuItem>
                   </>

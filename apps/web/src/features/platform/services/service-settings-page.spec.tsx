@@ -20,6 +20,11 @@ const page = (serviceId: ServiceId, enabled = true, available = true) => (
   <FeatureFlagsProvider manifest={servicesPreviewManifest(enabled)}>
     <ServiceSettingsPage
       serviceId={serviceId}
+      initialHealth={
+        enabled
+          ? { ok: true, status: 'healthy', message: 'Service is responding.' }
+          : { ok: false, status: 'disabled', message: 'Service is disabled.' }
+      }
       initialSettings={available ? initialSettings[serviceId] : undefined}
     />
   </FeatureFlagsProvider>
@@ -83,9 +88,13 @@ describe('Service settings detail', () => {
 
   it.each(['ocr', 'firewall'] as const)('retains the %s draft when the service page cannot refresh', serviceId => {
     const { rerender } = render(page(serviceId))
+    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(screen.queryByText('Service is responding.')).toBeNull()
     const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
     fireEvent.change(endpoint, { target: { value: 'http://draft.test' } })
     rerender(page(serviceId, true, false))
+    expect(screen.getByRole('status')).toHaveTextContent('settings unavailable')
+    expect(screen.queryByText('Healthy')).toBeNull()
     expect(endpoint).toBeDisabled()
     expect(endpoint).toHaveValue('http://draft.test')
     rerender(page(serviceId))

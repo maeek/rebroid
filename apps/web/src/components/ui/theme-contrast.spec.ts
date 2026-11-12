@@ -184,6 +184,8 @@ describe('theme contrast tokens', () => {
     ['foreground', 'surface-panel'],
     ['foreground', 'surface-band'],
     ['foreground', 'surface-elevated'],
+    ['foreground', 'surface-menu'],
+    ['foreground-muted', 'surface-menu'],
     ['foreground', 'surface-dialog'],
     ['foreground-muted', 'surface-dialog'],
     ['foreground', 'control'],

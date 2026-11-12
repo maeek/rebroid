@@ -7,7 +7,8 @@ import { RadioGroup, RadioOption } from '@/components/ui/radio-group'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { AppsGallerySortMenu } from './apps-gallery-sort-menu'
 import { useAppsListContext } from './apps-list-context'
-import type { AppsGalleryOwnership, AppsGalleryStatus } from '../model/apps-gallery-filter'
+import type { AppsGalleryOwnership } from '../model/apps-gallery-filter'
+import type { AppsGalleryStatus } from '@/shared/model/applications/app-gallery-status'
 import type { AppsListSortMode } from '@/shared/model/applications/app-sort'
 
 const statusLabels: Record<AppsGalleryStatus, string> = {

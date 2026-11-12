@@ -29,6 +29,8 @@ describe('infrastructure service availability', () => {
         containerId='orchestrator-id'
       />
     )
+    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(screen.queryByText('Orchestrator API is responding.')).toBeNull()
     const connection = screen.getByRole('region', { name: 'Connection' })
     expect(within(connection).getByRole('link', { name: 'View logs' })).toHaveAttribute(
       'href',
@@ -63,6 +65,8 @@ describe('infrastructure service availability', () => {
     )
     expect(screen.getByText('Limits loaded')).toBeVisible()
     expect(screen.getByText('Metrics loaded')).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(screen.queryByText('Unknown')).toBeNull()
   })
 
   it('suppresses downstream requests when the orchestrator is explicitly offline', () => {

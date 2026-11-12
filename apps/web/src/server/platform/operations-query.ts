@@ -1,34 +1,29 @@
 import 'server-only'
 import { requireAdmin } from '@/server/auth/authorization'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
+import {
+  canInspectActiveWorkflowRuns,
+  listActiveWorkflowRuns
+} from '@/server/orchestrator/automations/active-workflow-runs-query'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
-import { hasPermission } from '@/shared/permissions/permissions'
+import { isAppInProgress } from '@/shared/model/applications/app-gallery-status'
 import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-operations'
 
 export const getPlatformOperations = async (): Promise<PlatformOperationsSnapshot> => {
   await requireAdmin()
   const user = await getCurrentUserContext()
-  const canInspectRuns =
-    hasPermission(user.permissions, 'automations:run') && hasPermission(user.permissions, 'automations:manage')
   const [apps, runs] = await Promise.all([
     listApplicationsAction(),
-    canInspectRuns ? orchestratorAutomationsClient.listActiveRuns(user.ownerUserId) : Promise.resolve([])
+    canInspectActiveWorkflowRuns(user.permissions) ? listActiveWorkflowRuns(user.ownerUserId) : Promise.resolve([])
   ])
-  const failed = apps.filter(app => app.status.currentStatus === 'error')
-  const pending = apps.filter(
-    app => app.status.currentStatus === 'provisioning' || app.status.currentStatus === 'removing'
+  const failedCount = apps.reduce((count, app) => count + Number(app.status.currentStatus === 'error'), 0)
+  const pendingCount = apps.reduce(
+    (count, app) => count + Number(isAppInProgress(app.status.currentStatus, app.status.lifecycleStage)),
+    0
   )
   return {
-    failedCount: failed.length,
-    pendingCount: pending.length,
-    activeRunCount: runs.length,
-    failed: failed
-      .slice(0, 5)
-      .map(app => ({ id: app.id, name: app.name, description: app.status.detail?.description ?? null })),
-    pending: pending
-      .slice(0, 5)
-      .map(app => ({ id: app.id, name: app.name, title: app.status.detail?.title ?? app.status.currentStatus })),
-    runs: runs.slice(0, 5).map(run => ({ id: run.id, automationId: run.automationId, status: run.status }))
+    failedCount,
+    pendingCount,
+    activeRunCount: runs.length
   }
 }

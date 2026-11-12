@@ -22,6 +22,7 @@ import {
   previewTrigger,
   AutomationTriggersPreview
 } from '@/features/automations/automations-page/triggers/automation-triggers-preview'
+import { ActiveWorkflowRunsPage } from '@/features/automations/pages/active-workflow-runs/active-workflow-runs-page'
 import { PlatformOperationsPreview } from '@/features/platform/components/platform-operations-preview'
 import { PlatformOverviewPageClient } from '@/features/platform/components/platform-overview-page-client'
 import { PlatformOverviewPageSkeleton } from '@/features/platform/components/platform-overview-page-skeleton'
@@ -84,10 +85,14 @@ import {
 
 export const dynamic = 'force-dynamic'
 
-export default async function SkeletonContractPage({ searchParams }: { searchParams: Promise<{ editor?: string }> }) {
+export default async function SkeletonContractPage({
+  searchParams
+}: {
+  searchParams: Promise<{ editor?: string; workflows?: string }>
+}) {
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
-  const editor = (await searchParams).editor
+  const { editor, workflows } = await searchParams
   if (editor === 'services-unavailable') return <ServicesPreview unavailable />
   if (editor === 'resources-unavailable')
     return (
@@ -160,6 +165,30 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
   if (editor === 'apps-gallery') return <AppsGalleryPreview />
   if (editor === 'apps-gallery-loading') return <AppsPageSkeleton />
   if (editor === 'overview') return <PlatformOverviewPageClient />
+  if (editor === 'active-workflow-runs')
+    return (
+      <ActiveWorkflowRunsPage
+        runs={[
+          {
+            id: 'run-queued',
+            automationId: 'workflow-1',
+            workflowName: 'Inventory scan',
+            targetApplicationId: 'preview-app',
+            createdAt: '2026-11-12T12:30:00Z',
+            status: 'queued'
+          },
+          {
+            id: 'run-running',
+            automationId: 'workflow-2',
+            workflowName: 'Order sync',
+            targetApplicationId: 'preview-app',
+            createdAt: '2026-11-12T12:00:00Z',
+            status: 'running'
+          }
+        ]}
+        targets={{ 'preview-app': 'Warehouse scanner' }}
+      />
+    )
   if (editor === 'workflow') return <WorkflowEditorPreview />
   if (editor === 'agent') return <AppResourcePreview agent />
   if (editor === 'workflow-create') return <WorkflowEditorPreview creating />
@@ -215,9 +244,16 @@ export default async function SkeletonContractPage({ searchParams }: { searchPar
 
   if (editor === 'console-shell') {
     const requestCookies = await cookies()
+    const manifest = workflows === '1' ? servicesPreviewManifest() : undefined
     return (
       <ConsoleShellPreview
         initialSidebarCollapsed={parseSidebarCollapsed(requestCookies.get(sidebarCollapsedCookie)?.value)}
+        manifest={
+          manifest && {
+            ...manifest,
+            features: manifest.features.filter(feature => feature.key === 'feature.workflows')
+          }
+        }
       />
     )
   }

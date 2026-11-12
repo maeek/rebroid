@@ -11,12 +11,11 @@ import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
+import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { OcrServiceFields } from './ocr-service-fields'
 import { ServiceConnectionSection } from './service-connection-section'
 import { serviceMeta, type ServiceId } from './service-definitions'
-import { ServiceDetailLayout } from './service-detail-layout'
 import { ServicesPageActions } from './services-page-actions'
 import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { OcrServiceUiSettings, OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -101,6 +100,17 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
     <ServiceDetailLayout
       title={serviceId === 'firewall' ? 'Firewall' : meta.title}
       navigation={serviceId === 'firewall' ? { section: { label: 'Administration' } } : undefined}
+      loading={loading}
+      health={unavailable ? undefined : initialHealth}
+      healthNotice={{
+        title: unavailable ? `${serviceName} settings unavailable` : undefined,
+        description: unavailable ? 'Refresh to reconnect and load the service configuration.' : undefined,
+        requestId,
+        actions:
+          !unavailable && !enabled ? (
+            <ResourceLink href={`/platform/features#${meta.featureKey}`}>Manage feature</ResourceLink>
+          ) : undefined
+      }}
       refresh={
         <PlatformPageRefreshButton
           disabled={loading || saving}
@@ -121,18 +131,6 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
         ) : undefined
       }
     >
-      <ServiceHealthNotice
-        health={unavailable ? undefined : initialHealth}
-        loading={loading}
-        title={unavailable ? `${serviceName} settings unavailable` : undefined}
-        description={unavailable ? 'Refresh to reconnect and load the service configuration.' : undefined}
-        requestId={requestId}
-        actions={
-          !unavailable && !enabled ? (
-            <ResourceLink href={`/platform/features#${meta.featureKey}`}>Manage feature</ResourceLink>
-          ) : undefined
-        }
-      />
       {loading || draft ? (
         <>
           <ServiceConnectionSection

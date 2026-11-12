@@ -319,7 +319,7 @@ export const UsersGrid = ({
                       disabled={busyUserId !== null}
                       onSelect={() => onDeleteSelected(selectedUsers)}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Delete selected ({selectedUsers.length})
                     </ContextMenuItem>
                   </>
@@ -338,7 +338,7 @@ export const UsersGrid = ({
                   disabled={busyUserId !== null}
                   onSelect={() => onDelete(row.original)}
                 >
-                  <IconTrash className='mr-2 size-4' />
+                  <IconTrash className='size-4' />
                   Delete
                 </ContextMenuItem>
               </>

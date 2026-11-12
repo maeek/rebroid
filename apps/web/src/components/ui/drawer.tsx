@@ -57,20 +57,24 @@ const DrawerContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
-    <DrawerPrimitive.Viewport className='pointer-events-none fixed inset-0 z-50 flex items-end overflow-x-hidden'>
+    {/* Clipping keeps the translated popup from turning its viewport into a scroll container during a swipe. */}
+    <DrawerPrimitive.Viewport className='pointer-events-none fixed inset-0 z-50 flex items-end overflow-clip'>
       <DrawerPrimitive.Popup
         ref={ref}
         className={cn(
-          'scrollbar-thin pointer-events-auto inset-x-0 bottom-0 mt-24 flex max-h-dvh w-full flex-col overflow-x-hidden rounded-t-[10px] p-0 data-[closed]:animate-out data-[open]:animate-in data-[closed]:slide-out-to-bottom data-[open]:slide-in-from-bottom',
+          'pointer-events-auto flex max-h-dvh w-full flex-col overflow-clip rounded-t-[10px] p-0 [transform:translateY(var(--drawer-swipe-movement-y,0px))] transition-transform duration-200 ease-out data-[ending-style]:[transform:translateY(100%)] data-[starting-style]:[transform:translateY(100%)] data-[swiping]:transition-none motion-reduce:transition-none',
           dialogSurfaceClassName,
           className
         )}
         {...props}
       >
-        <DrawerPrimitive.Content className='min-h-0 overflow-hidden'>
-          <div className='mx-auto mt-4 h-2 w-[100px] rounded-full bg-foreground-muted/55' />
-          {children}
-        </DrawerPrimitive.Content>
+        <div
+          aria-hidden='true'
+          className='flex h-8 shrink-0 touch-none items-center justify-center select-none'
+        >
+          <div className='h-1 w-10 rounded-full bg-foreground-muted/55' />
+        </div>
+        <DrawerPrimitive.Content className='flex min-h-0 flex-col'>{children}</DrawerPrimitive.Content>
       </DrawerPrimitive.Popup>
     </DrawerPrimitive.Viewport>
   </DrawerPortal>

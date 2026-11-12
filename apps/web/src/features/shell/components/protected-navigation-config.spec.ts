@@ -20,7 +20,7 @@ describe('platform navigation', () => {
       ['Docker', 'Containers', 'Images', 'Networks'],
       ['Users & groups', 'Users', 'Groups'],
       'Audit log',
-      ['System', 'Services', 'Resource usage', 'Maintenance tasks']
+      ['System', 'Services', 'OCR perception', 'Maintenance tasks']
     ])
   })
   it('selects Features and Casting independently of Services', () => {

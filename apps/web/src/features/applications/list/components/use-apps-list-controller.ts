@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   applyApplicationPowerAcknowledgement,
   mapAndroidApplicationToAppDefinition
@@ -29,10 +30,15 @@ import {
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import {
+  appGalleryStatusParam,
+  parseAppGalleryStatus,
+  type AppsGalleryStatus
+} from '@/shared/model/applications/app-gallery-status'
 import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app-sort'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { filterGalleryApps, type AppsGalleryOwnership, type AppsGalleryStatus } from '../model/apps-gallery-filter'
+import { filterGalleryApps, type AppsGalleryOwnership } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication } from '@/shared/contracts/application'
@@ -61,7 +67,10 @@ export const useAppsListController = ({
   const [isManaging, setIsManaging] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<AppsGalleryStatus>('all')
+  const searchParams = useSearchParams()
+  const [statusFilter, setOptimisticStatus] = useOptimistic(
+    parseAppGalleryStatus(searchParams?.get(appGalleryStatusParam))
+  )
   const [ownershipFilter, setOwnershipFilter] = useState<AppsGalleryOwnership>('all')
   const [sortMode, setSortMode] = useState<AppsListSortMode>('name-asc')
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
@@ -71,6 +80,16 @@ export const useAppsListController = ({
   const hiddenRemovingIdsRef = useRef<Set<string>>(new Set())
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const refreshIntervalMs = getAppsRefreshIntervalMs(apps, settings.appListRefreshIntervalSeconds * 1000)
+
+  const setStatusFilter = (status: AppsGalleryStatus) => {
+    const url = new URL(window.location.href)
+    if (status === 'all') url.searchParams.delete(appGalleryStatusParam)
+    else url.searchParams.set(appGalleryStatusParam, status)
+    startTransition(() => {
+      setOptimisticStatus(status)
+      window.history.replaceState(null, '', url)
+    })
+  }
 
   useEffect(() => {
     setSelectedIds(current => retainVisibleSelectedIds(apps, current))

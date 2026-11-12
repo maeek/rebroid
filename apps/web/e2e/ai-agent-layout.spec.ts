@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { viewerPlacementCookie } from '../src/shared/model/settings/viewer-placement'
 
+const viewerLayoutButton = /^Move viewer to /
+
 test.beforeEach(async ({ page, baseURL }) => {
   await page.context().addCookies([{ name: viewerPlacementCookie, value: 'right', url: baseURL }])
 })
@@ -16,10 +18,10 @@ test('the viewer defaults to the top for a new preference', async ({ page }) => 
   expect(viewer.y + viewer.height).toBeLessThanOrEqual(heading.y)
 })
 
-test('narrow screens keep the viewer on top and hide its layout menu', async ({ page }) => {
+test('narrow screens keep the viewer on top and hide its layout button', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 })
   const pane = page.getByRole('complementary', { name: 'Android device' })
-  const layout = page.getByRole('button', { name: 'Viewer layout' })
+  const layout = page.getByRole('button', { name: viewerLayoutButton })
 
   for (const editor of ['app-resource-loading', 'app-resource']) {
     await page.goto(`/skeleton-contract-test?editor=${editor}`)
@@ -31,10 +33,9 @@ test('narrow screens keep the viewer on top and hide its layout menu', async ({ 
 
   await page.keyboard.press('Alt+Shift+L')
   await page.setViewportSize({ width: 1440, height: 900 })
-  await layout.click()
-  await expect(page.getByRole('menuitemradio', { name: 'Viewer on the right' })).toHaveAttribute('aria-checked', 'true')
+  await expect(layout).toHaveAccessibleName('Move viewer to top')
   await page.setViewportSize({ width: 390, height: 800 })
-  await expect(page.getByRole('menu')).toBeHidden()
+  await expect(layout).toBeHidden()
 })
 
 test('the inline viewer fits the small viewport when mobile browser chrome is present', async ({ page }, testInfo) => {
@@ -310,7 +311,7 @@ test('viewer layout shortcut is discoverable and yields to editors and menus', a
   test.skip(testInfo.project.use.hasTouch === true, 'Checks desktop hover and keyboard behavior')
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=app-resource&view=configuration')
-  const layout = page.getByRole('button', { name: 'Viewer layout' })
+  const layout = page.getByRole('button', { name: viewerLayoutButton })
   const pane = page.getByRole('complementary', { name: 'Android device' })
   const frame = pane.locator('[data-viewer-frame]')
   await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
@@ -318,7 +319,7 @@ test('viewer layout shortcut is discoverable and yields to editors and menus', a
   await expect(layout).toHaveAttribute('aria-keyshortcuts', 'Alt+Shift+L')
   await expect(layout).not.toHaveAttribute('title', /.+/)
   await layout.hover()
-  const hint = page.getByText('Switch viewer layout', { exact: true }).locator('..')
+  const hint = page.getByRole('tooltip').filter({ hasText: 'Move viewer to top' })
   await expect(hint).toBeVisible()
   await expect(hint.locator('kbd')).toHaveText([/Alt|Option/, 'Shift', 'L'])
 
@@ -331,15 +332,17 @@ test('viewer layout shortcut is discoverable and yields to editors and menus', a
   await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
   await expect(name).toBeFocused()
 
-  await layout.click()
+  const configurationActions = page.getByRole('button', { name: 'More configuration actions' })
+  await configurationActions.click()
   const menu = page.getByRole('menu')
   await expect(menu).toBeVisible()
   await page.keyboard.press('Alt+Shift+L')
   await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden()
-  await expect(layout).toBeFocused()
+  await expect(configurationActions).toBeFocused()
 
+  await layout.focus()
   await page.keyboard.press('Alt+Shift+L')
   await expect(pane).not.toHaveAttribute('data-viewer-placement', 'top')
   await expect(layout).toBeFocused()
@@ -353,7 +356,7 @@ test('viewer layout keeps breadcrumbs above the device and preserves the mounted
   const navigation = page.getByRole('navigation', { name: 'App sections' })
   const pane = page.getByRole('complementary', { name: 'Android device' })
   const frame = pane.locator('[data-viewer-frame]')
-  const layout = page.getByRole('button', { name: 'Viewer layout' })
+  const layout = page.getByRole('button', { name: viewerLayoutButton })
   const initialBreadcrumbs = (await breadcrumbs.boundingBox())!
   const initialNavigation = (await navigation.boundingBox())!
   const initialFrame = (await frame.boundingBox())!
@@ -363,9 +366,9 @@ test('viewer layout keeps breadcrumbs above the device and preserves the mounted
   await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
 
   await layout.click()
-  await expect(page.getByRole('menuitemradio', { name: 'Viewer on the right' })).toHaveAttribute('aria-checked', 'true')
-  await page.getByRole('menuitemradio', { name: 'Viewer on top' }).click()
   await expect(pane).toHaveAttribute('data-viewer-placement', 'top')
+  await expect(layout).toHaveAccessibleName('Move viewer to the right')
+  await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(layout).toBeFocused()
   await expect(frame).toHaveAttribute('data-retained', 'true')
   await expect(navigation.getByRole('link', { name: 'Viewer', exact: true })).toHaveCount(0)
@@ -404,15 +407,13 @@ test('viewer layout keeps breadcrumbs above the device and preserves the mounted
   })
   await expect(navigation.getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
 
-  await layout.click()
-  await page.getByRole('menuitemradio', { name: 'Viewer on the right' }).click()
+  await layout.press('Enter')
   await expect(pane).not.toHaveAttribute('data-viewer-placement', 'top')
   await expect(frame).toHaveAttribute('data-retained', 'true')
   await expect(navigation.getByRole('link', { name: 'Viewer', exact: true })).toHaveCount(0)
   expect((await navigation.boundingBox())!.y).toBe(initialNavigation.y)
 
   await layout.click()
-  await page.getByRole('menuitemradio', { name: 'Viewer on top' }).click()
   const initialHtml = await page.request.get('/skeleton-contract-test?editor=app-resource')
   expect(await initialHtml.text()).toContain('data-viewer-placement="top"')
   await page.goto('/skeleton-contract-test?editor=app-resource-loading')

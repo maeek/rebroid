@@ -256,23 +256,23 @@ export const RuntimeFileList = ({
             <>
               {entry.type === 'file' ? (
                 <ContextMenuItem onSelect={() => onDownload(entry)}>
-                  <IconDownload className='mr-2 size-4' /> Download
+                  <IconDownload className='size-4' /> Download
                 </ContextMenuItem>
               ) : (
                 <ContextMenuItem onSelect={() => onOpen(entry)}>
-                  <IconFolderOpen className='mr-2 size-4' /> Open folder
+                  <IconFolderOpen className='size-4' /> Open folder
                 </ContextMenuItem>
               )}
               {canManageFiles ? (
                 <>
                   <ContextMenuItem onSelect={() => onRename(entry)}>
-                    <IconPencil className='mr-2 size-4' /> Rename
+                    <IconPencil className='size-4' /> Rename
                   </ContextMenuItem>
                   <ContextMenuItem
                     variant='danger'
                     onSelect={() => onDelete(entry)}
                   >
-                    <IconTrash className='mr-2 size-4' /> Delete
+                    <IconTrash className='size-4' /> Delete
                   </ContextMenuItem>
                 </>
               ) : null}

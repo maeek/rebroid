@@ -96,28 +96,29 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             }
           />
         </Visible>
-        <Visible when={canAttach && !runtimeAvailable}>
+        <Visible when={!useDisplayWorkspace}>
           <AppViewer
             app={app}
             fullscreen={false}
             orientation={orientation}
             chrome={<AppViewerStreamingSettings />}
             viewerSettings={viewerSettings}
-            canStart={canStartCurrentApp}
+            unavailableContent={
+              canAttach ? undefined : (
+                <StateView
+                  kind='unavailable'
+                  scope='grid'
+                  title='Separate session required'
+                  description='This app belongs to another user. Open it as your own copy to start a private viewer session.'
+                  icon={<IconShieldLock />}
+                  className='px-3 py-2'
+                />
+              )
+            }
+            canStart={canAttach && canStartCurrentApp}
             isStarting={isStarting}
             onStart={handleStart}
           />
-        </Visible>
-        <Visible when={!canAttach}>
-          <div className='flex min-h-112 w-full items-center justify-center rounded-feature border border-white/10 bg-surface-panel/64 p-6 backdrop-blur-xl'>
-            <StateView
-              kind='unavailable'
-              scope='grid'
-              title='Separate session required'
-              description='This app belongs to another user. Open it as your own copy to start a private viewer session.'
-              icon={<IconShieldLock className='size-10' />}
-            />
-          </div>
         </Visible>
       </div>
     </AppViewerPaneLayout>

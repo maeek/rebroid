@@ -11,7 +11,7 @@ Palette variables are private to `apps/web/src/app/globals.css`. Feature code us
 | Intent          | Tokens                                                                            |
 | --------------- | --------------------------------------------------------------------------------- |
 | Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
-| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-border`, `surface-navigation`. |
+| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-menu`, `surface-border`, `surface-navigation`. |
 | Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
 | Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                   |
 | Feedback        | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.              |
@@ -24,7 +24,8 @@ chart series, and user-supplied tags. Use semantic radii and shadows:
 | Inputs, buttons, compact rows | `rounded-control` — 0.625rem.  |
 | Cards, sections               | `rounded-panel` — 0.875rem.    |
 | Data table header bands       | Control radius; no outer card. |
-| Dialogs, sheets, menus        | `rounded-overlay` — 1rem.      |
+| Dialogs, sheets, popovers     | `rounded-overlay` — 1rem.      |
+| Dropdown and context menus   | `rounded-menu` — 0.625rem.      |
 | Branded/immersive surfaces    | `rounded-feature` — 1.25rem.   |
 | Avatars, dots, genuine pills  | `rounded-full`.                |
 
@@ -36,9 +37,12 @@ links, focus, and selection. Protected pages use the neutral canvas background. 
 profile photos appear in identity and preview elements. Editor panels are opaque. Light controls
 are white on a soft gray panel; dark controls sit one restrained step above their panel.
 Dialogs, sheets, and drawers use `surface-dialog`: a soft gray surface in light mode and a darker neutral surface in dark
-and OLED modes so controls remain distinct. Menus and popovers use `surface-elevated` with a
-muted `surface-border` outline. Use a checkmark and a quiet accent tint for the selected option, and a separate
-highlight for keyboard navigation or hover. Combobox empty-state
+and OLED modes so controls remain distinct. Popovers and selection lists use `surface-elevated`.
+Dropdown and context menus use a lightly translucent `surface-menu` with a muted outline. The
+surface is near-black in dark and OLED themes. Top-level action menus start at 12 rem.
+Use 12 px desktop labels and preserve 44 px touch targets. Keep an 8 px gap between icons and labels.
+Use a checkmark and a quiet accent tint
+for the selected option, and a separate highlight for keyboard navigation or hover. Combobox empty-state
 live regions stay mounted; put spacing on the message content so populated menus have no blank row.
 
 Confirmation dialogs put the action and target in the title, state the immediate impact in the first
@@ -67,17 +71,21 @@ The protected layout owns sidebar offset, `main`, width, and outer gutters. Stan
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
 The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
-brand and collapse control above the scrollable links. Keep the account, service health, and notifications
-at the bottom. Place a compact health chip next to the bell. The status control opens service details on hover, click, or tap.
-The popup hides disabled services and reports outages for enabled services.
+brand and collapse control above the scrollable links. Place the account and notifications together at the bottom.
+For platform administrators, the Services navigation item shows overall platform health with a right-aligned dot.
+Collapsing the System section moves this dot to the System item.
+Casting, Firewall, Docker, and OCR perception show their own health in the same way. Each dot has a text description.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
-is a 64 px icon rail with a status dot above the bell. Footer popups open beside the rail and align
+is a 64 px icon rail with service health dots on the corresponding icons or flyout links. Footer popups open beside the rail and align
 with the bottom edge of their trigger. In the expanded sidebar they open upward. The account Theme submenu uses
 the same floating surface and opens toward the center of the viewport from the mobile account menu.
-On mobile, the top bar contains the brand and navigation drawer trigger, with the health chip beside the bell in the account controls.
+On mobile, the compact top bar contains the brand, notifications, and account controls.
+The bottom bar links to Apps and, when enabled, Workflows. More opens the navigation drawer, where service health dots appear.
+The shell reserves space for the bottom bar and the device safe area. The drawer has a swipe-to-dismiss grip above its fixed header,
+an explicit close button, and a scrollable list.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
-The Docker label opens its overview, with a separate chevron for expanding or collapsing its child links.
+The Docker and System labels open their overview pages. Each has a separate chevron for expanding or collapsing its child links.
 In the icon rail, groups open labeled flyouts with their destinations and available shortcuts.
 Use the circled add icon for sidebar create shortcuts.
 Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subheadings that
@@ -237,10 +245,13 @@ be the only status signal. Public error states show a safe message and request r
 
 Page titles and actions share a row when they fit. Move the action group together when
 space is tight and align it with the leading gutter on phones. Wrap within the group only
-if needed. Use the same heading row and controls in ready and loading states. Keep Apps search
-in one row with the shared Filters drawer and a gear menu for sort order. Use a single grid of
-cards sized to match the Recently opened cards on Overview, with the icon beside the name and status. Offer ownership in Filters for admins
+if needed. Use the same heading row and controls in ready and loading states. On mobile, the Apps index uses its title
+and primary action without a breadcrumb. Keep Apps search in one row with the shared Filters drawer and sort menu.
+The sort menu uses a sort icon on mobile and a gear on desktop. Use a single grid of
+cards shared with Recently opened on Overview, with the icon beside the name and status. Offer ownership in Filters for admins
 and show removable chips for active filters. Keep the desktop Select shortcut off touch and narrow layouts.
+Show the owner beside another user's app name and label it “Clone to run” when the user can create a copy.
+Keep the standard viewer frame for administrator inspection and show the separate-session warning inside it.
 Touch users can long-press an app tile and choose Select app. The tile’s visible actions menu
 offers the same command for keyboard and pointer users. Selection replaces search controls
 with the count, bulk actions, and Done without shifting the tiles. Keep the Apps selection
@@ -271,7 +282,7 @@ Account status in user grids is read-only. Put explicit “Disable user…” an
 
 Keep the visible control available to pointer and keyboard users. Show its shortcut in the
 shared tooltip with keycaps, and expose it through `aria-keyshortcuts` when enabled.
-App pages default to the viewer above the content. At 1024 px and wider, the layout menu and
+App pages default to the viewer above the content. At 1024 px and wider, the layout button and
 Alt+Shift+L (Option+Shift+L on Apple keyboards) switch between top and right. Narrow screens
 always place the viewer above the content and keep the saved desktop preference.
 The shortcut yields to text editing, open menus and dialogs, fullscreen, and Android keyboard
@@ -310,7 +321,7 @@ for streaming adjustments. Inline compound controls may explicitly opt out of ed
 
 ### Personal preferences
 
-The sidebar footer shows service status and notifications above a compact account row.
+The expanded sidebar footer places notifications beside the compact account control.
 The account menu offers Preferences, Security, Appearance, and Log out.
 Edit your profile in Preferences and manage sign-in in Security.
 
@@ -411,7 +422,7 @@ App resource views share one device pane in AppDeviceLayout, including configura
 Keep the embedded device frame and streaming settings visible when a session fails to open. Show
 the error and a retry action inside the frame.
 
-The Viewer layout menu beside the breadcrumbs switches between the default stacked layout and a right-hand pane. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout menu and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
+The viewer layout button beside the breadcrumbs switches between the default stacked layout and a right-hand pane. Its tooltip names the destination and shows the keyboard shortcut. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout button and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
 The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.
 Disable input while the preview floats. Closing docks the player, preserves the page scroll position,
@@ -455,7 +466,10 @@ Resources pages use `DetailFields` for host and managed-container metadata, matc
 
 Runtime Maintenance and the platform overview’s Infrastructure diagnostics are always-visible sections, with ordinary headings. Do not put these operational destinations behind expanders. Runtime loading reuses the maintenance section with disabled actions.
 
-Overview Operations uses compact grouped counts with at most five preview rows per group, explicit shown/total text, and accent-colored directory/resource links. Use restrained text for failure descriptions and link to full diagnostics; avoid one full-width error banner per app. Fetch failures remain notices and must not appear as zero failures. When no snapshot exists, hide
+Overview Operations shows the total number of apps needing attention and links to All apps with the
+Needs attention status filter applied. App operations links to All apps with In progress applied.
+Active workflow runs links to the active run inventory. Both cards show totals. Fetch failures
+remain notices and must not appear as zero failures. When no snapshot exists, hide
 the operation groups, capacity cards, and their sampling hints. On refresh failure, retain real
 values with an explicit stale-data notice. Do not repeat unavailable values beneath an error notice.
 
@@ -471,21 +485,21 @@ The Services inventory uses Service, Status, Connection, and Actions columns. Sh
 
 Administration → General groups runtime defaults under Image defaults, App behavior, and Hardware Acceleration. The default image picker accepts local images and manually entered references. The runtime pulls a saved image when it is needed and unavailable locally. Show the GPU render device field when Host GPU is selected. All three sections share the page's Save and Discard changes actions. Send changed fields and retain unsaved edits through revalidation. Deployment-managed connection details live in Services. Maintenance stays visible as a compact action list on one shared section surface. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Maintenance tasks for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
 
-Services is under System. Feature management is a direct destination under Administration. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Feature management. Feature gates still protect service editors. Feature management uses readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
+Services and OCR perception are under System. Feature management is a direct destination under Administration. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Feature management. Feature gates still protect service editors. Feature management uses readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
 
 Services lists Orchestrator, Docker, Display, Firewall, and OCR from the same health snapshot used
 by the shell indicator. A configured endpoint never substitutes for measured health. Docker combines
 engine reachability with runtime suitability. The Orchestrator view is at
 `/platform/services?service=orchestrator`. Docker opens at `/runtime/docker` with the Docker → Overview breadcrumb.
-The inventory and shell health links point to these pages. Bookmarks to `/platform/services?service=docker` redirect to the Docker overview.
+The inventory links to both pages. Bookmarks to `/platform/services?service=docker` redirect to the Docker overview.
 Casting is a direct Administration destination at `/platform/casting`. The Display service row and
-shell health link open Casting. The page shows the service notice, Connection details, and the session grid in that order.
-Service details, Casting, and Firewall use `ServiceHealthNotice` for reported health
-and its neutral loading state.
-OCR perception and Firewall use the same health notice and editable Connection section. OCR also
+sidebar link open Casting. The session grid sits below Connection when available.
+Casting, Orchestrator, Docker, Firewall, and OCR show a Healthy badge beside the title when the service is healthy.
+Other health states use `ServiceHealthNotice` above the main content. Service loaders show a neutral badge placeholder.
+OCR perception and Firewall share an editable Connection section. OCR also
 has a Settings section for recognition. Firewall is a direct Administration destination at
 `/security/firewall`, with the Network policies grid below Connection. The Firewall agent service row
-and health link open this page. Connection saves and policy sync actions each submit their own changes.
+and sidebar link open this page. Connection saves and policy sync actions each submit their own changes.
 Connection panels and the Services inventory offer **Open Docker container** and **View logs** when the
 connection resolves to a container in the deployment. **View logs** opens the container's **Logs** tab,
 which reads a bounded log tail on demand. Long port values truncate to one line and expose the full value in a tooltip.
@@ -577,8 +591,15 @@ in the header and a visible keyboard-accessible menu on each tile. Search names,
 owner, and IDs; combine it with status and sorting. Bulk actions target selected visible results only.
 Expose failed apps through status filtering instead of repeating their errors above the gallery.
 Loading reuses the gallery toolbar, grid, and tile content.
+Create and Configuration saves show name conflicts on the Name field and focus it. Compare
+names within the app owner's account, ignoring case and surrounding whitespace. When the source
+name is already taken in the destination account, Open as me uses an available copy name.
 
 Overview puts a bounded Recently opened row before operational summaries. Use the authenticated
 per-user visit history in visit order; exclude deleted and inaccessible apps and do not substitute
-unvisited running apps. Keep status secondary to the clickable app name. Loading uses the same
-shortcut component; empty and unavailable histories retain access to All apps.
+unvisited running apps. Use the same card, grid, owner labels, Configuration action, and Open as me
+action as All apps. Loading uses the same card and grid. Empty and unavailable histories retain
+access to All apps.
+Sidebar app shortcuts keep their highlight while the context menu is open. Right-click or long-press
+to open app actions or remove a shortcut from recent history. Removing a running shortcut hides it
+until the user opens the app again.

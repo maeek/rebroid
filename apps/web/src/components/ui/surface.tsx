@@ -17,12 +17,15 @@ export const chipInputSurfaceClassName =
 
 export const floatingLayerClassName = 'z-[70]'
 export const overlayClassName = 'bg-black/40'
-export const interactiveItemClassName =
-  'touch-control rounded-control outline-none transition-colors data-[highlighted]:bg-control-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+const interactiveItemStateClassName =
+  'touch-control outline-none transition-colors data-[highlighted]:bg-control-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+const selectableItemStateClassName =
+  'aria-selected:bg-primary/14 aria-checked:bg-primary/14 aria-selected:data-[highlighted]:bg-primary/22 aria-checked:data-[highlighted]:bg-primary/22'
 
 export const selectableItemClassName = cn(
-  interactiveItemClassName,
-  'aria-selected:bg-primary/14 aria-checked:bg-primary/14 aria-selected:data-[highlighted]:bg-primary/22 aria-checked:data-[highlighted]:bg-primary/22'
+  interactiveItemStateClassName,
+  'rounded-control',
+  selectableItemStateClassName
 )
 
 export const semanticToneClassNames = {
@@ -84,6 +87,13 @@ Surface.displayName = 'Surface'
 export const floatingSurfaceClassName = surfaceVariants({ level: 'floating' })
 export const dialogSurfaceClassName = cn(floatingSurfaceClassName, 'bg-surface-dialog')
 export const menuSurfaceClassName = cn(floatingSurfaceClassName, 'border-surface-border/80')
+export const actionMenuSurfaceClassName =
+  'min-w-48 rounded-menu border border-surface-border/60 bg-surface-menu/92 p-1 text-foreground shadow-floating'
+export const actionMenuItemClassName = cn(
+  interactiveItemStateClassName,
+  'gap-2 rounded-sm px-2.5 py-1.5 text-xs/4 touch:text-sm/5'
+)
+export const selectableActionMenuItemClassName = cn(actionMenuItemClassName, selectableItemStateClassName)
 export const panelSurfaceClassName = surfaceVariants({ level: 'panel' })
 export const bandSurfaceClassName = surfaceVariants({ level: 'band' })
 

@@ -30,6 +30,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   statusMessage: app.status.message,
   statusDetail: app.status.detail,
   ownerUserId: app.ownerUserId,
+  ownerDisplayName: app.ownerDisplayName,
   containerImage: app.runtime.image,
   runtimeKind: app.runtime.kind ?? 'generic',
   containerName: app.runtime.containerName,

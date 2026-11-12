@@ -157,7 +157,7 @@ export const GroupsSection = ({
                       disabled={isSaving}
                       onSelect={() => setPendingDeleteGroups(selectedGroups)}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Delete selected ({selectedGroups.length})
                     </ContextMenuItem>
                   ) : null}
@@ -170,7 +170,7 @@ export const GroupsSection = ({
                       disabled={isSaving}
                       onSelect={() => setPendingDeleteGroups([row.original])}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Delete
                     </ContextMenuItem>
                   ) : null}

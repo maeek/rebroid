@@ -3,11 +3,14 @@
 Rebroid organizes everyday work around apps and automation runs. Administration starts with
 General, Casting, and Firewall, followed by Feature management and AI. The Docker group keeps
 Containers, Images, and Networks together. Users & groups contains the account and group lists.
-System contains Services, Resource usage, and Maintenance tasks. These groups start expanded in the
-desktop sidebar and mobile drawer, and you can collapse each one.
+Select System to open System overview, which shows host and container resources. Use its chevron to show
+or hide Services, OCR perception when enabled, and Maintenance tasks. These groups start expanded in the
+desktop sidebar and mobile drawer.
 Use the desktop sidebar toggle beside the Rebroid wordmark to reclaim the navigation width. The
 browser remembers the choice. The Images shortcut opens the builder when the feature is available.
 Administrator shortcuts beside Users and Groups open the corresponding creation dialogs.
+On mobile, the bottom bar links to Apps and, when enabled, Workflows. Tap **More** for the full navigation list.
+Swipe down from the grip or tap **Close navigation** to dismiss the drawer.
 
 ## Preferences and platform settings
 
@@ -71,8 +74,9 @@ editable list. Paste entries separated by commas or new lines, or delete entries
 uses the saved policy on its next start. If the firewall cannot confirm enforcement, the Network
 tab shows the last reported state and offers **Retry enforcement** for the saved policy.
 Administrators can manage the firewall agent connection under **Firewall** (`/security/firewall`). The
-**Network policies** table below **Connection** shows app access and enforcement. Open an app's
-policy from its row, or use **Sync all rules** to refresh host rules and remove stale entries.
+**Network policies** table below **Connection** shows app access and enforcement. The **Application**
+column shows the owner's username beside the app name when available. Open an app's policy from its
+row, or use **Sync all rules** to refresh host rules and remove stale entries.
 
 ## Workflow device steps
 
@@ -159,21 +163,41 @@ log to that execution of the step. Each event keeps a resized preview and up to 
 
 ## Workflow history retention
 
-In **System → Maintenance tasks**, edit **Workflow history retention** to set how many days to
-keep finished workflow runs. The built-in task runs daily and defaults to 30 days from completion.
+Platform administrators can open **Run history retention** on the **Workflows** page to set how
+many days to keep finished workflow runs. The default is seven days from completion. Existing saved
+retention periods carry forward on upgrade.
+
+The **Workflow history retention** task under **System → Maintenance tasks** uses the same value
+and runs daily by default. Use the task editor to change its schedule or pause automatic cleanup.
 For older finished runs without a completion timestamp, the task uses their last update.
 It removes expired runs together with their step results and events, including OCR previews and
 responses. The task covers saved workflow runs, including runs of workflows that were later
 deleted. Active runs and ad hoc AI conversations are outside its scope.
 
+## Image build maintenance
+
+In **System → Maintenance tasks**, **Clean interrupted image builds** runs daily at 02:15
+by default. It removes temporary GApps package archives and extraction directories older than
+24 hours for builds that are no longer active. Queued and running builds and verified package
+caches are kept.
+
+**Image build history retention** runs daily at 02:45 by default. Edit the task to change its
+30-day retention period. It removes completed build records and their logs based on completion
+time, keeping the latest completed build for each target image. The task leaves built images in Docker.
+
 ## Platform overview
 
 The administrator overview prioritizes app failures, current lifecycle operations, active workflow
-runs, and capacity. Detailed Docker metrics are in a collapsed diagnostics section.
-`GET /api/bff/platform/operations` returns bounded previews and totals through the standard operation
+runs, and capacity. The Apps needing attention card shows a count and links to All apps with the
+Needs attention filter applied. Detailed Docker metrics are in a collapsed diagnostics section.
+`GET /api/bff/platform/operations` returns counts for app failures, in-progress app operations,
+and active workflow runs through the standard operation
 result. It requires administrator access, sanitizes app data, and queries active workflow runs only
 when both run and management permissions are present. The snapshot refreshes on request; it does not
 add background polling. It does not aggregate image builds or retain a global historical job ledger.
+App operations opens the In progress app inventory. Active workflow runs opens
+`/automations/runs/active`, which lists the current account's queued and running workflow executions
+and links to each trace.
 
 Android notifications remain distinct from platform operations. Health popovers identify which
 capability an unavailable service can affect and link to the relevant diagnostic destination.

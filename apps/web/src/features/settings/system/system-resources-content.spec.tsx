@@ -15,6 +15,8 @@ describe('resource outage scope', () => {
         resourcesError
       />
     )
+    expect(screen.getByRole('heading', { level: 1, name: 'System overview' })).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('SystemOverview')
     expect(screen.getAllByRole('alert')).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 2, name: 'Resources unavailable' })).toBeVisible()
     expect(screen.queryByText('Host data')).toBeNull()

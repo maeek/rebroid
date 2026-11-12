@@ -26,7 +26,10 @@ vi.mock('@/server/auth/authorization', async importOriginal => ({
   ...(await importOriginal<typeof import('@/server/auth/authorization')>()),
   requireAdmin: vi.fn()
 }))
-vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: health }))
+vi.mock('@/server/orchestrator/orchestrator-page-read', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/server/orchestrator/orchestrator-page-read')>()),
+  getOrchestratorPageHealth: health
+}))
 vi.mock('@/features/applications/pages/create-app/page-data.server', () => ({ getCreateAppPageData: load }))
 vi.mock('@/features/automations/pages/automation-traces/page-data.server', () => ({
   loadAutomationTracesPageData: load

@@ -246,8 +246,26 @@ test('operations stays bounded and readable with many failing apps', async ({ pa
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
     const failures = page.getByRole('region', { name: 'Apps needing attention', exact: true })
-    await expect(failures.getByRole('listitem')).toHaveCount(5)
-    await expect(failures.getByText('Showing 5 of 128')).toBeVisible()
+    await expect(failures.getByRole('listitem')).toHaveCount(0)
+    await expect(failures.getByText('128', { exact: true })).toBeVisible()
+    await expect(failures.getByRole('link', { name: 'View affected apps' })).toHaveAttribute(
+      'href',
+      '/apps?status=error'
+    )
+    const appOperations = page.getByRole('region', { name: 'App operations' })
+    const activeRuns = page.getByRole('region', { name: 'Active workflow runs' })
+    await expect(appOperations.getByRole('listitem')).toHaveCount(0)
+    await expect(appOperations.getByText('2', { exact: true })).toBeVisible()
+    await expect(appOperations.getByRole('link', { name: 'View apps in progress' })).toHaveAttribute(
+      'href',
+      '/apps?status=working'
+    )
+    await expect(activeRuns.getByRole('listitem')).toHaveCount(0)
+    await expect(activeRuns.getByText('1', { exact: true })).toBeVisible()
+    await expect(activeRuns.getByRole('link', { name: 'View active runs' })).toHaveAttribute(
+      'href',
+      '/automations/runs/active'
+    )
     await expect(page.getByRole('link', { name: 'All apps', exact: true })).toHaveAttribute('href', '/apps')
     await expect(page.getByRole('link', { name: 'All workflows', exact: true })).toHaveAttribute('href', '/automations')
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
@@ -273,6 +291,24 @@ test('operations stays bounded and readable with many failing apps', async ({ pa
       })
     }
   }
+})
+
+test('active workflow runs lists queued and running executions with their trace links', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=active-workflow-runs')
+  await expect(page.getByRole('heading', { name: 'Active workflow runs' })).toBeVisible()
+  const table = page.getByRole('table')
+  await expect(table.getByRole('link', { name: 'Inventory scan' })).toHaveAttribute(
+    'href',
+    '/automations/workflow-1/traces?run=run-queued'
+  )
+  await expect(table.getByRole('row').filter({ hasText: 'Inventory scan' })).toContainText('Queued')
+  await expect(table.getByRole('row').filter({ hasText: 'Order sync' })).toContainText('Running')
+  const search = page.getByRole('searchbox')
+  await search.fill('Order sync')
+  await search.press('Enter')
+  await expect(table.getByRole('link', { name: 'Order sync' })).toBeVisible()
+  await expect(table.getByRole('link', { name: 'Inventory scan' })).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
 })
 
 test('scheduler matches shared panels and keeps task interactions stable', async ({ page }) => {
@@ -387,7 +423,8 @@ test('services keep navigation actions readable and unclipped', async ({ page })
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/skeleton-contract-test?editor=service-ocr')
     await expect(page.getByRole('heading', { name: 'OCR perception', level: 1 })).toBeVisible()
-    await expect(page.getByText('OCR sidecar is reachable.')).toBeVisible()
+    await expect(page.locator('header').getByRole('status')).toHaveText('Healthy')
+    await expect(page.getByText('OCR sidecar is reachable.')).toHaveCount(0)
     const connection = page.getByRole('region', { name: 'Connection' })
     await expect(connection.getByLabel('Endpoint', { exact: true })).toBeVisible()
     await expect(connection.getByLabel('Timeout', { exact: true })).toBeVisible()
@@ -561,16 +598,18 @@ test('Casting shows connection details and links to the Docker Logs tab', async 
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/skeleton-contract-test?editor=display-sessions')
-    await expect(page.getByRole('heading', { level: 1, name: 'Casting' })).toBeVisible()
+    const heading = page.getByRole('heading', { level: 1, name: 'Casting', exact: true })
+    await expect(heading).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
       'Administration',
       'Casting'
     ])
 
-    const status = page.getByRole('status').filter({ hasText: 'Healthy' })
+    const status = page.locator('header').filter({ has: heading }).getByRole('status')
     const connection = page.getByRole('region', { name: 'Connection' })
     const sessions = page.getByRole('region', { name: 'Sessions' })
-    await expect(status).toContainText('Display sidecar API is responding.')
+    await expect(status).toHaveText('Healthy')
+    await expect(page.getByText('Display sidecar API is responding.')).toHaveCount(0)
     await expect(connection.getByText('rebroid-display-sidecar', { exact: true })).toBeVisible()
     await expect(connection.getByRole('link', { name: 'Open Docker container' })).toHaveAttribute(
       'href',
@@ -583,7 +622,10 @@ test('Casting shows connection details and links to the Docker Logs tab', async 
     await expect(connection.getByRole('button', { name: 'Restart sidecar' })).toBeVisible()
     await expect(connection.getByText('Not published')).toBeVisible()
     await expect(sessions.getByRole('table')).toBeVisible()
-    expect((await status.boundingBox())!.y).toBeLessThan((await connection.boundingBox())!.y)
+    const headingBox = (await heading.boundingBox())!
+    const statusBox = (await status.boundingBox())!
+    expect(statusBox.x).toBeGreaterThan(headingBox.x + headingBox.width)
+    expect(statusBox.y + statusBox.height / 2 - (headingBox.y + headingBox.height / 2)).toBeCloseTo(2)
     expect((await connection.boundingBox())!.y).toBeLessThan((await sessions.boundingBox())!.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
   }

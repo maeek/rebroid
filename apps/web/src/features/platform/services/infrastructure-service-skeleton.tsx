@@ -2,7 +2,6 @@
 
 import { DockerMetricsContent } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
 
@@ -16,7 +15,6 @@ export const InfrastructureServiceSkeleton = ({ serviceId }: { serviceId: 'orche
         onRefresh={() => undefined}
       />
     }
-    health={<ServiceHealthNotice loading />}
     limits={
       serviceId === 'docker' ? (
         <DockerOperationLimitsSection

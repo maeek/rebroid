@@ -3,7 +3,14 @@ import { galleryPreviewApplications } from '../src/features/applications/list/ap
 
 const recentApps = [
   { id: 'recent-2', name: 'Warehouse scanner', openedAt: 200, status: 'stopped' },
-  { id: 'recent-1', name: 'Inventory worker', openedAt: 100, status: 'error' }
+  {
+    id: 'recent-1',
+    name: 'Inventory worker',
+    openedAt: 100,
+    status: 'error',
+    ownerDisplayName: 'Operations',
+    canClone: true
+  }
 ]
 
 test.beforeEach(async ({ page }) => {
@@ -15,8 +22,13 @@ test('phone gallery controls share gutters in ready and loading states', async (
     await page.setViewportSize({ width, height: 800 })
     for (const editor of ['apps-gallery', 'apps-gallery-loading']) {
       await page.goto(`/skeleton-contract-test?editor=${editor}`)
+      await expect(page.getByRole('heading', { name: 'Apps', exact: true })).toBeVisible()
+      await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toBeHidden()
+      await expect(page.getByText('Create app', { exact: true })).toBeVisible()
       const search = (await page.getByRole('searchbox').boundingBox())!
-      const sort = (await page.getByRole('button', { name: 'Sort apps', exact: true }).boundingBox())!
+      const sortButton = page.getByRole('button', { name: 'Sort apps', exact: true })
+      await expect(sortButton.locator('svg.tabler-icon-arrows-sort')).toBeVisible()
+      const sort = (await sortButton.boundingBox())!
       const filters = page.getByRole('button', { name: 'Filters', exact: true })
       await expect(filters).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
       const filter = (await filters.boundingBox())!
@@ -34,6 +46,8 @@ test('phone gallery controls share gutters in ready and loading states', async (
 test('gallery search, status, menus and visible selection work together without shifting tiles', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/skeleton-contract-test?editor=apps-gallery')
+  await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByText('All apps')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sort apps' }).locator('svg.tabler-icon-settings')).toBeVisible()
   const tiles = page.locator('[data-app-tile]')
   await expect(tiles).toHaveCount(8)
   await expect(page.getByRole('heading', { name: /^My apps|^Other users/ })).toHaveCount(0)
@@ -96,6 +110,39 @@ test('gallery search, status, menus and visible selection work together without 
   await expect(page.getByRole('heading', { name: 'No matching apps' })).toBeVisible()
   await page.getByRole('button', { name: 'Clear search and filters' }).click()
   await expect(tiles).toHaveCount(8)
+})
+
+test('a shared status URL opens the matching apps and can be cleared', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=apps-gallery&status=error')
+  const tiles = page.locator('[data-app-tile]')
+  const removeStatus = page.getByRole('button', { name: 'Remove Status filter' })
+  await expect(tiles).toHaveCount(1)
+  await expect(tiles).toContainText('Inventory worker')
+  await expect(removeStatus).toBeVisible()
+  await page.reload()
+  await expect(tiles).toHaveCount(1)
+  await removeStatus.click()
+  await expect(tiles).toHaveCount(8)
+  await expect(page).toHaveURL(
+    url => url.searchParams.get('editor') === 'apps-gallery' && !url.searchParams.has('status')
+  )
+})
+
+test('the in-progress URL includes stopping apps alongside provisioning and removal', async ({ page }) => {
+  const apps = galleryPreviewApplications.map((app, index) => {
+    if (index === 1)
+      return { ...app, status: { ...app.status, currentStatus: 'provisioning', lifecycleStage: 'queued' } }
+    if (index === 2) return { ...app, status: { ...app.status, currentStatus: 'running', lifecycleStage: 'stopping' } }
+    if (index === 3) return { ...app, status: { ...app.status, currentStatus: 'removing', lifecycleStage: 'removing' } }
+    return app
+  })
+  await page.route('**/api/applications', route => route.fulfill({ json: apps }))
+  await page.goto('/skeleton-contract-test?editor=apps-gallery&status=working')
+  const tiles = page.locator('[data-app-tile]')
+  await expect(tiles).toHaveCount(3)
+  await expect(page.getByText('In progress', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove Status filter' })).toBeVisible()
+  await expect(tiles.filter({ hasText: 'Checkout terminal' })).toContainText('Stopping')
 })
 
 test('admin ownership filters scope the same gallery and combine with status', async ({ page }) => {
@@ -258,7 +305,7 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
     route.fulfill({
       json: {
         ok: true,
-        data: { failedCount: 0, pendingCount: 0, activeRunCount: 0, failed: [], pending: [], runs: [] },
+        data: { failedCount: 0, pendingCount: 0, activeRunCount: 0 },
         requestId: 'preview'
       }
     })
@@ -278,6 +325,20 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   await expect(shortcuts).toHaveCount(2)
   await expect(shortcuts.first()).toContainText('Warehouse scanner')
   await expect(shortcuts.first()).toHaveAttribute('href', '/app/recent-2')
+  const overviewTile = (await recent.locator('[data-app-tile]').first().boundingBox())!
+  expect(overviewTile.width).toBe(galleryTile.width)
+  expect(overviewTile.height).toBe(galleryTile.height)
+  await expect(shortcuts.nth(1)).toContainText('Operations')
+  await expect(shortcuts.nth(1)).toContainText('Clone to run')
+  await recent.getByRole('button', { name: 'Actions for Inventory worker · Operations' }).click()
+  const menu = page.getByRole('menu', { name: 'Actions for Inventory worker · Operations' })
+  await expect(menu.getByRole('menuitem', { name: 'Open as me' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Configuration' })).toHaveAttribute(
+    'href',
+    '/app/recent-1?view=configuration'
+  )
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
@@ -287,9 +348,6 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
       animations: 'disabled'
     })
   }
-  const overviewTile = (await shortcuts.first().boundingBox())!
-  expect(galleryTile.width).toBe(overviewTile.width)
-  expect(galleryTile.height).toBe(overviewTile.height)
   apps = []
   await page.reload()
   await expect(recent).toContainText('Apps you open will appear here')

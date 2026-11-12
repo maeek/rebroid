@@ -34,7 +34,7 @@ export const ThemeMenuItems = () => {
           key={value}
           value={value}
         >
-          <Icon className='size-4' /> {label}
+          <Icon className='size-3.5' /> {label}
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>
@@ -48,16 +48,16 @@ export function ThemeToggle({ side }: { side?: 'left' | 'right' }) {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger indicatorSide={side}>
         <Visible when={theme === 'light'}>
-          <IconSun className='mr-2 size-4' />
+          <IconSun className='size-3.5' />
         </Visible>
         <Visible when={theme === 'dark'}>
-          <IconMoon className='mr-2 size-4' />
+          <IconMoon className='size-3.5' />
         </Visible>
         <Visible when={theme === 'oled'}>
-          <IconDeviceMobile className='mr-2 size-4' />
+          <IconDeviceMobile className='size-3.5' />
         </Visible>
         <Visible when={theme !== 'light' && theme !== 'dark' && theme !== 'oled'}>
-          <IconSunMoon className='mr-2 size-4' />
+          <IconSunMoon className='size-3.5' />
         </Visible>
         <span>Appearance</span>
       </DropdownMenuSubTrigger>

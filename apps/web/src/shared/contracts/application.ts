@@ -2,10 +2,13 @@ import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export type AndroidApplication = Omit<OrchestratorApiSchemas['AndroidApplicationResponseDto'], 'runtime'> & {
+  ownerDisplayName?: string | null
   runtime: OrchestratorApiSchemas['AndroidApplicationResponseDto']['runtime'] & {
     kind?: RuntimeImageKind
   }
 }
+
+export type FirewallPolicyApplication = AndroidApplication & { ownerUsername?: string }
 
 export type ApplicationCommandResult = OrchestratorApiSchemas['ApplicationCommandResultDto']
 export type ApplicationPowerAcknowledgement = Pick<

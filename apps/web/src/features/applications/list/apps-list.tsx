@@ -1,11 +1,11 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Section } from '@/components/ui/section'
+import { AppGalleryGrid } from '@/shared/ui/app-icon/app-gallery-grid'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
 import { AppsGalleryToolbar } from './components/apps-gallery-toolbar'
-import { AppsGridLayout } from './components/apps-grid-layout'
 import { AppsListBulkDialog } from './components/apps-list-bulk-dialog'
 import { AppsListProvider } from './components/apps-list-context'
 import { AppsListEmptyState } from './components/apps-list-empty-state'
@@ -82,15 +82,16 @@ export const AppsList = ({
           onOwnershipChange={setOwnershipFilter}
         >
           {availableApps.length ? (
-            <AppsGridLayout>
+            <AppGalleryGrid>
               {availableApps.map(app => (
                 <AppsListItem
                   key={app.id}
                   app={app}
                   showOwner={app.ownerUserId !== currentOwnerUserId}
+                  canClone={canCreate && app.ownerUserId !== currentOwnerUserId}
                 />
               ))}
-            </AppsGridLayout>
+            </AppGalleryGrid>
           ) : (
             <Section
               surface='panel'

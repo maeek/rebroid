@@ -15,11 +15,6 @@ const withoutEmbeddedLogs = (health: ServiceHealth): ServiceHealth => {
 }
 
 export const orchestratorDiagnosticsClient = {
-  async health() {
-    const health = await emptyRequest<OrchestratorHealth>('/diagnostics')
-    return { ...health, services: { ...health.services, display: withoutEmbeddedLogs(health.services.display) } }
-  },
-
   healthSummary() {
     return emptyRequest<OrchestratorHealth>('/diagnostics/summary')
   },

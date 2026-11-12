@@ -13,10 +13,12 @@ import {
   IconRobot,
   IconServerSpark,
   IconShield,
+  IconSparkles,
   IconToggleLeft,
   IconUsers
 } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
+import type { NavigationHealthId } from './platform-health-context'
 import type { FeatureFlagKey } from '@/shared/contracts/feature-flags'
 
 export type NavigationVariant = 'sidebar' | 'rail' | 'drawer'
@@ -26,30 +28,53 @@ export type NavigationItem = {
   href: string
   Icon: ElementType<{ className?: string }>
   feature?: FeatureFlagKey
+  healthId?: NavigationHealthId
   shortcut?: { href: string; label: string; feature?: FeatureFlagKey }
 }
 
-export const appSections: NavigationItem[] = [{ name: 'All apps', Icon: IconApps, href: '/apps' }]
+export const appsNavigationItem: NavigationItem = { name: 'All apps', Icon: IconApps, href: '/apps' }
+export const workflowsNavigationItem: NavigationItem = { name: 'Workflows', Icon: IconRobot, href: '/automations' }
+
+export const appSections = [appsNavigationItem]
 
 export const automationSections: NavigationItem[] = [
-  { name: 'Workflows', Icon: IconRobot, href: '/automations' },
+  workflowsNavigationItem,
   { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
 ]
 
-export type NavigationGroup = { label: string; Icon: NavigationItem['Icon']; href?: string; items: NavigationItem[] }
+export type NavigationGroup = {
+  label: string
+  Icon: NavigationItem['Icon']
+  href?: string
+  items: NavigationItem[]
+  healthId?: NavigationHealthId
+}
+
+export const hasChildWithSameHealth = (healthId: NavigationHealthId | undefined, items: NavigationItem[]) =>
+  healthId !== undefined && items.some(item => item.healthId === healthId)
 
 export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
 
+export const servicesNavigationHref = '/platform/services'
+export const ocrNavigationHref = '/platform/services?service=ocr'
+
 export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
-  { name: 'Casting', Icon: IconCast, href: '/platform/casting' },
-  { name: 'Firewall', Icon: IconNetwork, href: '/security/firewall', feature: 'feature.firewall' },
+  { name: 'Casting', Icon: IconCast, href: '/platform/casting', healthId: 'display' },
+  {
+    name: 'Firewall',
+    Icon: IconNetwork,
+    href: '/security/firewall',
+    feature: 'feature.firewall',
+    healthId: 'firewall'
+  },
   { name: 'Feature management', Icon: IconToggleLeft, href: '/platform/features' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' },
   {
     label: 'Docker',
     Icon: IconBox,
     href: '/runtime/docker',
+    healthId: 'docker',
     items: [
       { name: 'Containers', Icon: IconBox, href: '/runtime/containers' },
       {
@@ -83,9 +108,17 @@ export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   {
     label: 'System',
     Icon: IconServerSpark,
+    href: '/system/resources',
+    healthId: 'system',
     items: [
-      { name: 'Services', Icon: IconPlugConnected, href: '/platform/services' },
-      { name: 'Resource usage', Icon: IconServerSpark, href: '/system/resources' },
+      { name: 'Services', Icon: IconPlugConnected, href: servicesNavigationHref, healthId: 'system' },
+      {
+        name: 'OCR perception',
+        Icon: IconSparkles,
+        href: ocrNavigationHref,
+        feature: 'feature.ocr',
+        healthId: 'ocr'
+      },
       { name: 'Maintenance tasks', Icon: IconCalendarTime, href: '/platform/scheduler' }
     ]
   }
@@ -112,8 +145,7 @@ export const variantStyles = {
     nestedIconWrap: 'flex size-6 shrink-0 items-center justify-center rounded-control',
     nestedIcon: 'size-4 stroke-current',
     toggleButton:
-      'flex w-8 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control-hover hover:text-foreground',
-    dashboardSpacing: ''
+      'flex w-8 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control-hover hover:text-foreground'
   },
   rail: {
     root: 'flex w-full flex-col px-2 py-4',
@@ -149,8 +181,7 @@ export const variantStyles = {
     nestedIconWrap: 'flex size-7 shrink-0 items-center justify-center rounded-control',
     nestedIcon: 'size-4 stroke-current',
     toggleButton:
-      'touch-control flex w-11 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control hover:text-foreground',
-    dashboardSpacing: 'mb-4'
+      'touch-control flex w-11 shrink-0 items-center justify-center rounded-control text-foreground-muted transition hover:bg-control hover:text-foreground'
   }
 } as const
 

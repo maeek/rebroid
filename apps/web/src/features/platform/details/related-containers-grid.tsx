@@ -130,7 +130,7 @@ export const RelatedContainersGrid = ({
         rowContextMenu={row => (
           <ContextMenuItem asChild>
             <Link href={`/runtime/containers/${row.original.id}`}>
-              <IconEye className='mr-2 size-4' />
+              <IconEye className='size-4' />
               Details
             </Link>
           </ContextMenuItem>

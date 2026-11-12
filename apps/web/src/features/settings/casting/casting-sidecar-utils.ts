@@ -3,10 +3,8 @@ import type { SortingState } from '@tanstack/react-table'
 
 export const formatTimestamp = (value: string) => new Date(value).toLocaleString()
 
-export const castingMessage = (message: string) => message.replace(/display sidecar/gi, 'casting sidecar')
-
 export const castingErrorMessage = (error: unknown) =>
-  castingMessage(error instanceof Error ? error.message : 'Unknown error')
+  (error instanceof Error ? error.message : 'Unknown error').replace(/display sidecar/gi, 'casting sidecar')
 
 export const formatHealthDetail = (value: unknown) => {
   if (value === null) return 'none'

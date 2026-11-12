@@ -1,13 +1,8 @@
 'use client'
 
-import { IconCopy, IconLoader2 } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Visible } from '@/components/ui/visible'
-import { toast } from '@/hooks/use-toast'
-import { requestApplicationCloneAction } from '@/server/orchestrator/applications/actions/lifecycle/clone-actions'
-import { unwrapActionResult } from '@/shared/actions/action-result'
-import { useAppViewerActionRunner } from './use-app-viewer-action-runner'
+import { IconCopy } from '@tabler/icons-react'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { useOpenAppAsMe } from '@/hooks/use-open-app-as-me'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 type AppViewerOpenAsMeActionProps = {
@@ -15,35 +10,20 @@ type AppViewerOpenAsMeActionProps = {
 }
 
 export const AppViewerOpenAsMeAction = ({ app }: AppViewerOpenAsMeActionProps) => {
-  const router = useRouter()
-  const { isRunningAction, runAction } = useAppViewerActionRunner()
+  const { isCloning, openAppAsMe } = useOpenAppAsMe()
 
   return (
-    <Button
+    <MutationButton
       variant='primary'
-      disabled={!app || isRunningAction}
+      disabled={!app}
+      pending={isCloning}
+      pendingLabel='Opening…'
       onClick={() => {
-        if (!app) {
-          return
-        }
-
-        void runAction(async () => {
-          const cloned = unwrapActionResult(await requestApplicationCloneAction(app.id))
-          toast({
-            title: 'Opening your own copy',
-            description: 'A separate app session is being prepared for your profile.'
-          })
-          router.push(`/app/${cloned.id}`)
-        }, 'Could not open app as your copy')
+        if (app) void openAppAsMe(app.id)
       }}
     >
-      <Visible when={isRunningAction}>
-        <IconLoader2 className='size-4 animate-spin' />
-      </Visible>
-      <Visible when={!isRunningAction}>
-        <IconCopy className='size-4' />
-      </Visible>
+      <IconCopy className='size-4' />
       Open as me
-    </Button>
+    </MutationButton>
   )
 }

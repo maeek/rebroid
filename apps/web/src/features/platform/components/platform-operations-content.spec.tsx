@@ -5,31 +5,37 @@ import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-ope
 
 const snapshot: PlatformOperationsSnapshot = {
   failedCount: 128,
-  pendingCount: 0,
-  activeRunCount: 0,
-  failed: Array.from({ length: 100 }, (_, index) => ({
-    id: `app-${index}`,
-    name: `Worker ${index}`,
-    description: 'Boot failed'
-  })),
-  pending: [],
-  runs: []
+  pendingCount: 42,
+  activeRunCount: 17
 }
 
 describe('platform operations presentation', () => {
-  it('bounds failure previews while keeping totals and resource destinations visible', () => {
+  it('shows the failure count and links directly to the affected app inventory', () => {
     render(<PlatformOperationsContent snapshot={snapshot} />)
     const attention = screen.getByRole('region', { name: 'Apps needing attention' })
-    expect(within(attention).getAllByRole('listitem')).toHaveLength(5)
     expect(within(attention).getByText('128')).toBeVisible()
-    expect(within(attention).getByText('Showing 5 of 128')).toBeVisible()
+    expect(within(attention).queryByRole('list')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.getByRole('link', { name: 'Worker 0' })).toHaveAttribute('href', '/app/app-0')
+    expect(within(attention).getByRole('link', { name: 'View affected apps' })).toHaveAttribute(
+      'href',
+      '/apps?status=error'
+    )
     expect(screen.getByRole('link', { name: 'All apps' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: 'All workflows' })).toHaveAttribute('href', '/automations')
   })
+  it('shows counts and filtered destinations for both active groups', () => {
+    render(<PlatformOperationsContent snapshot={snapshot} />)
+    const apps = within(screen.getByRole('region', { name: 'App operations' }))
+    const runs = within(screen.getByRole('region', { name: 'Active workflow runs' }))
+    expect(apps.getByText('42')).toBeVisible()
+    expect(apps.getByRole('link', { name: 'View apps in progress' })).toHaveAttribute('href', '/apps?status=working')
+    expect(apps.queryByRole('list')).toBeNull()
+    expect(runs.getByText('17')).toBeVisible()
+    expect(runs.getByRole('link', { name: 'View active runs' })).toHaveAttribute('href', '/automations/runs/active')
+    expect(runs.queryByRole('list')).toBeNull()
+  })
   it('shows quiet empty states and does not report a failed refresh as healthy', () => {
-    const { rerender } = render(<PlatformOperationsContent snapshot={{ ...snapshot, failedCount: 0, failed: [] }} />)
+    const { rerender } = render(<PlatformOperationsContent snapshot={{ ...snapshot, failedCount: 0 }} />)
     expect(screen.getByText('No app failures.')).toBeVisible()
     rerender(
       <PlatformOperationsContent
@@ -53,7 +59,7 @@ describe('platform operations presentation', () => {
       />
     )
     expect(screen.getByText('Operations could not be refreshed')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Worker 0' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'View affected apps' })).toBeVisible()
     expect(screen.getByText(/Showing the last loaded snapshot/)).toBeVisible()
     expect(screen.getByText('Reference: operations-request')).toBeVisible()
   })

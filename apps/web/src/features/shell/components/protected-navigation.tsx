@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
@@ -13,7 +13,9 @@ import {
   appSections,
   isNavigationDestinationActive,
   automationSections,
+  ocrNavigationHref,
   overviewSections,
+  servicesNavigationHref,
   variantStyles,
   type NavigationItem,
   type NavigationVariant
@@ -31,6 +33,7 @@ type ProtectedNavigationProps = {
 
 export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
+  const serviceView = useSearchParams().get('service')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
@@ -39,6 +42,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
   )
   const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
+  const isOcrView = pathname === servicesNavigationHref && serviceView === 'ocr' && isFeatureEnabled('feature.ocr')
   const styles = variantStyles[variant]
 
   useEffect(() => {
@@ -54,6 +58,8 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
 
   const itemIsActive = (href: string) => {
     if (href === '/platform/runtime' && isActivePath('/platform/console')) return true
+    if (href === ocrNavigationHref) return isOcrView
+    if (href === servicesNavigationHref && isOcrView) return false
 
     return isActivePath(href, href === '/platform')
   }
@@ -160,6 +166,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
                     key={entry.href}
                     href={entry.href}
                     label={entry.name}
+                    healthId={entry.healthId}
                     Icon={entry.Icon}
                     isActive={itemIsActive(entry.href)}
                     variant={variant}
@@ -167,7 +174,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
                   />
                 )
               }
-              const { label, items, href, Icon } = entry
+              const { label, items, href, Icon, healthId } = entry
               if (!items.length) return null
               const isOpen = expanded[label] ?? true
               return (
@@ -176,6 +183,7 @@ export const ProtectedNavigation = ({ variant, initialUser, onNavigate }: Protec
                   label={label}
                   href={href}
                   Icon={Icon}
+                  healthId={healthId}
                   items={items}
                   variant={variant}
                   isOpen={isOpen}

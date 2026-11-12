@@ -54,10 +54,13 @@ describe('Network policies workflow', () => {
     vi.mocked(applyNetworkPolicyAction)
       .mockResolvedValueOnce(actionOk(applicationPreview))
       .mockResolvedValueOnce(actionError({ message: 'Unavailable' }))
-    render(<FirewallSettings initialApplications={applications} />)
+    render(
+      <FirewallSettings initialApplications={[{ ...applicationPreview, ownerUsername: 'alice' }, applications[1]]} />
+    )
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select current page' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sync 2 selected' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sync 1 selected' })).toBeEnabled())
+    expect(screen.getByRole('link', { name: 'Inventory worker · alice' })).toBeVisible()
     expect(within(screen.getByRole('row', { name: /Inventory worker/ })).getByRole('checkbox')).not.toBeChecked()
     expect(within(screen.getByRole('row', { name: /Reports worker/ })).getByRole('checkbox')).toBeChecked()
     expect(toast).toHaveBeenCalledWith(
@@ -107,14 +110,28 @@ describe('Network policies workflow', () => {
     expect(reconcileNetworkPoliciesAction).not.toHaveBeenCalled()
   })
 
-  it('links to the network editor and separates configured access from enforcement', () => {
-    render(<FirewallSettings initialApplications={[applicationPreview]} />)
-    expect(screen.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
+  it('distinguishes identically named apps by username and links to their network editors', () => {
+    render(
+      <FirewallSettings
+        initialApplications={[
+          { ...applicationPreview, ownerUsername: 'alice' },
+          { ...applicationPreview, id: 'other-app', ownerUserId: 'other-owner', ownerUsername: 'bob' }
+        ]}
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Inventory worker · alice' })).toHaveAttribute(
       'href',
       '/app/preview-app?view=network'
     )
-    expect(screen.getByText('Approved destinations only')).toBeVisible()
-    expect(screen.getByText('On next start')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Inventory worker · bob' })).toHaveAttribute(
+      'href',
+      '/app/other-app?view=network'
+    )
+    const row = within(screen.getByRole('row', { name: /Inventory worker · alice/ }))
+    expect(row.getByText('· alice')).toBeVisible()
+    expect(row.getByText('preview-app')).toBeVisible()
+    expect(row.getByText('Approved destinations only')).toBeVisible()
+    expect(row.getByText('On next start')).toBeVisible()
     expect(screen.queryByRole('switch')).toBeNull()
   })
 

@@ -1,6 +1,7 @@
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
+import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
-import { getOrchestratorPageHealth, readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
+import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { loadServiceContainerIds } from '@/server/orchestrator/platform/service-containers'
 import { firstSearchParamValue } from '@/shared/model/search-params'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -11,7 +12,7 @@ export type ServicesSearchParams = {
 
 export const loadPlatformServicesPageData = async (searchParams?: Promise<ServicesSearchParams>) => {
   const [health, params] = await Promise.all([
-    readOrchestratorPage(getOrchestratorPageHealth),
+    readOrchestratorPage(getOrchestratorHealthSummaryAction),
     searchParams ?? Promise.resolve<ServicesSearchParams>({})
   ])
   const requestedServiceId = firstSearchParamValue(params.service)

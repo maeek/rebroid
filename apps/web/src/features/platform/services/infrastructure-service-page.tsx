@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
-import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
 import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
@@ -45,17 +44,14 @@ export const InfrastructureServicePage = ({
           onRefresh={refresh}
         />
       }
-      health={
-        <ServiceHealthNotice
-          health={health}
-          requestId={requestId}
-          description={
-            isDocker && !canReadDiagnostics
-              ? 'The orchestrator could not be reached, so Docker health, operation limits, and diagnostics are unavailable. Refresh to check again.'
-              : undefined
-          }
-        />
-      }
+      health={health}
+      healthNotice={{
+        requestId,
+        description:
+          isDocker && !canReadDiagnostics
+            ? 'The orchestrator could not be reached, so Docker health, operation limits, and diagnostics are unavailable. Refresh to check again.'
+            : undefined
+      }}
       limits={isDocker && canReadDiagnostics ? <DockerOperationLimitsSection onSaved={refresh} /> : undefined}
       diagnostics={isDocker && canReadDiagnostics ? <DockerMetricsDashboard refreshKey={refreshKey} /> : undefined}
     />

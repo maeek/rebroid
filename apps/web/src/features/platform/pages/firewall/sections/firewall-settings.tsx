@@ -31,7 +31,7 @@ import {
   sortFirewallApplications
 } from '../model/firewall-settings-model'
 import { firewallPolicyColumns } from '../ui/firewall-policy-columns'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AndroidApplication, FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { SortingState } from '@tanstack/react-table'
 
 const matchesAccess = (application: AndroidApplication, filter: string) =>
@@ -41,7 +41,7 @@ export const FirewallSettings = ({
   initialApplications,
   loading = false
 }: {
-  initialApplications: AndroidApplication[]
+  initialApplications: FirewallPolicyApplication[]
   loading?: boolean
 }) => {
   const router = useRouter()
@@ -118,7 +118,13 @@ export const FirewallSettings = ({
         return
       }
       const results = await Promise.allSettled(
-        targets.map(async application => unwrapActionResult(await applyNetworkPolicyAction(application.id)))
+        targets.map(async application => {
+          const updated = unwrapActionResult(await applyNetworkPolicyAction(application.id))
+          return {
+            ...updated,
+            ownerUsername: updated.ownerUserId === application.ownerUserId ? application.ownerUsername : undefined
+          }
+        })
       )
       const updated = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []))
       const failedIds = new Set(

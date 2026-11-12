@@ -4,7 +4,7 @@ import { Notice } from '@/components/ui/notice'
 import { ServiceSettingsPage } from '@/features/platform/services/service-settings-page'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { FirewallSettings } from './sections/firewall-settings'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { OptionalServiceUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -20,7 +20,7 @@ export const FirewallPageClient = ({
   initialHealth?: ServiceHealth
   initialSettings?: OptionalServiceUiSettings
   containerId?: string
-  initialApplications?: AndroidApplication[]
+  initialApplications?: FirewallPolicyApplication[]
   requestId?: string
   policyFailure?: { requestId?: string }
   loading?: boolean

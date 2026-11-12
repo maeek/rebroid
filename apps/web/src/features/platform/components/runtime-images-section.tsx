@@ -196,13 +196,13 @@ export const RuntimeImagesSection = ({
                         disabled={busyId === 'bulk'}
                         onSelect={() => setPendingRemove(selectedImages)}
                       >
-                        <IconTrash className='mr-2 size-4' />
+                        <IconTrash className='size-4' />
                         Remove selected ({selectedImages.length})
                       </ContextMenuItem>
                     ) : null}
                     <ContextMenuItem asChild>
                       <Link href={`/runtime/images/${encodeURIComponent(row.original.id)}`}>
-                        <IconEye className='mr-2 size-4' />
+                        <IconEye className='size-4' />
                         Details
                       </Link>
                     </ContextMenuItem>
@@ -210,7 +210,7 @@ export const RuntimeImagesSection = ({
                       className='text-danger focus:text-danger'
                       onSelect={() => setPendingRemove([row.original])}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Remove
                     </ContextMenuItem>
                   </>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { IconSettings } from '@tabler/icons-react'
+import { IconArrowsSort, IconSettings } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -46,7 +46,14 @@ export const AppsGallerySortMenu = ({
               aria-label='Sort apps'
               disabled={disabled}
             >
-              <IconSettings className='size-4' />
+              <IconArrowsSort
+                aria-hidden='true'
+                className='size-4 lg:hidden'
+              />
+              <IconSettings
+                aria-hidden='true'
+                className='hidden size-4 lg:block'
+              />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>

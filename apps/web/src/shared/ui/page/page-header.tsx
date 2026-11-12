@@ -11,9 +11,11 @@ export const PageHeader = ({
   breadcrumbLabel,
   className,
   description,
+  desktopOnlyBreadcrumbRow = false,
   leading,
   section,
   title,
+  titleBadge,
   trail = [],
   badges,
   meta
@@ -23,9 +25,11 @@ export const PageHeader = ({
   breadcrumbLabel?: ReactNode
   className?: string
   description?: ReactNode
+  desktopOnlyBreadcrumbRow?: boolean
   leading?: ReactNode
   section?: PageBreadcrumbItem
   title: ReactNode
+  titleBadge?: ReactNode
   trail?: PageBreadcrumbItem[]
   badges?: ReactNode
   meta?: ReactNode
@@ -40,19 +44,30 @@ export const PageHeader = ({
   const breadcrumbs = currentAlreadyPresent
     ? [...breadcrumbTrail.slice(0, -1), { label: currentLabel }]
     : [...breadcrumbTrail, { label: currentLabel }]
+  const heading = (
+    <h1 className='flex min-w-0 items-center gap-2.5 text-3xl font-medium max-sm:text-2xl'>
+      {leading}
+      <span className='min-w-0 [overflow-wrap:anywhere]'>{title}</span>
+    </h1>
+  )
 
   return (
     <header
       className={cn(
         'shrink-0 px-6 pb-4 max-sm:px-4',
         showBreadcrumbRow ? 'pt-(--page-header-top-inset)' : 'pt-4',
+        showBreadcrumbRow && desktopOnlyBreadcrumbRow && 'max-lg:pt-4',
         className
       )}
     >
       <div className='grid grid-cols-[minmax(0,1fr)] gap-3'>
         {showBreadcrumbRow ? (
           <div
-            className={cn('flex min-h-(--page-header-control-size) min-w-0 items-center gap-2', styles.breadcrumbRow)}
+            className={cn(
+              'flex min-h-(--page-header-control-size) min-w-0 items-center gap-2',
+              desktopOnlyBreadcrumbRow && 'max-lg:hidden',
+              styles.breadcrumbRow
+            )}
           >
             {showBreadcrumbs ? (
               <PageBreadcrumbs
@@ -65,12 +80,21 @@ export const PageHeader = ({
             ) : null}
           </div>
         ) : null}
-        <div className={cn('grid grid-cols-[minmax(0,1fr)] gap-2', showBreadcrumbs && 'pt-4')}>
+        <div
+          className={cn(
+            'grid grid-cols-[minmax(0,1fr)] gap-2',
+            showBreadcrumbs && (desktopOnlyBreadcrumbRow ? 'lg:pt-4' : 'pt-4')
+          )}
+        >
           <PageHeadingRow actions={actions}>
-            <h1 className='flex min-w-0 items-center gap-2.5 text-3xl font-medium max-sm:text-2xl'>
-              {leading}
-              <span className='min-w-0 [overflow-wrap:anywhere]'>{title}</span>
-            </h1>
+            {titleBadge ? (
+              <div className='flex min-w-0 items-center gap-2.5'>
+                {heading}
+                <div className='relative top-0.5 flex shrink-0'>{titleBadge}</div>
+              </div>
+            ) : (
+              heading
+            )}
           </PageHeadingRow>
           <Visible when={badges || meta}>
             <div className='flex min-w-0 flex-wrap items-center gap-2 text-xs text-foreground-muted'>

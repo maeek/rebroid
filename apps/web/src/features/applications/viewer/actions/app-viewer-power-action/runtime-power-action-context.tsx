@@ -13,7 +13,7 @@ import {
   getCanRestart,
   usePowerActionViewState
 } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
-import { useAppViewerActionRunner } from '@/features/applications/viewer/actions/use-app-viewer-action-runner'
+import { useApplicationActionRunner } from '@/hooks/use-application-action-runner'
 import { toast } from '@/hooks/use-toast'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
@@ -70,7 +70,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
   const canStop = hasPermission(permissions, 'applications:stop')
   const canSwitchProfile = hasPermission(permissions, 'applications:switch-profile')
   const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
-  const { isRunningAction, runAction } = useAppViewerActionRunner()
+  const { isRunningAction, runAction } = useApplicationActionRunner()
   const [startDialogOpen, setStartDialogOpen] = useState(false)
   const [stopDialogOpen, setStopDialogOpen] = useState(false)
   const [restartDialogOpen, setRestartDialogOpen] = useState(false)

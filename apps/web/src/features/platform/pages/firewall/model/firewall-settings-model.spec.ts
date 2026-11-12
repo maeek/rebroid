@@ -41,13 +41,14 @@ const app = (
   }) as unknown as AndroidApplication
 
 describe('firewall settings model', () => {
-  it('filters applications by identity, status, policy status, and CIDR', () => {
+  it('filters applications by identity, owner username, status, policy status, and CIDR', () => {
     const applications = [
-      app('alpha', { name: 'Calendar', allowCidrs: ['10.0.0.0/24'] }),
+      { ...app('alpha', { name: 'Calendar', allowCidrs: ['10.0.0.0/24'] }), ownerUsername: 'alice' },
       app('beta', { status: 'stopped', policyStatus: 'error', resultCode: 'apply_failed' })
     ]
 
     expect(filterFirewallApplications(applications, 'calendar')).toEqual([applications[0]])
+    expect(filterFirewallApplications(applications, 'ALICE')).toEqual([applications[0]])
     expect(filterFirewallApplications(applications, '10.0.0.0')).toEqual([applications[0]])
     expect(filterFirewallApplications(applications, 'needs attention')).toEqual([applications[1]])
     expect(filterFirewallApplications(applications, 'stopped')).toEqual([applications[1]])

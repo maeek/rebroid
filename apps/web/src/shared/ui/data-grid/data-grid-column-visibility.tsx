@@ -31,7 +31,6 @@ export const DataGridColumnVisibilityMenu = <TData,>({ table }: { table: Table<T
           >
             <Checkbox
               checked={column.getIsVisible()}
-              className='mr-2'
               aria-hidden='true'
               tabIndex={-1}
               style={{ pointerEvents: 'none' }}

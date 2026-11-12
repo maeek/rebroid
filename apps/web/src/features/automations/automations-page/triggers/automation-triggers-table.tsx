@@ -236,7 +236,7 @@ export function AutomationTriggersTable({
                   className='text-danger focus:text-danger'
                   onSelect={onDeleteSelected}
                 >
-                  <IconTrash className='mr-2 size-4' />
+                  <IconTrash className='size-4' />
                   Delete selected ({selectedIds.size})
                 </ContextMenuItem>
               </>
@@ -245,14 +245,14 @@ export function AutomationTriggersTable({
               disabled={disabled}
               onSelect={() => onEdit(row.original)}
             >
-              <IconEdit className='mr-2 size-4' />
+              <IconEdit className='size-4' />
               Edit
             </ContextMenuItem>
             <ContextMenuItem
               disabled={disabled}
               onSelect={() => void onRun(row.original)}
             >
-              <IconPlayerPlayFilled className='mr-2 size-4' />
+              <IconPlayerPlayFilled className='size-4' />
               Run now
             </ContextMenuItem>
             <ContextMenuItem
@@ -260,7 +260,7 @@ export function AutomationTriggersTable({
               className='text-danger focus:text-danger'
               onSelect={() => onDelete(row.original)}
             >
-              <IconTrash className='mr-2 size-4' />
+              <IconTrash className='size-4' />
               Delete
             </ContextMenuItem>
           </>

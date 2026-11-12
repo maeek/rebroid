@@ -27,6 +27,7 @@ type AppViewerProps = {
   fullscreen?: boolean
   orientation?: ViewerOrientation
   viewerSettings?: ViewerSettings
+  unavailableContent?: ReactNode
   canStart?: boolean
   isStarting?: boolean
   onStart?: () => void
@@ -59,13 +60,17 @@ export const AppViewer = ({
   fullscreen,
   orientation = 'portrait',
   viewerSettings,
+  unavailableContent,
   canStart = false,
   isStarting = false,
   onStart
 }: AppViewerProps) => {
   const viewerFrameRef = useRef<HTMLIFrameElement>(null)
   const layout = getViewerFrameLayout(app, orientation)
-  const viewerSrc = useMemo(() => getViewerSrc(app, viewerSettings), [app, viewerSettings])
+  const viewerSrc = useMemo(
+    () => (unavailableContent ? null : getViewerSrc(app, viewerSettings)),
+    [app, unavailableContent, viewerSettings]
+  )
   const keyboardCaptureEnabled = Boolean(viewerSettings?.keyboardCaptureEnabled)
 
   useViewerControlRelay(viewerSrc, viewerFrameRef)
@@ -91,7 +96,7 @@ export const AppViewer = ({
           keyboardCaptureEnabled={keyboardCaptureEnabled}
         />
       </Visible>
-      <Visible when={!viewerSrc}>
+      <Visible when={!viewerSrc && !unavailableContent}>
         <ViewerPlaceholderScreen
           app={app}
           canStart={canStart}
@@ -99,6 +104,11 @@ export const AppViewer = ({
           onStart={onStart}
         />
       </Visible>
+      {unavailableContent ? (
+        <div className='absolute inset-x-0 bottom-0 top-(--viewer-chrome-height) flex items-center-safe overflow-y-auto bg-background'>
+          {unavailableContent}
+        </div>
+      ) : null}
     </div>
   )
 }

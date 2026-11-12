@@ -21,7 +21,9 @@ import { createAutomationDraft, consumeAutomationDraft } from './automation-draf
 import { getDatabase, resetDatabaseForTests } from './database'
 import { getMfaSetup, saveMfaSetup } from './mfa-setup-repository'
 import {
+  dismissRecentApplication,
   forgetRecentApplication,
+  listDismissedRecentApplicationIds,
   listRecentApplications,
   rememberRecentApplication
 } from './recent-applications-repository'
@@ -91,6 +93,19 @@ describe('fresh web database', () => {
     for (let index = 0; index < 6; index += 1) rememberRecentApplication('user-1', `app-${index + 1}`, index)
     forgetRecentApplication('user-1', 'app-5')
     expect(listRecentApplications('user-1')).toHaveLength(4)
+  })
+
+  it('remembers sidebar dismissals across history pruning until the account reopens the app', () => {
+    rememberRecentApplication('user-1', 'app-1', 1)
+    rememberRecentApplication('user-2', 'app-1', 1)
+    dismissRecentApplication('user-1', 'app-1')
+    for (let index = 2; index < 9; index += 1) rememberRecentApplication('user-1', `app-${index}`, index)
+    expect(listDismissedRecentApplicationIds('user-1')).toEqual(new Set(['app-1']))
+    expect(listRecentApplications('user-1').map(app => app.id)).not.toContain('app-1')
+    expect(listRecentApplications('user-2')).toEqual([{ id: 'app-1', openedAt: 1 }])
+    rememberRecentApplication('user-1', 'app-1', 9)
+    expect(listDismissedRecentApplicationIds('user-1').size).toBe(0)
+    expect(listRecentApplications('user-1')[0]).toEqual({ id: 'app-1', openedAt: 9 })
   })
 
   it('consumes automation drafts once and only for their owner', async () => {
@@ -186,6 +201,24 @@ describe('fresh web database', () => {
     appendAuditEvent({ actorUserId: 'user-a', actorLabel: 'New name', category: 'auth', action: 'auth.login.success' })
     expect(listAuditFacetValues().actors).toEqual([{ id: 'user-a', label: 'New name' }])
     expect(listAuditEvents().events.map(event => event.actorLabel)).toEqual(['New name', 'Old name'])
+  })
+
+  it('resolves usernames for events that only recorded the actor ID', async () => {
+    const administrator = await completeTestAdministratorSetup()
+    const actor = await userService.createUser(
+      { username: 'warehouse-operator', password: 'original-password' },
+      administrator
+    )
+    appendAuditEvent({
+      actorUserId: actor.id,
+      category: 'application',
+      action: 'application.start',
+      resourceId: 'app-a'
+    })
+    expect(listAuditEvents({ search: 'warehouse-operator', resourceId: 'app-a' }).events).toMatchObject([
+      { actorUserId: actor.id, actorUsername: actor.username }
+    ])
+    expect(listAuditFacetValues().actors).toContainEqual({ id: actor.id, label: actor.username })
   })
 
   it('persists authentication epochs and login rate limits', () => {

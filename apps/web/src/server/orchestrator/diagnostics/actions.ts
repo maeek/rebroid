@@ -1,16 +1,11 @@
 'use server'
 
 import { runSafeAction } from '@/server/actions/safe-action'
-import { requireAdminUser, requireUser } from '../shared'
+import { requireAdminUser } from '../shared'
 import { orchestratorDiagnosticsClient } from './client'
 
-export const getOrchestratorHealthAction = async () => {
-  await requireUser()
-  return orchestratorDiagnosticsClient.health()
-}
-
 export const getOrchestratorHealthSummaryAction = async () => {
-  await requireUser()
+  await requireAdminUser()
   return orchestratorDiagnosticsClient.healthSummary()
 }
 

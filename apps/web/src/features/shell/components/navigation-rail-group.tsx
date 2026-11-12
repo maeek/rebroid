@@ -8,8 +8,14 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { variantStyles, type NavigationGroup, type NavigationItem } from './protected-navigation-config'
-import { NavLink } from './protected-navigation-parts'
+import { usePlatformHealth } from './platform-health-context'
+import {
+  hasChildWithSameHealth,
+  variantStyles,
+  type NavigationGroup,
+  type NavigationItem
+} from './protected-navigation-config'
+import { NavigationHealthDot, NavLink } from './protected-navigation-parts'
 
 export const NavigationRail = ({
   entries,
@@ -19,6 +25,7 @@ export const NavigationRail = ({
   isActivePath: (href: string) => boolean
 }) => {
   const styles = variantStyles.rail
+  const statuses = usePlatformHealth()
 
   return (
     <DropdownMenu<NavigationGroup> modal={false}>
@@ -33,6 +40,7 @@ export const NavigationRail = ({
                     key={entry.href}
                     href={entry.href}
                     label={entry.name}
+                    healthId={entry.healthId}
                     Icon={Icon}
                     isActive={isActivePath(entry.href)}
                     variant='rail'
@@ -42,6 +50,7 @@ export const NavigationRail = ({
               if (!entry.items.length) return null
               const containsActive =
                 (entry.href && isActivePath(entry.href)) || entry.items.some(item => isActivePath(item.href))
+              const status = entry.healthId ? statuses[entry.healthId] : undefined
               return (
                 <li key={entry.label}>
                   <DropdownMenuTrigger
@@ -54,9 +63,21 @@ export const NavigationRail = ({
                     <button
                       type='button'
                       aria-label={entry.label}
-                      className={cn(styles.item, containsActive && styles.activeItem)}
+                      title={status?.label}
+                      className={cn(
+                        styles.item,
+                        containsActive && styles.activeItem,
+                        status && 'relative',
+                        status &&
+                          hasChildWithSameHealth(entry.healthId, entry.items) &&
+                          'aria-expanded:[&>[data-slot=navigation-health-dot]]:hidden'
+                      )}
                     >
                       <Icon className={styles.icon} />
+                      <NavigationHealthDot
+                        status={status}
+                        compact
+                      />
                     </button>
                   </DropdownMenuTrigger>
                 </li>
@@ -90,12 +111,17 @@ const NavigationRailItems = ({
   isActivePath: (href: string) => boolean
 }) => {
   const styles = variantStyles.rail
-  const items = group.href ? [{ name: 'Overview', href: group.href, Icon: group.Icon }, ...group.items] : group.items
+  const overviewHealthId = hasChildWithSameHealth(group.healthId, group.items) ? undefined : group.healthId
+  const items = group.href
+    ? [{ name: 'Overview', href: group.href, Icon: group.Icon, healthId: overviewHealthId }, ...group.items]
+    : group.items
   const shortcuts = items.flatMap(item => (item.shortcut ? [item.shortcut] : []))
+  const statuses = usePlatformHealth()
   return (
     <>
-      {items.map(({ name, href, Icon: ItemIcon }) => {
+      {items.map(({ name, href, Icon: ItemIcon, healthId }) => {
         const active = isActivePath(href)
+        const status = healthId ? statuses[healthId] : undefined
         return (
           <DropdownMenuItem
             asChild
@@ -105,9 +131,11 @@ const NavigationRailItems = ({
             <Link
               href={href}
               aria-current={active ? 'page' : undefined}
+              title={status?.label}
             >
               <ItemIcon className={styles.icon} />
               {name}
+              <NavigationHealthDot status={status} />
             </Link>
           </DropdownMenuItem>
         )

@@ -64,11 +64,11 @@ export const AiAgentConversationToolbar = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end'>
           <DropdownMenuItem onClick={onExport}>
-            <IconDownload className='mr-2 size-4' />
+            <IconDownload className='size-4' />
             Export conversation
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onClear}>
-            <IconTrash className='mr-2 size-4' />
+            <IconTrash className='size-4' />
             Clear conversation
           </DropdownMenuItem>
         </DropdownMenuContent>

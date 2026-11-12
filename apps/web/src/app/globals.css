@@ -11,13 +11,22 @@
 
 :root {
   --console-top-inset: 4rem;
-  --console-content-height: calc(100dvh - var(--console-top-inset));
+  --console-bottom-inset: 0rem;
+  --console-content-height: calc(100dvh - var(--console-top-inset) - var(--console-bottom-inset));
   --touch-target-size: 44px;
   --page-header-top-inset: 0.25rem;
   --page-header-control-size: 2.25rem;
   --app-viewer-height: calc(100svh - 6rem);
   --viewer-chrome-height: 32px;
   --viewer-rail-width: 32px;
+}
+
+@media (width < 64rem) {
+  :root:has([data-slot='protected-shell']) {
+    --console-top-inset: calc(3.5rem + env(safe-area-inset-top));
+    --console-bottom-inset: calc(3.5rem + env(safe-area-inset-bottom));
+    scroll-padding-block-end: var(--console-bottom-inset);
+  }
 }
 
 @media (pointer: coarse) {
@@ -66,6 +75,7 @@
   --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-0);
+  --surface-menu: var(--palette-neutral-0);
   --surface-dialog: var(--palette-neutral-100);
   --surface-navigation: var(--palette-neutral-50);
   --surface-border: var(--palette-neutral-200);
@@ -128,6 +138,7 @@
   --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-125);
   --surface-elevated: var(--palette-neutral-125);
+  --surface-menu: 0 0% 0%;
   --surface-dialog: var(--palette-neutral-50);
   --surface-navigation: var(--palette-neutral-90);
   --surface-border: var(--palette-neutral-300);
@@ -191,6 +202,7 @@
   --surface-editor: var(--palette-neutral-75);
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-100);
+  --surface-menu: var(--palette-neutral-10);
   --surface-dialog: var(--palette-neutral-50);
   --surface-navigation: var(--palette-neutral-25);
   --surface-border: var(--palette-neutral-180);
@@ -386,6 +398,7 @@
   --color-surface-editor: hsl(var(--surface-editor));
   --color-surface-band: hsl(var(--surface-band));
   --color-surface-elevated: hsl(var(--surface-elevated));
+  --color-surface-menu: hsl(var(--surface-menu));
   --color-surface-dialog: hsl(var(--surface-dialog));
   --color-surface-navigation: hsl(var(--surface-navigation));
   --color-surface-border: hsl(var(--surface-border));
@@ -412,6 +425,7 @@
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
   --radius-control: var(--shape-control);
+  --radius-menu: 0.625rem;
   --radius-panel: var(--shape-panel);
   --radius-overlay: var(--shape-overlay);
   --radius-feature: var(--shape-feature);

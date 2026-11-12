@@ -5,4 +5,7 @@ export type RecentApp = {
   openedAt: number
   status?: 'provisioning' | 'running' | 'stopped' | 'error' | 'removing' | 'removed'
   statusLabel?: string | null
+  ownerDisplayName?: string | null
+  canStart?: boolean
+  canClone?: boolean
 }

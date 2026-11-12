@@ -230,7 +230,7 @@ export const CastingSessionsSection = ({
                       disabled={busy !== null || !controller.health.ok}
                       onSelect={() => setPendingEndSessions(selectedSessions)}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       End selected ({selectedSessions.length})
                     </ContextMenuItem>
                   ) : null}
@@ -238,7 +238,7 @@ export const CastingSessionsSection = ({
                     disabled={busy !== null || !controller.health.ok || !activeStatuses.has(row.original.status)}
                     onSelect={() => setPendingEndSessions([row.original])}
                   >
-                    <IconTrash className='mr-2 size-4' />
+                    <IconTrash className='size-4' />
                     End session
                   </ContextMenuItem>
                 </>

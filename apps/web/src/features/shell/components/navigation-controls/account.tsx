@@ -56,22 +56,22 @@ export const NavigationAccount = ({
     </DropdownMenuTrigger>
     <DropdownMenuContent
       {...popupPosition}
-      className='w-48 max-[359px]:w-42'
+      className='w-48 max-[359px]:w-40 max-[359px]:min-w-40'
     >
       <DropdownMenuItem asChild>
         <Link href='/preferences/general'>
-          <IconSettings className='size-4 mr-2' /> Preferences
+          <IconSettings className='size-3.5' /> Preferences
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
         <Link href='/preferences/security'>
-          <IconShield className='size-4 mr-2' /> Security
+          <IconShield className='size-3.5' /> Security
         </Link>
       </DropdownMenuItem>
       <ThemeToggle side={popupPosition.side === 'bottom' ? 'left' : undefined} />
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
-        <IconLogout className='size-4 mr-2' /> Log out
+        <IconLogout className='size-3.5' /> Log out
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

@@ -38,7 +38,8 @@ export const SystemResourcesContent = ({
   <StandardPage className='gap-2'>
     <PageHeader
       section={{ label: 'System' }}
-      title='Resource usage'
+      breadcrumbLabel='Overview'
+      title='System overview'
     />
     <PageContent>
       {!loading && systemError && resourcesError && !systemUtilization && !resources ? (
@@ -57,7 +58,7 @@ export const SystemResourcesContent = ({
                 void Promise.all([refreshSystem(), refreshResources()])
               }
             },
-            { label: 'Go to overview', href: '/platform' }
+            { label: 'Go to platform overview', href: '/platform' }
           ]}
         />
       ) : (

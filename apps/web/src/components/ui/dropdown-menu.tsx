@@ -5,10 +5,10 @@ import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
 import { IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import {
+  actionMenuItemClassName,
+  actionMenuSurfaceClassName,
   floatingLayerClassName,
-  menuSurfaceClassName,
-  interactiveItemClassName,
-  selectableItemClassName,
+  selectableActionMenuItemClassName,
   triggerResetClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
@@ -84,8 +84,8 @@ const DropdownMenuSubTrigger = React.forwardRef<
       ref={ref}
       render={view}
       className={cn(
-        'flex cursor-default select-none items-center px-2 py-1.5 text-sm data-[open]:bg-control-hover',
-        interactiveItemClassName,
+        'flex cursor-default select-none items-center data-[open]:bg-control-hover',
+        actionMenuItemClassName,
         {
           'pl-8': inset
         },
@@ -96,7 +96,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
       {getBaseChildren(asChild, children)}
       <Chevron
         aria-hidden='true'
-        className='ml-auto size-4'
+        className='ml-auto size-3.5'
       />
     </DropdownMenuPrimitive.SubmenuTrigger>
   )
@@ -119,8 +119,9 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.Popup
       ref={ref}
       className={cn(
-        'scrollbar-thin z-50 max-h-(--available-height) min-w-32 overflow-x-hidden overflow-y-auto overscroll-contain p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--transform-origin)',
-        menuSurfaceClassName,
+        'scrollbar-thin z-50 max-h-(--available-height) overflow-x-hidden overflow-y-auto overscroll-contain data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--transform-origin)',
+        actionMenuSurfaceClassName,
+        'min-w-32',
         className
       )}
       {...props}
@@ -143,8 +144,8 @@ const DropdownMenuContent = React.forwardRef<
       <DropdownMenuPrimitive.Popup
         ref={ref}
         className={cn(
-          'z-50 min-w-32 overflow-hidden rounded-control p-1 data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-          menuSurfaceClassName,
+          'z-50 overflow-hidden data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+          actionMenuSurfaceClassName,
           className
         )}
         {...props}
@@ -170,9 +171,8 @@ const DropdownMenuItem = React.forwardRef<
       ref={ref}
       render={view}
       className={cn(
-        'relative flex cursor-default select-none items-center px-2 py-1.5 text-sm',
-        interactiveItemClassName,
-        selectableItemClassName,
+        'relative flex cursor-default select-none items-center',
+        selectableActionMenuItemClassName,
         {
           'pl-8': inset
         },
@@ -196,15 +196,15 @@ const DropdownMenuRadioItem = ({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) => (
   <DropdownMenuPrimitive.RadioItem
     closeOnClick
-    className={cn('flex cursor-default items-center gap-2 px-2 py-1.5 text-sm', selectableItemClassName, className)}
+    className={cn('flex cursor-default items-center', selectableActionMenuItemClassName, className)}
     {...props}
   >
     {children}
     <DropdownMenuPrimitive.RadioItemIndicator
       keepMounted
-      className='ml-auto size-4 shrink-0 text-primary data-[unchecked]:invisible'
+      className='ml-auto size-3.5 shrink-0 text-primary data-[unchecked]:invisible'
     >
-      <IconCheck className='size-4' />
+      <IconCheck className='size-3.5' />
     </DropdownMenuPrimitive.RadioItemIndicator>
   </DropdownMenuPrimitive.RadioItem>
 )
@@ -216,7 +216,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.GroupLabel
     ref={ref}
     className={cn(
-      'px-2 py-1.5 text-sm font-medium',
+      'px-2.5 py-1.5 text-xs/4 font-medium',
       {
         'pl-8': inset
       },
@@ -233,7 +233,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-border/75', className)}
+    className={cn('my-0.5 h-px bg-surface-border/50', className)}
     {...props}
   />
 ))

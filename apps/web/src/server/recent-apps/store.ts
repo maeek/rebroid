@@ -1,5 +1,14 @@
-import { listRecentApplications, rememberRecentApplication } from '@/server/persistence/recent-applications-repository'
+import {
+  dismissRecentApplication,
+  listDismissedRecentApplicationIds,
+  listRecentApplications,
+  rememberRecentApplication
+} from '@/server/persistence/recent-applications-repository'
 
 export const listStoredRecentApps = (userId: string) => listRecentApplications(userId)
 
 export const rememberStoredRecentApp = (userId: string, appId: string) => rememberRecentApplication(userId, appId)
+
+export const dismissStoredRecentApp = (userId: string, appId: string) => dismissRecentApplication(userId, appId)
+
+export const listDismissedRecentAppIds = (userId: string) => listDismissedRecentApplicationIds(userId)

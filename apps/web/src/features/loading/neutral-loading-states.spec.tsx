@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProviderHealthBannerContent } from '@/features/settings/orchestrator/ai-providers/provider-health-badge'
-import { ServiceHealthNotice } from '@/shared/ui/platform/service-health-notice'
+import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 
 describe('neutral loading content', () => {
@@ -93,14 +93,19 @@ describe('neutral loading content', () => {
 
   it.each(['healthy', 'offline'] as const)('does not infer %s service status during loading', status => {
     const view = renderToStaticMarkup(
-      <ServiceHealthNotice
+      <ServiceDetailLayout
+        title='Service'
+        refresh={null}
         loading
         health={{ status, ok: status === 'healthy', message: 'Ready' }}
-      />
+      >
+        Connection
+      </ServiceDetailLayout>
     )
-    expect(view).toContain('data-tone="neutral"')
+    expect(view).toContain('bg-control/60')
     expect(view).not.toMatch(/data-tone="(success|danger|warning|info)"/)
     expect(view).not.toContain('Ready')
+    expect(view).not.toContain('Healthy')
     expect(view).not.toMatch(/role="(alert|status)"/)
   })
 })

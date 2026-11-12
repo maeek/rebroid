@@ -1,19 +1,8 @@
 import { useEffect, useEffectEvent, useRef } from 'react'
 import { IconLayoutNavbar, IconLayoutSidebarRight } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import {
-  isViewerPlacement,
-  viewerPlacementOptions,
-  type ViewerPlacement
-} from '@/shared/model/settings/viewer-placement'
+import type { ViewerPlacement } from '@/shared/model/settings/viewer-placement'
 
 const placementIcons = { right: IconLayoutSidebarRight, top: IconLayoutNavbar }
 const shortcutKeys = ['Alt', 'Shift', 'L'] as const
@@ -48,7 +37,7 @@ const LayoutShortcutKeys = () => {
   )
 }
 
-export const AppViewerPlacementMenu = ({
+export const AppViewerPlacementButton = ({
   placement,
   onPlacementChange,
   disabled
@@ -58,11 +47,13 @@ export const AppViewerPlacementMenu = ({
   disabled: boolean
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const initialScrollTop = useRef(0)
   const PlacementIcon = placementIcons[placement]
+  const nextPlacement = placement === 'right' ? 'top' : 'right'
+  const label = nextPlacement === 'top' ? 'Move viewer to top' : 'Move viewer to the right'
 
-  const applyPlacement = (value: ViewerPlacement, scrollTop: number, restoreTriggerFocus = false) => {
-    onPlacementChange(value)
+  const switchPlacement = (restoreTriggerFocus = false) => {
+    const scrollTop = window.scrollY
+    onPlacementChange(nextPlacement)
     window.requestAnimationFrame(() => {
       if (restoreTriggerFocus) triggerRef.current?.focus({ preventScroll: true })
       window.scrollTo({ top: scrollTop, behavior: 'instant' })
@@ -84,7 +75,7 @@ export const AppViewerPlacementMenu = ({
       return
     }
     event.preventDefault()
-    applyPlacement(placement === 'right' ? 'top' : 'right', window.scrollY)
+    switchPlacement()
   })
 
   useEffect(() => {
@@ -96,65 +87,31 @@ export const AppViewerPlacementMenu = ({
   }, [disabled])
 
   return (
-    <DropdownMenu
-      modal={false}
-      onOpenChange={open => {
-        if (open) initialScrollTop.current = window.scrollY
-      }}
-    >
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              ref={triggerRef}
-              type='button'
-              size='icon-sm'
-              variant='ghost'
-              disabled={disabled}
-              aria-label='Viewer layout'
-              aria-keyshortcuts={disabled ? undefined : shortcutKeys.join('+')}
-              className='hidden size-7 shrink-0 lg:inline-flex'
-            >
-              <PlacementIcon className='size-4' />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent
-          side='bottom'
-          align='end'
-          className='hidden items-center gap-2.5 lg:flex'
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          ref={triggerRef}
+          type='button'
+          size='icon-sm'
+          variant='ghost'
+          disabled={disabled}
+          aria-label={label}
+          aria-keyshortcuts={disabled ? undefined : shortcutKeys.join('+')}
+          onClick={() => switchPlacement(true)}
+          className='hidden size-7 shrink-0 lg:inline-flex'
         >
-          <span>Switch viewer layout</span>
-          <LayoutShortcutKeys />
-        </TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent
+          <PlacementIcon className='size-4' />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent
+        role='tooltip'
+        side='bottom'
         align='end'
-        className='max-lg:hidden'
+        className='hidden items-center gap-2.5 lg:flex'
       >
-        <DropdownMenuRadioGroup
-          value={placement}
-          onValueChange={(value: unknown) => {
-            if (isViewerPlacement(value)) {
-              applyPlacement(value, initialScrollTop.current, true)
-            }
-          }}
-        >
-          {viewerPlacementOptions.map(({ value, label }) => (
-            <DropdownMenuRadioItem
-              key={value}
-              value={value}
-            >
-              {value === 'top' ? (
-                <IconLayoutNavbar className='size-4' />
-              ) : (
-                <IconLayoutSidebarRight className='size-4' />
-              )}
-              <span className='flex-1'>{label}</span>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <span>{label}</span>
+        <LayoutShortcutKeys />
+      </TooltipContent>
+    </Tooltip>
   )
 }

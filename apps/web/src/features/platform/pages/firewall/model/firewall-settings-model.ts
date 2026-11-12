@@ -1,5 +1,5 @@
 import { outboundAccessLabel, outboundEnforcement } from '@/shared/model/network/outbound-policy'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AndroidApplication, FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { SortingState } from '@tanstack/react-table'
 
 const defaultSorting: SortingState = [{ id: 'name', desc: false }]
@@ -23,7 +23,7 @@ const compareFirewallApplications = (
   return 0
 }
 
-export const sortFirewallApplications = (applications: AndroidApplication[], sorting: SortingState) => {
+export const sortFirewallApplications = (applications: FirewallPolicyApplication[], sorting: SortingState) => {
   const activeSorting = sorting.length > 0 ? sorting : defaultSorting
 
   return [...applications].sort((left, right) => {
@@ -36,7 +36,7 @@ export const sortFirewallApplications = (applications: AndroidApplication[], sor
   })
 }
 
-export const filterFirewallApplications = (applications: AndroidApplication[], search: string) => {
+export const filterFirewallApplications = (applications: FirewallPolicyApplication[], search: string) => {
   const query = search.trim().toLowerCase()
   if (!query) return applications
 
@@ -47,7 +47,8 @@ export const filterFirewallApplications = (applications: AndroidApplication[], s
       application.status.currentStatus,
       firewallAccessLabel(application),
       firewallPolicyEnforcement(application).label,
-      ...application.network.policy.allowCidrs
+      ...application.network.policy.allowCidrs,
+      application.ownerUsername
     ]
       .filter(Boolean)
       .join(' ')
@@ -56,8 +57,11 @@ export const filterFirewallApplications = (applications: AndroidApplication[], s
   )
 }
 
-export const paginateFirewallApplications = (applications: AndroidApplication[], pageIndex: number, pageSize: number) =>
-  applications.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
+export const paginateFirewallApplications = (
+  applications: FirewallPolicyApplication[],
+  pageIndex: number,
+  pageSize: number
+) => applications.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize)
 
 export const clampFirewallPageIndex = (totalItems: number, pageSize: number, pageIndex: number) => {
   const pageCount = Math.max(Math.ceil(totalItems / pageSize), 1)
@@ -71,12 +75,14 @@ export const retainVisibleFirewallSelection = (applications: AndroidApplication[
   return new Set([...selectedIds].filter(id => visibleIds.has(id)))
 }
 
-export const selectedFirewallApplicationsFromIds = (applications: AndroidApplication[], selectedIds: Set<string>) =>
-  applications.filter(application => selectedIds.has(application.id))
+export const selectedFirewallApplicationsFromIds = (
+  applications: FirewallPolicyApplication[],
+  selectedIds: Set<string>
+) => applications.filter(application => selectedIds.has(application.id))
 
 export const mergeFirewallApplications = (
-  applications: AndroidApplication[],
-  updatedApplications: AndroidApplication[]
+  applications: FirewallPolicyApplication[],
+  updatedApplications: FirewallPolicyApplication[]
 ) => {
   const updatedById = new Map(updatedApplications.map(application => [application.id, application]))
 

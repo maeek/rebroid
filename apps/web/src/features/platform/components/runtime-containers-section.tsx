@@ -227,7 +227,7 @@ export const RuntimeContainersSection = ({
                           disabled={busyId === 'bulk'}
                           onSelect={() => setPendingBulkAction('stop')}
                         >
-                          <IconPlayerStopFilled className='mr-2 size-4' />
+                          <IconPlayerStopFilled className='size-4' />
                           Stop selected ({selectedContainers.length})
                         </ContextMenuItem>
                         <ContextMenuItem
@@ -235,21 +235,21 @@ export const RuntimeContainersSection = ({
                           disabled={busyId === 'bulk'}
                           onSelect={() => setPendingBulkAction('remove')}
                         >
-                          <IconTrash className='mr-2 size-4' />
+                          <IconTrash className='size-4' />
                           Remove selected ({selectedContainers.length})
                         </ContextMenuItem>
                       </>
                     ) : null}
                     <ContextMenuItem asChild>
                       <Link href={`/runtime/containers/${row.original.id}`}>
-                        <IconEye className='mr-2 size-4' />
+                        <IconEye className='size-4' />
                         Details
                       </Link>
                     </ContextMenuItem>
                     {row.original.applicationId && !row.original.orphaned ? (
                       <ContextMenuItem asChild>
                         <Link href={`/app/${row.original.applicationId}?logs=1`}>
-                          <IconTerminal2 className='mr-2 size-4' />
+                          <IconTerminal2 className='size-4' />
                           Logs
                         </Link>
                       </ContextMenuItem>
@@ -258,14 +258,14 @@ export const RuntimeContainersSection = ({
                       disabled={row.original.state !== 'running'}
                       onSelect={() => setPendingAction({ type: 'stop', container: row.original })}
                     >
-                      <IconPlayerStopFilled className='mr-2 size-4' />
+                      <IconPlayerStopFilled className='size-4' />
                       Stop
                     </ContextMenuItem>
                     <ContextMenuItem
                       className='text-danger focus:text-danger'
                       onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
                     >
-                      <IconTrash className='mr-2 size-4' />
+                      <IconTrash className='size-4' />
                       Remove
                     </ContextMenuItem>
                   </>

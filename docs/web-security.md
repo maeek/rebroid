@@ -45,6 +45,7 @@ address is that proxy; there is no implicit trusted-forwarded-header mode.
 Public errors contain safe messages and request references. Ordinary users receive redacted
 backend identifiers, endpoints, filesystem paths, and diagnostics. Raw upstream failures and
 secrets must not appear in responses, logs, or client bundles.
+Platform health and service diagnostics are available to platform administrators only.
 
 Audit details redact credential-like keys. Retention runs automatically from web settings,
 and CSV exports neutralize spreadsheet formulas. Persistence changes use the

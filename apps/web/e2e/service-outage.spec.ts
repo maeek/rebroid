@@ -14,7 +14,8 @@ test('remaining inventories show one failure without dependent controls or reque
     await expect(page.getByRole('button', { name: 'Try again' })).toBeEnabled()
   }
   await page.goto('/skeleton-contract-test?editor=display-offline')
-  await expect(page.getByText('Display service is offline.')).toBeVisible()
+  await expect(page.getByRole('alert').filter({ hasText: 'Display service is offline.' })).toBeVisible()
+  await expect(page.locator('header').getByRole('status')).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Sessions', exact: true })).toHaveCount(0)
   await expect(page.getByRole('table')).toHaveCount(0)
   await expect(page.getByRole('link', { name: 'View logs' })).toHaveCount(0)
@@ -102,7 +103,7 @@ test('overview hides unavailable cards, recovers, and retains data on subsequent
     containers: []
   }
   for (const [path, data] of [
-    ['platform/operations', { failedCount: 0, pendingCount: 0, activeRunCount: 0, failed: [], pending: [], runs: [] }],
+    ['platform/operations', { failedCount: 0, pendingCount: 0, activeRunCount: 0 }],
     ['platform/resources', resources],
     ['applications/recent', []]
   ] as const) {

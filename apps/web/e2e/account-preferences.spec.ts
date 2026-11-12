@@ -27,6 +27,7 @@ test('the account Appearance submenu matches its parent and fits beside it on na
   const account = page.getByRole('button', { name: /^Account(?::|$)/ })
   await account.click()
   const trigger = page.getByRole('menuitem', { name: 'Appearance', exact: true })
+  await expect(trigger).toHaveCSS('column-gap', '8px')
   await expect(trigger.locator(mobile ? '.tabler-icon-chevron-left' : '.tabler-icon-chevron-right')).toBeVisible()
   const menu = page.getByRole('menu').filter({ has: trigger })
   if (mobile) {
@@ -39,6 +40,7 @@ test('the account Appearance submenu matches its parent and fits beside it on na
   const submenu = page.getByRole('menu', { name: 'Appearance', exact: true })
   await expect(submenu).toBeVisible()
   await expect(dark).toBeChecked()
+  await expect(dark).toHaveCSS('column-gap', '8px')
   await expect(submenu).toHaveCSS(
     'background-color',
     await menu.evaluate(node => getComputedStyle(node).backgroundColor)

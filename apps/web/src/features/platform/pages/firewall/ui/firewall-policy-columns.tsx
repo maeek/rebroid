@@ -4,13 +4,13 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
-import { ResourceLink } from '@/shared/ui/resource-link'
+import { ApplicationReference } from '@/shared/ui/application-reference'
 import {
   firewallAccessLabel,
   firewallAllowlistDisplay,
   firewallPolicyEnforcement
 } from '../model/firewall-settings-model'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
@@ -47,7 +47,7 @@ const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
   )
 }
 
-export const firewallPolicyColumns: ColumnDef<AndroidApplication>[] = [
+export const firewallPolicyColumns: ColumnDef<FirewallPolicyApplication>[] = [
   {
     id: 'name',
     accessorFn: application => application.name,
@@ -55,15 +55,12 @@ export const firewallPolicyColumns: ColumnDef<AndroidApplication>[] = [
     size: 288,
     meta: { label: 'Application', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => (
-      <div className='grid gap-1'>
-        <ResourceLink
-          className='truncate font-medium'
-          href={appResourceHref(row.original.id, 'network')}
-        >
-          {row.original.name}
-        </ResourceLink>
-        <div className='truncate text-xs text-foreground-muted'>{row.original.id}</div>
-      </div>
+      <ApplicationReference
+        id={row.original.id}
+        name={row.original.name}
+        ownerUsername={row.original.ownerUsername}
+        href={appResourceHref(row.original.id, 'network')}
+      />
     )
   },
   {

@@ -9,7 +9,7 @@ import { ActionResultError } from '@/shared/actions/action-result'
 
 const isSessionError = (message: string) => /session|sign in|unauthenticated|unauthorized|authentication/i.test(message)
 
-export const useAppViewerActionRunner = () => {
+export const useApplicationActionRunner = () => {
   const router = useRouter()
   const [isRunningAction, setIsRunningAction] = useState(false)
 
