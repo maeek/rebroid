@@ -98,6 +98,14 @@ dismiss a test notification at different points in the polling cycle and measure
 updates. The healthy foreground target is 15 seconds at p95 for both operations. Count a missed
 update as a failure.
 
+## Runtime image previews
+
+Each orchestrator can prepare two runtime image previews at once, with up to sixteen waiting.
+Concurrent requests for the same verified file version share archive and image work. The
+orchestrator keeps up to 8 MiB of encoded previews for 30 seconds, and checks the file version
+and current runtime before returning a preview. Filesystems that report coarse change timestamps
+use fresh previews. Upload, rename, and delete invalidate previews for that runtime.
+
 ## Stored state
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema

@@ -10,6 +10,7 @@ import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { DockerContainerArchiveReadLimitError } from '../../../docker/contracts/docker-container-archive.port';
 import { RuntimeDataFilesService } from './runtime-data-files.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
+import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 
 describe('RuntimeDataFilesService', () => {
@@ -32,19 +33,20 @@ describe('RuntimeDataFilesService', () => {
         exitCode: 0,
       }),
     };
-    const reconciler = {
-      reconcileById: jest.fn().mockResolvedValue({
-        id: 'app-1',
-        containerId: 'container-1',
-        status: AndroidApplicationStatus.Running,
-      }),
+    const app = {
+      id: 'app-1',
+      containerId: 'container-1',
+      status: AndroidApplicationStatus.Running,
     };
+    const reconciler = { reconcileById: jest.fn().mockResolvedValue(app) };
     service = new RuntimeDataFilesService(
       archive as never,
       exec as never,
       reconciler as never,
       new RuntimeFilePathService(),
       new RuntimeUploadStreamService(),
+      new RuntimeFilePreviewService(archive as never),
+      { getStored: jest.fn().mockResolvedValue(app) } as never,
     );
   });
 
@@ -238,7 +240,7 @@ describe('RuntimeDataFilesService', () => {
     expect(cleanupCommand).toContain('rm -rf "$staging_dir"');
   });
 
-  it('returns and caches a bounded WebP preview by modification time', async () => {
+  it('shares concurrent archive reads and caches the bounded WebP by file version', async () => {
     const source = await sharp({
       create: {
         width: 1600,
@@ -250,20 +252,17 @@ describe('RuntimeDataFilesService', () => {
       .png()
       .toBuffer();
     exec.execInContainerWithOutput.mockResolvedValue({
-      stdout: '/data/Pictures/photo.png\t1700000300',
+      stdout:
+        '/data/Pictures/photo.png\t5|7|13|2026-11-12 10:00:00.012345678 +0000|2026-11-12 10:00:00.012345679 +0000',
       stderr: '',
       exitCode: 0,
     });
     archive.readFileFromContainer.mockResolvedValue(source);
 
-    const first = await service.previewFile(
-      'app-1',
-      '/data/Pictures/photo.png',
-    );
-    const second = await service.previewFile(
-      'app-1',
-      '/data/Pictures/photo.png',
-    );
+    const preview = () =>
+      service.previewFile('app-1', '/data/Pictures/photo.png');
+    const [first, second] = await Promise.all([preview(), preview()]);
+    const third = await preview();
     const metadata = await sharp(first.content).metadata();
 
     expect(metadata).toMatchObject({
@@ -272,12 +271,19 @@ describe('RuntimeDataFilesService', () => {
       height: 960,
     });
     expect(second.content).toBe(first.content);
+    expect(third.content).toBe(first.content);
     expect(archive.readFileFromContainer).toHaveBeenCalledTimes(1);
     expect(archive.readFileFromContainer).toHaveBeenCalledWith(
       'container-1',
       '/data/Pictures/photo.png',
       { maximumBytes: 25 * 1024 * 1024 },
     );
+    exec.execInContainerWithOutput.mockResolvedValue({
+      stdout:
+        '/data/Pictures/photo.png\t5|7|13|2026-11-12 10:00:00.012345678 +0000|2026-11-12 10:00:00.012345680 +0000',
+    });
+    await preview();
+    expect(archive.readFileFromContainer).toHaveBeenCalledTimes(2);
   });
 
   it('rejects unsupported preview media', async () => {
@@ -293,6 +299,35 @@ describe('RuntimeDataFilesService', () => {
     await expect(
       service.previewFile('app-1', '/data/document.txt'),
     ).rejects.toBeInstanceOf(UnsupportedMediaTypeException);
+  });
+
+  it('fences a preview already reading a file when a runtime mutation settles', async () => {
+    const path = '/data/photo.png';
+    exec.execInContainerWithOutput.mockImplementation(
+      async (_id, args: string[]) => ({
+        stdout: args[2].includes('mv "$source" "$target"')
+          ? 'file\t1700000300\t13'
+          : `${path}\t5|7|13|2026-11-12 10:00:00.012345678 +0000|2026-11-12 10:00:00.012345679 +0000`,
+      }),
+    );
+    let startRead!: () => void;
+    const started = new Promise<void>((resolve) => {
+      startRead = resolve;
+    });
+    let finishRead!: (content: Buffer) => void;
+    archive.readFileFromContainer.mockImplementation(() => {
+      startRead();
+      return new Promise<Buffer>((resolve) => {
+        finishRead = resolve;
+      });
+    });
+    const rejected = expect(service.previewFile('app-1', path)).rejects.toThrow(
+      'Runtime file changed',
+    );
+    await started;
+    await service.renameFile('app-1', path, 'renamed.png');
+    finishRead(Buffer.alloc(0));
+    await rejected;
   });
 
   it('maps the archive read ceiling to a payload-too-large response', async () => {

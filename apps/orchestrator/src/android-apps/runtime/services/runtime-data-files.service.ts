@@ -3,8 +3,6 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-  PayloadTooLargeException,
-  UnsupportedMediaTypeException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
@@ -13,11 +11,9 @@ import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import sharp from 'sharp';
 import { type MultipartUploadRequest } from '../../../common/http-upload';
 import {
   DOCKER_CONTAINER_ARCHIVE,
-  DockerContainerArchiveReadLimitError,
   type DockerContainerArchivePort,
 } from '../../../docker/contracts/docker-container-archive.port';
 import {
@@ -27,22 +23,27 @@ import {
 import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
+import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
+import { RuntimeFilePreviewService } from './runtime-file-preview.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
 
-const maximumPreviewSourceBytes = 25 * 1024 * 1024;
-const maximumPreviewCacheEntries = 64;
-const supportedPreviewFormats = new Set(['gif', 'jpeg', 'png', 'webp']);
-
 type RuntimeEntryType = 'file' | 'directory';
+
+const previewRuntimeKey = (app: AndroidApplication) =>
+  JSON.stringify([
+    app.ownerUserId,
+    app.containerId,
+    app.lastStartedAt,
+    app.profileMode,
+    app.profileName,
+  ]);
 
 @Injectable()
 export class RuntimeDataFilesService {
-  private readonly previewCache = new Map<string, Buffer>();
-
   constructor(
     @Inject(DOCKER_CONTAINER_ARCHIVE)
     private readonly archive: DockerContainerArchivePort,
@@ -51,6 +52,8 @@ export class RuntimeDataFilesService {
     private readonly reconciler: AndroidAppsRuntimeStateReconciler,
     private readonly paths: RuntimeFilePathService,
     private readonly uploads: RuntimeUploadStreamService,
+    private readonly previews: RuntimeFilePreviewService,
+    private readonly queries: AndroidAppsQueryService,
   ) {}
 
   async listFiles(id: string, requestedPath?: string) {
@@ -167,7 +170,7 @@ export class RuntimeDataFilesService {
       'modified=$(stat -c %Y "$target" 2>/dev/null || echo 0)',
       'if [ "$type" = file ]; then size=$(stat -c %s "$target" 2>/dev/null || echo 0); else size=0; fi',
       'printf "%s\\t%s\\t%s" "$type" "$modified" "$size"',
-    ]);
+    ]).finally(() => this.previews.invalidate(app.containerId!));
     const [type = 'file', modified = '0', size = '0'] = stdout.split('\t');
     return this.runtimeEntry(
       name,
@@ -191,7 +194,7 @@ export class RuntimeDataFilesService {
       'if [ -d "$source" ]; then type=directory; else [ -f "$source" ] || exit 44; type=file; fi',
       'rm -rf "$source"',
       'printf "%s" "$type"',
-    ]);
+    ]).finally(() => this.previews.invalidate(app.containerId!));
     return {
       deleted: true,
       path,
@@ -206,71 +209,52 @@ export class RuntimeDataFilesService {
     const app = await this.getRunningRuntimeApp(id);
     const path = this.paths.normalizeDataPath(requestedPath);
     this.paths.assertMutablePath(path);
-    const resolvedFile = (
-      await this.runDataCommand(app, [
-        `candidate=${this.paths.shellQuote(path)}`,
-        '[ -L "$candidate" ] && exit 41',
-        'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
-        this.dataContainmentCheck('source'),
-        '[ -f "$source" ] || exit 44',
-        'modified=$(stat -c %Y "$source" 2>/dev/null || echo 0)',
-        'printf "%s\t%s" "$source" "$modified"',
-      ])
-    ).trim();
-    const separator = resolvedFile.lastIndexOf('\t');
-    const resolvedPath = resolvedFile.slice(0, separator);
-    const modified = resolvedFile.slice(separator + 1);
-    const cacheKey = `${app.containerId}:${resolvedPath}:${modified}`;
-    const cached = this.previewCache.get(cacheKey);
-    if (cached) {
-      this.previewCache.delete(cacheKey);
-      this.previewCache.set(cacheKey, cached);
-      return { content: cached, mimeType: 'image/webp' };
-    }
-
-    let source: Buffer;
-    try {
-      source = await this.archive.readFileFromContainer(
-        app.containerId!,
-        resolvedPath,
-        { maximumBytes: maximumPreviewSourceBytes },
+    const runtime = previewRuntimeKey(app);
+    const resolveFile = () => this.resolvePreviewFile(app, path);
+    const file = await resolveFile();
+    const content = await this.previews.read(
+      app.containerId!,
+      runtime,
+      file,
+      resolveFile,
+    );
+    const current = await this.queries.getStored(id);
+    if (
+      current.status !== AndroidApplicationStatus.Running ||
+      previewRuntimeKey(current) !== runtime
+    ) {
+      throw new ConflictException(
+        'Android runtime changed while preparing its preview.',
       );
-    } catch (error) {
-      if (error instanceof DockerContainerArchiveReadLimitError) {
-        throw new PayloadTooLargeException(
-          'Image previews are limited to 25 MiB source files.',
-        );
-      }
-      throw error;
-    }
-
-    const image = sharp(source, {
-      animated: false,
-      limitInputPixels: 40_000_000,
-    });
-    const metadata = await image.metadata().catch(() => null);
-    if (!metadata?.format || !supportedPreviewFormats.has(metadata.format)) {
-      throw new UnsupportedMediaTypeException(
-        'Only JPEG, PNG, WebP, and GIF images can be previewed.',
-      );
-    }
-    const content = await image
-      .rotate()
-      .resize({
-        width: 1280,
-        height: 960,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .webp({ quality: 80 })
-      .toBuffer();
-    this.previewCache.set(cacheKey, content);
-    while (this.previewCache.size > maximumPreviewCacheEntries) {
-      const oldestKey = this.previewCache.keys().next().value;
-      if (oldestKey === undefined) break;
-      this.previewCache.delete(oldestKey);
     }
     return { content, mimeType: 'image/webp' };
+  }
+
+  private async resolvePreviewFile(app: AndroidApplication, path: string) {
+    const resolvedFile = await this.runDataCommand(app, [
+      `candidate=${this.paths.shellQuote(path)}`,
+      '[ -L "$candidate" ] && exit 41',
+      'source=$(realpath "$candidate" 2>/dev/null) || exit 40',
+      this.dataContainmentCheck('source'),
+      '[ -f "$source" ] || exit 44',
+      'version=$(stat -c "%d|%i|%s|%y|%z" "$source" 2>/dev/null || true)',
+      'printf "%s\t%s" "$source" "$version"',
+    ]);
+    const separator = resolvedFile.lastIndexOf('\t');
+    if (separator < 0)
+      throw new ConflictException('Runtime image metadata could not be read.');
+    const version = resolvedFile.slice(separator + 1);
+    const fields = version.split('|');
+    // A coarse or unsupported change timestamp cannot distinguish same-second rewrites.
+    const precise =
+      fields.length === 5 &&
+      fields.slice(0, 3).every((field) => /^\d+$/.test(field)) &&
+      /\d{2}:\d{2}:\d{2}\.\d+/.test(fields[3]) &&
+      /\d{2}:\d{2}:\d{2}\.\d*[1-9]/.test(fields[4]);
+    return {
+      path: resolvedFile.slice(0, separator),
+      version: precise ? version : null,
+    };
   }
 
   async downloadRuntimeFile(id: string, requestedPath?: string) {
@@ -358,7 +342,7 @@ export class RuntimeDataFilesService {
           stagingName,
           fileName,
           overwrite,
-        );
+        ).finally(() => this.previews.invalidate(app.containerId!));
       } finally {
         await this.removeUploadStagingDirectory(
           app,
