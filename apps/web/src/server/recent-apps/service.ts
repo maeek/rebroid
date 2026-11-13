@@ -58,6 +58,7 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
         ...entry,
         ownerDisplayName: isForeignOwned ? (getOwnerDisplayName(ownerNames, app.ownerUserId) ?? 'Unknown owner') : null,
         canStart: !isForeignOwned && hasPermission(user.permissions, 'applications:start'),
+        canStop: app.ownerUserId === user.ownerUserId && hasPermission(user.permissions, 'applications:stop'),
         canClone: isForeignOwned && hasPermission(user.permissions, 'applications:create')
       }
     })

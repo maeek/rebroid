@@ -112,12 +112,12 @@ describe('authorized recent application reads', () => {
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
   })
 
-  it('omits dismissed running apps and labels other owners without exposing start', async () => {
+  it('omits dismissed running apps and restricts power actions to owned apps', async () => {
     const user = await getCurrentUserContext()
     vi.mocked(getCurrentUserContext).mockResolvedValue({
       ...user,
       isPlatformAdmin: true,
-      permissions: { 'applications:start': true, 'applications:create': true }
+      permissions: { 'applications:start': true, 'applications:stop': true, 'applications:create': true }
     })
     vi.mocked(listDismissedRecentAppIds).mockReturnValue(new Set(['unvisited']))
     vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map([['another-user', 'Operations']]))
@@ -127,8 +127,8 @@ describe('authorized recent application reads', () => {
       summary('unvisited', 'running')
     ])
     expect(await listVisibleRecentApps()).toMatchObject([
-      { id: 'newest', ownerDisplayName: 'Operations', canStart: false, canClone: true },
-      { id: 'older', ownerDisplayName: null, canStart: true, canClone: false }
+      { id: 'newest', ownerDisplayName: 'Operations', canStart: false, canStop: false, canClone: true },
+      { id: 'older', ownerDisplayName: null, canStart: true, canStop: true, canClone: false }
     ])
   })
 })

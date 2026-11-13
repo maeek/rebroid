@@ -7,5 +7,6 @@ export type RecentApp = {
   statusLabel?: string | null
   ownerDisplayName?: string | null
   canStart?: boolean
+  canStop?: boolean
   canClone?: boolean
 }

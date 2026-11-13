@@ -1,21 +1,26 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   IconAppWindow,
   IconCopy,
   IconHistoryOff,
   IconLoader2,
   IconPlayerPlayFilled,
+  IconPlayerStopFilled,
   IconSettings
 } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Visible } from '@/components/ui/visible'
 import { useOpenAppAsMe } from '@/hooks/use-open-app-as-me'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { cn } from '@/lib/utils'
-import { requestApplicationStartAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
+import {
+  requestApplicationStartAction,
+  requestApplicationStopAction
+} from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { dismissRecentAppAction } from '@/server/recent-apps/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
@@ -39,12 +44,16 @@ export const RecentAppLink = ({
 }) => {
   const styles = variantStyles[variant]
   const router = useRouter()
+  const linkRef = useRef<HTMLAnchorElement>(null)
   const [isStarting, setIsStarting] = useState(false)
+  const [stopDialogOpen, setStopDialogOpen] = useState(false)
+  const [isStopping, setIsStopping] = useState(false)
   const [isDismissing, setIsDismissing] = useState(false)
   const { isCloning, openAppAsMe } = useOpenAppAsMe()
   const [contextOpen, setContextOpen] = useState(false)
   const isOperating = app.status === 'provisioning' || app.status === 'removing' || isStarting
   const canStart = app.canStart && (app.status === 'stopped' || app.status === 'error')
+  const canStop = app.canStop && app.status === 'running'
   const rail = variant === 'rail'
   const highlighted = isActive || contextOpen
   const href = `/app/${encodeURIComponent(app.id)}`
@@ -91,9 +100,29 @@ export const RecentAppLink = ({
     }
   }
 
+  const stopApp = async () => {
+    if (!canStop || isStopping) return
+
+    setIsStopping(true)
+    try {
+      unwrapActionResult(await requestApplicationStopAction(app.id))
+      setStopDialogOpen(false)
+      notifyRecentAppsUpdated()
+    } catch (error) {
+      toast({
+        title: 'Could not stop app',
+        description: getDisplayErrorMessage(error),
+        variant: 'danger'
+      })
+    } finally {
+      setIsStopping(false)
+    }
+  }
+
   const trigger = (
     <ContextMenuTrigger asChild>
       <Link
+        ref={linkRef}
         href={href}
         aria-label={label}
         aria-current={isActive ? 'page' : undefined}
@@ -159,6 +188,11 @@ export const RecentAppLink = ({
               <IconPlayerPlayFilled /> Start app
             </ContextMenuItem>
           ) : null}
+          {canStop ? (
+            <ContextMenuItem onSelect={() => setStopDialogOpen(true)}>
+              <IconPlayerStopFilled /> Stop app…
+            </ContextMenuItem>
+          ) : null}
           {app.canClone ? (
             <ContextMenuItem
               disabled={isCloning}
@@ -175,6 +209,20 @@ export const RecentAppLink = ({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
+      <ConfirmMutationDialog
+        open={stopDialogOpen}
+        title={`Stop ${app.name}?`}
+        description='This stops Android and disconnects active viewers.'
+        consequence='You can start the app again with its saved profiles.'
+        tone='warning'
+        confirmLabel='Stop app'
+        confirmDisabled={!canStop}
+        pendingLabel='Stopping…'
+        pending={isStopping}
+        finalFocus={linkRef}
+        onOpenChange={setStopDialogOpen}
+        onConfirm={() => void stopApp()}
+      />
       <Visible when={!rail && app.status === 'running'}>
         <span
           title='Running'
