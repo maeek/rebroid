@@ -15,6 +15,18 @@ export const androidBootProbeProperties = [
   'init.svc.adbd',
 ] as const;
 
+export const androidBootProbeCommand = (): string[] => {
+  const expressions = androidBootProbeProperties.flatMap((property) => [
+    '-e',
+    `'s/^\\[${property.replaceAll('.', '\\.')}\\]: \\[\\(.*\\)\\]$/${property}=\\1/p'`,
+  ]);
+  return [
+    'sh',
+    '-lc',
+    `properties=$(getprop) || exit $?; printf '%s\\n' "$properties" | sed -n ${expressions.join(' ')}`,
+  ];
+};
+
 export const parseAndroidBootReadiness = (
   output: string,
 ): AndroidBootReadiness => {

@@ -21,9 +21,9 @@ import { DockerSidecarAdbService } from './docker-sidecar-adb.service';
 import { DockerSidecarApiService } from './docker-sidecar-api.service';
 import { DockerSidecarImageService } from './docker-sidecar-image.service';
 import { DockerSidecarNetworkService } from './docker-sidecar-network.service';
-import { webrtcUdpPortBinding } from '../utils/docker-sidecar.utils';
 import { withHostTimezoneEnv } from '../../utils/docker-container-env.utils';
 import type {
+  AdbTargetPreparation,
   DockerSidecarAttachmentTimings,
   DockerSidecarPort,
 } from '../../contracts/docker-sidecar.port';
@@ -219,6 +219,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     adbPort: number,
     deadline?: OperationDeadline,
     signal?: AbortSignal,
+    purpose?: AdbTargetPreparation,
   ): Promise<ViewerTargetStatus> {
     const sidecar = await this.ensureSidecar({ deadline, signal });
     signal?.throwIfAborted();
@@ -233,6 +234,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
       adbPort,
       deadline,
       signal,
+      purpose,
     );
   }
 

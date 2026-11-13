@@ -14,7 +14,10 @@ import {
 } from '../../docker.types';
 import { isTransientAdbConnectionError } from '../utils/docker-sidecar.utils';
 
-type AdbStep = 'tcp' | 'connect' | 'state' | 'recovery' | 'display';
+import type { AdbTargetPreparation } from '../../contracts/docker-sidecar.port';
+
+type AdbStep =
+  'initialState' | 'tcp' | 'connect' | 'state' | 'recovery' | 'display';
 type AdbPreparation = {
   sidecarId: string;
   deadline?: OperationDeadline;
@@ -37,7 +40,9 @@ export class DockerSidecarAdbService {
     adbPort: number,
     deadline?: OperationDeadline,
     signal?: AbortSignal,
+    purpose: AdbTargetPreparation = 'interactive',
   ): Promise<ViewerTargetStatus> {
+    const startedAt = performance.now();
     const preparation: AdbPreparation = {
       sidecarId,
       deadline,
@@ -45,25 +50,31 @@ export class DockerSidecarAdbService {
       elapsedMs: {},
     };
     const target = `${adbHost}:${adbPort}`;
+    let outcome: 'reused' | 'reconnected' | 'failed' = 'failed';
     try {
-      const tcpProbe = await this.probeTcpTarget(preparation, adbHost, adbPort);
-      if (tcpProbe) {
-        return {
-          configured: true,
-          connected: false,
-          message: tcpProbe.message,
-          error: tcpProbe,
-        };
+      const existing = await this.probeExistingTransport(preparation, target);
+      let connection: ViewerTargetStatus;
+      if (existing) {
+        connection = existing;
+      } else {
+        const tcpProbe = await this.probeTcpTarget(
+          preparation,
+          adbHost,
+          adbPort,
+        );
+        if (tcpProbe) return this.targetFailure(tcpProbe);
+        connection = await this.connectTarget(preparation, target);
       }
-
-      const connection = await this.connectTarget(preparation, target);
       if (!connection.connected) {
         return connection;
       }
 
-      await this.prepareAndroidDisplay(preparation, target);
+      if (purpose === 'interactive') {
+        await this.prepareAndroidDisplay(preparation, target);
+      }
       signal?.throwIfAborted();
       deadline?.throwIfExpired();
+      outcome = existing ? 'reused' : 'reconnected';
       return connection;
     } catch (error) {
       preparation.signal?.throwIfAborted();
@@ -74,13 +85,48 @@ export class DockerSidecarAdbService {
       );
       return this.targetFailure(viewerError);
     } finally {
-      if (deadline) {
-        this.logger.debug({
-          message: 'Display sidecar ADB preparation timings.',
-          target,
-          elapsedMs: preparation.elapsedMs,
-        });
+      this.logger.log({
+        event: 'display_sidecar_adb_preparation',
+        target,
+        outcome,
+        stepMs: preparation.elapsedMs,
+        elapsedMs: Math.round(performance.now() - startedAt),
+      });
+    }
+  }
+
+  private async probeExistingTransport(
+    preparation: AdbPreparation,
+    target: string,
+  ): Promise<ViewerTargetStatus | null> {
+    const command = [
+      'timeout',
+      '--foreground',
+      '-k',
+      '1s',
+      '1s',
+      'adb',
+      '-s',
+      target,
+      'get-state',
+    ];
+    try {
+      const state = await this.execStep(
+        preparation,
+        'initialState',
+        command,
+        3_000,
+      );
+      const status = this.targetState(target, command, state);
+      return status.connected ? status : null;
+    } catch (error) {
+      if (
+        error instanceof ContainerCommandFailedException &&
+        this.classifyViewerTargetError(error.details).code === 'adb_unreachable'
+      ) {
+        return null;
       }
+      throw error;
     }
   }
 
@@ -93,10 +139,7 @@ export class DockerSidecarAdbService {
       const connectCommand = [
         'sh',
         '-lc',
-        [
-          `timeout --foreground -k 1s 5s adb disconnect ${quotedTarget} >/dev/null 2>&1 || true`,
-          `timeout --foreground -k 1s 10s adb connect ${quotedTarget}`,
-        ].join('; '),
+        `timeout --foreground -k 1s 10s adb connect ${quotedTarget}`,
       ];
       const output = await this.execStep(
         preparation,
@@ -309,24 +352,14 @@ export class DockerSidecarAdbService {
       step === 'connect' || step === 'recovery' || step === 'display';
     const guestOptions = mutatesTarget ? { guestTimeoutMs: timeoutMs } : {};
     signal?.throwIfAborted();
-    if (!deadline) {
-      const result = await this.exec.execInContainerWithOutput(
-        sidecarId,
-        command,
-        {
-          timeoutMs,
-          ...guestOptions,
-          ...(signal ? { signal } : {}),
-        },
-      );
-      signal?.throwIfAborted();
-      return result;
-    }
-
-    deadline.throwIfExpired();
+    deadline?.throwIfExpired();
     const startedAt = performance.now();
-    const remainingMs = deadline.remainingMs();
-    if (!mutatesTarget && remainingMs < timeoutMs) {
+    const remainingMs = deadline?.remainingMs();
+    if (
+      !mutatesTarget &&
+      remainingMs !== undefined &&
+      remainingMs < timeoutMs
+    ) {
       // Mutations get their guest timeout at admission in the exec adapter.
       const limitSeconds = Math.max(1, remainingMs - 1_000) / 1000;
       command = ['timeout', '-k', '1s', `${limitSeconds}s`, ...command];
@@ -334,14 +367,14 @@ export class DockerSidecarAdbService {
     try {
       return await this.exec.execInContainerWithOutput(sidecarId, command, {
         timeoutMs,
-        deadline,
+        ...(deadline ? { deadline } : {}),
         ...guestOptions,
         ...(signal ? { signal } : {}),
       });
     } finally {
       elapsedMs[step] = Math.round(performance.now() - startedAt);
       signal?.throwIfAborted();
-      deadline.throwIfExpired();
+      deadline?.throwIfExpired();
     }
   }
 
@@ -390,6 +423,7 @@ export class DockerSidecarAdbService {
       details.exitCode === 124 ||
       details.exitCode === 137 ||
       /device .* not found/.test(combinedOutput) ||
+      combinedOutput.includes('no devices/emulators found') ||
       isTransientAdbConnectionError(combinedOutput)
     ) {
       return {

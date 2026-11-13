@@ -14,6 +14,7 @@ import {
 } from '../../../docker/contracts/docker-network-runtime.port';
 import {
   DOCKER_SIDECAR,
+  type AdbTargetPreparation,
   type DockerSidecarPort,
 } from '../../../docker/contracts/docker-sidecar.port';
 import type { ViewerTargetStatus } from '../../../docker/docker.types';
@@ -179,18 +180,29 @@ export class AndroidAppsViewerNetworkService {
   async prepareViewerTarget(
     expected: ViewerRuntime,
     signal?: AbortSignal,
+    purpose: AdbTargetPreparation = 'interactive',
   ): Promise<PreparedViewerTarget> {
     signal?.throwIfAborted();
     const app = await this.currentViewerRuntime(expected);
     signal?.throwIfAborted();
     const runtime = readinessFingerprint(app);
-    const key = JSON.stringify([runtime, expected.containerStartedAt]);
+    const key = JSON.stringify([runtime, expected.containerStartedAt, purpose]);
     this.expirePreparedTargets();
     for (const [cachedKey, entry] of this.preparedTargets) {
       if (entry.appId === app.id && entry.runtime !== runtime)
         this.preparedTargets.delete(cachedKey);
     }
-    const cached = this.preparedTargets.get(key);
+    const cached =
+      this.preparedTargets.get(key) ??
+      (purpose === 'transport'
+        ? this.preparedTargets.get(
+            JSON.stringify([
+              runtime,
+              expected.containerStartedAt,
+              'interactive',
+            ]),
+          )
+        : undefined);
     if (cached) return cached.target;
 
     const existing = this.pendingTargets.get(key);
@@ -198,7 +210,7 @@ export class AndroidAppsViewerNetworkService {
       if (!existing.controller.signal.aborted)
         return this.waitForTarget(existing, signal);
       await existing.pending.catch(() => undefined);
-      return this.prepareViewerTarget(expected, signal);
+      return this.prepareViewerTarget(expected, signal, purpose);
     }
     if (this.pendingTargets.size >= maxPendingTargets) {
       throw new ConflictException('Display target preparation is busy.');
@@ -214,6 +226,7 @@ export class AndroidAppsViewerNetworkService {
         runtime,
         key,
         controller.signal,
+        purpose,
       ).finally(() => {
         this.pendingTargets.delete(key);
       }),
@@ -222,8 +235,12 @@ export class AndroidAppsViewerNetworkService {
     return this.waitForTarget(preparation, signal);
   }
 
-  async requireViewerTarget(app: ViewerRuntime, signal?: AbortSignal) {
-    const target = await this.prepareViewerTarget(app, signal);
+  async requireViewerTarget(
+    app: ViewerRuntime,
+    signal?: AbortSignal,
+    purpose?: AdbTargetPreparation,
+  ) {
+    const target = await this.prepareViewerTarget(app, signal, purpose);
     if (!target.viewerTarget.configured || !target.viewerTarget.connected) {
       throw new ConflictException(
         target.viewerTarget.message ?? 'Display target is unavailable.',
@@ -243,12 +260,13 @@ export class AndroidAppsViewerNetworkService {
     runtime: string,
     key: string,
     signal: AbortSignal,
+    purpose: AdbTargetPreparation,
   ) {
     const network = await this.ensureNetworkPrepared(app);
     signal.throwIfAborted();
     const generation = network.sidecarGeneration;
     const provisioned = this.provisionedTargets.get(app.id);
-    this.provisionedTargets.delete(app.id);
+    if (purpose === 'interactive') this.provisionedTargets.delete(app.id);
     const connected = network.configured && network.connected;
     const observed =
       connected &&
@@ -276,7 +294,7 @@ export class AndroidAppsViewerNetworkService {
     if (generation !== this.sidecar.adbTargetGeneration)
       throw new Error('Display sidecar changed during target preparation.');
     const viewerTarget = connected
-      ? await this.prepareScrcpyAdbTarget(app, adbHost, verified)
+      ? await this.prepareScrcpyAdbTarget(app, adbHost, verified, purpose)
       : network;
     signal.throwIfAborted();
     const target = {
@@ -436,26 +454,40 @@ export class AndroidAppsViewerNetworkService {
     app: AndroidApplication,
     adbHost: string,
     provisioned?: ProvisionedAdbReadiness,
+    purpose: AdbTargetPreparation = 'interactive',
   ) {
-    return this.coalesce(
-      this.adbTargetPreparations,
-      JSON.stringify([
-        app.id,
-        app.containerId,
-        app.networkName,
-        app.lastStartedAt,
-        app.networkPolicyRevision,
-        adbHost,
-        app.adbPort,
-      ]),
-      () => this.prepareScrcpyAdbTargetOnce(app, adbHost, provisioned),
+    const targetKey = [
+      app.id,
+      app.containerId,
+      app.networkName,
+      app.lastStartedAt,
+      app.networkPolicyRevision,
+      adbHost,
+      app.adbPort,
+    ];
+    const key = JSON.stringify([...targetKey, purpose]);
+    const otherPurpose =
+      purpose === 'interactive' ? 'transport' : 'interactive';
+    const preceding = this.adbTargetPreparations.get(
+      JSON.stringify([...targetKey, otherPurpose]),
     );
+    return this.coalesce(this.adbTargetPreparations, key, async () => {
+      // Two preparations for the same runtime must not race to reconnect ADB.
+      await preceding?.catch(() => undefined);
+      return this.prepareScrcpyAdbTargetOnce(
+        app,
+        adbHost,
+        provisioned,
+        purpose,
+      );
+    });
   }
 
   private async prepareScrcpyAdbTargetOnce(
     app: AndroidApplication,
     adbHost: string,
-    provisioned?: ProvisionedAdbReadiness,
+    provisioned: ProvisionedAdbReadiness | undefined,
+    purpose: AdbTargetPreparation,
   ) {
     const current = await this.refreshNetworkPolicy(app);
     if (
@@ -480,7 +512,16 @@ export class AndroidAppsViewerNetworkService {
       },
     );
 
-    const result = await this.sidecar.connectAdb(adbHost, app.adbPort);
+    const result =
+      purpose === 'interactive'
+        ? await this.sidecar.connectAdb(adbHost, app.adbPort)
+        : await this.sidecar.connectAdb(
+            adbHost,
+            app.adbPort,
+            undefined,
+            undefined,
+            purpose,
+          );
     await this.appendLifecycleLog(
       app.id,
       'Display sidecar ADB target prepared',

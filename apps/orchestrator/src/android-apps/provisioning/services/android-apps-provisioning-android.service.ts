@@ -38,7 +38,7 @@ import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-a
 import { isRedroidRuntime } from '@rebroid/android-application-core/redroid-runtime';
 import {
   androidBootDiagnosticSummary,
-  androidBootProbeProperties,
+  androidBootProbeCommand,
   parseAndroidBootReadiness,
   truncateDiagnosticText,
 } from '../utils/android-apps-android-provisioning.utils';
@@ -88,6 +88,51 @@ export class AndroidAppsProvisioningAndroidService {
     private readonly tcpAdb: AndroidAppsTcpAdbService,
   ) {}
 
+  async prepareRuntime(
+    app: AndroidApplication,
+    reservationId: string,
+    beforeRemoteAccess: () => Promise<void>,
+  ) {
+    // startWithPolicy has completed. Drain both branches before releasing the
+    // reservation, including boot failure and cancellation during attachment.
+    const bootStartedAt = performance.now();
+    const observeBootSettlement = (outcome: 'fulfilled' | 'rejected') => {
+      const settledAt = performance.now();
+      // Record before joining attachment, without adding persistence to readiness.
+      this.logger.log({
+        event: 'android_boot_observation_settled',
+        reservationId,
+        applicationId: app.id,
+        containerId: app.containerId,
+        outcome,
+        settledAt: new Date().toISOString(),
+        elapsedMs: Math.round(settledAt - bootStartedAt),
+      });
+      return settledAt;
+    };
+    const [boot, attachment] = await Promise.allSettled([
+      this.waitForAndroidBoot(app, reservationId).then(
+        () => observeBootSettlement('fulfilled'),
+        (error: unknown) => {
+          observeBootSettlement('rejected');
+          throw error;
+        },
+      ),
+      this.prepareNetworkAttachment(app, reservationId),
+    ]);
+    this.tracker.ensureActive(app.id);
+    if (boot.status === 'rejected') throw boot.reason;
+    if (attachment.status === 'rejected') throw attachment.reason;
+    await beforeRemoteAccess();
+    this.tracker.ensureActive(app.id);
+    await this.prepareRemoteAccess(
+      app,
+      reservationId,
+      attachment.value,
+      boot.value,
+    );
+  }
+
   /** Waits until Android reports that boot is done. */
   async waitForAndroidBoot(app: AndroidApplication, reservationId?: string) {
     this.assertContainerId(app);
@@ -116,16 +161,7 @@ export class AndroidAppsProvisioningAndroidService {
     let guestShellObserved = false;
     let initialGuestUnavailableAt: number | undefined;
     let guestUnavailableObservations = 0;
-    const probeCommand = [
-      'sh',
-      '-lc',
-      androidBootProbeProperties
-        .map(
-          (prop) =>
-            `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
-        )
-        .join('; '),
-    ];
+    const probeCommand = androidBootProbeCommand();
 
     while (deadline.remainingMs() > 0) {
       this.tracker.ensureActive(app.id);

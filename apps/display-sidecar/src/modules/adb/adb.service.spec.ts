@@ -1,8 +1,78 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { Logger } from "@nestjs/common";
 import type { SidecarConfigService } from "../shared/sidecar-config.service";
 import { AdbCommandRunner } from "./adb-command-runner";
 import { AdbService } from "./adb.service";
+
+test("viewer reuses a healthy ADB transport and records only the state check", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const state = { stdout: "device\n", stderr: "", exitCode: 0 };
+  const text = t.mock.method(runner, "text", async () => state);
+  const log = t.mock.method(Logger.prototype, "log", () => undefined);
+
+  assert.equal(
+    await new AdbService(runner).ensureViewerConnected("target:5555"),
+    state,
+  );
+  assert.deepEqual(
+    text.mock.calls.map(({ arguments: [args] }) => args),
+    [["-s", "target:5555", "get-state"]],
+  );
+  const [event] = log.mock.calls[0].arguments;
+  assert.equal(event.event, "viewer_adb_connection");
+  assert.equal(event.outcome, "reused");
+  assert.ok(event.initialGetStateMs >= 0);
+  assert.equal(event.connectMs, null);
+  assert.equal(event.verificationGetStateMs, null);
+  assert.ok(event.elapsedMs >= event.initialGetStateMs);
+});
+
+test("viewer reconnects and verifies ADB when the initial state check fails", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const state = { stdout: "device", stderr: "", exitCode: 0 };
+  const text = t.mock.method(runner, "text", async () => state);
+  text.mock.mockImplementationOnce(async () => {
+    throw new Error("device not found");
+  });
+  const log = t.mock.method(Logger.prototype, "log", () => undefined);
+
+  assert.equal(
+    await new AdbService(runner).ensureViewerConnected("target:5555"),
+    state,
+  );
+  assert.deepEqual(
+    text.mock.calls.map(({ arguments: [args] }) => args),
+    [
+      ["-s", "target:5555", "get-state"],
+      ["connect", "target:5555"],
+      ["-s", "target:5555", "get-state"],
+    ],
+  );
+  const [event] = log.mock.calls[0].arguments;
+  assert.equal(event.event, "viewer_adb_connection");
+  assert.equal(event.outcome, "reconnected");
+  assert.ok(event.initialGetStateMs >= 0);
+  assert.ok(event.connectMs >= 0);
+  assert.ok(event.verificationGetStateMs >= 0);
+});
+
+test("viewer rejects an ADB transport that remains offline after reconnect", async (t) => {
+  const runner = new AdbCommandRunner({} as SidecarConfigService);
+  const text = t.mock.method(runner, "text", async () => ({
+    stdout: "offline",
+    stderr: "",
+    exitCode: 0,
+  }));
+  const log = t.mock.method(Logger.prototype, "log", () => undefined);
+
+  await assert.rejects(
+    new AdbService(runner).ensureViewerConnected("target:5555"),
+    /ADB transport target:5555 is offline/,
+  );
+  assert.deepEqual(text.mock.calls[1].arguments[0], ["connect", "target:5555"]);
+  assert.equal(log.mock.calls[0].arguments[0].outcome, "failed");
+});
 
 test("notification fallback shares the first command's deadline", async (t) => {
   const runner = new AdbCommandRunner({} as SidecarConfigService);

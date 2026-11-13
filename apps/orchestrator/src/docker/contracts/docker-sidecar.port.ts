@@ -12,6 +12,8 @@ export interface DockerSidecarAttachmentTimings extends DockerNetworkAttachmentT
   sidecarPublishedBindingCount?: number;
 }
 
+export type AdbTargetPreparation = 'interactive' | 'transport';
+
 export const DOCKER_SIDECAR = Symbol('DOCKER_SIDECAR');
 
 export interface DockerSidecarPort {
@@ -33,6 +35,7 @@ export interface DockerSidecarPort {
     adbPort: number,
     deadline?: OperationDeadline,
     signal?: AbortSignal,
+    purpose?: AdbTargetPreparation,
   ): Promise<ViewerTargetStatus>;
   getSidecarIp(networkName: string): Promise<string | null>;
   health(): Promise<ServiceHealth>;

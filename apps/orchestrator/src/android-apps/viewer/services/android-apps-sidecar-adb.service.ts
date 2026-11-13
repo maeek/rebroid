@@ -303,6 +303,8 @@ export class AndroidAppsSidecarAdbService {
     return this.request<{ source: 'adb'; collectedAt: string; output: string }>(
       app,
       `/logcat?tail=${Math.max(1, Math.min(tail, 2000))}`,
+      {},
+      'transport',
     );
   }
 
@@ -311,6 +313,7 @@ export class AndroidAppsSidecarAdbService {
       app,
       '/notifications',
       { signal },
+      'transport',
     );
     return parseAndroidNotifications(result.output);
   }
@@ -351,11 +354,13 @@ export class AndroidAppsSidecarAdbService {
     app: AndroidApplication,
     path: string,
     options: AdbRequestOptions = {},
+    purpose?: 'transport',
   ): Promise<T> {
     options.signal?.throwIfAborted();
     const target = await this.viewerNetwork.requireViewerTarget(
       app,
       options.signal ?? undefined,
+      purpose,
     );
     return this.requestPrepared<T>(target, path, options);
   }

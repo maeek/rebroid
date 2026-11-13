@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
@@ -38,11 +37,11 @@ describe('AndroidAppsRuntimeActivationService', () => {
     };
     const android = {
       shouldPrepareRemoteAccess: jest.fn().mockReturnValue(false),
-      waitForAndroidBoot: jest.fn().mockResolvedValue(undefined),
-      prepareNetworkAttachment: jest
-        .fn()
-        .mockResolvedValue({ networkName: 'app-network' }),
-      prepareRemoteAccess: jest.fn().mockResolvedValue(undefined),
+      prepareRuntime: jest.fn(
+        async (_app, _id, beforeRemoteAccess: () => Promise<void>) => {
+          await beforeRemoteAccess();
+        },
+      ),
     };
     const tracker = { ensureActive: jest.fn() };
     const network = {
@@ -107,141 +106,33 @@ describe('AndroidAppsRuntimeActivationService', () => {
     for (let turn = 0; turn < 30; turn += 1) await Promise.resolve();
   }
 
-  it('overlaps attachment and boot only after guarded startup and waits for both before ADB', async () => {
-    const { app, service, android, network } = setup(true, false);
+  it('admits Android preparation only after guarded startup', async () => {
+    const { app, service, android, network, updateProgress } = setup(
+      true,
+      false,
+    );
     const policy = deferred();
-    const boot = deferred();
-    const attachment = deferred<{ networkName: string }>();
     android.shouldPrepareRemoteAccess.mockReturnValue(true);
     network.startWithPolicy.mockImplementation(async (_app, start) => {
       await start();
       await policy.promise;
     });
-    android.waitForAndroidBoot.mockReturnValue(boot.promise);
-    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
     const activation = service.activate(app, reservation, 'start');
     await flush();
-    expect(android.waitForAndroidBoot).not.toHaveBeenCalled();
-    expect(android.prepareNetworkAttachment).not.toHaveBeenCalled();
+    expect(android.prepareRuntime).not.toHaveBeenCalled();
     policy.resolve();
-    await flush();
-    expect(android.waitForAndroidBoot).toHaveBeenCalledWith(
-      app,
-      reservation.id,
-    );
-    expect(android.prepareNetworkAttachment).toHaveBeenCalledWith(
-      app,
-      reservation.id,
-    );
-    boot.resolve();
-    await flush();
-    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
-    const prepared = { networkName: app.networkName };
-    attachment.resolve(prepared);
     await activation;
-    expect(android.prepareRemoteAccess).toHaveBeenCalledWith(
+    expect(android.prepareRuntime).toHaveBeenCalledWith(
       app,
       reservation.id,
-      prepared,
-      expect.any(Number),
+      expect.any(Function),
     );
-  });
-
-  it('timestamps boot failure before the admitted attachment drains', async () => {
-    const log = jest
-      .spyOn(Logger.prototype, 'log')
-      .mockImplementation(() => undefined);
-    try {
-      const { app, service, android } = setup(true, false);
-      android.shouldPrepareRemoteAccess.mockReturnValue(true);
-      const attachment = deferred<{ networkName: string }>();
-      android.waitForAndroidBoot.mockRejectedValue(
-        new Error('guest unavailable'),
-      );
-      android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
-      const activation = service.activate(app, reservation, 'start');
-      const failure = expect(activation).rejects.toThrow('guest unavailable');
-      await flush();
-      expect(log).toHaveBeenCalledWith(
-        expect.objectContaining({
-          event: 'android_boot_observation_settled',
-          reservationId: reservation.id,
-          containerId: app.containerId,
-          outcome: 'rejected',
-          settledAt: expect.any(String),
-          elapsedMs: expect.any(Number),
-        }),
-      );
-      expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
-      attachment.resolve({ networkName: app.networkName });
-      await failure;
-    } finally {
-      log.mockRestore();
-    }
-  });
-
-  it('drains an admitted attachment after boot failure before releasing activation', async () => {
-    const { app, service, android } = setup(true, false);
-    android.shouldPrepareRemoteAccess.mockReturnValue(true);
-    const attachment = deferred<{ networkName: string }>();
-    android.waitForAndroidBoot.mockRejectedValue(new Error('boot failed'));
-    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
-    let settled = false;
-    const activation = service.activate(app, reservation, 'start');
-    void activation.then(
-      () => {
-        settled = true;
-      },
-      () => {
-        settled = true;
-      },
+    expect(updateProgress).toHaveBeenCalledWith(
+      reservation,
+      expect.objectContaining({
+        statusMessage: 'Preparing Android remote access.',
+      }),
     );
-    await flush();
-    expect(settled).toBe(false);
-    attachment.resolve({ networkName: app.networkName });
-    await expect(activation).rejects.toThrow('boot failed');
-    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
-  });
-
-  it('drains boot after a permanent attachment failure and never starts remote access', async () => {
-    const { app, service, android } = setup(true, false);
-    android.shouldPrepareRemoteAccess.mockReturnValue(true);
-    const boot = deferred();
-    android.waitForAndroidBoot.mockReturnValue(boot.promise);
-    android.prepareNetworkAttachment.mockRejectedValue(
-      new Error('attachment failed'),
-    );
-    let settled = false;
-    const activation = service.activate(app, reservation, 'start');
-    void activation.then(
-      () => {
-        settled = true;
-      },
-      () => {
-        settled = true;
-      },
-    );
-    await flush();
-    expect(settled).toBe(false);
-    boot.resolve();
-    await expect(activation).rejects.toThrow('attachment failed');
-    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
-  });
-
-  it('drains attachment on cancellation and never starts remote access', async () => {
-    const { app, service, android, tracker } = setup(true, false);
-    android.shouldPrepareRemoteAccess.mockReturnValue(true);
-    const attachment = deferred<{ networkName: string }>();
-    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
-    const activation = service.activate(app, reservation, 'start');
-    await flush();
-    expect(android.prepareNetworkAttachment).toHaveBeenCalledTimes(1);
-    tracker.ensureActive.mockImplementation(() => {
-      throw new Error('cancelled');
-    });
-    attachment.resolve({ networkName: app.networkName });
-    await expect(activation).rejects.toThrow('cancelled');
-    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
   });
 
   it('does not admit boot or attachment after the reservation is superseded', async () => {
@@ -253,8 +144,7 @@ describe('AndroidAppsRuntimeActivationService', () => {
     await expect(service.activate(app, reservation, 'start')).rejects.toThrow(
       'no longer reserved',
     );
-    expect(android.waitForAndroidBoot).not.toHaveBeenCalled();
-    expect(android.prepareNetworkAttachment).not.toHaveBeenCalled();
+    expect(android.prepareRuntime).not.toHaveBeenCalled();
   });
 
   it('applies the saved render device and replaces legacy GPU arguments on creation', async () => {

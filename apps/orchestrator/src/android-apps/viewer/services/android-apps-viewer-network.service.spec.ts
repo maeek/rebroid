@@ -113,6 +113,18 @@ function setup(current = runtime) {
 describe('shared viewer target preparation', () => {
   afterEach(() => jest.restoreAllMocks());
 
+  it('does not let transport-only readiness replace interactive preparation', async () => {
+    const { viewer, sidecar } = setup();
+    await viewer.requireViewerTarget(runtime, undefined, 'transport');
+    await viewer.requireViewerTarget(runtime, undefined, 'transport');
+    await viewer.prepareViewerTarget(runtime);
+
+    expect(sidecar.connectAdb.mock.calls).toEqual([
+      [adbHost, runtime.adbPort, undefined, undefined, 'transport'],
+      [adbHost, runtime.adbPort],
+    ]);
+  });
+
   it('reuses provisioning ADB readiness after verifying the live target and applying viewer policy', async () => {
     const { viewer, policy, sidecar, lifecycle } = setup();
     const target = { ...connected, message: 'verified during provisioning' };

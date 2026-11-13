@@ -125,7 +125,7 @@ export class DisplayController {
   @ApiBody({ type: CreateDisplaySessionDto })
   @ApiOkResponse({ type: DisplaySessionResponseDto })
   async createSession(@Body() body: CreateDisplaySessionDto) {
-    await this.adb.ensureConnected(body.udid);
+    await this.adb.ensureViewerConnected(body.udid);
     return {
       session: this.sessions.create(body),
     };

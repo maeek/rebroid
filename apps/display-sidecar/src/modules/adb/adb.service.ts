@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from "@nestjs/common";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -62,19 +63,71 @@ const KEY_EVENTS: Partial<Record<ViewerCommand, string>> = {
 
 @Injectable()
 export class AdbService {
+  private readonly logger = new Logger(AdbService.name);
+
   constructor(private readonly runner: AdbCommandRunner) {}
 
   async connect(udid: string) {
     return this.adb(["connect", udid], 15_000);
   }
 
-  async getState(udid: string) {
-    return this.adb(["-s", udid, "get-state"], 10_000);
+  async getState(udid: string, timeoutMs = 10_000) {
+    return this.adb(["-s", udid, "get-state"], timeoutMs);
   }
 
   async ensureConnected(udid: string) {
     await this.connect(udid);
-    const state = await this.getState(udid);
+    return this.requireConnectedState(udid, await this.getState(udid));
+  }
+
+  async ensureViewerConnected(udid: string) {
+    const startedAt = performance.now();
+    const timings = {
+      initialGetStateMs: null as number | null,
+      connectMs: null as number | null,
+      verificationGetStateMs: null as number | null,
+    };
+    const measure = async <T>(
+      phase: keyof typeof timings,
+      run: () => Promise<T>,
+    ): Promise<T> => {
+      const phaseStartedAt = performance.now();
+      try {
+        return await run();
+      } finally {
+        timings[phase] = Math.round(performance.now() - phaseStartedAt);
+      }
+    };
+
+    let outcome: "reused" | "reconnected" | "failed" = "failed";
+    try {
+      // Bound the extra wait if the local ADB server does not answer promptly.
+      const existing = await measure("initialGetStateMs", () =>
+        this.getState(udid, 1_000),
+      ).catch(() => undefined);
+      if (existing?.stdout.trim() === "device") {
+        outcome = "reused";
+        return existing;
+      }
+
+      await measure("connectMs", () => this.connect(udid));
+      const state = this.requireConnectedState(
+        udid,
+        await measure("verificationGetStateMs", () => this.getState(udid)),
+      );
+      outcome = "reconnected";
+      return state;
+    } finally {
+      this.logger.log({
+        event: "viewer_adb_connection",
+        outcome,
+        ...timings,
+        elapsedMs: Math.round(performance.now() - startedAt),
+      });
+    }
+  }
+
+  private requireConnectedState(udid: string, state: CommandResult) {
     if (state.stdout.trim() !== "device") {
       throw new InternalServerErrorException(
         `ADB transport ${udid} is ${state.stdout.trim() || "unknown"}.`,

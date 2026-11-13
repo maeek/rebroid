@@ -108,6 +108,146 @@ describe('Android startup probe scheduling', () => {
     jest.restoreAllMocks();
   });
 
+  it('filters one Android property snapshot before returning it from Docker', async () => {
+    const { android, exec } = setup();
+    exec.execInContainerWithOutput.mockImplementation(
+      async (_id, command: string[]) => {
+        const shell = spawnSync(
+          'sh',
+          [
+            '-c',
+            [
+              "getprop() { [ \"$#\" -eq 0 ] || return 1; printf '%s\\n' '[dev.bootcomplete]: [1]' '[init.svc.adbd]: [running]' '[devXbootcomplete]: [0]' '[unrelated]: [private]'; }",
+              command[2],
+            ].join('\n'),
+          ],
+          { encoding: 'utf8' },
+        );
+        expect(shell.status).toBe(0);
+        expect(shell.stdout).toBe(
+          'dev.bootcomplete=1\ninit.svc.adbd=running\n',
+        );
+        return { stdout: shell.stdout, stderr: shell.stderr };
+      },
+    );
+    await android.waitForAndroidBoot(app);
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['boot', 'attachment'] as const)(
+    'drains the other preparation when %s fails and skips remote access',
+    async (failed) => {
+      const { android } = setup();
+      const log = jest
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => {});
+      const boot = jest.spyOn(android, 'waitForAndroidBoot');
+      const attachment = jest.spyOn(android, 'prepareNetworkAttachment');
+      const remote = jest.spyOn(android, 'prepareRemoteAccess');
+      const beforeRemote = jest.fn();
+      let finish!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      if (failed === 'boot') {
+        boot.mockRejectedValue(new Error('boot failed'));
+        attachment.mockReturnValue(pending.then(() => undefined as never));
+      } else {
+        boot.mockReturnValue(pending);
+        attachment.mockRejectedValue(new Error('attachment failed'));
+      }
+      let settled = false;
+      const result = android
+        .prepareRuntime(app, 'reservation', beforeRemote)
+        .catch((error: unknown) => {
+          settled = true;
+          throw error;
+        });
+      await jest.advanceTimersByTimeAsync(0);
+      expect(settled).toBe(false);
+      if (failed === 'boot') {
+        expect(log).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: 'android_boot_observation_settled',
+            outcome: 'rejected',
+          }),
+        );
+      }
+      finish();
+      await expect(result).rejects.toThrow(`${failed} failed`);
+      expect(beforeRemote).not.toHaveBeenCalled();
+      expect(remote).not.toHaveBeenCalled();
+    },
+  );
+
+  it('admits both boot and attachment before preparing remote access', async () => {
+    const { android, sidecar, exec } = setup();
+    exec.execInContainerWithOutput.mockResolvedValue({
+      stdout: 'dev.bootcomplete=1',
+      stderr: '',
+      exitCode: 0,
+    });
+    let finishAttachment!: () => void;
+    const attached = new Promise<void>((resolve) => {
+      finishAttachment = resolve;
+    });
+    sidecar.ensureSidecarOnNetwork.mockImplementationOnce(async () => {
+      await attached;
+      return { ...connected, sidecarGeneration: sidecar.adbTargetGeneration };
+    });
+    const beforeRemote = jest.fn().mockResolvedValue(undefined);
+    const preparation = android.prepareRuntime(
+      app,
+      'reservation',
+      beforeRemote,
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
+    expect(beforeRemote).not.toHaveBeenCalled();
+    finishAttachment();
+    await preparation;
+    expect(beforeRemote).toHaveBeenCalledTimes(1);
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
+  });
+
+  it('drains an admitted attachment after cancellation and skips remote access', async () => {
+    const { android, tracker, sidecar } = setup();
+    jest.spyOn(android, 'waitForAndroidBoot').mockResolvedValue(undefined);
+    let finishAttachment!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishAttachment = resolve;
+    });
+    const attachment = jest
+      .spyOn(android, 'prepareNetworkAttachment')
+      .mockImplementation(async () => {
+        await pending;
+        throw new Error('Attachment finished after cancellation');
+      });
+    const beforeRemote = jest.fn();
+    const preparation = android.prepareRuntime(
+      app,
+      'reservation',
+      beforeRemote,
+    );
+    let settled = false;
+    const failure = expect(
+      preparation.catch((error: unknown) => {
+        settled = true;
+        throw error;
+      }),
+    ).rejects.toThrow(/cancelled/i);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(attachment).toHaveBeenCalledTimes(1);
+    tracker.cancel(app.id);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false);
+    finishAttachment();
+    await failure;
+    expect(beforeRemote).not.toHaveBeenCalled();
+    expect(sidecar.connectAdb).not.toHaveBeenCalled();
+  });
+
   it('backs off unchanged Android properties while checking container liveness every second', async () => {
     const diagnosticLog = jest
       .spyOn(Logger.prototype, 'log')

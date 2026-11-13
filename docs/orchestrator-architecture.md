@@ -157,6 +157,8 @@ the first unavailable and first subsequent successful observation, including ela
 time and failure count, without logging every poll. Timeout diagnostics share a separate
 five-second allowance and cancellation prevents further diagnostic work.
 
+Each property probe reads one Android property snapshot and filters it inside
+the guest to the readiness allowlist before returning output to Docker.
 Each boot observation also emits the structured orchestrator event
 `android_boot_probe`. It carries the application/container/reservation IDs, a
 `bootObservationId`, sequence number, UTC observation timestamp, and monotonic
