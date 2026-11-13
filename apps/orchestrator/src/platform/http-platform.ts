@@ -1,6 +1,7 @@
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, ValidationPipe, type Type } from '@nestjs/common';
 import type { ValidationError } from 'class-validator';
 import { ConfigService } from '@nestjs/config';
+import { NestFactory } from '@nestjs/core';
 import {
   FastifyAdapter,
   type NestFastifyApplication,
@@ -8,6 +9,9 @@ import {
 import fastifyHelmet from '@fastify/helmet';
 import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
+import { PinoNestLogger } from './pino-nest-logger';
+
+type LogDestination = { write(message: string): void };
 
 const redactedLogPaths = [
   'req.headers.authorization',
@@ -40,13 +44,14 @@ export const shouldDisableResponseCache = (url: string) => {
   );
 };
 
-export const createFastifyAdapter = () =>
+export const createFastifyAdapter = (stream?: LogDestination) =>
   new FastifyAdapter({
     genReqId: (request: IncomingMessage) => {
       const requestId = request.headers['x-request-id'];
       return typeof requestId === 'string' ? requestId : randomUUID();
     },
     logger: {
+      stream,
       serializers: {
         req: (request: { method: string; url: string }) => ({
           method: request.method,
@@ -59,6 +64,16 @@ export const createFastifyAdapter = () =>
       },
     },
   });
+
+export const createOrchestratorApplication = (
+  module: Type<unknown>,
+  stream?: LogDestination,
+) => {
+  const adapter = createFastifyAdapter(stream);
+  return NestFactory.create<NestFastifyApplication>(module, adapter, {
+    logger: new PinoNestLogger(adapter.getInstance().log),
+  });
+};
 
 export const configureFastifyPlatform = async (app: NestFastifyApplication) => {
   const config = app.get(ConfigService);

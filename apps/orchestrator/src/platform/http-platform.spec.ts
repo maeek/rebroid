@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Module, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Module,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -11,12 +19,26 @@ import { SecurityModule } from '../security/security.module';
 import {
   configureFastifyPlatform,
   createFastifyAdapter,
+  createOrchestratorApplication,
 } from './http-platform';
 
 @Controller()
 class SmokeController {
+  private readonly logger = new Logger(SmokeController.name);
+
   @Get('echo')
   echo() {
+    return { ok: true };
+  }
+
+  @Get('log')
+  log() {
+    this.logger.log({ event: 'smoke', details: { ready: true } });
+    this.logger.debug('debug details');
+    this.logger.error(
+      'operation failed',
+      'Error: operation failed\n    at test.ts:1:1',
+    );
     return { ok: true };
   }
 
@@ -74,6 +96,64 @@ class SmokeController {
   ],
 })
 class SmokeModule {}
+
+it('writes Nest startup, service and HTTP logs as single-line Pino records', async () => {
+  const output: string[] = [];
+  const app = await createOrchestratorApplication(SmokeModule, {
+    write: (chunk) => {
+      output.push(chunk);
+    },
+  });
+  try {
+    await configureFastifyPlatform(app);
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+    await app.inject({
+      method: 'GET',
+      url: '/api/v1/log?secret=hidden',
+      headers: {
+        'x-orchestrator-secret': 'test-secret',
+        'x-request-id': 'request-1',
+      },
+    });
+    const records = output
+      .join('')
+      .trimEnd()
+      .split('\n')
+      .map((line) => JSON.parse(line) as unknown);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ level: 30, context: 'NestFactory' }),
+        expect.objectContaining({
+          level: 30,
+          context: 'SmokeController',
+          event: 'smoke',
+          details: { ready: true },
+        }),
+        expect.objectContaining({
+          level: 20,
+          context: 'SmokeController',
+          msg: 'debug details',
+        }),
+        expect.objectContaining({
+          level: 50,
+          context: 'SmokeController',
+          msg: 'operation failed',
+          stack: 'Error: operation failed\n    at test.ts:1:1',
+        }),
+        expect.objectContaining({
+          level: 30,
+          reqId: 'request-1',
+          req: { method: 'GET', url: '/api/v1/log' },
+        }),
+      ]),
+    );
+    expect(output.join('')).not.toMatch(/secret=hidden|test-secret/);
+  } finally {
+    await app.close();
+    Logger.overrideLogger(new Logger());
+  }
+});
 
 describe('Fastify HTTP platform', () => {
   let app: NestFastifyApplication;

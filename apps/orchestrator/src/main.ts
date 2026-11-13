@@ -1,20 +1,15 @@
 import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AutomationRunEventStreamService } from './automations/events/automation-run-event-stream.service';
 import {
   configureFastifyPlatform,
-  createFastifyAdapter,
+  createOrchestratorApplication,
 } from './platform/http-platform';
 import { secretHeaderName } from './security/shared-secret.guard';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    createFastifyAdapter(),
-  );
+  const app = await createOrchestratorApplication(AppModule);
   const config = app.get(ConfigService);
   await configureFastifyPlatform(app);
 
