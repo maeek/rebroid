@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
 import { sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { MobileNavigation } from './mobile-navigation'
 import { PlatformHealthProvider } from './platform-health-context'
@@ -25,14 +26,7 @@ export const ProtectedShell = ({
 }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed)
   const [animateSidebar, setAnimateSidebar] = useState(false)
-  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
-  useEffect(() => {
-    const viewport = window.matchMedia('(min-width: 64rem)')
-    const updateViewport = () => setIsDesktop(viewport.matches)
-    updateViewport()
-    viewport.addEventListener('change', updateViewport)
-    return () => viewport.removeEventListener('change', updateViewport)
-  }, [])
+  const isDesktop = useDesktopViewport()
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
