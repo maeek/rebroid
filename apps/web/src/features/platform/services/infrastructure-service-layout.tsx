@@ -1,9 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Section } from '@/components/ui/section'
 import { DetailFields } from '@/shared/ui/detail-fields'
-import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ServiceConnectionLinks } from '@/shared/ui/platform/service-connection-links'
+import { serviceContainerField } from '@/shared/ui/platform/service-container-field'
 import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
-import { ResourceLink } from '@/shared/ui/resource-link'
+import type { ServiceContainer } from '@/shared/contracts/diagnostics'
+
+const orchestratorRelatedLinks = [
+  { href: '/runtime/docker', label: 'Docker diagnostics and limits' },
+  { href: '/platform/runtime', label: 'General' }
+]
 
 export const InfrastructureServiceLayout = ({
   serviceId,
@@ -13,7 +19,7 @@ export const InfrastructureServiceLayout = ({
   limits,
   diagnostics,
   apiUrl,
-  containerId,
+  container,
   loading = false
 }: {
   serviceId: 'orchestrator' | 'docker'
@@ -23,7 +29,7 @@ export const InfrastructureServiceLayout = ({
   limits?: ReactNode
   diagnostics?: ReactNode
   apiUrl?: string
-  containerId?: string
+  container?: ServiceContainer
   loading?: boolean
 }) => (
   <ServiceDetailLayout
@@ -52,24 +58,20 @@ export const InfrastructureServiceLayout = ({
         surface='panel'
         title='Connection'
         description='Managed by your deployment configuration.'
-        actions={
-          !loading && containerId ? (
-            <DockerContainerLinks
-              containerId={containerId}
-              className='max-sm:flex-col max-sm:items-end'
-            />
-          ) : undefined
-        }
         contentClassName='gap-6'
       >
         <DetailFields
           loading={loading}
-          fields={[{ label: 'API URL', value: apiUrl, code: true, copyValue: apiUrl, fullWidth: true }]}
+          fields={[
+            { label: 'API URL', value: apiUrl, code: true, copyValue: apiUrl, fullWidth: !container },
+            ...(container ? [serviceContainerField(container)] : [])
+          ]}
         />
-        <div className='flex flex-wrap gap-x-6 gap-y-2 text-sm'>
-          <ResourceLink href='/runtime/docker'>Docker diagnostics and limits</ResourceLink>
-          <ResourceLink href='/platform/runtime'>General</ResourceLink>
-        </div>
+        <ServiceConnectionLinks
+          containerId={loading ? undefined : container?.id}
+          showContainerLink={false}
+          relatedLinks={orchestratorRelatedLinks}
+        />
       </Section>
     )}
   </ServiceDetailLayout>

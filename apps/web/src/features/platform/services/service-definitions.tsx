@@ -11,6 +11,7 @@ export const serviceMeta: Record<
   {
     title: string
     description: string
+    href: string
     icon: ReactNode
     endpointPlaceholder: string
     endpointDescription: string
@@ -21,6 +22,7 @@ export const serviceMeta: Record<
     featureKey: 'feature.ocr',
     title: 'OCR perception',
     description: 'Screenshot text recognition for AI perception.',
+    href: '/platform/ocr',
     icon: <IconSparkles className='size-5' />,
     endpointPlaceholder: 'http://ocr-sidecar:4300',
     endpointDescription: 'Base HTTP URL for the OCR sidecar.'
@@ -29,6 +31,7 @@ export const serviceMeta: Record<
     featureKey: 'feature.firewall',
     title: 'Firewall agent',
     description: 'Network access policy enforcement.',
+    href: '/security/firewall',
     icon: <IconShield className='size-5' />,
     endpointPlaceholder: '/run/rebroid-firewall/agent.sock',
     endpointDescription: 'Unix socket path or HTTP(S) base URL for the firewall agent.'

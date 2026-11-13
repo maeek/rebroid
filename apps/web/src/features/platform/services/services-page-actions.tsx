@@ -5,6 +5,7 @@ import { MutationButton } from '@/components/ui/mutation-button'
 export const ServicesPageActions = ({
   hasChanges = false,
   saving = false,
+  saved = false,
   disabled = false,
   saveDisabled = false,
   onDiscard,
@@ -12,6 +13,7 @@ export const ServicesPageActions = ({
 }: {
   hasChanges?: boolean
   saving?: boolean
+  saved?: boolean
   disabled?: boolean
   saveDisabled?: boolean
   onDiscard?: () => void
@@ -31,6 +33,7 @@ export const ServicesPageActions = ({
       onClick={onSave}
       pending={saving}
       pendingLabel='Saving…'
+      success={saved}
       disabled={disabled || saveDisabled || !hasChanges}
     >
       <IconDeviceFloppy className='size-4' />

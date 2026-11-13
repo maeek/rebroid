@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { pickGeneralUiSettings, type GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -23,6 +24,7 @@ export const ConsoleDefaultsPageClient = ({
   const [settings, setSettings] = useState(initialSettings)
   const [committed, setCommitted] = useState(initialSettings)
   const [isSaving, setIsSaving] = useState(false)
+  const saveFeedback = useSaveFeedback(JSON.stringify(settings))
   const [resetOpen, setResetOpen] = useState(false)
   const resetTrigger = useRef<HTMLButtonElement>(null)
   const dirty = Object.keys(settings).some(
@@ -30,11 +32,13 @@ export const ConsoleDefaultsPageClient = ({
   )
 
   const saveSettings = async () => {
+    saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     try {
       const saved = pickGeneralUiSettings(await saveGeneralUiSettings(settings))
       setSettings(saved)
       setCommitted(saved)
+      saveFeedback.confirmSaved(JSON.stringify(saved))
       toast({ title: 'Console defaults saved', variant: 'success' })
     } catch (error) {
       toast({
@@ -87,6 +91,7 @@ export const ConsoleDefaultsPageClient = ({
               disabled={loading || !dirty}
               pending={isSaving}
               pendingLabel='Saving…'
+              success={saveFeedback.saved}
               onClick={() => void saveSettings()}
             >
               Save defaults

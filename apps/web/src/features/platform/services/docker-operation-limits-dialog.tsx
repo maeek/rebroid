@@ -90,6 +90,7 @@ export const DockerOperationLimitsDialog = ({
         <MutationButton
           type='submit'
           pending={pending}
+          animate
           pendingLabel='Saving…'
           disabled={!canSave}
         >

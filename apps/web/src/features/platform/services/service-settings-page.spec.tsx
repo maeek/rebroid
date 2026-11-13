@@ -26,6 +26,7 @@ const page = (serviceId: ServiceId, enabled = true, available = true) => (
           : { ok: false, status: 'disabled', message: 'Service is disabled.' }
       }
       initialSettings={available ? initialSettings[serviceId] : undefined}
+      container={available ? { id: `${serviceId}-id`, name: `rebroid-${serviceId}` } : undefined}
     />
   </FeatureFlagsProvider>
 )
@@ -100,6 +101,25 @@ describe('Service settings detail', () => {
     rerender(page(serviceId))
     expect(endpoint).toBeEnabled()
     expect(endpoint).toHaveValue('http://draft.test')
+  })
+
+  it.each(['ocr', 'firewall'] as const)('links to the %s container while the endpoint matches', serviceId => {
+    render(page(serviceId))
+    const containerName = `rebroid-${serviceId}`
+    expect(screen.getByRole('link', { name: containerName })).toHaveAttribute(
+      'href',
+      `/runtime/containers/${serviceId}-id`
+    )
+    expect(screen.getByRole('link', { name: 'View logs' })).toHaveAttribute(
+      'href',
+      `/runtime/containers/${serviceId}-id?view=logs`
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Endpoint' }), { target: { value: 'http://draft.test' } })
+    expect(screen.queryByRole('link', { name: containerName })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'View logs' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(screen.getByRole('link', { name: containerName })).toBeVisible()
   })
 
   it.each(['ocr', 'firewall'] as const)('shows saved settings read-only when %s is disabled', serviceId => {

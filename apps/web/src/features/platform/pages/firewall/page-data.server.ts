@@ -2,7 +2,7 @@ import { userService } from '@/server/auth/user'
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
-import { loadServiceContainerIds } from '@/server/orchestrator/platform/service-containers'
+import { loadServiceContainers } from '@/server/orchestrator/platform/service-containers'
 import { orchestratorSettingsClient } from '@/server/orchestrator/settings/client'
 import type { FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
@@ -30,13 +30,13 @@ export const loadFirewallPageData = async (health: OrchestratorHealth) => {
   ])
   const initialSettings = settings.ok ? settings.data.services.firewall : undefined
   const containers = initialSettings
-    ? await loadServiceContainerIds(health, { settings: { firewall: initialSettings } })
+    ? await loadServiceContainers(health, { settings: { firewall: initialSettings } })
     : {}
 
   return {
     initialHealth: health.services.firewall,
     initialSettings,
-    containerId: containers.firewall,
+    container: containers.firewall,
     initialApplications: policies.ok ? policies.data : undefined,
     requestId: settings.ok ? undefined : settings.failure.requestId,
     policyFailure: policies.ok ? undefined : { requestId: policies.failure.requestId }

@@ -80,7 +80,7 @@ describe('PlatformServicesPage', () => {
         <PlatformServicesPage
           initialSettings={defaultOrchestratorUiSettings}
           initialHealth={servicesPreviewHealth}
-          containerIds={{ display: 'display-id' }}
+          containers={{ display: { id: 'display-id', name: 'rebroid-display-sidecar' } }}
         />
       </FeatureFlagsProvider>
     )
@@ -91,10 +91,12 @@ describe('PlatformServicesPage', () => {
     expect(displayRow).toHaveTextContent('Healthy')
     expect(displayRow).toHaveTextContent('Managed internally')
     expect(sessionsLink.getAttribute('href')).toBe('/platform/casting')
-    expect(within(displayRow).getByRole('link', { name: 'View logs for Display service' })).toHaveAttribute(
-      'href',
-      '/runtime/containers/display-id?view=logs'
-    )
+    const containerLink = within(displayRow).getByRole('link', { name: 'Open Docker container for Display service' })
+    const logsLink = within(displayRow).getByRole('link', { name: 'View logs for Display service' })
+    expect(containerLink).toHaveAttribute('href', '/runtime/containers/display-id')
+    expect(logsLink).toHaveAttribute('href', '/runtime/containers/display-id?view=logs')
+    expect(containerLink).not.toHaveAttribute('data-slot', 'button')
+    expect(logsLink).not.toHaveAttribute('data-slot', 'button')
     expect(screen.queryByRole('navigation', { name: 'Services sections' })).toBeNull()
   })
 
@@ -109,12 +111,9 @@ describe('PlatformServicesPage', () => {
     )
 
     const ocr = screen.getByRole('row', { name: 'View details for OCR perception' })
-    expect(within(ocr).getByRole('link', { name: 'OCR perception' })).toHaveAttribute(
-      'href',
-      '/platform/services?service=ocr'
-    )
+    expect(within(ocr).getByRole('link', { name: 'OCR perception' })).toHaveAttribute('href', '/platform/ocr')
     fireEvent.click(ocr)
-    expect(navigation.push).toHaveBeenCalledWith('/platform/services?service=ocr')
+    expect(navigation.push).toHaveBeenCalledWith('/platform/ocr')
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(navigation.replace).not.toHaveBeenCalled()
     expect(navigation.refresh).not.toHaveBeenCalled()

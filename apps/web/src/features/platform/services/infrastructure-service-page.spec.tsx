@@ -26,16 +26,22 @@ describe('infrastructure service availability', () => {
         serviceId='orchestrator'
         initialHealth={servicesPreviewHealth}
         apiUrl='http://orchestrator:4100'
-        containerId='orchestrator-id'
+        container={{ id: 'orchestrator-id', name: 'rebroid-orchestrator' }}
       />
     )
     expect(screen.getByRole('status')).toHaveTextContent('Healthy')
     expect(screen.queryByText('Orchestrator API is responding.')).toBeNull()
     const connection = screen.getByRole('region', { name: 'Connection' })
-    expect(within(connection).getByRole('link', { name: 'View logs' })).toHaveAttribute(
-      'href',
-      '/runtime/containers/orchestrator-id?view=logs'
-    )
+    const links = within(connection).getAllByRole('link')
+    expect(links.map(link => link.textContent)).toEqual([
+      'rebroid-orchestrator',
+      'Docker diagnostics and limits',
+      'General',
+      'View logs'
+    ])
+    expect(links[0]).toHaveAttribute('href', '/runtime/containers/orchestrator-id')
+    expect(links[3]).toHaveAttribute('href', '/runtime/containers/orchestrator-id?view=logs')
+    expect(links[3]).not.toHaveAttribute('data-slot', 'button')
   })
 
   it('shows one warning without mounting dependent requests and recovers after refresh', () => {

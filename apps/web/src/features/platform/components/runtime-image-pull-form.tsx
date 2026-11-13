@@ -10,6 +10,7 @@ import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { pullPlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import type { ActionError } from '@/shared/actions/action-result'
@@ -21,6 +22,7 @@ const unconfirmedPullMessage = 'Refresh the image list before retrying. The pull
 export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: boolean; onPulled?: () => void }) => {
   const [registry, setRegistry] = useState<Registry>('docker-hub')
   const [image, setImage] = useState('')
+  const pullFeedback = useSaveFeedback(`${registry}:${image}`)
   const [failure, setFailure] = useState<ActionError | null>(null)
   const [pending, startPull] = useTransition()
   const imageError = failure?.fieldErrors?.image?.[0]
@@ -30,6 +32,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
   const pull = () => {
     if (disabled || !image.trim()) return
 
+    pullFeedback.resetSaveFeedback()
     setFailure(null)
     startPull(async () => {
       try {
@@ -41,6 +44,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
 
         toast({ title: 'Image pulled', description: result.data.image, variant: 'success' })
         setImage('')
+        pullFeedback.confirmSaved(`${registry}:`)
         onPulled?.()
       } catch {
         setFailure({ message: unconfirmedPullMessage, code: 'upstream_unavailable', requestId: '' })
@@ -117,6 +121,8 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
           disabled={loading || !image.trim()}
           pending={pending}
           pendingLabel='Pulling image…'
+          success={pullFeedback.saved}
+          successLabel='Image pulled'
         >
           <IconDownload className='size-4' />
           Pull image

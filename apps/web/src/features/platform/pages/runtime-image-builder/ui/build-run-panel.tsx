@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
-import { IconHammer } from '@tabler/icons-react'
+import { IconCheck, IconHammer } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StateTransition } from '@/components/ui/state-transition'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { ResourceLink } from '@/shared/ui/resource-link'
@@ -45,6 +46,7 @@ export const BuildRunPanel = ({
           <MutationButton
             type='button'
             variant='ghost'
+            animate
             pending={cancelling}
             pendingLabel='Cancelling…'
             onClick={onCancel}
@@ -64,7 +66,20 @@ export const BuildRunPanel = ({
                 className='flex flex-wrap items-center gap-3'
                 role='status'
               >
-                <Badge variant={tone}>{job.status}</Badge>
+                <Badge variant={tone}>
+                  <StateTransition
+                    identity={job.id}
+                    state={job.status}
+                  >
+                    {job.status === 'succeeded' ? (
+                      <IconCheck
+                        aria-hidden
+                        className='size-3.5'
+                      />
+                    ) : null}
+                    {job.status}
+                  </StateTransition>
+                </Badge>
                 <span className='min-w-0 break-all font-mono text-sm'>{job.targetImage}</span>
               </div>
               {job.error ? (
@@ -75,39 +90,46 @@ export const BuildRunPanel = ({
                 />
               ) : null}
               {children}
-              {job.status === 'succeeded' ? (
-                <>
-                  <DetailFields
-                    fields={[
-                      {
-                        label: 'Built image',
-                        value: job.imageId ? (
-                          <ResourceLink href={`/runtime/images/${encodeURIComponent(job.imageId)}`}>
-                            {job.targetImage}
-                          </ResourceLink>
-                        ) : (
-                          job.targetImage
-                        ),
-                        copyValue: job.targetImage
-                      }
-                    ]}
-                  />
-                  <div className='flex flex-wrap gap-2'>
-                    <Button asChild>
-                      <Link href={createAppHref}>Create app</Link>
-                    </Button>
-                    <MutationButton
-                      type='button'
-                      variant='secondary'
-                      pending={settingDefault}
-                      pendingLabel='Updating default…'
-                      onClick={onSetAsDefault}
-                    >
-                      Use as default
-                    </MutationButton>
-                  </div>
-                </>
-              ) : null}
+              <StateTransition
+                as='div'
+                identity={job.id}
+                state={job.status}
+                className='grid gap-5 empty:hidden'
+              >
+                {job.status === 'succeeded' ? (
+                  <>
+                    <DetailFields
+                      fields={[
+                        {
+                          label: 'Built image',
+                          value: job.imageId ? (
+                            <ResourceLink href={`/runtime/images/${encodeURIComponent(job.imageId)}`}>
+                              {job.targetImage}
+                            </ResourceLink>
+                          ) : (
+                            job.targetImage
+                          ),
+                          copyValue: job.targetImage
+                        }
+                      ]}
+                    />
+                    <div className='flex flex-wrap gap-2'>
+                      <Button asChild>
+                        <Link href={createAppHref}>Create app</Link>
+                      </Button>
+                      <MutationButton
+                        type='button'
+                        variant='secondary'
+                        pending={settingDefault}
+                        pendingLabel='Updating default…'
+                        onClick={onSetAsDefault}
+                      >
+                        Use as default
+                      </MutationButton>
+                    </div>
+                  </>
+                ) : null}
+              </StateTransition>
             </>
           ) : (
             <div className='flex min-h-28 items-start gap-4 py-2'>

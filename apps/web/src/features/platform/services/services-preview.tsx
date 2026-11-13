@@ -99,6 +99,11 @@ export const InfrastructureServicePreview = ({
     serviceId={serviceId}
     initialHealth={unavailable ? null : servicesPreviewHealth}
     apiUrl='http://orchestrator:4100'
+    container={
+      serviceId === 'orchestrator' && !unavailable
+        ? { id: 'preview-orchestrator-container', name: 'rebroid-orchestrator' }
+        : undefined
+    }
   />
 )
 
@@ -129,6 +134,7 @@ export const OcrServiceSettingsPreview = () => (
       serviceId='ocr'
       initialHealth={{ ok: true, status: 'healthy', message: 'OCR sidecar is reachable.' }}
       initialSettings={{ ...defaultOrchestratorUiSettings.services.ocr, endpoint: 'http://ocr-sidecar:4300' }}
+      container={{ id: 'preview-ocr-container', name: 'rebroid-ocr-sidecar' }}
     />
   </FeatureFlagsProvider>
 )

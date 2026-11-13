@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { firewallServiceSettingsSchema } from '@/shared/contracts/firewall-service-settings'
@@ -17,7 +18,7 @@ import { OcrServiceFields } from './ocr-service-fields'
 import { ServiceConnectionSection } from './service-connection-section'
 import { serviceMeta, type ServiceId } from './service-definitions'
 import { ServicesPageActions } from './services-page-actions'
-import type { ServiceHealth } from '@/shared/contracts/diagnostics'
+import type { ServiceContainer, ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { OcrServiceUiSettings, OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const settingsSchemas: { [Id in ServiceId]: z.ZodType<OptionalServicesUiSettings[Id]> } = {
@@ -29,7 +30,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   serviceId,
   initialHealth,
   initialSettings,
-  containerId,
+  container,
   requestId,
   loading = false,
   children
@@ -37,7 +38,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   serviceId: Id
   initialHealth?: ServiceHealth
   initialSettings?: OptionalServicesUiSettings[Id]
-  containerId?: string
+  container?: ServiceContainer
   requestId?: string
   loading?: boolean
   children?: ReactNode
@@ -54,6 +55,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   const unavailable = !initialSettings
   const disabled = loading || saving || unavailable || !enabled
   const { draft, saved } = form
+  const saveFeedback = useSaveFeedback(JSON.stringify(draft))
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved)
   const settings = draft ?? defaultOrchestratorUiSettings.services[serviceId]
   const parsed = settingsSchemas[serviceId].safeParse(draft && { ...draft, endpoint: draft.endpoint?.trim() || null })
@@ -76,6 +78,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
 
   const save = async () => {
     if (disabled || !hasChanges || !parsed.success) return
+    saveFeedback.resetSaveFeedback()
     setSaving(true)
     try {
       const services: Partial<OptionalServicesUiSettings> = {}
@@ -83,6 +86,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
       const result = await saveOrchestratorUiSettings({ services })
       const savedSettings = result.services[serviceId]
       setForm({ draft: savedSettings, saved: savedSettings })
+      saveFeedback.confirmSaved(JSON.stringify(savedSettings))
       toast({ title: `${serviceName} settings saved`, variant: 'success' })
       refresh()
     } catch (error) {
@@ -99,7 +103,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   return (
     <ServiceDetailLayout
       title={serviceId === 'firewall' ? 'Firewall' : meta.title}
-      navigation={serviceId === 'firewall' ? { section: { label: 'Administration' } } : undefined}
+      navigation={{ section: { label: 'Administration' } }}
       loading={loading}
       health={unavailable ? undefined : initialHealth}
       healthNotice={{
@@ -125,6 +129,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
             saveDisabled={!parsed.success}
             hasChanges={hasChanges}
             saving={saving}
+            saved={saveFeedback.saved}
             onSave={() => void save()}
             onDiscard={() => setForm(current => ({ ...current, draft: current.saved }))}
           />
@@ -136,7 +141,7 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
           <ServiceConnectionSection
             serviceId={serviceId}
             settings={settings}
-            containerId={settings.endpoint === initialSettings?.endpoint ? containerId : undefined}
+            container={settings.endpoint === initialSettings?.endpoint ? container : undefined}
             disabled={disabled}
             loading={loading}
             errors={errors}

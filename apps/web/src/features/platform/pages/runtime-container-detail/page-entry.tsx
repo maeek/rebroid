@@ -20,14 +20,12 @@ export async function RuntimeContainerDetailPageEntry({
     const { details, logs, logReadLimitExceeded } = result.data
 
     return (
-      <StandardPage className='gap-2'>
-        <RuntimeContainerDetail
-          view={view}
-          details={details}
-          initialLogs={logs}
-          logReadLimitExceeded={logReadLimitExceeded}
-        />
-      </StandardPage>
+      <RuntimeContainerDetail
+        view={view}
+        details={details}
+        initialLogs={logs}
+        logReadLimitExceeded={logReadLimitExceeded}
+      />
     )
   }
 

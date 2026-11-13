@@ -7,19 +7,19 @@ import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
-import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
+import type { OrchestratorHealth, ServiceContainer } from '@/shared/contracts/diagnostics'
 
 export const InfrastructureServicePage = ({
   serviceId,
   initialHealth,
   apiUrl,
-  containerId,
+  container,
   requestId
 }: {
   serviceId: 'orchestrator' | 'docker'
   initialHealth: OrchestratorHealth | null
   apiUrl?: string
-  containerId?: string
+  container?: ServiceContainer
   requestId?: string
 }) => {
   const router = useRouter()
@@ -37,7 +37,7 @@ export const InfrastructureServicePage = ({
     <InfrastructureServiceLayout
       serviceId={serviceId}
       apiUrl={apiUrl}
-      containerId={containerId}
+      container={container}
       actions={
         <PlatformPageRefreshButton
           isRefreshing={refreshing}

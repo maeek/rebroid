@@ -5,13 +5,13 @@ import { ServiceSettingsPage } from '@/features/platform/services/service-settin
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { FirewallSettings } from './sections/firewall-settings'
 import type { FirewallPolicyApplication } from '@/shared/contracts/application'
-import type { ServiceHealth } from '@/shared/contracts/diagnostics'
+import type { ServiceContainer, ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { OptionalServiceUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const FirewallPageClient = ({
   initialHealth,
   initialSettings,
-  containerId,
+  container,
   initialApplications,
   requestId,
   policyFailure,
@@ -19,7 +19,7 @@ export const FirewallPageClient = ({
 }: {
   initialHealth?: ServiceHealth
   initialSettings?: OptionalServiceUiSettings
-  containerId?: string
+  container?: ServiceContainer
   initialApplications?: FirewallPolicyApplication[]
   requestId?: string
   policyFailure?: { requestId?: string }
@@ -33,7 +33,7 @@ export const FirewallPageClient = ({
       serviceId='firewall'
       initialHealth={initialHealth}
       initialSettings={initialSettings}
-      containerId={containerId}
+      container={container}
       requestId={requestId}
       loading={loading}
     >

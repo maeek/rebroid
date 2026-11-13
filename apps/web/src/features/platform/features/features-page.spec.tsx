@@ -123,10 +123,7 @@ describe('FeaturesPage', () => {
     expect(within(breadcrumb).getByText('Administration')).toBeVisible()
     expect(within(breadcrumb).getByText('Feature management')).toBeVisible()
     expect(within(breadcrumb).queryByRole('link', { name: 'Services' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Connection settings' })).toHaveAttribute(
-      'href',
-      '/platform/services?service=ocr'
-    )
+    expect(screen.getByRole('link', { name: 'Connection settings' })).toHaveAttribute('href', '/platform/ocr')
     expect(screen.getByRole('switch', { name: 'Enable Virtual displays' })).toHaveAttribute('aria-disabled', 'true')
   })
 

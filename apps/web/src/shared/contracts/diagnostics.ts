@@ -5,4 +5,5 @@ export type OrchestratorHealth = OrchestratorApiSchemas['OrchestratorDiagnostics
 export type DisplaySidecarSession = OrchestratorApiSchemas['DockerSidecarAdminSessionDto']
 export type DockerMetricsSnapshot = OrchestratorApiSchemas['DockerMetricsSnapshotDto']
 
-export type ServiceContainerIds = Partial<Record<'orchestrator' | 'display' | 'firewall' | 'ocr', string>>
+export type ServiceContainer = { id: string; name: string }
+export type ServiceContainers = Partial<Record<'orchestrator' | 'display' | 'firewall' | 'ocr', ServiceContainer>>

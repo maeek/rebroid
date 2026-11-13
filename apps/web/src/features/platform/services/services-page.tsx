@@ -12,18 +12,18 @@ import { serviceDetails, serviceMeta, visibleOptionalServiceIds } from './servic
 import { ServicesGrid } from './services-grid'
 import { ServicesPageLayout } from './services-page-layout'
 import type { ServiceRow } from './service-row'
-import type { OrchestratorHealth, ServiceContainerIds } from '@/shared/contracts/diagnostics'
+import type { OrchestratorHealth, ServiceContainers } from '@/shared/contracts/diagnostics'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const PlatformServicesPage = ({
   initialHealth,
   initialSettings,
-  containerIds,
+  containers,
   requestId
 }: {
   initialHealth: OrchestratorHealth | null
   initialSettings: OrchestratorUiSettings
-  containerIds?: ServiceContainerIds
+  containers?: ServiceContainers
   requestId?: string
 }) => {
   const router = useRouter()
@@ -44,11 +44,11 @@ export const PlatformServicesPage = ({
         description: meta.description,
         icon: meta.icon,
         endpoint: service.endpoint,
-        containerId: containerIds?.[id],
+        containerId: containers?.[id]?.id,
         timeoutMs: service.timeoutMs,
         settingsSummary: `${serviceDetails(services, id)} ${meta.featureKey}`,
         state: serviceHealthState(initialHealth?.services[id]),
-        href: id === 'firewall' ? '/security/firewall' : '/platform/services?service=ocr'
+        href: meta.href
       }
     })
 
@@ -59,7 +59,7 @@ export const PlatformServicesPage = ({
         description: 'Application lifecycle and platform API.',
         icon: <IconServer className='size-5' />,
         endpoint: initialSettings.orchestratorApiUrl,
-        containerId: containerIds?.orchestrator,
+        containerId: containers?.orchestrator?.id,
         timeoutMs: null,
         settingsSummary: 'Platform API',
         state: serviceHealthState(initialHealth?.services.orchestrator),
@@ -83,14 +83,14 @@ export const PlatformServicesPage = ({
         description: 'Live streaming and viewer sessions.',
         icon: <IconCast className='size-5' />,
         endpoint: 'Managed internally',
-        containerId: containerIds?.display,
+        containerId: containers?.display?.id,
         timeoutMs: null,
         settingsSummary: 'Viewer session management',
         state: serviceHealthState(initialHealth?.services.display),
         href: '/platform/casting'
       }
     ]
-  }, [getFeature, initialHealth, initialSettings, containerIds])
+  }, [getFeature, initialHealth, initialSettings, containers])
 
   if (unavailable && !hasLoaded)
     return (

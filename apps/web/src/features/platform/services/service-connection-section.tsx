@@ -4,14 +4,17 @@ import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Input } from '@/components/ui/input'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { Section } from '@/components/ui/section'
-import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { DetailFields } from '@/shared/ui/detail-fields'
+import { ServiceConnectionLinks } from '@/shared/ui/platform/service-connection-links'
+import { serviceContainerField } from '@/shared/ui/platform/service-container-field'
 import { serviceMeta, type ServiceId } from './service-definitions'
+import type { ServiceContainer } from '@/shared/contracts/diagnostics'
 import type { OptionalServiceUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const ServiceConnectionSection = ({
   serviceId,
   settings,
-  containerId,
+  container,
   disabled,
   loading,
   errors,
@@ -19,7 +22,7 @@ export const ServiceConnectionSection = ({
 }: {
   serviceId: ServiceId
   settings: OptionalServiceUiSettings
-  containerId?: string
+  container?: ServiceContainer
   disabled: boolean
   loading: boolean
   errors?: Partial<Record<keyof OptionalServiceUiSettings, string[]>>
@@ -31,14 +34,6 @@ export const ServiceConnectionSection = ({
     <Section
       surface='panel'
       title='Connection'
-      actions={
-        !loading && containerId ? (
-          <DockerContainerLinks
-            containerId={containerId}
-            className='max-sm:flex-col max-sm:items-end'
-          />
-        ) : undefined
-      }
     >
       <FieldsBoundary>
         <div className='grid gap-x-form-column gap-y-4 md:grid-cols-2'>
@@ -73,6 +68,15 @@ export const ServiceConnectionSection = ({
           </FormField>
         </div>
       </FieldsBoundary>
+      {!loading && container ? (
+        <>
+          <DetailFields fields={[serviceContainerField(container)]} />
+          <ServiceConnectionLinks
+            containerId={container.id}
+            showContainerLink={false}
+          />
+        </>
+      ) : null}
     </Section>
   )
 }

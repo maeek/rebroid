@@ -4,7 +4,12 @@ import { requireAdmin } from '@/server/auth/authorization'
 import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { orchestratorPlatformClient } from './client'
-import type { OrchestratorHealth, ServiceContainerIds, ServiceHealth } from '@/shared/contracts/diagnostics'
+import type {
+  OrchestratorHealth,
+  ServiceContainer,
+  ServiceContainers,
+  ServiceHealth
+} from '@/shared/contracts/diagnostics'
 import type { PlatformContainer } from '@/shared/contracts/platform'
 import type { OptionalServicesUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -23,7 +28,10 @@ const endpointHost = (endpoint?: string | null) => {
   return /^[a-z0-9][a-z0-9_-]*$/i.test(url.hostname) ? url.hostname : undefined
 }
 
-export const resolveServiceContainerIds = (
+const containerReference = (container?: PlatformContainer): ServiceContainer | undefined =>
+  container && { id: container.id, name: container.names[0] ?? container.shortId }
+
+export const resolveServiceContainers = (
   containers: PlatformContainer[],
   {
     webHostname,
@@ -38,7 +46,7 @@ export const resolveServiceContainerIds = (
     displayHealth?: ServiceHealth
     settings?: Partial<OptionalServicesUiSettings>
   }
-): ServiceContainerIds => {
+): ServiceContainers => {
   const named = (name: string) => findUnique(containers, container => container.names.includes(name))
   const identified = (id: string) =>
     findUnique(containers, container => container.id === id || container.shortId === id)
@@ -75,10 +83,10 @@ export const resolveServiceContainerIds = (
       : endpointContainer(firewallEndpoint, project, 'firewall-agent')
 
   return {
-    orchestrator: orchestrator?.id,
-    display: display?.id,
-    firewall: firewall?.id,
-    ocr: endpointContainer(settings?.ocr?.endpoint, project, 'ocr-sidecar')?.id
+    orchestrator: containerReference(orchestrator),
+    display: containerReference(display),
+    firewall: containerReference(firewall),
+    ocr: containerReference(endpointContainer(settings?.ocr?.endpoint, project, 'ocr-sidecar'))
   }
 }
 
@@ -94,17 +102,17 @@ const loadConnectionContainers = async (health: OrchestratorHealth | null) => {
   return result.ok && Array.isArray(result.data) ? result.data : []
 }
 
-export const loadServiceContainerIds = async (
+export const loadServiceContainers = async (
   health: OrchestratorHealth | null,
   {
     displayHealth = health?.services.display,
     settings
   }: { displayHealth?: ServiceHealth; settings?: Partial<OptionalServicesUiSettings> } = {}
-): Promise<ServiceContainerIds> => {
+): Promise<ServiceContainers> => {
   const containers = await loadConnectionContainers(health)
   if (!containers.length) return {}
 
-  return resolveServiceContainerIds(containers, {
+  return resolveServiceContainers(containers, {
     webHostname: hostname(),
     orchestratorEndpoint: getOrchestratorBaseUrl(),
     displayEndpoint: process.env.DISPLAY_SIDECAR_INTERNAL_BASE_URL ?? 'http://rebroid-display-sidecar:8000',

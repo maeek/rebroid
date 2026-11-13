@@ -5,7 +5,7 @@ import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
+import { ViewerBitrateField } from '@/shared/ui/settings/viewer-bitrate-field'
 import type { GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const ConsoleDefaultsFields = ({
@@ -86,20 +86,10 @@ export const ConsoleDefaultsFields = ({
             </SelectContent>
           </Select>
         </FormField>
-        <ViewerStreamingSliderFields
+        <ViewerBitrateField
           loading={loading}
-          values={{
-            bitrateMbps: settings.defaultViewerBitrateMbps,
-            maxFps: settings.defaultViewerMaxFps,
-            iFrameInterval: settings.defaultViewerIFrameInterval
-          }}
-          onChange={patch =>
-            onSettingsChange({
-              defaultViewerBitrateMbps: patch.bitrateMbps ?? settings.defaultViewerBitrateMbps,
-              defaultViewerMaxFps: patch.maxFps ?? settings.defaultViewerMaxFps,
-              defaultViewerIFrameInterval: patch.iFrameInterval ?? settings.defaultViewerIFrameInterval
-            })
-          }
+          value={String(settings.defaultViewerBitrateMbps)}
+          onValueChange={value => onSettingsChange({ defaultViewerBitrateMbps: Number(value) })}
         />
       </div>
       <FormField

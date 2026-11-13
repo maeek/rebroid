@@ -22,8 +22,7 @@ export const orderFeaturesForDisplay = (features: readonly FeatureFlagState[]) =
 export const featureDestination = (feature: FeatureFlagState) => {
   if (!feature.supported) return null
 
-  if (feature.key === 'feature.ocr' && feature.enabled)
-    return { label: 'Connection settings', href: '/platform/services?service=ocr' }
+  if (feature.key === 'feature.ocr' && feature.enabled) return { label: 'Connection settings', href: '/platform/ocr' }
   if (feature.key === 'feature.firewall' && feature.enabled)
     return { label: 'Open firewall', href: '/security/firewall' }
   if (feature.key === 'feature.display-virtual' || feature.key === 'feature.display-webrtc')

@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
-import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ServiceConnectionLinks } from '@/shared/ui/platform/service-connection-links'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { ServiceRow } from './service-row'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -102,7 +102,7 @@ export const ServicesGrid = ({
                     {service.timeoutMs.toLocaleString('en-GB')} ms timeout
                   </span>
                 ) : null}
-                <DockerContainerLinks
+                <ServiceConnectionLinks
                   containerId={service.containerId}
                   serviceName={service.title}
                 />

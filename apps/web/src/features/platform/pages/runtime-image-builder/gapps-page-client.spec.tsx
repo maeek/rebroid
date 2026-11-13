@@ -86,7 +86,7 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       expect(screen.getByText(/Step 4 of 8/)).toBeTruthy()
       const activePhase = screen.getByTestId('active-build-phase')
       expect(activePhase).toHaveAttribute('aria-current', 'step')
-      expect(screen.getByTestId('active-phase-spinner')).toHaveClass('animate-spin')
+      expect(screen.getByTestId('active-phase-spinner')).toHaveClass('motion-safe:animate-spin')
       expect(screen.queryByRole('progressbar')).toBeNull()
       expect(log).toHaveClass('max-w-full', 'min-w-0', 'overflow-auto', 'whitespace-pre')
       expect(log.textContent).toContain('Building package')

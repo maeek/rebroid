@@ -35,7 +35,8 @@ export const ContainerLogsContent = ({
     <PlatformResourceSection
       title='Logs'
       surface='plain'
-      contentClassName='gap-4'
+      className='lg:flex-1'
+      contentClassName='gap-4 lg:flex-1'
     >
       <LogsConsole
         loading={loading}
@@ -50,7 +51,8 @@ export const ContainerLogsContent = ({
         collectedAtPrefix='Recent Docker logs collected at'
         formatCollectedAt={formatPlatformDate}
         controls={<p className='text-sm text-foreground-muted'>Recent Docker logs for this container.</p>}
-        outputClassName='h-[40dvh] min-h-80 max-h-[32rem]'
+        className='lg:flex-1 lg:grid-rows-[auto_minmax(12rem,1fr)_auto]'
+        outputClassName='max-lg:h-[40dvh] max-lg:min-h-80 max-lg:max-h-[32rem] lg:[contain:size]'
       />
     </PlatformResourceSection>
   )

@@ -1,4 +1,5 @@
 import { IconCheck, IconCircle, IconLoader2 } from '@tabler/icons-react'
+import { StateTransition } from '@/components/ui/state-transition'
 import { cn } from '@/lib/utils'
 import { gappsBuildPhases } from '../model/gapps-build'
 import { BuildLogs } from '../ui/build-logs'
@@ -48,7 +49,7 @@ export const GappsBuildProgress = ({
               marker = (
                 <IconLoader2
                   data-testid='active-phase-spinner'
-                  className='size-4 animate-spin text-primary'
+                  className='size-4 motion-safe:animate-spin text-primary'
                 />
               )
             return (
@@ -61,7 +62,13 @@ export const GappsBuildProgress = ({
                   current && 'bg-primary/10 font-medium text-foreground'
                 )}
               >
-                <span className='shrink-0'>{marker}</span>
+                <StateTransition
+                  identity={controller.activeJob?.id}
+                  state={`${complete}:${current}`}
+                  className='shrink-0'
+                >
+                  {marker}
+                </StateTransition>
                 <span>{phase.label}</span>
               </li>
             )

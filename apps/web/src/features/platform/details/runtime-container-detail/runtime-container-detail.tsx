@@ -9,10 +9,9 @@ import { ContainerLogsSection } from '@/features/platform/details/runtime-contai
 import { ContainerOverviewSection } from '@/features/platform/details/runtime-container-detail/container-overview-section'
 import { LiveResourcesSection } from '@/features/platform/details/runtime-container-detail/live-resources-section'
 import { JsonViewer } from '@/shared/ui/json-viewer'
-import { PageContent } from '@/shared/ui/page/page-layout'
 import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-section'
+import { ContainerDetailLayout } from './container-detail-layout'
 import { ContainerResourceHeader } from './container-resource-header'
-import { ContainerResourceNavigation } from './container-resource-navigation'
 import { RelatedResourcesSection } from './related-container-sections'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 
@@ -52,12 +51,11 @@ const RuntimeContainerDetailContent = ({
 
   return (
     <>
-      <ContainerResourceHeader />
-      <PageContent>
-        <ContainerResourceNavigation
-          id={container.id}
-          view={view}
-        />
+      <ContainerDetailLayout
+        header={<ContainerResourceHeader />}
+        id={container.id}
+        view={view}
+      >
         {view === 'logs' ? (
           <ContainerLogsSection logReadLimitExceeded={logReadLimitExceeded} />
         ) : (
@@ -74,7 +72,7 @@ const RuntimeContainerDetailContent = ({
             />
           </>
         )}
-      </PageContent>
+      </ContainerDetailLayout>
 
       <ContainerActionDialog />
     </>
