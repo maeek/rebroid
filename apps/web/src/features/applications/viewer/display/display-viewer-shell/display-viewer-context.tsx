@@ -32,8 +32,10 @@ export type DisplayViewerProviderValue = {
   initialKeyboardCaptureEnabled: boolean
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onFirstFrame?: () => void
   onSurfacesChanged?: () => void
   surfaces: DisplayViewerSurface[]
+  surfaceRefreshVersion?: number
 }
 
 const DisplayViewerContext = createContext<DisplayViewerContextValue | null>(null)
@@ -48,10 +50,12 @@ export const DisplayViewerProvider = ({
   const shell = useDisplayViewerShellState({
     applicationId: value.applicationId,
     surfaces: value.surfaces,
+    surfaceRefreshVersion: value.surfaceRefreshVersion,
     initialKeyboardCaptureEnabled: value.initialKeyboardCaptureEnabled,
     onSurfacesChanged: value.onSurfacesChanged,
     onKeyboardCaptureChange: value.onKeyboardCaptureChange,
-    onStreamMetrics: value.onStreamMetrics
+    onStreamMetrics: value.onStreamMetrics,
+    onFirstFrame: value.onFirstFrame
   })
 
   return (
@@ -98,6 +102,7 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     toggleFullscreen,
     toggleKeyboardCapture,
     viewerActions,
+    viewerRetry,
     windowSize,
     workspaceSize,
     streamSizes
@@ -128,6 +133,10 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     keyboardCaptureEnabled,
     mediaSize,
     streamStatus: streamStatuses[surface.id],
+    frameGeneration: viewerRetry.frameGenerations[surface.id] ?? 0,
+    isRetrying: viewerRetry.retryingSurfaceId === surface.id,
+    retryError: viewerRetry.retryError?.surfaceId === surface.id ? viewerRetry.retryError.message : null,
+    onRetry: () => viewerRetry.retrySurface(surface.id),
     viewportSize,
     workspaceHeight: workspaceSize.height,
     onCaptureScreenshot: viewerActions.captureScreenshot,

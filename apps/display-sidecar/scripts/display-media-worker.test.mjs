@@ -586,3 +586,182 @@ for (const failure of [
     assert.deepEqual(socket.closeCalls, []);
   });
 }
+
+// Replay the observed failure: an initial GOP renders, then only heartbeat and
+// relay metrics arrive while the source continues producing video.
+async function startProgressReplay(t, name) {
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+  let now = 100;
+  t.mock.method(performance, "now", () => now);
+  globalThis.VideoDecoder = FakeVideoDecoder;
+  const { socket, posted } = await startWebCodecsWorker(t, name, {
+    effectiveProfile: { transport: "websocket", codec: "h264", maxFps: 60 },
+  });
+  const animationFrames = [];
+  globalThis.requestAnimationFrame = (callback) => {
+    animationFrames.push(callback);
+    return animationFrames.length;
+  };
+  const draw = () =>
+    animationFrames.splice(0).forEach((callback) => callback(now));
+  sendFrame(socket, 0, configuration, { config: true });
+  for (let sequence = 1; sequence <= 8; sequence++) {
+    sendFrame(socket, sequence, sequence === 1 ? keyFrame : deltaFrame, {
+      key: sequence === 1,
+    });
+    await flush();
+    draw();
+  }
+  assert.equal(posted.filter(({ type }) => type === "first-frame").length, 1);
+  const advance = async ({ sourceFps = 58, receive, render = true } = {}) => {
+    now += 500;
+    socket.emit("message", { data: JSON.stringify({ type: "heartbeat" }) });
+    if (sourceFps !== null) {
+      socket.emit("message", {
+        data: JSON.stringify({ type: "relay-metrics", metrics: { sourceFps } }),
+      });
+    }
+    if (receive !== undefined) {
+      sendFrame(socket, receive, deltaFrame);
+      await flush();
+      if (render) draw();
+    }
+    t.mock.timers.tick(500);
+    await flush();
+  };
+  return { socket, posted, advance, draw };
+}
+
+test("replay: live heartbeats cannot hide stopped video delivery after the first GOP", async (t) => {
+  const { socket, posted, advance, draw } = await startProgressReplay(
+    t,
+    "progress-replay",
+  );
+  for (let tick = 0; tick < 12; tick++) await advance();
+  assert.equal(socket.closeCalls.length, 1, "stalled consumer must reconnect");
+  assert.equal(posted.filter(({ type }) => type === "reconnecting").length, 1);
+  assert.equal(
+    posted.find(({ type }) => type === "reconnecting").cause.category,
+    "video-progress",
+  );
+  assert.equal(
+    socket.sent
+      .map(JSON.parse)
+      .filter(({ type }) => type === "video-resync-request").length,
+    0,
+  );
+  const replacement = FakeWebSocket.instances.at(-1);
+  assert.notEqual(replacement, socket);
+  replacement.open();
+  sendFrame(replacement, 100, configuration, { config: true });
+  sendFrame(replacement, 101, keyFrame, { key: true });
+  await flush();
+  draw();
+  sendFrame(replacement, 102, deltaFrame);
+  await flush();
+  draw();
+  t.mock.timers.tick(1_000);
+  assert.equal(
+    posted.filter(({ type }) => type === "metrics").at(-1).metrics
+      .highestPresentedSequence,
+    102,
+  );
+  assert.deepEqual(replacement.closeCalls, []);
+  assert.equal(
+    posted.filter(({ type }) => type === "first-frame").length,
+    2,
+    "replacement reports viewer readiness again",
+  );
+});
+
+for (const sourceFps of [0, null]) {
+  test(`progress replay leaves idle or stale source evidence alone (${sourceFps})`, async (t) => {
+    const { socket, advance } = await startProgressReplay(
+      t,
+      `progress-idle-${sourceFps}`,
+    );
+    await advance();
+    for (let tick = 0; tick < 40; tick++) await advance({ sourceFps });
+    assert.deepEqual(socket.closeCalls, []);
+    assert.equal(
+      socket.sent
+        .map(JSON.parse)
+        .filter(({ type }) => type === "video-resync-request").length,
+      0,
+    );
+  });
+}
+
+test("progress replay repairs a stalled decoder once before reconnecting its consumer", async (t) => {
+  const { socket, advance } = await startProgressReplay(t, "progress-decode");
+  globalThis.VideoDecoder = class extends FakeVideoDecoder {
+    decode() {}
+  };
+  FakeVideoDecoder.instances.at(-1).decode = () => {};
+  for (let tick = 0; tick < 12; tick++) await advance({ receive: 9 + tick });
+  const resyncs = () =>
+    socket.sent
+      .map(JSON.parse)
+      .filter(({ type }) => type === "video-resync-request");
+  assert.equal(resyncs().length, 1);
+  assert.equal(resyncs()[0].reason, "video-decode-stalled");
+  assert.deepEqual(socket.closeCalls, []);
+  for (let tick = 12; tick < 20; tick++) await advance({ receive: 9 + tick });
+  assert.equal(resyncs().length, 1);
+  assert.equal(socket.closeCalls.length, 1);
+});
+
+test("progress replay does not reset a hidden renderer and starts a fresh window on return", async (t) => {
+  const { socket, advance } = await startProgressReplay(t, "progress-hidden");
+  globalThis.onmessage({ data: { type: "visibility", visible: false } });
+  for (let tick = 0; tick < 20; tick++)
+    await advance({ receive: 9 + tick, render: false });
+  assert.deepEqual(socket.closeCalls, []);
+  assert.equal(
+    socket.sent
+      .map(JSON.parse)
+      .filter(({ type }) => type === "video-resync-request").length,
+    0,
+  );
+  globalThis.onmessage({ data: { type: "visibility", visible: true } });
+  for (let tick = 20; tick < 24; tick++) await advance({ receive: 9 + tick });
+  assert.deepEqual(socket.closeCalls, []);
+});
+
+test("progress replay resumes after local repair without reconnecting healthy video", async (t) => {
+  const { socket, advance, draw } = await startProgressReplay(
+    t,
+    "progress-repaired",
+  );
+  FakeVideoDecoder.instances.at(-1).decode = () => {};
+  for (let tick = 0; tick < 12; tick++) await advance({ receive: 9 + tick });
+  const resyncs = () =>
+    socket.sent
+      .map(JSON.parse)
+      .filter(({ type }) => type === "video-resync-request");
+  assert.equal(resyncs().length, 1);
+  sendFrame(socket, 21, keyFrame, { key: true });
+  await flush();
+  draw();
+  for (let tick = 0; tick < 24; tick++) await advance({ receive: 22 + tick });
+  assert.equal(resyncs().length, 1);
+  assert.deepEqual(socket.closeCalls, []);
+});
+
+test("progress replay fences old socket status after a reconnect and honors expired grants", async (t) => {
+  const { socket, posted, advance } = await startProgressReplay(
+    t,
+    "progress-expired",
+  );
+  for (let tick = 0; tick < 12; tick++) await advance();
+  const replacement = FakeWebSocket.instances.at(-1);
+  replacement.open();
+  replacement.emit("close", { code: 4404 });
+  for (let tick = 0; tick < 40; tick++) await advance();
+  assert.equal(posted.filter(({ type }) => type === "reconnecting").length, 1);
+  assert.equal(
+    posted.filter(({ type }) => type === "session-expired").length,
+    1,
+  );
+  assert.equal(FakeWebSocket.instances.at(-1), replacement);
+});

@@ -115,6 +115,11 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     onMessage({ type: "answer", sdp: "answer" });
     assert.equal((await answer).sdp, "answer");
     assert.equal(attached, 1);
+    const profile = replies.find(
+      (reply) => (reply as Record<string, unknown>).type === "webrtc-profile",
+    ) as Record<string, unknown>;
+    assert.equal(profile.sourceAttemptId, "source");
+    assert.match(String(profile.consumerAttemptId), /^[0-9a-f-]{36}$/);
     assert.equal(detachedBootstrap, 1);
 
     onMessage({

@@ -269,6 +269,31 @@ func TestPointerMovementUsesBestEffortBridgeEvent(t *testing.T) {
 	}
 }
 
+func TestPresentationAcknowledgementsStayInsideTheirPeer(t *testing.T) {
+	fixture := startAttempt(t)
+	opened := make(chan struct{})
+	fixture.control.OnOpen(func() { close(opened) })
+	fixture.connect(t)
+	receive(t, opened)
+	for _, message := range []string{
+		`{"type":"video-frame-presented","rtpTimestamp":42}`,
+		`{"type":"video-frame-presented","rtpTimestamp":null}`,
+		`{"type":"key","key":"HOME"}`,
+	} {
+		if err := fixture.control.SendText(message); err != nil {
+			t.Fatal(err)
+		}
+	}
+	event := fixture.waitEvent(t, "control")
+	if string(event.Payload) != `{"type":"key","key":"HOME"}` {
+		t.Fatalf("presentation evidence escaped into Android controls: %s", event.Payload)
+	}
+	fixture.cancel()
+	if err := receive(t, fixture.result); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestReceiverObservesSourcePTSAndSenderReports(t *testing.T) {
 	fixture := startAttempt(t)
 	type receivedTrack struct {

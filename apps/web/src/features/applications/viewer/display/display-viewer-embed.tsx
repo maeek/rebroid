@@ -110,6 +110,7 @@ export const DisplayViewerEmbed = ({
   canCaptureScreenshot,
   onViewerSettingsChange,
   onStreamMetrics,
+  onFirstFrame,
   streamingSettings,
   clipboard
 }: {
@@ -121,10 +122,12 @@ export const DisplayViewerEmbed = ({
   streamingSettings?: ReactNode
   clipboard?: ReactNode
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onFirstFrame?: () => void
 }) => {
   const baseUrl = useBrowserBaseUrl()
   const [session, setSession] = useState<ScrcpySession | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
+  const [surfaceRefreshVersion, setSurfaceRefreshVersion] = useState(0)
   const [reload, setReload] = useState({ runtime: '', count: 0 })
   const startedAt = app.lastStartedAt?.getTime() ?? null
   const runtime = `${app.id}:${app.containerId}:${startedAt}`
@@ -183,6 +186,7 @@ export const DisplayViewerEmbed = ({
 
         const nextSession = result.data
         setSession(nextSession)
+        setSurfaceRefreshVersion(current => current + 1)
         const canRetry =
           nextSession.viewerServiceConfigured &&
           nextSession.viewerError?.code !== 'adb_missing' &&
@@ -229,7 +233,12 @@ export const DisplayViewerEmbed = ({
     [baseUrl, mainDisplaySize, session, viewerSettings]
   )
 
-  if (!session?.viewerServiceConfigured || !session.displaySession?.viewerPath || surfaces.length === 0) {
+  if (
+    sessionError ||
+    !session?.viewerServiceConfigured ||
+    !session.displaySession?.viewerPath ||
+    surfaces.length === 0
+  ) {
     let error: { description: string; detail?: string } | undefined
     if (session && !session.viewerServiceConfigured) {
       error = { description: 'The live display service is not ready.' }
@@ -261,9 +270,11 @@ export const DisplayViewerEmbed = ({
         </div>
       </Visible>
       <DisplayViewerProvider
+        key={runtime}
         value={{
           applicationId: session.applicationId,
           surfaces,
+          surfaceRefreshVersion,
           initialKeyboardCaptureEnabled: viewerSettings.keyboardCaptureEnabled,
           controlsEnabled: true,
           canControl: canControlViewer && session.displaySession.capabilities.includes('control'),
@@ -275,7 +286,8 @@ export const DisplayViewerEmbed = ({
               keyboardCaptureEnabled: enabled
             })
           },
-          onStreamMetrics
+          onStreamMetrics,
+          onFirstFrame
         }}
       >
         <DisplayViewerShell

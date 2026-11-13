@@ -26,7 +26,7 @@ type DisplayStreamOptions = {
 
 type ReconnectCause = {
   initiator: "worker" | "main" | "transport";
-  category: "heartbeat" | "first-frame" | "malformed-media" | "socket";
+  category: "heartbeat" | "first-frame" | "malformed-media" | "socket" | "video-progress";
   generation: number;
   closeCode?: number;
   detail: string;
@@ -284,7 +284,13 @@ export function createDisplayStream({
     ui.showFailure(message.message);
   };
 
+  const onVisibilityChange = () => {
+    worker?.postMessage({ type: "visibility", visible: document.visibilityState === "visible" });
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
   lifecycle.onClose(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     worker?.postMessage({ type: "close" });
     worker = null;
     void audioContext?.close().catch(() => undefined);
@@ -374,6 +380,7 @@ export function createDisplayStream({
         audioPort,
         effectiveProfile: configuredStreamProfile(config, "websocket"),
         renderer: firefoxMse ? "mse" : "webcodecs",
+        visible: document.visibilityState === "visible",
       },
       transfer,
     );

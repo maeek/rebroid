@@ -178,6 +178,12 @@ export type ViewerRelayMetrics = {
   h264ProfileLevelId?: string;
   negotiatedH264ProfileLevelId?: string;
   sourceAttemptId?: string;
+  consumerAttemptId?: string;
+  sourceCodecGeneration?: number;
+  videoResetGeneration?: number;
+  videoResetCompletedGeneration?: number;
+  videoResetElapsedMs?: number;
+  videoResetCount?: number;
 };
 
 export type ViewerRendererBackend =
@@ -194,6 +200,12 @@ export type ViewerStreamMetricsV4 = {
   bridgeInputFps?: number;
   rtpSentFps?: number;
   receivedFps?: number;
+  receivedFrames?: number;
+  decodedFrames?: number;
+  presentedFrames?: number;
+  receiverPacketsLost?: number;
+  receiverNackCount?: number;
+  receiverPliCount?: number;
   decodedFps?: number;
   drawnFps?: number;
   presentedFps?: number;
@@ -253,6 +265,12 @@ export type ViewerStreamMetricsV4 = {
   h264ProfileLevelId?: string;
   negotiatedH264ProfileLevelId?: string;
   sourceAttemptId?: string;
+  consumerAttemptId?: string;
+  sourceCodecGeneration?: number;
+  videoResetGeneration?: number;
+  videoResetCompletedGeneration?: number;
+  videoResetElapsedMs?: number;
+
   consumerGeneration?: number;
   effectiveProfile: ViewerEffectiveProfile;
   collectedAt: number;

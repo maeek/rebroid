@@ -7,6 +7,7 @@ import type {
   ViewerRelayMetrics,
 } from "./types.js";
 import { configuredStreamProfile } from "./config.js";
+import { WebrtcIdlePresentation } from "./webrtc-idle-presentation.js";
 import {
   emitViewerSessionExpired,
   emitViewerSessionReady,
@@ -34,6 +35,7 @@ type WebrtcAnswer = {
 type VideoFrameCallbackMetadata = {
   presentedFrames?: number;
   mediaTime?: number;
+  rtpTimestamp?: number;
 };
 
 type VideoWithFrameCallback = HTMLVideoElement & {
@@ -527,6 +529,7 @@ function startWebrtcMetricsMonitor(
   jitterController: AdaptiveJitterBufferController,
   negotiatedProfileLevelId: string | undefined,
   onStall: () => void,
+  reliableChannel: RTCDataChannel,
 ): () => void {
   const frameCallback = videoFrameCallbackApi(video);
   let stopped = false;
@@ -546,6 +549,7 @@ function startWebrtcMetricsMonitor(
   let sampling = false;
   let sourceActive = false;
   const progress = new WebrtcPresentationProgress();
+  const idlePresentation = new WebrtcIdlePresentation();
   const tracks = videoTracks(video);
   for (const track of tracks) track.addEventListener("ended", onStall);
   let mainThreadLongTaskCount = 0;
@@ -565,8 +569,9 @@ function startWebrtcMetricsMonitor(
     if (stopped || !frameCallback.request) {
       return;
     }
-    frameCallbackHandle = frameCallback.request(() => {
+    frameCallbackHandle = frameCallback.request((_at, metadata) => {
       const now = performance.now();
+      idlePresentation.presented(metadata.rtpTimestamp, now);
       if (lastPresentedAt !== null && sourceActive && !document.hidden) {
         frameGapsMs.push(now - lastPresentedAt);
       }
@@ -582,6 +587,7 @@ function startWebrtcMetricsMonitor(
     if (sampling || stopped) return;
     sampling = true;
     const now = performance.now();
+    idlePresentation.sample(reliableChannel, now);
     const elapsedSeconds = Math.max((now - lastAt) / 1000, 0.001);
     const statsRequest = peer.getStats().catch(() => null);
     void statsRequest.then((stats) => {
@@ -678,6 +684,19 @@ function startWebrtcMetricsMonitor(
         bridgeInputFps: relayMetrics?.bridgeInputFps,
         rtpSentFps: relayMetrics?.rtpSentFps,
         receivedFps: (receivedFrames - lastReceivedFrames) / elapsedSeconds,
+        receivedFrames,
+        decodedFrames,
+        presentedFrames: presentedFrameCount,
+        receiverPacketsLost: packetsLost,
+        receiverNackCount: nackCount,
+        receiverPliCount: pliCount,
+        consumerAttemptId: relayMetrics?.consumerAttemptId,
+        sourceCodecGeneration: relayMetrics?.sourceCodecGeneration,
+        videoResetGeneration: relayMetrics?.videoResetGeneration,
+        videoResetCompletedGeneration:
+          relayMetrics?.videoResetCompletedGeneration,
+        videoResetElapsedMs: relayMetrics?.videoResetElapsedMs,
+        videoResetCount: relayMetrics?.videoResetCount,
         decodedFps: (decodedFrames - lastDecodedFrames) / elapsedSeconds,
         drawnFps: presentedFps,
         presentedFps,
@@ -1065,6 +1084,7 @@ export function createWebrtcStream({
         jitterController,
         answer.profileLevelId,
         () => retryOrFail("WebRTC video stopped presenting frames."),
+        reliableChannel,
       );
       stopConnectionMonitor?.();
       stopConnectionMonitor = monitorConnection(connection, currentGeneration);

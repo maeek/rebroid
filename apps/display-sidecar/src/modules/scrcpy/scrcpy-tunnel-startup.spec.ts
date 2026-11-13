@@ -176,6 +176,7 @@ test(
       resetGeneration: 0,
       resetCount: 0,
       lastResetAt: 0,
+      resetStartedAt: 0,
     });
     let stop: (() => Promise<void>) | undefined;
     t.after(async () => {

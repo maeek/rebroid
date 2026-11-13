@@ -1,3 +1,4 @@
+import { applyVideoRecoveryStatus } from "./video-recovery-metrics.js";
 import { getViewerElements, readViewerConfig } from "./config.js";
 import { createControlChannel } from "./control-channel.js";
 import { createDisplayStream } from "./display-stream.js";
@@ -29,6 +30,9 @@ const emitAudioDisabled = (
   });
 };
 const handleSidecarMessage = (message: Record<string, unknown>) => {
+  latestRelayMetrics = applyVideoRecoveryStatus(latestRelayMetrics, message);
+  if (message.type === "video-reset" || message.type === "video-reset-complete")
+    return;
   if (message.type === "ready" || message.type === "encoder") {
     latestRelayMetrics ??= {
       sourceFps: 0,
@@ -87,6 +91,13 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
         negotiatedH264ProfileLevelId:
           latestRelayMetrics?.negotiatedH264ProfileLevelId,
         sourceAttemptId: latestRelayMetrics?.sourceAttemptId,
+        consumerAttemptId: latestRelayMetrics?.consumerAttemptId,
+        sourceCodecGeneration: latestRelayMetrics?.sourceCodecGeneration,
+        videoResetGeneration: latestRelayMetrics?.videoResetGeneration,
+        videoResetCompletedGeneration:
+          latestRelayMetrics?.videoResetCompletedGeneration,
+        videoResetElapsedMs: latestRelayMetrics?.videoResetElapsedMs,
+        videoResetCount: latestRelayMetrics?.videoResetCount,
       };
     }
     return;
@@ -130,6 +141,12 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
       droppedFrames: 0,
       queueDepthMs: 0,
     };
+    if (typeof message.consumerAttemptId === "string") {
+      latestRelayMetrics.consumerAttemptId = message.consumerAttemptId;
+    }
+    if (typeof message.sourceAttemptId === "string") {
+      latestRelayMetrics.sourceAttemptId = message.sourceAttemptId;
+    }
     const width = Number(message.width);
     const height = Number(message.height);
     latestRelayMetrics.width = Number.isFinite(width) ? width : undefined;

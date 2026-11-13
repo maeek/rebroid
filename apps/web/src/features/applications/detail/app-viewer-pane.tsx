@@ -30,6 +30,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
     permissions,
     setApp,
     setViewerStreamMetrics,
+    recordStartupFirstFrame,
     setViewerSettings,
     viewerSettings
   } = useApplicationViewerApp()
@@ -88,6 +89,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             canControlViewer={canControlViewer}
             canCaptureScreenshot={canCaptureScreenshot}
             onViewerSettingsChange={setViewerSettings}
+            onFirstFrame={recordStartupFirstFrame}
             onStreamMetrics={(surfaceId, metrics) =>
               setViewerStreamMetrics(current => ({
                 ...current,

@@ -88,6 +88,17 @@ export type DisplayViewerStreamMetrics = {
   h264ProfileLevelId?: string
   negotiatedH264ProfileLevelId?: string
   sourceAttemptId?: string
+  consumerAttemptId?: string
+  sourceCodecGeneration?: number
+  videoResetGeneration?: number
+  videoResetCompletedGeneration?: number
+  videoResetElapsedMs?: number
+  receivedFrames?: number
+  decodedFrames?: number
+  presentedFrames?: number
+  receiverPacketsLost?: number
+  receiverNackCount?: number
+  receiverPliCount?: number
   consumerGeneration?: number
   effectiveProfile: {
     transport: 'webrtc' | 'websocket'
@@ -256,6 +267,17 @@ export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayVi
     (record.h264ProfileLevelId === undefined || typeof record.h264ProfileLevelId === 'string') &&
     (record.negotiatedH264ProfileLevelId === undefined || typeof record.negotiatedH264ProfileLevelId === 'string') &&
     (record.sourceAttemptId === undefined || typeof record.sourceAttemptId === 'string') &&
+    (record.consumerAttemptId === undefined || typeof record.consumerAttemptId === 'string') &&
+    optionalFiniteNumber(record.sourceCodecGeneration) &&
+    optionalFiniteNumber(record.videoResetGeneration) &&
+    optionalFiniteNumber(record.videoResetCompletedGeneration) &&
+    optionalFiniteNumber(record.videoResetElapsedMs) &&
+    optionalFiniteNumber(record.receivedFrames) &&
+    optionalFiniteNumber(record.decodedFrames) &&
+    optionalFiniteNumber(record.presentedFrames) &&
+    optionalFiniteNumber(record.receiverPacketsLost) &&
+    optionalFiniteNumber(record.receiverNackCount) &&
+    optionalFiniteNumber(record.receiverPliCount) &&
     optionalFiniteNumber(record.consumerGeneration) &&
     isEffectiveProfile(record.effectiveProfile) &&
     typeof record.collectedAt === 'number' &&

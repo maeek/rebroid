@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DisplaySessionRecovery } from '@/features/applications/viewer/display/display-session-recovery'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
+import { useDisplayViewerRetry } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-retry'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
 import { viewerControlRailWidth } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
@@ -22,17 +23,21 @@ const transientStreamStatusTtlMs = 6_000
 export const useDisplayViewerShellState = ({
   applicationId,
   surfaces,
+  surfaceRefreshVersion,
   initialKeyboardCaptureEnabled,
   onSurfacesChanged,
   onKeyboardCaptureChange,
-  onStreamMetrics
+  onStreamMetrics,
+  onFirstFrame
 }: {
   applicationId: string
   surfaces: DisplayViewerSurface[]
+  surfaceRefreshVersion?: number
   initialKeyboardCaptureEnabled: boolean
   onSurfacesChanged?: () => void
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onFirstFrame?: () => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
   const [sessionRecovery] = useState(() => new DisplaySessionRecovery())
@@ -63,6 +68,18 @@ export const useDisplayViewerShellState = ({
     orderedSurfaces,
     onSurfacesChanged,
     setActiveSurfaceId
+  })
+  const clearStreamStatus = useCallback((surfaceId: string) => {
+    const timer = streamStatusTimersRef.current[surfaceId]
+    if (timer !== undefined) window.clearTimeout(timer)
+    delete streamStatusTimersRef.current[surfaceId]
+    setStreamStatuses(current => ({ ...current, [surfaceId]: undefined }))
+  }, [])
+  const viewerRetry = useDisplayViewerRetry({
+    surfaces,
+    surfaceRefreshVersion,
+    refreshSurfaces: viewerActions.refreshSurfaces,
+    clearStatus: clearStreamStatus
   })
 
   useEffect(() => {
@@ -214,7 +231,9 @@ export const useDisplayViewerShellState = ({
       const surface = surfaces.find(item => item.id === surfaceId && item.sessionId === status.sessionId)
       if (!surface) return
       if (status.code === 'session-ready') {
+        clearStreamStatus(surfaceId)
         sessionRecovery.presented(applicationId, surface)
+        if (surface.kind === 'main') onFirstFrame?.()
         return
       }
       if (sessionRecovery.request(applicationId, surface, surfaces)) viewerActions.refreshSurfaces()
@@ -226,12 +245,12 @@ export const useDisplayViewerShellState = ({
       delete streamStatusTimersRef.current[surfaceId]
     }
 
-    setStreamStatuses(current => ({
-      ...current,
-      [surfaceId]: status
-    }))
+    setStreamStatuses(current => {
+      if (current[surfaceId]?.blocking && !status.blocking) return current
+      return { ...current, [surfaceId]: status }
+    })
 
-    if (transientStreamStatusCodes.has(status.code)) {
+    if (!status.blocking && transientStreamStatusCodes.has(status.code)) {
       streamStatusTimersRef.current[surfaceId] = window.setTimeout(() => {
         delete streamStatusTimersRef.current[surfaceId]
         setStreamStatuses(current => {
@@ -282,6 +301,7 @@ export const useDisplayViewerShellState = ({
     surfaceViewportElementsRef,
     streamStatuses,
     viewerActions,
+    viewerRetry,
     windowSize,
     workspaceSize,
     handleWorkspaceScroll,

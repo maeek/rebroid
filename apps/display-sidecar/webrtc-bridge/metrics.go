@@ -21,6 +21,7 @@ type bridgeMetrics struct {
 	rtpSendErrors        atomic.Uint64
 	nacks                atomic.Uint64
 	plis                 atomic.Uint64
+	idlePlisIgnored      atomic.Uint64
 	videoFeedback        receiverFeedback
 	audioFeedback        receiverFeedback
 	packetizationLatency latencySamples
@@ -109,8 +110,14 @@ func handleRTCPPacket(packet rtcp.Packet, ssrc uint32, metrics *bridgeMetrics, f
 			return
 		}
 		metrics.plis.Add(1)
-		if recovery != nil && recovery.request(time.Now()) {
-			emit(stdoutMessage{Type: "video-resync-request", Message: "pli"})
+		if recovery != nil {
+			requested, idle := recovery.requestPLI(time.Now())
+			if idle {
+				metrics.idlePlisIgnored.Add(1)
+			}
+			if requested {
+				emit(stdoutMessage{Type: "video-resync-request", Message: "pli"})
+			}
 		}
 	case *rtcp.FullIntraRequest:
 		for _, entry := range value.FIR {
@@ -143,6 +150,7 @@ func metricSnapshot(metrics *bridgeMetrics, peerStats webrtc.StatsReport) map[st
 		"rtpSendErrors":      float64(metrics.rtpSendErrors.Load()),
 		"nacks":              float64(metrics.nacks.Load()),
 		"plis":               float64(metrics.plis.Load()),
+		"idlePlisIgnored":    float64(metrics.idlePlisIgnored.Load()),
 		"packetsLost":        float64(metrics.videoFeedback.packetsLost.Load()),
 		"jitterRtp":          float64(metrics.videoFeedback.jitter.Load()),
 		"packetizationP95Ms": metrics.packetizationLatency.takeP95(),

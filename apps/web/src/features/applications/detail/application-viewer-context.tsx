@@ -5,6 +5,7 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
+import { useStartupFirstFrame } from '@/features/applications/viewer/diagnostics/use-startup-first-frame'
 import {
   loadViewerSettings,
   saveViewerSettings,
@@ -23,6 +24,8 @@ import type { PermissionMap } from '@/shared/permissions/permissions'
 
 type ApplicationViewerContextValue = {
   app?: AppDefinition
+  startupFirstFrameAt?: number
+  recordStartupFirstFrame?: () => void
   canAttach: boolean
   canCaptureScreenshot: boolean
   canControlViewer: boolean
@@ -75,6 +78,8 @@ export const ApplicationViewerProvider = ({
     Record<string, DisplayViewerStreamMetrics | undefined>
   >({})
   const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
+  const { firstFrameAt: startupFirstFrameAt, recordFirstFrame: recordStartupFirstFrame } =
+    useStartupFirstFrame(currentApp)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
   const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
@@ -174,6 +179,8 @@ export const ApplicationViewerProvider = ({
     <ApplicationViewerContext.Provider
       value={{
         app: currentApp,
+        startupFirstFrameAt,
+        recordStartupFirstFrame,
         canAttach: !isForeignOwnedApp,
         canCaptureScreenshot,
         canControlViewer,

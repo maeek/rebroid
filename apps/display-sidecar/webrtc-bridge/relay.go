@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/pion/webrtc/v4"
 )
@@ -85,7 +86,7 @@ type controlRelay struct {
 	reliable sync.Once
 }
 
-func bindControlRelay(peer *webrtc.PeerConnection, emit func(stdoutMessage)) *controlRelay {
+func bindControlRelay(peer *webrtc.PeerConnection, recovery *videoRecovery, emit func(stdoutMessage)) *controlRelay {
 	relay := &controlRelay{
 		messages: newRelayMailbox[[]byte](),
 		opened:   make(chan dataChannelWriter, 1),
@@ -103,6 +104,9 @@ func bindControlRelay(peer *webrtc.PeerConnection, emit func(stdoutMessage)) *co
 				channel.OnOpen(func() { relay.opened <- channel })
 				channel.OnClose(func() { close(relay.closed) })
 				channel.OnMessage(func(message webrtc.DataChannelMessage) {
+					if recovery.consumePresentation(message.Data, time.Now()) {
+						return
+					}
 					if json.Valid(message.Data) {
 						event := stdoutMessage{Type: "control", Payload: json.RawMessage(message.Data)}
 						switch pointerEvent(message.Data) {

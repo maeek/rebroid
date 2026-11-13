@@ -61,6 +61,7 @@ func streamH264(
 		packets := packetizer.Packetize(payload, 0)
 		metrics.packetizationLatency.observe(time.Since(packetizationStarted))
 		writeStarted := time.Now()
+		recovery.beginFrame(rtpTimestamp)
 		for _, packet := range packets {
 			packet.Timestamp = rtpTimestamp
 			if err := metrics.writeRTP(track, packet); err != nil {
@@ -68,6 +69,7 @@ func streamH264(
 			}
 		}
 		metrics.rtpWriteLatency.observe(time.Since(writeStarted))
+		recovery.finishFrame(time.Now())
 		metrics.videoFrames.Add(1)
 		if !wroteFrame {
 			wroteFrame = true

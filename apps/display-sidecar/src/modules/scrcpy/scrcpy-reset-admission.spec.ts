@@ -66,10 +66,11 @@ test(
     service["delay"] = async () => undefined;
     t.after(() => service.closeSession("display"));
 
+    const statuses: Record<string, unknown>[] = [];
     const sink: ScrcpyMediaSink = {
       isOpen: () => true,
       onClose: () => undefined,
-      sendStatus: () => undefined,
+      sendStatus: (status) => statuses.push(status as Record<string, unknown>),
       writeVideo: (_packet, done) => done?.(),
       writeAudio: (_packet, done) => done?.(),
       snapshot: () => ({
@@ -122,6 +123,24 @@ test(
     );
     assert.equal(attachment.requestVideoReset("webrtc:pli"), true);
     assert.deepEqual(first.controlBytes, [17]);
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    const requested = statuses.find((status) => status.type === "video-reset");
+    assert.ok(requested);
+    assert.equal(requested.sourceAttemptId, attachment.sourceAttemptId);
+    assert.equal(requested.generation, 1);
+    assert.equal(typeof requested.codecGeneration, "number");
+    first.video.write(config);
+    first.video.write(idr);
+    first.video.write(idr);
+    const completed = statuses.filter(
+      (status) => status.type === "video-reset-complete",
+    );
+    assert.equal(completed.length, 1, "one completion for the requested reset");
+    assert.equal(completed[0].sourceAttemptId, requested.sourceAttemptId);
+    assert.equal(completed[0].generation, requested.generation);
+    assert.equal(completed[0].codecGeneration, requested.codecGeneration);
+    assert.equal(typeof completed[0].elapsedMs, "number");
+    assert.ok(Number(completed[0].elapsedMs) >= 0);
 
     current = replacement;
     first.video.destroy();

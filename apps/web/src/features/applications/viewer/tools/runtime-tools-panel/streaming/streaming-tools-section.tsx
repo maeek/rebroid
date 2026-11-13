@@ -135,6 +135,45 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
             metrics.decodeDroppedFrames
           )} decode, ${metricValue(metrics.presentationDroppedFrames)} present`}
         />
+        {metrics.transport === 'webrtc' && (
+          <>
+            <DiagnosticValue
+              label='Received / decoded / presented frames'
+              value={[metrics.receivedFrames, metrics.decodedFrames, metrics.presentedFrames]
+                .map(value => metricValue(value))
+                .join(' / ')}
+            />
+            <DiagnosticValue
+              label='Receiver loss / NACK / PLI'
+              value={[metrics.receiverPacketsLost, metrics.receiverNackCount, metrics.receiverPliCount]
+                .map(value => metricValue(value))
+                .join(' / ')}
+            />
+            <DiagnosticValue
+              label='Consumer attempt'
+              value={metrics.consumerAttemptId ?? 'unknown'}
+            />
+            <DiagnosticValue
+              label='Source attempt'
+              value={metrics.sourceAttemptId ?? 'unknown'}
+            />
+            <DiagnosticValue
+              label='Codec / reset generation'
+              value={`${metricValue(metrics.sourceCodecGeneration)} / ${metricValue(metrics.videoResetGeneration)}`}
+            />
+            <DiagnosticValue
+              label='Encoder reset completion'
+              value={
+                metrics.videoResetCompletedGeneration === undefined
+                  ? 'pending or not requested'
+                  : [
+                      `generation ${metricValue(metrics.videoResetCompletedGeneration)}`,
+                      `in ${metricValue(metrics.videoResetElapsedMs)} ms`
+                    ].join(' ')
+              }
+            />
+          </>
+        )}
         <DiagnosticValue
           label='Recovery'
           value={[

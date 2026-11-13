@@ -100,6 +100,10 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     };
   }
 
+  get videoCodecGeneration(): number {
+    return this.codecGeneration;
+  }
+
   consumerCount(): number {
     return this.consumers.size;
   }

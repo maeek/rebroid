@@ -9,6 +9,9 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 
 vi.mock('./application-viewer-context', () => ({ useApplicationViewerApp: vi.fn() }))
 vi.mock('@/features/applications/viewer/actions/app-viewer-actions', () => ({ AppViewerActions: () => null }))
+vi.mock('@/features/applications/viewer/diagnostics/app-startup-timings', () => ({
+  AppStartupTimings: () => <div>Startup timings</div>
+}))
 vi.mock('@/features/applications/viewer/logs/app-logs-content', () => ({
   AppLogsContent: () => <div>Diagnostic log content</div>
 }))
@@ -86,11 +89,13 @@ describe('AppResourceHome', () => {
     ).toHaveAttribute('href', '/app/app-1?view=diagnostics')
     expect(screen.getByText('Inspect boot output.')).toBeTruthy()
     expect(screen.getByText('Diagnostic log content')).toBeTruthy()
+    expect(screen.getByText('Startup timings')).toBeVisible()
   })
   it('keeps foreign-owned app logs and workspace inaccessible in administrator view', () => {
     setup({ 'applications:view-logs': true }, true)
     render(<AppResourceHome view='diagnostics' />)
     expect(screen.queryByText('Diagnostic log content')).toBeNull()
+    expect(screen.queryByText('Startup timings')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Workspace' })).toBeNull()
     expect(screen.getByText('Diagnostics unavailable')).toBeTruthy()
   })

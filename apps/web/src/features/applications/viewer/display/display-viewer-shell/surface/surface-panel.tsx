@@ -9,6 +9,7 @@ import { IconActionButton } from '@/features/applications/viewer/display/display
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
 import { cn } from '@/lib/utils'
+import { StateView } from '@/shared/ui/state-view'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
 export const SurfacePanel = ({
@@ -28,10 +29,14 @@ export const SurfacePanel = ({
     fullscreenSurface,
     isActive,
     isClosing,
+    isRetrying,
+    frameGeneration,
+    retryError,
     keyboardCaptureEnabled,
     mediaSize,
     onClose,
     onOpenPopout,
+    onRetry,
     onSelect,
     onStreamMetrics,
     onStreamStatus,
@@ -99,14 +104,44 @@ export const SurfacePanel = ({
               className={miniPlayer ? 'absolute inset-0' : 'h-full w-full'}
               inert={Boolean(miniPlayer)}
             >
-              <DisplayViewerFrame
-                src={surface.src}
-                keyboardCaptureEnabled={!miniPlayer && canControl && keyboardCaptureEnabled}
-                isActive={!miniPlayer && isActive}
-                onStreamMetrics={onStreamMetrics}
-                onStreamStatus={onStreamStatus}
-                surfaceId={surface.id}
-              />
+              <div
+                className='h-full w-full'
+                inert={Boolean(streamStatus?.blocking)}
+                aria-hidden={streamStatus?.blocking || undefined}
+              >
+                <DisplayViewerFrame
+                  key={`${surface.sessionId}:${frameGeneration}`}
+                  src={surface.src}
+                  keyboardCaptureEnabled={
+                    !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
+                  }
+                  isActive={!miniPlayer && !streamStatus?.blocking && isActive}
+                  onStreamMetrics={onStreamMetrics}
+                  onStreamStatus={onStreamStatus}
+                  surfaceId={surface.id}
+                />
+              </div>
+              {streamStatus?.blocking ? (
+                <div className='absolute inset-0 overflow-auto bg-background'>
+                  <StateView
+                    className='py-4'
+                    kind='error'
+                    scope='immersive'
+                    headingLevel={2}
+                    title='Live display paused'
+                    description='The connection to the app screen was interrupted.'
+                    detail={retryError ?? undefined}
+                    actions={[
+                      {
+                        label: 'Retry display',
+                        onClick: onRetry,
+                        pending: isRetrying,
+                        pendingLabel: 'Reopening display…'
+                      }
+                    ]}
+                  />
+                </div>
+              ) : null}
             </div>
             {miniPlayer ? (
               <div className='absolute top-2 right-2'>

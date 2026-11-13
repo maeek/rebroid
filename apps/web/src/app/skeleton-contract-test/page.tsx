@@ -7,6 +7,7 @@ import { AppResourcePreview } from '@/features/applications/detail/app-resource-
 import { appResourcePreviewFeatures } from '@/features/applications/detail/app-resource-preview-data'
 import { AppsGalleryPreview } from '@/features/applications/list/apps-gallery-preview'
 import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
+import { StartupTimingsPreview } from '@/features/applications/viewer/diagnostics/startup-timings-preview'
 import {
   AutomationCreatePageSkeleton,
   AutomationEditorPageSkeleton,
@@ -162,6 +163,7 @@ export default async function SkeletonContractPage({
         <AppProfilesPageSkeleton />
       </main>
     )
+  if (editor === 'startup-timings') return <StartupTimingsPreview />
   if (editor === 'apps-gallery') return <AppsGalleryPreview />
   if (editor === 'apps-gallery-loading') return <AppsPageSkeleton />
   if (editor === 'overview') return <PlatformOverviewPageClient />

@@ -37,6 +37,7 @@ class FakeWebSocket {
     this.readyState = FakeWebSocket.CONNECTING;
     this.listeners = new Map();
     this.closeCalls = [];
+    this.sent = [];
     FakeWebSocket.instances.push(this);
   }
 
@@ -50,7 +51,9 @@ class FakeWebSocket {
     for (const listener of this.listeners.get(type) ?? []) listener(event);
   }
 
-  send() {}
+  send(payload) {
+    this.sent.push(JSON.parse(payload));
+  }
 
   close(code, reason) {
     this.closeCalls.push({ code, reason });
@@ -186,3 +189,103 @@ test("Firefox worker emits native fMP4 segments without constructing VideoDecode
     true,
   );
 });
+
+for (const failure of ["receipt", "presentation", "none"]) {
+  test(`MSE progress replay uses current presentation watermarks (${failure})`, async (t) => {
+    t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    let now = 100;
+    t.mock.method(performance, "now", () => now);
+    const posted = [];
+    globalThis.WebSocket = FakeWebSocket;
+    globalThis.postMessage = (message) => posted.push(message);
+    globalThis.close = () => {};
+    await import(
+      new URL(
+        `../dist/modules/display/viewer/assets/display-media-worker.js?progress-mse-${failure}`,
+        import.meta.url,
+      )
+    );
+    t.after(() => globalThis.onmessage({ data: { type: "close" } }));
+    globalThis.onmessage({
+      data: {
+        type: "init",
+        url: "wss://example.test/rebroid/display/stream",
+        canvas: {},
+        audio: false,
+        renderer: "mse",
+        effectiveProfile: { transport: "websocket", codec: "h264", maxFps: 60 },
+      },
+    });
+    const socket = FakeWebSocket.instances.at(-1);
+    socket.readyState = FakeWebSocket.OPEN;
+    socket.emit("open");
+    socket.emit("message", {
+      data: rbd1({
+        sequence: 0,
+        timestampUs: 0,
+        config: true,
+        data: configuration,
+      }),
+    });
+    socket.emit("message", {
+      data: rbd1({
+        sequence: 1,
+        timestampUs: 17_000,
+        key: true,
+        data: keyFrame,
+      }),
+    });
+    await flush();
+    const initialEpoch = posted.find(({ type }) => type === "mse-init").epoch;
+    globalThis.onmessage({
+      data: { type: "mse-presented", epoch: initialEpoch },
+    });
+    globalThis.onmessage({
+      data: {
+        type: "watermark",
+        epoch: initialEpoch,
+        decodedSequence: 1,
+        presentedSequence: 1,
+      },
+    });
+    for (let tick = 0; tick < 20; tick++) {
+      now += 500;
+      socket.emit("message", { data: JSON.stringify({ type: "heartbeat" }) });
+      socket.emit("message", {
+        data: JSON.stringify({
+          type: "relay-metrics",
+          metrics: { sourceFps: 58 },
+        }),
+      });
+      if (failure !== "receipt") {
+        socket.emit("message", {
+          data: rbd1({
+            sequence: tick + 2,
+            timestampUs: (tick + 2) * 17_000,
+            key: true,
+            data: keyFrame,
+          }),
+        });
+        await flush();
+        // Old-epoch callbacks after a local reset must not mask stalled presentation.
+        globalThis.onmessage({
+          data: {
+            type: "watermark",
+            epoch: initialEpoch,
+            decodedSequence: tick + 2,
+            presentedSequence: failure === "none" ? tick + 2 : 1,
+          },
+        });
+      }
+      t.mock.timers.tick(500);
+      await flush();
+    }
+    assert.equal(socket.closeCalls.length, failure === "none" ? 0 : 1);
+    const requests = socket.sent.filter(
+      ({ type }) => type === "video-resync-request",
+    );
+    assert.equal(requests.length, failure === "presentation" ? 1 : 0);
+    if (failure === "presentation")
+      assert.equal(requests[0].reason, "video-presentation-stalled");
+  });
+}

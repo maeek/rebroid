@@ -112,6 +112,7 @@ interface ActiveScrcpySource {
   resetGeneration: number;
   resetCount: number;
   lastResetAt: number;
+  resetStartedAt: number;
 }
 
 @Injectable()
@@ -161,6 +162,7 @@ export class ScrcpyService implements OnModuleDestroy {
         resetGeneration: 0,
         resetCount: 0,
         lastResetAt: 0,
+        resetStartedAt: 0,
       };
       this.sources.set(options.sessionId, source);
       const sourceOptions: ScrcpyStreamOptions = {
@@ -2116,14 +2118,17 @@ export class ScrcpyService implements OnModuleDestroy {
     reason: string,
   ): void {
     source.lastResetAt = Date.now();
+    source.resetStartedAt = performance.now();
     source.resetCount += 1;
     source.resetGeneration += 1;
     const generation = source.resetGeneration;
     this.logger.debug(
-      `[scrcpy:${active.udid}:${sessionId}] requested encoder reset generation=${generation} reason=${reason}`,
+      `[scrcpy:${active.udid}:${sessionId}] requested encoder reset resetGeneration=${generation} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} reason=${reason}`,
     );
     source.stream.sendStatus({
       type: "video-reset",
+      sourceAttemptId: source.stream.sourceAttemptId,
+      codecGeneration: source.stream.videoCodecGeneration,
       generation,
       reason,
       count: source.resetCount,
@@ -2137,7 +2142,7 @@ export class ScrcpyService implements OnModuleDestroy {
         return;
       }
       this.logger.warn(
-        `[scrcpy:${active.udid}:${sessionId}] encoder reset generation=${generation} did not produce configuration followed by an IDR; restarting scrcpy attempt`,
+        `[scrcpy:${active.udid}:${sessionId}] encoder reset resetGeneration=${generation} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} did not produce configuration followed by an IDR; restarting scrcpy attempt`,
       );
       this.runInBackground(
         active.stopAttempt(),
@@ -2151,8 +2156,15 @@ export class ScrcpyService implements OnModuleDestroy {
     packet: ScrcpyPacket,
   ): void {
     if (!source.resetWatchdog.observe(packet)) return;
+    const elapsedMs = Math.round(performance.now() - source.resetStartedAt);
+    this.logger.debug(
+      `[scrcpy] encoder reset completed resetGeneration=${source.resetGeneration} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} elapsedMs=${elapsedMs}`,
+    );
     source.stream.sendStatus({
       type: "video-reset-complete",
+      sourceAttemptId: source.stream.sourceAttemptId,
+      codecGeneration: source.stream.videoCodecGeneration,
+      elapsedMs,
       generation: source.resetGeneration,
       count: source.resetCount,
     });

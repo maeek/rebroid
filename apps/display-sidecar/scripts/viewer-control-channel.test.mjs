@@ -158,3 +158,61 @@ test("a discrete command waits for its own reply and never retries a sent comman
     activeSocket.reply({ id, ok: true });
   await Promise.all(pending);
 });
+
+test("retired transports cannot publish diagnostics but can acknowledge dispatched controls", async (t) => {
+  const original = {
+    window: globalThis.window,
+    location: globalThis.location,
+    WebSocket: globalThis.WebSocket,
+  };
+  const parent = new EventTarget();
+  Object.assign(parent, { setTimeout, clearTimeout });
+  Object.assign(globalThis, {
+    window: parent,
+    location: { protocol: "https:", host: "rebroid.test" },
+    WebSocket: FakeWebSocket,
+  });
+  const closeListeners = [];
+  t.after(() => {
+    closeListeners.forEach((listener) => listener());
+    Object.assign(globalThis, original);
+  });
+  const { createControlChannel } =
+    await import("../dist/modules/display/viewer/assets/control-channel.js");
+  const statuses = [];
+  const channel = createControlChannel({
+    sessionId: "session",
+    lifecycle: {
+      isClosing: () => false,
+      onClose: (listener) => closeListeners.push(listener),
+    },
+    onMessage: (message) => statuses.push(message),
+  });
+  const oldSocket = channel.connect();
+  oldSocket.open();
+  oldSocket.reply({ type: "control-ready" });
+  oldSocket.close();
+  const socket = channel.connect();
+  socket.open();
+  socket.reply({ type: "control-ready" });
+  oldSocket.reply({ type: "ready", sourceAttemptId: "retired-socket" });
+  socket.reply({ type: "ready", sourceAttemptId: "current-socket" });
+
+  const oldData = new FakeWebSocket();
+  oldData.readyState = "open";
+  channel.useDataChannels(oldData);
+  const pending = channel.send({ type: "action", command: "home" }, "actions");
+  await Promise.resolve();
+  assert.equal(oldData.messages.length, 1);
+  const data = new FakeWebSocket();
+  data.readyState = "open";
+  channel.useDataChannels(data);
+  oldData.reply({ type: "ready", sourceAttemptId: "retired-data" });
+  data.reply({ type: "ready", sourceAttemptId: "current-data" });
+  oldData.reply({ id: oldData.messages[0].id, ok: true });
+  await pending;
+  assert.deepEqual(
+    statuses.map((message) => message.sourceAttemptId),
+    ["current-socket", "current-data"],
+  );
+});

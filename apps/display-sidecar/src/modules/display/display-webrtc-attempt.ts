@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   ConflictException,
   Logger,
@@ -44,6 +45,7 @@ interface WebrtcAttemptOptions {
 export class DisplayWebrtcAttempt {
   private readonly logger = new Logger(DisplayWebrtcAttempt.name);
   private readonly controller = new AbortController();
+  private readonly attemptId = randomUUID();
 
   constructor(private readonly options: WebrtcAttemptOptions) {}
 
@@ -80,7 +82,7 @@ export class DisplayWebrtcAttempt {
       );
       if (!declaredLevelSupportsRequestedRate) {
         this.logger.warn(
-          `[webrtc:${sessionId}] encoder SPS ${bootstrap.profileLevelId} declares a lower macroblock rate than ${bootstrap.width}x${bootstrap.height}@${maxFps}; continuing because scrcpy max_fps is a variable-frame-rate cap`,
+          `[webrtc:${sessionId}:${this.attemptId}] encoder SPS ${bootstrap.profileLevelId} declares a lower macroblock rate than ${bootstrap.width}x${bootstrap.height}@${maxFps}; continuing because scrcpy max_fps is a variable-frame-rate cap`,
         );
       }
       return await this.negotiate(
@@ -194,7 +196,7 @@ export class DisplayWebrtcAttempt {
         ? ` mediaReason=${JSON.stringify(mediaCloseReason)}`
         : "";
       this.logger.debug(
-        `[webrtc:${sessionId}] bridge closed code=${code ?? 0}${reason ? ` signal=${reason.toString()}` : ""}${media}`,
+        `[webrtc:${sessionId}:${this.attemptId}] bridge closed code=${code ?? 0}${reason ? ` signal=${reason.toString()}` : ""}${media}`,
       );
     });
 
@@ -211,8 +213,13 @@ export class DisplayWebrtcAttempt {
           );
         }
         detachBootstrap();
+        this.logger.debug(
+          `[webrtc:${sessionId}:${this.attemptId}] media attached sourceAttemptId=${attachment.sourceAttemptId} consumerId=${attachment.consumerId}`,
+        );
         sink.sendStatus({
           type: "webrtc-profile",
+          consumerAttemptId: this.attemptId,
+          sourceAttemptId: attachment.sourceAttemptId,
           profileLevelId: bootstrap.profileLevelId,
           sdpFmtpLine: bootstrap.sdpFmtpLine,
           width: bootstrap.width,
@@ -223,7 +230,7 @@ export class DisplayWebrtcAttempt {
         void attachment.closed.then(() => this.stop());
       } catch (error) {
         this.logger.warn(
-          `[webrtc:${sessionId}] scrcpy stream failed: ${this.errorMessage(error)}`,
+          `[webrtc:${sessionId}:${this.attemptId}] scrcpy stream failed: ${this.errorMessage(error)}`,
         );
         this.stop(error);
       }
@@ -257,7 +264,9 @@ export class DisplayWebrtcAttempt {
             ),
           onAudioFailure: () => disableAudio(),
           onLog: (message) =>
-            this.logger.debug(`[webrtc:${sessionId}] ${message}`),
+            this.logger.debug(
+              `[webrtc:${sessionId}:${this.attemptId}] ${message}`,
+            ),
           onMessage: (message) => {
             if (signal.aborted) return;
             switch (message.type) {
@@ -265,7 +274,9 @@ export class DisplayWebrtcAttempt {
                 resolve(message.sdp);
                 break;
               case "state":
-                this.logger.debug(`[webrtc:${sessionId}] ${message.state}`);
+                this.logger.debug(
+                  `[webrtc:${sessionId}:${this.attemptId}] ${message.state}`,
+                );
                 if (message.state === "connected") {
                   connected = true;
                   attachMedia();
@@ -348,12 +359,12 @@ export class DisplayWebrtcAttempt {
         break;
       case "error":
         this.logger.warn(
-          `[webrtc:${this.options.sessionId}] ${message.message}`,
+          `[webrtc:${this.options.sessionId}:${this.attemptId}] ${message.message}`,
         );
         break;
       case "log":
         this.logger.debug(
-          `[webrtc:${this.options.sessionId}] ${message.message}`,
+          `[webrtc:${this.options.sessionId}:${this.attemptId}] ${message.message}`,
         );
         break;
     }

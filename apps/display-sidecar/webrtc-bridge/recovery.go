@@ -10,9 +10,10 @@ import (
 const keyFrameRecoveryPTSUs = uint64(1_500_000)
 
 type videoRecovery struct {
-	requestMu   sync.Mutex
-	lastRequest time.Time
-	generation  atomic.Uint64
+	requestMu    sync.Mutex
+	lastRequest  time.Time
+	generation   atomic.Uint64
+	presentation videoPresentation
 
 	// Only the video worker touches the recovery episode and cached configuration.
 	seenGeneration  uint64
@@ -25,10 +26,15 @@ type videoRecovery struct {
 func (recovery *videoRecovery) request(now time.Time) bool {
 	recovery.requestMu.Lock()
 	defer recovery.requestMu.Unlock()
+	return recovery.requestLocked(now)
+}
+
+func (recovery *videoRecovery) requestLocked(now time.Time) bool {
 	if !recovery.lastRequest.IsZero() && now.Sub(recovery.lastRequest) < time.Second {
 		return false
 	}
 	recovery.lastRequest = now
+	recovery.presentation = videoPresentation{}
 	recovery.generation.Add(1)
 	return true
 }
@@ -39,11 +45,13 @@ func (recovery *videoRecovery) accept(frame mediaFrame) ([]byte, error) {
 		recovery.ready = false
 	}
 	if frame.config {
+		recovery.forgetPresentation()
 		recovery.config = frame.data
 		recovery.ready = false
 		return nil, nil
 	}
 	if frame.discontinuity {
+		recovery.forgetPresentation()
 		recovery.ready = false
 	}
 	if !recovery.ready && (!frame.keyFrame || len(recovery.config) == 0) {

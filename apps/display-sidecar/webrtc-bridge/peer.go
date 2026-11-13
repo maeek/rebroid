@@ -142,7 +142,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 		emit(stdoutMessage{Type: "log", Message: "audio track negotiated"})
 	}
 
-	control := bindControlRelay(peer, emit)
+	control := bindControlRelay(peer, recovery, emit)
 	startWorker(func() {
 		if err := relayDataChannel(ctx, control.opened, control.closed, control.messages); err != nil {
 			stop(err)

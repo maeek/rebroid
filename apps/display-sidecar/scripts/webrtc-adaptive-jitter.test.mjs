@@ -1,5 +1,64 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { WebrtcIdlePresentation } from "../dist/modules/display/viewer/assets/webrtc-idle-presentation.js";
+
+test("idle presentation acknowledges only the latest quiet RTP frame once", () => {
+  const progress = new WebrtcIdlePresentation();
+  const messages = [];
+  const channel = {
+    readyState: "open",
+    bufferedAmount: 0,
+    send: (message) => messages.push(JSON.parse(message)),
+  };
+  for (let frame = 0; frame <= 10; frame++) {
+    progress.presented(frame * 9000, frame * 100);
+    progress.sample(channel, frame * 100);
+  }
+  assert.deepEqual(messages, []);
+  progress.sample(channel, 2000);
+  progress.sample(channel, 3000);
+  assert.deepEqual(messages, [
+    { type: "video-frame-presented", rtpTimestamp: 90000 },
+  ]);
+  progress.presented(0xffffffff, 10000);
+  progress.sample(channel, 11000);
+  assert.equal(messages[1].rtpTimestamp, 0xffffffff);
+  const nextAttempt = new WebrtcIdlePresentation();
+  nextAttempt.sample(channel, 12000);
+  assert.equal(messages.length, 2);
+});
+
+test("idle acknowledgement falls back safely without metadata or a writable channel", () => {
+  const progress = new WebrtcIdlePresentation();
+  const messages = [];
+  const channel = {
+    readyState: "open",
+    bufferedAmount: 0,
+    send: (message) => messages.push(message),
+  };
+  for (const timestamp of [undefined, NaN, -1, 1.5, 0x100000000]) {
+    progress.presented(timestamp, 0);
+    progress.sample(channel, 2000);
+  }
+  progress.presented(0, 0);
+  progress.sample({ ...channel, readyState: "closed" }, 1000);
+  progress.sample({ ...channel, bufferedAmount: 1 }, 1000);
+  progress.sample(
+    {
+      ...channel,
+      send: () => {
+        throw new Error("closed");
+      },
+    },
+    1000,
+  );
+  assert.equal(messages.length, 0);
+  progress.sample(channel, 2000);
+  assert.equal(messages.length, 1);
+  progress.presented(1, 3000);
+  progress.sample(channel, 7000); // Do not acknowledge stale frames after a suspended tab wakes.
+  assert.equal(messages.length, 1);
+});
 
 import {
   AdaptiveJitterBufferController,
@@ -115,4 +174,79 @@ test("adaptive jitter buffering ignores unsupported receivers", () => {
 
   assert.equal(controller.target(), 30);
   assert.equal("jitterBufferTarget" in receiver, false);
+});
+
+test("reset diagnostics correlate completion and discard stale source/generation evidence", async () => {
+  const { applyVideoRecoveryStatus } =
+    await import("../dist/modules/display/viewer/assets/video-recovery-metrics.js");
+  const ready = applyVideoRecoveryStatus(null, {
+    type: "ready",
+    sourceAttemptId: "source-a",
+  });
+  const request = {
+    type: "video-reset",
+    sourceAttemptId: "source-a",
+    generation: 2,
+    codecGeneration: 7,
+    count: 2,
+  };
+  const pending = applyVideoRecoveryStatus(ready, request);
+  assert.equal(pending.videoResetGeneration, 2);
+  assert.equal(
+    pending.sourceCodecGeneration,
+    7,
+    "codec generation is not a reset counter",
+  );
+  const completion = {
+    ...request,
+    type: "video-reset-complete",
+    elapsedMs: 180,
+  };
+  assert.equal(
+    applyVideoRecoveryStatus(pending, { ...completion, generation: 1 }),
+    pending,
+  );
+  assert.equal(
+    applyVideoRecoveryStatus(pending, {
+      ...completion,
+      sourceAttemptId: "old",
+    }),
+    pending,
+  );
+  const completed = applyVideoRecoveryStatus(pending, completion);
+  assert.equal(completed.videoResetCompletedGeneration, 2);
+  assert.equal(completed.videoResetElapsedMs, 180);
+  const next = applyVideoRecoveryStatus(completed, {
+    ...request,
+    generation: 3,
+    count: 3,
+  });
+  assert.equal(next.videoResetCompletedGeneration, undefined);
+  assert.equal(next.videoResetElapsedMs, undefined);
+  assert.equal(applyVideoRecoveryStatus(next, request), next);
+  assert.equal(
+    applyVideoRecoveryStatus(next, {
+      ...completion,
+      generation: 3,
+      elapsedMs: Infinity,
+    }),
+    next,
+  );
+  const restarted = applyVideoRecoveryStatus(
+    {
+      ...next,
+      consumerAttemptId: "consumer-a",
+      negotiatedH264ProfileLevelId: "42c033",
+      bridgePliCount: 6,
+    },
+    {
+      type: "ready",
+      sourceAttemptId: "source-b",
+    },
+  );
+  assert.equal(restarted.consumerAttemptId, "consumer-a");
+  assert.equal(restarted.negotiatedH264ProfileLevelId, "42c033");
+  assert.equal(restarted.bridgePliCount, 6);
+  assert.equal(restarted.videoResetGeneration, undefined);
+  assert.equal(applyVideoRecoveryStatus(restarted, completion), restarted);
 });

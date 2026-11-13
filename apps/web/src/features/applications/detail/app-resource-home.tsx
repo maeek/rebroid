@@ -7,6 +7,7 @@ import { editorSectionClassName } from '@/components/ui/surface'
 import { AppManageTechnicalDetails } from '@/features/applications/manage/app-manage-technical-details'
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
+import { AppStartupTimings } from '@/features/applications/viewer/diagnostics/app-startup-timings'
 import { AppLogsContent } from '@/features/applications/viewer/logs/app-logs-content'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
@@ -30,7 +31,8 @@ export const AppResourceHome = ({
   activity?: ReactNode
   inspectedCommand?: InspectedContainerCommand | null
 }) => {
-  const { app, permissions, isForeignOwnedApp, canViewInfrastructure, canViewAuditActivity } = useApplicationViewerApp()
+  const { app, permissions, isForeignOwnedApp, canViewInfrastructure, canViewAuditActivity, startupFirstFrameAt } =
+    useApplicationViewerApp()
   const canViewLogs = !isForeignOwnedApp && hasPermission(permissions, 'applications:view-logs')
   const canViewDetails = hasPermission(permissions, 'applications:view-backend-details')
   const { isFeatureEnabled } = useFeatureFlags()
@@ -92,6 +94,12 @@ export const AppResourceHome = ({
         : null}
       {view === 'diagnostics' ? (
         <div className='grid min-w-0 gap-6'>
+          {canViewLogs ? (
+            <AppStartupTimings
+              app={app}
+              firstFrameAt={startupFirstFrameAt}
+            />
+          ) : null}
           {canViewDetails ? (
             <AppManageTechnicalDetails
               app={app}

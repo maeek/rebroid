@@ -35,7 +35,7 @@ export function createControlChannel({
   let inFlight = 0;
   let pointerReleaseReserved = false;
 
-  const readReply = (data: unknown, onReady?: () => void) => {
+  const readReply = (data: unknown, onReady?: () => void, acceptStatus = true) => {
     if (typeof data !== "string") return;
     try {
       const reply: unknown = JSON.parse(data);
@@ -50,7 +50,7 @@ export function createControlChannel({
             ? undefined
             : controlFailure(reply),
         );
-      } else {
+      } else if (acceptStatus) {
         onMessage?.(reply as JsonRecord);
       }
     } catch {
@@ -128,7 +128,7 @@ export function createControlChannel({
         authorizedControlWs = socket;
         finish(true);
       };
-      socket.onmessage = (event) => readReply(event.data, markReady);
+      socket.onmessage = (event) => readReply(event.data, markReady, controlWs === socket);
     });
     return socket;
   }
@@ -289,7 +289,7 @@ export function createControlChannel({
     useDataChannels(reliable: RTCDataChannel, movement?: RTCDataChannel) {
       reliableDataChannel = reliable;
       movementDataChannel = movement ?? null;
-      reliable.onmessage = (event) => readReply(event.data);
+      reliable.onmessage = (event) => readReply(event.data, undefined, reliableDataChannel === reliable);
       reliable.onclose = () => {
         if (reliableDataChannel === reliable) {
           reliableDataChannel = null;

@@ -38,6 +38,15 @@ both transports ask the parent viewer to refresh through the authorized web path
 refresh is attempted once until a replacement displays video. Both viewer entry points use the
 current runtime's Ready timestamp for the startup retry window when that timestamp is available.
 
+After transport recovery stops, the web viewer keeps a **Retry display** action visible over the
+failed surface. It refreshes the viewer grant through the existing authorized web path, then
+replaces that surface's browser consumer even when the session ID is unchanged. It does not
+reload the page or request an Android, ADB, or scrcpy restart. Duplicate clicks are blocked while
+refreshing; a refresh that does not complete within 30 seconds leaves the failure visible and
+allows another attempt. A denied or unavailable embedded session refresh uses the existing
+viewer error state. Successful presentation clears the failure; transient audio/status updates
+do not dismiss it.
+
 ## RBD1 protocol
 
 Every internal media sink uses this big-endian envelope:
@@ -86,8 +95,18 @@ timestamps and configuration, keyframe, and discontinuity flags.
 
 WebSocket decoding stays in the media worker where browser support permits. Chromium keeps
 encoded access units and decoded frames off the main thread. Firefox uses worker-produced fMP4
-and main-thread MediaSource. Decoder/backlog recovery resynchronizes the consumer rather than
-reconnecting its media socket. Both renderer paths wait for configuration and an IDR after recovery.
+and main-thread MediaSource. Decoder/backlog recovery first resynchronizes the consumer at
+the live edge. Both renderer paths wait for configuration and an IDR after recovery.
+
+After the first rendered frame, a worker watchdog checks receipt, decoding, and presentation
+once a second. Four seconds without video receipt while fresh relay metrics report ongoing
+source frames reconnects only that media consumer. A decode or presentation stall gets one
+local resync, then a consumer reconnect if presentation has not resumed within four more
+seconds. Configuration updates do not extend that recovery deadline. Idle sources, relay
+metrics older than 2.5 seconds, and hidden tabs do not trigger this watchdog. A source restart,
+consumer replacement, or visibility change starts a fresh observation window. Existing
+session-expiry handling still routes recovery through the authorized web viewer.
+
 MediaSource fragments and presentation callbacks carry a recovery epoch so the browser can discard
 work from an abandoned append queue. PCM is delivered to an AudioWorklet with a bounded ring.
 
@@ -162,6 +181,22 @@ Its direct audio-capture implementation is unchanged from 4.0 to 5.0.1, so upgra
 is not evidence that a device capture failure is resolved. The audio fixes here have automated
 coverage; audible playback still requires the manual verification below.
 
+### Startup timings
+
+The app Diagnostics tab shows startup milestones from its existing orchestrator log,
+scoped to the current provisioning/start attempt and runtime container. Elapsed times
+start at container creation, or the start request when reusing a container. Concurrent
+boot and network attachment are displayed by timestamp; their durations are not added.
+
+The main display's first presented-frame event supplies the final milestone for both
+WebRTC and WebSocket. It is recorded once per runtime startup in this tab's session
+storage (at most 24 records), survives reloads, and is not overwritten by reconnects.
+The total includes time spent waiting to open the viewer and uses server/browser wall
+clocks. Missing retained log events or an unobserved first frame remain unavailable.
+Only users authorized to view application logs see the section. It shares the existing
+orchestrator-log query and follows lifecycle changes without an additional polling timer
+or Docker/ADB reads; Refresh timings also refreshes that shared log data.
+
 ### Stream metrics
 
 The viewer reports `ViewerStreamMetricsV4` once per second. Compare stages rather than relying
@@ -177,6 +212,58 @@ samples show advancing input and no new presented frames. When a browser has no 
 counter, decoded-frame progress can still distinguish an upstream stall from an idle source.
 The encoder bitrate target is an upper quality target, so lower wire bitrate on static content
 is expected.
+
+For repeated WebRTC recovery, the streaming diagnostics expose cumulative received,
+decoded and presented frame counts and browser receiver loss/NACK/PLI counters
+separately from bridge counters. They reuse the existing once-per-second sampler.
+The consumer attempt ID matches the WebRTC bridge log prefix; source attempt ID,
+codec generation, reset generation and reset completion elapsed time correlate
+browser observations with source recovery. Reset generations count requests, not
+codec changes. New source attempts clear prior reset evidence, and stale completion
+messages cannot complete the current reset in the diagnostic view.
+
+Capture these fields alongside a motion/idle/rotation reproduction on each transport.
+A successful bridge write does not establish browser presentation. Repeated PLI
+alone does not distinguish loss from decoder failure, and a closed reliable control
+channel does not establish why the browser disconnected. Diagnostic additions do
+not change deadlines, startup order or source ownership.
+
+### Idle WebRTC picture-loss feedback
+
+An unchanged Android screen can stop emitting frames after a short repeat burst.
+[Scrcpy v4 requests a 100 ms repeat delay](https://github.com/Genymobile/scrcpy/blob/v4.0/server/src/main/java/com/genymobile/scrcpy/video/SurfaceEncoder.java),
+while [libwebrtc can request a keyframe when decoding times out on a recently active stream](https://webrtc.googlesource.com/src/+/refs/heads/main/video/video_receive_stream2.cc).
+Treating every PLI as encoder failure creates a loop: reset, repeat burst, idle timeout, reset.
+The local Chromium/Go bridge replay reproduced requests at 4.15, 8.43 and 12.62 seconds
+with all 44 frames decoded and zero packet loss or NACKs. This establishes a possible
+cause of the matching production cadence; PLI alone is not proof of packet loss.
+With the acknowledgement gate enabled, the same 16-second replay decoded all 11
+initial frames, ignored one idle PLI and made zero reset requests. A separate replay
+resumed H.264 delta frames after nine seconds of silence: all 22 frames decoded,
+with zero reset requests. These are local browser/bridge results, not host Android
+measurements. Firefox's bundled test browser could not negotiate H.264 in this
+environment, so Firefox and real Redroid validation remain deployment checks.
+
+The viewer's existing one-second sampler sends one `video-frame-presented` acknowledgement
+after a picture becomes quiet, using the RTP timestamp from `requestVideoFrameCallback`.
+The reliable data channel terminates this evidence inside its own Go peer, before
+Android control dispatch. The bridge ignores an idle PLI only when that peer has
+acknowledged its exact latest written frame, no frame has been written for two seconds,
+and the acknowledgement is at most three seconds old. Bridge metrics count these as
+`idlePlisIgnored`, while `plis` still counts all received requests.
+
+New frames, configuration, discontinuities and accepted resets invalidate the evidence.
+Duplicate acknowledgements cannot extend its lifetime. FIR, unacknowledged/lost frames,
+active-stream PLI and browsers without RTP presentation metadata retain normal recovery.
+Acknowledgements are best effort and never queued behind user controls. The source's
+timestamps, startup sequence and reset deadlines are unchanged.
+
+Regression coverage replays the repeat-burst/idle/PLI sequence and verifies that the
+next delta frame is admitted without resetting. Browser helper tests cover quiet-only
+acknowledgement and missing metadata/backpressure; Go loopback tests ensure these
+messages do not reach Android controls. For deployment validation, leave an unchanged
+screen open, then animate and rotate it; verify that idle resets stop and genuine loss
+still recovers. Repeat in Chromium and Firefox, including background/foreground tabs.
 
 ## Reverse proxies
 

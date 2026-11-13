@@ -51,6 +51,7 @@ test("a reset waits for control dispatch and cannot restart a later control sock
     resetGeneration: 0,
     resetCount: 0,
     lastResetAt: 0,
+    resetStartedAt: 0,
   };
   let dispatched!: () => void;
   const socket = {

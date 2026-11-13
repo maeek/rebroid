@@ -89,6 +89,53 @@ describe('display viewer stream metrics messages', () => {
     ).toBe(true)
   })
 
+  it('validates correlated recovery and receiver metrics without accepting malformed counters', () => {
+    const message = {
+      type: viewerStreamMetricsMessageType,
+      version: 4,
+      transport: 'webrtc',
+      renderer: 'webrtc-video',
+      consumerAttemptId: 'consumer',
+      sourceAttemptId: 'source',
+      sourceCodecGeneration: 7,
+      videoResetGeneration: 2,
+      videoResetCompletedGeneration: 2,
+      videoResetElapsedMs: 180,
+      receivedFrames: 120,
+      decodedFrames: 118,
+      presentedFrames: 117,
+      receiverPacketsLost: 3,
+      receiverNackCount: 4,
+      receiverPliCount: 2,
+      effectiveProfile: {
+        transport: 'webrtc',
+        codec: 'h264',
+        maxSize: 1080,
+        maxFps: 60,
+        bitrate: 8_000_000,
+        iFrameInterval: 1,
+        audio: false
+      },
+      collectedAt: 1000
+    }
+    expect(isDisplayViewerStreamMetrics(message)).toBe(true)
+    for (const field of [
+      'sourceCodecGeneration',
+      'videoResetGeneration',
+      'videoResetCompletedGeneration',
+      'videoResetElapsedMs',
+      'receivedFrames',
+      'decodedFrames',
+      'presentedFrames',
+      'receiverPacketsLost',
+      'receiverNackCount',
+      'receiverPliCount'
+    ]) {
+      expect(isDisplayViewerStreamMetrics({ ...message, [field]: Infinity })).toBe(false)
+    }
+    expect(isDisplayViewerStreamMetrics({ ...message, consumerAttemptId: 4 })).toBe(false)
+  })
+
   it('rejects the removed ambiguous fps metric', () => {
     expect(
       isDisplayViewerStreamMetrics({

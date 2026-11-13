@@ -6,6 +6,7 @@ import {
 } from "./fragmented-mp4.js";
 import { parseViewerMediaFrame, type ViewerMediaFrame } from "./media-frame.js";
 import { MediaIngressQueue } from "./media-ingress-queue.js";
+import { VideoProgressWatchdog } from "./video-progress-watchdog.js";
 import {
   createVideoFrameRenderer,
   type VideoFrameRenderer,
@@ -14,7 +15,12 @@ import type { ViewerEffectiveProfile, ViewerStreamMetricsV4 } from "./types.js";
 
 type ReconnectCause = {
   initiator: "worker" | "main" | "transport";
-  category: "heartbeat" | "first-frame" | "malformed-media" | "socket";
+  category:
+    | "heartbeat"
+    | "first-frame"
+    | "malformed-media"
+    | "socket"
+    | "video-progress";
   generation: number;
   closeCode?: number;
   detail: string;
@@ -29,8 +35,10 @@ type WorkerInput =
       audioPort?: MessagePort;
       effectiveProfile: ViewerEffectiveProfile;
       renderer: "webcodecs" | "mse";
+      visible?: boolean;
     }
   | { type: "reconnect"; cause: ReconnectCause }
+  | { type: "visibility"; visible: boolean }
   | {
       type: "watermark";
       epoch: number;
@@ -119,6 +127,8 @@ let metricsTimer = 0;
 let renderHandle = 0;
 let closing = false;
 let hasFrame = false;
+let visible = true;
+const videoProgress = new VideoProgressWatchdog();
 let hasFrameInGeneration = false;
 let width = 0;
 let height = 0;
@@ -607,7 +617,7 @@ function drawPendingFrame(): void {
   }
   sourceAdvancedSinceDraw = false;
   lastDrawAt = drawnAt;
-  if (!hasFrame) {
+  if (!hasFrameInGeneration) {
     hasFrame = true;
     reconnectAttempt = 0;
     scope.postMessage({ type: "first-frame" });
@@ -917,6 +927,7 @@ function handleText(text: string): void {
   if (payload.type === "relay-metrics" && payload.metrics) {
     const metrics = payload.metrics as Record<string, unknown>;
     relaySourceFps = numberField(metrics, "sourceFps");
+    if (visible) videoProgress.observeSource(relaySourceFps, performance.now());
     sourceBitrateMbps = numberField(metrics, "sourceBitrateMbps");
     sourceFrameSizeP95Bytes = numberField(metrics, "sourceFrameSizeP95Bytes");
     keyFrameSizeBytes = numberField(metrics, "keyFrameSizeBytes");
@@ -950,6 +961,7 @@ function handleText(text: string): void {
       typeof payload.name === "string" ? payload.name : undefined;
   } else if (payload.type === "reconnecting") {
     sourceRestartCount += 1;
+    videoProgress.reset();
     resetAudioAdmission();
     audioDescription = undefined;
     resetAudioTimeline();
@@ -1019,6 +1031,8 @@ function markAlive(): void {
 }
 
 function resetConsumerState(): void {
+  videoProgress.reset();
+  relaySourceFps = undefined;
   clearFirstFrameTimer();
   clearHeartbeatTimer();
   ingress?.close();
@@ -1167,7 +1181,31 @@ function connect(): void {
   });
 }
 
+function checkVideoProgress(): void {
+  if (!visible || !hasFrame || closing || ws?.readyState !== WebSocket.OPEN)
+    return;
+  const recovery = videoProgress.sample(
+    {
+      received: highestReceivedSequence,
+      decoded: highestDecodedSequence,
+      presented: highestPresentedSequence,
+    },
+    performance.now(),
+  );
+  if (recovery?.action === "reconnect") {
+    reconnect({
+      initiator: "worker",
+      category: "video-progress",
+      generation,
+      detail: recovery.reason,
+    });
+  } else if (recovery?.action === "resync") {
+    localVideoRecovery(recovery.reason);
+  }
+}
+
 function emitMetrics(): void {
+  checkVideoProgress();
   if (!effectiveProfile) {
     return;
   }
@@ -1292,6 +1330,11 @@ scope.onmessage = (event) => {
     shutdown();
     return;
   }
+  if (message.type === "visibility") {
+    visible = message.visible;
+    videoProgress.reset();
+    return;
+  }
   if (message.type === "reconnect") {
     reconnect(message.cause);
     return;
@@ -1326,6 +1369,7 @@ scope.onmessage = (event) => {
     switchToWebCodecsFallback("mse-unsupported");
     return;
   }
+  visible = message.visible ?? true;
   canvas = message.canvas;
   rendererMode = message.renderer;
   if (rendererMode === "webcodecs") {
