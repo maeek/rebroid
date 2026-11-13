@@ -9,6 +9,8 @@ import {
   resourceNavigationInteractiveClassName,
   resourceNavigationListClassName
 } from '@/shared/ui/resource-navigation-style'
+import { useResourceNavigationIndicator } from '@/shared/ui/use-resource-navigation-indicator'
+import motion from '@/shared/ui/resource-navigation-motion.module.css'
 
 type TabsContextValue = {
   baseId: string
@@ -61,27 +63,44 @@ export const TabsList = ({
   children: ReactNode
   className?: string
   variant?: 'segmented' | 'scrollable' | 'immersive' | 'resource'
-}) => (
-  <TabsListVariantContext.Provider value={variant}>
-    <div className={cn('flex min-w-0 items-center gap-2', className)}>
-      <div
-        role='tablist'
-        aria-label={ariaLabel}
-        data-variant={variant}
-        className={cn('min-w-0 flex-1', {
-          [resourceNavigationListClassName]: variant === 'resource',
-          'flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1': variant === 'segmented',
-          'scrollbar-thin flex gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
-            variant === 'scrollable',
-          'scrollbar-thin flex gap-1 overflow-x-auto': variant === 'immersive'
-        })}
-      >
-        {children}
+}) => {
+  const { value } = useTabsContext()
+  const { containerRef, indicatorRef } = useResourceNavigationIndicator<HTMLDivElement>(
+    value,
+    ariaLabel,
+    variant === 'resource'
+  )
+  return (
+    <TabsListVariantContext.Provider value={variant}>
+      <div className={cn('flex min-w-0 items-center gap-2', className)}>
+        <div
+          ref={containerRef}
+          role='tablist'
+          aria-label={ariaLabel}
+          data-variant={variant}
+          className={cn('min-w-0 flex-1', {
+            [resourceNavigationListClassName]: variant === 'resource',
+            'flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1': variant === 'segmented',
+            'scrollbar-thin flex gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
+              variant === 'scrollable',
+            'scrollbar-thin flex gap-1 overflow-x-auto': variant === 'immersive'
+          })}
+        >
+          {children}
+          {variant === 'resource' ? (
+            <span
+              ref={indicatorRef}
+              aria-hidden
+              className={motion.indicator}
+              data-slot='resource-navigation-indicator'
+            />
+          ) : null}
+        </div>
+        {actions ? <div className='shrink-0'>{actions}</div> : null}
       </div>
-      {actions ? <div className='shrink-0'>{actions}</div> : null}
-    </div>
-  </TabsListVariantContext.Provider>
-)
+    </TabsListVariantContext.Provider>
+  )
+}
 
 const focusTab = (event: KeyboardEvent<HTMLButtonElement>, offset: number | 'first' | 'last') => {
   const tabList = event.currentTarget.closest('[role="tablist"]')
@@ -123,6 +142,7 @@ export const TabsTrigger = ({
       id={`${context.baseId}-tab-${value}`}
       aria-controls={`${context.baseId}-panel-${value}`}
       aria-selected={active}
+      data-resource-item={resource ? value : undefined}
       tabIndex={active ? 0 : -1}
       disabled={disabled}
       className={cn(

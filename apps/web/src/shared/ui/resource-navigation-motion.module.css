@@ -1,0 +1,24 @@
+.navigation {
+  position: relative;
+}
+
+.indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.5rem;
+  height: 0.125rem;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  pointer-events: none;
+  opacity: 0;
+}
+
+.navigation[data-indicator-ready] > .indicator {
+  opacity: 1;
+}
+
+.navigation[data-indicator-ready] > [aria-current='page']::after,
+.navigation[data-indicator-ready] > [aria-selected='true']::after {
+  display: none;
+}

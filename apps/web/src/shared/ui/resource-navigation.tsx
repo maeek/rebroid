@@ -3,12 +3,14 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import motion from './resource-navigation-motion.module.css'
 import {
   resourceNavigationActiveClassName,
   resourceNavigationItemClassName,
   resourceNavigationInteractiveClassName,
   resourceNavigationListClassName
 } from './resource-navigation-style'
+import { useResourceNavigationIndicator } from './use-resource-navigation-indicator'
 
 type ResourceNavigationItem = {
   id: string
@@ -29,6 +31,7 @@ export const ResourceNavigation = ({
 }) => {
   const selected = useRef<HTMLAnchorElement>(null)
   const currentId = items.find(item => item.current)?.id
+  const { containerRef, indicatorRef } = useResourceNavigationIndicator<HTMLElement>(currentId, label)
   useEffect(() => {
     const item = selected.current
     if (!preserveScroll) {
@@ -47,6 +50,7 @@ export const ResourceNavigation = ({
 
   return (
     <nav
+      ref={containerRef}
       aria-label={label}
       className={resourceNavigationListClassName}
     >
@@ -71,6 +75,7 @@ export const ResourceNavigation = ({
         return item.href ? (
           <Link
             key={item.id}
+            data-resource-item={item.id}
             href={item.href}
             scroll={!preserveScroll}
             aria-current={item.current ? 'page' : undefined}
@@ -82,6 +87,7 @@ export const ResourceNavigation = ({
         ) : (
           <span
             key={item.id}
+            data-resource-item={item.id}
             aria-current={item.current ? 'page' : undefined}
             className={className}
           >
@@ -89,6 +95,12 @@ export const ResourceNavigation = ({
           </span>
         )
       })}
+      <span
+        ref={indicatorRef}
+        aria-hidden
+        className={motion.indicator}
+        data-slot='resource-navigation-indicator'
+      />
     </nav>
   )
 }
