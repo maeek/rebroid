@@ -46,6 +46,7 @@ export const usePollingQuery = <Data, Error = unknown>(
     refetchIntervalInBackground: false,
     refetchOnMount: revalidateOnMount ? 'always' : false
   })
+  const { refetch } = query
 
   useEffect(() => {
     if (query.error !== null) {
@@ -65,9 +66,9 @@ export const usePollingQuery = <Data, Error = unknown>(
         return queryClient.fetchQuery({ queryKey, queryFn: overrideFetcher, staleTime: 0 })
       }
 
-      return query.refetch().then(result => result.data)
+      return refetch({ cancelRefetch: false }).then(result => result.data)
     },
-    [enabled, query, queryClient, queryKey, serializedKey]
+    [enabled, queryClient, queryKey, refetch, serializedKey]
   )
 
   return {

@@ -17,10 +17,13 @@ type UseApplicationLogsOptions = {
 
 export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = false }: UseApplicationLogsOptions) => {
   const [source, setSource] = useState<LogSource>('orchestrator')
-  const [log, setLog] = useState<ApplicationLog>()
+  const [unavailableLog, setUnavailableLog] = useState<{ key: string; log: ApplicationLog }>()
   const [isLive, setIsLive] = useState(false)
-  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false)
+  const [attemptedKey, setAttemptedKey] = useState<string>()
+  const appId = app?.id
+  const requestKey = JSON.stringify([appId, source])
   const sourceUnavailable = isSourceUnavailableForApp(app, source)
+  const unavailableMessage = unavailableSourceMessage(app, source)
   const {
     data: refreshedLog,
     isValidating: isLoading,
@@ -35,36 +38,35 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
       onError: () => setIsLive(false)
     }
   )
+  let log = refreshedLog
+  if (sourceUnavailable) {
+    log = unavailableLog?.key === requestKey ? unavailableLog.log : undefined
+  }
 
   const changeSource = useCallback((value: string) => {
     if (value === 'adb' || value === 'container' || value === 'orchestrator') {
       setSource(value)
     }
-    setLog(undefined)
   }, [])
 
   const loadLogs = useCallback(async () => {
-    if (!app) {
+    if (!appId) {
       return
     }
 
     if (sourceUnavailable) {
-      setLog({
-        source,
-        collectedAt: new Date().toISOString(),
-        output: unavailableSourceMessage(app, source)
+      setUnavailableLog({
+        key: requestKey,
+        log: { source, collectedAt: new Date().toISOString(), output: unavailableMessage }
       })
-      setHasAttemptedLoad(true)
+      setAttemptedKey(requestKey)
       setIsLive(false)
       return
     }
 
-    setHasAttemptedLoad(true)
+    setAttemptedKey(requestKey)
     try {
-      const nextLog = await refreshLogs()
-      if (nextLog) {
-        setLog(nextLog)
-      }
+      await refreshLogs()
     } catch (error) {
       setIsLive(false)
       toast({
@@ -73,26 +75,15 @@ export const useApplicationLogs = ({ app, enabled = true, loadWhenEnabled = fals
         variant: 'danger'
       })
     }
-  }, [app, refreshLogs, source, sourceUnavailable])
+  }, [appId, refreshLogs, requestKey, source, sourceUnavailable, unavailableMessage])
 
   useEffect(() => {
-    setLog(undefined)
-    setHasAttemptedLoad(false)
-  }, [app?.id, source])
-
-  useEffect(() => {
-    if (refreshedLog) {
-      setLog(refreshedLog)
-    }
-  }, [refreshedLog])
-
-  useEffect(() => {
-    if (!enabled || !loadWhenEnabled || log || refreshedLog || isLoading || hasAttemptedLoad) {
+    if (!enabled || !loadWhenEnabled || log || isLoading || attemptedKey === requestKey) {
       return
     }
 
     void loadLogs()
-  }, [enabled, hasAttemptedLoad, isLoading, loadLogs, loadWhenEnabled, log, refreshedLog])
+  }, [attemptedKey, enabled, isLoading, loadLogs, loadWhenEnabled, log, requestKey])
 
   useEffect(() => {
     if (!enabled || !isLive || sourceUnavailable) {
