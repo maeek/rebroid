@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
+import { scrcpyVideoConfigurationChangedCloseCode } from "./scrcpy.types";
 import type {
   ScrcpyAudioPacket,
   ScrcpyMediaSink,
@@ -12,6 +13,11 @@ import { canReplayVideoGop } from "./scrcpy-media-queue";
 
 const MAX_CACHED_GOP_SPAN_US = 2_000_000n;
 const MAX_CACHED_GOP_BYTES = 16 * 1024 * 1024;
+
+type AttachmentOptions = {
+  mode?: "bootstrap" | "media";
+  negotiatedConfig?: Buffer;
+};
 
 interface Consumer {
   id: string;
@@ -61,7 +67,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
 
   attach(
     sink: ScrcpyMediaSink,
-    negotiatedConfig?: Buffer,
+    { mode = "media", negotiatedConfig }: AttachmentOptions = {},
   ): ScrcpyStreamAttachment {
     if (this.closed) {
       throw new Error("scrcpy source is closed");
@@ -81,8 +87,13 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     this.consumers.set(consumerId, consumer);
     sink.onClose(() => this.detachConsumer(consumerId, false));
     this.replayCachedStatuses(sink);
-    this.replayCachedGop(sink);
+    const replayedGop = this.replayCachedGop(consumer, mode);
     this.onConsumerAdded();
+    // SDP bootstrap needs only the current configuration and an IDR. A media
+    // consumer needs the complete GOP to safely accept the next live delta.
+    const needsKeyFrame =
+      mode === "bootstrap" ? !this.hasVideoBootstrap() : !replayedGop;
+    if (needsKeyFrame && sink.isOpen()) this.requestReset("consumer-attached");
 
     return {
       sourceAttemptId: this.sourceAttemptId,
@@ -150,6 +161,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
             consumer.id,
             true,
             "Video codec configuration changed",
+            scrcpyVideoConfigurationChangedCloseCode,
           );
           continue;
         }
@@ -255,6 +267,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     consumerId: string,
     closeSink: boolean,
     reason = "display consumer failed",
+    closeCode = 1011,
   ): void {
     const consumer = this.consumers.get(consumerId);
     if (!consumer || consumer.detached) {
@@ -263,7 +276,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     consumer.detached = true;
     this.consumers.delete(consumerId);
     if (closeSink && consumer.sink.isOpen()) {
-      consumer.sink.close(1011, reason);
+      consumer.sink.close(closeCode, reason);
     }
     consumer.resolveClosed();
     if (!this.closed && this.consumers.size === 0) {
@@ -275,6 +288,11 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     if (packet.config) {
       if (!this.cachedConfig?.data.equals(packet.data)) {
         this.invalidateVideoBootstrap();
+      } else {
+        // A reset can repeat the same SPS/PPS before its new IDR. The older
+        // GOP cannot prime a consumer past this configuration boundary.
+        this.cachedGop = [];
+        this.cachedGopBytes = 0;
       }
       this.cachedConfig = { ...packet, data: Buffer.from(packet.data) };
       return;
@@ -282,30 +300,27 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     if (!this.cachedConfig) {
       return;
     }
-    const copy = { ...packet, data: Buffer.from(packet.data) };
     if (packet.keyFrame) {
-      this.cachedGop = [copy];
-      this.cachedGopBytes = copy.data.byteLength;
+      this.cachedGop = [{ ...packet, data: Buffer.from(packet.data) }];
+      this.cachedGopBytes = packet.data.byteLength;
       return;
     }
     const first = this.cachedGop[0];
-    if (!first) {
+    const last = this.cachedGop.at(-1);
+    if (!first || !last) {
       return;
     }
-    const span =
-      packet.timestampUs >= first.timestampUs
-        ? packet.timestampUs - first.timestampUs
-        : MAX_CACHED_GOP_SPAN_US + 1n;
     if (
-      span > MAX_CACHED_GOP_SPAN_US ||
-      this.cachedGopBytes + copy.data.byteLength > MAX_CACHED_GOP_BYTES
+      packet.timestampUs < last.timestampUs ||
+      packet.timestampUs - first.timestampUs > MAX_CACHED_GOP_SPAN_US ||
+      this.cachedGopBytes + packet.data.byteLength > MAX_CACHED_GOP_BYTES
     ) {
       this.cachedGop = [];
       this.cachedGopBytes = 0;
       return;
     }
-    this.cachedGop.push(copy);
-    this.cachedGopBytes += copy.data.byteLength;
+    this.cachedGop.push({ ...packet, data: Buffer.from(packet.data) });
+    this.cachedGopBytes += packet.data.byteLength;
   }
 
   private awaitVideoBootstrap(
@@ -355,9 +370,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
         if (!isCurrent()) {
           return null;
         }
-        const attachment = this.attach(sink, config.data);
-        this.requestReset("consumer-attached");
-        return attachment;
+        return this.attach(sink, { negotiatedConfig: config.data });
       },
       configuration: Buffer.from(config.data),
       keyFrame: Buffer.from(keyFrame.data),
@@ -366,6 +379,10 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
       actualEncoder: this.actualEncoder,
       ...inspected,
     };
+  }
+
+  private hasVideoBootstrap(): boolean {
+    return this.cachedConfig !== null && this.cachedGop[0]?.keyFrame === true;
   }
 
   private resolveBootstrapWaiters(): void {
@@ -415,15 +432,37 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     }
   }
 
-  private replayCachedGop(sink: ScrcpyMediaSink): void {
-    if (this.cachedConfig) {
-      sink.writeVideo(this.cachedConfig);
-    }
+  private replayCachedGop(
+    consumer: Consumer,
+    mode: "bootstrap" | "media",
+  ): boolean {
+    const config = this.cachedConfig;
+    if (!config) return false;
+    const { sink } = consumer;
+    sink.writeVideo(config);
     // A partial GOP would leave the next live delta without its references.
-    if (canReplayVideoGop(this.cachedGop)) {
-      for (const packet of this.cachedGop) {
-        sink.writeVideo(packet);
-      }
+    if (!canReplayVideoGop(this.cachedGop)) return false;
+    let recoveryScheduled = false;
+    for (const packet of this.cachedGop) {
+      sink.writeVideo(packet, (_error, delivered) => {
+        if (mode === "bootstrap" || delivered !== false || recoveryScheduled) {
+          return;
+        }
+        recoveryScheduled = true;
+        // A live delta may overflow the queue during replay. Let the current
+        // enqueue finish first so a live IDR can satisfy recovery directly.
+        queueMicrotask(() => {
+          if (
+            !consumer.detached &&
+            sink.isOpen() &&
+            this.cachedConfig === config &&
+            sink.snapshot().video.awaitingKeyFrame
+          ) {
+            this.requestReset("consumer-attached");
+          }
+        });
+      });
     }
+    return true;
   }
 }

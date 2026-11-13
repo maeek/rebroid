@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { Logger } from "@nestjs/common";
+import { scrcpyVideoConfigurationChangedCloseCode } from "../scrcpy/scrcpy.types";
 import type {
+  ScrcpyMediaSink,
   ScrcpyStreamAttachment,
   ScrcpyVideoBootstrap,
 } from "../scrcpy/scrcpy.types";
@@ -10,7 +13,8 @@ import type {
   WebrtcBridgeMessage,
 } from "./display-webrtc-bridge";
 
-test("an offer gates media on the answer and fences bridge callbacks after stop", async () => {
+test("codec change notifies the current peer before bounded shutdown and fences retired controls", async (t) => {
+  const debug = t.mock.method(Logger.prototype, "debug", () => undefined);
   let onMessage: (message: WebrtcBridgeMessage) => void = () => {
     throw new Error("Bridge is not listening");
   };
@@ -29,7 +33,18 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
   let finished = 0;
   let dispatchedControls = 0;
   let resetRequests = 0;
+  let bridgeAttemptId: string | undefined;
   const replies: unknown[] = [];
+  let mediaSink: ScrcpyMediaSink | undefined;
+  let finishMedia!: () => void;
+  const mediaClosed = new Promise<void>((resolve) => {
+    finishMedia = resolve;
+  });
+  const bridgeCloseListeners: Array<() => void> = [];
+  let finishBridge!: () => void;
+  const bridgeClosed = new Promise<void>((resolve) => {
+    finishBridge = resolve;
+  });
   const stream: ScrcpyStreamAttachment = {
     sourceAttemptId: "source",
     consumerId: "bootstrap",
@@ -42,11 +57,13 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
   };
   const bootstrap: ScrcpyVideoBootstrap = {
     isCurrent: () => true,
-    attachMedia: () => {
+    attachMedia: (sink) => {
       attached += 1;
+      mediaSink = sink;
       return {
         ...stream,
         consumerId: "media",
+        closed: mediaClosed,
         detach: () => {
           detachedMedia += 1;
         },
@@ -67,7 +84,7 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
   };
   const bridge: WebrtcBridge = {
     isOpen: () => closed === 0,
-    onClose: () => undefined,
+    onClose: (listener) => bridgeCloseListeners.push(listener),
     listen: (callbacks) => {
       onMessage = callbacks.onMessage;
     },
@@ -80,6 +97,8 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     stopAudio: () => undefined,
     close: () => {
       closed += 1;
+      bridgeCloseListeners.forEach((listener) => listener());
+      finishBridge();
     },
   };
   const attempt = new DisplayWebrtcAttempt({
@@ -94,9 +113,11 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     maxFps: 30,
     audio: false,
     iceServers: [],
-    assertSourceSupported: async () => undefined,
     attachSource: () => stream,
-    launchBridge: () => bridge,
+    launchBridge: (_signal, attemptId) => {
+      bridgeAttemptId = attemptId;
+      return bridge;
+    },
     executeControl: () => {
       dispatchedControls += 1;
       return control;
@@ -112,7 +133,9 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     onMessage({ type: "state", state: "connected" });
     assert.equal(attached, 0);
     onMessage({ type: "answer", sdp: "answer" });
-    assert.equal((await answer).sdp, "answer");
+    const response = await answer;
+    assert.equal(response.sdp, "answer");
+    assert.equal(response.consumerAttemptId, bridgeAttemptId);
     assert.equal(attached, 1);
     const profile = replies.find(
       (reply) => (reply as Record<string, unknown>).type === "webrtc-profile",
@@ -126,7 +149,29 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
       payload: { id: "command", type: "keyboard" },
     });
     assert.equal(dispatchedControls, 1);
-    attempt.stop();
+    assert.ok(mediaSink);
+    mediaSink.close(
+      scrcpyVideoConfigurationChangedCloseCode,
+      "UPSTREAM_SENSITIVE_DETAIL",
+    );
+    finishMedia();
+    await Promise.resolve();
+    assert.equal(closed, 0, "allow time to deliver the notice over SCTP");
+    assert.deepEqual(replies.at(-1), {
+      type: "webrtc-codec-changed",
+      consumerAttemptId: profile.consumerAttemptId,
+    });
+    onMessage({ type: "control", payload: { id: "stale", type: "keyboard" } });
+    onMessage({ type: "video-resync-request" });
+    assert.equal(dispatchedControls, 1);
+    assert.equal(resetRequests, 0);
+    // No browser response. The sidecar must still retire the peer promptly.
+    const deadline = setTimeout(() => {}, 1_000);
+    try {
+      await bridgeClosed;
+    } finally {
+      clearTimeout(deadline);
+    }
     onMessage({ type: "state", state: "connected" });
     onMessage({ type: "video-resync-request" });
     onMessage({ type: "control", payload: { id: "late", type: "keyboard" } });
@@ -137,6 +182,15 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     assert.equal(detachedMedia, 1);
     assert.equal(closed, 1);
     assert.equal(finished, 1);
+    const terminalLogs = debug.mock.calls.flatMap(({ arguments: args }) =>
+      args.filter(
+        (message) =>
+          typeof message === "string" && message.includes("attempt ended"),
+      ),
+    );
+    assert.deepEqual(terminalLogs, [
+      `[webrtc:session:${response.consumerAttemptId}] attempt ended reason=source_codec_changed sourceAttemptId=source`,
+    ]);
     assert.equal(dispatchedControls, 1);
     assert.equal(resetRequests, 0);
     assert.equal(

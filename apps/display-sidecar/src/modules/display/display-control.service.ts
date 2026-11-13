@@ -76,7 +76,7 @@ export class DisplayControlService {
     }
   }
 
-  private route(session: DisplaySession, request: DisplayControlRequest) {
+  private async route(session: DisplaySession, request: DisplayControlRequest) {
     const { id: sessionId, udid } = session;
     if (request.type === "action") {
       if (
@@ -90,6 +90,15 @@ export class DisplayControlService {
         });
       }
       const command = request.command as ViewerCommand;
+      if (
+        session.surfaceKind === "main" &&
+        this.scrcpy.shouldWaitForStreamControl(sessionId) &&
+        !this.scrcpy.hasActiveControl(sessionId)
+      ) {
+        // Toolbar actions can use ADB when the capture is rebuilding its control socket.
+        await this.adb.viewerAction(udid, command);
+        return { command, executed: true as const, transport: "adb" as const };
+      }
       return this.withFallback(
         session,
         this.scrcpy.sendViewerAction(sessionId, command),

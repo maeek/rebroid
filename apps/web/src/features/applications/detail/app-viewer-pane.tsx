@@ -17,6 +17,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { StateView } from '@/shared/ui/state-view'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
+import type { ObservedStreamIssue } from './viewer-stream-issue'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 
 export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'top' }) => {
@@ -32,12 +33,16 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
     setViewerStreamMetrics,
     recordStartupFirstFrame,
     setViewerSettings,
+    viewerSettingsHydrated,
     viewerSettings
   } = useApplicationViewerApp()
   const [orientation, setOrientation] = useState<ViewerOrientation>(() => {
     const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
     return display.width >= display.height ? 'landscape' : 'portrait'
   })
+  const [streamIssue, setStreamIssue] = useState<ObservedStreamIssue & { appId: string; runtimeId: string | null }>()
+  const currentIssue =
+    streamIssue?.appId === app.id && streamIssue.runtimeId === app.containerId ? streamIssue : undefined
   const [isStarting, startTransition] = useTransition()
   const runtimeAvailable = app.status === 'running'
   const useDisplayWorkspace = canAttach && runtimeAvailable
@@ -80,7 +85,8 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             key={app.id}
             app={app}
             viewerSettings={viewerSettings}
-            streamingSettings={<AppViewerStreamingSettings />}
+            viewerSettingsHydrated={viewerSettingsHydrated}
+            streamingSettings={<AppViewerStreamingSettings streamIssue={currentIssue} />}
             clipboard={
               !isForeignOwnedApp && hasPermission(permissions, 'applications:sync-clipboard') ? (
                 <ViewerClipboard appId={app.id} />
@@ -90,6 +96,9 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             canCaptureScreenshot={canCaptureScreenshot}
             onViewerSettingsChange={setViewerSettings}
             onFirstFrame={recordStartupFirstFrame}
+            onStreamIssue={(surfaceId, status) =>
+              setStreamIssue({ appId: app.id, runtimeId: app.containerId, surfaceId, status, observedAt: Date.now() })
+            }
             onStreamMetrics={(surfaceId, metrics) =>
               setViewerStreamMetrics(current => ({
                 ...current,

@@ -140,14 +140,14 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	control := bindControlRelay(peer, recovery, emit)
 	startWorker(func() {
 		if err := relayDataChannel(ctx, control.opened, control.closed, control.messages); err != nil {
-			stop(err)
+			stop(withPeerFailure("reliable_control_relay_failed", err))
 		}
 	})
 	peer.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		emit(stdoutMessage{Type: "state", State: state.String()})
 		switch state {
 		case webrtc.PeerConnectionStateFailed:
-			stop(errors.New("WebRTC peer failed"))
+			stop(withPeerFailure("peer_connection_failed", errors.New("WebRTC peer failed")))
 		case webrtc.PeerConnectionStateClosed:
 			stop(nil)
 		}
@@ -165,9 +165,9 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 		return err
 	}
 	startWorker(func() {
-		stop(readCommands(reader, func(payload []byte) error {
+		stop(withPeerFailure("bridge_command_read_failed", readCommands(reader, func(payload []byte) error {
 			return control.messages.put(payload, dataChannelReplaceKey(payload))
-		}))
+		})))
 	})
 
 	select {
@@ -206,7 +206,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 				return
 			}
 			if errors.Is(err, errSourceTimestampRegressed) {
-				stop(err)
+				stop(withPeerFailure("audio_relay_failed", err))
 				return
 			}
 			message := "Audio input ended."
@@ -219,10 +219,33 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 
 	startWorker(func() {
 		err := streamH264(video, videoTrack, metrics, recovery, timeline, emit)
-		stop(err)
+		stop(withPeerFailure("video_relay_failed", err))
 	})
 	<-ctx.Done()
 	return attemptError(ctx)
+}
+
+// The code is safe to put in an operator log. The wrapped error remains available
+// internally for errors.Is without logging Pion, IPC, or browser input verbatim.
+type peerFailure struct {
+	code  string
+	cause error
+}
+
+func (failure *peerFailure) Error() string { return failure.cause.Error() }
+func (failure *peerFailure) Unwrap() error { return failure.cause }
+
+func withPeerFailure(code string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, errSourceTimestampRegressed) {
+		code = "source_timestamp_regressed"
+	}
+	if errors.Is(err, errRelayQueueFull) {
+		code = "reliable_relay_queue_full"
+	}
+	return &peerFailure{code, err}
 }
 
 func attemptError(ctx context.Context) error {

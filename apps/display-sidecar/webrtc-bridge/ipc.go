@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -16,6 +18,10 @@ const peerAssemblyTimeout = 5 * time.Second
 // Each local connection starts with a random 16-byte peer ID and a stream
 // index. Separate sockets keep media backpressure out of commands and audio.
 type peerID [16]byte
+
+func (id peerID) String() string {
+	return fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:])
+}
 
 type localPeer struct {
 	streams [3]net.Conn // commands/events, video, audio
@@ -65,6 +71,9 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 		if peer == nil {
 			if len(peers) >= maxPeers {
 				mu.Unlock()
+				if index == 0 {
+					log.Printf("[webrtc-attempt:%s] bridge peer rejected reason=bridge_capacity", id)
+				}
 				_ = stream.Close()
 				return
 			}
@@ -75,6 +84,7 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 				defer mu.Unlock()
 				if peers[id] == peer && peer.timer != nil {
 					delete(peers, id)
+					log.Printf("[webrtc-attempt:%s] bridge peer rejected reason=bridge_assembly_timeout", id)
 					peer.close()
 				}
 			})
@@ -93,7 +103,7 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 		peer.timer = nil
 		mu.Unlock()
 
-		runLocalPeer(ctx, peer, setting)
+		runLocalPeer(ctx, id, peer, setting)
 		mu.Lock()
 		delete(peers, id)
 		mu.Unlock()
@@ -137,7 +147,7 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 	}
 }
 
-func runLocalPeer(parent context.Context, peer *localPeer, setting webrtc.SettingEngine) {
+func runLocalPeer(parent context.Context, id peerID, peer *localPeer, setting webrtc.SettingEngine) {
 	ctx, stop := context.WithCancelCause(parent)
 	defer stop(nil)
 	defer peer.close()
@@ -147,7 +157,7 @@ func runLocalPeer(parent context.Context, peer *localPeer, setting webrtc.Settin
 	go func() {
 		defer close(done)
 		if err := relayOutput(ctx, commands, events); err != nil {
-			stop(err)
+			stop(withPeerFailure("bridge_event_write_failed", err))
 		}
 	}()
 	err := runPeer(ctx, commands, peer.streams[1], peer.streams[2], func(message stdoutMessage) {
@@ -159,11 +169,16 @@ func runLocalPeer(parent context.Context, peer *localPeer, setting webrtc.Settin
 			key = "metrics"
 		}
 		if err := events.put(message, key, message.discardKey); err != nil {
-			stop(err)
+			stop(withPeerFailure("bridge_event_queue_failed", err))
 		}
 	}, setting)
-	if err != nil && ctx.Err() == nil {
-		log.Printf("WebRTC peer closed: %v", err)
+	if err != nil {
+		reason := "bridge_signaling_failed"
+		var failure *peerFailure
+		if errors.As(err, &failure) {
+			reason = failure.code
+		}
+		log.Printf("[webrtc-attempt:%s] bridge peer ended reason=%s", id, reason)
 	}
 	stop(nil)
 	_ = commands.Close()

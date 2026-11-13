@@ -20,7 +20,7 @@ export class DisplayWebrtcProcess {
     private readonly maxPeers: number,
   ) {}
 
-  async connect(signal: AbortSignal) {
+  async connect(signal: AbortSignal, attemptId: string) {
     signal.throwIfAborted();
     if (this.stopping)
       throw new ServiceUnavailableException("WebRTC is shutting down.");
@@ -29,7 +29,7 @@ export class DisplayWebrtcProcess {
     signal.throwIfAborted();
     if (this.stopping)
       throw new ServiceUnavailableException("WebRTC is shutting down.");
-    return connectWebrtcBridge(path);
+    return connectWebrtcBridge(path, attemptId);
   }
 
   close() {

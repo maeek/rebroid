@@ -62,7 +62,8 @@ test("a copied viewer URL is denied to an anonymous browser or another owner", a
     },
   );
   const url = new URL(grant.viewerPath, "https://rebroid.test");
-  assert.deepEqual([...url.searchParams.keys()], ["sessionId"]);
+  assert.deepEqual([...url.searchParams.keys()], ["sessionId", "surfaceKind"]);
+  assert.equal(url.searchParams.get("surfaceKind"), "main");
   const id = url.searchParams.get("sessionId")!;
   await assert.rejects(
     access.admit(id, { ...headersFor("alice"), cookie: undefined }),
@@ -106,6 +107,64 @@ test("owner revocation closes admissions immediately and fences delayed authoriz
   assert.equal(closed.mock.callCount(), 1);
   allowPending(allowed());
   await assert.rejects(pending, /Display session not found/);
+});
+
+test("authorization abandoned during the account lookup does not activate its grant", async (t) => {
+  const { access, grant, sessions } = setup();
+  const abandoned = new AbortController();
+  let accountSignal: AbortSignal | null | undefined;
+  let finish!: (response: Response) => void;
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+      accountSignal = init?.signal;
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    },
+  );
+  const pending = assert.rejects(
+    access.admit(grant.id, headersFor("alice"), abandoned.signal),
+    { name: "AbortError" },
+  );
+  abandoned.abort();
+  assert.equal(accountSignal?.aborted, true);
+  finish(
+    Response.json({
+      ownerUserId: "alice",
+      capabilities: { control: false, clipboard: true, screenshot: false },
+    }),
+  );
+  await pending;
+  assert.equal(sessions.get(grant.id).status, "created");
+});
+
+test("peer replacement scope survives cookie rotation and separates account sessions", async (t) => {
+  const { access, grant } = setup();
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async (_input: Parameters<typeof fetch>[0], init?: RequestInit) =>
+      Response.json({
+        ownerUserId: "alice",
+        accountSessionId: new Headers(init?.headers)
+          .get("cookie")
+          ?.endsWith("=second-browser")
+          ? "account-session-2"
+          : "account-session-1",
+        capabilities: { control: false, clipboard: true, screenshot: false },
+      }),
+  );
+  const first = await access.admit(grant.id, headersFor("first-browser"));
+  const rotated = await access.admit(
+    grant.id,
+    headersFor("first-browser-renewed"),
+  );
+  const second = await access.admit(grant.id, headersFor("second-browser"));
+  assert.equal(first.accountSessionKey, rotated.accountSessionKey);
+  assert.notEqual(first.accountSessionKey, second.accountSessionKey);
+  assert.notEqual(first.accountSessionKey, "account-session-1");
 });
 
 test("an active viewer closes when current permissions no longer allow its grant", async (t) => {

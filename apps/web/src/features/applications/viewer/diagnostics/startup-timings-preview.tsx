@@ -19,6 +19,7 @@ export const StartupTimingsPreview = () => (
           { label: 'First frame in this tab', at: start + 36_340 }
         ]
       }}
+      viewerStartup={{ requestToConnectMs: 2300, connectToFrameMs: 1600 }}
     />
     <AppStartupTimingsSection loading />
   </main>

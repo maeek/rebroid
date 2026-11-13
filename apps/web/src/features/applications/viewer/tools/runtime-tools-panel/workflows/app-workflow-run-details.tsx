@@ -25,6 +25,7 @@ import type { AutomationRun } from '@/shared/contracts/automation'
 
 export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; runId: string }) {
   const { permissions } = useApplicationViewerApp()
+  const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
   const [tab, setTab] = useState('summary')
   const query = useQuery({
     queryKey: ['application-workflow-run', endpoint, runId],
@@ -37,7 +38,10 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
   })
   const stop = useMutation({
     mutationFn: () => sendBff<AutomationRun>(`/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`, {}),
-    onSuccess: () => query.refetch()
+    onSuccess: result => {
+      setCancelRequestedRunId(result.id)
+      return query.refetch()
+    }
   })
   const run = query.data
   if (!run) {
@@ -55,6 +59,8 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
     )
   }
 
+  const stopping = workflowRunIsActive(run.status) && (stop.isPending || cancelRequestedRunId === run.id)
+
   return (
     <Section
       title={run.automationName ?? 'Deleted workflow'}
@@ -63,7 +69,10 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
       titleClassName='flex-wrap items-center gap-x-3 gap-y-2'
       actions={
         <div className='flex flex-wrap items-center gap-2'>
-          <AutomationRunStatusBadge status={stop.isPending ? 'canceling' : run.status} />
+          <AutomationRunStatusBadge
+            runId={run.id}
+            status={stopping ? 'canceling' : run.status}
+          />
           {run.automationName && hasPermission(permissions, 'automations:manage') ? (
             <ResourceLink
               href={workflowTraceHref(run.automationId, run.id)}
@@ -79,9 +88,10 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
           ) : null}
           {workflowRunIsActive(run.status) ? (
             <MutationButton
+              animate
               variant='secondary'
               size='sm'
-              pending={stop.isPending}
+              pending={stopping}
               pendingLabel='Stopping…'
               onClick={() => stop.mutate()}
             >

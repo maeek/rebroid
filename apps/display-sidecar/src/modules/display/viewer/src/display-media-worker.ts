@@ -1,3 +1,4 @@
+import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { codecConfiguration } from "./h264.js";
 import {
   FragmentedMp4Muxer,
@@ -13,7 +14,7 @@ import {
 } from "./video-frame-renderer.js";
 import type { ViewerEffectiveProfile, ViewerStreamMetricsV4 } from "./types.js";
 
-type ReconnectCause = {
+export type ReconnectCause = {
   initiator: "worker" | "main" | "transport";
   category:
     | "heartbeat"
@@ -36,9 +37,12 @@ type WorkerInput =
       effectiveProfile: ViewerEffectiveProfile;
       renderer: "webcodecs" | "mse";
       visible?: boolean;
+      demand?: boolean;
+      demandEpoch?: number;
     }
   | { type: "reconnect"; cause: ReconnectCause }
   | { type: "visibility"; visible: boolean }
+  | { type: "demand"; active: boolean; epoch: number }
   | {
       type: "watermark";
       epoch: number;
@@ -46,9 +50,15 @@ type WorkerInput =
       presentedSequence?: number;
       presentedTimestampUs?: number;
     }
-  | { type: "mse-presented"; epoch: number }
+  | {
+      type: "mse-presented";
+      epoch: number;
+      width: number;
+      height: number;
+      at: number;
+    }
   | { type: "mse-resync"; reason: string; epoch: number }
-  | { type: "use-webcodecs-fallback" }
+  | { type: "use-webcodecs-fallback"; epoch: number }
   | { type: "close" };
 
 type WorkerOutput =
@@ -78,7 +88,9 @@ type WorkerOutput =
   | { type: "renderer-fallback"; reason: string }
   | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
   | { type: "session-expired" }
-  | { type: "fatal"; message: string };
+  | { type: "fatal"; message: string; closeCode?: number };
+
+export type MediaWorkerMessage = WorkerOutput & { demandEpoch: number };
 
 type AudioWorkletMessage =
   | { type: "playhead"; timestampUs: number; queueDepthMs: number }
@@ -86,7 +98,7 @@ type AudioWorkletMessage =
 
 const scope = globalThis as unknown as {
   onmessage: ((event: MessageEvent<WorkerInput>) => void) | null;
-  postMessage: (message: WorkerOutput, transfer?: Transferable[]) => void;
+  postMessage: (message: MediaWorkerMessage, transfer?: Transferable[]) => void;
   requestAnimationFrame?: (callback: FrameRequestCallback) => number;
   cancelAnimationFrame?: (handle: number) => void;
   close: () => void;
@@ -120,6 +132,7 @@ let generation = 0;
 let videoEpoch = 0;
 let audioEpoch = 0;
 let reconnectAttempt = 0;
+let profileConflictRetries = 0;
 let reconnectTimer = 0;
 let firstFrameTimer = 0;
 let mseRecoveryCount = 0;
@@ -127,6 +140,10 @@ let heartbeatTimer = 0;
 let metricsTimer = 0;
 let renderHandle = 0;
 let closing = false;
+let demand = true;
+let demandEpoch = 0;
+let sessionExpired = false;
+let rendererFailure: string | undefined;
 let hasFrame = false;
 let visible = true;
 const videoProgress = new VideoProgressWatchdog();
@@ -158,6 +175,7 @@ let receivedFrames = 0;
 let decodedFrames = 0;
 let drawnFrames = 0;
 let presentedFrames = 0;
+const displaySizePresentation = new DisplaySizePresentationTracker();
 let lastBytes = 0;
 let lastReceivedFrames = 0;
 let lastDecodedFrames = 0;
@@ -194,6 +212,10 @@ let decodeTimesMs: number[] = [];
 let decodeToDrawMs: number[] = [];
 let liveEdgeAgesMs: number[] = [];
 let frameGapsMs: number[] = [];
+
+function postMessage(message: WorkerOutput, transfer?: Transferable[]): void {
+  scope.postMessage({ ...message, demandEpoch }, transfer);
+}
 const decodeStartedAt = new Map<number, number>();
 const decodeSequences = new Map<number, number>();
 let decoderPreference: "hardware" | "software" = "hardware";
@@ -393,7 +415,7 @@ function postMp4Initialization(sourcePtsOriginUs: number): void {
   }
   const initialization = mp4Muxer.initialize(mp4Configuration);
   const segment = initialization.segment;
-  scope.postMessage(
+  postMessage(
     {
       type: "mse-init",
       epoch: videoEpoch,
@@ -418,7 +440,7 @@ function flushMp4Samples(nextTimestampUs?: number): void {
     Math.min(2, pendingMp4Samples.length),
   );
   const fragment = mp4Muxer.fragment(samples, nextTimestampUs);
-  scope.postMessage(
+  postMessage(
     {
       type: "mse-segment",
       epoch: videoEpoch,
@@ -476,6 +498,10 @@ function receiveVideoConfiguration(frame: ViewerMediaFrame): void {
   codecName = next.codec;
   mp4Configuration = null;
   if (next.width && next.height) {
+    displaySizePresentation.expectSize(
+      { width: next.width, height: next.height },
+      performance.timeOrigin + performance.now(),
+    );
     mp4Configuration = {
       codec: next.codec,
       sps: next.sps,
@@ -571,10 +597,12 @@ async function decodeVideo(
 }
 
 function scheduleRender(): void {
-  if (renderHandle || !pendingFrame) {
+  if (!demand || renderHandle || !pendingFrame) {
     return;
   }
+  const expectedGeneration = generation;
   const callback = () => {
+    if (expectedGeneration !== generation || !demand || closing) return;
     renderHandle = 0;
     drawPendingFrame();
   };
@@ -583,6 +611,16 @@ function scheduleRender(): void {
   } else {
     renderHandle = setTimeout(callback, 16) as unknown as number;
   }
+}
+
+function cancelRender(): void {
+  if (!renderHandle) return;
+  if (scope.cancelAnimationFrame && scope.requestAnimationFrame) {
+    scope.cancelAnimationFrame(renderHandle);
+  } else {
+    clearTimeout(renderHandle);
+  }
+  renderHandle = 0;
 }
 
 function drawPendingFrame(): void {
@@ -597,10 +635,14 @@ function drawPendingFrame(): void {
   if (width !== frameWidth || height !== frameHeight) {
     width = frameWidth;
     height = frameHeight;
-    scope.postMessage({ type: "resolution", width, height });
+    postMessage({ type: "resolution", width, height });
   }
   renderer.draw(pending.frame, frameWidth, frameHeight);
   const drawnAt = performance.now();
+  displaySizePresentation.present(
+    { width: frameWidth, height: frameHeight },
+    performance.timeOrigin + drawnAt,
+  );
   decodeToDrawMs.push(drawnAt - pending.decodedAt);
   liveEdgeAgesMs.push(
     Math.max(0, latestSourcePtsUs - pending.frame.timestamp) / 1_000,
@@ -621,10 +663,11 @@ function drawPendingFrame(): void {
   if (!hasFrameInGeneration) {
     hasFrame = true;
     reconnectAttempt = 0;
-    scope.postMessage({ type: "first-frame" });
+    postMessage({ type: "first-frame" });
   }
   hasFrameInGeneration = true;
   reconnectAttempt = 0;
+  profileConflictRetries = 0;
   clearFirstFrameTimer();
 }
 
@@ -652,7 +695,7 @@ function resetVideoAdmission(): void {
   clearMp4FlushTimer();
   pendingMp4Samples = [];
   if (rendererMode === "mse")
-    scope.postMessage({ type: "mse-reset", epoch: videoEpoch });
+    postMessage({ type: "mse-reset", epoch: videoEpoch });
 }
 
 function resetVideoDecoderAdmission(): void {
@@ -687,7 +730,7 @@ function disableAudioPlayback(
   audioPlaybackDisabled = true;
   resetAudioAdmission();
   resetAudioTimeline();
-  scope.postMessage({
+  postMessage({
     type: "status",
     payload: {
       type: "audio-disabled",
@@ -973,7 +1016,7 @@ function handleText(text: string): void {
   } else if (payload.type === "video-reset") {
     videoResetCount = numberField(payload, "count") ?? videoResetCount + 1;
   }
-  scope.postMessage({ type: "status", payload });
+  postMessage({ type: "status", payload });
 }
 
 function clearFirstFrameTimer(): void {
@@ -996,7 +1039,7 @@ function armFirstFrameTimer(expectedGeneration: number): void {
       return;
     }
     localVideoRecovery("renderer-first-frame-timeout");
-    scope.postMessage({
+    postMessage({
       type: "status",
       payload: {
         type: "renderer-recovering",
@@ -1045,6 +1088,7 @@ function resetConsumerState(): void {
   cachedConfiguration = null;
   codecName = null;
   mp4Configuration = null;
+  displaySizePresentation.cancelPending();
   resetVideoAdmission();
   hasFrameInGeneration = false;
   lastSequences = new Map();
@@ -1058,6 +1102,7 @@ function resetConsumerState(): void {
   mseRecoveryCount = 0;
   audioDiscontinuityPending = true;
   resetAudioTimeline();
+  cancelRender();
   if (pendingFrame) {
     pendingFrame.frame.close();
     pendingFrame = null;
@@ -1071,6 +1116,7 @@ function markMsePresented(): void {
   hasFrame = true;
   hasFrameInGeneration = true;
   reconnectAttempt = 0;
+  profileConflictRetries = 0;
   clearFirstFrameTimer();
 }
 
@@ -1083,7 +1129,7 @@ function switchToWebCodecsFallback(reason: string): void {
   hasFrame = false;
   hasFrameInGeneration = false;
   clearFirstFrameTimer();
-  scope.postMessage({ type: "renderer-fallback", reason });
+  postMessage({ type: "renderer-fallback", reason });
   localVideoRecovery(`mse-webcodecs-fallback:${reason}`);
   armFirstFrameTimer(generation);
 }
@@ -1108,7 +1154,7 @@ function resetAudioTimeline(): void {
 }
 
 function reconnect(cause: ReconnectCause): void {
-  if (closing || reconnectTimer) {
+  if (!demand || closing || sessionExpired || reconnectTimer) {
     return;
   }
   reconnectCount += 1;
@@ -1124,7 +1170,7 @@ function reconnect(cause: ReconnectCause): void {
   }
   const delayMs = Math.min(300 * 2 ** reconnectAttempt, 2_500);
   reconnectAttempt += 1;
-  scope.postMessage({ type: "reconnecting", cause, delayMs });
+  postMessage({ type: "reconnecting", cause, delayMs });
   reconnectTimer = setTimeout(() => {
     reconnectTimer = 0;
     connect();
@@ -1132,13 +1178,13 @@ function reconnect(cause: ReconnectCause): void {
 }
 
 function connect(): void {
-  if (closing || !websocketUrl) {
+  if (!demand || closing || sessionExpired || ws || !websocketUrl) {
     return;
   }
   const currentGeneration = ++generation;
   const requestedAt = performance.timeOrigin + performance.now();
   const socket = new WebSocket(websocketUrl);
-  scope.postMessage({ type: "stream-requested", at: requestedAt });
+  postMessage({ type: "stream-requested", at: requestedAt });
   socket.binaryType = "arraybuffer";
   const connection = createMediaIngress(currentGeneration);
   ingress = connection;
@@ -1170,10 +1216,22 @@ function connect(): void {
       return;
     }
     if (event.code === 4404) {
-      scope.postMessage({ type: "session-expired" });
-      shutdown();
+      sessionExpired = true;
+      stopConsumer("display session expired");
+      postMessage({ type: "session-expired" });
       return;
     }
+    if (event.code === 4409 && profileConflictRetries >= 3) {
+      stopConsumer("display profile in use");
+      postMessage({
+        type: "fatal",
+        message: "This display is already streaming with different settings.",
+        closeCode: event.code,
+      });
+      return;
+    }
+    profileConflictRetries =
+      event.code === 4409 ? profileConflictRetries + 1 : 0;
     reconnect({
       initiator: "transport",
       category: "socket",
@@ -1182,6 +1240,46 @@ function connect(): void {
       detail: event.reason || "Display WebSocket closed.",
     });
   });
+}
+
+function startConsumer(): void {
+  if (!demand || closing) return;
+  if (rendererFailure) {
+    postMessage({ type: "fatal", message: rendererFailure });
+    return;
+  }
+  if (!websocketUrl) return;
+  if (sessionExpired) {
+    postMessage({ type: "session-expired" });
+    return;
+  }
+  if (!metricsTimer) {
+    lastMetricsAt = performance.now();
+    metricsTimer = setInterval(
+      emitMetrics,
+      metricsIntervalMs,
+    ) as unknown as number;
+  }
+  connect();
+}
+
+function stopConsumer(reason: string): void {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = 0;
+  reconnectAttempt = 0;
+  profileConflictRetries = 0;
+  clearInterval(metricsTimer);
+  metricsTimer = 0;
+  const previous = ws;
+  ws = null;
+  generation += 1;
+  resetConsumerState();
+  if (
+    previous?.readyState === WebSocket.OPEN ||
+    previous?.readyState === WebSocket.CONNECTING
+  ) {
+    previous.close(1000, reason);
+  }
 }
 
 function checkVideoProgress(): void {
@@ -1208,6 +1306,7 @@ function checkVideoProgress(): void {
 }
 
 function emitMetrics(): void {
+  if (!demand || closing || sessionExpired) return;
   checkVideoProgress();
   if (!effectiveProfile) {
     return;
@@ -1226,11 +1325,12 @@ function emitMetrics(): void {
       }),
     );
   }
-  scope.postMessage({
+  postMessage({
     type: "metrics",
     metrics: {
       version: 4,
       transport: "websocket",
+      displaySizePresentation: displaySizePresentation.snapshot(),
       sourceFps: relaySourceFps,
       relayIngressFps: relaySourceFps,
       receivedFps: (receivedFrames - lastReceivedFrames) / elapsedSeconds,
@@ -1304,25 +1404,11 @@ function emitMetrics(): void {
 }
 
 function shutdown(): void {
+  if (closing) return;
   closing = true;
-  clearFirstFrameTimer();
-  clearHeartbeatTimer();
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer);
-  }
-  if (metricsTimer) {
-    clearInterval(metricsTimer);
-  }
-  if (renderHandle && scope.cancelAnimationFrame) {
-    scope.cancelAnimationFrame(renderHandle);
-  }
-  clearMp4FlushTimer();
+  stopConsumer("viewer closed");
   renderer?.close();
   renderer = null;
-  ws?.close(1000, "viewer closed");
-  ws = null;
-  resetConsumerState();
-  resetAudioTimeline();
   audioPort?.close();
   scope.close();
 }
@@ -1331,6 +1417,16 @@ scope.onmessage = (event) => {
   const message = event.data;
   if (message.type === "close") {
     shutdown();
+    return;
+  }
+  if (closing) return;
+  if (message.type === "demand") {
+    if (message.epoch <= demandEpoch) return;
+    demandEpoch = message.epoch;
+    if (demand === message.active) return;
+    demand = message.active;
+    if (demand) startConsumer();
+    else stopConsumer("viewer suspended");
     return;
   }
   if (message.type === "visibility") {
@@ -1342,6 +1438,7 @@ scope.onmessage = (event) => {
     reconnect(message.cause);
     return;
   }
+  if (message.type !== "init" && (!demand || sessionExpired)) return;
   if (message.type === "watermark") {
     if (message.epoch !== videoEpoch || rendererMode !== "mse") return;
     highestDecodedSequence = message.decodedSequence ?? highestDecodedSequence;
@@ -1361,7 +1458,15 @@ scope.onmessage = (event) => {
     return;
   }
   if (message.type === "mse-presented") {
-    if (message.epoch === videoEpoch) markMsePresented();
+    if (message.epoch === videoEpoch && rendererMode === "mse") {
+      if (Number.isFinite(message.at)) {
+        displaySizePresentation.present(
+          { width: message.width, height: message.height },
+          message.at,
+        );
+      }
+      markMsePresented();
+    }
     return;
   }
   if (message.type === "mse-resync") {
@@ -1369,23 +1474,25 @@ scope.onmessage = (event) => {
     return;
   }
   if (message.type === "use-webcodecs-fallback") {
-    switchToWebCodecsFallback("mse-unsupported");
+    if (message.epoch === videoEpoch) {
+      switchToWebCodecsFallback("mse-unsupported");
+    }
     return;
   }
   visible = message.visible ?? true;
+  demand = message.demand ?? true;
+  demandEpoch = message.demandEpoch ?? 0;
   canvas = message.canvas;
   rendererMode = message.renderer;
   if (rendererMode === "webcodecs") {
     try {
       renderer = createVideoFrameRenderer(canvas);
     } catch (error) {
-      scope.postMessage({
-        type: "fatal",
-        message:
-          error instanceof Error
-            ? error.message
-            : "OffscreenCanvas is unavailable.",
-      });
+      rendererFailure =
+        error instanceof Error
+          ? error.message || "OffscreenCanvas is unavailable."
+          : "OffscreenCanvas is unavailable.";
+      startConsumer();
       return;
     }
   }
@@ -1396,6 +1503,7 @@ scope.onmessage = (event) => {
   audioPort?.addEventListener(
     "message",
     (audioEvent: MessageEvent<AudioWorkletMessage>) => {
+      if (!demand || closing || sessionExpired) return;
       if (audioEvent.data.type === "playhead") {
         audioPlayheadUs = audioEvent.data.timestampUs;
         audioQueueDepthMs = audioEvent.data.queueDepthMs;
@@ -1405,9 +1513,5 @@ scope.onmessage = (event) => {
     },
   );
   audioPort?.start();
-  metricsTimer = setInterval(
-    emitMetrics,
-    metricsIntervalMs,
-  ) as unknown as number;
-  connect();
+  startConsumer();
 };

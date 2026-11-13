@@ -3,15 +3,17 @@
 import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
-import { IconLoader2 } from '@tabler/icons-react'
+import { IconLoader2, IconPictureInPicture } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
+import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import {
   getViewerStartupDeadline,
   redroidViewerRefreshIntervalMs
 } from '@/features/applications/viewer/display/display-viewer-startup'
 import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import {
   getViewerFrameClassName,
   getViewerFrameLayout,
@@ -26,6 +28,7 @@ import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   DisplayViewerStreamMetrics,
+  DisplayViewerStreamStatus,
   ViewerFrameObservation
 } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
@@ -109,35 +112,42 @@ const EmbeddedViewerFallback = ({
 export const DisplayViewerEmbed = ({
   app,
   viewerSettings,
+  viewerSettingsHydrated = true,
   canControlViewer,
   canCaptureScreenshot,
   onViewerSettingsChange,
   onStreamMetrics,
+  onStreamIssue,
   onFirstFrame,
   streamingSettings,
   clipboard
 }: {
   app: AppDefinition
   viewerSettings: ViewerSettings
+  viewerSettingsHydrated?: boolean
   canControlViewer: boolean
   canCaptureScreenshot: boolean
   onViewerSettingsChange?: (settings: ViewerSettings) => void
   streamingSettings?: ReactNode
   clipboard?: ReactNode
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation, requestAt?: number) => void
 }) => {
+  const pinnedViewer = usePinnedViewer()
+  const mainDisplayPinned = pinnedViewer?.isDesktop === true && pinnedViewer.pinnedAppId === app.id
+  const startedAt = app.lastStartedAt?.getTime() ?? null
+  const runtime = `${app.id}:${app.containerId}:${startedAt}`
+  const [restoredSession] = useState(() => pinnedViewer?.getSession(app.id, runtime))
   const baseUrl = useBrowserBaseUrl()
   const [sessionRecord, setSessionRecord] = useState<{
     runtime: string
     requestAt: number
     value: ScrcpySession
-  } | null>(null)
+  } | null>(restoredSession ?? null)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [surfaceRefreshVersion, setSurfaceRefreshVersion] = useState(0)
   const [reload, setReload] = useState({ runtime: '', count: 0 })
-  const startedAt = app.lastStartedAt?.getTime() ?? null
-  const runtime = `${app.id}:${app.containerId}:${startedAt}`
   const currentSession = sessionRecord?.runtime === runtime ? sessionRecord : null
   const session = currentSession?.value
   const reloadCount = reload.runtime === runtime ? reload.count : 0
@@ -146,6 +156,10 @@ export const DisplayViewerEmbed = ({
   const getStartupDeadline = useEffectEvent(() =>
     getViewerStartupDeadline(startedAt, app.provisioningCompletedAt?.getTime() ?? null)
   )
+  const dockedSession = useMemo(
+    () => (currentSession ? { name: app.name, runtime, session: currentSession } : undefined),
+    [app.name, currentSession, runtime]
+  )
 
   useEffect(() => {
     if (app.status !== 'running') {
@@ -153,10 +167,16 @@ export const DisplayViewerEmbed = ({
       setSessionError(null)
       return
     }
+    if (reloadCount === 0 && runtime === restoredSession?.runtime) return
 
     let active = true
     let retryTimer: number | null = null
     const deadline = getStartupDeadline()
+    const startWhenVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      document.removeEventListener('visibilitychange', startWhenVisible)
+      void loadSession()
+    }
 
     const scheduleStartupRetry = () => {
       if (reloadCount !== 0 || !deadline || Date.now() + redroidViewerRefreshIntervalMs >= deadline.getTime()) {
@@ -216,7 +236,8 @@ export const DisplayViewerEmbed = ({
       }
     }
 
-    void loadSession()
+    if (document.visibilityState === 'visible') startWhenVisible()
+    else document.addEventListener('visibilitychange', startWhenVisible)
 
     return () => {
       active = false
@@ -224,8 +245,9 @@ export const DisplayViewerEmbed = ({
         window.clearTimeout(retryTimer)
       }
       document.removeEventListener('visibilitychange', retryWhenVisible)
+      document.removeEventListener('visibilitychange', startWhenVisible)
     }
-  }, [app.id, app.status, runtime, reloadCount])
+  }, [app.id, app.status, runtime, reloadCount, restoredSession])
 
   const mainDisplaySize = useMemo(() => getRedroidDisplayDimensionsFromArgs(app.containerArgs), [app.containerArgs])
   const surfaces = useMemo(
@@ -244,6 +266,7 @@ export const DisplayViewerEmbed = ({
   )
 
   if (
+    !viewerSettingsHydrated ||
     sessionError ||
     !session?.viewerServiceConfigured ||
     !session.displaySession?.viewerPath ||
@@ -271,9 +294,21 @@ export const DisplayViewerEmbed = ({
     )
   }
 
+  const canControl = canControlViewer && session.displaySession.capabilities.includes('control')
+  const pinButton =
+    pinnedViewer?.isDesktop && !mainDisplayPinned && surfaces.some(surface => surface.kind === 'main') ? (
+      <IconActionButton
+        label='Minimize player'
+        keyShortcut='i'
+        onClick={() => pinnedViewer.minimize(app.id)}
+      >
+        <IconPictureInPicture className='size-3.5' />
+      </IconActionButton>
+    ) : null
+
   return (
-    <div className='relative h-[var(--app-viewer-height)] min-h-0 w-full overflow-hidden'>
-      <ViewerActivityKeepalive applicationId={session.applicationId} />
+    <div className='relative flex h-[var(--app-viewer-height)] min-h-0 w-full flex-col overflow-hidden'>
+      {!mainDisplayPinned && <ViewerActivityKeepalive applicationId={session.applicationId} />}
       <Visible when={!session.viewerTargetConnected}>
         <div className='pointer-events-none absolute left-3 right-3 top-10 z-20 rounded-control border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
           Viewer connection could not be confirmed yet.
@@ -287,7 +322,9 @@ export const DisplayViewerEmbed = ({
           surfaceRefreshVersion,
           initialKeyboardCaptureEnabled: viewerSettings.keyboardCaptureEnabled,
           controlsEnabled: true,
-          canControl: canControlViewer && session.displaySession.capabilities.includes('control'),
+          canControl,
+          dockedSession,
+          canClipboard: Boolean(clipboard) && session.displaySession.capabilities.includes('clipboard'),
           canCaptureScreenshot: canCaptureScreenshot && session.displaySession.capabilities.includes('screenshot'),
           onSurfacesChanged: reloadSession,
           onKeyboardCaptureChange: enabled => {
@@ -297,6 +334,7 @@ export const DisplayViewerEmbed = ({
             })
           },
           onStreamMetrics,
+          onStreamIssue,
           onFirstFrame: observation => {
             if (!currentSession || (observation && observation.connectAt < currentSession.requestAt)) return
             onFirstFrame?.(observation, currentSession.requestAt)
@@ -304,10 +342,15 @@ export const DisplayViewerEmbed = ({
         }}
       >
         <DisplayViewerShell
-          className='h-full w-full !bg-transparent'
-          streamingSettings={streamingSettings}
+          className='min-h-0 w-full flex-1 !bg-transparent'
+          streamingSettings={
+            <>
+              {streamingSettings}
+              {pinButton}
+            </>
+          }
           clipboard={clipboard}
-          miniPlayerEnabled
+          miniPlayerEnabled={!pinnedViewer}
         />
       </DisplayViewerProvider>
     </div>

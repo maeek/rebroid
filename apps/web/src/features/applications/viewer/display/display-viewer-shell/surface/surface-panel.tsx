@@ -1,13 +1,15 @@
 'use client'
 
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { IconX } from '@tabler/icons-react'
+import { IconPictureInPicture, IconX } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
+import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import { cn } from '@/lib/utils'
 import { StateView } from '@/shared/ui/state-view'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
@@ -24,6 +26,9 @@ export const SurfacePanel = ({
   onDockMiniPlayer?: () => void
 }) => {
   const {
+    applicationId,
+    canClipboard,
+    dockedSession,
     canControl,
     controlsEnabled,
     fullscreenSurface,
@@ -34,6 +39,7 @@ export const SurfacePanel = ({
     retryError,
     keyboardCaptureEnabled,
     mediaSize,
+    displaySize,
     onClose,
     onOpenPopout,
     onRetry,
@@ -47,6 +53,55 @@ export const SurfacePanel = ({
     viewportSize,
     workspaceHeight
   } = useDisplayViewerSurface(surface)
+  const pinnedViewer = usePinnedViewer()
+  const register = pinnedViewer?.register
+  const unregister = pinnedViewer?.unregister
+  const managed = surface.kind === 'main' && Boolean(register && dockedSession)
+  const isFloating = pinnedViewer?.pinnedAppId === applicationId && managed
+  const [registration] = useState(() => Symbol('viewer dock'))
+  const [viewport, setViewport] = useState<HTMLDivElement | null>(null)
+  const dockRef = useRef({ onStreamStatus, onStreamMetrics, onRetry, onSelect })
+  useLayoutEffect(() => {
+    dockRef.current = { onStreamStatus, onStreamMetrics, onRetry, onSelect }
+  })
+  useLayoutEffect(() => {
+    if (!managed || !viewport || !dockedSession) return
+    register?.(registration, {
+      appId: applicationId,
+      ...dockedSession,
+      element: viewport,
+      surface,
+      frameGeneration,
+      displaySize,
+      canControl,
+      canClipboard: canClipboard === true,
+      isActive,
+      keyboardCaptureEnabled,
+      onStreamMetrics: metrics => dockRef.current.onStreamMetrics(metrics),
+      onStreamStatus: status => dockRef.current.onStreamStatus(status),
+      onRetry: () => dockRef.current.onRetry(),
+      onFocus: () => dockRef.current.onSelect(),
+      retrying: isRetrying,
+      retryError
+    })
+  }, [
+    managed,
+    viewport,
+    register,
+    registration,
+    applicationId,
+    dockedSession,
+    surface,
+    frameGeneration,
+    displaySize,
+    canControl,
+    canClipboard,
+    isActive,
+    keyboardCaptureEnabled,
+    isRetrying,
+    retryError
+  ])
+  useLayoutEffect(() => () => unregister?.(registration), [unregister, registration])
   const miniPlayer = !fullscreenSurface && onDockMiniPlayer
   const aspectRatio = viewportSize.width / Math.max(viewportSize.height, 1)
   const frameStyle = mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined
@@ -73,10 +128,15 @@ export const SurfacePanel = ({
           streamStatus={streamStatus}
           onClose={onClose}
           onOpenPopout={onOpenPopout}
-          onToggleFullscreen={onToggleFullscreen}
+          onToggleFullscreen={() => {
+            if (!managed || !pinnedViewer?.requestFullscreen(applicationId)) onToggleFullscreen()
+          }}
         />
         <div
-          ref={onViewportElement}
+          ref={element => {
+            onViewportElement(element)
+            if (managed && element) setViewport(element)
+          }}
           className={cn(
             'relative overflow-hidden rounded-b-lg border border-surface-border/70 bg-black',
             fullscreenSurface && 'flex h-screen w-screen items-center justify-center rounded-none border-0'
@@ -106,22 +166,36 @@ export const SurfacePanel = ({
             >
               <div
                 className='h-full w-full'
-                inert={Boolean(streamStatus?.blocking)}
-                aria-hidden={streamStatus?.blocking || undefined}
+                inert={!managed && Boolean(streamStatus?.blocking)}
+                aria-hidden={(!managed && streamStatus?.blocking) || undefined}
               >
-                <DisplayViewerFrame
-                  key={`${surface.sessionId}:${frameGeneration}`}
-                  src={surface.src}
-                  keyboardCaptureEnabled={
-                    !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
-                  }
-                  isActive={!miniPlayer && !streamStatus?.blocking && isActive}
-                  onStreamMetrics={onStreamMetrics}
-                  onStreamStatus={onStreamStatus}
-                  surfaceId={surface.id}
-                />
+                {managed ? (
+                  isFloating && (
+                    <StateView
+                      kind='not-applicable'
+                      scope='immersive'
+                      headingLevel={2}
+                      icon={<IconPictureInPicture />}
+                      title='Main display is minimized'
+                      description='The mini-player is showing the main display.'
+                      actions={[{ label: 'Return to app viewer', onClick: () => pinnedViewer?.restore(applicationId) }]}
+                    />
+                  )
+                ) : (
+                  <DisplayViewerFrame
+                    key={`${surface.sessionId}:${frameGeneration}`}
+                    src={surface.src}
+                    keyboardCaptureEnabled={
+                      !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
+                    }
+                    isActive={!miniPlayer && !streamStatus?.blocking && isActive}
+                    onStreamMetrics={onStreamMetrics}
+                    onStreamStatus={onStreamStatus}
+                    surfaceId={surface.id}
+                  />
+                )}
               </div>
-              {streamStatus?.blocking ? (
+              {!managed && streamStatus?.blocking ? (
                 <div className='absolute inset-0 overflow-auto bg-background'>
                   <StateView
                     className='py-4'
@@ -167,7 +241,7 @@ export const SurfacePanel = ({
           className='w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto scrollbar-none'
           style={{ maxHeight: Math.max(32, workspaceHeight - 16) }}
         >
-          {isActive ? <ViewerControlBar surfaceId={surface.id} /> : null}
+          {isActive && !isFloating ? <ViewerControlBar surfaceId={surface.id} /> : null}
         </div>
       ) : null}
     </section>

@@ -401,7 +401,7 @@ export class DisplaySessionService {
       createdAt: session.createdAt,
       lastActivityAt: session.lastActivityAt,
       streamPath: `/rebroid/display/stream?sessionId=${encodeURIComponent(session.id)}`,
-      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}`,
+      viewerPath: `/viewer/display?sessionId=${encodeURIComponent(session.id)}&surfaceKind=${session.surfaceKind}`,
       webrtcOfferPath: `/rebroid/display/public/sessions/${encodeURIComponent(session.id)}/webrtc/offer`,
       displayId: session.displayId,
       newDisplay: session.newDisplay,

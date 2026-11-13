@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -45,7 +46,13 @@ export class DisplayGateway implements OnGatewayConnection {
         maxFps: url.searchParams.get("maxFps"),
         bitrate: url.searchParams.get("bitrate"),
       });
+      let attachment: ScrcpyStreamAttachment | null = null;
       const sink = new QueuedScrcpyMediaSink({
+        onVideoKeyFrameNeeded: () => {
+          if (client.readyState === WebSocket.OPEN) {
+            attachment?.requestVideoReset("websocket:consumer-queue-overflow");
+          }
+        },
         allowClipboard: session.capabilities.includes("clipboard"),
         isOpen: () => client.readyState === WebSocket.OPEN,
         onClose: (listener) => client.once("close", listener),
@@ -54,7 +61,6 @@ export class DisplayGateway implements OnGatewayConnection {
         writeAudio: (payload) => this.writeBinary(client, payload),
         close: (code, reason) => client.close(code, reason),
       });
-      let attachment: ScrcpyStreamAttachment | null = null;
       let browserWatermark: {
         generation: number;
         receivedSequence?: number;
@@ -176,12 +182,23 @@ export class DisplayGateway implements OnGatewayConnection {
         stopWatching?.();
         clearInterval(queueMetricsTimer);
         attachment?.detach("WebSocket consumer closed");
+        if (!attachment) sink.dispose();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Display stream failed: ${message}`);
       if (client.readyState === WebSocket.OPEN) {
         let code = 1011;
+        if (error instanceof ConflictException) {
+          const response = error.getResponse();
+          if (
+            typeof response === "object" &&
+            "code" in response &&
+            response.code === "display_profile_in_use"
+          ) {
+            code = 4409;
+          }
+        }
         if (error instanceof NotFoundException) code = 4404;
         if (error instanceof UnauthorizedException) code = 1008;
         client.close(code, message.slice(0, 120));

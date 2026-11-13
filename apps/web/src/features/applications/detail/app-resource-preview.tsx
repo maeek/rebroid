@@ -14,6 +14,7 @@ import { RuntimeToolPanelLayout } from '@/features/applications/viewer/tools/run
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { fullPermissions } from '@/shared/permissions/permissions'
+import { ResourceNavigationMotionScope } from '@/shared/ui/resource-navigation-motion-scope'
 import { AppDeviceLayout } from './app-device-layout'
 import { AppNetworkPage } from './app-network-page'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
@@ -49,7 +50,9 @@ type AppResourcePreviewProps = { activity?: ReactNode; agent?: boolean }
 
 export const AppResourcePreview = (props: AppResourcePreviewProps) => (
   <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
-    <AppResourcePreviewContent {...props} />
+    <ResourceNavigationMotionScope>
+      <AppResourcePreviewContent {...props} />
+    </ResourceNavigationMotionScope>
   </FeatureFlagsProvider>
 )
 

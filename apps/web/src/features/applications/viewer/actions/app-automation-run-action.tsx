@@ -215,6 +215,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
               Cancel
             </Button>
             <MutationButton
+              animate
               disabled={!automationId || loading || !automations.some(workflow => workflow.id === automationId)}
               pending={running}
               pendingLabel='Queuing…'

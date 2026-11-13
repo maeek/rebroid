@@ -30,10 +30,11 @@ export function canReplayVideoGop(packets: readonly ScrcpyPacket[]): boolean {
   const first = packets[0];
   const last = packets.at(-1);
   return (
-    !first ||
-    !last ||
-    (packets.length <= maxVideoFrames &&
-      last.timestampUs - first.timestampUs <= maxVideoSpanUs)
+    first?.keyFrame === true &&
+    last !== undefined &&
+    packets.length <= maxVideoFrames &&
+    last.timestampUs >= first.timestampUs &&
+    last.timestampUs - first.timestampUs <= maxVideoSpanUs
   );
 }
 const defaultKeyFrameRecoveryTimeoutMs = 1_500;
@@ -43,6 +44,7 @@ const maxAudioFrames = 8;
 interface GopAwareVideoQueueOptions {
   keyFrameRecoveryTimeoutMs?: number;
   onRecoveryTimeout?: (error: Error) => void;
+  onKeyFrameNeeded?: () => void;
 }
 
 function errorFrom(value: unknown): Error {
@@ -102,6 +104,13 @@ export class GopAwareVideoQueue {
       if (!packet.keyFrame) {
         this.droppedFrames += 1;
         completion?.(undefined, false);
+        // A keyframe arriving in the same batch can satisfy recovery directly.
+        if (this.options.onKeyFrameNeeded) {
+          queueMicrotask(() => {
+            if (!this.closed && this.awaitingKeyFrame)
+              this.options.onKeyFrameNeeded?.();
+          });
+        }
         return;
       }
       this.enqueueResync(packet, completion);

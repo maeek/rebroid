@@ -80,3 +80,39 @@ it.each(['webrtc', 'websocket'] as const)(
     }
   }
 )
+
+it('reports a current nonblocking transport failure even after the transient status clears', () => {
+  vi.useFakeTimers()
+  try {
+    const onStreamIssue = vi.fn()
+    const surfaces = [{ id: 'main', sessionId: 'current', kind: 'main' }] as DisplayViewerSurface[]
+    const { result } = renderHook(() =>
+      useDisplayViewerShellState({
+        applicationId: 'app',
+        surfaces,
+        initialKeyboardCaptureEnabled: false,
+        onStreamIssue
+      })
+    )
+    const issue = {
+      code: 'reconnecting',
+      severity: 'warning',
+      blocking: false,
+      message: 'Socket closed',
+      transport: 'websocket',
+      failureStage: 'socket',
+      closeCode: 1011
+    } as const
+    act(() => result.current.setSurfaceStreamStatus('main', { ...issue, sessionId: 'retired' }))
+    expect(onStreamIssue).not.toHaveBeenCalled()
+    const current = { ...issue, sessionId: 'current' }
+    act(() => result.current.setSurfaceStreamStatus('main', current))
+    act(() => {
+      vi.advanceTimersByTime(6_001)
+    })
+    expect(result.current.streamStatuses.main).toBeUndefined()
+    expect(onStreamIssue).toHaveBeenCalledExactlyOnceWith('main', current)
+  } finally {
+    vi.useRealTimers()
+  }
+})

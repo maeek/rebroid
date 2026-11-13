@@ -15,6 +15,7 @@ interface PendingWrite {
   payload: Buffer;
   expiresAt: number;
   callback?: (error?: Error | null) => void;
+  onSubmit?: () => void;
   timer: NodeJS.Timeout;
 }
 
@@ -427,6 +428,7 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
     expiresAt: number,
     reserveReleaseSlot: boolean,
     callback?: (error?: Error | null) => void,
+    onSubmit?: () => void,
   ): boolean {
     if (!this.writable) {
       callback?.(this.notDispatched("Direct ADB socket closed before writing"));
@@ -440,7 +442,7 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
       return false;
     }
     if (!this.pendingWriteOk && this.writeQueue.size === 0) {
-      this.sendWrite(payload, expiresAt, callback);
+      this.sendWrite(payload, expiresAt, callback, onSubmit);
       return true;
     }
     const maxWrites = MAX_PENDING_CONTROL_WRITES - Number(reserveReleaseSlot);
@@ -458,6 +460,7 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
       payload,
       expiresAt,
       callback,
+      onSubmit,
       timer: setTimeout(() => {
         this.removeWrite(entry);
         callback?.(
@@ -508,7 +511,12 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
         );
         continue;
       }
-      this.sendWrite(entry.payload, entry.expiresAt, entry.callback);
+      this.sendWrite(
+        entry.payload,
+        entry.expiresAt,
+        entry.callback,
+        entry.onSubmit,
+      );
       return;
     }
   }
@@ -517,18 +525,21 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
     payload: Buffer,
     expiresAt: number,
     callback?: (error?: Error | null) => void,
+    onSubmit?: () => void,
   ) {
     this.pendingWriteOk = true;
     confirmScrcpyControlWrite(
       expiresAt,
-      (complete) =>
+      (complete) => {
+        onSubmit?.();
         this.connection.sendPacket(
           ADB_COMMAND.WRTE,
           this.localId,
           this.remoteId,
           payload,
           complete,
-        ),
+        );
+      },
       (error) => callback?.(error),
     );
   }

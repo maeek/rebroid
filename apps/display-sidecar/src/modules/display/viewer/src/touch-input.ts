@@ -1,14 +1,18 @@
 import type {
   ControlChannel,
+  PageLifecycle,
   TouchInputPayload,
   TouchPayload,
   TouchPoint,
 } from "./types.js";
+import type { ViewerPresentation } from "./viewer-presentation.js";
 
 type TouchInputOptions = {
   target: HTMLElement;
   getVideoSize: () => { width: number; height: number };
   controlChannel: ControlChannel;
+  lifecycle: PageLifecycle;
+  presentation?: ViewerPresentation;
 };
 
 type PointerStart = {
@@ -39,10 +43,28 @@ export function setupTouchInput({
   target,
   getVideoSize,
   controlChannel,
+  lifecycle,
+  presentation,
 }: TouchInputOptions): void {
   let pointerStart: PointerStart | null = null;
   let pendingMove: TouchPoint | null = null;
   let moveFrame = 0;
+
+  const clearPointer = () => {
+    const pointer = pointerStart;
+    pointerStart = null;
+    pendingMove = null;
+    if (moveFrame) window.cancelAnimationFrame(moveFrame);
+    moveFrame = 0;
+    if (pointer && target.hasPointerCapture(pointer.id)) {
+      target.releasePointerCapture(pointer.id);
+    }
+    return pointer;
+  };
+
+  lifecycle.onDemandChange((active) => {
+    if (!active) clearPointer();
+  });
 
   target.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -62,9 +84,27 @@ export function setupTouchInput({
     );
   };
 
+  const cancelPointer = () => {
+    const pointer = clearPointer();
+    if (pointer) {
+      postTouch({
+        action: "pointer",
+        eventType: "cancel",
+        ...pointer.lastPoint,
+      }).catch(() => undefined);
+    }
+  };
+
+  const stopWatchingPresentation = presentation?.onChange((compact) => {
+    if (compact) cancelPointer();
+  });
+  if (stopWatchingPresentation) lifecycle.onClose(stopWatchingPresentation);
+
   target.addEventListener("pointerdown", (event) => {
     if (
       pointerStart ||
+      !lifecycle.hasDemand() ||
+      presentation?.isCompact() ||
       target.classList.contains("hidden") ||
       (event.pointerType === "mouse" && event.button !== 0)
     ) {
@@ -149,16 +189,9 @@ export function setupTouchInput({
   });
 
   target.addEventListener("pointercancel", (event) => {
-    if (pointerStart?.id === event.pointerId) {
-      const point = pointerStart.lastPoint;
-      pointerStart = null;
-      pendingMove = null;
-      postTouch({
-        action: "pointer",
-        eventType: "cancel",
-        x: point.x,
-        y: point.y,
-      }).catch(() => undefined);
-    }
+    if (pointerStart?.id === event.pointerId) cancelPointer();
+  });
+  target.addEventListener("lostpointercapture", (event) => {
+    if (pointerStart?.id === event.pointerId) cancelPointer();
   });
 }

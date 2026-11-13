@@ -1,24 +1,37 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { NotFoundException } from "@nestjs/common";
 import { access, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import type { IncomingHttpHeaders } from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
 import { ScrcpySourceStream } from "../scrcpy/scrcpy-source-stream";
-import type { ScrcpyStreamOptions } from "../scrcpy/scrcpy.types";
+import { ScrcpyService } from "../scrcpy/scrcpy.service";
+import type {
+  ScrcpyAttemptResult,
+  ScrcpyStreamOptions,
+} from "../scrcpy/scrcpy.types";
 import { SidecarFeatureService } from "../shared/sidecar-feature.service";
 import { DisplayWebrtcService } from "./display-webrtc.service";
 
 const offer = {
   sessionId: "display",
-  headers: { host: "rebroid.test" },
+  headers: { host: "rebroid.test", "x-rebroid-viewer-id": "a".repeat(32) },
   sdp: "fixture",
   audio: false,
 };
 
-const setup = (scrcpy: object, config = {}, webrtcEnabled = true) => {
+const setup = (
+  scrcpy: object,
+  config = {},
+  webrtcEnabled = true,
+  beforeAdmission?: (
+    headers: IncomingHttpHeaders,
+    signal?: AbortSignal,
+  ) => Promise<void>,
+) => {
   const features = new SidecarFeatureService();
   features.apply({
     revision: 0,
@@ -36,12 +49,18 @@ const setup = (scrcpy: object, config = {}, webrtcEnabled = true) => {
     {} as never,
     features,
     {
-      admit: async (_id: string, headers: IncomingHttpHeaders) => {
+      admit: async (
+        _id: string,
+        headers: IncomingHttpHeaders,
+        signal?: AbortSignal,
+      ) => {
+        await beforeAdmission?.(headers, signal);
         if (headers.cookie === "different account") {
           throw new NotFoundException("Display session not found.");
         }
         return {
           session: { udid: "fixture", capabilities: ["video", "audio"] },
+          accountSessionKey: headers.cookie ?? "first-browser",
           watch: () => () => undefined,
         };
       },
@@ -94,26 +113,219 @@ const deferred = () => {
   return { promise, resolve };
 };
 
-test("session release cancels an offer during target preparation", async () => {
-  const probe = deferred();
-  const started = deferred();
-  let attachments = 0;
-  const service = setup({
-    assertTargetSupported: () => {
-      started.resolve();
-      return probe.promise;
+test("an abandoned offer waiting for authorization cannot replace a newer peer", async (t) => {
+  const authorizationStarted = deferred();
+  const authorize = deferred();
+  const attached = deferred();
+  const abandoned = new AbortController();
+  let attaches = 0;
+  let detaches = 0;
+  const service = setup(
+    {
+      attachStream: () => {
+        attaches += 1;
+        attached.resolve();
+        return {
+          awaitVideoBootstrap: () => new Promise(() => undefined),
+          detach: () => {
+            detaches += 1;
+          },
+        };
+      },
     },
+    {},
+    true,
+    async (headers, signal) => {
+      if (headers.cookie !== "abandoned") return;
+      assert.equal(signal, abandoned.signal);
+      authorizationStarted.resolve();
+      // Simulate an authorization adapter that can finish after cancellation.
+      await authorize.promise;
+    },
+  );
+  t.after(() => service.onModuleDestroy());
+  const old = assert.rejects(
+    service.createAnswer({
+      ...offer,
+      headers: { ...offer.headers, cookie: "abandoned" },
+      signal: abandoned.signal,
+    }),
+    { name: "AbortError" },
+  );
+  await authorizationStarted.promise;
+  const current = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attached.promise;
+  abandoned.abort();
+  authorize.resolve();
+  await old;
+  assert.equal(attaches, 1);
+  assert.equal(detaches, 0);
+  service.stopSession(offer.sessionId);
+  await current;
+  assert.equal(detaches, 1);
+});
+
+test("aborting a bootstrap detaches only its consumer and allows a fresh offer", async (t) => {
+  const attachments = [deferred(), deferred()];
+  const detached: number[] = [];
+  let attaches = 0;
+  const service = setup({
     attachStream: () => {
-      attachments += 1;
+      const index = attaches++;
+      attachments[index]!.resolve();
+      return {
+        awaitVideoBootstrap: () => new Promise(() => undefined),
+        detach: () => {
+          detached.push(index);
+        },
+      };
     },
   });
+  t.after(() => service.onModuleDestroy());
+  const abandoned = new AbortController();
+  const first = assert.rejects(
+    service.createAnswer({
+      ...offer,
+      signal: abandoned.signal,
+    }),
+    { name: "AbortError" },
+  );
+  await attachments[0]!.promise;
+  abandoned.abort();
+  await first;
+  assert.deepEqual(detached, [0]);
+
+  const second = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attachments[1]!.promise;
+  assert.deepEqual(detached, [0]);
+  service.stopSession(offer.sessionId);
+  await second;
+  assert.deepEqual(detached, [0, 1]);
+});
+
+test("session release during source compatibility prevents capture launch", async (t) => {
+  const probe = deferred();
+  const started = deferred();
+  const scrcpy = new ScrcpyService(
+    {} as never,
+    { scrcpyVersion: "5.0.1" } as never,
+  );
+  const service = setup(scrcpy);
+  t.after(() => {
+    service.onModuleDestroy();
+    scrcpy.onModuleDestroy();
+  });
+  scrcpy["collectCompatibilityProbe"] = async () => {
+    started.resolve();
+    await probe.promise;
+    return null;
+  };
+  const capture = t.mock.fn(async () => {
+    throw new Error("unexpected capture launch");
+  });
+  scrcpy["streamRawVideoAttempt"] = capture;
   const pending = assert.rejects(service.createAnswer(offer), /cancelled/);
   await started.promise;
   service.stopSession(offer.sessionId);
   await pending;
   probe.resolve();
-  await Promise.resolve();
-  assert.equal(attachments, 0);
+  await delay(0);
+  assert.equal(capture.mock.callCount(), 0);
+});
+
+async function compatibilityFixture(t: TestContext, sdk: number) {
+  const directory = await mkdtemp(join(tmpdir(), "rebroid-adb-compatibility-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  await Promise.all([
+    writeFile(
+      join(directory, "getprop"),
+      `#!/bin/sh\ncase "$1" in\n  ro.build.version.sdk) echo ${sdk} ;;\n  ro.build.version.release) echo 16 ;;\nesac\n`,
+      { mode: 0o700 },
+    ),
+    ...["service", "cmd"].map((name) =>
+      writeFile(join(directory, name), "#!/bin/sh\nexit 0\n", {
+        mode: 0o700,
+      }),
+    ),
+  ]);
+
+  const shell = t.mock.fn(async (_udid: string, args: string[]) => ({
+    // Replay the ADB CLI's remote argument join against a guest shell fixture.
+    stdout: execFileSync("/bin/sh", ["-c", args.join(" ")], {
+      encoding: "utf8",
+      env: { ...process.env, PATH: `${directory}:${process.env.PATH}` },
+    }),
+  }));
+  const logcat = t.mock.fn(async () => ({ stdout: "" }));
+  const scrcpy = new ScrcpyService(
+    { shell, logcat } as never,
+    { scrcpyVersion: "5.0.1" } as never,
+  );
+  const service = setup(scrcpy);
+  t.after(() => {
+    service.onModuleDestroy();
+    scrcpy.onModuleDestroy();
+  });
+  return { scrcpy, service, shell, logcat };
+}
+
+test("WebRTC probes compatibility once for a shared scrcpy source", async (t) => {
+  const { scrcpy, service, shell, logcat } = await compatibilityFixture(t, 36);
+  const capture = t.mock.fn(
+    (
+      options: ScrcpyStreamOptions,
+      registerStop: (stop: () => Promise<void>) => void,
+    ) => {
+      options.sink.writeVideo({
+        config: true,
+        keyFrame: false,
+        timestampUs: 10n,
+        data: Buffer.from(
+          "000000016742c01fda0280b7fe5c050505020000000168ce06e2",
+          "hex",
+        ),
+      });
+      options.sink.writeVideo({
+        config: false,
+        keyFrame: true,
+        timestampUs: 11n,
+        data: Buffer.from("00000001658884", "hex"),
+      });
+      return new Promise<ScrcpyAttemptResult>((resolve) => {
+        registerStop(async () => {
+          resolve({ reason: "stopped", durationMs: 0, bytesForwarded: 0 });
+        });
+      });
+    },
+  );
+  scrcpy["streamRawVideoAttempt"] = capture;
+
+  await assert.rejects(
+    service.createAnswer(offer),
+    /Browser does not offer H.264/,
+  );
+  await assert.rejects(
+    service.createAnswer(offer),
+    /Browser does not offer H.264/,
+  );
+  assert.equal(capture.mock.callCount(), 1);
+  assert.equal(shell.mock.callCount(), 1);
+  assert.equal(logcat.mock.callCount(), 1);
+});
+
+test("a quoted compatibility probe rejects an unsupported Android SDK before capture", async (t) => {
+  const { scrcpy, service, shell, logcat } = await compatibilityFixture(t, 37);
+  const capture = t.mock.fn(async () => {
+    throw new Error("unexpected capture launch");
+  });
+  scrcpy["streamRawVideoAttempt"] = capture;
+  await assert.rejects(
+    service.createAnswer(offer),
+    /is not supported by Rebroid/,
+  );
+  assert.equal(capture.mock.callCount(), 0);
+  assert.equal(shell.mock.callCount(), 1);
+  assert.equal(logcat.mock.callCount(), 1);
 });
 
 test("a new offer replaces only its predecessor's bootstrap attachment", async () => {
@@ -122,7 +334,6 @@ test("a new offer replaces only its predecessor's bootstrap attachment", async (
   const bootstrap = new Promise<never>(() => undefined);
   let attachments = 0;
   const service = setup({
-    assertTargetSupported: () => Promise.resolve(),
     attachStream: () => {
       const index = attachments++;
       attached[index]!.resolve();
@@ -134,7 +345,11 @@ test("a new offer replaces only its predecessor's bootstrap attachment", async (
       };
     },
   });
-  const first = assert.rejects(service.createAnswer(offer), /cancelled/);
+  const retiredRequest = new AbortController();
+  const first = assert.rejects(
+    service.createAnswer({ ...offer, signal: retiredRequest.signal }),
+    /cancelled/,
+  );
   await attached[0]!.promise;
   await assert.rejects(
     service.createAnswer({
@@ -147,10 +362,139 @@ test("a new offer replaces only its predecessor's bootstrap attachment", async (
   const second = assert.rejects(service.createAnswer(offer), /cancelled/);
   await first;
   await attached[1]!.promise;
+  retiredRequest.abort();
   assert.deepEqual(detached, [0]);
   service.stopSession(offer.sessionId);
   await second;
   assert.deepEqual(detached, [0, 1]);
+});
+
+test("independent viewers can share a grant and retry at capacity without evicting a sibling", async (t) => {
+  const attached = [deferred(), deferred(), deferred()];
+  const detach = t.mock.fn<(index: number) => void>();
+  let attachments = 0;
+  const service = setup(
+    {
+      attachStream: () => {
+        const index = attachments++;
+        attached[index]!.resolve();
+        return {
+          awaitVideoBootstrap: () => new Promise(() => undefined),
+          detach: () => detach(index),
+        };
+      },
+    },
+    { sessionMaxActive: 1 },
+  );
+  t.after(() => service.onModuleDestroy());
+  const first = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attached[0]!.promise;
+  const sibling = assert.rejects(
+    service.createAnswer({
+      ...offer,
+      headers: { ...offer.headers, "x-rebroid-viewer-id": "b".repeat(32) },
+    }),
+    /cancelled/,
+  );
+  await attached[1]!.promise;
+  assert.equal(detach.mock.callCount(), 0);
+  await assert.rejects(
+    service.createAnswer({
+      ...offer,
+      headers: { ...offer.headers, "x-rebroid-viewer-id": "c".repeat(32) },
+    }),
+    {
+      response: {
+        statusCode: 429,
+        code: "display_peer_capacity_exceeded",
+        message: "The display sidecar has reached its WebRTC viewer limit.",
+      },
+    },
+  );
+  assert.equal(attachments, 2);
+  assert.equal(detach.mock.callCount(), 0);
+  const retried = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attached[2]!.promise;
+  await first;
+  assert.deepEqual(
+    detach.mock.calls.map(({ arguments: args }) => args[0]),
+    [0],
+  );
+
+  service.stopSession(offer.sessionId);
+  await Promise.all([sibling, retried]);
+  assert.deepEqual(
+    detach.mock.calls.map(({ arguments: args }) => args[0]).sort(),
+    [0, 1, 2],
+  );
+});
+
+test("the same viewer ID from a different authorized account session does not replace its peer", async (t) => {
+  const attached = [deferred(), deferred()];
+  const detach = t.mock.fn();
+  let attachments = 0;
+  const service = setup({
+    attachStream: () => {
+      attached[attachments++]!.resolve();
+      return {
+        awaitVideoBootstrap: () => new Promise(() => undefined),
+        detach,
+      };
+    },
+  });
+  t.after(() => service.onModuleDestroy());
+  const first = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attached[0]!.promise;
+  const second = assert.rejects(
+    service.createAnswer({
+      ...offer,
+      headers: { ...offer.headers, cookie: "second-browser" },
+    }),
+    /cancelled/,
+  );
+  await attached[1]!.promise;
+  assert.equal(detach.mock.callCount(), 0);
+  service.stopSession(offer.sessionId);
+  await Promise.all([first, second]);
+  assert.equal(detach.mock.callCount(), 2);
+});
+
+test("an older offer cannot replace a newer offer when authorization resolves out of order", async (t) => {
+  const authorize = deferred();
+  const waiting = deferred();
+  const attached = deferred();
+  let authorizations = 0;
+  let attachments = 0;
+  const service = setup(
+    {
+      attachStream: () => {
+        attachments++;
+        attached.resolve();
+        return {
+          awaitVideoBootstrap: () => new Promise(() => undefined),
+          detach: () => undefined,
+        };
+      },
+    },
+    {},
+    true,
+    async () => {
+      if (authorizations++ === 0) {
+        waiting.resolve();
+        await authorize.promise;
+      }
+    },
+  );
+  t.after(() => service.onModuleDestroy());
+  const old = assert.rejects(service.createAnswer(offer), /newer offer/);
+  await waiting.promise;
+  const current = assert.rejects(service.createAnswer(offer), /cancelled/);
+  await attached.promise;
+  authorize.resolve();
+  await old;
+  assert.equal(attachments, 1);
+  service.stopSession(offer.sessionId);
+  await current;
 });
 
 test("release during bridge signaling detaches bootstrap without attaching a media sink", async () => {
@@ -170,7 +514,6 @@ input.once("line", () => {
   let detaches = 0;
   const service = setup(
     {
-      assertTargetSupported: () => Promise.resolve(),
       attachStream: () => {
         attachments += 1;
         return {
@@ -241,7 +584,6 @@ test("WebRTC waits for the peer and never attaches media from a different codec 
   );
   const service = setup(
     {
-      assertTargetSupported: () => Promise.resolve(),
       attachStream: ({ sink }: ScrcpyStreamOptions) => source.attach(sink),
     },
     { webrtcBridgePath: executable },
@@ -352,7 +694,7 @@ input.once("line", (line) => {
       await delay(10);
     }
   }
-  assert.equal(resets, 1);
+  assert.equal(resets, 0, "the current configuration and IDR were replayed");
   assert.equal(source.consumerCount(), 1);
 });
 
@@ -368,7 +710,6 @@ test("losing the bridge audio pipe leaves the video consumer attached", async (t
   );
   const service = setup(
     {
-      assertTargetSupported: () => Promise.resolve(),
       attachStream: ({ sink }: ScrcpyStreamOptions) => source.attach(sink),
     },
     { webrtcBridgePath: executable },

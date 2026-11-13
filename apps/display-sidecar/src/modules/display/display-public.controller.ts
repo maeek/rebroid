@@ -1,4 +1,5 @@
-import { Body, Controller, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Param, Post, Req, Res } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
 import type { IncomingHttpHeaders } from "node:http";
 import {
   ApiBody,
@@ -58,14 +59,30 @@ export class DisplayPublicController {
   @ApiParam({ name: "id", description: "Display session id." })
   @ApiBody({ type: DisplayWebrtcOfferDto })
   @ApiOkResponse({ type: DisplayWebrtcAnswerDto })
-  publicWebrtcOffer(
+  async publicWebrtcOffer(
     @Param("id") id: string,
     @Body() body: DisplayWebrtcOfferDto,
     @Req() request: { headers: IncomingHttpHeaders },
+    @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    return this.webrtc.createAnswer({
+    const abandoned = new AbortController();
+    const response = reply.raw;
+    const cleanup = () => {
+      response.off("finish", cleanup);
+      response.off("close", onClose);
+    };
+    const onClose = () => {
+      cleanup();
+      if (!response.writableFinished) abandoned.abort();
+    };
+    response.once("finish", cleanup);
+    response.once("close", onClose);
+    if (response.destroyed) onClose();
+
+    const { consumerAttemptId, ...answer } = await this.webrtc.createAnswer({
       sessionId: id,
       headers: request.headers,
+      signal: abandoned.signal,
       sdp: body.sdp,
       bitrate: body.bitrate,
       maxFps: body.maxFps,
@@ -73,6 +90,9 @@ export class DisplayPublicController {
       iFrameInterval: body.iFrameInterval,
       audio: body.audio === true,
     });
+    if (consumerAttemptId)
+      reply.header("x-rebroid-webrtc-attempt", consumerAttemptId);
+    return answer;
   }
 
   @Post("keyboard")

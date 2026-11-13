@@ -7,7 +7,9 @@ import type {
   ViewerRelayMetrics,
 } from "./types.js";
 import { configuredStreamProfile } from "./config.js";
+import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { WebrtcIdlePresentation } from "./webrtc-idle-presentation.js";
+import type { ViewerPresentation } from "./viewer-presentation.js";
 import {
   emitViewerSessionExpired,
   emitViewerSessionReady,
@@ -21,6 +23,7 @@ type WebrtcStreamOptions = {
   controlChannel: ControlChannel;
   ui: ViewerUi;
   lifecycle: PageLifecycle;
+  presentation?: ViewerPresentation;
   getRelayMetrics: () => ViewerRelayMetrics | null;
 };
 
@@ -36,6 +39,8 @@ type VideoFrameCallbackMetadata = {
   presentedFrames?: number;
   mediaTime?: number;
   rtpTimestamp?: number;
+  width?: number;
+  height?: number;
 };
 
 type VideoWithFrameCallback = HTMLVideoElement & {
@@ -142,25 +147,34 @@ export function preferH264PacketizationModeOne(
   transceiver.setCodecPreferences(codecs);
 }
 
-function waitForIceGathering(peer: RTCPeerConnection): Promise<void> {
+function waitForIceGathering(
+  peer: RTCPeerConnection,
+  signal: AbortSignal,
+): Promise<void> {
   if (peer.iceGatheringState === "complete") {
     return Promise.resolve();
   }
   return new Promise((resolve) => {
-    peer.addEventListener(
-      "icegatheringstatechange",
-      () => {
-        if (peer.iceGatheringState === "complete") {
-          resolve();
-        }
-      },
-      { once: false },
-    );
-    window.setTimeout(resolve, 1500);
+    const finish = () => {
+      clearTimeout(timeout);
+      peer.removeEventListener("icegatheringstatechange", checkState);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    };
+    const checkState = () => {
+      if (peer.iceGatheringState === "complete") finish();
+    };
+    const timeout = window.setTimeout(finish, 1_500);
+    peer.addEventListener("icegatheringstatechange", checkState);
+    signal.addEventListener("abort", finish, { once: true });
+    if (signal.aborted) finish();
   });
 }
 
-function waitForConnected(peer: RTCPeerConnection): Promise<void> {
+function waitForConnected(
+  peer: RTCPeerConnection,
+  signal: AbortSignal,
+): Promise<void> {
   if (
     peer.connectionState === "connected" ||
     peer.iceConnectionState === "connected" ||
@@ -169,14 +183,20 @@ function waitForConnected(peer: RTCPeerConnection): Promise<void> {
     return Promise.resolve();
   }
   return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(
-      () => reject(new Error("WebRTC did not connect in time.")),
-      6000,
-    );
+    signal.throwIfAborted();
+    const timeout = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("WebRTC did not connect in time."));
+    }, 6_000);
     const cleanup = () => {
       clearTimeout(timeout);
       peer.removeEventListener("connectionstatechange", checkState);
       peer.removeEventListener("iceconnectionstatechange", checkState);
+      signal.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
     };
     const checkState = () => {
       if (
@@ -203,14 +223,20 @@ function waitForConnected(peer: RTCPeerConnection): Promise<void> {
     };
     peer.addEventListener("connectionstatechange", checkState);
     peer.addEventListener("iceconnectionstatechange", checkState);
+    signal.addEventListener("abort", onAbort, { once: true });
+    checkState();
   });
 }
 
-function waitForFirstVideoFrame(video: HTMLVideoElement): Promise<void> {
+function waitForFirstVideoFrame(
+  video: HTMLVideoElement,
+  signal: AbortSignal,
+): Promise<void> {
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     return Promise.resolve();
   }
   return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
     const timeout = window.setTimeout(() => {
       cleanup();
       reject(new Error("WebRTC connected but no video frame arrived."));
@@ -220,6 +246,7 @@ function waitForFirstVideoFrame(video: HTMLVideoElement): Promise<void> {
       video.removeEventListener("loadeddata", onFrame);
       video.removeEventListener("playing", onFrame);
       video.removeEventListener("error", onError);
+      signal.removeEventListener("abort", onAbort);
     };
     const onFrame = () => {
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -231,9 +258,14 @@ function waitForFirstVideoFrame(video: HTMLVideoElement): Promise<void> {
       cleanup();
       reject(new Error("WebRTC video playback failed."));
     };
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
     video.addEventListener("loadeddata", onFrame);
     video.addEventListener("playing", onFrame);
     video.addEventListener("error", onError);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -331,103 +363,16 @@ export class WebrtcPresentationProgress {
   }
 }
 
-function reportConnectionFailure(
-  peer: RTCPeerConnection,
-  reject: (error: Error) => void,
-): void {
-  const fail = () => {
-    if (
-      peer.connectionState === "failed" ||
-      peer.connectionState === "closed" ||
-      peer.iceConnectionState === "failed" ||
-      peer.iceConnectionState === "closed"
-    ) {
-      reject(
-        new Error(
-          `WebRTC connection ${peer.connectionState}/${peer.iceConnectionState}.`,
-        ),
-      );
-    }
-  };
-  peer.addEventListener("connectionstatechange", fail);
-  peer.addEventListener("iceconnectionstatechange", fail);
-}
-
-function watchConnectionFailure(peer: RTCPeerConnection): Promise<never> {
-  return new Promise((_, reject) => {
-    reportConnectionFailure(peer, reject);
-  });
-}
-
-function showVideoAfterFirstFrame(
-  video: HTMLVideoElement,
-  ui: ViewerUi,
-): Promise<void> {
-  return waitForFirstVideoFrame(video).then(() => {
-    ui.showVideo();
-  });
-}
-
-function waitForActiveVideo(
-  peer: RTCPeerConnection,
-  video: HTMLVideoElement,
-  ui: ViewerUi,
-): Promise<void> {
-  return Promise.race([
-    showVideoAfterFirstFrame(video, ui),
-    watchConnectionFailure(peer),
-  ]);
-}
-
-function recoveryVideo(target: HTMLVideoElement): HTMLVideoElement {
-  if (target.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-    return target;
-  }
-  const candidate = document.createElement("video");
-  candidate.autoplay = true;
-  candidate.muted = true;
-  candidate.playsInline = true;
-  return candidate;
-}
-
-async function activateRecoveryVideo(
-  candidate: HTMLVideoElement,
-  target: HTMLVideoElement,
-  audioRequested: boolean,
-): Promise<void> {
-  if (candidate === target) {
-    return;
-  }
-  const previousStream = target.srcObject;
-  const nextStream = candidate.srcObject;
-  candidate.pause();
-  candidate.srcObject = null;
-  target.srcObject = nextStream;
-  if (previousStream instanceof MediaStream) {
-    for (const track of previousStream.getTracks()) {
-      track.stop();
-    }
-  }
-  await playVideoWithAutoplayFallback(target, audioRequested);
-}
-
-function disposeRecoveryVideo(
-  candidate: HTMLVideoElement,
-  target: HTMLVideoElement,
-): void {
-  if (candidate !== target) {
-    clearVideo(candidate);
-  }
-}
-
 function waitForTrack(
   connection: RTCPeerConnection,
   video: HTMLVideoElement,
-  audioRequested: boolean,
+  isAudioAudible: () => boolean,
   jitterController: AdaptiveJitterBufferController,
+  signal: AbortSignal,
 ): Promise<void> {
   const mediaStream = new MediaStream();
   return new Promise((resolve, reject) => {
+    signal.throwIfAborted();
     const timeout = window.setTimeout(() => {
       cleanup();
       reject(new Error("WebRTC connected but no video track arrived."));
@@ -435,48 +380,51 @@ function waitForTrack(
     const cleanup = () => {
       clearTimeout(timeout);
       connection.removeEventListener("track", onTrack);
+      signal.removeEventListener("abort", onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(new Error("WebRTC attempt ended before its video track arrived."));
     };
     const onTrack = (event: RTCTrackEvent) => {
       jitterController.add(event.receiver);
+      if (event.track.kind !== "video") {
+        if (!event.streams.length) mediaStream.addTrack(event.track);
+        return;
+      }
       const [stream] = event.streams;
+      const previous = video.srcObject;
       if (stream) {
         video.srcObject = stream;
       } else {
         mediaStream.addTrack(event.track);
         video.srcObject = mediaStream;
       }
-      if (event.track.kind === "video") {
-        void playVideoWithAutoplayFallback(video, audioRequested);
-        cleanup();
-        resolve();
+      if (previous instanceof MediaStream && previous !== video.srcObject) {
+        for (const track of previous.getTracks()) track.stop();
       }
+      void playVideoWithAutoplayFallback(video, isAudioAudible(), signal);
+      cleanup();
+      resolve();
     };
     connection.addEventListener("track", onTrack);
+    signal.addEventListener("abort", onAbort, { once: true });
   });
 }
 
 async function playVideoWithAutoplayFallback(
   video: HTMLVideoElement,
   audioRequested: boolean,
+  signal: AbortSignal,
 ): Promise<void> {
   video.muted = !audioRequested;
   try {
     await video.play();
   } catch {
+    if (signal.aborted) return;
     video.muted = true;
     await video.play().catch(() => undefined);
   }
-}
-
-function waitForConnectedTrackAndFrame(
-  connection: RTCPeerConnection,
-  video: HTMLVideoElement,
-  ui: ViewerUi,
-  trackReady: Promise<void>,
-): Promise<void> {
-  return waitForConnected(connection)
-    .then(() => trackReady)
-    .then(() => waitForActiveVideo(connection, video, ui));
 }
 
 function finiteNumber(value: unknown): number | undefined {
@@ -530,6 +478,7 @@ function startWebrtcMetricsMonitor(
   negotiatedProfileLevelId: string | undefined,
   onStall: () => void,
   reliableChannel: RTCDataChannel,
+  displaySizePresentation: DisplaySizePresentationTracker,
 ): () => void {
   const frameCallback = videoFrameCallbackApi(video);
   let stopped = false;
@@ -569,7 +518,15 @@ function startWebrtcMetricsMonitor(
     if (stopped || !frameCallback.request) {
       return;
     }
-    frameCallbackHandle = frameCallback.request((_at, metadata) => {
+    frameCallbackHandle = frameCallback.request((at, metadata) => {
+      if (stopped) return;
+      displaySizePresentation.present(
+        {
+          width: metadata.width ?? video.videoWidth,
+          height: metadata.height ?? video.videoHeight,
+        },
+        at,
+      );
       const now = performance.now();
       idlePresentation.presented(metadata.rtpTimestamp, now);
       if (lastPresentedAt !== null && sourceActive && !document.hidden) {
@@ -588,6 +545,7 @@ function startWebrtcMetricsMonitor(
     sampling = true;
     const now = performance.now();
     idlePresentation.sample(reliableChannel, now);
+    const frameAcknowledgement = idlePresentation.diagnostics();
     const elapsedSeconds = Math.max((now - lastAt) / 1000, 0.001);
     const statsRequest = peer.getStats().catch(() => null);
     void statsRequest.then((stats) => {
@@ -679,6 +637,7 @@ function startWebrtcMetricsMonitor(
       emitViewerStreamMetrics({
         version: 4,
         transport: "webrtc",
+        displaySizePresentation: displaySizePresentation.snapshot(),
         sourceFps: relayMetrics?.sourceFps,
         relayIngressFps: relayMetrics?.sourceFps,
         bridgeInputFps: relayMetrics?.bridgeInputFps,
@@ -690,6 +649,10 @@ function startWebrtcMetricsMonitor(
         receiverPacketsLost: packetsLost,
         receiverNackCount: nackCount,
         receiverPliCount: pliCount,
+        frameAcknowledgement: frameCallback.request
+          ? frameAcknowledgement.status
+          : "callback-unavailable",
+        frameAcknowledgementsSent: frameAcknowledgement.sentCount,
         consumerAttemptId: relayMetrics?.consumerAttemptId,
         sourceCodecGeneration: relayMetrics?.sourceCodecGeneration,
         videoResetGeneration: relayMetrics?.videoResetGeneration,
@@ -792,8 +755,15 @@ export function createWebrtcStream({
   controlChannel,
   ui,
   lifecycle,
+  presentation,
   getRelayMetrics,
 }: WebrtcStreamOptions) {
+  const viewerId = Array.from(
+    crypto.getRandomValues(new Uint8Array(16)),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+  const displaySizePresentation = new DisplaySizePresentationTracker();
+  let stopSizeObservation: (() => void) | null = null;
   let peer: RTCPeerConnection | null = null;
   let terminalFailure = false;
   let stopMetricsMonitor: (() => void) | null = null;
@@ -802,11 +772,83 @@ export function createWebrtcStream({
   let retriesUsed = 0;
   let reconnectCount = 0;
   let peerGeneration = 0;
+  let attemptAbort: AbortController | null = null;
+  let consumerAttemptId: string | undefined;
+  let heldPicture = false;
+  let started = false;
+  let hadDemand = lifecycle.hasDemand();
+  const isAudioAudible = () => config.audio && !presentation?.isCompact();
+  const stopWatchingPresentation = presentation?.onChange(() => {
+    const audible = isAudioAudible();
+    const signal = attemptAbort?.signal;
+    if (audible && signal && video.srcObject) {
+      void playVideoWithAutoplayFallback(video, audible, signal);
+    } else {
+      video.muted = !audible;
+    }
+  });
+
+  const clearRetry = () => {
+    if (!retryTimer) return;
+    window.clearTimeout(retryTimer);
+    retryTimer = 0;
+  };
+
+  const retireAttempt = () => {
+    attemptAbort?.abort();
+    attemptAbort = null;
+    stopSizeObservation?.();
+    stopSizeObservation = null;
+    stopMetricsMonitor?.();
+    stopMetricsMonitor = null;
+    stopConnectionMonitor?.();
+    stopConnectionMonitor = null;
+    const retiringPeer = peer;
+    peer = null;
+    return retiringPeer;
+  };
+
+  const observeDisplaySize = (
+    connection: RTCPeerConnection,
+    generation: number,
+    trackReady: Promise<void>,
+  ) => {
+    const { request, cancel } = videoFrameCallbackApi(video);
+    if (!request) return;
+    let handle: number | undefined;
+    let active = true;
+    const isCurrent = () =>
+      active &&
+      peer === connection &&
+      peerGeneration === generation &&
+      lifecycle.hasDemand() &&
+      !lifecycle.isClosing();
+    stopSizeObservation = () => {
+      active = false;
+      if (handle !== undefined) cancel?.(handle);
+    };
+    const observe = () => {
+      if (!isCurrent()) return;
+      handle = request((at, metadata) => {
+        if (!isCurrent()) return;
+        const accepted = displaySizePresentation.present(
+          {
+            width: metadata.width ?? video.videoWidth,
+            height: metadata.height ?? video.videoHeight,
+          },
+          at,
+        );
+        if (!accepted) observe();
+      });
+    };
+    void trackReady.then(observe, () => undefined);
+  };
 
   video.addEventListener(
     "pointerdown",
     () => {
-      if (config.audio) {
+      if (!lifecycle.hasDemand()) return;
+      if (isAudioAudible()) {
         video.muted = false;
       }
       void video.play().catch(() => undefined);
@@ -814,15 +856,16 @@ export function createWebrtcStream({
     { passive: true },
   );
 
-  const failPermanently = (reason: string, sessionExpired = false) => {
-    if (terminalFailure || lifecycle.isClosing()) {
+  const failPermanently = (
+    reason: string,
+    sessionExpired = false,
+    failureStage?: string,
+  ) => {
+    if (terminalFailure || lifecycle.isClosing() || !lifecycle.hasDemand()) {
       return;
     }
     terminalFailure = true;
-    stopMetricsMonitor?.();
-    stopMetricsMonitor = null;
-    stopConnectionMonitor?.();
-    stopConnectionMonitor = null;
+    clearRetry();
     if (sessionExpired) {
       emitViewerSessionExpired("webrtc", config.sessionId);
     } else {
@@ -831,42 +874,59 @@ export function createWebrtcStream({
         severity: "error",
         blocking: true,
         message: reason,
+        sessionId: config.sessionId,
+        consumerAttemptId,
+        failureStage,
         transport: "webrtc",
       });
     }
-    const activePeer = peer;
-    peer = null;
-    activePeer?.close();
+    closePeer(retireAttempt(), video);
     ui.showFailure(reason);
   };
 
-  lifecycle.onClose(() => {
-    stopMetricsMonitor?.();
-    stopMetricsMonitor = null;
-    stopConnectionMonitor?.();
-    stopConnectionMonitor = null;
-    if (retryTimer) {
-      window.clearTimeout(retryTimer);
-    }
-    closePeer(peer, video);
-  });
-
-  const retryOrFail = (reason: string) => {
-    if (terminalFailure || lifecycle.isClosing() || retryTimer) {
+  const unsubscribeDemand = lifecycle.onDemandChange((active) => {
+    if (active === hadDemand) return;
+    hadDemand = active;
+    if (!started || terminalFailure || lifecycle.isClosing()) return;
+    if (active) {
+      displaySizePresentation.beginRecovery(performance.now());
+      void connectAttempt().catch(() => retryOrFail("WebRTC resume failed."));
       return;
     }
+    clearRetry();
+    retriesUsed = 0;
+    displaySizePresentation.cancelPending();
+    if (peer && !heldPicture) heldPicture = ui.preserveVideoFrame(video);
+    closePeer(retireAttempt(), video);
+  });
+
+  lifecycle.onClose(() => {
+    unsubscribeDemand();
+    stopWatchingPresentation?.();
+    clearRetry();
+    closePeer(retireAttempt(), video);
+  });
+
+  const retryOrFail = (reason: string, failureStage = "peer-recovery") => {
+    if (
+      !started ||
+      terminalFailure ||
+      lifecycle.isClosing() ||
+      !lifecycle.hasDemand() ||
+      retryTimer
+    ) {
+      return;
+    }
+    displaySizePresentation.beginRecovery(performance.now());
     reconnectCount += 1;
-    stopMetricsMonitor?.();
-    stopMetricsMonitor = null;
-    stopConnectionMonitor?.();
-    stopConnectionMonitor = null;
-    const stalePeer = peer;
-    peer = null;
-    stalePeer?.close();
+    if (!heldPicture) heldPicture = ui.preserveVideoFrame(video);
+    retireAttempt()?.close();
     if (retriesUsed >= webrtcRetryDelaysMs.length) {
       console.warn("WebRTC recovery exhausted.", reason);
       failPermanently(
         `WebRTC stopped after ${webrtcRetryDelaysMs.length} recovery attempts: ${reason}`,
+        false,
+        failureStage,
       );
       return;
     }
@@ -876,7 +936,10 @@ export function createWebrtcStream({
       code: "reconnecting",
       severity: "info",
       blocking: false,
-      message: `Recovering WebRTC video (${retriesUsed}/${webrtcRetryDelaysMs.length})...`,
+      message: reason,
+      sessionId: config.sessionId,
+      consumerAttemptId,
+      failureStage,
       transport: "webrtc",
     });
     retryTimer = window.setTimeout(() => {
@@ -939,6 +1002,13 @@ export function createWebrtcStream({
   };
 
   async function connectAttempt(): Promise<void> {
+    if (
+      lifecycle.isClosing() ||
+      !lifecycle.hasDemand() ||
+      terminalFailure ||
+      peer
+    )
+      return;
     if (!config.sessionId) {
       failPermanently("Open the viewer again from the app page.");
       return;
@@ -948,16 +1018,32 @@ export function createWebrtcStream({
       return;
     }
 
-    ui.showStatus(
-      "Starting WebRTC...",
-      "Starting live display",
-      "Rebroid is opening the app screen.",
-    );
+    if (!heldPicture) {
+      ui.showStatus(
+        "Starting WebRTC...",
+        "Starting live display",
+        "Rebroid is opening the app screen.",
+      );
+    }
     const currentGeneration = ++peerGeneration;
+    consumerAttemptId = undefined;
+    let failureStage = "signaling";
     const connection = new RTCPeerConnection();
     const jitterController = new AdaptiveJitterBufferController();
-    const playbackVideo = recoveryVideo(video);
+    const controller = new AbortController();
+    const { signal } = controller;
+    attemptAbort = controller;
     peer = connection;
+    const isCurrent = () =>
+      !signal.aborted &&
+      lifecycle.hasDemand() &&
+      !lifecycle.isClosing() &&
+      peer === connection &&
+      peerGeneration === currentGeneration;
+    const recoverCurrent = (reason: string, stage = failureStage) => {
+      if (isCurrent()) retryOrFail(reason, stage);
+    };
+    stopConnectionMonitor = monitorConnection(connection, currentGeneration);
     const reliableChannel = connection.createDataChannel("rebroid-control", {
       ordered: true,
     });
@@ -965,7 +1051,16 @@ export function createWebrtcStream({
       ordered: false,
       maxRetransmits: 0,
     });
-    controlChannel.useDataChannels(reliableChannel, movementChannel);
+    reliableChannel.addEventListener(
+      "close",
+      () => {
+        recoverCurrent("WebRTC control channel closed.", "control-channel");
+      },
+      { once: true, signal },
+    );
+    controlChannel.useDataChannels(reliableChannel, movementChannel, () =>
+      recoverCurrent("WebRTC video codec configuration changed."),
+    );
     const videoTransceiver = connection.addTransceiver("video", {
       direction: "recvonly",
     });
@@ -973,25 +1068,35 @@ export function createWebrtcStream({
     if (config.audio) {
       connection.addTransceiver("audio", { direction: "recvonly" });
     }
-    playbackVideo.muted = playbackVideo === video ? !config.audio : true;
+    video.muted = !isAudioAudible();
 
     try {
       const offer = await connection.createOffer();
+      signal.throwIfAborted();
       await connection.setLocalDescription(offer);
-      await waitForIceGathering(connection);
+      await waitForIceGathering(connection, signal);
+      signal.throwIfAborted();
       const trackReady = waitForTrack(
         connection,
-        playbackVideo,
-        playbackVideo === video && config.audio,
+        video,
+        isAudioAudible,
         jitterController,
+        signal,
       );
+      // Signaling can fail before the track wait is consumed.
+      void trackReady.catch(() => undefined);
+      observeDisplaySize(connection, currentGeneration, trackReady);
 
       const offerAt = performance.timeOrigin + performance.now();
       const response = await fetch(
         `/rebroid/display/public/sessions/${encodeURIComponent(config.sessionId)}/webrtc/offer`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          signal,
+          headers: {
+            "content-type": "application/json",
+            "x-rebroid-viewer-id": viewerId,
+          },
           body: JSON.stringify({
             sdp: connection.localDescription?.sdp ?? offer.sdp,
             bitrate: Number(
@@ -1030,11 +1135,7 @@ export function createWebrtcStream({
           // Keep the bounded HTTP status diagnostic.
         }
         if (response.status === 409 && code === "feature_disabled") {
-          if (
-            peer === connection &&
-            peerGeneration === currentGeneration &&
-            !lifecycle.isClosing()
-          ) {
+          if (isCurrent()) {
             const url = new URL(location.href);
             url.searchParams.set("transport", "websocket");
             location.replace(url.href);
@@ -1046,34 +1147,43 @@ export function createWebrtcStream({
         if (response.status === 404 && code === "display_session_unavailable") {
           throw new WebrtcSessionExpiredError(detail);
         }
-        if (response.status >= 400 && response.status < 500) {
+        if (
+          response.status >= 400 &&
+          response.status < 500 &&
+          code !== "display_profile_in_use"
+        ) {
           throw new PermanentWebrtcError(detail);
         }
         throw new Error(detail);
       }
+      const attemptId = response.headers?.get("x-rebroid-webrtc-attempt");
       const answer = (await response.json()) as WebrtcAnswer;
       if (!answer.sdp) {
         throw new Error("WebRTC answer was missing SDP.");
       }
+      signal.throwIfAborted();
+      if (attemptId && /^[a-z0-9-]{1,64}$/i.test(attemptId))
+        consumerAttemptId = attemptId;
+      failureStage = "connection";
       await connection.setRemoteDescription({
         type: "answer",
         sdp: answer.sdp,
       });
-      await waitForConnectedTrackAndFrame(
-        connection,
-        playbackVideo,
-        ui,
-        trackReady,
-      );
-      if (peer !== connection || peerGeneration !== currentGeneration) {
-        disposeRecoveryVideo(playbackVideo, video);
+      await waitForConnected(connection, signal);
+      failureStage = "first-frame";
+      await trackReady;
+      await waitForFirstVideoFrame(video, signal);
+      if (!isCurrent()) {
         connection.close();
         return;
       }
-      await activateRecoveryVideo(playbackVideo, video, config.audio);
-      if (peer !== connection || peerGeneration !== currentGeneration) return;
+      heldPicture = false;
+      failureStage = "playback";
+      ui.showVideo();
       emitViewerSessionReady("webrtc", config.sessionId, offerAt);
       retriesUsed = 0;
+      stopSizeObservation?.();
+      stopSizeObservation = null;
       stopMetricsMonitor?.();
       stopMetricsMonitor = startWebrtcMetricsMonitor(
         connection,
@@ -1084,29 +1194,32 @@ export function createWebrtcStream({
         () => reconnectCount,
         jitterController,
         answer.profileLevelId,
-        () => retryOrFail("WebRTC video stopped presenting frames."),
+        () => recoverCurrent("WebRTC video stopped presenting frames."),
         reliableChannel,
+        displaySizePresentation,
       );
-      stopConnectionMonitor?.();
-      stopConnectionMonitor = monitorConnection(connection, currentGeneration);
     } catch (error) {
-      disposeRecoveryVideo(playbackVideo, video);
-      if (peer === connection && peerGeneration === currentGeneration) {
+      if (isCurrent()) {
         const reason =
           error instanceof Error ? error.message : "WebRTC recovery failed.";
         if (error instanceof PermanentWebrtcError) {
-          failPermanently(reason, error instanceof WebrtcSessionExpiredError);
+          failPermanently(
+            reason,
+            error instanceof WebrtcSessionExpiredError,
+            failureStage,
+          );
         } else {
-          retryOrFail(reason);
+          retryOrFail(reason, failureStage);
         }
-      } else {
+      } else if (connection.connectionState !== "closed") {
         connection.close();
       }
     }
   }
 
   async function connect(): Promise<void> {
-    retriesUsed = 0;
+    if (started) return;
+    started = true;
     await connectAttempt();
   }
 

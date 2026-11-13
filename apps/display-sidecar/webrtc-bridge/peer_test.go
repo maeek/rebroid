@@ -180,8 +180,13 @@ func TestAudioTimestampRegressionStopsIdleVideo(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := receive(t, fixture.result); !errors.Is(err, errSourceTimestampRegressed) {
+	err := receive(t, fixture.result)
+	if !errors.Is(err, errSourceTimestampRegressed) {
 		t.Fatalf("expected shared timestamp failure: %v", err)
+	}
+	var failure *peerFailure
+	if !errors.As(err, &failure) || failure.code != "source_timestamp_regressed" {
+		t.Fatalf("timestamp regression must retain its first terminal reason: %v", err)
 	}
 	if _, err := fixture.video.Write([]byte{1}); !errors.Is(err, io.ErrClosedPipe) {
 		t.Fatalf("video pipe should be closed: %v", err)

@@ -3,7 +3,7 @@ import test from "node:test";
 import { DisplayControlService } from "./display-control.service";
 import type { AdbService } from "../adb/adb.service";
 import type { ScrcpyService } from "../scrcpy/scrcpy.service";
-import type { DisplaySessionService } from "./display-session.service";
+import { DisplaySessionService } from "./display-session.service";
 import type { DisplayControlRequest } from "./display.types";
 import { setImmediate } from "node:timers/promises";
 import { DisplayController } from "./display.controller";
@@ -20,6 +20,7 @@ const service = (
   handledByStream: boolean | Promise<boolean>,
   reconnecting = false,
   surfaceKind = "main",
+  activeControl = true,
 ) => {
   const sessions = {
     get: () => ({ id: "session", udid: "127.0.0.1:5555", surfaceKind }),
@@ -38,6 +39,7 @@ const service = (
     sendTouchEvent: () => handledByStream,
     sendClipboard: () => handledByStream,
     shouldWaitForStreamControl: () => reconnecting,
+    hasActiveControl: () => activeControl,
   } as unknown as ScrcpyService;
   return new DisplayControlService(sessions, adb, scrcpy);
 };
@@ -52,6 +54,33 @@ test("all control kinds share stream and ADB fallback semantics", async () => {
       (await service(false).execute("session", request)).transport,
       "adb",
     );
+  }
+});
+
+test("a video-only display grant denies actions, keyboard, touch and clipboard", async () => {
+  const sessions = new DisplaySessionService(
+    {
+      sessionTtlSeconds: 900,
+      sessionMaxLifetimeSeconds: 3600,
+      sessionMaxActive: 8,
+    } as never,
+    {} as never,
+  );
+  const grant = sessions.create({
+    udid: "127.0.0.1:5555",
+    capabilities: ["video"],
+  });
+  // Empty adapters make a forbidden dispatch fail differently from the expected capability error.
+  const controls = new DisplayControlService(
+    sessions,
+    {} as never,
+    {} as never,
+  );
+  for (const request of requests) {
+    const capability = request.type === "clipboard" ? "clipboard" : "control";
+    await assert.rejects(controls.execute(grant.id, request), {
+      message: `Display session does not allow ${capability}.`,
+    });
   }
 });
 
@@ -167,5 +196,21 @@ test("does not acknowledge a live pointer phase as executed by ADB", async () =>
       JSON.stringify(
         (error as { getResponse: () => unknown }).getResponse(),
       ).includes("control_reconnecting"),
+  );
+});
+
+test("Home uses ADB during main capture recovery before any stream dispatch", async () => {
+  const control = service(false, true, "main", false);
+  assert.deepEqual(await control.executeAction("session", "home"), {
+    ok: true,
+    command: "home",
+    executed: true,
+    transport: "adb",
+  });
+  await assert.rejects(
+    service(false, true, "virtual", false).executeAction("session", "home"),
+    {
+      message: "Live controls are reconnecting. Try again in a moment.",
+    },
   );
 });

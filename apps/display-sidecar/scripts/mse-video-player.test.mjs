@@ -125,11 +125,11 @@ test("Firefox MSE batches VFR fragments without treating PTS gaps as append back
     );
     const video = createVideo();
     const resyncs = [];
-    let firstFrames = 0;
+    const firstFrames = [];
     const player = new MseVideoPlayer(
       video,
-      () => {
-        firstFrames += 1;
+      (epoch, frame) => {
+        firstFrames.push({ epoch, ...frame });
       },
       (reason) => resyncs.push(reason),
     );
@@ -160,11 +160,27 @@ test("Firefox MSE batches VFR fragments without treating PTS gaps as append back
     assert.equal(mediaSource.sourceBuffer.appended[1].byteLength, 320);
 
     video.frameCallback(performance.now(), { mediaTime: 0 });
-    assert.equal(firstFrames, 1);
+    assert.equal(firstFrames.length, 1);
 
-    player.initialize("avc1.42C029", new ArrayBuffer(16), 2_000_000, 2);
+    const retiredCallback = video.frameCallback;
+    player.initialize("avc1.42C029", new ArrayBuffer(16), 2_000_000, 2, {
+      width: 2048,
+      height: 944,
+    });
+    retiredCallback(performance.now(), {
+      mediaTime: 0,
+      width: 2048,
+      height: 944,
+    });
     video.frameCallback(performance.now(), { mediaTime: 0 });
-    assert.equal(firstFrames, 2);
+    assert.equal(firstFrames.length, 1);
+    video.frameCallback(100, { mediaTime: 0, width: 2048, height: 944 });
+    assert.deepEqual(firstFrames[1], {
+      epoch: 2,
+      width: 2048,
+      height: 944,
+      at: performance.timeOrigin + 100,
+    });
 
     const fragment = {
       epoch: 2,

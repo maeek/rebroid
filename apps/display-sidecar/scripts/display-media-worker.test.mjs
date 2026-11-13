@@ -7,6 +7,18 @@ const configuration = annexB(
   [0x67, 0x42, 0xe0, 0x1f],
   [0x68, 0xce, 0x06, 0xe2],
 );
+const portraitConfiguration = Uint8Array.from(
+  Buffer.from(
+    "000000016742c033d900440127e59f0110000003001000000780f18324800000000168cb83cb20",
+    "hex",
+  ),
+);
+const landscapeConfiguration = Uint8Array.from(
+  Buffer.from(
+    "000000016742c032d90024c089e7970110000003001000000303c0f18324800000000168cb83cb20",
+    "hex",
+  ),
+);
 const keyFrame = annexB([0x65, 0x88, 0x84]);
 const deltaFrame = annexB([0x41, 0x9a, 0x20]);
 
@@ -125,7 +137,8 @@ async function startWebCodecsWorker(t, name, overrides = {}) {
   globalThis.EncodedAudioChunk = FakeEncodedVideoChunk;
   globalThis.WebSocket = FakeWebSocket;
   globalThis.postMessage = (message) => posted.push(message);
-  globalThis.requestAnimationFrame = () => 1;
+  globalThis.requestAnimationFrame =
+    overrides.requestAnimationFrame ?? (() => 1);
   globalThis.cancelAnimationFrame = () => undefined;
   globalThis.close = () => undefined;
   await import(
@@ -148,7 +161,7 @@ async function startWebCodecsWorker(t, name, overrides = {}) {
     },
   });
   const socket = FakeWebSocket.instances.at(-1);
-  socket.open();
+  if (overrides.demand !== false) socket.open();
   return { socket, posted };
 }
 
@@ -157,6 +170,82 @@ function sendFrame(socket, sequence, data, flags = {}) {
     data: rbd1({ sequence, timestampUs: 17_000 * sequence, data, ...flags }),
   });
 }
+
+test("WebCodecs presents a new size on the same socket and fences a retired decoder", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  let now = 100;
+  t.mock.method(performance, "now", () => now);
+  const decoded = [];
+  const decoders = [];
+  let frameCallback;
+  globalThis.VideoDecoder = class extends FakeVideoDecoder {
+    constructor(callbacks) {
+      super(callbacks);
+      decoders.push(this);
+    }
+
+    decode(chunk) {
+      decoded.push(chunk.type);
+    }
+  };
+  const { socket, posted } = await startWebCodecsWorker(
+    t,
+    "rotation-webcodecs",
+    {
+      effectiveProfile: { transport: "websocket", codec: "h264", maxFps: 60 },
+      requestAnimationFrame: (callback) => {
+        frameCallback = callback;
+        return 1;
+      },
+    },
+  );
+  const frame = (sequence, displayWidth, displayHeight) => ({
+    timestamp: 17_000 * sequence,
+    displayWidth,
+    displayHeight,
+    closed: false,
+    close() {
+      this.closed = true;
+    },
+  });
+  sendFrame(socket, 0, portraitConfiguration, { config: true });
+  sendFrame(socket, 1, keyFrame, { key: true });
+  await flush();
+  decoders[0].callbacks.output(frame(1, 1080, 2340));
+  frameCallback();
+
+  now = 200;
+  sendFrame(socket, 2, landscapeConfiguration, { config: true });
+  sendFrame(socket, 3, deltaFrame);
+  sendFrame(socket, 4, keyFrame, { key: true });
+  sendFrame(socket, 5, deltaFrame);
+  await flush();
+  assert.deepEqual(decoded, ["key", "key", "delta"]);
+  const stale = frame(1, 1080, 2340);
+  decoders[0].callbacks.output(stale);
+  assert.equal(stale.closed, true);
+  t.mock.timers.tick(1000);
+  assert.equal(
+    posted.findLast(({ type }) => type === "metrics").metrics
+      .displaySizePresentation,
+    undefined,
+  );
+
+  now = 245;
+  decoders[1].callbacks.output(frame(4, 2340, 1080));
+  frameCallback();
+  t.mock.timers.tick(1000);
+  assert.deepEqual(
+    posted.findLast(({ type }) => type === "metrics").metrics
+      .displaySizePresentation,
+    {
+      previous: { width: 1080, height: 2340 },
+      current: { width: 2340, height: 1080 },
+      elapsedMs: 45,
+    },
+  );
+  assert.equal(socket.closeCalls.length, 0);
+});
 
 for (const limit of ["frames", "bytes", "age"]) {
   test(`video ingress discards the queued GOP at its ${limit} limit`, async (t) => {
@@ -728,6 +817,335 @@ test("progress replay does not reset a hidden renderer and starts a fresh window
   assert.deepEqual(socket.closeCalls, []);
 });
 
+test("main display suspension quiesces media and resumes only the current demand", async (t) => {
+  const { socket, posted, draw } = await startProgressReplay(
+    t,
+    "suspend-media",
+  );
+  const originalDecoder = FakeVideoDecoder.instances.at(-1);
+  const sockets = FakeWebSocket.instances.length;
+  const demand = (active, epoch) =>
+    globalThis.onmessage({
+      data: { type: "demand", active, epoch },
+    });
+
+  demand(false, 1);
+  assert.deepEqual(socket.closeCalls, [
+    { code: 1000, reason: "viewer suspended" },
+  ]);
+  assert.equal(originalDecoder.state, "closed");
+  const pausedOutput = posted.length;
+  socket.emit("close", { code: 1006 });
+  sendFrame(socket, 9, deltaFrame);
+  t.mock.timers.tick(60_000);
+  await flush();
+  assert.equal(posted.length, pausedOutput);
+  assert.equal(FakeWebSocket.instances.length, sockets);
+
+  demand(true, 2);
+  demand(true, 2);
+  demand(false, 1);
+  assert.equal(FakeWebSocket.instances.length, sockets + 1);
+  const replacement = FakeWebSocket.instances.at(-1);
+  replacement.open();
+  sendFrame(replacement, 0, configuration, { config: true });
+  sendFrame(replacement, 1, keyFrame, { key: true });
+  await flush();
+  draw();
+  assert.equal(
+    posted.findLast(({ type }) => type === "first-frame").demandEpoch,
+    2,
+  );
+  assert.deepEqual(replacement.closeCalls, []);
+
+  replacement.emit("close", { code: 1006 });
+  assert.equal(
+    posted.findLast(({ type }) => type === "reconnecting").demandEpoch,
+    2,
+  );
+  demand(false, 3);
+  t.mock.timers.tick(60_000);
+  assert.equal(FakeWebSocket.instances.length, sockets + 1);
+  demand(true, 4);
+  assert.equal(FakeWebSocket.instances.length, sockets + 2);
+});
+
+test("a hidden worker never opens its first socket and cannot reuse an expired grant", async (t) => {
+  const sockets = FakeWebSocket.instances.length;
+  const { posted } = await startWebCodecsWorker(t, "suspend-initially-hidden", {
+    demand: false,
+    demandEpoch: 1,
+  });
+  assert.equal(FakeWebSocket.instances.length, sockets);
+  assert.equal(posted.length, 0);
+  const demand = (active, epoch) =>
+    globalThis.onmessage({
+      data: { type: "demand", active, epoch },
+    });
+  demand(true, 2);
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  socket.emit("close", { code: 4404 });
+  assert.equal(
+    posted.findLast(({ type }) => type === "session-expired").demandEpoch,
+    2,
+  );
+  demand(false, 3);
+  demand(true, 4);
+  assert.equal(
+    posted.findLast(({ type }) => type === "session-expired").demandEpoch,
+    4,
+  );
+  assert.equal(FakeWebSocket.instances.length, sockets + 1);
+});
+
+test("the WebSocket viewer defers worker startup and ignores retired worker messages", async (t) => {
+  const { createDisplayStream } =
+    await import("../dist/modules/display/viewer/assets/display-stream.js");
+  const window = new EventTarget();
+  const document = new EventTarget();
+  const restore = [];
+  const install = (name, value) => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, name);
+    Object.defineProperty(globalThis, name, { configurable: true, value });
+    restore.push(() => {
+      if (previous) Object.defineProperty(globalThis, name, previous);
+      else delete globalThis[name];
+    });
+  };
+  t.after(() => restore.reverse().forEach((revert) => revert()));
+
+  const browserEvents = [];
+  const workerMessages = [];
+  const instances = [];
+  const origin = "https://example.test";
+  class FakeWorker extends EventTarget {
+    constructor() {
+      super();
+      instances.push(this);
+    }
+    postMessage(message) {
+      workerMessages.push(message);
+    }
+  }
+  let canvasTransfers = 0;
+  class FakeCanvas {
+    transferControlToOffscreen() {
+      canvasTransfers += 1;
+      return {};
+    }
+  }
+  const canvas = new FakeCanvas();
+  window.parent = { postMessage: (message) => browserEvents.push(message) };
+  window.location = new URL(origin);
+  Object.assign(window, {
+    Worker: FakeWorker,
+    VideoDecoder: FakeVideoDecoder,
+    EncodedVideoChunk: FakeEncodedVideoChunk,
+  });
+  document.getElementById = (id) => (id === "screen" ? canvas : null);
+  document.visibilityState = "hidden";
+  install("window", window);
+  install("document", document);
+  install("location", window.location);
+  install("navigator", { userAgent: "Chromium" });
+  install("Worker", FakeWorker);
+  install("HTMLCanvasElement", FakeCanvas);
+
+  let active = false;
+  let demandListener;
+  let close;
+  const changeDemand = (next) => {
+    active = next;
+    demandListener(next);
+  };
+  const stream = createDisplayStream({
+    config: {
+      sessionId: "grant",
+      params: new URLSearchParams(),
+      streamDefaults: {},
+      audio: false,
+      transport: "websocket",
+    },
+    lifecycle: {
+      hasDemand: () => active,
+      onDemandChange(listener) {
+        demandListener = listener;
+        return () => true;
+      },
+      onClose(listener) {
+        close = listener;
+        return () => true;
+      },
+      isClosing: () => false,
+    },
+    ui: { showStatus() {}, showCanvas() {}, showFailure() {} },
+  });
+  await stream.connect();
+  assert.equal(instances.length, 0);
+  changeDemand(true);
+  assert.equal(instances.length, 1);
+  assert.equal(workerMessages[0].demandEpoch, 1);
+  changeDemand(false);
+  stream.scheduleReconnect();
+  changeDemand(true);
+  changeDemand(true);
+  assert.deepEqual(workerMessages.slice(1), [
+    { type: "demand", active: false, epoch: 2 },
+    { type: "demand", active: true, epoch: 3 },
+  ]);
+  assert.equal(canvasTransfers, 1);
+  const send = (data) =>
+    instances[0].dispatchEvent(new MessageEvent("message", { data }));
+  send({ type: "session-expired", demandEpoch: 1 });
+  send({ type: "first-frame", demandEpoch: 1 });
+  assert.equal(browserEvents.length, 0);
+  send({ type: "first-frame", demandEpoch: 3 });
+  assert.equal(browserEvents[0].code, "session-ready");
+  send({ type: "session-expired", demandEpoch: 3 });
+  assert.equal(browserEvents[1].code, "session-expired");
+  changeDemand(false);
+  changeDemand(true);
+  assert.equal(instances.length, 1);
+  assert.deepEqual(workerMessages.at(-1), { type: "close" });
+  close();
+});
+
+test("the WebSocket viewer keeps its media worker and audio graph on compact transitions", async (t) => {
+  const { createDisplayStream } =
+    await import("../dist/modules/display/viewer/assets/display-stream.js");
+  const window = new EventTarget();
+  const document = new EventTarget();
+  const workerMessages = [];
+  const browserMessages = [];
+  const output = { gain: { value: 1 }, connect() {} };
+  let workers = 0;
+  let audioGraphs = 0;
+  let suspensions = 0;
+  let canvasTransfers = 0;
+  class FakeCanvas {
+    transferControlToOffscreen() {
+      canvasTransfers++;
+      return {};
+    }
+  }
+  class FakeWorker extends EventTarget {
+    constructor() {
+      super();
+      workers++;
+    }
+    postMessage(message) {
+      workerMessages.push(message);
+    }
+  }
+  class FakeAudioContext {
+    audioWorklet = { addModule: async () => undefined };
+    state = "running";
+    constructor() {
+      audioGraphs++;
+    }
+    createGain() {
+      return output;
+    }
+    async suspend() {
+      suspensions++;
+    }
+    async close() {}
+  }
+  class FakeAudioWorkletNode {
+    port = { postMessage() {} };
+    connect(target) {
+      return target;
+    }
+  }
+  class FakeMessageChannel {
+    port1 = {};
+    port2 = {};
+  }
+  window.parent = { postMessage: (message) => browserMessages.push(message) };
+  window.location = new URL("https://example.test");
+  Object.assign(window, {
+    Worker: FakeWorker,
+    VideoDecoder: FakeVideoDecoder,
+    EncodedVideoChunk: FakeEncodedVideoChunk,
+    AudioWorkletNode: FakeAudioWorkletNode,
+  });
+  document.visibilityState = "visible";
+  const canvas = new FakeCanvas();
+  document.getElementById = (id) => (id === "screen" ? canvas : null);
+  const globals = {
+    window,
+    document,
+    location: window.location,
+    navigator: { userAgent: "Chromium" },
+    Worker: FakeWorker,
+    HTMLCanvasElement: FakeCanvas,
+    AudioContext: FakeAudioContext,
+    AudioWorkletNode: FakeAudioWorkletNode,
+    MessageChannel: FakeMessageChannel,
+  };
+  let close;
+  const descriptors = Object.getOwnPropertyDescriptors(globalThis);
+  for (const [name, value] of Object.entries(globals)) {
+    Object.defineProperty(globalThis, name, { configurable: true, value });
+  }
+  t.after(() => {
+    close?.();
+    for (const name of Object.keys(globals)) {
+      if (descriptors[name])
+        Object.defineProperty(globalThis, name, descriptors[name]);
+      else delete globalThis[name];
+    }
+  });
+  let compact = true;
+  let presentationListener;
+  const changePresentation = (next) => {
+    compact = next;
+    presentationListener(next);
+  };
+  const stream = createDisplayStream({
+    config: {
+      sessionId: "grant",
+      params: new URLSearchParams(),
+      streamDefaults: {},
+      audio: true,
+      transport: "websocket",
+    },
+    lifecycle: {
+      hasDemand: () => true,
+      onDemandChange: () => () => true,
+      onClose(listener) {
+        close = listener;
+        return () => true;
+      },
+      isClosing: () => false,
+    },
+    presentation: {
+      isCompact: () => compact,
+      onChange(listener) {
+        presentationListener = listener;
+        return () => true;
+      },
+    },
+    ui: { showStatus() {}, showFailure: assert.fail },
+  });
+  await stream.connect();
+  assert.equal(output.gain.value, 0);
+  changePresentation(false);
+  assert.equal(output.gain.value, 1);
+  changePresentation(true);
+  assert.equal(output.gain.value, 0);
+  assert.equal(workers, 1);
+  assert.equal(audioGraphs, 1);
+  assert.equal(suspensions, 0);
+  assert.equal(canvasTransfers, 1);
+  assert.deepEqual(
+    workerMessages.map(({ type }) => type),
+    ["init"],
+  );
+  assert.deepEqual(browserMessages, []);
+});
+
 test("progress replay resumes after local repair without reconnecting healthy video", async (t) => {
   const { socket, advance, draw } = await startProgressReplay(
     t,
@@ -764,4 +1182,23 @@ test("progress replay fences old socket status after a reconnect and honors expi
     1,
   );
   assert.equal(FakeWebSocket.instances.at(-1), replacement);
+});
+
+test("WebSocket profile conflict allows bounded retries then stops reconnecting", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { posted } = await startWebCodecsWorker(t, "profile-in-use");
+  const attemptsBefore = FakeWebSocket.instances.length;
+  for (const delay of [300, 600, 1200]) {
+    const socket = FakeWebSocket.instances.at(-1);
+    socket.close(4409);
+    socket.emit("close", { code: 4409, reason: "Profile in use" });
+    t.mock.timers.tick(delay);
+  }
+  const last = FakeWebSocket.instances.at(-1);
+  last.close(4409);
+  last.emit("close", { code: 4409, reason: "Profile in use" });
+  t.mock.timers.tick(10_000);
+  assert.equal(FakeWebSocket.instances.length, attemptsBefore + 3);
+  assert.equal(posted.filter(({ type }) => type === "reconnecting").length, 3);
+  assert.equal(posted.find(({ type }) => type === "fatal")?.closeCode, 4409);
 });

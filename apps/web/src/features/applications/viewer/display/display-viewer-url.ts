@@ -97,7 +97,7 @@ export const getProtectedDisplaySidecarSurfaceUrl = ({
   soundEnabled,
   settings
 }: {
-  surface: Pick<DisplaySessionWithSurfaces, 'viewerPath'> | DisplaySurfaceRef
+  surface: Pick<DisplaySessionWithSurfaces, 'viewerPath' | 'surfaceKind'> | DisplaySurfaceRef
   player: string
   baseUrl: string
   soundEnabled?: boolean
@@ -107,6 +107,7 @@ export const getProtectedDisplaySidecarSurfaceUrl = ({
   >
 }) => {
   const viewerUrl = new URL(surface.viewerPath, `${trimTrailingSlash(baseUrl)}/`)
+  viewerUrl.searchParams.set('surfaceKind', ('kind' in surface ? surface.kind : surface.surfaceKind) ?? 'main')
   viewerUrl.searchParams.set('player', settings?.player ?? player)
   viewerUrl.searchParams.set('transport', settings?.transport ?? 'webrtc')
   viewerUrl.searchParams.set('audio', soundEnabled === false ? '0' : '1')

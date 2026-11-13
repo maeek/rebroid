@@ -29,6 +29,7 @@ export const useDisplayViewerShellState = ({
   onSurfacesChanged,
   onKeyboardCaptureChange,
   onStreamMetrics,
+  onStreamIssue,
   onFirstFrame
 }: {
   applicationId: string
@@ -38,6 +39,7 @@ export const useDisplayViewerShellState = ({
   onSurfacesChanged?: () => void
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation) => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
@@ -228,9 +230,10 @@ export const useDisplayViewerShellState = ({
   }
 
   const setSurfaceStreamStatus = (surfaceId: string, status: DisplayViewerStreamStatus) => {
+    const surface = surfaces.find(item => item.id === surfaceId)
+    if (!surface || (status.sessionId && status.sessionId !== surface.sessionId)) return
     if (status.code === 'session-expired' || status.code === 'session-ready') {
-      const surface = surfaces.find(item => item.id === surfaceId && item.sessionId === status.sessionId)
-      if (!surface) return
+      if (!status.sessionId) return
       if (status.code === 'session-ready') {
         clearStreamStatus(surfaceId)
         sessionRecovery.presented(applicationId, surface)
@@ -239,6 +242,8 @@ export const useDisplayViewerShellState = ({
       }
       if (sessionRecovery.request(applicationId, surface, surfaces)) viewerActions.refreshSurfaces()
     }
+
+    if (status.blocking || status.failureStage || status.closeCode) onStreamIssue?.(surfaceId, status)
 
     const existingTimer = streamStatusTimersRef.current[surfaceId]
     if (existingTimer !== undefined) {

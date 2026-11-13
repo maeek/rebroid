@@ -17,6 +17,17 @@ type videoPresentation struct {
 	valid       bool
 	writtenAt   time.Time
 	presentedAt time.Time
+	ackRejected string
+}
+
+type pictureLossDecision struct {
+	requested   bool
+	evidence    string
+	frameAge    time.Duration
+	ackAge      time.Duration
+	ackReceived uint64
+	ackMatched  uint64
+	trace       bool
 }
 
 func (recovery *videoRecovery) beginFrame(timestamp uint32) {
@@ -48,26 +59,63 @@ func (recovery *videoRecovery) consumePresentation(payload []byte, now time.Time
 	var message struct {
 		Timestamp *uint32 `json:"rtpTimestamp"`
 	}
-	if len(payload) > 256 || json.Unmarshal(payload, &message) != nil || message.Timestamp == nil {
-		return true
-	}
+	valid := len(payload) <= 256 && json.Unmarshal(payload, &message) == nil && message.Timestamp != nil
 	recovery.requestMu.Lock()
 	defer recovery.requestMu.Unlock()
+	recovery.ackReceived++
 	presentation := &recovery.presentation
-	if presentation.valid && presentation.timestamp == *message.Timestamp && presentation.presentedAt.IsZero() {
-		presentation.presentedAt = now
+	if presentation.valid && presentation.presentedAt.IsZero() {
+		switch {
+		case !valid:
+			presentation.ackRejected = "invalid-ack"
+		case presentation.timestamp != *message.Timestamp:
+			presentation.ackRejected = "mismatched-ack"
+		default:
+			presentation.presentedAt = now
+			recovery.ackMatched++
+		}
 	}
 	return true
 }
 
-func (recovery *videoRecovery) requestPLI(now time.Time) (requested bool, idle bool) {
+func (recovery *videoRecovery) requestPLI(now time.Time) pictureLossDecision {
 	recovery.requestMu.Lock()
 	defer recovery.requestMu.Unlock()
 	presentation := recovery.presentation
-	ackAge := now.Sub(presentation.presentedAt)
-	if presentation.valid && !presentation.writtenAt.IsZero() && !presentation.presentedAt.IsZero() &&
-		now.Sub(presentation.writtenAt) >= idleVideoQuietPeriod && ackAge >= 0 && ackAge <= presentationEvidenceLifetime {
-		return false, true
+	decision := pictureLossDecision{
+		frameAge: -time.Millisecond, ackAge: -time.Millisecond,
+		ackReceived: recovery.ackReceived, ackMatched: recovery.ackMatched,
 	}
-	return recovery.requestLocked(now), false
+	if presentation.valid && !presentation.writtenAt.IsZero() {
+		decision.frameAge = now.Sub(presentation.writtenAt)
+	}
+	if !presentation.presentedAt.IsZero() {
+		decision.ackAge = now.Sub(presentation.presentedAt)
+	}
+	switch {
+	case !presentation.valid || presentation.writtenAt.IsZero():
+		decision.evidence = "no-written-frame"
+	case presentation.presentedAt.IsZero() && presentation.ackRejected != "":
+		decision.evidence = presentation.ackRejected
+	case presentation.presentedAt.IsZero():
+		decision.evidence = "missing-ack"
+	case decision.frameAge < idleVideoQuietPeriod:
+		decision.evidence = "active-frame"
+	case decision.ackAge < 0 || decision.ackAge > presentationEvidenceLifetime:
+		decision.evidence = "expired-ack"
+	default:
+		decision.evidence = "acknowledged-idle"
+	}
+	if !decision.idle() {
+		decision.requested = recovery.requestLocked(now)
+	}
+	if recovery.lastPLITrace.IsZero() || now.Sub(recovery.lastPLITrace) >= time.Second {
+		recovery.lastPLITrace = now
+		decision.trace = true
+	}
+	return decision
+}
+
+func (decision pictureLossDecision) idle() bool {
+	return decision.evidence == "acknowledged-idle"
 }

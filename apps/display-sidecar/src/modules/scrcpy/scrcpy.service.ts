@@ -84,7 +84,7 @@ const COMPATIBILITY_PROBE_PROPERTIES = [
 interface ActiveControlSocket {
   socket: ScrcpySocket;
   udid: string;
-  stopAttempt: () => Promise<void>;
+  stopAttempt: (reason?: string) => Promise<void>;
   captureReady: boolean;
   resetDispatchPending: boolean;
 }
@@ -104,6 +104,7 @@ interface ReverseSocketAcceptor {
 interface ActiveScrcpySource {
   profileKey: string;
   stream: ScrcpySourceStream;
+  compatibility: Promise<ScrcpyCompatibilityProbe | null>;
   idleTimer: NodeJS.Timeout | null;
   resetTimer: NodeJS.Timeout | null;
   resetWatchdog: ScrcpyVideoResetWatchdog;
@@ -132,11 +133,21 @@ export class ScrcpyService implements OnModuleDestroy {
     private readonly config: SidecarConfigService,
   ) {}
 
-  attachStream(options: ScrcpyStreamOptions): ScrcpyStreamAttachment {
+  attachStream(
+    options: ScrcpyStreamOptions,
+    mode: "bootstrap" | "media" = "media",
+  ): ScrcpyStreamAttachment {
     this.assertCompatibleScrcpyServerVersion();
     const profileKey = this.streamProfileKey(options);
     let source = this.sources.get(options.sessionId);
     if (source && source.profileKey !== profileKey) {
+      if (source.stream.consumerCount() > 0) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "display_profile_in_use",
+          message: "This display is already streaming with different settings.",
+        });
+      }
       this.closeSource(
         options.sessionId,
         1012,
@@ -154,6 +165,13 @@ export class ScrcpyService implements OnModuleDestroy {
       source = {
         profileKey,
         stream,
+        compatibility: this.collectCompatibilityProbe(
+          options.udid,
+          `scrcpy:${options.udid}:${options.sessionId}`,
+        ).then((probe) => {
+          this.assertSupportedAndroidVersion(probe);
+          return probe;
+        }),
         idleTimer: null,
         resetTimer: null,
         resetWatchdog: new ScrcpyVideoResetWatchdog(),
@@ -174,7 +192,7 @@ export class ScrcpyService implements OnModuleDestroy {
           }
         },
       };
-      void this.runSource(sourceOptions)
+      void this.runSource(sourceOptions, source)
         .then(() => {
           if (this.sources.get(options.sessionId) === source) {
             this.closeSource(
@@ -199,12 +217,24 @@ export class ScrcpyService implements OnModuleDestroy {
         });
     }
 
-    const attachment = source.stream.attach(options.sink);
-    this.requestVideoReset(options.sessionId, "consumer-attached");
-    return attachment;
+    const { stream, compatibility } = source;
+    const attachment = stream.attach(options.sink, { mode });
+    return {
+      ...attachment,
+      awaitVideoBootstrap: async (timeoutMs) => {
+        await compatibility;
+        if (!stream.isOpen() || !options.sink.isOpen()) {
+          throw new Error("scrcpy source closed before video bootstrap");
+        }
+        return attachment.awaitVideoBootstrap(timeoutMs);
+      },
+    };
   }
 
-  private async runSource(options: ScrcpyStreamOptions) {
+  private async runSource(
+    options: ScrcpyStreamOptions,
+    source: ActiveScrcpySource,
+  ) {
     let clientClosed = false;
     let stopCurrentAttempt: (() => Promise<void>) | null = null;
     let streamedOnce = false;
@@ -221,11 +251,12 @@ export class ScrcpyService implements OnModuleDestroy {
         control: options.control ?? true,
       },
     });
-    const compatibilityProbe = await this.collectCompatibilityProbe(
-      options.udid,
-      `scrcpy:${options.udid}:${options.sessionId}`,
-    );
-    this.assertSupportedAndroidVersion(compatibilityProbe);
+    const compatibilityProbe = await source.compatibility;
+    if (!source.stream.isOpen()) return;
+    if (source.stream.consumerCount() === 0) {
+      this.closeSource(options.sessionId, 1000, "Display source has no consumers");
+      return;
+    }
     this.sendCompatibilityStatus(options.sink, effectiveOptions, {
       message: this.compatibilityProbeSummary(compatibilityProbe),
     });
@@ -377,13 +408,6 @@ export class ScrcpyService implements OnModuleDestroy {
 
   serverVersion() {
     return this.config.scrcpyVersion;
-  }
-
-  async assertTargetSupported(udid: string) {
-    this.assertCompatibleScrcpyServerVersion();
-    this.assertSupportedAndroidVersion(
-      await this.collectCompatibilityProbe(udid, `scrcpy:${udid}:support`),
-    );
   }
 
   private async streamRawVideoAttempt(
@@ -790,7 +814,11 @@ export class ScrcpyService implements OnModuleDestroy {
         ) {
           activeControl.captureReady = true;
         }
-        if (source) {
+        if (
+          source &&
+          activeControl &&
+          this.controlSockets.get(options.sessionId) === activeControl
+        ) {
           this.observeVideoReset(source, streamPacket);
         }
         if (forwarded.firstMediaPacket) {
@@ -987,7 +1015,7 @@ export class ScrcpyService implements OnModuleDestroy {
 
   hasActiveControl(sessionId: string) {
     const active = this.controlSockets.get(sessionId);
-    return Boolean(active && !active.socket.destroyed);
+    return Boolean(active && !active.socket.destroyed && active.socket.writable);
   }
 
   usesStreamControl() {
@@ -1666,24 +1694,22 @@ export class ScrcpyService implements OnModuleDestroy {
     logPrefix: string,
   ): Promise<ScrcpyCompatibilityProbe | null> {
     try {
+      const command = [
+        'echo "== props =="',
+        COMPATIBILITY_PROBE_PROPERTIES.map(
+          (prop) =>
+            `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
+        ).join("; "),
+        'echo "== services =="',
+        `for svc in ${compatibilityProbeServices.join(" ")}; do if service check "$svc" 2>/dev/null | grep -qi found; then echo "$svc=found"; else echo "$svc=missing"; fi; done`,
+        'echo "== encoders =="',
+        'cmd media.codec list 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || dumpsys media.codec 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || true',
+      ].join("; ");
       const [probeResult, logcatResult] = await Promise.allSettled([
         this.adb.shell(
           udid,
-          [
-            "sh",
-            "-lc",
-            [
-              'echo "== props =="',
-              COMPATIBILITY_PROBE_PROPERTIES.map(
-                (prop) =>
-                  `printf '${prop}='; getprop ${prop} 2>/dev/null || true; printf '\\n'`,
-              ).join("; "),
-              'echo "== services =="',
-              `for svc in ${compatibilityProbeServices.join(" ")}; do if service check "$svc" 2>/dev/null | grep -qi found; then echo "$svc=found"; else echo "$svc=missing"; fi; done`,
-              'echo "== encoders =="',
-              'cmd media.codec list 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || dumpsys media.codec 2>/dev/null | grep -Ei "encoder|avc|hevc|h264|h265" | head -80 || true',
-            ].join("; "),
-          ],
+          // The ADB CLI joins the remote arguments into a single shell command.
+          ["sh", "-c", this.shellQuote(command)],
           8_000,
         ),
         this.adb.logcat(udid, COMPATIBILITY_PROBE_LOGCAT_LINES),
@@ -1865,6 +1891,7 @@ export class ScrcpyService implements OnModuleDestroy {
     payloads: Buffer[],
     expiresAt = Date.now() + SCRCPY_CONTROL_DISPATCH_TIMEOUT_MS,
     isPointerRelease = false,
+    onSubmit?: () => void,
   ): Promise<true> {
     // Keep a multi-message command together at admission so expiry cannot
     // drop the up phase of a tap after its down phase was submitted.
@@ -1891,6 +1918,7 @@ export class ScrcpyService implements OnModuleDestroy {
           expiresAt,
           !isPointerRelease,
           complete,
+          onSubmit,
         );
       } else if (
         expiresAt <= Date.now() ||
@@ -1911,7 +1939,10 @@ export class ScrcpyService implements OnModuleDestroy {
       } else {
         confirmScrcpyControlWrite(
           expiresAt,
-          (written) => socket.write(payload, written),
+          (written) => {
+            onSubmit?.();
+            socket.write(payload, written);
+          },
           complete,
         );
       }
@@ -2089,21 +2120,29 @@ export class ScrcpyService implements OnModuleDestroy {
     source.resetPending = false;
     active.resetDispatchPending = true;
     const reason = source.resetReason;
-    void this.writeControlPayloads(active, [
-      Buffer.from([SCRCPY_CONTROL_RESET_VIDEO]),
-    ]).then(
+    const ownsCapture = () =>
+      this.sources.get(sessionId) === source &&
+      this.controlSockets.get(sessionId) === active &&
+      !active.socket.destroyed;
+    void this.writeControlPayloads(
+      active,
+      [Buffer.from([SCRCPY_CONTROL_RESET_VIDEO])],
+      undefined,
+      false,
       () => {
-        active.resetDispatchPending = false;
-        if (
-          this.sources.get(sessionId) === source &&
-          this.controlSockets.get(sessionId) === active &&
-          !active.socket.destroyed
-        ) {
+        // Video can arrive before the transport reports write completion.
+        if (ownsCapture()) source.resetWatchdog.beginDispatch();
+      },
+    ).then(
+      () => {
+        if (ownsCapture()) {
           this.watchVideoReset(sessionId, source, active, reason);
         }
+        active.resetDispatchPending = false;
       },
       (error) => {
         active.resetDispatchPending = false;
+        if (ownsCapture()) source.resetWatchdog.clear();
         this.logger.debug(
           `[scrcpy:${active.udid}:${sessionId}] video reset write failed: ${this.errorMessage(error)}`,
         );
@@ -2133,7 +2172,7 @@ export class ScrcpyService implements OnModuleDestroy {
       reason,
       count: source.resetCount,
     });
-    source.resetWatchdog.start(() => {
+    const completed = source.resetWatchdog.confirmDispatch(() => {
       if (
         this.sources.get(sessionId) !== source ||
         this.controlSockets.get(sessionId) !== active ||
@@ -2145,10 +2184,11 @@ export class ScrcpyService implements OnModuleDestroy {
         `[scrcpy:${active.udid}:${sessionId}] encoder reset resetGeneration=${generation} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} did not produce configuration followed by an IDR; restarting scrcpy attempt`,
       );
       this.runInBackground(
-        active.stopAttempt(),
+        active.stopAttempt("encoder reset did not produce configuration and IDR"),
         `[scrcpy:${active.udid}:${sessionId}] encoder reset watchdog restart`,
       );
     });
+    if (completed) this.finishVideoReset(source);
   }
 
   private observeVideoReset(
@@ -2156,6 +2196,10 @@ export class ScrcpyService implements OnModuleDestroy {
     packet: ScrcpyPacket,
   ): void {
     if (!source.resetWatchdog.observe(packet)) return;
+    this.finishVideoReset(source);
+  }
+
+  private finishVideoReset(source: ActiveScrcpySource): void {
     const elapsedMs = Math.round(performance.now() - source.resetStartedAt);
     this.logger.debug(
       `[scrcpy] encoder reset completed resetGeneration=${source.resetGeneration} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} elapsedMs=${elapsedMs}`,

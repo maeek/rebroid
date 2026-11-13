@@ -4,10 +4,12 @@ import {
   viewerControlMessageType,
 } from "./config.js";
 import type { ControlChannel, JsonRecord, PageLifecycle } from "./types.js";
+import type { ViewerPresentation } from "./viewer-presentation.js";
 
 type ControlChannelOptions = {
   sessionId: string | null;
   lifecycle: PageLifecycle;
+  presentation?: ViewerPresentation;
   onMessage?: (message: JsonRecord) => void;
 };
 
@@ -17,6 +19,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export function createControlChannel({
   sessionId,
   lifecycle,
+  presentation,
   onMessage,
 }: ControlChannelOptions): ControlChannel {
   let keyboardCaptureEnabled = false;
@@ -34,8 +37,18 @@ export function createControlChannel({
   const maxInFlight = 32;
   let inFlight = 0;
   let pointerReleaseReserved = false;
+  let demand = new AbortController();
+  let connectRequested = false;
+  let activePointer:
+    | { payload: JsonRecord; dispatch: (data: string) => void }
+    | undefined;
 
-  const readReply = (data: unknown, onReady?: () => void, acceptStatus = true) => {
+  const readReply = (
+    data: unknown,
+    onReady?: () => void,
+    acceptStatus = true,
+    onCodecChanged?: () => void,
+  ) => {
     if (typeof data !== "string") return;
     try {
       const reply: unknown = JSON.parse(data);
@@ -50,6 +63,16 @@ export function createControlChannel({
             ? undefined
             : controlFailure(reply),
         );
+      } else if (reply.type === "webrtc-codec-changed") {
+        if (
+          acceptStatus &&
+          data.length <= 256 &&
+          typeof reply.consumerAttemptId === "string" &&
+          reply.consumerAttemptId.length > 0 &&
+          reply.consumerAttemptId.length <= 128
+        ) {
+          onCodecChanged?.();
+        }
       } else if (acceptStatus) {
         onMessage?.(reply as JsonRecord);
       }
@@ -58,18 +81,53 @@ export function createControlChannel({
     }
   };
 
-  lifecycle.onClose(() => {
-    for (const finish of pending.values())
-      finish(new Error("The viewer closed."));
-    if (
-      controlWs?.readyState === WebSocket.OPEN ||
-      controlWs?.readyState === WebSocket.CONNECTING
-    ) {
-      controlWs.close(1000, "viewer closed");
+  const disconnect = (reason: string) => {
+    if (activePointer) {
+      try {
+        activePointer.dispatch(
+          JSON.stringify({
+            ...activePointer.payload,
+            id: String(++controlRequestSeq),
+            eventType: "cancel",
+          }),
+        );
+      } catch {
+        // The original channel may already have closed.
+      }
     }
+    activePointer = undefined;
+    pointerReleaseReserved = false;
+    pressedKeys.clear();
+    demand.abort(new Error(reason));
+    for (const finish of pending.values()) finish(new Error(reason));
+    const socket = controlWs;
+    controlWs = null;
+    authorizedControlWs = null;
+    controlWsReady = null;
+    reliableDataChannel = null;
+    movementDataChannel = null;
+    if (
+      socket?.readyState === WebSocket.OPEN ||
+      socket?.readyState === WebSocket.CONNECTING
+    ) {
+      socket.close(1000, reason);
+    }
+  };
+  lifecycle.onDemandChange((active) => {
+    if (!active) {
+      disconnect("Viewer suspended");
+      return;
+    }
+    demand = new AbortController();
+    if (connectRequested) connectControlWs();
   });
+  lifecycle.onClose(() => disconnect("The viewer closed."));
 
-  async function postPublic(path: string, payload: JsonRecord): Promise<void> {
+  async function postPublic(
+    path: string,
+    payload: JsonRecord,
+    signal: AbortSignal,
+  ): Promise<void> {
     if (!sessionId)
       throw new Error("No viewer control session is available.");
     const response = await fetch(
@@ -78,7 +136,7 @@ export function createControlChannel({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(responseWaitMs),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(responseWaitMs)]),
       },
     );
     const result: unknown = await response.json().catch(() => null);
@@ -93,7 +151,7 @@ export function createControlChannel({
   }
 
   function connectControlWs(): WebSocket | null {
-    if (!sessionId) {
+    if (!sessionId || !lifecycle.hasDemand()) {
       return null;
     }
 
@@ -111,12 +169,16 @@ export function createControlChannel({
       `${protocol}//${location.host}/rebroid/display/control?${controlParams.toString()}`,
     );
     const socket = controlWs;
+    const signal = demand.signal;
     controlWsReady = new Promise((resolve) => {
-      const timer = window.setTimeout(() => resolve(false), connectionWaitMs);
+      const abort = () => finish(false);
       const finish = (ready: boolean) => {
         window.clearTimeout(timer);
+        signal.removeEventListener("abort", abort);
         resolve(ready);
       };
+      const timer = window.setTimeout(abort, connectionWaitMs);
+      signal.addEventListener("abort", abort, { once: true });
       socket.onclose = () => {
         if (controlWs === socket) controlWs = null;
         if (authorizedControlWs === socket) authorizedControlWs = null;
@@ -138,7 +200,8 @@ export function createControlChannel({
     fallbackPath: string,
     fallbackPayload?: JsonRecord,
   ): Promise<void> {
-    if (lifecycle.isClosing()) throw new Error("The viewer closed.");
+    if (!lifecycle.hasDemand()) throw new Error("The viewer is not active.");
+    const signal = demand.signal;
     const id = String(++controlRequestSeq);
     const payload = { ...messagePayload, id };
     const pointer = messagePayload.type === "touch" && messagePayload.action === "pointer";
@@ -175,22 +238,31 @@ export function createControlChannel({
       if (pointerDown) pointerReleaseReserved = true;
     }
     inFlight += 1;
+    const dispatchControl = (dispatch: (data: string) => void) => {
+      signal.throwIfAborted();
+      dispatch(JSON.stringify(payload));
+      if (pointerDown) activePointer = { payload, dispatch };
+      if (pointerRelease) activePointer = undefined;
+    };
     try {
       const data = reliableDataChannel;
-      if (data && (await waitForOpen(data, "open", connectionWaitMs))) {
-        if (lifecycle.isClosing()) throw new Error("The viewer closed.");
+      if (data && (await waitForOpen(data, "open", connectionWaitMs, signal))) {
+        signal.throwIfAborted();
         return await sendAndConfirm(id, () =>
-          data.send(JSON.stringify(payload)),
+          dispatchControl((message) => data.send(message)),
         );
       }
+      signal.throwIfAborted();
       const ws = connectControlWs();
       if (ws && (ws === authorizedControlWs || (await controlWsReady)) &&
           ws.readyState === WebSocket.OPEN) {
-        if (lifecycle.isClosing()) throw new Error("The viewer closed.");
-        return await sendAndConfirm(id, () => ws.send(JSON.stringify(payload)));
+        signal.throwIfAborted();
+        return await sendAndConfirm(id, () =>
+          dispatchControl((message) => ws.send(message)),
+        );
       }
-      if (lifecycle.isClosing()) throw new Error("The viewer closed.");
-      await postPublic(fallbackPath, fallbackPayload ?? messagePayload);
+      signal.throwIfAborted();
+      await postPublic(fallbackPath, fallbackPayload ?? messagePayload, signal);
     } finally {
       inFlight -= 1;
     }
@@ -249,19 +321,27 @@ export function createControlChannel({
           window.location.origin,
         );
       };
+      if (presentation?.isCompact()) {
+        reply(new Error("The mini-player is read-only while collapsed."));
+        return;
+      }
       void send({ type: "action", command: data.command }, "actions", {
         command: data.command,
       }).then(() => reply(), reply);
       return;
     }
 
-    if (data.type !== keyboardEventMessageType) return;
+    if (data.type !== keyboardEventMessageType || !lifecycle.hasDemand()) return;
     const key =
       typeof data.code === "string" && data.code ? data.code : data.key;
     if (typeof key !== "string" || !key) return;
     if (data.eventType === "keyup") {
       if (!pressedKeys.delete(key)) return;
-    } else if (data.eventType === "keydown" && keyboardCaptureEnabled) {
+    } else if (
+      data.eventType === "keydown" &&
+      keyboardCaptureEnabled &&
+      !presentation?.isCompact()
+    ) {
       pressedKeys.add(key);
     } else {
       return;
@@ -285,11 +365,20 @@ export function createControlChannel({
   });
 
   return {
-    connect: connectControlWs,
-    useDataChannels(reliable: RTCDataChannel, movement?: RTCDataChannel) {
+    connect() {
+      connectRequested = true;
+      return connectControlWs();
+    },
+    useDataChannels(reliable, movement, onCodecChanged) {
       reliableDataChannel = reliable;
       movementDataChannel = movement ?? null;
-      reliable.onmessage = (event) => readReply(event.data, undefined, reliableDataChannel === reliable);
+      reliable.onmessage = (event) =>
+        readReply(
+          event.data,
+          undefined,
+          reliableDataChannel === reliable,
+          onCodecChanged,
+        );
       reliable.onclose = () => {
         if (reliableDataChannel === reliable) {
           reliableDataChannel = null;
@@ -325,6 +414,7 @@ function waitForOpen(
   channel: EventTarget & { readyState: string | number },
   open: string | number,
   waitMs: number,
+  signal: AbortSignal,
 ): Promise<boolean> {
   if (channel.readyState === open) return Promise.resolve(true);
   if (
@@ -339,11 +429,13 @@ function waitForOpen(
       channel.removeEventListener("open", finish);
       channel.removeEventListener("close", finish);
       channel.removeEventListener("error", finish);
+      signal.removeEventListener("abort", finish);
       resolve(channel.readyState === open);
     };
     const timer = window.setTimeout(finish, waitMs);
     channel.addEventListener("open", finish);
     channel.addEventListener("close", finish);
     channel.addEventListener("error", finish);
+    signal.addEventListener("abort", finish, { once: true });
   });
 }

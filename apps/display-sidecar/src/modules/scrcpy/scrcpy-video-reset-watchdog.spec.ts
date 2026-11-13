@@ -9,10 +9,12 @@ test("repeated reset requests do not move the original deadline", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const watchdog = new ScrcpyVideoResetWatchdog();
   const expired = t.mock.fn();
-  watchdog.start(expired);
+  watchdog.beginDispatch();
+  watchdog.confirmDispatch(expired);
   for (let second = 0; second < 2; second += 1) {
     t.mock.timers.tick(1_000);
-    watchdog.start(expired);
+    watchdog.beginDispatch();
+    watchdog.confirmDispatch(expired);
     assert.equal(expired.mock.callCount(), 0);
   }
   t.mock.timers.tick(1_000);
@@ -23,7 +25,8 @@ test("only configuration followed by an IDR completes a reset", (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const watchdog = new ScrcpyVideoResetWatchdog();
   const expired = t.mock.fn();
-  watchdog.start(expired);
+  watchdog.beginDispatch();
+  watchdog.confirmDispatch(expired);
   assert.equal(watchdog.observe({ config: false, keyFrame: true }), false);
   assert.equal(watchdog.observe({ config: true, keyFrame: false }), false);
   assert.equal(watchdog.pending, true);
@@ -43,6 +46,7 @@ test("a reset waits for control dispatch and cannot restart a later control sock
   const source = {
     profileKey: "fixture",
     stream,
+    compatibility: Promise.resolve(null),
     idleTimer: null,
     resetTimer: null,
     resetWatchdog: new ScrcpyVideoResetWatchdog(),

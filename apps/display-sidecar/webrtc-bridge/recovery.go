@@ -14,6 +14,9 @@ type videoRecovery struct {
 	lastRequest  time.Time
 	generation   atomic.Uint64
 	presentation videoPresentation
+	lastPLITrace time.Time
+	ackReceived  uint64
+	ackMatched   uint64
 
 	// Only the video worker touches the recovery episode and cached configuration.
 	seenGeneration  uint64

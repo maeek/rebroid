@@ -9,14 +9,18 @@ import {
   statusFromCompatibility,
 } from "./stream-status.js";
 import { createViewerUi } from "./ui.js";
+import { createViewerPresentation } from "./viewer-presentation.js";
 import { createWebrtcStream } from "./webrtc-stream.js";
-import type { DisplayTransport, ViewerRelayMetrics } from "./types.js";
+import type { ViewerRelayMetrics } from "./types.js";
 
 const config = readViewerConfig();
 const elements = getViewerElements();
 const ui = createViewerUi(elements);
-const lifecycle = createPageLifecycle();
-let activeTransport = config.transport;
+const lifecycle = createPageLifecycle(
+  config.params.get("surfaceKind") !== "virtual",
+);
+const presentation = createViewerPresentation(lifecycle);
+const activeTransport = config.transport;
 let latestRelayMetrics: ViewerRelayMetrics | null = null;
 const emitAudioDisabled = (
   message = "Audio capture is disabled for this stream.",
@@ -206,15 +210,16 @@ document.addEventListener(
 const controlChannel = createControlChannel({
   sessionId: config.sessionId,
   lifecycle,
+  presentation,
   onMessage: handleSidecarMessage,
 });
-const displayStream: DisplayTransport = createDisplayStream({
-  config,
-  ui,
-  lifecycle,
-});
-const startWebsocket = () => {
-  activeTransport = "websocket";
+if (config.transport === "websocket") {
+  const displayStream = createDisplayStream({
+    config,
+    ui,
+    lifecycle,
+    presentation,
+  });
   controlChannel.connect();
   setupTouchInput({
     target: elements.canvas,
@@ -223,18 +228,22 @@ const startWebsocket = () => {
       height: elements.canvas.height,
     }),
     controlChannel,
+    lifecycle,
+    presentation,
   });
   displayStream.connect().catch(() => displayStream.scheduleReconnect());
-};
-
-const webrtcStream = createWebrtcStream({
-  config,
-  video: elements.video,
-  controlChannel,
-  ui,
-  lifecycle,
-  getRelayMetrics: () => latestRelayMetrics,
-});
+} else {
+  const webrtcStream = createWebrtcStream({
+    config,
+    video: elements.video,
+    controlChannel,
+    ui,
+    lifecycle,
+    presentation,
+    getRelayMetrics: () => latestRelayMetrics,
+  });
+  webrtcStream.connect().catch(() => webrtcStream.scheduleReconnect());
+}
 
 setupTouchInput({
   target: elements.video,
@@ -243,10 +252,6 @@ setupTouchInput({
     height: elements.video.videoHeight,
   }),
   controlChannel,
+  lifecycle,
+  presentation,
 });
-
-if (config.transport === "websocket") {
-  startWebsocket();
-} else {
-  webrtcStream.connect().catch(() => webrtcStream.scheduleReconnect());
-}

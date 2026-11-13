@@ -1,6 +1,8 @@
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import type { MediaQueueSnapshot } from "./scrcpy-media-queue";
 
+export const scrcpyVideoConfigurationChangedCloseCode = 4001;
+
 export type ScrcpyVideoCodec = "h264";
 export type ScrcpyTunnelMode = "direct" | "reverse" | "forward";
 export type ScrcpyCompatibilityMode =
@@ -34,7 +36,7 @@ export interface ScrcpyMediaSink {
   sendStatus: (payload: unknown) => void;
   writeVideo: (
     packet: ScrcpyPacket,
-    completion?: (error?: Error) => void,
+    completion?: (error?: Error, delivered?: boolean) => void,
   ) => void;
   writeAudio: (
     packet: ScrcpyAudioPacket,
@@ -121,6 +123,7 @@ export interface ScrcpySocket {
     expiresAt: number,
     reserveReleaseSlot: boolean,
     callback: (error?: Error | null) => void,
+    onSubmit?: () => void,
   ) => boolean;
 }
 

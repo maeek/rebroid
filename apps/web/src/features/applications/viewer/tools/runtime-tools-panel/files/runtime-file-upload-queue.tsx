@@ -1,13 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconChevronDown, IconChevronUp, IconRotate, IconUpload, IconX } from '@tabler/icons-react'
+import { IconCheck, IconChevronDown, IconChevronUp, IconRotate, IconUpload, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { OperationProgress } from '@/components/ui/operation-progress'
+import { StateTransition } from '@/components/ui/state-transition'
 import { cn } from '@/lib/utils'
 import type { RuntimeFileUploadItem } from './use-runtime-file-uploads'
 
 const uploadStatusLabel = (item: RuntimeFileUploadItem) => {
-  if (item.status === 'uploading') return `${item.progress}%`
+  if (item.status === 'uploading') return item.progress >= 100 ? 'Processing…' : `${item.progress}%`
   if (item.status === 'conflict') return 'File already exists'
   if (item.status === 'failed') return 'Failed'
   if (item.status === 'completed') return 'Complete'
@@ -65,12 +67,24 @@ export const RuntimeFileUploadQueue = ({
                 <span className='min-w-0 flex-1'>
                   <span className='block truncate text-sm font-medium'>{item.file.name}</span>
                   <span
-                    className={cn('block truncate text-xs text-foreground-muted', {
+                    className={cn('block text-xs text-foreground-muted', {
                       'text-danger': item.status === 'failed',
                       'text-warning': item.status === 'conflict'
                     })}
                   >
-                    {item.error ?? uploadStatusLabel(item)}
+                    <StateTransition
+                      identity={item.id}
+                      state={item.status}
+                      className='flex'
+                    >
+                      {item.status === 'completed' ? (
+                        <IconCheck
+                          aria-hidden
+                          className='size-3.5 shrink-0 text-success'
+                        />
+                      ) : null}
+                      <span className='truncate'>{item.error ?? uploadStatusLabel(item)}</span>
+                    </StateTransition>
                   </span>
                 </span>
                 {item.status === 'queued' || item.status === 'uploading' ? (
@@ -126,21 +140,11 @@ export const RuntimeFileUploadQueue = ({
                   </Button>
                 ) : null}
               </div>
-              {item.status === 'uploading' ? (
-                <div
-                  role='progressbar'
-                  aria-label={`Upload progress for ${item.file.name}`}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={item.progress}
-                  className='h-1.5 overflow-hidden rounded-full bg-surface-border/60'
-                >
-                  <div
-                    className='h-full rounded-full bg-primary transition-[width] motion-reduce:transition-none'
-                    style={{ width: `${item.progress}%` }}
-                  />
-                </div>
-              ) : null}
+              <OperationProgress
+                label={`Upload progress for ${item.file.name}`}
+                value={item.progress}
+                active={item.status === 'uploading'}
+              />
             </div>
           ))}
         </div>

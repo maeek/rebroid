@@ -107,6 +107,7 @@ export const AppStartupTimingsSection = ({
     <Section
       title='Startup timings'
       surface='plain'
+      headingSpacing='compact'
       className={editorSectionClassName}
       contentClassName='gap-3'
       actions={action}

@@ -1,3 +1,6 @@
+import type { FrameAcknowledgementStatus } from "./webrtc-idle-presentation.js";
+import type { DisplaySizePresentation } from "./display-size-presentation.js";
+
 export type ViewerConfig = {
   params: URLSearchParams;
   sessionId: string | null;
@@ -30,6 +33,8 @@ export type ViewerUi = {
 export type PageLifecycle = {
   isClosing: () => boolean;
   onClose: (callback: () => void) => () => boolean;
+  hasDemand: () => boolean;
+  onDemandChange: (callback: (active: boolean) => void) => () => boolean;
 };
 
 export type JsonValue =
@@ -42,6 +47,7 @@ export type ControlChannel = {
   useDataChannels: (
     reliable: RTCDataChannel,
     movement?: RTCDataChannel,
+    onCodecChanged?: () => void,
   ) => void;
   send: (
     messagePayload: JsonRecord,
@@ -125,6 +131,9 @@ export type ViewerStreamStatus = {
   message: string;
   sessionId?: string | null;
   startup?: { connectAt: number; presentedAt: number };
+  consumerAttemptId?: string;
+  closeCode?: number;
+  failureStage?: string;
   transport?: "webrtc" | "websocket";
 };
 
@@ -196,6 +205,7 @@ export type ViewerRendererBackend =
 export type ViewerStreamMetricsV4 = {
   version: 4;
   transport: "webrtc" | "websocket";
+  displaySizePresentation?: DisplaySizePresentation;
   sourceFps?: number;
   relayIngressFps?: number;
   bridgeInputFps?: number;
@@ -207,6 +217,8 @@ export type ViewerStreamMetricsV4 = {
   receiverPacketsLost?: number;
   receiverNackCount?: number;
   receiverPliCount?: number;
+  frameAcknowledgement?: FrameAcknowledgementStatus;
+  frameAcknowledgementsSent?: number;
   decodedFps?: number;
   drawnFps?: number;
   presentedFps?: number;

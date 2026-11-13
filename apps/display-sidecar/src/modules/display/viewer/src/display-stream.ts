@@ -1,5 +1,9 @@
 import { configuredStreamProfile } from "./config.js";
-import { MseVideoPlayer, type MseMediaSegment } from "./mse-video-player.js";
+import type {
+  MediaWorkerMessage,
+  ReconnectCause,
+} from "./display-media-worker.js";
+import { MseVideoPlayer } from "./mse-video-player.js";
 import {
   emitViewerSessionExpired,
   emitViewerSessionReady,
@@ -11,53 +15,20 @@ import type {
   DisplayTransport,
   PageLifecycle,
   ViewerConfig,
-  ViewerStreamMetricsV4,
   ViewerUi,
 } from "./types.js";
+import type { ViewerPresentation } from "./viewer-presentation.js";
 
 type DisplayStreamOptions = {
   config: ViewerConfig;
   ui: ViewerUi;
   lifecycle: PageLifecycle;
+  presentation?: ViewerPresentation;
 };
-
-type ReconnectCause = {
-  initiator: "worker" | "main" | "transport";
-  category:
-    | "heartbeat"
-    | "first-frame"
-    | "malformed-media"
-    | "socket"
-    | "video-progress";
-  generation: number;
-  closeCode?: number;
-  detail: string;
-};
-
-type MediaWorkerMessage =
-  | { type: "first-frame" }
-  | { type: "stream-requested"; at: number }
-  | { type: "resolution"; width: number; height: number }
-  | { type: "status"; payload: Record<string, unknown> }
-  | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
-  | { type: "mse-reset"; epoch: number }
-  | {
-      type: "mse-init";
-      epoch: number;
-      codec: string;
-      width: number;
-      height: number;
-      sourcePtsOriginUs: number;
-      segment: ArrayBuffer;
-    }
-  | ({ type: "mse-segment" } & MseMediaSegment)
-  | { type: "renderer-fallback"; reason: string }
-  | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
-  | { type: "session-expired" }
-  | { type: "fatal"; message: string };
 
 async function createAudioWorklet(): Promise<{
   context: AudioContext;
+  output: GainNode;
   workerPort: MessagePort;
 }> {
   if (!("AudioWorkletNode" in window)) {
@@ -67,20 +38,26 @@ async function createAudioWorklet(): Promise<{
     latencyHint: "interactive",
     sampleRate: 48_000,
   });
-  await context.audioWorklet.addModule(
-    new URL("./display-audio-worklet.js", import.meta.url),
-  );
-  const node = new AudioWorkletNode(context, "rebroid-audio", {
-    numberOfInputs: 0,
-    numberOfOutputs: 1,
-    outputChannelCount: [2],
-  });
-  node.connect(context.destination);
-  const channel = new MessageChannel();
-  node.port.postMessage({ type: "connect", port: channel.port1 }, [
-    channel.port1,
-  ]);
-  return { context, workerPort: channel.port2 };
+  try {
+    await context.audioWorklet.addModule(
+      new URL("./display-audio-worklet.js", import.meta.url),
+    );
+    const node = new AudioWorkletNode(context, "rebroid-audio", {
+      numberOfInputs: 0,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    const output = context.createGain();
+    node.connect(output).connect(context.destination);
+    const channel = new MessageChannel();
+    node.port.postMessage({ type: "connect", port: channel.port1 }, [
+      channel.port1,
+    ]);
+    return { context, output, workerPort: channel.port2 };
+  } catch (error) {
+    void context.close().catch(() => undefined);
+    throw error;
+  }
 }
 
 function websocketUrl(config: ViewerConfig): string {
@@ -99,12 +76,20 @@ export function createDisplayStream({
   config,
   ui,
   lifecycle,
+  presentation,
 }: DisplayStreamOptions): DisplayTransport {
   let worker: Worker | null = null;
+  let workerReady = false;
   let audioContext: AudioContext | null = null;
+  let audioOutput: GainNode | null = null;
+  let audioWasRunning = false;
   let msePlayer: MseVideoPlayer | null = null;
   let mseVideo: HTMLVideoElement | null = null;
   let initialized = false;
+  let requested = false;
+  let active = lifecycle.hasDemand();
+  let demandEpoch = 0;
+  let terminal = false;
   let connectAt: number | undefined;
   let hasVisibleFrame = false;
 
@@ -140,6 +125,7 @@ export function createDisplayStream({
       return;
     }
     if (payload.type === "clipboard" && typeof payload.text === "string") {
+      if (presentation?.isCompact()) return;
       window.parent.postMessage(
         { type: "rebroid-viewer-clipboard", text: payload.text },
         window.location.origin,
@@ -169,16 +155,16 @@ export function createDisplayStream({
 
   const handleWorkerMessage = (event: MessageEvent<MediaWorkerMessage>) => {
     const message = event.data;
+    if (!active || terminal || message.demandEpoch !== demandEpoch) return;
     if (message.type === "stream-requested") {
       connectAt = message.at;
       return;
     }
     if (message.type === "first-frame") {
       emitViewerSessionReady("websocket", config.sessionId, connectAt);
-      if (!hasVisibleFrame) {
-        hasVisibleFrame = true;
-        ui.showCanvas();
-      }
+      closeMsePlayer();
+      hasVisibleFrame = true;
+      ui.showCanvas();
       return;
     }
     if (message.type === "resolution") {
@@ -226,20 +212,26 @@ export function createDisplayStream({
       return;
     }
     if (message.type === "mse-init") {
+      const video = mseVideo;
+      if (!video) return;
       try {
-        if (hasVisibleFrame && mseVideo) {
-          ui.preserveVideoFrame(mseVideo);
+        if (hasVisibleFrame) {
+          ui.preserveVideoFrame(video);
         }
-        msePlayer?.initialize(
+        msePlayer ??= createMsePlayer(video);
+        msePlayer.initialize(
           message.codec,
           message.segment,
           message.sourcePtsOriginUs,
           message.epoch,
+          { width: message.width, height: message.height },
         );
       } catch (error) {
-        msePlayer?.close();
-        msePlayer = null;
-        worker?.postMessage({ type: "use-webcodecs-fallback" });
+        closeMsePlayer();
+        worker?.postMessage({
+          type: "use-webcodecs-fallback",
+          epoch: message.epoch,
+        });
         console.warn(
           "Firefox native WebSocket playback is unavailable; using WebCodecs.",
           error,
@@ -251,8 +243,7 @@ export function createDisplayStream({
       if (msePlayer && mseVideo && hasVisibleFrame) {
         ui.preserveVideoFrame(mseVideo);
       }
-      msePlayer?.close();
-      msePlayer = null;
+      closeMsePlayer();
       hasVisibleFrame = false;
       console.warn(
         "Firefox native WebSocket playback failed; using WebCodecs.",
@@ -271,6 +262,9 @@ export function createDisplayStream({
         severity: hasVisibleFrame ? "info" : "warning",
         blocking: !hasVisibleFrame,
         message: message.cause.detail,
+        sessionId: config.sessionId,
+        failureStage: message.cause.category,
+        closeCode: message.cause.closeCode,
         transport: "websocket",
       });
       if (!hasVisibleFrame) {
@@ -283,14 +277,58 @@ export function createDisplayStream({
       return;
     }
     if (message.type === "session-expired") {
+      stopPermanently();
       emitViewerSessionExpired("websocket", config.sessionId);
       ui.showFailure(
         "The display session ended. Open the viewer again to continue.",
       );
       return;
     }
-    ui.showFailure(message.message);
+    showFailure(
+      message.message,
+      message.closeCode === 4409 ? "profile-conflict" : "playback",
+      message.closeCode,
+    );
   };
+
+  function createMsePlayer(video: HTMLVideoElement): MseVideoPlayer {
+    const player = new MseVideoPlayer(
+      video,
+      (epoch, frame) => {
+        if (!active || msePlayer !== player || player.activeEpoch() !== epoch) {
+          return;
+        }
+        emitViewerSessionReady("websocket", config.sessionId, connectAt);
+        hasVisibleFrame = true;
+        ui.showVideo();
+        worker?.postMessage({ type: "mse-presented", epoch, ...frame });
+      },
+      (reason, epoch) => {
+        if (active && msePlayer === player) {
+          worker?.postMessage({ type: "mse-resync", reason, epoch });
+        }
+      },
+    );
+    return player;
+  }
+
+  function closeMsePlayer(): void {
+    const previous = msePlayer;
+    msePlayer = null;
+    previous?.close();
+  }
+
+  function stopPermanently(): void {
+    terminal = true;
+    workerReady = false;
+    worker?.postMessage({ type: "close" });
+    worker = null;
+    void audioContext?.close().catch(() => undefined);
+    audioContext = null;
+    audioOutput = null;
+    closeMsePlayer();
+    mseVideo = null;
+  }
 
   const onVisibilityChange = () => {
     worker?.postMessage({
@@ -300,19 +338,62 @@ export function createDisplayStream({
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
-  lifecycle.onClose(() => {
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    worker?.postMessage({ type: "close" });
-    worker = null;
-    void audioContext?.close().catch(() => undefined);
-    audioContext = null;
-    msePlayer?.close();
-    msePlayer = null;
-    mseVideo = null;
+  const resumeAudio = () => {
+    if (active && audioContext?.state === "suspended") {
+      void audioContext.resume().catch(() => undefined);
+    }
+  };
+  const stopWatchingPresentation = presentation?.onChange((compact) => {
+    if (audioOutput) audioOutput.gain.value = compact ? 0 : 1;
+    if (!compact) resumeAudio();
   });
 
-  async function connect(): Promise<void> {
-    if (initialized) {
+  const stopWatchingDemand = lifecycle.onDemandChange((next) => {
+    if (active === next || terminal) return;
+    active = next;
+    demandEpoch += 1;
+    if (workerReady) {
+      worker?.postMessage({ type: "demand", active, epoch: demandEpoch });
+    }
+    if (!active) {
+      if (msePlayer && mseVideo && hasVisibleFrame) {
+        ui.preserveVideoFrame(mseVideo);
+      }
+      closeMsePlayer();
+      audioWasRunning ||= audioContext?.state === "running";
+      void audioContext?.suspend().catch(() => undefined);
+    } else {
+      if (audioWasRunning) {
+        void audioContext?.resume().catch(() => undefined);
+      }
+      if (requested) void start().catch(handleStartupError);
+    }
+  });
+
+  lifecycle.onClose(() => {
+    stopWatchingDemand();
+    stopWatchingPresentation?.();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pointerdown", resumeAudio);
+    stopPermanently();
+  });
+
+  function handleStartupError(error: unknown): void {
+    if (terminal) return;
+    showFailure(error instanceof Error ? error.message : "The display media worker failed.", "startup");
+  }
+
+  function showFailure(message: string, failureStage: string, closeCode?: number) {
+    stopPermanently();
+    emitViewerStreamStatus({
+      code: "stream-error", severity: "error", blocking: true, message,
+      sessionId: config.sessionId, failureStage, closeCode, transport: "websocket",
+    });
+    ui.showFailure(message);
+  }
+
+  async function start(): Promise<void> {
+    if (initialized || !active || terminal || lifecycle.isClosing()) {
       return;
     }
     if (!config.sessionId) {
@@ -345,7 +426,9 @@ export function createDisplayStream({
     });
     worker.addEventListener("message", handleWorkerMessage);
     worker.addEventListener("error", (event) => {
-      ui.showFailure(event.message || "The display media worker failed.");
+      handleStartupError(
+        new Error(event.message || "The display media worker failed."),
+      );
     });
     const canvas = document.getElementById("screen");
     if (!(canvas instanceof HTMLCanvasElement)) {
@@ -354,19 +437,6 @@ export function createDisplayStream({
     const video = document.getElementById("screen-video");
     if (firefoxMse && video instanceof HTMLVideoElement) {
       mseVideo = video;
-      ui.preserveVideoFrame(video);
-      msePlayer = new MseVideoPlayer(
-        video,
-        (epoch) => {
-          emitViewerSessionReady("websocket", config.sessionId, connectAt);
-          hasVisibleFrame = true;
-          ui.showVideo();
-          worker?.postMessage({ type: "mse-presented", epoch });
-        },
-        (reason, epoch) => {
-          worker?.postMessage({ type: "mse-resync", reason, epoch });
-        },
-      );
     }
     const offscreen = canvas.transferControlToOffscreen();
     const transfer: Transferable[] = [offscreen];
@@ -374,13 +444,27 @@ export function createDisplayStream({
     if (config.audio) {
       try {
         const audio = await createAudioWorklet();
+        if (terminal || lifecycle.isClosing()) {
+          audio.workerPort.close();
+          void audio.context.close().catch(() => undefined);
+          return;
+        }
         audioContext = audio.context;
+        audioOutput = audio.output;
+        audioOutput.gain.value = presentation?.isCompact() ? 0 : 1;
+        if (!active) {
+          audioWasRunning = audioContext.state === "running";
+          void audioContext.suspend().catch(() => undefined);
+        }
         audioPort = audio.workerPort;
         transfer.push(audioPort);
       } catch (error) {
-        showAudioDisabled(error instanceof Error ? error.message : undefined);
+        if (active && !terminal) {
+          showAudioDisabled(error instanceof Error ? error.message : undefined);
+        }
       }
     }
+    if (!worker || terminal || lifecycle.isClosing()) return;
     worker.postMessage(
       {
         type: "init",
@@ -391,23 +475,22 @@ export function createDisplayStream({
         effectiveProfile: configuredStreamProfile(config, "websocket"),
         renderer: firefoxMse ? "mse" : "webcodecs",
         visible: document.visibilityState === "visible",
+        demand: active,
+        demandEpoch,
       },
       transfer,
     );
-    window.addEventListener(
-      "pointerdown",
-      () => {
-        if (audioContext?.state === "suspended") {
-          void audioContext.resume().catch(() => undefined);
-        }
-      },
-      { passive: true },
-    );
+    workerReady = true;
+    window.addEventListener("pointerdown", resumeAudio, { passive: true });
   }
 
   return {
-    connect,
+    async connect() {
+      requested = true;
+      await start().catch(handleStartupError);
+    },
     scheduleReconnect() {
+      if (!active || terminal) return;
       worker?.postMessage({
         type: "reconnect",
         cause: {

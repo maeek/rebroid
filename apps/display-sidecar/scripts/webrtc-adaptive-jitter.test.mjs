@@ -1,6 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { WebrtcIdlePresentation } from "../dist/modules/display/viewer/assets/webrtc-idle-presentation.js";
+import { DisplaySizePresentationTracker } from "../dist/modules/display/viewer/assets/display-size-presentation.js";
+
+test("rotation presentation ignores pre-recovery and old-size frames", () => {
+  const tracker = new DisplaySizePresentationTracker();
+  const portrait = { width: 1080, height: 2340 };
+  const landscape = { width: 2340, height: 1080 };
+  tracker.present(portrait, 10);
+  tracker.beginRecovery(20);
+  assert.equal(tracker.present(landscape, 19), false);
+  assert.equal(tracker.present(portrait, 22), false);
+  assert.equal(tracker.snapshot(), undefined);
+  tracker.present(landscape, 38);
+  tracker.present(landscape, 44);
+  assert.deepEqual(tracker.snapshot(), {
+    previous: portrait,
+    current: landscape,
+    elapsedMs: 18,
+  });
+  tracker.present(portrait, 100);
+  assert.equal(tracker.snapshot().elapsedMs, undefined);
+});
 
 test("idle presentation acknowledges only the latest quiet RTP frame once", () => {
   const progress = new WebrtcIdlePresentation();
@@ -20,12 +41,15 @@ test("idle presentation acknowledges only the latest quiet RTP frame once", () =
   assert.deepEqual(messages, [
     { type: "video-frame-presented", rtpTimestamp: 90000 },
   ]);
+  assert.deepEqual(progress.diagnostics(), { status: "sent", sentCount: 1 });
   progress.presented(0xffffffff, 10000);
   progress.sample(channel, 11000);
   assert.equal(messages[1].rtpTimestamp, 0xffffffff);
+  assert.equal(progress.diagnostics().sentCount, 2);
   const nextAttempt = new WebrtcIdlePresentation();
   nextAttempt.sample(channel, 12000);
   assert.equal(messages.length, 2);
+  assert.equal(nextAttempt.diagnostics().sentCount, 0);
 });
 
 test("idle acknowledgement falls back safely without metadata or a writable channel", () => {
@@ -36,13 +60,18 @@ test("idle acknowledgement falls back safely without metadata or a writable chan
     bufferedAmount: 0,
     send: (message) => messages.push(message),
   };
+  assert.equal(progress.diagnostics().status, "waiting-for-frame");
   for (const timestamp of [undefined, NaN, -1, 1.5, 0x100000000]) {
     progress.presented(timestamp, 0);
     progress.sample(channel, 2000);
   }
+  assert.equal(progress.diagnostics().status, "timestamp-unavailable");
   progress.presented(0, 0);
+  assert.equal(progress.diagnostics().status, "waiting-for-quiet");
   progress.sample({ ...channel, readyState: "closed" }, 1000);
+  assert.equal(progress.diagnostics().status, "channel-unavailable");
   progress.sample({ ...channel, bufferedAmount: 1 }, 1000);
+  assert.equal(progress.diagnostics().status, "channel-buffered");
   progress.sample(
     {
       ...channel,
@@ -52,11 +81,14 @@ test("idle acknowledgement falls back safely without metadata or a writable chan
     },
     1000,
   );
+  assert.equal(progress.diagnostics().status, "send-failed");
   assert.equal(messages.length, 0);
   progress.sample(channel, 2000);
+  assert.equal(progress.diagnostics().status, "sent");
   assert.equal(messages.length, 1);
   progress.presented(1, 3000);
   progress.sample(channel, 7000); // Do not acknowledge stale frames after a suspended tab wakes.
+  assert.equal(progress.diagnostics().status, "window-expired");
   assert.equal(messages.length, 1);
 });
 

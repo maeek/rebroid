@@ -1,10 +1,12 @@
 'use client'
 
-import { IconChevronDown, IconLoader2 } from '@tabler/icons-react'
+import { IconChevronDown, IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
+import { ActionStateContent } from '@/components/ui/action-state-content'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Visible } from '@/components/ui/visible'
+import { runtimeActionLabels } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
 import { useRuntimePowerActionContext } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime-power-action-context'
+import motion from '@/components/ui/action-motion.module.css'
 
 export const RuntimePowerControls = () => {
   const {
@@ -14,7 +16,6 @@ export const RuntimePowerControls = () => {
     isRunningAction,
     menuActions,
     menuDisabled,
-    primaryIcon,
     primaryLabel,
     primaryVariant,
     onPrimaryAction
@@ -23,18 +24,46 @@ export const RuntimePowerControls = () => {
   return (
     <div className='inline-flex items-center'>
       <Button
+        aria-busy={isBusy || isRunningAction || undefined}
         variant={primaryVariant}
         disabled={!app || !canRunPrimary || isBusy || isRunningAction}
-        className='rounded-r-none border-r-0'
+        className={`${motion.control} rounded-r-none border-r-0`}
         onClick={onPrimaryAction}
       >
-        <Visible
-          when={isRunningAction}
-          fallback={primaryIcon}
-        >
-          <IconLoader2 className='size-4 animate-spin' />
-        </Visible>
-        {primaryLabel}
+        <ActionStateContent
+          state={primaryLabel}
+          states={Object.values(runtimeActionLabels).map(label => {
+            let icon = (
+              <IconLoader2
+                aria-hidden
+                className={label === primaryLabel ? 'size-4 motion-safe:animate-spin' : 'size-4'}
+              />
+            )
+            if (label === runtimeActionLabels.idle)
+              icon = (
+                <IconPlayerPlayFilled
+                  aria-hidden
+                  className='size-4'
+                />
+              )
+            if (label === runtimeActionLabels.running)
+              icon = (
+                <IconPlayerStopFilled
+                  aria-hidden
+                  className='size-4'
+                />
+              )
+            return {
+              key: label,
+              content: (
+                <>
+                  {icon}
+                  {label}
+                </>
+              )
+            }
+          })}
+        />
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

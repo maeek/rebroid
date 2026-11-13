@@ -13,6 +13,7 @@ import type { DisplaySession } from "./display.types";
 
 const authorizationSchema = z.object({
   ownerUserId: z.string().min(1).max(200),
+  accountSessionId: z.string().min(1).max(128).optional(),
   capabilities: z.object({
     control: z.boolean(),
     clipboard: z.boolean(),
@@ -51,7 +52,8 @@ export class DisplayViewerAccessService {
     private readonly sessions: DisplaySessionService,
   ) {}
 
-  async admit(id: string, headers: IncomingHttpHeaders) {
+  async admit(id: string, headers: IncomingHttpHeaders, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const credentials = this.browserCredentials(headers);
     if (!sessionIdSchema.safeParse(id).success) throw sessionUnavailable();
 
@@ -85,16 +87,22 @@ export class DisplayViewerAccessService {
       ) {
         throw sessionUnavailable();
       }
-      return session;
+      return { session, accountSessionId: account.accountSessionId };
     };
 
-    const session = await authorize();
+    const { session, accountSessionId } = await authorize(signal);
+    signal?.throwIfAborted();
     this.sessions.activate(session);
     const watchKey = createHash("sha256")
       .update(JSON.stringify([id, credentials]))
       .digest("hex");
     return {
       session,
+      accountSessionKey: accountSessionId
+        ? createHash("sha256")
+            .update(JSON.stringify([id, accountSessionId]))
+            .digest("hex")
+        : watchKey,
       watch: (onRevoked: () => void) =>
         this.watch(watchKey, session, authorize, onRevoked),
     };
@@ -152,13 +160,14 @@ export class DisplayViewerAccessService {
     } catch {
       // Never include the request or its credentials in public errors or logs.
     }
+    signal?.throwIfAborted();
     throw sessionUnavailable();
   }
 
   private watch(
     key: string,
     session: DisplaySession,
-    authorize: (signal: AbortSignal) => Promise<DisplaySession>,
+    authorize: (signal: AbortSignal) => Promise<unknown>,
     onRevoked: () => void,
   ) {
     if (this.sessions.get(session.id) !== session) throw sessionUnavailable();
@@ -175,7 +184,7 @@ export class DisplayViewerAccessService {
   private startWatch(
     key: string,
     session: DisplaySession,
-    authorize: (signal: AbortSignal) => Promise<DisplaySession>,
+    authorize: (signal: AbortSignal) => Promise<unknown>,
   ): AccessWatch {
     const controller = new AbortController();
     let timer: NodeJS.Timeout | undefined;

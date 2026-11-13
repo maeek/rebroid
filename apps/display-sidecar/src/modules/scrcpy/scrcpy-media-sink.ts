@@ -16,6 +16,7 @@ type BinaryWriter = (payload: Buffer) => Promise<void>;
 
 export interface QueuedScrcpyMediaSinkOptions {
   allowClipboard?: boolean;
+  onVideoKeyFrameNeeded?: () => void;
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   writeStatus: (payload: string) => void;
@@ -67,6 +68,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
         ),
       (timestampUs) => this.audioQueue.discardBefore(timestampUs),
       {
+        onKeyFrameNeeded: options.onVideoKeyFrameNeeded,
         onRecoveryTimeout: (error) => this.close(1011, error.message),
       },
     );
@@ -100,7 +102,10 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
     }
   }
 
-  writeVideo(packet: ScrcpyPacket, completion?: (error?: Error) => void): void {
+  writeVideo(
+    packet: ScrcpyPacket,
+    completion?: (error?: Error, delivered?: boolean) => void,
+  ): void {
     if (!packet.config) {
       this.sourceVideoFrames += 1;
       this.sourceVideoBytes += packet.data.byteLength;
@@ -130,7 +135,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
       if (!error && delivered) {
         this.recordVideoRelayLatency(performance.now() - enqueuedAt);
       }
-      completion?.(error);
+      completion?.(error, delivered);
     });
   }
 
@@ -163,15 +168,19 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
     };
   }
 
-  close(code?: number, reason?: string): void {
+  dispose(): boolean {
     if (this.closed) {
-      return;
+      return false;
     }
     this.closed = true;
     this.videoQueue.close();
     this.audioQueue.close();
     this.gcObserver.disconnect();
-    this.options.close(code, reason);
+    return true;
+  }
+
+  close(code?: number, reason?: string): void {
+    if (this.dispose()) this.options.close(code, reason);
   }
 
   private recordVideoRelayLatency(value: number): void {

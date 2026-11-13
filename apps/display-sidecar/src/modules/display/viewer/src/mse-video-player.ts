@@ -1,6 +1,10 @@
+import type { DisplayFrameSize } from "./display-size-presentation.js";
+
 type VideoFrameCallbackMetadata = {
   mediaTime?: number;
   presentedFrames?: number;
+  width?: number;
+  height?: number;
 };
 
 type VideoWithFrameCallback = HTMLVideoElement & {
@@ -97,7 +101,10 @@ export class MseVideoPlayer {
 
   constructor(
     private readonly video: HTMLVideoElement,
-    private readonly onFirstFrame: (epoch: number) => void,
+    private readonly onFirstFrame: (
+      epoch: number,
+      frame: { width: number; height: number; at: number },
+    ) => void,
     private readonly onResync: (reason: string, epoch: number) => void,
   ) {}
 
@@ -113,6 +120,7 @@ export class MseVideoPlayer {
     initializationSegment: ArrayBuffer,
     sourcePtsOriginUs: number,
     epoch: number,
+    expectedSize?: DisplayFrameSize,
   ): void {
     if (epoch < this.minimumEpoch || epoch <= this.epoch) return;
     if (!MseVideoPlayer.supports(codec)) {
@@ -183,7 +191,7 @@ export class MseVideoPlayer {
       },
       { once: true },
     );
-    this.startFrameCallbacks();
+    this.startFrameCallbacks(expectedSize);
   }
 
   appendMedia(segment: MseMediaSegment): void {
@@ -424,7 +432,7 @@ export class MseVideoPlayer {
     }
   }
 
-  private startFrameCallbacks(): void {
+  private startFrameCallbacks(expectedSize?: DisplayFrameSize): void {
     const callbackApi = this.video as VideoWithFrameCallback;
     if (
       !callbackApi.requestVideoFrameCallback ||
@@ -437,6 +445,15 @@ export class MseVideoPlayer {
       this.frameCallbackHandle = callbackApi.requestVideoFrameCallback!(
         (now, metadata) => {
           if (epoch !== this.epoch || epoch < this.minimumEpoch) return;
+          const width = metadata.width ?? this.video.videoWidth;
+          const height = metadata.height ?? this.video.videoHeight;
+          if (
+            expectedSize &&
+            (width !== expectedSize.width || height !== expectedSize.height)
+          ) {
+            next();
+            return;
+          }
           const mediaTime = metadata.mediaTime ?? this.video.currentTime;
           this.presentedFrames += 1;
           if (this.lastPresentedAt !== null) {
@@ -455,7 +472,11 @@ export class MseVideoPlayer {
           }
           if (!this.firstFramePresented) {
             this.firstFramePresented = true;
-            this.onFirstFrame(epoch);
+            this.onFirstFrame(epoch, {
+              width,
+              height,
+              at: performance.timeOrigin + now,
+            });
           }
           next();
         },

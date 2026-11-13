@@ -213,8 +213,20 @@ describe('buildDisplayViewerSurfaces', () => {
     expect(surfaces.map(surface => surface.kind)).toEqual(['main', 'virtual'])
     expect(surfaces[0]).toMatchObject({
       id: 'main',
-      sessionId: 'session-current',
-      src: '/viewer/display?sessionId=session-current&player=webcodecs&transport=webrtc&audio=1&bitrate=16000000&maxFps=60&maxSize=0&iFrameInterval=1&fitToFrame=1'
+      sessionId: 'session-current'
     })
+    expect(Object.fromEntries(new URL(surfaces[0].src, 'https://display.test').searchParams)).toEqual({
+      sessionId: 'session-current',
+      surfaceKind: 'main',
+      player: 'webcodecs',
+      transport: 'webrtc',
+      audio: '1',
+      bitrate: '16000000',
+      maxFps: '60',
+      maxSize: '0',
+      iFrameInterval: '1',
+      fitToFrame: '1'
+    })
+    expect(new URL(surfaces[1].src, 'https://display.test').searchParams.get('surfaceKind')).toBe('virtual')
   })
 })

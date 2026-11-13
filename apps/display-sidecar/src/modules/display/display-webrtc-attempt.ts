@@ -7,6 +7,7 @@ import {
 import { ScrcpyBootstrapSink } from "../scrcpy/scrcpy-bootstrap-sink";
 import { supportsH264PixelRate } from "../scrcpy/scrcpy-h264-profile";
 import { QueuedScrcpyMediaSink } from "../scrcpy/scrcpy-media-sink";
+import { scrcpyVideoConfigurationChangedCloseCode } from "../scrcpy/scrcpy.types";
 import type {
   ScrcpyMediaSink,
   ScrcpyStreamAttachment,
@@ -23,6 +24,52 @@ import type {
 import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 const connectTimeoutMs = 15_000;
+const codecChangeDeliveryMs = 500;
+
+type WebrtcTerminationReason =
+  | "access_revoked"
+  | "offer_abandoned"
+  | "viewer_replaced"
+  | "display_session_closed"
+  | "sidecar_shutdown"
+  | "offer_cancelled"
+  | "source_bootstrap_failed"
+  | "source_codec_incompatible"
+  | "bridge_start_failed"
+  | "bridge_connection_closed"
+  | "bridge_input_closed"
+  | "signaling_failed"
+  | "peer_connect_timeout"
+  | "source_codec_changed"
+  | "source_attach_failed"
+  | "source_profile_changed"
+  | "media_keyframe_timeout"
+  | "media_consumer_closed";
+
+function mediaTerminationReason(
+  code?: number,
+  reason?: string,
+): WebrtcTerminationReason {
+  switch (code) {
+    case scrcpyVideoConfigurationChangedCloseCode:
+      return "source_codec_changed";
+    case 1012:
+      return "source_profile_changed";
+    case 4404:
+      return "display_session_closed";
+    case 1001:
+      return "sidecar_shutdown";
+  }
+  if (
+    reason &&
+    /^RBD1 video PTS advanced for more than \d+ ms without a keyframe$/.test(
+      reason,
+    )
+  ) {
+    return "media_keyframe_timeout";
+  }
+  return "media_consumer_closed";
+}
 
 interface WebrtcAttemptOptions {
   sessionId: string;
@@ -32,9 +79,11 @@ interface WebrtcAttemptOptions {
   audio: boolean;
   allowClipboard: boolean;
   iceServers: string[];
-  assertSourceSupported: () => Promise<void>;
   attachSource: (sink: ScrcpyMediaSink) => ScrcpyStreamAttachment;
-  launchBridge: (signal: AbortSignal) => WebrtcBridge | Promise<WebrtcBridge>;
+  launchBridge: (
+    signal: AbortSignal,
+    attemptId: string,
+  ) => WebrtcBridge | Promise<WebrtcBridge>;
   executeControl: (
     request: DisplayControlRequest,
   ) => ReturnType<DisplayControlService["execute"]>;
@@ -45,6 +94,9 @@ export class DisplayWebrtcAttempt {
   private readonly logger = new Logger(DisplayWebrtcAttempt.name);
   private readonly controller = new AbortController();
   private readonly attemptId = randomUUID();
+  private failureStage: WebrtcTerminationReason = "source_bootstrap_failed";
+  private firstTerminationReason?: WebrtcTerminationReason;
+  private sourceAttemptId?: string;
 
   constructor(private readonly options: WebrtcAttemptOptions) {}
 
@@ -61,16 +113,17 @@ export class DisplayWebrtcAttempt {
     signal.addEventListener("abort", detachBootstrap, { once: true });
 
     try {
-      await awaitAttempt(this.options.assertSourceSupported(), signal);
       signal.throwIfAborted();
       bootstrapAttachment = this.options.attachSource(
         new ScrcpyBootstrapSink(),
       );
+      this.sourceAttemptId = bootstrapAttachment.sourceAttemptId;
       const bootstrap = await awaitAttempt(
         bootstrapAttachment.awaitVideoBootstrap(3_000),
         signal,
       );
       signal.throwIfAborted();
+      this.failureStage = "source_codec_incompatible";
       this.assertBootstrapHasDimensions(bootstrap);
       this.assertOfferSupportsBootstrap(sdp, bootstrap);
       const declaredLevelSupportsRequestedRate = supportsH264PixelRate(
@@ -90,13 +143,24 @@ export class DisplayWebrtcAttempt {
         declaredLevelSupportsRequestedRate,
       );
     } catch (error) {
-      this.stop(error);
+      this.stop(error, this.failureStage);
       throw error;
     }
   }
 
-  stop(reason: unknown = new ConflictException("WebRTC offer was cancelled.")) {
+  stop(
+    reason: unknown = new ConflictException("WebRTC offer was cancelled."),
+    code: WebrtcTerminationReason = "offer_cancelled",
+  ) {
     if (this.controller.signal.aborted) return;
+    // A media sink can initiate shutdown before the closing IPC socket reports it.
+    const first = this.firstTerminationReason ?? code;
+    const source = this.sourceAttemptId
+      ? ` sourceAttemptId=${this.sourceAttemptId}`
+      : "";
+    this.logger.debug(
+      `[webrtc:${this.options.sessionId}:${this.attemptId}] attempt ended reason=${first}${source}`,
+    );
     this.options.onFinish();
     this.controller.abort(reason);
   }
@@ -109,12 +173,14 @@ export class DisplayWebrtcAttempt {
     const { signal } = this.controller;
     const { sessionId, audio, iceHost, maxFps, iceServers, sdp } = this.options;
     signal.throwIfAborted();
-    const bridge = await this.options.launchBridge(signal);
+    this.failureStage = "bridge_start_failed";
+    const bridge = await this.options.launchBridge(signal, this.attemptId);
+    this.failureStage = "signaling_failed";
     if (signal.aborted) {
       bridge.close();
       signal.throwIfAborted();
     }
-    let mediaCloseReason: string | undefined;
+    let codecChangeTimer: NodeJS.Timeout | undefined;
     let audioDisabled = !audio;
     const disableAudio = (message = "Audio relay stopped.") => {
       if (audioDisabled || signal.aborted) return;
@@ -136,9 +202,30 @@ export class DisplayWebrtcAttempt {
           disableAudio();
         }
       },
-      close: (_code, reason) => {
-        if (reason && !signal.aborted) {
-          mediaCloseReason = reason.slice(0, 120);
+      close: (code, reason) => {
+        if (!signal.aborted) {
+          this.firstTerminationReason ??= mediaTerminationReason(code, reason);
+        }
+        if (
+          code === scrcpyVideoConfigurationChangedCloseCode &&
+          !signal.aborted
+        ) {
+          // The old media sink is already closed. Give its reliable channel
+          // time to deliver the notice before closing the peer as a fallback.
+          codecChangeTimer = setTimeout(
+            () => bridge.close(),
+            codecChangeDeliveryMs,
+          );
+          codecChangeTimer.unref();
+          try {
+            bridge.sendDataChannel({
+              type: "webrtc-codec-changed",
+              consumerAttemptId: this.attemptId,
+            });
+          } catch {
+            bridge.close();
+          }
+          return;
         }
         bridge.close();
       },
@@ -187,20 +274,17 @@ export class DisplayWebrtcAttempt {
       () => {
         clearInterval(queueMetricsTimer);
         clearTimeout(connectTimer);
+        clearTimeout(codecChangeTimer);
         attachment?.detach("WebRTC consumer closed");
         sink.close();
+        if (codecChangeTimer && bridge.isOpen()) bridge.close();
       },
       { once: true },
     );
     bridge.onClose(() => {
       this.stop(
         new ServiceUnavailableException("WebRTC bridge connection closed."),
-      );
-      const media = mediaCloseReason
-        ? ` mediaReason=${JSON.stringify(mediaCloseReason)}`
-        : "";
-      this.logger.debug(
-        `[webrtc:${sessionId}:${this.attemptId}] bridge connection closed${media}`,
+        "bridge_connection_closed",
       );
     });
 
@@ -216,6 +300,7 @@ export class DisplayWebrtcAttempt {
             "The video codec generation changed before WebRTC connected.",
           );
         }
+        this.sourceAttemptId = attachment.sourceAttemptId;
         detachBootstrap();
         this.logger.debug(
           `[webrtc:${sessionId}:${this.attemptId}] media attached sourceAttemptId=${attachment.sourceAttemptId} consumerId=${attachment.consumerId}`,
@@ -231,12 +316,11 @@ export class DisplayWebrtcAttempt {
           actualEncoder: bootstrap.actualEncoder,
           declaredLevelSupportsRequestedRate,
         });
-        void attachment.closed.then(() => this.stop());
+        void attachment.closed.then(() => {
+          if (!codecChangeTimer) this.stop(undefined, "media_consumer_closed");
+        });
       } catch (error) {
-        this.logger.warn(
-          `[webrtc:${sessionId}:${this.attemptId}] scrcpy stream failed: ${this.errorMessage(error)}`,
-        );
-        this.stop(error);
+        this.stop(error, "source_attach_failed");
       }
     };
 
@@ -262,6 +346,7 @@ export class DisplayWebrtcAttempt {
           onFailure: () =>
             this.stop(
               new ServiceUnavailableException("WebRTC bridge input closed."),
+              "bridge_input_closed",
             ),
           onAudioFailure: () => disableAudio(),
           onLog: (message) =>
@@ -270,6 +355,10 @@ export class DisplayWebrtcAttempt {
             ),
           onMessage: (message) => {
             if (signal.aborted) return;
+            if (codecChangeTimer) {
+              // The peer remains open briefly for the outbound notice alone.
+              return;
+            }
             switch (message.type) {
               case "answer":
                 resolve(message.sdp);
@@ -303,6 +392,7 @@ export class DisplayWebrtcAttempt {
     signal.throwIfAborted();
 
     if (!bootstrap.isCurrent()) {
+      this.failureStage = "source_codec_changed";
       throw new ServiceUnavailableException(
         "The video codec generation changed during WebRTC negotiation.",
       );
@@ -313,6 +403,7 @@ export class DisplayWebrtcAttempt {
     connectTimer = setTimeout(() => {
       this.stop(
         new ServiceUnavailableException("WebRTC peer did not connect."),
+        "peer_connect_timeout",
       );
     }, connectTimeoutMs);
     connectTimer.unref();
@@ -325,6 +416,7 @@ export class DisplayWebrtcAttempt {
       sdp: answer,
       iceServers,
       profileLevelId: bootstrap.profileLevelId,
+      consumerAttemptId: this.attemptId,
     };
   }
 
@@ -424,10 +516,6 @@ export class DisplayWebrtcAttempt {
           "The H.264 encoder did not report exact native dimensions in its SPS.",
       });
     }
-  }
-
-  private errorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error);
   }
 }
 

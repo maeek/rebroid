@@ -11,6 +11,12 @@ const configuration = annexB(
   ],
   [0x68, 0xcb, 0x83, 0xcb, 0x20],
 );
+const landscapeConfiguration = Uint8Array.from(
+  Buffer.from(
+    "000000016742c032d90024c089e7970110000003001000000303c0f18324800000000168cb83cb20",
+    "hex",
+  ),
+);
 const keyFrame = annexB([0x65, 0x88, 0x84]);
 const deltaFrame = annexB([0x41, 0x9a, 0x20]);
 
@@ -66,7 +72,10 @@ const flush = async () => {
   await new Promise((resolve) => setImmediate(resolve));
 };
 
-test("Firefox worker emits native fMP4 segments without constructing VideoDecoder", async (t) => {
+test("Firefox worker presents rotated fMP4 without replacing the socket or constructing a VideoDecoder", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  let now = 100;
+  t.mock.method(performance, "now", () => now);
   const posted = [];
   globalThis.VideoDecoder = class {
     constructor() {
@@ -157,15 +166,77 @@ test("Firefox worker emits native fMP4 segments without constructing VideoDecode
   );
 
   assert.equal(media.epoch, initialization.epoch);
+  const present = (epoch, width, height) => {
+    globalThis.onmessage({
+      data: {
+        type: "mse-presented",
+        epoch,
+        width,
+        height,
+        at: performance.timeOrigin + now,
+      },
+    });
+  };
+  present(initialization.epoch, 1080, 2340);
+  now = 200;
+  for (const [sequence, data, flags] of [
+    [4, landscapeConfiguration, { config: true }],
+    [5, deltaFrame, {}],
+    [6, keyFrame, { key: true }],
+    [7, deltaFrame, {}],
+    [8, deltaFrame, {}],
+  ]) {
+    socket.emit("message", {
+      data: rbd1({
+        sequence,
+        timestampUs: 1_050_000 + (sequence - 4) * 16_667,
+        data,
+        ...flags,
+      }),
+    });
+  }
+  await flush();
+  const landscape = posted.findLast((message) => message.type === "mse-init");
+  assert.ok(landscape.epoch > initialization.epoch);
+  assert.equal(landscape.width, 2340);
+  assert.equal(landscape.height, 1080);
+  assert.deepEqual(
+    posted
+      .findLast((message) => message.type === "mse-segment")
+      .samples.map(({ sequence }) => sequence),
+    [6, 7],
+  );
+  now = 230;
+  present(initialization.epoch, 2340, 1080);
+  t.mock.timers.tick(1000);
+  assert.equal(
+    posted.findLast(({ type }) => type === "metrics").metrics
+      .displaySizePresentation,
+    undefined,
+  );
+  now = 245;
+  present(landscape.epoch, 2340, 1080);
+  t.mock.timers.tick(1000);
+  assert.deepEqual(
+    posted.findLast(({ type }) => type === "metrics").metrics
+      .displaySizePresentation,
+    {
+      previous: { width: 1080, height: 2340 },
+      current: { width: 2340, height: 1080 },
+      elapsedMs: 45,
+    },
+  );
+  assert.equal(socket.closeCalls.length, 0);
+
   globalThis.onmessage({
     data: {
       type: "mse-resync",
       reason: "source-buffer-test-error",
-      epoch: initialization.epoch,
+      epoch: landscape.epoch,
     },
   });
   const reset = posted.findLast((message) => message.type === "mse-reset");
-  assert.ok(reset.epoch > initialization.epoch);
+  assert.ok(reset.epoch > landscape.epoch);
   const count = posted.length;
   globalThis.onmessage({
     data: {

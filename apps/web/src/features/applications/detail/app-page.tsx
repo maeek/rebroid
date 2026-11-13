@@ -7,6 +7,7 @@ import { AppManage } from '@/features/applications/manage/app-manage'
 import { AppManageProfiles } from '@/features/applications/manage/app-manage-profiles'
 import { resolveAppResourceView } from '@/shared/model/applications/app-resource-links'
 import { StandardPageSplit } from '@/shared/ui/page/page-layout'
+import { ResourceNavigationMotionScope } from '@/shared/ui/resource-navigation-motion-scope'
 import { AppDeviceLayout } from './app-device-layout'
 import { AppNetworkPage } from './app-network-page'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
@@ -46,11 +47,13 @@ export const AppViewerPage = ({
       isAdmin={isAdmin}
       permissions={permissions}
     >
-      <AppViewerPageContent
-        viewMode={viewMode}
-        activity={activity}
-        inspectedCommand={inspectedCommand}
-      />
+      <ResourceNavigationMotionScope key={app?.id}>
+        <AppViewerPageContent
+          viewMode={viewMode}
+          activity={activity}
+          inspectedCommand={inspectedCommand}
+        />
+      </ResourceNavigationMotionScope>
     </ApplicationViewerProvider>
   )
 }

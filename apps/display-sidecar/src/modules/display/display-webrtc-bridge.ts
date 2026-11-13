@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { createConnection } from "node:net";
 import { StringDecoder } from "node:string_decoder";
 import type { Writable } from "node:stream";
@@ -51,8 +50,12 @@ const writeMedia = (input: Writable, payload: Buffer) =>
     });
   });
 
-export const connectWebrtcBridge = (path: string): WebrtcBridge => {
-  const id = randomBytes(16);
+export const connectWebrtcBridge = (
+  path: string,
+  attemptId: string,
+): WebrtcBridge => {
+  // The server-generated attempt UUID also identifies its three private IPC sockets.
+  const id = Buffer.from(attemptId.replaceAll("-", ""), "hex");
   const openStream = (index: number) => {
     const stream = createConnection(path);
     stream.on("error", () => undefined);

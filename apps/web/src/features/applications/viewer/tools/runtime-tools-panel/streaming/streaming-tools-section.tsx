@@ -6,17 +6,17 @@ import { Badge } from '@/components/ui/badge'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { frameAcknowledgementLabels } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import { getViewerPlayerCapabilities } from '@/features/applications/viewer/player/viewer-player-capabilities'
 import {
-  normalizeViewerSettings,
   viewerPlayerDefinitions,
   viewerStreamingPresets
 } from '@/features/applications/viewer/settings/viewer-settings'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { ViewerStreamingSliderFields } from '@/shared/ui/settings/viewer-streaming-slider-fields'
+import { ViewerBitrateField } from '@/shared/ui/settings/viewer-bitrate-field'
 import { ToolSection } from '../tool-section'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
-import type { ViewerSettings, ViewerStreamingPreset } from '@/features/applications/viewer/settings/viewer-settings'
+import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 
 const metricIsFresh = (metrics: DisplayViewerStreamMetrics | null | undefined) =>
   Boolean(metrics && Date.now() - metrics.collectedAt < 5_000)
@@ -73,6 +73,14 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
   }
 
   const profile = metrics.effectiveProfile
+  const sizeChange = metrics.displaySizePresentation
+  let sizeChangeDetails: string | undefined
+  if (sizeChange) {
+    const previous = `${sizeChange.previous.width}×${sizeChange.previous.height}`
+    const current = `${sizeChange.current.width}×${sizeChange.current.height}`
+    const duration = sizeChange.elapsedMs === undefined ? '' : ` · ${metricValue(sizeChange.elapsedMs)} ms`
+    sizeChangeDetails = `${previous} → ${current}${duration}`
+  }
   return (
     <details className='rounded-control border border-surface-border/70 bg-surface-band/20 px-3 py-2 text-xs'>
       <summary className='cursor-pointer font-medium text-foreground'>Streaming diagnostics</summary>
@@ -106,6 +114,12 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
           label='Dimensions'
           value={metrics.width && metrics.height ? `${metrics.width}×${metrics.height}` : 'unknown'}
         />
+        {sizeChangeDetails && (
+          <DiagnosticValue
+            label='First frame at new size'
+            value={sizeChangeDetails}
+          />
+        )}
         <DiagnosticValue
           label='Frame gap p95 / max'
           value={`${metricValue(metrics.frameGapP95Ms, 1)} / ${metricValue(metrics.frameGapMaxMs, 1)} ms`}
@@ -149,6 +163,19 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
                 .map(value => metricValue(value))
                 .join(' / ')}
             />
+            {metrics.frameAcknowledgement && (
+              <DiagnosticValue
+                label='Frame acknowledgement'
+                value={[
+                  frameAcknowledgementLabels[metrics.frameAcknowledgement],
+                  metrics.frameAcknowledgementsSent === undefined
+                    ? undefined
+                    : `${metricValue(metrics.frameAcknowledgementsSent)} sent this attempt`
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              />
+            )}
             <DiagnosticValue
               label='Consumer attempt'
               value={metrics.consumerAttemptId ?? 'unknown'}
@@ -190,12 +217,16 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
 export const StreamingToolsSection = ({
   viewerSettings,
   onViewerSettingsChange,
+  bitrateInput,
+  onBitrateInputChange,
   streamMetrics,
   className,
   hideHeader
 }: {
   viewerSettings: ViewerSettings
-  onViewerSettingsChange: (settings: ViewerSettings) => void
+  onViewerSettingsChange: (patch: Partial<ViewerSettings>) => void
+  bitrateInput: string
+  onBitrateInputChange: (value: string) => void
   streamMetrics?: DisplayViewerStreamMetrics | null
   className?: string
   hideHeader?: boolean
@@ -213,14 +244,6 @@ export const StreamingToolsSection = ({
     selectedPreset.bitrateMbps !== viewerSettings.bitrateMbps ||
     selectedPreset.maxFps !== viewerSettings.maxFps ||
     selectedPreset.maxSize !== viewerSettings.maxSize
-
-  const updateSettings = (patch: Partial<ViewerSettings>) => {
-    onViewerSettingsChange(normalizeViewerSettings({ ...viewerSettings, ...patch }))
-  }
-
-  const applyPreset = (preset: ViewerStreamingPreset) => {
-    onViewerSettingsChange(normalizeViewerSettings({ ...viewerSettings, ...viewerStreamingPresets[preset] }))
-  }
 
   const rendererNote = selectedCapability.reason ?? selectedPlayer?.description
   const streamingSummary = `${selectedPlayer?.label ?? viewerSettings.player} • ${viewerSettings.bitrateMbps} Mbps • ${viewerSettings.maxFps} fps • ${viewerSettings.maxSize === 0 ? 'Native resolution' : `${viewerSettings.maxSize}px long edge`}`
@@ -256,7 +279,9 @@ export const StreamingToolsSection = ({
           <Select
             value={transport}
             disabled={!webrtcEnabled}
-            onValueChange={value => updateSettings({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })}
+            onValueChange={value =>
+              onViewerSettingsChange({ transport: value === 'websocket' ? 'websocket' : 'webrtc' })
+            }
           >
             <SelectTrigger className='w-full lg:max-w-100'>
               <SelectValue />
@@ -276,7 +301,7 @@ export const StreamingToolsSection = ({
           <Switch
             className='relative touch:after:absolute touch:after:-inset-x-1 touch:after:-inset-y-3'
             checked={viewerSettings.soundEnabled}
-            onCheckedChange={enabled => updateSettings({ soundEnabled: Boolean(enabled) })}
+            onCheckedChange={enabled => onViewerSettingsChange({ soundEnabled: Boolean(enabled) })}
             aria-label='Enable Android sound capture'
           />
         </FormField>
@@ -288,7 +313,7 @@ export const StreamingToolsSection = ({
           <Select
             value={presetIsCustom ? 'custom' : viewerSettings.preset}
             onValueChange={value => {
-              if (value !== 'custom') applyPreset(value)
+              if (value !== 'custom') onViewerSettingsChange(viewerStreamingPresets[value])
             }}
           >
             <SelectTrigger className='w-full lg:max-w-100'>
@@ -318,9 +343,9 @@ export const StreamingToolsSection = ({
           resolution at 60 fps.
         </p>
 
-        <ViewerStreamingSliderFields
-          values={viewerSettings}
-          onChange={patch => updateSettings({ ...patch, preset: viewerSettings.preset })}
+        <ViewerBitrateField
+          value={bitrateInput}
+          onValueChange={onBitrateInputChange}
         />
       </div>
     </ToolSection>

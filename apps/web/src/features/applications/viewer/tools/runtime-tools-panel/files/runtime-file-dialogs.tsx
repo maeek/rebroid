@@ -104,6 +104,7 @@ const RuntimeFileNameDialog = ({
             type='button'
             className='max-sm:min-h-11'
             pending={pending}
+            animate
             pendingLabel='Saving…'
             disabled={Boolean(nameError)}
             onClick={() => void submit()}

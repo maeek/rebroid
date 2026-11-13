@@ -69,3 +69,71 @@ it('routes parent keyboard input to one active display and correlates a targeted
   reply(virtualWindow)
   expect(onResult).toHaveBeenCalledOnce()
 })
+
+it('toggles compact presentation without replacing the frame and blocks its commands', () => {
+  const frame = (compact: boolean) => (
+    <DisplayViewerFrame
+      src='/viewer/main'
+      surfaceId='main'
+      keyboardCaptureEnabled
+      compact={compact}
+    />
+  )
+  const { rerender } = render(frame(false))
+  const viewer = screen.getByTitle<HTMLIFrameElement>('display viewer')
+  const post = vi.spyOn(viewer.contentWindow!, 'postMessage')
+
+  rerender(frame(true))
+  expect(screen.getByTitle('display viewer')).toBe(viewer)
+  expect(viewer).toHaveAttribute('data-viewer-compact')
+  expect(post).toHaveBeenCalledWith(
+    { type: 'rebroid-viewer-presentation', compact: true, minimizeShortcutEnabled: false },
+    window.location.origin
+  )
+  const send = (surfaceId?: string) =>
+    window.dispatchEvent(
+      new CustomEvent(viewerControlCommandEventType, {
+        cancelable: true,
+        detail: { command: 'home', surfaceId }
+      })
+    )
+  expect(send()).toBe(true)
+  expect(send('main')).toBe(true)
+
+  rerender(frame(false))
+  expect(screen.getByTitle('display viewer')).toBe(viewer)
+  expect(viewer).not.toHaveAttribute('data-viewer-compact')
+  expect(send('main')).toBe(false)
+})
+
+it('accepts the minimize shortcut only from its own frame when keyboard capture is off', () => {
+  const onMinimizeShortcut = vi.fn()
+  const frame = (keyboardCaptureEnabled: boolean) => (
+    <DisplayViewerFrame
+      src='/viewer/main'
+      keyboardCaptureEnabled={keyboardCaptureEnabled}
+      onMinimizeShortcut={onMinimizeShortcut}
+    />
+  )
+  const { rerender } = render(frame(false))
+  const viewer = screen.getByTitle<HTMLIFrameElement>('display viewer')
+  const reportShortcut = (source: Window, origin: string) =>
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source,
+        origin,
+        data: { type: 'rebroid-viewer-minimize-shortcut' }
+      })
+    )
+
+  reportShortcut(window, window.location.origin)
+  reportShortcut(viewer.contentWindow!, 'https://untrusted.example')
+  expect(onMinimizeShortcut).not.toHaveBeenCalled()
+
+  reportShortcut(viewer.contentWindow!, window.location.origin)
+  expect(onMinimizeShortcut).toHaveBeenCalledOnce()
+
+  rerender(frame(true))
+  reportShortcut(viewer.contentWindow!, window.location.origin)
+  expect(onMinimizeShortcut).toHaveBeenCalledOnce()
+})

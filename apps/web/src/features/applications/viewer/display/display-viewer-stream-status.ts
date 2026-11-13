@@ -12,7 +12,26 @@ export type DisplayViewerStreamStatusCode =
 
 export type DisplayViewerStreamStatusSeverity = 'info' | 'warning' | 'error'
 
+export const frameAcknowledgementLabels = {
+  'callback-unavailable': 'Frame callback unavailable',
+  'waiting-for-frame': 'Waiting for a frame',
+  'timestamp-unavailable': 'Frame timestamp unavailable',
+  'waiting-for-quiet': 'Waiting for a quiet frame',
+  'window-expired': 'Acknowledgement window expired',
+  'channel-unavailable': 'Control channel unavailable',
+  'channel-buffered': 'Control channel buffered',
+  'send-failed': 'Send failed',
+  sent: 'Sent'
+} as const
+
 export type ViewerFrameObservation = { connectAt: number; presentedAt: number }
+
+type DisplayFrameSize = { width: number; height: number }
+type DisplaySizePresentation = {
+  previous: DisplayFrameSize
+  current: DisplayFrameSize
+  elapsedMs?: number
+}
 
 export type DisplayViewerStreamStatus = {
   code: DisplayViewerStreamStatusCode
@@ -21,12 +40,16 @@ export type DisplayViewerStreamStatus = {
   message: string
   sessionId?: string
   startup?: ViewerFrameObservation
+  consumerAttemptId?: string
+  closeCode?: number
+  failureStage?: string
   transport?: 'webrtc' | 'websocket'
 }
 
 export type DisplayViewerStreamMetrics = {
   version: 4
   transport: 'webrtc' | 'websocket'
+  displaySizePresentation?: DisplaySizePresentation
   sourceFps?: number
   relayIngressFps?: number
   bridgeInputFps?: number
@@ -102,6 +125,8 @@ export type DisplayViewerStreamMetrics = {
   receiverPacketsLost?: number
   receiverNackCount?: number
   receiverPliCount?: number
+  frameAcknowledgement?: keyof typeof frameAcknowledgementLabels
+  frameAcknowledgementsSent?: number
   consumerGeneration?: number
   effectiveProfile: {
     transport: 'webrtc' | 'websocket'
@@ -136,6 +161,30 @@ const statusCodes = new Set<DisplayViewerStreamStatusCode>([
 
 const statusSeverities = new Set<DisplayViewerStreamStatusSeverity>(['info', 'warning', 'error'])
 
+const isDisplayFrameSize = (value: unknown): value is DisplayFrameSize => {
+  if (!value || typeof value !== 'object') return false
+  const { width, height } = value as Record<string, unknown>
+  return (
+    typeof width === 'number' &&
+    Number.isSafeInteger(width) &&
+    width > 0 &&
+    typeof height === 'number' &&
+    Number.isSafeInteger(height) &&
+    height > 0
+  )
+}
+
+const isDisplaySizePresentation = (value: unknown): value is DisplaySizePresentation => {
+  if (!value || typeof value !== 'object') return false
+  const { previous, current, elapsedMs } = value as Record<string, unknown>
+  return (
+    isDisplayFrameSize(previous) &&
+    isDisplayFrameSize(current) &&
+    (previous.width !== current.width || previous.height !== current.height) &&
+    (elapsedMs === undefined || (typeof elapsedMs === 'number' && Number.isFinite(elapsedMs) && elapsedMs >= 0))
+  )
+}
+
 const isViewerFrameObservation = (value: unknown): value is ViewerFrameObservation => {
   if (!value || typeof value !== 'object') return false
   const { connectAt, presentedAt } = value as Record<string, unknown>
@@ -166,6 +215,15 @@ export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayVie
     typeof record.message === 'string' &&
     ((record.code !== 'session-expired' && record.code !== 'session-ready') ||
       (typeof record.sessionId === 'string' && record.sessionId.length > 0)) &&
+    (record.consumerAttemptId === undefined ||
+      (typeof record.consumerAttemptId === 'string' && /^[a-z0-9-]{1,64}$/i.test(record.consumerAttemptId))) &&
+    (record.failureStage === undefined ||
+      (typeof record.failureStage === 'string' && /^[a-z0-9-]{1,48}$/i.test(record.failureStage))) &&
+    (record.closeCode === undefined ||
+      (typeof record.closeCode === 'number' &&
+        Number.isInteger(record.closeCode) &&
+        record.closeCode >= 1000 &&
+        record.closeCode <= 4999)) &&
     (record.startup === undefined || isViewerFrameObservation(record.startup)) &&
     (record.transport === undefined || record.transport === 'webrtc' || record.transport === 'websocket')
   )
@@ -274,6 +332,7 @@ export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayVi
     optionalFiniteNumber(record.presentationSequenceLag) &&
     optionalFiniteNumber(record.width) &&
     optionalFiniteNumber(record.height) &&
+    (record.displaySizePresentation === undefined || isDisplaySizePresentation(record.displaySizePresentation)) &&
     (record.renderer === 'webrtc-video' ||
       record.renderer === 'chromium-webcodecs' ||
       record.renderer === 'firefox-mse' ||
@@ -296,6 +355,10 @@ export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayVi
     optionalFiniteNumber(record.receiverPacketsLost) &&
     optionalFiniteNumber(record.receiverNackCount) &&
     optionalFiniteNumber(record.receiverPliCount) &&
+    (record.frameAcknowledgement === undefined ||
+      (typeof record.frameAcknowledgement === 'string' &&
+        Object.hasOwn(frameAcknowledgementLabels, record.frameAcknowledgement))) &&
+    optionalFiniteNumber(record.frameAcknowledgementsSent) &&
     optionalFiniteNumber(record.consumerGeneration) &&
     isEffectiveProfile(record.effectiveProfile) &&
     typeof record.collectedAt === 'number' &&

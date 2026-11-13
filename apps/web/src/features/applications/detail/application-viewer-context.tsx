@@ -47,6 +47,7 @@ type ApplicationViewerContextValue = {
   setViewerSettings: Dispatch<SetStateAction<ViewerSettings>>
   viewerStreamMetrics: Record<string, DisplayViewerStreamMetrics | undefined>
   viewerSettings: ViewerSettings
+  viewerSettingsHydrated?: boolean
 }
 
 export const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)
@@ -205,6 +206,7 @@ export const ApplicationViewerProvider = ({
         setViewerStreamMetrics,
         viewerStreamMetrics,
         setViewerSettings,
+        viewerSettingsHydrated,
         viewerSettings
       }}
     >

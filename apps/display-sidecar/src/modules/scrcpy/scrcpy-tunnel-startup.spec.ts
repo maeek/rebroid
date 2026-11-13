@@ -168,6 +168,7 @@ test(
     service["sources"].set("display", {
       profileKey: "fixture",
       stream,
+      compatibility: Promise.resolve(null),
       idleTimer: null,
       resetTimer: null,
       resetWatchdog: new ScrcpyVideoResetWatchdog(),

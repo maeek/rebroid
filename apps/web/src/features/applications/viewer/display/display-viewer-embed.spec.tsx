@@ -11,6 +11,9 @@ vi.mock('@/server/orchestrator/applications/actions/runtime/viewer-actions', () 
   getScrcpySessionAction: vi.fn()
 }))
 vi.mock('./display-viewer-shell/display-viewer-shell', () => ({ DisplayViewerShell: () => null }))
+vi.mock('@/features/applications/viewer/mini-player/pinned-viewer-context', () => ({
+  usePinnedViewer: vi.fn(() => null)
+}))
 
 const sessionWithoutDisplay: ScrcpySession = {
   applicationId: previewApp.id,
@@ -28,6 +31,34 @@ const sessionWithoutDisplay: ScrcpySession = {
 }
 
 const unavailable = actionError({ code: 'upstream_unavailable', message: 'Sidecar unreachable' })
+
+it('opens the embedded display session once when an initially hidden tab becomes visible', async () => {
+  const openSession = vi.mocked(getScrcpySessionAction)
+  openSession.mockReset().mockResolvedValue(actionOk(sessionWithoutDisplay))
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  const view = render(
+    <DisplayViewerEmbed
+      app={{ ...previewApp, status: 'running' }}
+      viewerSettings={defaultViewerSettings}
+      canControlViewer
+      canCaptureScreenshot
+    />
+  )
+  try {
+    expect(openSession).not.toHaveBeenCalled()
+    visibility.mockReturnValue('visible')
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'))
+      document.dispatchEvent(new Event('visibilitychange'))
+      await Promise.resolve()
+    })
+    expect(openSession).toHaveBeenCalledExactlyOnceWith(previewApp.id)
+  } finally {
+    view.unmount()
+    visibility.mockRestore()
+    openSession.mockReset()
+  }
+})
 
 it('keeps the device frame and settings when a session is unavailable and can retry in place', async () => {
   const openSession = vi.mocked(getScrcpySessionAction)

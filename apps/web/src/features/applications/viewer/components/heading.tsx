@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StateTransition } from '@/components/ui/state-transition'
 import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
@@ -61,7 +62,12 @@ export const AppViewerHeading = ({
             tone={appStatusBadgeTone(app?.status)}
             className='shrink-0 capitalize'
           >
-            {app?.status}
+            <StateTransition
+              identity={app?.id}
+              state={app?.status ?? 'unknown'}
+            >
+              {app?.status}
+            </StateTransition>
           </StatusBadge>
         </Visible>
       </div>

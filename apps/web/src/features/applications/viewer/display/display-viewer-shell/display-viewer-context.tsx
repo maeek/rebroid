@@ -15,12 +15,15 @@ import type {
   DisplayViewerStreamStatus
 } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import type { DockedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 
 type DisplayViewerShellState = ReturnType<typeof useDisplayViewerShellState>
 
 type DisplayViewerContextValue = {
   applicationId: string
   canCaptureScreenshot: boolean
+  canClipboard?: boolean
+  dockedSession?: Pick<DockedViewer, 'name' | 'runtime' | 'session'>
   canControl: boolean
   controlsEnabled: boolean
 } & DisplayViewerShellState
@@ -28,11 +31,14 @@ type DisplayViewerContextValue = {
 export type DisplayViewerProviderValue = {
   applicationId: string
   canCaptureScreenshot: boolean
+  canClipboard?: boolean
+  dockedSession?: Pick<DockedViewer, 'name' | 'runtime' | 'session'>
   canControl: boolean
   controlsEnabled: boolean
   initialKeyboardCaptureEnabled: boolean
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation) => void
   onSurfacesChanged?: () => void
   surfaces: DisplayViewerSurface[]
@@ -56,6 +62,7 @@ export const DisplayViewerProvider = ({
     onSurfacesChanged: value.onSurfacesChanged,
     onKeyboardCaptureChange: value.onKeyboardCaptureChange,
     onStreamMetrics: value.onStreamMetrics,
+    onStreamIssue: value.onStreamIssue,
     onFirstFrame: value.onFirstFrame
   })
 
@@ -64,6 +71,8 @@ export const DisplayViewerProvider = ({
       value={{
         applicationId: value.applicationId,
         canCaptureScreenshot: value.canCaptureScreenshot,
+        canClipboard: value.canClipboard,
+        dockedSession: value.dockedSession,
         canControl: value.canControl,
         controlsEnabled: value.controlsEnabled,
         ...shell
@@ -89,6 +98,8 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     activeSurface,
     applicationId,
     canCaptureScreenshot,
+    canClipboard,
+    dockedSession,
     canControl,
     controlsEnabled,
     fullscreen,
@@ -124,6 +135,8 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
   return {
     applicationId,
     canCaptureScreenshot,
+    canClipboard,
+    dockedSession,
     canControl,
     controlsEnabled,
     fullscreen,
@@ -133,6 +146,7 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     isClosing: viewerActions.closingSurfaceId === surface.id,
     keyboardCaptureEnabled,
     mediaSize,
+    displaySize,
     streamStatus: streamStatuses[surface.id],
     frameGeneration: viewerRetry.frameGenerations[surface.id] ?? 0,
     isRetrying: viewerRetry.retryingSurfaceId === surface.id,

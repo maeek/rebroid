@@ -75,6 +75,7 @@ test(
     assert.equal(completed, false);
     respond(okay, localId);
     await second;
+    const submitted: number[] = [];
     const writeBefore = (byte: number, expiresAt: number, release = false) =>
       new Promise<void>((resolve, reject) =>
         socket.writeControlBefore!(
@@ -82,6 +83,7 @@ test(
           expiresAt,
           !release,
           (error) => (error ? reject(error) : resolve()),
+          () => submitted.push(byte),
         ),
       );
     await assert.rejects(writeBefore(3, Date.now() + 40), {
@@ -89,10 +91,16 @@ test(
       message: /expired/,
     });
     const fourth = writeBefore(4, Date.now() + 1000);
+    assert.deepEqual(
+      submitted,
+      [],
+      "queued or expired writes are not submitted",
+    );
     respond(okay, localId);
     await fourth;
     while (!writes.includes(4)) await once(peer, "fixture-write");
     assert.deepEqual(writes, [1, 2, 4]);
+    assert.deepEqual(submitted, [4]);
 
     const expiresAt = Date.now() + 3000;
     const queued = Array.from({ length: 127 }, () => writeBefore(5, expiresAt));

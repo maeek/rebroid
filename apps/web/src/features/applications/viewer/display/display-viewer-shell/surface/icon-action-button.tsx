@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils'
 
 export const IconActionButton = ({
   label,
+  keyShortcut,
   disabled,
   onClick,
   children,
   className
 }: {
   label: string
+  keyShortcut?: string
   disabled?: boolean
   onClick: () => void
   children: ReactNode
@@ -27,6 +29,7 @@ export const IconActionButton = ({
         disabled={disabled}
         onClick={onClick}
         aria-label={label}
+        aria-keyshortcuts={keyShortcut}
         className={cn('size-6', className)}
       >
         {children}

@@ -17,6 +17,9 @@ import {
 } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 import type { ViewerControlCommandEventDetail } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 
+const presentationMessageType = 'rebroid-viewer-presentation'
+const minimizeShortcutMessageType = 'rebroid-viewer-minimize-shortcut'
+
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
   if (!value || typeof value !== 'object') {
     return false
@@ -63,6 +66,9 @@ const isViewerControlResult = (value: unknown): value is { requestId: string; ok
   )
 }
 
+const isMinimizeShortcut = (value: unknown) =>
+  Boolean(value && typeof value === 'object' && 'type' in value && value.type === minimizeShortcutMessageType)
+
 let nextControlRequest = 0
 
 export const DisplayViewerFrame = ({
@@ -71,7 +77,9 @@ export const DisplayViewerFrame = ({
   onStreamStatus,
   onStreamMetrics,
   surfaceId,
-  isActive = true
+  isActive = true,
+  compact = false,
+  onMinimizeShortcut
 }: {
   src: string
   keyboardCaptureEnabled: boolean
@@ -79,13 +87,24 @@ export const DisplayViewerFrame = ({
   onStreamMetrics?: (metrics: DisplayViewerStreamMetrics) => void
   surfaceId?: string
   isActive?: boolean
+  compact?: boolean
+  onMinimizeShortcut?: () => void
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const enabledRef = useRef(isActive && keyboardCaptureEnabled)
+  const capturesKeyboard = isActive && keyboardCaptureEnabled && !compact
+  const minimizeShortcutEnabled = Boolean(onMinimizeShortcut && !capturesKeyboard && !compact)
+  const enabledRef = useRef(capturesKeyboard)
   const viewerOriginRef = useRef<string | null>(null)
   const pendingControls = useRef(new Map<string, (error?: string) => void>())
 
   const getViewerOrigin = useCallback(() => viewerOriginRef.current ?? window.location.origin, [])
+
+  const postPresentation = useCallback(() => {
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: presentationMessageType, compact, minimizeShortcutEnabled },
+      getViewerOrigin()
+    )
+  }, [compact, getViewerOrigin, minimizeShortcutEnabled])
 
   const postKeyboardCapturePreference = useCallback(
     (enabled: boolean) => {
@@ -118,9 +137,9 @@ export const DisplayViewerFrame = ({
   )
 
   useEffect(() => {
-    enabledRef.current = isActive && keyboardCaptureEnabled
+    enabledRef.current = capturesKeyboard
     return scheduleKeyboardCaptureSync(enabledRef.current)
-  }, [isActive, keyboardCaptureEnabled, scheduleKeyboardCaptureSync])
+  }, [capturesKeyboard, scheduleKeyboardCaptureSync])
 
   useEffect(() => {
     try {
@@ -134,10 +153,16 @@ export const DisplayViewerFrame = ({
     }
   }, [src])
 
+  useEffect(postPresentation, [postPresentation, src])
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent<unknown>) => {
       const viewerOrigin = getViewerOrigin()
       const isFrameSource = event.source === iframeRef.current?.contentWindow
+      if (event.origin === viewerOrigin && isFrameSource && isMinimizeShortcut(event.data)) {
+        if (minimizeShortcutEnabled && !enabledRef.current) onMinimizeShortcut?.()
+        return
+      }
       if (event.origin === viewerOrigin && isFrameSource && isViewerControlResult(event.data)) {
         const failure = event.data.message || 'The viewer did not execute the command.'
         pendingControls.current.get(event.data.requestId)?.(event.data.ok ? undefined : failure)
@@ -152,7 +177,7 @@ export const DisplayViewerFrame = ({
         return
       }
 
-      if (event.origin !== viewerOrigin || event.source !== window.parent || !isActive) return
+      if (event.origin !== viewerOrigin || event.source !== window.parent || !isActive || compact) return
       if (!isKeyboardCaptureMessage(event.data)) {
         if (
           (enabledRef.current && isKeyboardEventMessage(event.data)) ||
@@ -174,8 +199,11 @@ export const DisplayViewerFrame = ({
     }
   }, [
     getViewerOrigin,
+    compact,
     isActive,
     keyboardCaptureEnabled,
+    minimizeShortcutEnabled,
+    onMinimizeShortcut,
     onStreamMetrics,
     onStreamStatus,
     postKeyboardCapturePreference,
@@ -188,7 +216,7 @@ export const DisplayViewerFrame = ({
       const command = customEvent.detail?.command
       const targetSurfaceId = customEvent.detail?.surfaceId
       const targetWindow = iframeRef.current?.contentWindow
-      if (!command || !targetWindow || (targetSurfaceId ? targetSurfaceId !== surfaceId : !isActive)) {
+      if (!command || !targetWindow || compact || (targetSurfaceId ? targetSurfaceId !== surfaceId : !isActive)) {
         return
       }
 
@@ -220,16 +248,16 @@ export const DisplayViewerFrame = ({
     return () => {
       window.removeEventListener(viewerControlCommandEventType, relayControlCommand)
     }
-  }, [getViewerOrigin, isActive, surfaceId])
+  }, [compact, getViewerOrigin, isActive, surfaceId])
 
   useEffect(() => {
-    if (!isActive || !keyboardCaptureEnabled) return
+    if (!capturesKeyboard) return
     return addViewerKeyboardRelay({
       getTargetOrigin: getViewerOrigin,
       getTargetWindow: () => iframeRef.current?.contentWindow,
       isEnabled: () => enabledRef.current
     })
-  }, [getViewerOrigin, isActive, keyboardCaptureEnabled])
+  }, [capturesKeyboard, getViewerOrigin])
 
   return (
     <iframe
@@ -237,9 +265,13 @@ export const DisplayViewerFrame = ({
       title='display viewer'
       src={src}
       className='h-full w-full border-0 bg-black'
+      data-viewer-compact={compact ? '' : undefined}
       allow='fullscreen; clipboard-write; autoplay'
       onContextMenu={event => event.preventDefault()}
-      onLoad={() => postKeyboardCapturePreference(enabledRef.current)}
+      onLoad={() => {
+        postPresentation()
+        postKeyboardCapturePreference(enabledRef.current)
+      }}
     />
   )
 }

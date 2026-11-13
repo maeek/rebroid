@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -186,4 +188,28 @@ func (peer sharedPeerFixture) sendVideo(t *testing.T) {
 		}
 	}
 	receive(t, peer.packets)
+}
+
+func TestBridgeTerminalLogCorrelatesAttemptAndOmitsOffer(t *testing.T) {
+	id := peerID{0x83, 0xbf, 0x15, 0xbb, 0x6f, 0x93, 0x4d, 0xf3, 0xad, 0xd6, 0x98, 0xa1, 0x7b, 0xf1, 0x20, 0x00}
+	commands, client := net.Pipe()
+	defer client.Close()
+	_ = client.SetDeadline(time.Now().Add(5 * time.Second))
+	var output bytes.Buffer
+	original := log.Writer()
+	log.SetOutput(&output)
+	defer log.SetOutput(original)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		runLocalPeer(context.Background(), id, &localPeer{streams: [3]net.Conn{commands}}, loopbackICE())
+	}()
+	if _, err := client.Write([]byte("secret-offer-content\n")); err != nil {
+		t.Fatal(err)
+	}
+	receive(t, done)
+	if got := output.String(); strings.Contains(got, "secret-offer-content") ||
+		!strings.Contains(got, "[webrtc-attempt:83bf15bb-6f93-4df3-add6-98a17bf12000] bridge peer ended reason=bridge_signaling_failed") {
+		t.Fatalf("unexpected terminal diagnostic: %q", got)
+	}
 }

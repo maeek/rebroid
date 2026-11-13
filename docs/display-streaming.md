@@ -22,17 +22,20 @@ The edge sends `/viewer/display` and `/rebroid/display` traffic directly to the 
 WebRTC signaling uses HTTPS. Direct media for every viewer shares the display sidecar’s published UDP port. Next.js authorizes viewer
 access but never relays media.
 
-The sidecar owns in-memory sessions, expiry, and capacity. A WebRTC offer owns its consumer
-attempt through target preparation, bootstrap, signaling, and detach. Release or replacement
-cancels that attempt. Internal session management requires a shared secret. Viewer URLs contain a
+The sidecar owns in-memory sessions, expiry, and capacity. Each browser viewer has its own
+WebRTC attempt within its authorized account session and display session. Retrying replaces only
+that viewer's attempt. Ending a display session closes all of its attempts. The sidecar rejects
+new WebRTC viewers before capture when its peer budget is full. Internal session management
+requires a shared secret. Viewer URLs contain a
 session ID. The sidecar uses the same-origin browser session to verify the signed-in owner, active
 container, and capabilities with web before starting WebSocket media, WebRTC, or viewer controls.
 Active transports recheck access every 10 seconds and close on denial or authorization failure.
 Revocation commands close affected transports as soon as the sidecar receives them. Audio and
 Android-to-browser clipboard delivery follow the session's capabilities. A source supervisor
-owns scrcpy for a session/profile. Browser, peer, decoder, or bridge failures detach only that
-consumer. Sources can remain alive for 30 seconds without consumers; release, expiry, profile
-changes, shutdown, or a genuine source failure close them.
+owns scrcpy for a session/profile. Matching viewers share the capture. A different profile can
+replace it once its viewers disconnect. Browser, peer, decoder, or bridge failures detach only
+that consumer. Sources can remain alive for 30 seconds without consumers. Release, expiry,
+shutdown, or a genuine source failure close them.
 Transport recovery reuses the current session. If the sidecar reports that the session is gone,
 both transports ask the parent viewer to refresh through the authorized web path. An automatic
 refresh is attempted once until a replacement displays video. Both viewer entry points use the
@@ -78,15 +81,19 @@ timestamps and configuration, keyframe, and discontinuity flags.
 - WebRTC negotiates from a configuration and IDR from the same source generation. If the source
   changes generation during signaling, the offer fails with a retryable response. Media attaches
   after the peer connects and checks that generation again before sending the first frame.
-  A later configuration change detaches only the negotiated consumer. The bridge derives RTP
-  timing from source timestamps and continuously drains sender RTCP.
+  A later configuration change detaches only the negotiated consumer. The retiring peer
+  signals the format change on its reliable channel before closing. The viewer keeps the
+  last picture during recovery and also watches for channel closure if the notice is lost.
+  The bridge derives RTP timing from source timestamps and continuously drains sender RTCP.
 - The Go bridge owns shutdown of its peer and media workers. A track-local audio error closes
   that input and leaves video active. A shared timestamp regression ends the peer attempt.
 - Repeated RTCP feedback leaves an outstanding consumer recovery deadline in place. The deadline
   advances with source PTS while waiting for configuration and an IDR.
 - A new capture must deliver configuration and an IDR before the sidecar can send scrcpy reset-video
-  message `17` over its control socket. Later attachment, PLI, and decoder recovery can request a
-  reset, coalesced to at most once per second. An outstanding reset keeps its original three-second
+  message `17` over its control socket. A bootstrap attachment can reuse the current
+  configuration and IDR. A media attachment requests a reset only if the source cannot
+  replay the current GOP within the consumer's queue limits. Attachment, PLI, and decoder
+  recovery requests are coalesced to at most once per second. An outstanding reset keeps its original three-second
   deadline after the control write completes. A configuration followed by an IDR completes recovery.
   Losing the control socket cancels its watchdog.
 - Static screens are healthy. Recovery must compare advancing source frames with delivery and
@@ -106,6 +113,34 @@ seconds. Configuration updates do not extend that recovery deadline. Idle source
 metrics older than 2.5 seconds, and hidden tabs do not trigger this watchdog. A source restart,
 consumer replacement, or visibility change starts a fresh observation window. Existing
 session-expiry handling still routes recovery through the authorized web viewer.
+
+The main display suspends its browser consumer when the document is hidden. WebRTC cancels
+its offer and retries and closes its peer. WebSocket closes its media socket and keeps the
+worker's canvas available for resume. Control connections and media processing suspend with
+the viewer. A visible return starts one new attempt, including after a back/forward-cache
+restore. A route exit closes that browser consumer. The display session can still be reused
+subject to authorization and expiry.
+
+If the last consumer detaches, scrcpy stays warm for the existing 30-second idle grace period.
+Virtual display captures keep their existing visibility behavior because their Android display
+is tied to capture lifetime. Main-display suspension does not extend Android's inactivity timer.
+
+On desktop, **Minimize player** moves the main display into a floating player that stays open
+across signed-in pages. Press **I** in the viewer when keyboard capture is off. Drag the compact
+display or the handle to snap it smoothly to a window edge with a 24 px inset. Motion respects
+the reduced-motion preference. The compact header appears on hover or keyboard focus in a row above
+the display. Click the compact display to expand it, or drag it to change its dock. The player
+keeps the display aspect ratio and follows that edge when the window resizes. Compact mode mutes playback and blocks input.
+Expanded mode offers a vertical viewer toolbar on the inward side of the dock and clipboard
+according to the account's permissions. The expanded top bar sits above the video and contains
+**Collapse mini-player**. Drag from the outer resize corner to resize while preserving aspect
+ratio and viewport bounds. Keyboard users can focus the resize corner and use the arrow keys.
+Viewport changes and Android rotation refit the display and its inward-facing toolbar together,
+preserving aspect ratio and the 24 px edge inset. Long toolbars
+scroll within the display height. A player opened on desktop stays mounted if the window is
+subsequently narrowed; opening a new mini-player still requires the desktop breakpoint.
+Minimizing, expanding, and restoring keep the same iframe and media connection. The player uses
+the main display's foreground suspension and scrcpy grace period.
 
 MediaSource fragments and presentation callbacks carry a recovery epoch so the browser can discard
 work from an abandoned append queue. PCM is delivered to an AudioWorklet with a bounded ring.
@@ -158,6 +193,9 @@ when overriding the image defaults. The adapter name `scrcpy-server-v4-rbd1` ide
 compatible wire format, not the bundled release; `scrcpyVersion` reports the release.
 Android 13–16 are admitted. Android 16 video/control has been reported working; Android 15
 and Android 16 audio still need the manual matrix below. Android 17 remains gated.
+Each scrcpy source checks Android compatibility once at admission. WebRTC offers
+reuse that result before waiting for codec configuration, and startup failures can
+still collect fresh diagnostics.
 
 ### Audio failures
 
@@ -214,18 +252,31 @@ WebRTC reports presentation gaps separately from freezes. It records a freeze af
 samples show advancing input and no new presented frames. When a browser has no presentation
 counter, decoded-frame progress can still distinguish an upstream stall from an idle source.
 The encoder bitrate target is an upper quality target, so lower wire bitrate on static content
-is expected.
+is expected. In the live viewer, bitrate edits apply after a short pause so a series of slider
+or number input changes only reconfigures the stream once.
+
+**Streaming settings** retains the latest observed stream issue for the current app viewer. It
+shows the transport, stage, observed time, WebSocket close code when available, and the WebRTC
+attempt ID after a successful signaling response. Match the attempt ID with the sidecar logs
+when the browser observes a channel closure without a more specific reason.
 
 For repeated WebRTC recovery, the streaming diagnostics expose cumulative received,
 decoded and presented frame counts and browser receiver loss/NACK/PLI counters
 separately from bridge counters. They reuse the existing once-per-second sampler.
-The consumer attempt ID matches the WebRTC bridge log prefix; source attempt ID,
+Use the consumer attempt ID to find the sidecar's attempt termination and the Go bridge's
+peer termination. Each records the first reason observed at that layer. The source attempt ID,
 codec generation, reset generation and reset completion elapsed time correlate
 browser observations with source recovery. Reset generations count requests, not
 codec changes. New source attempts clear prior reset evidence, and stale completion
 messages cannot complete the current reset in the diagnostic view.
 
 Capture these fields alongside a motion/idle/rotation reproduction on each transport.
+A **First frame at new size** observation records the previous and presented dimensions.
+The WebSocket interval starts when the worker receives the changed H.264 configuration.
+WebCodecs measures through the canvas draw. WebRTC and MediaSource measure through a video frame callback.
+The WebRTC interval starts when the browser sees the format-change notice or begins
+recovery if the notice is unavailable. Measure rotation command to browser presentation
+separately when comparing the complete interaction on a host.
 A successful bridge write does not establish browser presentation. Repeated PLI
 alone does not distinguish loss from decoder failure, and a closed reliable control
 channel does not establish why the browser disconnected. Diagnostic additions do
@@ -254,6 +305,13 @@ Android control dispatch. The bridge ignores an idle PLI only when that peer has
 acknowledged its exact latest written frame, no frame has been written for two seconds,
 and the acknowledgement is at most three seconds old. Bridge metrics count these as
 `idlePlisIgnored`, while `plis` still counts all received requests.
+
+Streaming diagnostics show whether the browser sent the latest frame acknowledgement
+or why it could not send one. The sidecar debug event `webrtc_picture_loss` records
+the bridge decision, frame and acknowledgement ages, acknowledgement counts, and receiver loss counters, at
+most once per second per peer. Compare the event's consumer attempt ID with the
+streaming diagnostics. A browser status of `Sent` confirms data channel submission.
+The bridge event reports whether that evidence matched its latest frame.
 
 New frames, configuration, discontinuities and accepted resets invalidate the evidence.
 Duplicate acknowledgements cannot extend its lifetime. FIR, unacknowledged/lost frames,
@@ -295,6 +353,9 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 On each transport, rotate the physical display from portrait to landscape and back. Record the
 time from the rotation command to the first browser frame at the new dimensions, and verify touch
 mapping after each change. For WebRTC, record any new offer and the bridge's media close reason.
+Compare the time from the old peer closing to the replacement offer with the time from the
+offer to the first new-size browser frame. Confirm the scrcpy source attempt stays the same
+and count any encoder resets requested while the replacement peer attaches.
 
 ### Performance validation
 

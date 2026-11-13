@@ -6,7 +6,7 @@ import type { RuntimeActionPhase } from '@/features/applications/viewer/actions/
 
 type PrimaryLabelKey = Exclude<RuntimeActionPhase, null> | 'running' | 'idle'
 
-const runtimeActionLabels: Record<PrimaryLabelKey, string> = {
+export const runtimeActionLabels: Record<PrimaryLabelKey, string> = {
   starting: 'Starting...',
   stopping: 'Stopping...',
   restarting: 'Restarting...',

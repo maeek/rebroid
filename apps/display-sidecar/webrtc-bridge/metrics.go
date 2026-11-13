@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -111,12 +112,20 @@ func handleRTCPPacket(packet rtcp.Packet, ssrc uint32, metrics *bridgeMetrics, f
 		}
 		metrics.plis.Add(1)
 		if recovery != nil {
-			requested, idle := recovery.requestPLI(time.Now())
-			if idle {
+			decision := recovery.requestPLI(time.Now())
+			if decision.idle() {
 				metrics.idlePlisIgnored.Add(1)
 			}
-			if requested {
+			if decision.requested {
 				emit(stdoutMessage{Type: "video-resync-request", Message: "pli"})
+			}
+			if decision.trace {
+				emit(stdoutMessage{
+					Type: "log", replaceKey: "picture-loss-decision",
+					Message: fmt.Sprintf("event=webrtc_picture_loss evidence=%s resetRequested=%t frameAgeMs=%d ackAgeMs=%d ackReceived=%d ackMatched=%d plis=%d nacks=%d packetsLost=%d",
+						decision.evidence, decision.requested, decision.frameAge.Milliseconds(), decision.ackAge.Milliseconds(),
+						decision.ackReceived, decision.ackMatched, metrics.plis.Load(), metrics.nacks.Load(), feedback.packetsLost.Load()),
+				})
 			}
 		}
 	case *rtcp.FullIntraRequest:

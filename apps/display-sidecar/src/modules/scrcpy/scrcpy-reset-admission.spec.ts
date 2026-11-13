@@ -8,19 +8,37 @@ import type { ScrcpyMediaSink } from "./scrcpy.types";
 function capture() {
   const video = new PassThrough();
   const controlBytes: number[] = [];
+  let finishResetWrite: ((error?: Error | null) => void) | undefined;
+  let holdResetWrite = false;
   const control = Object.assign(
     new Duplex({
       read() {},
       write(chunk: Buffer, _encoding, done) {
         controlBytes.push(...chunk);
-        done();
+        if (holdResetWrite && chunk.equals(Buffer.from([17]))) {
+          finishResetWrite = done;
+        } else {
+          done();
+        }
       },
     }),
     {
       setNoDelay: () => undefined,
     },
   );
-  return { video, control, controlBytes, reading: once(video, "resume") };
+  return {
+    video,
+    control,
+    controlBytes,
+    reading: once(video, "resume"),
+    holdResetWrite() {
+      holdResetWrite = true;
+    },
+    confirmResetWrite() {
+      assert.ok(finishResetWrite);
+      finishResetWrite();
+    },
+  };
 }
 
 function videoPacket(flags: bigint, payload: string) {
@@ -67,10 +85,12 @@ test(
     t.after(() => service.closeSession("display"));
 
     const statuses: Record<string, unknown>[] = [];
-    const sink: ScrcpyMediaSink = {
+    const makeSink = (
+      sendStatus: ScrcpyMediaSink["sendStatus"] = () => undefined,
+    ): ScrcpyMediaSink => ({
       isOpen: () => true,
       onClose: () => undefined,
-      sendStatus: (status) => statuses.push(status as Record<string, unknown>),
+      sendStatus,
       writeVideo: (_packet, done) => done?.(),
       writeAudio: (_packet, done) => done?.(),
       snapshot: () => ({
@@ -91,17 +111,24 @@ test(
         },
       }),
       close: () => undefined,
-    };
-    const attachment = service.attachStream({
+    });
+    const options = {
       sessionId: "display",
       udid: "fixture",
-      sink,
-      codec: "h264",
+      codec: "h264" as const,
       audio: false,
       maxSize: 0,
       maxFps: 60,
       bitrate: 14_000_000,
+    };
+    const attachment = service.attachStream({
+      ...options,
+      sink: makeSink((status) =>
+        statuses.push(status as Record<string, unknown>),
+      ),
     });
+    const attachBootstrap = () =>
+      service.attachStream({ ...options, sink: makeSink() }, "bootstrap");
 
     await first.reading;
     assert.deepEqual(
@@ -121,17 +148,52 @@ test(
       [],
       "the initial IDR satisfies cold attachment",
     );
-    assert.equal(attachment.requestVideoReset("webrtc:pli"), true);
+    const warm = attachBootstrap();
+    const bootstrap = await warm.awaitVideoBootstrap();
+    const warmMedia = bootstrap.attachMedia(makeSink());
+    assert.ok(warmMedia);
+    assert.deepEqual(
+      first.controlBytes,
+      [],
+      "one cached GOP satisfies both warm attaches",
+    );
+
+    // After the cache is invalidated by a format change, two overlapping
+    // bootstrap attachments share one reset. Android sends the new video
+    // before the transport confirms that the reset command was written.
+    const rotated = videoPacket(1n << 62n, "000000016742e0200000000168ce06e2");
+    first.video.write(rotated);
+    await warmMedia.closed;
+    first.holdResetWrite();
+    const waiting = attachBootstrap();
+    const concurrent = attachBootstrap();
     assert.deepEqual(first.controlBytes, [17]);
+    first.video.write(rotated);
+    first.video.write(idr);
+    assert.equal(
+      statuses.some((status) => status.type === "video-reset-complete"),
+      false,
+    );
+    first.confirmResetWrite();
     await new Promise<void>((resolve) => setImmediate(resolve));
     const requested = statuses.find((status) => status.type === "video-reset");
     assert.ok(requested);
     assert.equal(requested.sourceAttemptId, attachment.sourceAttemptId);
     assert.equal(requested.generation, 1);
     assert.equal(typeof requested.codecGeneration, "number");
-    first.video.write(config);
-    first.video.write(idr);
-    first.video.write(idr);
+    const next = await waiting.awaitVideoBootstrap();
+    assert.equal(next.profileLevelId, "42e020");
+    assert.equal(
+      (await concurrent.awaitVideoBootstrap()).profileLevelId,
+      "42e020",
+    );
+    assert.ok(next.attachMedia(makeSink()));
+    assert.equal(service["sources"].get("display")?.resetPending, false);
+    assert.deepEqual(
+      first.controlBytes,
+      [17],
+      "rotated media reuses the new GOP",
+    );
     const completed = statuses.filter(
       (status) => status.type === "video-reset-complete",
     );
@@ -141,6 +203,10 @@ test(
     assert.equal(completed[0].codecGeneration, requested.codecGeneration);
     assert.equal(typeof completed[0].elapsedMs, "number");
     assert.ok(Number(completed[0].elapsedMs) >= 0);
+    assert.equal(
+      service["sources"].get("display")?.resetWatchdog.pending,
+      false,
+    );
 
     current = replacement;
     first.video.destroy();

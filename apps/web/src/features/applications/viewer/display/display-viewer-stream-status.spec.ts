@@ -107,6 +107,8 @@ describe('display viewer stream metrics messages', () => {
       receiverPacketsLost: 3,
       receiverNackCount: 4,
       receiverPliCount: 2,
+      frameAcknowledgement: 'sent',
+      frameAcknowledgementsSent: 1,
       effectiveProfile: {
         transport: 'webrtc',
         codec: 'h264',
@@ -129,11 +131,31 @@ describe('display viewer stream metrics messages', () => {
       'presentedFrames',
       'receiverPacketsLost',
       'receiverNackCount',
-      'receiverPliCount'
+      'receiverPliCount',
+      'frameAcknowledgementsSent'
     ]) {
       expect(isDisplayViewerStreamMetrics({ ...message, [field]: Infinity })).toBe(false)
     }
     expect(isDisplayViewerStreamMetrics({ ...message, consumerAttemptId: 4 })).toBe(false)
+    expect(isDisplayViewerStreamMetrics({ ...message, frameAcknowledgement: 'unknown' })).toBe(false)
+    expect(isDisplayViewerStreamMetrics({ ...message, frameAcknowledgement: 'toString' })).toBe(false)
+    const displaySizePresentation = {
+      previous: { width: 1080, height: 2340 },
+      current: { width: 2340, height: 1080 },
+      elapsedMs: 45
+    }
+    expect(isDisplayViewerStreamMetrics({ ...message, displaySizePresentation })).toBe(true)
+    for (const elapsedMs of [-1, Infinity, '45']) {
+      expect(
+        isDisplayViewerStreamMetrics({ ...message, displaySizePresentation: { ...displaySizePresentation, elapsedMs } })
+      ).toBe(false)
+    }
+    expect(
+      isDisplayViewerStreamMetrics({
+        ...message,
+        displaySizePresentation: { ...displaySizePresentation, current: { width: 0, height: 1 } }
+      })
+    ).toBe(false)
   })
 
   it('rejects the removed ambiguous fps metric', () => {
