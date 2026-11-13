@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserAction } from '@/server/users/actions/update-user-action'
@@ -36,6 +37,7 @@ export const UserEditPage = ({
   const router = useRouter()
   const [draft, setDraft] = useState(() => toUserDraft(user))
   const [isSaving, setIsSaving] = useState(false)
+  const saveFeedback = useSaveFeedback(JSON.stringify(draft))
   const [avatarPending, setAvatarPending] = useState(false)
   const busy = isSaving || avatarPending
   const effectiveAccess = useMemo(() => resolveEffectiveAccess(groups, draft.groupIds), [draft.groupIds, groups])
@@ -46,9 +48,11 @@ export const UserEditPage = ({
 
   const saveUser = async () => {
     if (busy) return
+    saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     try {
       unwrapActionResult(await updateUserAction(user.id, buildUserUpdateInput(draft)))
+      saveFeedback.confirmSaved(JSON.stringify(draft))
       toast({ title: 'User saved', variant: 'success' })
       router.refresh()
     } catch (error) {
@@ -89,6 +93,7 @@ export const UserEditPage = ({
             <MutationButton
               pending={isSaving}
               pendingLabel='Saving…'
+              success={saveFeedback.saved}
               disabled={avatarPending}
               onClick={() => void saveUser()}
             >

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunLiveEvents } from './automation-run-live-events'
@@ -41,6 +41,31 @@ const failedEvent: AutomationRunEvent = {
 }
 
 describe('AutomationRunLiveEvents', () => {
+  it('keeps cancellation pending after acknowledgement until the run is terminal', async () => {
+    vi.mocked(getBff).mockImplementation(() => new Promise(() => undefined))
+    vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'running' })
+    const { rerender } = render(<AutomationRunLiveEvents run={run} />)
+    const stop = screen.getByRole('button', { name: 'Stop automation run' })
+    fireEvent.click(stop)
+    await waitFor(() => expect(sendBff).toHaveBeenCalledOnce())
+    await waitFor(() => expect(screen.getByText('Stopping')).toBeVisible())
+    expect(stop).toBeDisabled()
+    rerender(<AutomationRunLiveEvents run={{ ...run, status: 'canceled' }} />)
+    expect(await screen.findByText('Canceled')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
+  })
+
+  it('allows retry after a failed cancellation without showing completion', async () => {
+    vi.mocked(getBff).mockImplementation(() => new Promise(() => undefined))
+    vi.mocked(sendBff).mockRejectedValue(new Error('Unavailable'))
+    render(<AutomationRunLiveEvents run={run} />)
+    const stop = screen.getByRole('button', { name: 'Stop automation run' })
+    fireEvent.click(stop)
+    expect(await screen.findByText('The run could not be stopped.')).toBeVisible()
+    expect(stop).toBeEnabled()
+    expect(screen.queryByText('Canceled')).toBeNull()
+  })
+
   it('shows the OCR request and response for the selected step occurrence', async () => {
     const exchange: AutomationRunEvent = {
       ...failedEvent,

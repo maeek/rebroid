@@ -67,6 +67,7 @@ export const ActivityRetentionDialog = () => {
             <MutationButton
               type='submit'
               pending={controller.isSavingRetention}
+              animate
               pendingLabel='Saving…'
             >
               Save retention

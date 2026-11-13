@@ -123,6 +123,7 @@ export const PasswordPolicyDialog = ({
           <MutationButton
             type='button'
             pending={isSaving}
+            animate
             pendingLabel='Saving…'
             disabled={!canSave}
             onClick={() => void savePasswordPolicy()}

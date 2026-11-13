@@ -9,7 +9,7 @@ they do not define their own visual recipes.
 Palette variables are private to `apps/web/src/app/globals.css`. Feature code uses semantic utilities.
 
 | Intent          | Tokens                                                                            |
-| --------------- | --------------------------------------------------------------------------------- |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
 | Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-menu`, `surface-border`, `surface-navigation`. |
 | Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
@@ -145,6 +145,29 @@ keep usable existing data and show an inline notice; replace content only when n
 Loading remains a neutral skeleton, never a fabricated empty, failure, or successful state.
 
 ## Controls and forms
+
+Significant actions use shared, opt-in micro-interactions rather than route or page transitions.
+`MutationButton` accepts `success` for confirmed save feedback and `animate` for pending-only
+actions. `useSaveFeedback` is confirmed by the successful write with the resulting draft baseline;
+it clears on edits, a new attempt, or after 1.2 seconds. Never infer success from pending ending.
+`ActionStateContent` sizes buttons to the visible label, preserving standard icon padding and
+size-specific spacing. Inactive labels do not reserve width; they are inert and hidden from
+assistive technology. Dialog saves and navigation complete immediately.
+
+App power controls follow lifecycle state. Workflow status uses the run identity, and cancellation
+remains pending until a terminal result is observed. `StateTransition` animates changes within
+one resource, never its initial snapshot or replacement identity. Use it for compact operation
+status and confirmed build results, not metrics, streamed text, table refreshes, or grid selection.
+`OperationProgress` smooths measured values and leaves unknown progress indeterminate. A complete
+byte transfer is still processing until the operation reports success; reserve the progress track
+space when displaying completion. Use 160 ms state transitions and 200 ms progress updates,
+without bounce, page motion, or additional motion libraries. Reduced motion disables these
+transitions and spinner rotation while keeping pending labels and outcome icons visible.
+
+Resource navigation and resource-style tabs glide their 24 px underline over 180 ms, with a
+160 ms color change. Keep tab dimensions and content rendering immediate. The first selection,
+layout changes, and reduced-motion selection are static. `ResourceNavigationMotionScope` can
+retain the selected item when sections of the same resource remount; key it by resource identity.
 
 Use shared controls, including their focus and keyboard behavior:
 
@@ -404,6 +427,8 @@ Container pages put a concise identity/configuration overview first, followed by
 `JsonViewer` and runtime argument previews share `CodeViewer` typography, scrolling, and wrap/copy controls. Embed argument previews directly in their existing section. Format shell arguments one per line with safe quoting and continuation backslashes between lines; copying preserves that exact text.
 
 Container logs have a dedicated `?view=logs` destination beside Overview. Fetch logs only for that destination; the default overview does not render an empty log console or request log data.
+On desktop, the log console fills the available viewport height below the container header and tabs.
+Long output scrolls within the console, and the page can scroll on short windows to keep the output readable.
 
 App pages use a resource overview with local Overview, Configuration, Network, Activity, Diagnostics,
 AI agent, and Workflows links. Keep headers in document flow. Use semantic Notice feedback for lifecycle
@@ -485,7 +510,7 @@ The Services inventory uses Service, Status, Connection, and Actions columns. Sh
 
 Administration → General groups runtime defaults under Image defaults, App behavior, and Hardware Acceleration. The default image picker accepts local images and manually entered references. The runtime pulls a saved image when it is needed and unavailable locally. Show the GPU render device field when Host GPU is selected. All three sections share the page's Save and Discard changes actions. Send changed fields and retain unsaved edits through revalidation. Deployment-managed connection details live in Services. Maintenance stays visible as a compact action list on one shared section surface. Cleanup and restoring defaults are immediate operations with a scoped confirmation, pending state, and success/error feedback. Restore applies to the default image, registry, inactivity timeout, APK upload limit, and optional service connections. Save and Restore use the values returned by the write as the saved baseline. Link to Maintenance tasks for recurring cleanup. Ready, checking, and route-loading states reuse the same layout and field groups.
 
-Services and OCR perception are under System. Feature management is a direct destination under Administration. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Feature management. Feature gates still protect service editors. Feature management uses readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
+Services is under System. OCR perception and Feature management are direct destinations under Administration. The Services inventory hides optional services whose features are off or unsupported. Enabled services remain visible during outages, and administrators can manage feature availability on Feature management. Feature gates still protect service editors. Feature management uses readable capability names, one requested-state switch, effective availability, and contextual links back to configuration or tools. Toggles persist immediately with revision checks. Service editors retain drafts until Save or Discard changes. Saves send only the fields owned by each workflow, such as connections, runtime defaults, or the selected default image. Keep deployment-managed and unsupported toggles read-only and visibly disabled. Connection status must not imply live health when only an endpoint is configured. Preserve the same navigation, actions, and metadata geometry during loading.
 
 Services lists Orchestrator, Docker, Display, Firewall, and OCR from the same health snapshot used
 by the shell indicator. A configured endpoint never substitutes for measured health. Docker combines
@@ -496,12 +521,15 @@ Casting is a direct Administration destination at `/platform/casting`. The Displ
 sidebar link open Casting. The session grid sits below Connection when available.
 Casting, Orchestrator, Docker, Firewall, and OCR show a Healthy badge beside the title when the service is healthy.
 Other health states use `ServiceHealthNotice` above the main content. Service loaders show a neutral badge placeholder.
-OCR perception and Firewall share an editable Connection section. OCR also
-has a Settings section for recognition. Firewall is a direct Administration destination at
+OCR perception opens at `/platform/ocr`, directly below Firewall in Administration. Bookmarks to
+`/platform/services?service=ocr` redirect there. OCR perception and Firewall share an editable
+Connection section. OCR also has a Settings section for recognition. Firewall is a direct Administration destination at
 `/security/firewall`, with the Network policies grid below Connection. The Firewall agent service row
 and sidebar link open this page. Connection saves and policy sync actions each submit their own changes.
-Connection panels and the Services inventory offer **Open Docker container** and **View logs** when the
-connection resolves to a container in the deployment. **View logs** opens the container's **Logs** tab,
+When the connection resolves to a deployment container, Casting, Orchestrator, Firewall, and OCR
+show the container name as a link to its overview. Place **View logs**
+with the other text links below the connection details. Use a muted middle dot between adjacent links
+and let the links wrap on narrow screens. **View logs** opens the container's **Logs** tab,
 which reads a bounded log tail on demand. Long port values truncate to one line and expose the full value in a tooltip.
 Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain

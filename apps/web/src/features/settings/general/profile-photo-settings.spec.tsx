@@ -49,7 +49,7 @@ describe('profile photo saving', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save photo' }))
     await waitFor(() => expect(mocks.saved).toHaveBeenCalledOnce())
     expect(mocks.save).toHaveBeenCalledExactlyOnceWith({ avatarDataUrl: replacement })
-    expect(screen.getByRole('button', { name: 'Save photo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled()
   })
 
   it('discards a replacement on leaving preferences and stages removal until Save', async () => {

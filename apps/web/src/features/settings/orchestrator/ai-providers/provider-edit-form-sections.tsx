@@ -1,7 +1,7 @@
 import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
-import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ServiceConnectionLinks } from '@/shared/ui/platform/service-connection-links'
 import { ProviderBillingIssueNotice } from './provider-billing-issue'
 import { ProviderConnectionFields } from './provider-connection-fields'
 import type { ProviderFormState } from './provider-form-model'
@@ -24,14 +24,6 @@ export const ProviderConnectionSection = ({
     surface='plain'
     title='Connection'
     description='Connect to a hosted API or a local model server.'
-    actions={
-      containerId ? (
-        <DockerContainerLinks
-          containerId={containerId}
-          className='max-sm:flex-col max-sm:items-end'
-        />
-      ) : undefined
-    }
   >
     {billingIssue ? <ProviderBillingIssueNotice issue={billingIssue} /> : null}
     <fieldset
@@ -56,5 +48,6 @@ export const ProviderConnectionSection = ({
         onChange={onChange}
       />
     </fieldset>
+    <ServiceConnectionLinks containerId={containerId} />
   </Section>
 )

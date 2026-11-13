@@ -7,6 +7,7 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { PlatformRuntimeFieldsSection } from '@/features/settings/orchestrator/platform-runtime-fields-section'
 import { PlatformRuntimeMaintenanceSection } from '@/features/settings/orchestrator/platform-runtime-maintenance-section'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { androidRenderingSettingsSchema } from '@/shared/contracts/android-rendering-settings'
@@ -52,6 +53,7 @@ export const PlatformRuntimeForm = ({
   const [refreshing, startRefresh] = useTransition()
   const [form, setForm] = useState({ settings: initialSettings, savedSettings: initialSettings })
   const { settings, savedSettings } = form
+  const saveFeedback = useSaveFeedback(JSON.stringify(settings))
   const [operation, setOperation] = useState<'save' | 'restore' | null>(null)
   const [renderingSaveOpen, setRenderingSaveOpen] = useState(false)
   const [restoreOpen, setRestoreOpen] = useState(false)
@@ -73,10 +75,12 @@ export const PlatformRuntimeForm = ({
 
   const saveSettings = async () => {
     if (isBusy || !hasChanges || !renderingValid) return
+    saveFeedback.resetSaveFeedback()
     setOperation('save')
     try {
       const saved = await saveOrchestratorUiSettings(patch)
       setForm({ settings: saved, savedSettings: saved })
+      saveFeedback.confirmSaved(JSON.stringify(saved))
       setRenderingSaveOpen(false)
       toast({ title: 'Settings saved', variant: 'success' })
     } catch (error) {
@@ -112,6 +116,7 @@ export const PlatformRuntimeForm = ({
   return (
     <PlatformRuntimePageLayout
       isSaving={operation === 'save'}
+      saved={saveFeedback.saved}
       disabled={isBusy}
       hasChanges={hasChanges}
       saveDisabled={!renderingValid}

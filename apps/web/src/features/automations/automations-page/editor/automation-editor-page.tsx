@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
@@ -22,6 +23,7 @@ import { AiDraftDialog } from './automation-editor-dialogs'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
 import {
   automationToForm,
+  buildYaml,
   defaultForm,
   preferredWorkflowAction,
   definitionToForm,
@@ -79,6 +81,7 @@ export function AutomationEditorPage({
     yamlPending,
     yamlValid
   } = useAutomationEditorYaml({ automation, form, setForm })
+  const saveFeedback = useSaveFeedback(yamlOpen ? yamlDraft : currentYaml)
   const { commitEditorChange, currentSnapshot, hasUnsavedHistory, resetEditorHistory } = useAutomationEditorHistory({
     form,
     yamlOpen,
@@ -186,6 +189,7 @@ export function AutomationEditorPage({
     const wasNew = !automation
     const saved = automation ? await updateAutomationAction(automation.id, input) : await createAutomationAction(input)
     const nextForm = automationToForm(saved)
+    saveFeedback.confirmSaved(yamlOpen ? saved.yaml : buildYaml(nextForm))
     setAutomation(saved)
     setForm(nextForm)
     resetSelectionForSteps(nextForm.steps)
@@ -204,6 +208,7 @@ export function AutomationEditorPage({
   const save = async () => {
     if (yamlOpen && !yamlValid) return
     setBusy(true)
+    saveFeedback.resetSaveFeedback()
     setSaving(true)
     try {
       await persistAutomation(yamlOpen ? { yaml: yamlDraft } : formToSaveInput(form))
@@ -249,6 +254,7 @@ export function AutomationEditorPage({
           <AutomationEditorActions
             busy={busy}
             saving={saving}
+            saved={saveFeedback.saved}
             canDraftFromPrompt={canDraftFromPrompt}
             canDelete={Boolean(automation)}
             yamlOpen={yamlOpen}

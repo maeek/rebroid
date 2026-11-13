@@ -70,6 +70,8 @@ import { ConsoleShellPreview } from '@/features/shell/components/console-shell-p
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
+import { ActionFeedbackPreview } from '@/shared/testing/action-feedback-preview'
+import { ResourceNavigationPreview } from '@/shared/testing/resource-navigation-preview'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
 import { FeedbackPreview } from '@/shared/testing/feedback-preview'
@@ -94,6 +96,8 @@ export default async function SkeletonContractPage({
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
   const { editor, workflows } = await searchParams
+  if (editor === 'action-feedback') return <ActionFeedbackPreview />
+  if (editor === 'resource-navigation') return <ResourceNavigationPreview />
   if (editor === 'services-unavailable') return <ServicesPreview unavailable />
   if (editor === 'resources-unavailable')
     return (
@@ -272,6 +276,11 @@ export default async function SkeletonContractPage({
         <FirewallPageClient
           initialApplications={[applicationPreview]}
           initialSettings={defaultOrchestratorUiSettings.services.firewall}
+          container={
+            editor === 'service-firewall'
+              ? { id: 'preview-firewall-container', name: 'rebroid-firewall-agent' }
+              : undefined
+          }
           initialHealth={
             editor === 'service-firewall'
               ? servicesPreviewHealth.services.firewall

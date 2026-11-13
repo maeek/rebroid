@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateUserGroupAction } from '@/server/users/actions/update-user-group-action'
@@ -25,6 +26,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toGroupDraft(group))
   const [isSaving, setIsSaving] = useState(false)
+  const saveFeedback = useSaveFeedback(JSON.stringify(draft))
   const resourceLimits = useResourceLimitBounds(true)
 
   const updateDraft = (patch: Partial<GroupDraft>) => {
@@ -32,9 +34,11 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   }
 
   const saveGroup = async () => {
+    saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     try {
       unwrapActionResult(await updateUserGroupAction(group.id, buildGroupUpdateInput(draft)))
+      saveFeedback.confirmSaved(JSON.stringify(draft))
       toast({ title: 'Group saved', variant: 'success' })
       router.refresh()
     } catch (error) {
@@ -60,6 +64,7 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
           <MutationButton
             pending={isSaving}
             pendingLabel='Saving…'
+            success={saveFeedback.saved}
             onClick={() => void saveGroup()}
           >
             <IconDeviceFloppy className='size-4' />

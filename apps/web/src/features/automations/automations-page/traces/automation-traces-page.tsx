@@ -41,7 +41,10 @@ export function AutomationTracesPage({
             selectedRun ? (
               <span className='flex flex-wrap items-center gap-3'>
                 {runLabel}
-                <AutomationRunStatusBadge status={selectedRun.status} />
+                <AutomationRunStatusBadge
+                  runId={selectedRun.id}
+                  status={selectedRun.status}
+                />
               </span>
             ) : (
               runLabel

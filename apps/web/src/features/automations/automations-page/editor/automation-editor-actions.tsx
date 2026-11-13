@@ -13,6 +13,7 @@ import { MutationButton } from '@/components/ui/mutation-button'
 export const AutomationEditorActions = ({
   busy,
   saving = false,
+  saved = false,
   canDraftFromPrompt,
   canDelete,
   yamlOpen,
@@ -25,6 +26,7 @@ export const AutomationEditorActions = ({
 }: {
   busy: boolean
   saving?: boolean
+  saved?: boolean
   canDraftFromPrompt: boolean
   canDelete: boolean
   yamlOpen: boolean
@@ -51,6 +53,7 @@ export const AutomationEditorActions = ({
     <MutationButton
       pending={saving}
       pendingLabel='Saving…'
+      success={saved}
       disabled={busy || (yamlOpen && !yamlValid)}
       onClick={onSave}
     >

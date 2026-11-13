@@ -1,5 +1,39 @@
 import { expect, test } from '@playwright/test'
 
+test('notification padding lets clicks reach the viewer while toasts remain dismissible', async ({ page }) => {
+  await page.goto('/skeleton-contract-test')
+
+  const notifications = page.getByRole('region', { name: 'Notifications' }).last()
+  await notifications.evaluate(viewport => {
+    const bounds = viewport.getBoundingClientRect()
+    const frame = document.createElement('iframe')
+    frame.title = 'Test viewer'
+    frame.srcdoc = '<input type="checkbox" aria-label="Viewer control" style="position:absolute;inset:0;margin:0">'
+    Object.assign(frame.style, {
+      position: 'fixed',
+      left: `${bounds.left + bounds.width / 2}px`,
+      top: `${bounds.bottom - 16}px`,
+      width: '64px',
+      height: '16px',
+      zIndex: '90'
+    })
+    viewport.before(frame)
+  })
+
+  const viewerControl = page.frameLocator('iframe[title="Test viewer"]').getByRole('checkbox')
+  await viewerControl.click({ timeout: 2000 })
+  await expect(viewerControl).toBeChecked()
+
+  await page.getByRole('button', { name: 'Show success toast' }).click()
+  const toast = notifications.getByTestId('toast-success')
+  await expect(toast).toBeVisible()
+  await viewerControl.click()
+  await expect(viewerControl).not.toBeChecked()
+  await toast.hover()
+  await toast.getByRole('button', { name: 'Close' }).click()
+  await expect(toast).toBeHidden()
+})
+
 test('section and grid feedback stays compact, readable, and actionable at every viewport', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })

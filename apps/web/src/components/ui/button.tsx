@@ -21,9 +21,9 @@ const buttonVariants = cva(
         bare: 'border-transparent bg-transparent p-0 text-current shadow-none hover:text-primary'
       },
       size: {
-        md: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 rounded-control gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-control px-6 has-[>svg]:px-4',
+        md: 'h-9 px-4 py-2 has-[>svg]:px-3 has-[[data-slot=action-state-content]>[data-active=true]>svg]:px-3',
+        sm: 'h-8 rounded-control gap-1.5 px-3 has-[>svg]:px-2.5 has-[[data-slot=action-state-content]>[data-active=true]>svg]:px-2.5',
+        lg: 'h-10 rounded-control px-6 has-[>svg]:px-4 has-[[data-slot=action-state-content]>[data-active=true]>svg]:px-4',
         'icon-sm': 'size-8 p-0',
         'icon-md': 'size-9 p-0'
       }

@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { parseOutboundDestinations } from '@/features/applications/components/outbound-destinations'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getBff } from '@/lib/http/bff'
 import {
@@ -50,6 +51,7 @@ export const AppManageNetworkPolicySettings = ({
   const restricted = accessDraft ?? app.networkPolicyEnabled
   const savedDestinations = app.networkPolicyAllowCidrs.join('\n')
   const destinations = destinationDraft ?? savedDestinations
+  const saveFeedback = useSaveFeedback(`${restricted}:${destinations}`)
   const destinationsChanged = restricted && destinations !== savedDestinations
   const dirty = restricted !== app.networkPolicyEnabled || destinationsChanged
   const enforcement = enforcementForApp(app)
@@ -63,6 +65,7 @@ export const AppManageNetworkPolicySettings = ({
 
   const submit = async (input?: UpdateNetworkPolicyInput) => {
     if (submitting.current) return
+    saveFeedback.resetSaveFeedback()
     submitting.current = true
     setPending(input ? 'save' : 'retry')
     setFailure(undefined)
@@ -75,6 +78,7 @@ export const AppManageNetworkPolicySettings = ({
       if (state.tone === 'danger' || state.tone === 'warning') {
         setFailure({ message: state.description, requestId: result.requestId, saved: Boolean(input) })
       } else {
+        if (input) saveFeedback.confirmSaved(`${next.networkPolicyEnabled}:${next.networkPolicyAllowCidrs.join('\n')}`)
         toast({
           title: input ? 'Network access saved' : 'Firewall rules refreshed',
           description: state.description,
@@ -187,7 +191,9 @@ export const AppManageNetworkPolicySettings = ({
             <MutationButton
               type='submit'
               pending={pending === 'save'}
+              animate
               pendingLabel='Saving…'
+              success={saveFeedback.saved}
               disabled={!dirty || Boolean(pending)}
             >
               Save network access

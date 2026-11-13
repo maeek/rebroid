@@ -53,9 +53,11 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
   const [tab, setTab] = useState('summary')
   const [ocrStep, setOcrStep] = useState<{ stepId: string; path?: string | null }>()
   const [stopError, setStopError] = useState(false)
-  const [stopping, startStopping] = useTransition()
+  const [stopPending, startStopping] = useTransition()
+  const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
   const router = useRouter()
   const active = run.status === 'queued' || run.status === 'running'
+  const stopping = active && (stopPending || cancelRequestedRunId === run.id)
   useEffect(() => {
     if (!active) return
     const interval = window.setInterval(() => router.refresh(), 5000)
@@ -66,6 +68,7 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
     startStopping(async () => {
       try {
         await sendBff(`/api/bff/automations/runs/${encodeURIComponent(run.id)}/cancel`, {})
+        setCancelRequestedRunId(run.id)
         router.refresh()
       } catch {
         setStopError(true)
@@ -88,6 +91,7 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
         actions={
           active ? (
             <MutationButton
+              animate
               variant='secondary'
               size='sm'
               pending={stopping}

@@ -115,6 +115,7 @@ export const WorkflowHistoryRetentionControl = ({ initial }: { initial: ActionRe
               <MutationButton
                 type='submit'
                 pending={saving}
+                animate
                 pendingLabel='Saving…'
               >
                 Save retention

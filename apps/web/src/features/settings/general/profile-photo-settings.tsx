@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
@@ -25,16 +26,19 @@ export const ProfilePhotoSettings = ({
   const [draftAvatar, setDraftAvatar] = useState(avatar)
   const [preparing, setPreparing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const saveFeedback = useSaveFeedback(draftAvatar)
   const dirty = draftAvatar !== savedAvatar
   const busy = loading || preparing || saving
 
   const savePhoto = async () => {
     if (!dirty || busy) return
+    saveFeedback.resetSaveFeedback()
     setSaving(true)
     try {
       const user = unwrapActionResult(await updateCurrentProfileAction({ avatarDataUrl: draftAvatar }))
       setSavedAvatar(user.avatarDataUrl)
       setDraftAvatar(user.avatarDataUrl)
+      saveFeedback.confirmSaved(user.avatarDataUrl)
       onSaved()
       toast({ title: 'Profile photo saved', variant: 'success' })
     } catch (error) {
@@ -69,7 +73,9 @@ export const ProfilePhotoSettings = ({
           type='button'
           disabled={!dirty || loading || preparing}
           pending={saving}
+          animate
           pendingLabel='Saving…'
+          success={saveFeedback.saved}
           onClick={() => void savePhoto()}
         >
           Save photo

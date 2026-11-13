@@ -14,6 +14,7 @@ import { mapAndroidApplicationToAppDefinition } from '@/features/applications/do
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
@@ -44,6 +45,8 @@ export const AppManage = () => {
   const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { displayApp, draft, formValues, markSaved, updateForm, updateIcon } = useAppManageDraft(currentApp)
+  const draftSnapshot = JSON.stringify(draft)
+  const saveFeedback = useSaveFeedback(draftSnapshot)
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
@@ -60,6 +63,7 @@ export const AppManage = () => {
   }, [nameError])
 
   const handleSave = async () => {
+    saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     setNameError(undefined)
     try {
@@ -78,6 +82,7 @@ export const AppManage = () => {
       }
       const nextApp = mapAndroidApplicationToAppDefinition(unwrapActionResult(result))
       markSaved()
+      saveFeedback.confirmSaved(draftSnapshot)
       setApp(current => mergeAppPreservingDraftAssets(nextApp, current))
       if (nextApp.name !== currentApp.name) notifyRecentAppsUpdated()
       toast({ title: 'App saved', variant: 'success' })
@@ -124,6 +129,7 @@ export const AppManage = () => {
           <MutationButton
             pending={isSaving}
             pendingLabel='Saving…'
+            success={saveFeedback.saved}
             onClick={() => void handleSave()}
           >
             <IconDeviceFloppy className='size-4' />

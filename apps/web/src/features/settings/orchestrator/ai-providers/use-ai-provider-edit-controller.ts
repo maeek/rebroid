@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import {
   createAutomationAiProviderModelAction,
@@ -31,6 +32,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   const router = useRouter()
   const [provider, setProvider] = useState<ProviderFormState>(() => structuredClone(initialProvider))
   const [savedProvider, setSavedProvider] = useState(initialProvider)
+  const saveFeedback = useSaveFeedback(JSON.stringify(provider))
   const isDirty =
     JSON.stringify(normalizeProviderForm(provider)) !== JSON.stringify(normalizeProviderForm(savedProvider))
   const mutationInFlight = useRef(false)
@@ -272,10 +274,13 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     }
 
     mutationInFlight.current = true
+    saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     try {
       const saved = await updateAutomationAiProviderAction(initialProvider.id, input)
-      setProvider(structuredClone(saved))
+      const nextProvider = structuredClone(saved)
+      setProvider(nextProvider)
+      saveFeedback.confirmSaved(JSON.stringify(nextProvider))
       setSavedProvider(saved)
       toast({ title: 'AI provider updated', variant: 'success' })
       if (saved.id !== initialProvider.id) {
@@ -314,6 +319,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     remoteModels,
     remoteModelsError,
     saveProvider,
+    saveSucceeded: saveFeedback.saved,
     setDefaultModel,
     updateModel,
     updateModels,

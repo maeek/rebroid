@@ -82,7 +82,7 @@ describe('Runtime defaults workflow', () => {
     fireEvent.change(limit, { target: { value: '256' } })
     fireEvent.submit(screen.getByRole('form', { name: 'Runtime defaults' }))
     await waitFor(() => expect(saveOrchestratorUiSettings).toHaveBeenCalledWith({ maxApkUploadSizeMb: 256 }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled())
     expect(limit).toHaveValue(256)
     fireEvent.change(limit, { target: { value: '300' } })
     fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
@@ -105,7 +105,7 @@ describe('Runtime defaults workflow', () => {
     expect(image).toHaveValue(defaultContainerImage)
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(saveOrchestratorUiSettings).toHaveBeenCalledExactlyOnceWith({ defaultContainerImage }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Saved' })).toBeDisabled())
   })
 
   it('validates the GPU device and saves rendering and app defaults in one request', async () => {

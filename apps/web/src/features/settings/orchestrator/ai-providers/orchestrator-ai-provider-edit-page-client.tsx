@@ -57,6 +57,7 @@ export const OrchestratorAiProviderEditPageClient = ({
             type='button'
             pending={isSaving}
             pendingLabel='Saving…'
+            success={controller.saveSucceeded}
             disabled={!isDirty || isDownloadingModel}
             onClick={() => void saveProvider()}
           >

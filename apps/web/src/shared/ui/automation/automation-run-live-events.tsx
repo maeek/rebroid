@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconActivity, IconChevronRight, IconPlayerStop, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
@@ -173,7 +174,7 @@ export function AutomationRunLiveEvents({
   useEffect(() => {
     statusRef.current = run.status
     setLocalStatus(run.status)
-    if (terminalStatuses.has(run.status)) {
+    if (terminalStatuses.has(run.status) || cancelingRunIdRef.current !== run.id) {
       cancelingRunIdRef.current = null
       setIsCanceling(false)
     }
@@ -256,7 +257,7 @@ export function AutomationRunLiveEvents({
       cancelingRunIdRef.current = null
       setStreamError('The run could not be stopped.')
     } finally {
-      setIsCanceling(false)
+      if (terminalStatuses.has(statusRef.current) || cancelingRunIdRef.current === null) setIsCanceling(false)
     }
   }
 
@@ -290,9 +291,15 @@ export function AutomationRunLiveEvents({
             </div>
           </div>
           <div className='flex items-center gap-2'>
-            <AutomationRunStatusBadge status={displayStatus} />
+            <AutomationRunStatusBadge
+              runId={run.id}
+              status={displayStatus}
+            />
             {canCancel ? (
-              <Button
+              <MutationButton
+                animate
+                pending={isCanceling}
+                pendingLabel='Stopping…'
                 type='button'
                 variant='outline'
                 size='sm'
@@ -301,8 +308,8 @@ export function AutomationRunLiveEvents({
                 onClick={() => void cancel()}
               >
                 <IconPlayerStop className='size-3.5' />
-                {isCanceling ? 'Stopping' : 'Stop'}
-              </Button>
+                Stop
+              </MutationButton>
             ) : null}
           </div>
         </div>

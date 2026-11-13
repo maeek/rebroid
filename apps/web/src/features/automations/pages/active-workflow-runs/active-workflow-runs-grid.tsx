@@ -55,7 +55,12 @@ export const ActiveWorkflowRunsGrid = ({
         header: 'Status',
         size: 136,
         meta: { skeleton: { kind: 'badge' } },
-        cell: ({ row }) => <AutomationRunStatusBadge status={row.original.status} />
+        cell: ({ row }) => (
+          <AutomationRunStatusBadge
+            runId={row.original.id}
+            status={row.original.status}
+          />
+        )
       },
       {
         id: 'createdAt',

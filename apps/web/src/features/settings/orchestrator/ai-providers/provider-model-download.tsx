@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
+import { IconCheck, IconRefresh } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,9 +14,11 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
+import { OperationProgress } from '@/components/ui/operation-progress'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { StateTransition } from '@/components/ui/state-transition'
 import { ProviderModelPurposes } from './provider-model-purposes'
 import type { AutomationAiProviderModelRole } from './provider-form-model'
 import type { AutomationAiProviderModelDownload, AutomationAiProviderRemoteModel } from '@/shared/contracts/ai-provider'
@@ -255,6 +257,7 @@ export const ProviderModelAddDialog = ({
             type='button'
             pending={busy}
             pendingLabel={source === 'download' ? 'Starting download…' : 'Adding model…'}
+            animate
             disabled={
               !modelId.trim() ||
               duplicate ||
@@ -287,18 +290,28 @@ export const ProviderModelDownloadStatus = ({ download }: { download: Automation
   return (
     <div className='grid min-w-40 gap-1'>
       <div className='flex items-center gap-2'>
-        <Badge variant={variant}>{label}</Badge>
+        <Badge variant={variant}>
+          <StateTransition
+            identity={download.id}
+            state={download.status}
+          >
+            {download.status === 'completed' ? (
+              <IconCheck
+                aria-hidden
+                className='size-3.5'
+              />
+            ) : null}
+            {label}
+          </StateTransition>
+        </Badge>
         {percent !== null ? <span className='text-xs text-foreground-muted'>{percent}%</span> : null}
       </div>
       <p className='line-clamp-2 text-xs text-foreground-muted'>{download.message}</p>
-      {isActive ? (
-        <div className='h-1.5 overflow-hidden rounded-full bg-surface-band'>
-          <div
-            className='h-full rounded-full bg-primary transition-all'
-            style={{ width: `${percent ?? 8}%` }}
-          />
-        </div>
-      ) : null}
+      <OperationProgress
+        label={`Download progress for ${download.modelId}`}
+        value={percent}
+        active={isActive}
+      />
     </div>
   )
 }
