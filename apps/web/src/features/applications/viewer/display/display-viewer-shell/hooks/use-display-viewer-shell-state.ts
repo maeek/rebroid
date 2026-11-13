@@ -8,6 +8,7 @@ import { useFullscreenState } from '@/features/applications/viewer/display/displ
 import { viewerControlRailWidth } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
   DisplayViewerStreamMetrics,
+  ViewerFrameObservation,
   DisplayViewerStreamStatus
 } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
@@ -37,7 +38,7 @@ export const useDisplayViewerShellState = ({
   onSurfacesChanged?: () => void
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
-  onFirstFrame?: () => void
+  onFirstFrame?: (observation?: ViewerFrameObservation) => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
   const [sessionRecovery] = useState(() => new DisplaySessionRecovery())
@@ -233,7 +234,7 @@ export const useDisplayViewerShellState = ({
       if (status.code === 'session-ready') {
         clearStreamStatus(surfaceId)
         sessionRecovery.presented(applicationId, surface)
-        if (surface.kind === 'main') onFirstFrame?.()
+        if (surface.kind === 'main') onFirstFrame?.(status.startup)
         return
       }
       if (sessionRecovery.request(applicationId, surface, surfaces)) viewerActions.refreshSurfaces()

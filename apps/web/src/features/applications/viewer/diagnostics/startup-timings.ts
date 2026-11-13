@@ -1,6 +1,6 @@
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export type StartupMilestone = { label: string; at: number | null }
+export type StartupMilestone = { label: string; at: number }
 export type StartupTimings = { milestones: StartupMilestone[]; baseline: number | null; firstFrameAt: number | null }
 
 export const startupRuntimeKey = (app?: AppDefinition) =>
@@ -58,8 +58,8 @@ export const readStartupTimings = (
       ? firstFrameAt
       : null
   const milestones: StartupMilestone[] = [...observations].map(([label, at]) => ({ label, at }))
-  milestones.sort((left, right) => left.at! - right.at!)
-  milestones.push({ label: 'First frame in this tab', at: frameAt })
+  if (frameAt !== null) milestones.push({ label: 'First frame in this tab', at: frameAt })
+  milestones.sort((left, right) => left.at - right.at)
   return { milestones, baseline, firstFrameAt: frameAt }
 }
 

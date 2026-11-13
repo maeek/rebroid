@@ -194,7 +194,6 @@ const AppRouteSkeleton = ({ activity }: { activity?: React.ReactNode }) => {
   if (view === 'diagnostics')
     return (
       <LoadingAppLayout view='diagnostics'>
-        <AppStartupTimingsSection loading />
         <AppManageTechnicalDetails loading />
         <Section
           surface='band'
@@ -203,6 +202,7 @@ const AppRouteSkeleton = ({ activity }: { activity?: React.ReactNode }) => {
         >
           <AppLogsLoading />
         </Section>
+        <AppStartupTimingsSection loading />
       </LoadingAppLayout>
     )
   if (view === 'activity')

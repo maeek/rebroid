@@ -232,5 +232,6 @@ Application logs use the same editor section surface and heading spacing as Deta
 
 The log viewer renders ANSI colors and text styles in application, container, and build logs. Copy returns plain text without terminal escape sequences.
 
+Startup timings appears below Application logs. The list shows recorded milestones in chronological order with elapsed time from startup when available. Each milestone retains a copy action for its exact timestamp.
 
 Streaming quality, transport, and audio open from the device pane in a focused sheet; these controls are no longer a resource section. Diagnostic logs load on entry and source changes; Live controls ongoing refresh only.

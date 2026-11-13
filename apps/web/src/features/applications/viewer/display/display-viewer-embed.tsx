@@ -24,7 +24,10 @@ import { getScrcpySessionAction } from '@/server/orchestrator/applications/actio
 import { StateView } from '@/shared/ui/state-view'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type {
+  DisplayViewerStreamMetrics,
+  ViewerFrameObservation
+} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
@@ -122,15 +125,21 @@ export const DisplayViewerEmbed = ({
   streamingSettings?: ReactNode
   clipboard?: ReactNode
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
-  onFirstFrame?: () => void
+  onFirstFrame?: (observation?: ViewerFrameObservation, requestAt?: number) => void
 }) => {
   const baseUrl = useBrowserBaseUrl()
-  const [session, setSession] = useState<ScrcpySession | null>(null)
+  const [sessionRecord, setSessionRecord] = useState<{
+    runtime: string
+    requestAt: number
+    value: ScrcpySession
+  } | null>(null)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [surfaceRefreshVersion, setSurfaceRefreshVersion] = useState(0)
   const [reload, setReload] = useState({ runtime: '', count: 0 })
   const startedAt = app.lastStartedAt?.getTime() ?? null
   const runtime = `${app.id}:${app.containerId}:${startedAt}`
+  const currentSession = sessionRecord?.runtime === runtime ? sessionRecord : null
+  const session = currentSession?.value
   const reloadCount = reload.runtime === runtime ? reload.count : 0
   const reloadSession = () =>
     setReload(current => ({ runtime, count: current.runtime === runtime ? current.count + 1 : 1 }))
@@ -140,7 +149,7 @@ export const DisplayViewerEmbed = ({
 
   useEffect(() => {
     if (app.status !== 'running') {
-      setSession(null)
+      setSessionRecord(null)
       setSessionError(null)
       return
     }
@@ -172,6 +181,7 @@ export const DisplayViewerEmbed = ({
     }
 
     const loadSession = async () => {
+      const requestAt = performance.timeOrigin + performance.now()
       try {
         const result = await getScrcpySessionAction(app.id)
         if (!active) {
@@ -185,7 +195,7 @@ export const DisplayViewerEmbed = ({
         }
 
         const nextSession = result.data
-        setSession(nextSession)
+        setSessionRecord({ runtime, requestAt, value: nextSession })
         setSurfaceRefreshVersion(current => current + 1)
         const canRetry =
           nextSession.viewerServiceConfigured &&
@@ -253,7 +263,7 @@ export const DisplayViewerEmbed = ({
         streamingSettings={streamingSettings}
         error={error}
         onRetry={() => {
-          setSession(null)
+          setSessionRecord(null)
           setSessionError(null)
           reloadSession()
         }}
@@ -287,7 +297,10 @@ export const DisplayViewerEmbed = ({
             })
           },
           onStreamMetrics,
-          onFirstFrame
+          onFirstFrame: observation => {
+            if (!currentSession || (observation && observation.connectAt < currentSession.requestAt)) return
+            onFirstFrame?.(observation, currentSession.requestAt)
+          }
         }}
       >
         <DisplayViewerShell

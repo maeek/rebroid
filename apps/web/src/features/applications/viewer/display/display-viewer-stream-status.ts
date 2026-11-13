@@ -12,12 +12,15 @@ export type DisplayViewerStreamStatusCode =
 
 export type DisplayViewerStreamStatusSeverity = 'info' | 'warning' | 'error'
 
+export type ViewerFrameObservation = { connectAt: number; presentedAt: number }
+
 export type DisplayViewerStreamStatus = {
   code: DisplayViewerStreamStatusCode
   severity: DisplayViewerStreamStatusSeverity
   blocking: boolean
   message: string
   sessionId?: string
+  startup?: ViewerFrameObservation
   transport?: 'webrtc' | 'websocket'
 }
 
@@ -133,6 +136,20 @@ const statusCodes = new Set<DisplayViewerStreamStatusCode>([
 
 const statusSeverities = new Set<DisplayViewerStreamStatusSeverity>(['info', 'warning', 'error'])
 
+const isViewerFrameObservation = (value: unknown): value is ViewerFrameObservation => {
+  if (!value || typeof value !== 'object') return false
+  const { connectAt, presentedAt } = value as Record<string, unknown>
+  return (
+    typeof connectAt === 'number' &&
+    Number.isFinite(connectAt) &&
+    connectAt > 0 &&
+    typeof presentedAt === 'number' &&
+    Number.isFinite(presentedAt) &&
+    presentedAt <= 8.64e15 &&
+    presentedAt >= connectAt
+  )
+}
+
 export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayViewerStreamStatus => {
   if (!value || typeof value !== 'object') {
     return false
@@ -149,6 +166,7 @@ export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayVie
     typeof record.message === 'string' &&
     ((record.code !== 'session-expired' && record.code !== 'session-ready') ||
       (typeof record.sessionId === 'string' && record.sessionId.length > 0)) &&
+    (record.startup === undefined || isViewerFrameObservation(record.startup)) &&
     (record.transport === undefined || record.transport === 'webrtc' || record.transport === 'websocket')
   )
 }

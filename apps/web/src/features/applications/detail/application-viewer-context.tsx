@@ -5,7 +5,10 @@ import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
-import { useStartupFirstFrame } from '@/features/applications/viewer/diagnostics/use-startup-first-frame'
+import {
+  useStartupFirstFrame,
+  type ViewerStartupDurations
+} from '@/features/applications/viewer/diagnostics/use-startup-first-frame'
 import {
   loadViewerSettings,
   saveViewerSettings,
@@ -17,7 +20,10 @@ import { getApplicationAction } from '@/server/orchestrator/applications/actions
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
-import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type {
+  DisplayViewerStreamMetrics,
+  ViewerFrameObservation
+} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
@@ -25,7 +31,8 @@ import type { PermissionMap } from '@/shared/permissions/permissions'
 type ApplicationViewerContextValue = {
   app?: AppDefinition
   startupFirstFrameAt?: number
-  recordStartupFirstFrame?: () => void
+  viewerStartup?: ViewerStartupDurations
+  recordStartupFirstFrame?: (observation?: ViewerFrameObservation, requestAt?: number) => void
   canAttach: boolean
   canCaptureScreenshot: boolean
   canControlViewer: boolean
@@ -78,8 +85,11 @@ export const ApplicationViewerProvider = ({
     Record<string, DisplayViewerStreamMetrics | undefined>
   >({})
   const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
-  const { firstFrameAt: startupFirstFrameAt, recordFirstFrame: recordStartupFirstFrame } =
-    useStartupFirstFrame(currentApp)
+  const {
+    firstFrameAt: startupFirstFrameAt,
+    viewerStartup,
+    recordFirstFrame: recordStartupFirstFrame
+  } = useStartupFirstFrame(currentApp)
   const currentAppId = currentApp?.id
   const refreshIntervalMs = getAppRefreshIntervalMs(currentApp)
   const isForeignOwnedApp = Boolean(isAdmin && currentApp && currentApp.ownerUserId !== currentOwnerUserId)
@@ -180,6 +190,7 @@ export const ApplicationViewerProvider = ({
       value={{
         app: currentApp,
         startupFirstFrameAt,
+        viewerStartup,
         recordStartupFirstFrame,
         canAttach: !isForeignOwnedApp,
         canCaptureScreenshot,

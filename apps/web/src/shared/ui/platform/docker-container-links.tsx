@@ -1,6 +1,8 @@
+import { IconBox, IconFileText } from '@tabler/icons-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { containerResourceHref } from '@/shared/model/container-resource-href'
-import { ResourceLink } from '@/shared/ui/resource-link'
 
 export const DockerContainerLinks = ({
   containerId,
@@ -12,20 +14,34 @@ export const DockerContainerLinks = ({
   className?: string
 }) =>
   containerId ? (
-    <div className={cn('flex flex-wrap gap-x-3 gap-y-1 text-sm', className)}>
-      <ResourceLink
-        href={containerResourceHref(containerId)}
-        aria-label={serviceName ? `Open Docker container for ${serviceName}` : undefined}
-        prefetch={false}
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <Button
+        asChild
+        variant='outline'
+        size='sm'
       >
-        Open Docker container
-      </ResourceLink>
-      <ResourceLink
-        href={containerResourceHref(containerId, 'logs')}
-        aria-label={serviceName ? `View logs for ${serviceName}` : undefined}
-        prefetch={false}
+        <Link
+          href={containerResourceHref(containerId)}
+          aria-label={serviceName ? `Open Docker container for ${serviceName}` : undefined}
+          prefetch={false}
+        >
+          <IconBox aria-hidden='true' />
+          Open Docker container
+        </Link>
+      </Button>
+      <Button
+        asChild
+        variant='outline'
+        size='sm'
       >
-        View logs
-      </ResourceLink>
+        <Link
+          href={containerResourceHref(containerId, 'logs')}
+          aria-label={serviceName ? `View logs for ${serviceName}` : undefined}
+          prefetch={false}
+        >
+          <IconFileText aria-hidden='true' />
+          View logs
+        </Link>
+      </Button>
     </div>
   ) : null

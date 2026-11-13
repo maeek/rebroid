@@ -2,9 +2,30 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { startupRuntimeKey } from './startup-timings'
+import type { ViewerFrameObservation } from '../display/display-viewer-stream-status'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-type FirstFrame = { runtime: string; at: number }
+export type ViewerStartupDurations = {
+  requestToConnectMs: number
+  connectToFrameMs: number
+}
+
+type FirstFrame = { runtime: string; at: number; viewer?: ViewerStartupDurations }
+
+const readViewerDurations = (value: unknown): ViewerStartupDurations | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const { requestToConnectMs, connectToFrameMs } = value as Record<string, unknown>
+  if (
+    typeof requestToConnectMs !== 'number' ||
+    !Number.isFinite(requestToConnectMs) ||
+    requestToConnectMs < 0 ||
+    typeof connectToFrameMs !== 'number' ||
+    !Number.isFinite(connectToFrameMs) ||
+    connectToFrameMs < 0
+  )
+    return undefined
+  return { requestToConnectMs, connectToFrameMs }
+}
 const storageKey = 'rebroid.viewer.startup-first-frames.v1'
 const maxRecords = 24
 const readRecords = (): FirstFrame[] => {
@@ -25,6 +46,7 @@ const readRecords = (): FirstFrame[] => {
           item.at > 0
       )
       .slice(-maxRecords)
+      .map(({ runtime, at, viewer }) => ({ runtime, at, viewer: readViewerDurations(viewer) }))
   } catch {
     return []
   }
@@ -37,20 +59,35 @@ export const useStartupFirstFrame = (app?: AppDefinition) => {
     setRecord(readRecords().find(item => item.runtime === runtime))
   }, [runtime])
 
-  const recordFirstFrame = useCallback(() => {
-    if (!runtime) return
-    const records = readRecords()
-    const next = records.find(item => item.runtime === runtime) ?? { runtime, at: Date.now() }
-    try {
-      sessionStorage.setItem(
-        storageKey,
-        JSON.stringify([...records.filter(item => item.runtime !== runtime), next].slice(-maxRecords))
-      )
-    } catch {
-      // Keep the observation in memory when browser storage is unavailable.
-    }
-    setRecord(current => (current?.runtime === runtime ? current : next))
-  }, [runtime])
+  const recordFirstFrame = useCallback(
+    (observation?: ViewerFrameObservation, requestAt?: number) => {
+      if (!runtime) return
+      const records = readRecords()
+      const viewer =
+        observation && requestAt !== undefined
+          ? readViewerDurations({
+              requestToConnectMs: observation.connectAt - requestAt,
+              connectToFrameMs: observation.presentedAt - observation.connectAt
+            })
+          : undefined
+      const next = records.find(item => item.runtime === runtime) ?? {
+        runtime,
+        at: observation?.presentedAt ?? Date.now(),
+        viewer
+      }
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify([...records.filter(item => item.runtime !== runtime), next].slice(-maxRecords))
+        )
+      } catch {
+        // Keep the observation in memory when browser storage is unavailable.
+      }
+      setRecord(current => (current?.runtime === runtime ? current : next))
+    },
+    [runtime]
+  )
 
-  return { firstFrameAt: record?.runtime === runtime ? record?.at : undefined, recordFirstFrame }
+  const current = record?.runtime === runtime ? record : undefined
+  return { firstFrameAt: current?.at, viewerStartup: current?.viewer, recordFirstFrame }
 }

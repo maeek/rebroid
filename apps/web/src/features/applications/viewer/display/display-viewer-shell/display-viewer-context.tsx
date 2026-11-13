@@ -11,6 +11,7 @@ import {
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
   DisplayViewerStreamMetrics,
+  ViewerFrameObservation,
   DisplayViewerStreamStatus
 } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
@@ -32,7 +33,7 @@ export type DisplayViewerProviderValue = {
   initialKeyboardCaptureEnabled: boolean
   onKeyboardCaptureChange?: (enabled: boolean) => void
   onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
-  onFirstFrame?: () => void
+  onFirstFrame?: (observation?: ViewerFrameObservation) => void
   onSurfacesChanged?: () => void
   surfaces: DisplayViewerSurface[]
   surfaceRefreshVersion?: number

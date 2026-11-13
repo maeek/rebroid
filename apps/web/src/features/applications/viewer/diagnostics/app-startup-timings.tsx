@@ -9,12 +9,22 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { formatDateLocale } from '@/lib/format'
 import { getApplicationLogsAction } from '@/server/orchestrator/applications/actions/runtime/log-actions'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { StateView } from '@/shared/ui/state-view'
 import { readStartupTimings, startupElapsed } from './startup-timings'
 import type { StartupTimings } from './startup-timings'
+import type { ViewerStartupDurations } from './use-startup-first-frame'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationLog } from '@/shared/contracts/application'
 
-export const AppStartupTimings = ({ app, firstFrameAt }: { app: AppDefinition; firstFrameAt?: number }) => {
+export const AppStartupTimings = ({
+  app,
+  firstFrameAt,
+  viewerStartup
+}: {
+  app: AppDefinition
+  firstFrameAt?: number
+  viewerStartup?: ViewerStartupDurations
+}) => {
   const { data, error, isLoading, isValidating, mutate } = usePollingQuery<ApplicationLog>(
     ['applications', app.id, 'logs', 'orchestrator'],
     () => getApplicationLogsAction(app.id, 'orchestrator', 500),
@@ -32,6 +42,7 @@ export const AppStartupTimings = ({ app, firstFrameAt }: { app: AppDefinition; f
   return (
     <AppStartupTimingsSection
       timings={timings}
+      viewerStartup={viewerStartup}
       loading={isLoading}
       error={Boolean(error)}
       action={
@@ -49,37 +60,57 @@ export const AppStartupTimings = ({ app, firstFrameAt }: { app: AppDefinition; f
   )
 }
 
+const loadingFields = Array.from({ length: 6 }, (_, index) => ({ label: String(index), value: null }))
+
 export const AppStartupTimingsSection = ({
   timings,
+  viewerStartup,
   loading = false,
   error = false,
   action
 }: {
   timings?: StartupTimings
+  viewerStartup?: ViewerStartupDurations
   loading?: boolean
   error?: boolean
   action?: React.ReactNode
 }) => {
-  const total =
-    timings?.baseline !== null && timings?.baseline !== undefined && timings.firstFrameAt !== null
-      ? startupElapsed(timings.firstFrameAt - timings.baseline)
-      : 'Not recorded yet'
-  const placeholders = [
-    { label: 'Container creation started', at: null },
-    { label: 'Container started', at: null },
-    { label: 'Android ready', at: null },
-    { label: 'ADB ready', at: null },
-    { label: 'App ready', at: null },
-    { label: 'First frame in this tab', at: null }
-  ]
-  const milestones = loading ? placeholders : (timings?.milestones ?? placeholders)
+  const baseline = timings?.baseline ?? null
+  const fields = (timings?.milestones ?? []).map(({ label, at }) => {
+    const date = new Date(at)
+    const timestamp = date.toISOString()
+    const localTimestamp = formatDateLocale(date)
+    return {
+      label,
+      copyValue: timestamp,
+      value: (
+        <time
+          dateTime={timestamp}
+          title={localTimestamp}
+        >
+          {baseline !== null && at >= baseline ? `+${startupElapsed(at - baseline)}` : localTimestamp}
+        </time>
+      )
+    }
+  })
+  const viewerFields =
+    viewerStartup && timings && timings.firstFrameAt !== null
+      ? [
+          {
+            label: 'Viewer session request to stream request',
+            value: startupElapsed(viewerStartup.requestToConnectMs)
+          },
+          { label: 'Stream request to first frame', value: startupElapsed(viewerStartup.connectToFrameMs) }
+        ]
+      : []
   return (
     <Section
       title='Startup timings'
       surface='plain'
       className={editorSectionClassName}
+      contentClassName='gap-3'
       actions={action}
-      description='Latest startup, through the first frame seen in this tab. Includes any wait before opening the viewer.'
+      description='Elapsed times start at container creation or start. The first frame includes any wait before opening the viewer.'
     >
       {error ? (
         <Notice
@@ -88,29 +119,19 @@ export const AppStartupTimingsSection = ({
           description='Refresh to try reading lifecycle events again.'
         />
       ) : null}
-      <DetailFields
-        loading={loading}
-        fields={[
-          { label: 'Startup to first frame', value: total, fullWidth: true },
-          ...milestones.map(({ label, at }) => ({
-            label,
-            copyValue: at === null ? undefined : new Date(at).toISOString(),
-            value:
-              at === null ? (
-                'Not recorded yet'
-              ) : (
-                <span>
-                  <time dateTime={new Date(at).toISOString()}>{formatDateLocale(new Date(at))}</time>
-                  {timings?.baseline !== null && timings?.baseline !== undefined && at >= timings.baseline ? (
-                    <span className='ml-2 text-foreground-muted'>+{startupElapsed(at - timings.baseline)}</span>
-                  ) : null}
-                </span>
-              )
-          }))
-        ]}
-      />
-      {!loading && !error && !timings?.baseline ? (
-        <p className='text-sm text-foreground-muted'>Creation or start events are not available in the retained log.</p>
+      {loading || fields.length > 0 ? (
+        <DetailFields
+          compact
+          layout='list'
+          loading={loading}
+          fields={loading ? loadingFields : [...fields, ...viewerFields]}
+        />
+      ) : !error ? (
+        <StateView
+          kind='empty'
+          title='No startup events recorded'
+          description='No milestones are available for this startup.'
+        />
       ) : null}
     </Section>
   )

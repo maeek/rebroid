@@ -43,10 +43,10 @@ describe('startup timings', () => {
     expect(readStartupTimings(restarted, output, Date.parse('2026-11-13T01:00:03Z'))).toEqual({
       baseline: null,
       firstFrameAt: null,
-      milestones: [{ label: 'First frame in this tab', at: null }]
+      milestones: []
     })
   })
-  it('ignores malformed lines and another container, and leaves missing milestones unknown', () => {
+  it('omits missing milestones, malformed lines and events from another container', () => {
     const result = readStartupTimings(
       app,
       [
@@ -56,6 +56,6 @@ describe('startup timings', () => {
       ].join('\n')
     )
     expect(result.baseline).toBeNull()
-    expect(result.milestones).toEqual([{ label: 'First frame in this tab', at: null }])
+    expect(result.milestones).toEqual([])
   })
 })

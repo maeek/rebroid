@@ -192,7 +192,10 @@ The main display's first presented-frame event supplies the final milestone for 
 WebRTC and WebSocket. It is recorded once per runtime startup in this tab's session
 storage (at most 24 records), survives reloads, and is not overwritten by reconnects.
 The total includes time spent waiting to open the viewer and uses server/browser wall
-clocks. Missing retained log events or an unobserved first frame remain unavailable.
+clocks. The panel also shows two browser intervals for the first successful display
+session in that startup: requesting the session through sending the WebRTC offer
+or opening the WebSocket, and that stream request through the first frame. These
+intervals use monotonic browser timestamps. Missing milestones remain unavailable.
 Only users authorized to view application logs see the section. It shares the existing
 orchestrator-log query and follows lifecycle changes without an additional polling timer
 or Docker/ADB reads; Refresh timings also refreshes that shared log data.

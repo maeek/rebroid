@@ -29,13 +29,15 @@ it.each(['webrtc', 'websocket'] as const)(
       severity: 'info',
       blocking: false,
       message: 'Showing video',
-      transport
+      transport,
+      startup: { connectAt: 1_000, presentedAt: 1_150 }
     } as const
     act(() => result.current.setSurfaceStreamStatus('main', { ...ready, sessionId: 'retired' }))
     act(() => result.current.setSurfaceStreamStatus('virtual', { ...ready, sessionId: 'virtual-session' }))
     expect(onFirstFrame).not.toHaveBeenCalled()
     act(() => result.current.setSurfaceStreamStatus('main', { ...ready, sessionId: 'current' }))
     expect(onFirstFrame).toHaveBeenCalledTimes(1)
+    expect(onFirstFrame).toHaveBeenCalledWith(ready.startup)
   }
 )
 

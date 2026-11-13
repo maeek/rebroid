@@ -89,7 +89,11 @@ describe('AppResourceHome', () => {
     ).toHaveAttribute('href', '/app/app-1?view=diagnostics')
     expect(screen.getByText('Inspect boot output.')).toBeTruthy()
     expect(screen.getByText('Diagnostic log content')).toBeTruthy()
-    expect(screen.getByText('Startup timings')).toBeVisible()
+    const startupTimings = screen.getByText('Startup timings')
+    expect(startupTimings).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Application logs' }).compareDocumentPosition(startupTimings)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
   })
   it('keeps foreign-owned app logs and workspace inaccessible in administrator view', () => {
     setup({ 'applications:view-logs': true }, true)

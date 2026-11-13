@@ -5,6 +5,22 @@ import { useStartupFirstFrame } from './use-startup-first-frame'
 
 const app = { ...previewApp, containerId: 'runtime', provisioningStartedAt: new Date('2026-11-13T00:00:00Z') }
 beforeEach(() => sessionStorage.clear())
+
+it('separates delayed viewer opening from viewer setup and keeps the first completed measurement', () => {
+  const { result, unmount } = renderHook(() => useStartupFirstFrame(app))
+  const requestAt = app.provisioningStartedAt.getTime() + 40_000
+  const first = { connectAt: requestAt + 600, presentedAt: requestAt + 2_500 }
+  act(() => result.current.recordFirstFrame(first, requestAt))
+  act(() =>
+    result.current.recordFirstFrame({ connectAt: requestAt + 5_000, presentedAt: requestAt + 6_000 }, requestAt)
+  )
+  expect(result.current.firstFrameAt).toBe(first.presentedAt)
+  expect(result.current.viewerStartup).toEqual({ requestToConnectMs: 600, connectToFrameMs: 1_900 })
+  unmount()
+  const view = renderHook(() => useStartupFirstFrame(app))
+  expect(view.result.current.viewerStartup).toEqual({ requestToConnectMs: 600, connectToFrameMs: 1_900 })
+})
+
 it('retains the first presentation across reconnects and remounts but resets for a new startup', () => {
   const { result, unmount } = renderHook(() => useStartupFirstFrame(app))
   act(() => result.current.recordFirstFrame())
