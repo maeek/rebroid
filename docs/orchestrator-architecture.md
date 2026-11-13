@@ -178,8 +178,20 @@ overlap, so do not sum their durations to calculate wall time. A fast, successfu
 probe with `propertyReady: false` establishes that Android had not reported ready
 at that observation; a slow probe only bounds when readiness was observed. Compare
 `properties.settledAfterMs` with the runtime settlement to identify liveness checks
-that delayed accepting already-ready properties. Logging adds no Docker calls or
-persisted application-log writes and ends when the bounded boot loop ends.
+that delayed accepting already-ready properties. The existing `Android boot
+completed` entry records the last negative and first positive property sample
+for the same runtime, including their sequence and monotonic timing offsets.
+
+Set `REDROID_COLLECT_BOOT_EVENTS=true` on the orchestrator for a host timing run.
+After Android remote access succeeds, a best-effort read records up to 32
+allowlisted Android boot phase events as `android_boot_guest_events` in the
+orchestrator output. It uses the Docker start timestamp from the existing
+liveness read and the positive property sample's timestamp to filter the guest
+event window. Events identify Android phases and are independent of the readiness
+decision. Collection is off by default. It has one in-flight slot per orchestrator
+and a two-second Docker deadline, and the lifecycle does not wait for it. With
+collection enabled, the read can briefly occupy a shared Docker exec slot. Missing
+events can reflect an unavailable or truncated guest event buffer.
 
 Sidecar discovery remembers only the last observed container ID. Each use still
 inspects the container; a missing ID falls back to exact-name discovery, and a

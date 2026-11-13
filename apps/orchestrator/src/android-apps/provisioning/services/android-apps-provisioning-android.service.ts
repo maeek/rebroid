@@ -43,12 +43,34 @@ import {
   truncateDiagnosticText,
 } from '../utils/android-apps-android-provisioning.utils';
 import { AndroidBootOperationTimer } from '../utils/android-boot-operation-timer';
+import {
+  androidBootEventCommand,
+  parseAndroidBootEvents,
+} from '../utils/android-boot-events';
 
 const bootCheckIntervalMs = 1_000;
 const maxUnchangedBootProbeIntervalMs = 3_000;
 const adbSetupObservationTtlMs = 3_000;
 const maxConsecutiveObservationFailures = 3;
 const bootDiagnosticTimeoutMs = 5_000;
+const bootEventTimeoutMs = 2_000;
+
+type BootPropertySample = {
+  sequence: number;
+  dispatchedAfterMs: number | null;
+  settledAfterMs: number;
+};
+
+type BootEventObservation = {
+  applicationId: string;
+  containerId: string;
+  reservationId: string;
+  bootObservationId: string;
+  startedAtMs: number;
+  readySampleSettledAtMs: number;
+  lastNotReadySample: BootPropertySample | null;
+  readySample: BootPropertySample;
+};
 
 type PreparedNetworkAttachment = {
   reservationId: string;
@@ -71,6 +93,7 @@ export class AndroidAppsProvisioningAndroidService {
   private readonly logger = new Logger(
     AndroidAppsProvisioningAndroidService.name,
   );
+  private bootEventReadPending = false;
 
   constructor(
     @Inject(DOCKER_CONTAINER_EXEC)
@@ -112,7 +135,10 @@ export class AndroidAppsProvisioningAndroidService {
     };
     const [boot, attachment] = await Promise.allSettled([
       this.waitForAndroidBoot(app, reservationId).then(
-        () => observeBootSettlement('fulfilled'),
+        (observation) => ({
+          observation,
+          settledAt: observeBootSettlement('fulfilled'),
+        }),
         (error: unknown) => {
           observeBootSettlement('rejected');
           throw error;
@@ -129,8 +155,11 @@ export class AndroidAppsProvisioningAndroidService {
       app,
       reservationId,
       attachment.value,
-      boot.value,
+      boot.value.settledAt,
     );
+    if (boot.value.observation) {
+      this.scheduleBootEventRead(boot.value.observation);
+    }
   }
 
   /** Waits until Android reports that boot is done. */
@@ -161,6 +190,9 @@ export class AndroidAppsProvisioningAndroidService {
     let guestShellObserved = false;
     let initialGuestUnavailableAt: number | undefined;
     let guestUnavailableObservations = 0;
+    let lastNotReady:
+      | { startedAt?: string | null; sample: BootPropertySample }
+      | undefined;
     const probeCommand = androidBootProbeCommand();
 
     while (deadline.remainingMs() > 0) {
@@ -175,13 +207,18 @@ export class AndroidAppsProvisioningAndroidService {
           ? new AndroidBootOperationTimer(bootStartedAt)
           : undefined;
       const runtimeTimer = new AndroidBootOperationTimer(bootStartedAt);
+      let propertySettledAtMs = 0;
       const [probeResult, runtime] = await Promise.allSettled([
         propertyTimer?.run((onDispatched) =>
-          this.exec.execInContainerWithOutput(app.containerId, probeCommand, {
-            deadline: observationDeadline,
-            signal,
-            onDispatched,
-          }),
+          this.exec
+            .execInContainerWithOutput(app.containerId, probeCommand, {
+              deadline: observationDeadline,
+              signal,
+              onDispatched,
+            })
+            .finally(() => {
+              propertySettledAtMs = Date.now();
+            }),
         ),
         runtimeTimer.run((onDispatched) =>
           this.lifecycle.getContainerRuntimeState(app.containerId, {
@@ -196,6 +233,7 @@ export class AndroidAppsProvisioningAndroidService {
           ? parseAndroidBootReadiness(probeResult.value.stdout)
           : undefined;
       const observationSettledAt = performance.now();
+      const propertyTimings = propertyTimer?.snapshot();
       this.logger.log({
         event: 'android_boot_probe',
         applicationId: app.id,
@@ -209,7 +247,7 @@ export class AndroidAppsProvisioningAndroidService {
           observationStartedAt - previousObservationSettledAt,
         ),
         observationMs: Math.round(observationSettledAt - observationStartedAt),
-        properties: propertyTimer?.snapshot() ?? { outcome: 'skipped_backoff' },
+        properties: propertyTimings ?? { outcome: 'skipped_backoff' },
         runtime: runtimeTimer.snapshot(),
         propertyReady: readiness?.ready ?? null,
         runtimeRunning:
@@ -253,7 +291,8 @@ export class AndroidAppsProvisioningAndroidService {
       if (
         probeResult.status === 'fulfilled' &&
         probeResult.value &&
-        readiness
+        readiness &&
+        propertyTimings
       ) {
         if (!guestShellObserved && initialGuestUnavailableAt !== undefined) {
           this.logger.log({
@@ -272,14 +311,50 @@ export class AndroidAppsProvisioningAndroidService {
         const observation = [readiness.probe, probeResult.value.stderr.trim()]
           .filter(Boolean)
           .join(' ');
+        const sample = {
+          sequence: observationSequence,
+          dispatchedAfterMs: propertyTimings.dispatchedAfterMs,
+          settledAfterMs: propertyTimings.settledAfterMs,
+        };
+        const containerStartedAt = runtime.value.startedAt;
         if (readiness.ready) {
+          const lastNotReadySample =
+            lastNotReady?.startedAt === containerStartedAt
+              ? (lastNotReady?.sample ?? null)
+              : null;
           await this.logs.append(app.id, 'Android boot completed', {
             probe: observation,
+            containerId: app.containerId,
+            reservationId: reservationId ?? null,
+            bootObservationId,
+            lastNotReadySample,
+            readySample: sample,
           });
           this.tracker.ensureActive(app.id);
           signal.throwIfAborted();
-          return;
+          const startedAtMs = containerStartedAt
+            ? Date.parse(containerStartedAt)
+            : Number.NaN;
+          if (
+            reservationId &&
+            startedAtMs > 0 &&
+            startedAtMs < propertySettledAtMs &&
+            this.config.get<boolean>('app.redroid.collectBootEvents')
+          ) {
+            return {
+              applicationId: app.id,
+              containerId: app.containerId,
+              reservationId,
+              bootObservationId,
+              startedAtMs,
+              readySampleSettledAtMs: propertySettledAtMs,
+              lastNotReadySample,
+              readySample: sample,
+            } satisfies BootEventObservation;
+          }
+          return undefined;
         }
+        lastNotReady = { startedAt: containerStartedAt, sample };
         probeIntervalMs =
           observation === lastProbe
             ? Math.min(
@@ -339,6 +414,52 @@ export class AndroidAppsProvisioningAndroidService {
         .filter(Boolean)
         .join(' '),
     );
+  }
+
+  private scheduleBootEventRead(observation: BootEventObservation) {
+    if (this.bootEventReadPending) return;
+    this.bootEventReadPending = true;
+    setImmediate(() => {
+      void this.collectBootEvents(observation).finally(() => {
+        this.bootEventReadPending = false;
+      });
+    }).unref();
+  }
+
+  private async collectBootEvents(observation: BootEventObservation) {
+    const { startedAtMs, readySampleSettledAtMs, ...identityAndSamples } =
+      observation;
+    const details = {
+      event: 'android_boot_guest_events',
+      ...identityAndSamples,
+      containerStartedAt: new Date(startedAtMs).toISOString(),
+      readySampleSettledAt: new Date(readySampleSettledAtMs).toISOString(),
+    };
+    try {
+      await this.tracker.withCancellation(
+        observation.applicationId,
+        async (signal) => {
+          const { stdout } = await this.exec.execInContainerWithOutput(
+            observation.containerId,
+            androidBootEventCommand(startedAtMs),
+            { deadline: new OperationDeadline(bootEventTimeoutMs), signal },
+          );
+          signal.throwIfAborted();
+          const events = parseAndroidBootEvents(
+            stdout,
+            startedAtMs,
+            readySampleSettledAtMs,
+          );
+          this.logger.log({
+            ...details,
+            outcome: events.length ? 'collected' : 'empty',
+            events,
+          });
+        },
+      );
+    } catch {
+      this.logger.log({ ...details, outcome: 'unavailable' });
+    }
   }
 
   private isInitialGuestShellUnavailable(error: unknown): boolean {
@@ -499,6 +620,8 @@ export class AndroidAppsProvisioningAndroidService {
     this.assertContainerId(app);
 
     const intervalMs = 1_000;
+    // Activation can launch an attached APK before anyone opens a viewer.
+    const purpose = app.apkFilePath ? 'interactive' : 'transport';
     let lastProbe = 'ADB sidecar readiness was not reported.';
     let setup:
       | {
@@ -600,7 +723,7 @@ export class AndroidAppsProvisioningAndroidService {
       const adbProbeStartedAt = performance.now();
       timings.adbProbeAttempts += 1;
       const adbTarget = await this.sidecar
-        .connectAdb(adbHost, app.adbPort, deadline, signal)
+        .connectAdb(adbHost, app.adbPort, deadline, signal, purpose)
         .finally(() => {
           timings.adbProbeMs += Math.round(
             performance.now() - adbProbeStartedAt,
@@ -617,6 +740,7 @@ export class AndroidAppsProvisioningAndroidService {
         networkName: app.networkName,
         adbHost,
         adbPort: app.adbPort,
+        purpose,
         configured: adbTarget.configured,
         connected: adbTarget.connected,
         message: adbTarget.message,
@@ -635,6 +759,7 @@ export class AndroidAppsProvisioningAndroidService {
           ...observation,
           sidecarGeneration: generation,
           target: adbTarget,
+          purpose,
         });
         return;
       }

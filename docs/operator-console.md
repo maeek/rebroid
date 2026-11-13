@@ -1,10 +1,11 @@
 # Operator console
 
 Rebroid organizes everyday work around apps and automation runs. Administration starts with
-General, Casting, and Firewall, followed by Feature management and AI. The Docker group keeps
-Containers, Images, and Networks together. Users & groups contains the account and group lists.
+General, Casting, Firewall, and OCR perception when enabled, followed by Feature management and AI.
+The Docker group keeps Containers, Images, and Networks together. Users & groups contains the
+account and group lists.
 Select System to open System overview, which shows host and container resources. Use its chevron to show
-or hide Services, OCR perception when enabled, and Maintenance tasks. These groups start expanded in the
+or hide Services and Maintenance tasks. These groups start expanded in the
 desktop sidebar and mobile drawer.
 Use the desktop sidebar toggle beside the Rebroid wordmark to reclaim the navigation width. The
 browser remembers the choice. The Images shortcut opens the builder when the feature is available.
@@ -12,6 +13,8 @@ Administrator shortcuts beside Users and Groups open the corresponding creation 
 On mobile, the bottom bar links to Apps and, when enabled, Workflows. Tap **More** for the full navigation list.
 Swipe down from the grip or tap **Close navigation** to dismiss the drawer.
 The recent app list refreshes while the desktop sidebar or mobile drawer is visible.
+Right-click or long-press a running app shortcut and choose **Stop app…** to stop it from the current
+page. This action requires ownership of the app and permission to stop apps.
 
 ## Finding permissions
 

@@ -18,6 +18,7 @@ export const orchestratorEnvironmentSchema = z.object({
   MAX_CONCURRENT_LIFECYCLE_JOBS: optionalInteger(1, 32),
   REDROID_ADB_PORT: optionalInteger(1, 65_535),
   REDROID_BOOT_TIMEOUT_SECONDS: optionalInteger(1, 3_600),
+  REDROID_COLLECT_BOOT_EVENTS: z.enum(['true', 'false']).optional(),
   REDROID_ADB_TIMEOUT_SECONDS: optionalInteger(1, 3_600),
   REDROID_PROVISIONING_STALE_TIMEOUT_SECONDS: optionalInteger(1, 86_400),
   DEFAULT_INACTIVITY_TIMEOUT_SECONDS: optionalInteger(-1, 86_400),

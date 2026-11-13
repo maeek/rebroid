@@ -48,7 +48,7 @@ describe('Android startup probe scheduling', () => {
     error: null,
   };
 
-  function setup() {
+  function setup(collectBootEvents = false) {
     const exec = {
       execInContainerWithOutput: jest
         .fn()
@@ -92,7 +92,13 @@ describe('Android startup probe scheduling', () => {
       tracker,
       viewer as unknown as AndroidAppsViewerNetworkService,
       new ConfigService({
-        app: { redroid: { bootTimeoutSeconds: 15, adbTimeoutSeconds: 10 } },
+        app: {
+          redroid: {
+            bootTimeoutSeconds: 15,
+            adbTimeoutSeconds: 10,
+            collectBootEvents,
+          },
+        },
       }),
       new AndroidAppsTcpAdbService(
         exec as unknown as DockerContainerExecPort,
@@ -134,6 +140,83 @@ describe('Android startup probe scheduling', () => {
     expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
   });
 
+  it.each([true, false])(
+    'keeps guest boot events optional and outside readiness (enabled: %s)',
+    async (collectBootEvents) => {
+      const { android, exec, lifecycle } = setup(collectBootEvents);
+      const log = jest
+        .spyOn(Logger.prototype, 'log')
+        .mockImplementation(() => {});
+      jest.setSystemTime(11_000);
+      lifecycle.getContainerRuntimeState.mockResolvedValue({
+        exists: true,
+        running: true,
+        startedAt: new Date(10_000).toISOString(),
+      });
+      const remote = jest
+        .spyOn(android, 'prepareRemoteAccess')
+        .mockResolvedValue(undefined);
+      exec.execInContainerWithOutput
+        .mockResolvedValueOnce({ stdout: 'dev.bootcomplete=0', stderr: '' })
+        .mockResolvedValueOnce({ stdout: 'dev.bootcomplete=1', stderr: '' });
+      let finishEvents!: () => void;
+      const pending = new Promise<void>((resolve) => {
+        finishEvents = resolve;
+      });
+      exec.execInContainerWithOutput.mockImplementationOnce(async () => {
+        await pending;
+        return {
+          stdout: [
+            '9.500000 123 123 I boot_progress_ams_ready: 32000',
+            '11.900000 123 123 I boot_progress_ams_ready: 34400',
+            '11.950000 123 123 I unrelated: 34450',
+            '12.900000 123 123 I boot_progress_ams_ready: 35400',
+          ].join('\n'),
+        };
+      });
+
+      const runtime = android.prepareRuntime(app, 'reservation', async () => {});
+      await jest.advanceTimersByTimeAsync(1_000);
+      await runtime;
+      expect(remote).toHaveBeenCalledTimes(1);
+      expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(2);
+      expect(log).not.toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'android_boot_guest_events' }),
+      );
+      await jest.advanceTimersByTimeAsync(1);
+      expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(
+        collectBootEvents ? 3 : 2,
+      );
+      finishEvents();
+      await jest.advanceTimersByTimeAsync(0);
+      if (collectBootEvents) {
+        expect(exec.execInContainerWithOutput).toHaveBeenLastCalledWith(
+          app.containerId,
+          expect.arrayContaining(['events', '-T', '10.000', '-m', '32']),
+          expect.objectContaining({
+            deadline: expect.objectContaining({ timeoutMs: 2_000 }),
+            signal: expect.any(AbortSignal),
+          }),
+        );
+        expect(log).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: 'android_boot_guest_events',
+            reservationId: 'reservation',
+            outcome: 'collected',
+            lastNotReadySample: expect.objectContaining({ sequence: 1 }),
+            readySample: expect.objectContaining({ sequence: 2 }),
+            events: [
+              {
+                tag: 'boot_progress_ams_ready',
+                offsetFromContainerStartMs: 1_900,
+              },
+            ],
+          }),
+        );
+      }
+    },
+  );
+
   it.each(['boot', 'attachment'] as const)(
     'drains the other preparation when %s fails and skips remote access',
     async (failed) => {
@@ -153,7 +236,7 @@ describe('Android startup probe scheduling', () => {
         boot.mockRejectedValue(new Error('boot failed'));
         attachment.mockReturnValue(pending.then(() => undefined as never));
       } else {
-        boot.mockReturnValue(pending);
+        boot.mockReturnValue(pending.then(() => undefined));
         attachment.mockRejectedValue(new Error('attachment failed'));
       }
       let settled = false;
@@ -656,6 +739,13 @@ describe('Android startup probe scheduling', () => {
     await jest.advanceTimersByTimeAsync(2_000);
     await expect(remoteAccess).resolves.toBeUndefined();
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(3);
+    expect(sidecar.connectAdb).toHaveBeenLastCalledWith(
+      '172.18.0.2',
+      app.adbPort,
+      expect.anything(),
+      expect.any(AbortSignal),
+      'transport',
+    );
     expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(3);
     expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(2);
     expect(viewer.observeProvisioningAdbTarget).toHaveBeenCalledTimes(2);
@@ -665,7 +755,27 @@ describe('Android startup probe scheduling', () => {
       containerStartedAt: '2026-11-12T22:52:50Z',
       sidecarGeneration: 2,
       target: connected,
+      purpose: 'transport',
     });
+  });
+
+  it('prepares the interactive display before launching an attached APK', async () => {
+    const { android, sidecar, viewer } = setup();
+    const withApk = { ...app, apkFilePath: '/uploads/app.apk' };
+
+    await android.prepareRemoteAccess(withApk);
+
+    expect(sidecar.connectAdb).toHaveBeenCalledWith(
+      '172.18.0.2',
+      withApk.adbPort,
+      expect.anything(),
+      expect.any(AbortSignal),
+      'interactive',
+    );
+    expect(viewer.rememberProvisionedAdb).toHaveBeenCalledWith(
+      withApk,
+      expect.objectContaining({ purpose: 'interactive', target: connected }),
+    );
   });
 
   it('reuses a recent boot-overlapped attachment with fresh runtime and target observations', async () => {

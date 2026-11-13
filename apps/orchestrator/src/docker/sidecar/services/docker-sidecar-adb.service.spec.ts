@@ -54,6 +54,7 @@ describe(DockerSidecarAdbService.name, () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('does not wake the screen or change settings for transport-only preparation', async () => {
+    const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
     exec.mockResolvedValueOnce(success(device));
     await expect(
       service.prepareTarget(
@@ -68,6 +69,14 @@ describe(DockerSidecarAdbService.name, () => {
     expect(commands()).toEqual([
       expect.stringContaining(`adb -s ${target} get-state`),
     ]);
+    expect(log).toHaveBeenCalledWith({
+      event: 'display_sidecar_adb_preparation',
+      target,
+      purpose: 'transport',
+      outcome: 'reused',
+      stepMs: { initialState: expect.any(Number) },
+      elapsedMs: expect.any(Number),
+    });
   });
 
   it('reuses a healthy transport and records timings without a deadline', async () => {
@@ -86,6 +95,7 @@ describe(DockerSidecarAdbService.name, () => {
     expect(log).toHaveBeenCalledWith({
       event: 'display_sidecar_adb_preparation',
       target,
+      purpose: 'interactive',
       outcome: 'reused',
       stepMs: { initialState: expect.any(Number), display: expect.any(Number) },
       elapsedMs: expect.any(Number),
@@ -115,6 +125,7 @@ describe(DockerSidecarAdbService.name, () => {
     expect(log).toHaveBeenCalledWith({
       event: 'display_sidecar_adb_preparation',
       target,
+      purpose: 'interactive',
       outcome: 'reconnected',
       stepMs: {
         initialState: expect.any(Number),

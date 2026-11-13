@@ -125,7 +125,7 @@ describe('shared viewer target preparation', () => {
     ]);
   });
 
-  it('reuses provisioning ADB readiness after verifying the live target and applying viewer policy', async () => {
+  it('reuses interactive provisioning readiness after verifying the live target and applying viewer policy', async () => {
     const { viewer, policy, sidecar, lifecycle } = setup();
     const target = { ...connected, message: 'verified during provisioning' };
     const observed = await viewer.observeProvisioningAdbTarget(runtime);
@@ -133,6 +133,7 @@ describe('shared viewer target preparation', () => {
       ...observed,
       sidecarGeneration: sidecar.adbTargetGeneration,
       target,
+      purpose: 'interactive',
     });
 
     await expect(viewer.prepareViewerTarget(runtime)).resolves.toMatchObject({
@@ -143,6 +144,61 @@ describe('shared viewer target preparation', () => {
     expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
     expect(policy.refreshViewerPolicy).toHaveBeenCalledWith(runtime);
     expect(sidecar.connectAdb).not.toHaveBeenCalled();
+  });
+
+  it('reuses the headless provisioning observation for reads and prepares display for the first viewer', async () => {
+    const { viewer, policy, sidecar, networks } = setup();
+    const target = { ...connected, message: 'verified during provisioning' };
+    viewer.rememberProvisionedAdb(runtime, {
+      adbHost,
+      containerStartedAt,
+      sidecarGeneration: sidecar.adbTargetGeneration,
+      target,
+      purpose: 'transport',
+    });
+
+    await expect(
+      viewer.requireViewerTarget(runtime, undefined, 'transport'),
+    ).resolves.toMatchObject({ viewerTarget: target });
+    expect(sidecar.connectAdb).not.toHaveBeenCalled();
+
+    await expect(viewer.prepareViewerTarget(runtime)).resolves.toMatchObject({
+      viewerTarget: connected,
+    });
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
+    expect(sidecar.connectAdb).toHaveBeenCalledWith(adbHost, runtime.adbPort);
+    expect(networks.getContainerIpOnNetwork).not.toHaveBeenCalled();
+    expect(
+      policy.refreshViewerPolicy.mock.invocationCallOrder[1],
+    ).toBeLessThan(sidecar.connectAdb.mock.invocationCallOrder[0]!);
+  });
+
+  it('rechecks ADB after a transport read invalidates a provisioning handoff', async () => {
+    const { viewer, sidecar } = setup();
+    viewer.rememberProvisionedAdb(runtime, {
+      adbHost,
+      containerStartedAt,
+      sidecarGeneration: sidecar.adbTargetGeneration,
+      target: connected,
+      purpose: 'transport',
+    });
+    const prepared = await viewer.requireViewerTarget(
+      runtime,
+      undefined,
+      'transport',
+    );
+    expect(sidecar.connectAdb).not.toHaveBeenCalled();
+
+    viewer.invalidateViewerTarget(prepared);
+    await viewer.requireViewerTarget(runtime, undefined, 'transport');
+
+    expect(sidecar.connectAdb).toHaveBeenCalledWith(
+      adbHost,
+      runtime.adbPort,
+      undefined,
+      undefined,
+      'transport',
+    );
   });
 
   it.each([
@@ -157,6 +213,7 @@ describe('shared viewer target preparation', () => {
         ...observed,
         sidecarGeneration: sidecar.adbTargetGeneration,
         target: connected,
+        purpose: 'interactive',
       });
       lifecycle.inspectContainer.mockResolvedValue(inspect);
 
@@ -175,6 +232,7 @@ describe('shared viewer target preparation', () => {
       containerStartedAt,
       sidecarGeneration: sidecar.adbTargetGeneration,
       target: connected,
+      purpose: 'interactive',
     });
     sidecar.adbTargetGeneration += 1;
 
@@ -191,6 +249,7 @@ describe('shared viewer target preparation', () => {
         containerStartedAt,
         sidecarGeneration: sidecar.adbTargetGeneration,
         target: connected,
+        purpose: 'interactive',
       });
       jest.advanceTimersByTime(10_000);
 
@@ -210,6 +269,7 @@ describe('shared viewer target preparation', () => {
       containerStartedAt,
       sidecarGeneration: sidecar.adbTargetGeneration,
       target: connected,
+      purpose: 'interactive',
     });
 
     await viewer.prepareViewerTarget(updatedRuntime);

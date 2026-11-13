@@ -57,6 +57,7 @@ type ObservedAdbTarget = {
 };
 
 type ProvisionedAdbTarget = ObservedAdbTarget & {
+  purpose: AdbTargetPreparation;
   sidecarGeneration: number;
   target: ViewerTargetStatus;
 };
@@ -250,9 +251,15 @@ export class AndroidAppsViewerNetworkService {
   }
 
   invalidateViewerTarget(target: PreparedViewerTarget) {
-    if (this.preparedTargets.get(target.key)?.target === target) {
-      this.preparedTargets.delete(target.key);
-    }
+    const prepared = this.preparedTargets.get(target.key);
+    if (prepared?.target !== target) return;
+    this.preparedTargets.delete(target.key);
+    const provisioned = this.provisionedTargets.get(prepared.appId);
+    if (
+      provisioned?.runtime === prepared.runtime &&
+      provisioned.sidecarGeneration === prepared.generation
+    )
+      this.provisionedTargets.delete(prepared.appId);
   }
 
   private async prepareTarget(
@@ -492,6 +499,7 @@ export class AndroidAppsViewerNetworkService {
     const current = await this.refreshNetworkPolicy(app);
     if (
       provisioned &&
+      (provisioned.purpose === 'interactive' || purpose === 'transport') &&
       provisioned.runtime === readinessFingerprint(current) &&
       provisioned.sidecarGeneration === this.sidecar.adbTargetGeneration &&
       provisioned.expiresAt > performance.now()

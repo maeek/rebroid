@@ -88,6 +88,7 @@ export class DockerSidecarAdbService {
       this.logger.log({
         event: 'display_sidecar_adb_preparation',
         target,
+        purpose,
         outcome,
         stepMs: preparation.elapsedMs,
         elapsedMs: Math.round(performance.now() - startedAt),

@@ -75,6 +75,7 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
             : null,
         oomKilled: Boolean(inspect.State?.OOMKilled),
         error: inspect.State?.Error || null,
+        startedAt: inspect.State?.StartedAt || null,
         finishedAt: inspect.State?.FinishedAt || null,
       };
     } catch (error) {

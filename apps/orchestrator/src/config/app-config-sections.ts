@@ -70,6 +70,7 @@ const redroidSection = (env: Environment) => ({
   adbPort: environmentNumber(env.REDROID_ADB_PORT, 5555),
   privileged: environmentBoolean(env.REDROID_PRIVILEGED, true),
   bootTimeoutSeconds: environmentNumber(env.REDROID_BOOT_TIMEOUT_SECONDS, 300),
+  collectBootEvents: environmentBoolean(env.REDROID_COLLECT_BOOT_EVENTS, false),
   adbTimeoutSeconds: environmentNumber(env.REDROID_ADB_TIMEOUT_SECONDS, 120),
   cgroupnsMode: env.REDROID_CGROUPNS_MODE ?? 'private',
   provisioningStaleTimeoutSeconds: environmentNumber(

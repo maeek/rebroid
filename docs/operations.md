@@ -137,12 +137,14 @@ The orchestrator emits Nest startup and service logs and Fastify request logs as
 record per line. Filter structured service events by their `event` field.
 
 For ADB preparation, look for `display_sidecar_adb_preparation` in the
-orchestrator logs. The event reports whether the transport was reused,
-reconnected, or failed, with elapsed milliseconds for each step that ran.
+orchestrator logs. The event reports the preparation purpose, transport outcome
+(reused, reconnected, or failed), and elapsed milliseconds for each step that ran.
 A healthy transport runs the initial state check. Interactive preparation also
-runs Android display setup. Notification and Android log reads can use transport
-preparation without waking the display or changing its settings. The reconnect
-path adds a TCP probe, connection, and state verification.
+runs Android display setup. Runtime startup without an attached APK, notification
+reads, and Android log reads can use transport preparation without waking the
+display or changing its settings. The first viewer or interactive command still
+prepares the display. Runtime startup with an attached APK prepares the display
+before launch. The reconnect path adds a TCP probe, connection, and state verification.
 The display sidecar separately logs `viewer_adb_connection` for session creation.
 
 ## Android notification sampling

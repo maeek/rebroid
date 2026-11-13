@@ -54,4 +54,19 @@ describe('appConfig', () => {
       process.env.DISPLAY_WEBRTC_UDP_PORT = previous;
     }
   });
+
+  it('leaves Android boot event collection off unless explicitly enabled', () => {
+    const previous = process.env.REDROID_COLLECT_BOOT_EVENTS;
+    try {
+      delete process.env.REDROID_COLLECT_BOOT_EVENTS;
+      expect(load()).toMatchObject({ redroid: { collectBootEvents: false } });
+      process.env.REDROID_COLLECT_BOOT_EVENTS = 'true';
+      expect(load()).toMatchObject({ redroid: { collectBootEvents: true } });
+      process.env.REDROID_COLLECT_BOOT_EVENTS = 'yes';
+      expect(() => load()).toThrow();
+    } finally {
+      if (previous === undefined) delete process.env.REDROID_COLLECT_BOOT_EVENTS;
+      else process.env.REDROID_COLLECT_BOOT_EVENTS = previous;
+    }
+  });
 });

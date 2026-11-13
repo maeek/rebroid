@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
+      REDROID_COLLECT_BOOT_EVENTS: ${REDROID_COLLECT_BOOT_EVENTS:-false}
       DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
       WEB_INTERNAL_URL: http://web:3101
       FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
