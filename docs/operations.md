@@ -111,8 +111,8 @@ historical snapshot, so retain it before and after a subsequent controlled start
 Do not publish complete container inspections: they may contain environment secrets.
 
 One candidate is default-gateway movement when an app network is attached. The
-default deployment publishes 101 UDP ports on the display sidecar and does not set
-gateway priority. Docker can change the gateway when networks are attached;
+previous default deployment published 101 UDP ports on the display sidecar.
+The current default publishes one. Docker can change the gateway when networks are attached;
 [gateway priority](https://docs.docker.com/engine/network/#connecting-to-multiple-networks)
 controls that choice. In the
 [Moby 29.0 gateway selection code](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/sandbox.go#L582-L634),

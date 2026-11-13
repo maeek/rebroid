@@ -42,16 +42,16 @@ describe('appConfig', () => {
     }
   });
 
-  it('rejects invalid WebRTC UDP ranges', () => {
-    const previous = process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE;
-    process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE = '40100-40000';
+  it('rejects invalid WebRTC UDP ports', () => {
+    const previous = process.env.DISPLAY_WEBRTC_UDP_PORT;
+    process.env.DISPLAY_WEBRTC_UDP_PORT = '65536';
 
     expect(() => load()).toThrow();
 
     if (previous === undefined) {
-      delete process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE;
+      delete process.env.DISPLAY_WEBRTC_UDP_PORT;
     } else {
-      process.env.DISPLAY_WEBRTC_UDP_PORT_RANGE = previous;
+      process.env.DISPLAY_WEBRTC_UDP_PORT = previous;
     }
   });
 });

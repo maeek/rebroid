@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  type OnModuleDestroy,
 } from "@nestjs/common";
 import type { IncomingHttpHeaders } from "node:http";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
@@ -14,7 +15,7 @@ import type { DisplaySession } from "./display.types";
 import { DisplayControlService } from "./display-control.service";
 import { resolveDisplayStreamProfile } from "./display-stream-profile";
 import { DisplayWebrtcAttempt } from "./display-webrtc-attempt";
-import { spawnWebrtcBridge } from "./display-webrtc-bridge";
+import { DisplayWebrtcProcess } from "./display-webrtc-process";
 
 type WebrtcOfferOptions = {
   sessionId: string;
@@ -28,8 +29,9 @@ type WebrtcOfferOptions = {
 };
 
 @Injectable()
-export class DisplayWebrtcService {
+export class DisplayWebrtcService implements OnModuleDestroy {
   private readonly active = new Map<string, DisplayWebrtcAttempt>();
+  private readonly bridge: DisplayWebrtcProcess;
 
   constructor(
     private readonly sessions: DisplaySessionService,
@@ -38,7 +40,18 @@ export class DisplayWebrtcService {
     private readonly controls: DisplayControlService,
     private readonly features: SidecarFeatureService,
     private readonly access: DisplayViewerAccessService,
-  ) {}
+  ) {
+    this.bridge = new DisplayWebrtcProcess(
+      config.webrtcBridgePath,
+      config.webrtcUdpPort,
+      config.sessionMaxActive * 2,
+    );
+  }
+
+  onModuleDestroy() {
+    for (const attempt of this.active.values()) attempt.stop();
+    this.bridge.close();
+  }
 
   async createAnswer(options: WebrtcOfferOptions) {
     const { sessionId, sdp } = options;
@@ -60,12 +73,11 @@ export class DisplayWebrtcService {
       iceHost,
       maxFps: sourceOptions.maxFps,
       iceServers: this.config.webrtcStunUrls,
-      udpPortRange: this.config.webrtcUdpPortRange,
       assertSourceSupported: () =>
         this.scrcpy.assertTargetSupported(session.udid),
       attachSource: (sink) =>
         this.scrcpy.attachStream({ ...sourceOptions, sink }),
-      launchBridge: () => spawnWebrtcBridge(this.config.webrtcBridgePath),
+      launchBridge: (signal) => this.bridge.connect(signal),
       executeControl: (request) => this.controls.execute(sessionId, request),
       onFinish: () => {
         stopWatching();

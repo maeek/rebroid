@@ -115,7 +115,7 @@ const displaySidecarSection = (env: Environment, resourcePrefix: string) => {
       `http://${containerName}:${port}`,
     player: env.DISPLAY_SIDECAR_PLAYER ?? 'webcodecs',
     proxyRemote: env.DISPLAY_SIDECAR_PROXY_REMOTE ?? 'tcp:8886',
-    webrtcUdpPortRange: env.DISPLAY_WEBRTC_UDP_PORT_RANGE ?? '40000-40100',
+    webrtcUdpPort: env.DISPLAY_WEBRTC_UDP_PORT ?? 40_000,
     webrtcIceHost: env.DISPLAY_WEBRTC_ICE_HOST ?? '',
   };
 };

@@ -53,6 +53,7 @@ type WorkerInput =
 
 type WorkerOutput =
   | { type: "first-frame" }
+  | { type: "stream-requested"; at: number }
   | { type: "resolution"; width: number; height: number }
   | { type: "status"; payload: Record<string, unknown> }
   | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
@@ -1135,7 +1136,9 @@ function connect(): void {
     return;
   }
   const currentGeneration = ++generation;
+  const requestedAt = performance.timeOrigin + performance.now();
   const socket = new WebSocket(websocketUrl);
+  scope.postMessage({ type: "stream-requested", at: requestedAt });
   socket.binaryType = "arraybuffer";
   const connection = createMediaIngress(currentGeneration);
   ingress = connection;

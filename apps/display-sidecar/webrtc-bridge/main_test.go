@@ -84,15 +84,6 @@ func TestReadCommandsForwardsOnlyValidDataChannelMessages(t *testing.T) {
 	}
 }
 
-func TestProtocolBoundsPortRange(t *testing.T) {
-	if _, _, ok := parsePortRange("40000-40100"); !ok {
-		t.Fatal("expected valid port range")
-	}
-	if _, _, ok := parsePortRange("60000-70000"); ok {
-		t.Fatal("expected out-of-range port to fail")
-	}
-}
-
 func TestRegistersOnlyConfiguredH264Profile(t *testing.T) {
 	mediaEngine := &webrtc.MediaEngine{}
 	const fmtp = "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42c033"

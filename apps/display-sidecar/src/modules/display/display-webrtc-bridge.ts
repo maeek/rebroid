@@ -1,8 +1,7 @@
-import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { createConnection } from "node:net";
 import { StringDecoder } from "node:string_decoder";
 import type { Writable } from "node:stream";
-
-const shutdownGraceMs = 1_000;
 
 export type WebrtcBridgeMessage =
   | { type: "answer"; sdp: string }
@@ -19,7 +18,6 @@ export type WebrtcBridgeOffer = {
   type: "offer";
   sdp: string;
   iceHost: string;
-  udpPortRange: string;
   stunUrls: string[];
   maxFps: number;
   audio: boolean;
@@ -29,12 +27,12 @@ export type WebrtcBridgeOffer = {
 
 export interface WebrtcBridge {
   isOpen(): boolean;
-  onClose(listener: (code?: number, reason?: Buffer) => void): void;
+  onClose(listener: () => void): void;
   listen(options: {
     signal: AbortSignal;
     onMessage: (message: WebrtcBridgeMessage) => void;
     onLog: (message: string) => void;
-    onFailure: (error: Error, source: "process" | "input") => void;
+    onFailure: (error: Error) => void;
     onAudioFailure: () => void;
   }): void;
   sendOffer(offer: WebrtcBridgeOffer): void;
@@ -53,21 +51,23 @@ const writeMedia = (input: Writable, payload: Buffer) =>
     });
   });
 
-export const spawnWebrtcBridge = (path: string): WebrtcBridge => {
-  const bridge = spawn(path, [], {
-    stdio: ["pipe", "pipe", "pipe", "pipe", "pipe"],
-  });
-  const video = bridge.stdio[3] as Writable;
-  const audio = bridge.stdio[4] as Writable;
+export const connectWebrtcBridge = (path: string): WebrtcBridge => {
+  const id = randomBytes(16);
+  const openStream = (index: number) => {
+    const stream = createConnection(path);
+    stream.on("error", () => undefined);
+    stream.write(Buffer.concat([id, Buffer.from([index])]));
+    return stream;
+  };
+  const streams = [openStream(0), openStream(1), openStream(2)] as const;
+  const [commands, video, audio] = streams;
   const send = (message: object) =>
-    bridge.stdin?.write(`${JSON.stringify(message)}\n`);
+    commands.write(`${JSON.stringify(message)}\n`);
 
   return {
-    isOpen: () => bridge.exitCode === null && !bridge.killed,
+    isOpen: () => !commands.destroyed,
     onClose: (listener) => {
-      bridge.once("close", (code, signal) =>
-        listener(code ?? undefined, signal ? Buffer.from(signal) : undefined),
-      );
+      commands.once("close", () => listener());
     },
     listen: ({ signal, onMessage, onLog, onFailure, onAudioFailure }) => {
       const decoder = new StringDecoder("utf8");
@@ -91,21 +91,12 @@ export const spawnWebrtcBridge = (path: string): WebrtcBridge => {
           if (message && typeof message.type === "string") onMessage(message);
         }
       };
-      signal.addEventListener(
-        "abort",
-        () => bridge.stdout?.off("data", onData),
-        { once: true },
-      );
-      bridge.stdout?.on("data", onData);
-      bridge.stderr?.setEncoding("utf8");
-      bridge.stderr?.on("data", (chunk: string) => {
-        for (const line of chunk.split(/\r?\n/)) {
-          if (line.trim()) onLog(line);
-        }
+      signal.addEventListener("abort", () => commands.off("data", onData), {
+        once: true,
       });
-      bridge.on("error", (error) => onFailure(error, "process"));
-      bridge.stdin?.on("error", (error) => onFailure(error, "input"));
-      video.on("error", (error) => onFailure(error, "input"));
+      commands.on("data", onData);
+      commands.on("error", onFailure);
+      video.on("error", onFailure);
       audio.on("error", onAudioFailure);
     },
     sendOffer: send,
@@ -114,17 +105,7 @@ export const spawnWebrtcBridge = (path: string): WebrtcBridge => {
     writeAudio: (payload) => writeMedia(audio, payload),
     stopAudio: () => audio.destroy(),
     close: () => {
-      video.end();
-      audio.end();
-      if (bridge.exitCode !== null || bridge.signalCode !== null) return;
-      if (!bridge.kill("SIGTERM")) return;
-      const deadline = setTimeout(() => {
-        if (bridge.exitCode === null && bridge.signalCode === null) {
-          bridge.kill("SIGKILL");
-        }
-      }, shutdownGraceMs);
-      deadline.unref();
-      bridge.once("exit", () => clearTimeout(deadline));
+      for (const stream of streams) stream.destroy();
     },
   };
 };

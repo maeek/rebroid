@@ -20,17 +20,7 @@ const environmentSchema = z.object({
   DISPLAY_SESSION_TTL_SECONDS: optionalInteger(1, 86_400),
   DISPLAY_SESSION_MAX_LIFETIME_SECONDS: optionalInteger(1, 604_800),
   DISPLAY_SESSION_MAX_ACTIVE: optionalInteger(1, 10_000),
-  DISPLAY_WEBRTC_UDP_PORT_RANGE: z
-    .string()
-    .regex(
-      /^\d{1,5}-\d{1,5}$/,
-      "Expected a UDP port range such as 40000-40100.",
-    )
-    .refine((value) => {
-      const [first, last] = value.split("-").map(Number);
-      return first >= 1 && first <= last && last <= 65_535;
-    }, "UDP port range must be ordered and contain valid ports.")
-    .optional(),
+  DISPLAY_WEBRTC_UDP_PORT: optionalInteger(1, 65_535),
   DISPLAY_WEBRTC_ICE_HOST: z.string().trim().optional(),
   DISPLAY_WEBRTC_STUN_URLS: z.string().optional(),
   DISPLAY_WEBRTC_BRIDGE_PATH: z.string().trim().min(1).optional(),
@@ -81,8 +71,7 @@ export class SidecarConfigService {
   readonly webrtcBridgePath =
     environment.DISPLAY_WEBRTC_BRIDGE_PATH ||
     "/opt/rebroid-display-sidecar/rebroid-webrtc-bridge";
-  readonly webrtcUdpPortRange =
-    environment.DISPLAY_WEBRTC_UDP_PORT_RANGE || "40000-40100";
+  readonly webrtcUdpPort = environment.DISPLAY_WEBRTC_UDP_PORT ?? 40_000;
   readonly webrtcIceHostOverride = environment.DISPLAY_WEBRTC_ICE_HOST || "";
   readonly webrtcStunUrls = (environment.DISPLAY_WEBRTC_STUN_URLS ?? "")
     .split(",")

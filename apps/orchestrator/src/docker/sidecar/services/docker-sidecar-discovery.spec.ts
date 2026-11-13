@@ -24,7 +24,7 @@ const setup = (containerId?: string, running = true) => {
         autoStart: false,
         port: 8000,
         publishedHostPort: 0,
-        webrtcUdpPortRange: '',
+        webrtcUdpPort: 40000,
         webrtcIceHost: '',
       },
     },

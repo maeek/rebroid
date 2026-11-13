@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
+
+	"github.com/pion/webrtc/v4"
 )
 
 func main() {
@@ -17,60 +20,40 @@ func main() {
 }
 
 func runProcess() error {
-	signals, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stopSignals()
-	ctx, stop := context.WithCancelCause(signals)
-	defer stop(nil)
-
-	commands, err := openBridgePipe(0, "commands")
-	if err != nil {
-		return err
+	if len(os.Args) != 4 {
+		return fmt.Errorf("usage: rebroid-webrtc-bridge <socket path> <UDP port> <max peers>")
 	}
-	defer commands.Close()
-	output, err := openBridgePipe(1, "events")
-	if err != nil {
-		return err
+	port, err := strconv.Atoi(os.Args[2])
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("invalid WebRTC UDP port")
 	}
-	defer output.Close()
-	video, err := openBridgePipe(3, "video")
-	if err != nil {
-		return err
+	maxPeers, err := strconv.Atoi(os.Args[3])
+	if err != nil || maxPeers < 1 || maxPeers > 20000 {
+		return fmt.Errorf("invalid WebRTC peer limit")
 	}
-	var audio io.ReadCloser
-	if pipe, err := openBridgePipe(4, "audio"); err == nil {
-		audio = pipe
-	}
-
-	events := newRelayMailbox[stdoutMessage]()
-	done := make(chan struct{})
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	// The parent holds stdin open. EOF also shuts down the bridge if the
+	// sidecar exits without running its shutdown hooks.
 	go func() {
-		defer close(done)
-		if err := relayOutput(ctx, output, events); err != nil {
-			stop(err)
-		}
+		var unused [1]byte
+		_, _ = os.Stdin.Read(unused[:])
+		stop()
 	}()
-	err = run(ctx, commands, video, audio, func(message stdoutMessage) {
-		if ctx.Err() != nil {
-			return
-		}
-		key := message.replaceKey
-		if message.Type == "metrics" {
-			key = "metrics"
-		}
-		if err := events.put(message, key, message.discardKey); err != nil {
-			stop(err)
-		}
-	})
-	stop(nil)
-	_ = output.Close()
-	<-done
-	return err
-}
 
-// Nonblocking descriptors let Close interrupt a blocked pipe read or write.
-func openBridgePipe(fd int, name string) (*os.File, error) {
-	if err := syscall.SetNonblock(fd, true); err != nil {
-		return nil, fmt.Errorf("open bridge %s pipe: %w", name, err)
+	udp, err := net.ListenUDP("udp", &net.UDPAddr{Port: port})
+	if err != nil {
+		return fmt.Errorf("bind WebRTC UDP port %d: %w", port, err)
 	}
-	return os.NewFile(uintptr(fd), name), nil
+	mux := webrtc.NewICEUDPMux(nil, udp)
+	defer mux.Close()
+	setting := webrtc.SettingEngine{}
+	setting.SetICEUDPMux(mux)
+
+	listener, err := net.Listen("unix", os.Args[1])
+	if err != nil {
+		return fmt.Errorf("listen for sidecar bridge connections: %w", err)
+	}
+	fmt.Fprintln(os.Stdout, "ready")
+	return servePeers(ctx, listener, maxPeers, setting)
 }

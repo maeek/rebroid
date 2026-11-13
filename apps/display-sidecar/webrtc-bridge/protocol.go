@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"strconv"
-	"strings"
 
 	"github.com/pion/webrtc/v4"
 )
@@ -16,7 +14,6 @@ type configMessage struct {
 	Type         string   `json:"type"`
 	SDP          string   `json:"sdp"`
 	ICEHost      string   `json:"iceHost"`
-	UDPPortRange string   `json:"udpPortRange"`
 	STUNUrls     []string `json:"stunUrls"`
 	MaxFPS       int      `json:"maxFps"`
 	Audio        bool     `json:"audio"`
@@ -117,17 +114,6 @@ func pointerEvent(payload []byte) string {
 		return ""
 	}
 	return message.EventType
-}
-
-func parsePortRange(value string) (int, int, bool) {
-	parts := strings.Split(strings.TrimSpace(value), "-")
-	if len(parts) != 2 {
-		return 0, 0, false
-	}
-	minPort, minErr := strconv.Atoi(parts[0])
-	maxPort, maxErr := strconv.Atoi(parts[1])
-	valid := minErr == nil && maxErr == nil && minPort > 0 && maxPort >= minPort && maxPort <= 65535
-	return minPort, maxPort, valid
 }
 
 func iceServers(urls []string) []webrtc.ICEServer {

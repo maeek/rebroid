@@ -986,6 +986,7 @@ export function createWebrtcStream({
         jitterController,
       );
 
+      const offerAt = performance.timeOrigin + performance.now();
       const response = await fetch(
         `/rebroid/display/public/sessions/${encodeURIComponent(config.sessionId)}/webrtc/offer`,
         {
@@ -1071,7 +1072,7 @@ export function createWebrtcStream({
       }
       await activateRecoveryVideo(playbackVideo, video, config.audio);
       if (peer !== connection || peerGeneration !== currentGeneration) return;
-      emitViewerSessionReady("webrtc", config.sessionId);
+      emitViewerSessionReady("webrtc", config.sessionId, offerAt);
       retriesUsed = 0;
       stopMetricsMonitor?.();
       stopMetricsMonitor = startWebrtcMetricsMonitor(

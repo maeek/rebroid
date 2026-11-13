@@ -44,7 +44,7 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
   private readonly displaySidecarPlatformNetwork?: string;
   private readonly displaySidecarPort: number;
   private readonly displaySidecarPublishedHostPort: number;
-  private readonly displaySidecarWebrtcUdpPortRange: string;
+  private readonly displaySidecarWebrtcUdpPort: number;
   private readonly displaySidecarWebrtcIceHost: string;
   private displaySidecarLastError: string | null = null;
   private readonly sidecarMutation = new DockerOperationQueue();
@@ -85,8 +85,8 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
     this.displaySidecarPublishedHostPort = this.config.getOrThrow<number>(
       'app.displaySidecar.publishedHostPort',
     );
-    this.displaySidecarWebrtcUdpPortRange = this.config.getOrThrow<string>(
-      'app.displaySidecar.webrtcUdpPortRange',
+    this.displaySidecarWebrtcUdpPort = this.config.getOrThrow<number>(
+      'app.displaySidecar.webrtcUdpPort',
     );
     this.displaySidecarWebrtcIceHost = this.config.getOrThrow<string>(
       'app.displaySidecar.webrtcIceHost',
@@ -483,15 +483,16 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
         ],
       };
     }
-    const webrtcPortBinding = webrtcUdpPortBinding(
-      this.displaySidecarWebrtcUdpPortRange,
-    );
-    if (webrtcPortBinding) {
-      hostConfig.PortBindings = {
-        ...(hostConfig.PortBindings ?? {}),
-        ...webrtcPortBinding.portBindings,
-      };
-    }
+    const mediaPort = `${this.displaySidecarWebrtcUdpPort}/udp`;
+    hostConfig.PortBindings = {
+      ...(hostConfig.PortBindings ?? {}),
+      [mediaPort]: [
+        {
+          HostIp: '0.0.0.0',
+          HostPort: String(this.displaySidecarWebrtcUdpPort),
+        },
+      ],
+    };
 
     if (this.displaySidecarPlatformNetwork) {
       hostConfig.NetworkMode = this.displaySidecarPlatformNetwork;
@@ -518,14 +519,14 @@ export class DockerSidecarService implements OnModuleInit, DockerSidecarPort {
                   `DISPLAY_SIDECAR_SHARED_SECRET=${this.config.get<string>('app.sharedSecret')}`,
                 ]
               : []),
-            `DISPLAY_WEBRTC_UDP_PORT_RANGE=${this.displaySidecarWebrtcUdpPortRange}`,
+            `DISPLAY_WEBRTC_UDP_PORT=${this.displaySidecarWebrtcUdpPort}`,
             ...(this.displaySidecarWebrtcIceHost
               ? [`DISPLAY_WEBRTC_ICE_HOST=${this.displaySidecarWebrtcIceHost}`]
               : []),
           ]),
           ExposedPorts: {
             [`${this.displaySidecarPort}/tcp`]: {},
-            ...(webrtcPortBinding?.exposedPorts ?? {}),
+            [mediaPort]: {},
           },
           Labels: this.engine.labels('platform', 'display-sidecar'),
           HostConfig: hostConfig,

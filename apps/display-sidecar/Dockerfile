@@ -63,7 +63,7 @@ ENV NODE_ENV=production \
   SCRCPY_VERSION=${SCRCPY_VERSION} \
   SCRCPY_SERVER_PATH=/opt/rebroid-display-sidecar/scrcpy-server \
   DISPLAY_WEBRTC_BRIDGE_PATH=/opt/rebroid-display-sidecar/rebroid-webrtc-bridge \
-  DISPLAY_WEBRTC_UDP_PORT_RANGE=40000-40100
+  DISPLAY_WEBRTC_UDP_PORT=40000
 
 WORKDIR /opt/rebroid-display-sidecar
 

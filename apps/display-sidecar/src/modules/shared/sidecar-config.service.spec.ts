@@ -6,7 +6,7 @@ test("display configuration accepts bounded defaults and explicit authentication
   const parsed = parseSidecarEnvironment({
     PORT: "8000",
     DISPLAY_SESSION_MAX_ACTIVE: "64",
-    DISPLAY_WEBRTC_UDP_PORT_RANGE: "40000-40100",
+    DISPLAY_WEBRTC_UDP_PORT: "40000",
     DISPLAY_SIDECAR_ALLOW_UNAUTHENTICATED_INTERNAL_API: "true",
     SCRCPY_VIDEO_ENCODER: "c2.android.avc.encoder",
   });
@@ -19,12 +19,12 @@ test("display configuration accepts bounded defaults and explicit authentication
   assert.equal(parsed.SCRCPY_VIDEO_ENCODER, "c2.android.avc.encoder");
 });
 
-test("display configuration rejects invalid capacity and port ranges", () => {
+test("display configuration rejects invalid capacity and ports", () => {
   assert.throws(() =>
     parseSidecarEnvironment({ DISPLAY_SESSION_MAX_ACTIVE: "0" }),
   );
   assert.throws(() =>
-    parseSidecarEnvironment({ DISPLAY_WEBRTC_UDP_PORT_RANGE: "50000-40000" }),
+    parseSidecarEnvironment({ DISPLAY_WEBRTC_UDP_PORT: "65536" }),
   );
   assert.throws(() =>
     parseSidecarEnvironment({ SCRCPY_VIDEO_ENCODER: "encoder; reboot" }),

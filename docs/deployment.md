@@ -36,8 +36,8 @@ docker compose -f deploy/compose.yaml exec web cat /app/data/initial-admin-passw
 The generated password is stored in a protected file and never printed to logs.
 
 The test stack in `deploy/compose.test.yaml` uses separate state volumes and publishes HTTPS on
-port `3001` and WebRTC on UDP ports `40101–40201` by default. Override the test media range with
-`TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE`. Run `pnpm test:compose` to check internal routing, shared secret
+port `3001` and WebRTC on UDP port `40101` by default. Override the test media port with
+`TEST_DISPLAY_WEBRTC_UDP_PORT`. Run `pnpm test:compose` to check internal routing, shared secret
 mounts, and UDP publication in both resolved configurations.
 
 ## Configuration
@@ -51,7 +51,7 @@ These Compose variables control deployment wiring:
 | `REBROID_TLS_HOSTS`             | `localhost,127.0.0.1`  | Certificate hostnames and IPs.                       |
 | `REBROID_PUBLIC_HOSTS`          | TLS host list          | Browser hosts accepted by nginx.                     |
 | `CONTAINER_ENGINE_SOCKET`       | `/var/run/docker.sock` | Rootful engine socket mounted into the orchestrator. |
-| `DISPLAY_WEBRTC_UDP_PORT_RANGE` | `40000-40100`          | Published UDP media ports.                           |
+| `DISPLAY_WEBRTC_UDP_PORT` | `40000`          | Published UDP media port.                           |
 | `DISPLAY_WEBRTC_ICE_HOST`       | Automatic              | Browser-reachable address advertised for WebRTC.     |
 
 The orchestrator requires an external engine socket. The firewall agent uses host networking
@@ -105,9 +105,14 @@ The sidecar needs private access to the web backend for viewer authorization. Co
 and the shared service secret. Use the same HTTPS origin for the web console and the browser viewer.
 Deploy web, orchestrator, display sidecar, and edge together when upgrading from token-based viewer
 links. Reopen existing viewers from the app page after the upgrade.
-WebRTC media uses the published UDP range and needs a browser-reachable address. For extra proxy
+WebRTC media uses the published UDP port and needs a browser-reachable address. For extra proxy
 layers, enable WebSocket upgrades and disable media buffering. See
 [display proxy configuration](display-streaming.md#reverse-proxies).
+
+When upgrading from the UDP range, replace `DISPLAY_WEBRTC_UDP_PORT_RANGE` with
+`DISPLAY_WEBRTC_UDP_PORT` if you use a custom port. For the test stack, use
+`TEST_DISPLAY_WEBRTC_UDP_PORT`. Rebuild and recreate the display sidecar with the
+updated Compose file, and forward only the configured UDP port to the host.
 
 ## Podman socket
 

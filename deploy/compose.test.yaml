@@ -19,6 +19,7 @@ services:
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
       DISPLAY_SIDECAR_AUTO_START: "false"
+      DISPLAY_WEBRTC_UDP_PORT: ${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}
       OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar-test:8100
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
     expose:
@@ -111,12 +112,12 @@ services:
       WEB_INTERNAL_URL: http://web:3101
       DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
       DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
-      DISPLAY_WEBRTC_UDP_PORT_RANGE: ${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}
+      DISPLAY_WEBRTC_UDP_PORT: ${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
     expose:
       - "8000"
     ports:
-      - "${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}:${TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE:-40101-40201}/udp"
+      - "${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}:${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}/udp"
     volumes:
       - shared-test-secrets:/app/secrets
     networks:

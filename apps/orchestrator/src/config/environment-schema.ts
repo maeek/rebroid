@@ -33,15 +33,5 @@ export const orchestratorEnvironmentSchema = z.object({
   FIREWALL_POLICY_BOOTSTRAP: z.enum(['true', 'false']).optional(),
   GAPPS_PATCHER_IMAGE: z.string().min(1).optional(),
   GAPPS_PATCHER_BUILD_CONTEXT: z.string().min(1).optional(),
-  DISPLAY_WEBRTC_UDP_PORT_RANGE: z
-    .string()
-    .regex(
-      /^\d{1,5}-\d{1,5}$/,
-      'Expected a UDP port range such as 40000-40100.',
-    )
-    .refine((value) => {
-      const [first, last] = value.split('-').map(Number);
-      return first >= 1 && first <= last && last <= 65_535;
-    }, 'UDP port range must be ordered and contain valid ports.')
-    .optional(),
+  DISPLAY_WEBRTC_UDP_PORT: optionalInteger(1, 65_535),
 });

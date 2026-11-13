@@ -1,8 +1,5 @@
 import { configuredStreamProfile } from "./config.js";
-import {
-  MseVideoPlayer,
-  type MseMediaSegment,
-} from "./mse-video-player.js";
+import { MseVideoPlayer, type MseMediaSegment } from "./mse-video-player.js";
 import {
   emitViewerSessionExpired,
   emitViewerSessionReady,
@@ -26,7 +23,12 @@ type DisplayStreamOptions = {
 
 type ReconnectCause = {
   initiator: "worker" | "main" | "transport";
-  category: "heartbeat" | "first-frame" | "malformed-media" | "socket" | "video-progress";
+  category:
+    | "heartbeat"
+    | "first-frame"
+    | "malformed-media"
+    | "socket"
+    | "video-progress";
   generation: number;
   closeCode?: number;
   detail: string;
@@ -34,6 +36,7 @@ type ReconnectCause = {
 
 type MediaWorkerMessage =
   | { type: "first-frame" }
+  | { type: "stream-requested"; at: number }
   | { type: "resolution"; width: number; height: number }
   | { type: "status"; payload: Record<string, unknown> }
   | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
@@ -102,6 +105,7 @@ export function createDisplayStream({
   let msePlayer: MseVideoPlayer | null = null;
   let mseVideo: HTMLVideoElement | null = null;
   let initialized = false;
+  let connectAt: number | undefined;
   let hasVisibleFrame = false;
 
   const showAudioDisabled = (message?: unknown) => {
@@ -165,8 +169,12 @@ export function createDisplayStream({
 
   const handleWorkerMessage = (event: MessageEvent<MediaWorkerMessage>) => {
     const message = event.data;
+    if (message.type === "stream-requested") {
+      connectAt = message.at;
+      return;
+    }
     if (message.type === "first-frame") {
-      emitViewerSessionReady("websocket", config.sessionId);
+      emitViewerSessionReady("websocket", config.sessionId, connectAt);
       if (!hasVisibleFrame) {
         hasVisibleFrame = true;
         ui.showCanvas();
@@ -285,7 +293,10 @@ export function createDisplayStream({
   };
 
   const onVisibilityChange = () => {
-    worker?.postMessage({ type: "visibility", visible: document.visibilityState === "visible" });
+    worker?.postMessage({
+      type: "visibility",
+      visible: document.visibilityState === "visible",
+    });
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
@@ -310,8 +321,7 @@ export function createDisplayStream({
     }
     const firefoxMse =
       navigator.userAgent.includes("Firefox/") && "MediaSource" in window;
-    const webCodecs =
-      "VideoDecoder" in window && "EncodedVideoChunk" in window;
+    const webCodecs = "VideoDecoder" in window && "EncodedVideoChunk" in window;
     if (
       !("Worker" in window) ||
       (!firefoxMse && !webCodecs) ||
@@ -348,7 +358,7 @@ export function createDisplayStream({
       msePlayer = new MseVideoPlayer(
         video,
         (epoch) => {
-          emitViewerSessionReady("websocket", config.sessionId);
+          emitViewerSessionReady("websocket", config.sessionId, connectAt);
           hasVisibleFrame = true;
           ui.showVideo();
           worker?.postMessage({ type: "mse-presented", epoch });

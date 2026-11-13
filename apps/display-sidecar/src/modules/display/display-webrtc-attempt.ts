@@ -32,10 +32,9 @@ interface WebrtcAttemptOptions {
   audio: boolean;
   allowClipboard: boolean;
   iceServers: string[];
-  udpPortRange: string;
   assertSourceSupported: () => Promise<void>;
   attachSource: (sink: ScrcpyMediaSink) => ScrcpyStreamAttachment;
-  launchBridge: () => WebrtcBridge;
+  launchBridge: (signal: AbortSignal) => WebrtcBridge | Promise<WebrtcBridge>;
   executeControl: (
     request: DisplayControlRequest,
   ) => ReturnType<DisplayControlService["execute"]>;
@@ -108,10 +107,13 @@ export class DisplayWebrtcAttempt {
     declaredLevelSupportsRequestedRate: boolean,
   ) {
     const { signal } = this.controller;
-    const { sessionId, audio, iceHost, maxFps, udpPortRange, iceServers, sdp } =
-      this.options;
+    const { sessionId, audio, iceHost, maxFps, iceServers, sdp } = this.options;
     signal.throwIfAborted();
-    const bridge = this.options.launchBridge();
+    const bridge = await this.options.launchBridge(signal);
+    if (signal.aborted) {
+      bridge.close();
+      signal.throwIfAborted();
+    }
     let mediaCloseReason: string | undefined;
     let audioDisabled = !audio;
     const disableAudio = (message = "Audio relay stopped.") => {
@@ -190,13 +192,15 @@ export class DisplayWebrtcAttempt {
       },
       { once: true },
     );
-    bridge.onClose((code, reason) => {
-      this.stop(new ServiceUnavailableException("WebRTC bridge exited."));
+    bridge.onClose(() => {
+      this.stop(
+        new ServiceUnavailableException("WebRTC bridge connection closed."),
+      );
       const media = mediaCloseReason
         ? ` mediaReason=${JSON.stringify(mediaCloseReason)}`
         : "";
       this.logger.debug(
-        `[webrtc:${sessionId}:${this.attemptId}] bridge closed code=${code ?? 0}${reason ? ` signal=${reason.toString()}` : ""}${media}`,
+        `[webrtc:${sessionId}:${this.attemptId}] bridge connection closed${media}`,
       );
     });
 
@@ -240,7 +244,6 @@ export class DisplayWebrtcAttempt {
       type: "offer",
       sdp,
       iceHost,
-      udpPortRange,
       stunUrls: iceServers,
       maxFps,
       audio,
@@ -256,11 +259,9 @@ export class DisplayWebrtcAttempt {
         );
         bridge.listen({
           signal,
-          onFailure: (error, source) =>
+          onFailure: () =>
             this.stop(
-              source === "input"
-                ? new ServiceUnavailableException("WebRTC bridge input closed.")
-                : error,
+              new ServiceUnavailableException("WebRTC bridge input closed."),
             ),
           onAudioFailure: () => disableAudio(),
           onLog: (message) =>

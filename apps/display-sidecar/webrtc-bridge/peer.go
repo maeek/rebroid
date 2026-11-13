@@ -70,11 +70,6 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	if cfg.ICEHost != "" {
 		setting.SetNAT1To1IPs([]string{cfg.ICEHost}, webrtc.ICECandidateTypeHost)
 	}
-	if minPort, maxPort, ok := parsePortRange(cfg.UDPPortRange); ok {
-		if err := setting.SetEphemeralUDPPortRange(uint16(minPort), uint16(maxPort)); err != nil {
-			return err
-		}
-	}
 
 	mediaEngine := &webrtc.MediaEngine{}
 	if err := registerMediaCodecs(mediaEngine, cfg); err != nil {

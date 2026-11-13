@@ -26,7 +26,7 @@ flowchart TB
   Orchestrator -->|Optional model requests| AI["Local or remote AI provider"]
 ```
 
-The edge publishes HTTPS on port `3443` by default. WebRTC also publishes a UDP range.
+The edge publishes HTTPS on port `3443` by default. The display sidecar publishes one shared WebRTC UDP port.
 Other service ports remain internal in the supplied [Compose deployment](../deploy/compose.yaml).
 The firewall agent shares the host network namespace and exposes only a Unix socket.
 

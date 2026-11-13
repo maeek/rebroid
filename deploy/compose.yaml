@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
+      DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
       WEB_INTERNAL_URL: http://web:3101
       FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
       GAPPS_PATCHER_IMAGE: ${GAPPS_PATCHER_IMAGE:-localhost/rebroid/gapps-patcher:latest}
@@ -98,13 +99,13 @@ services:
     environment:
       WEB_INTERNAL_URL: http://web:3101
       DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
-      DISPLAY_WEBRTC_UDP_PORT_RANGE: ${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}
+      DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
       DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
       SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
     expose:
       - "8000"
     ports:
-      - "${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}:${DISPLAY_WEBRTC_UDP_PORT_RANGE:-40000-40100}/udp"
+      - "${DISPLAY_WEBRTC_UDP_PORT:-40000}:${DISPLAY_WEBRTC_UDP_PORT:-40000}/udp"
     volumes:
       - shared-secrets:/app/secrets
     networks:

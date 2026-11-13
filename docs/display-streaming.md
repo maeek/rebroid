@@ -19,7 +19,7 @@ flowchart LR
 ```
 
 The edge sends `/viewer/display` and `/rebroid/display` traffic directly to the sidecar.
-WebRTC signaling uses HTTPS; RTP/RTCP uses the published UDP range. Next.js authorizes viewer
+WebRTC signaling uses HTTPS. Direct media for every viewer shares the display sidecar’s published UDP port. Next.js authorizes viewer
 access but never relays media.
 
 The sidecar owns in-memory sessions, expiry, and capacity. A WebRTC offer owns its consumer

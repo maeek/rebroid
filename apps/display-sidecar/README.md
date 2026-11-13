@@ -31,7 +31,7 @@ does not require GPU passthrough to this sidecar. See
 | Setting                                                                | Purpose                                                  |
 | ---------------------------------------------------------------------- | -------------------------------------------------------- |
 | `DISPLAY_SIDECAR_SHARED_SECRET` / `DISPLAY_SIDECAR_SHARED_SECRET_FILE` | Internal session/control authentication.                 |
-| `DISPLAY_WEBRTC_UDP_PORT_RANGE`                                        | Published media range, default `40000-40100`.            |
+| `DISPLAY_WEBRTC_UDP_PORT`                                        | Published media port, default `40000`.            |
 | `DISPLAY_WEBRTC_ICE_HOST`                                              | Browser-reachable ICE host override.                     |
 | `DISPLAY_SESSION_TTL_SECONDS`                                          | Sliding session lifetime, default 900 seconds.           |
 | `DISPLAY_SESSION_MAX_ACTIVE`                                           | Session capacity, default 64.                            |

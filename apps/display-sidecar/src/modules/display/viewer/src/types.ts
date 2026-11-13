@@ -124,6 +124,7 @@ export type ViewerStreamStatus = {
   blocking: boolean;
   message: string;
   sessionId?: string | null;
+  startup?: { connectAt: number; presentedAt: number };
   transport?: "webrtc" | "websocket";
 };
 

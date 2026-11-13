@@ -7,8 +7,8 @@ const env = {
   ...process.env,
   ORCHESTRATOR_SHARED_SECRET: "compose-test-secret",
 };
-delete env.DISPLAY_WEBRTC_UDP_PORT_RANGE;
-delete env.TEST_DISPLAY_WEBRTC_UDP_PORT_RANGE;
+delete env.DISPLAY_WEBRTC_UDP_PORT;
+delete env.TEST_DISPLAY_WEBRTC_UDP_PORT;
 
 function loadCompose(file) {
   const path = fileURLToPath(new URL(`../deploy/${file}`, import.meta.url));
@@ -36,14 +36,7 @@ function loadCompose(file) {
   return JSON.parse(result.stdout);
 }
 
-function portsInRange(value) {
-  const [start, end = start] = String(value).split("-").map(Number);
-  assert(Number.isInteger(start) && Number.isInteger(end));
-  assert(start > 0 && end >= start && end <= 65_535);
-  return Array.from({ length: end - start + 1 }, (_, offset) => start + offset);
-}
-
-function checkStack({ services }, range) {
+function checkStack({ services }, port) {
   const { orchestrator, web, edge } = services;
   const display = services["display-sidecar"];
   const firewall = services["firewall-agent"];
@@ -94,26 +87,19 @@ function checkStack({ services }, range) {
     const service = services[name];
     assert(service.networks.platform.aliases.includes(service.container_name));
   }
-  const expected = portsInRange(range);
-  assert.equal(display.environment.DISPLAY_WEBRTC_UDP_PORT_RANGE, range);
+  assert.equal(display.environment.DISPLAY_WEBRTC_UDP_PORT, port);
+  assert.equal(orchestrator.environment.DISPLAY_WEBRTC_UDP_PORT, port);
   const udp = display.ports?.filter(({ protocol }) => protocol === "udp") ?? [];
-  assert.deepEqual(
-    udp.flatMap(({ target }) => portsInRange(target)).sort((a, b) => a - b),
-    expected,
-  );
-  assert.deepEqual(
-    udp
-      .flatMap(({ published }) => portsInRange(published))
-      .sort((a, b) => a - b),
-    expected,
-  );
+  assert.equal(udp.length, 1);
+  assert.equal(String(udp[0].target), port);
+  assert.equal(String(udp[0].published), port);
   return firstMount.source;
 }
 
 const production = loadCompose("compose.yaml");
 const test = loadCompose("compose.test.yaml");
-const productionSecrets = checkStack(production, "40000-40100");
-const testSecrets = checkStack(test, "40101-40201");
+const productionSecrets = checkStack(production, "40000");
+const testSecrets = checkStack(test, "40101");
 assert.notEqual(productionSecrets, testSecrets);
 assert.equal(
   test.services.orchestrator.environment.ORCHESTRATOR_SHARED_SECRET,

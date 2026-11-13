@@ -209,7 +209,7 @@ Most runtime settings are managed in the UI. These environment variables cover c
 | `REBROID_TLS_HOSTS` | `localhost,127.0.0.1` | Hostnames and IPs included in the generated certificate. |
 | `REBROID_PUBLIC_HOSTS` | Falls back to TLS hosts | Browser hostnames accepted by the edge proxy. |
 | `CONTAINER_ENGINE_SOCKET` | `/var/run/docker.sock` | Rootful container engine socket. |
-| `DISPLAY_WEBRTC_UDP_PORT_RANGE` | `40000-40100` | Published WebRTC media ports. |
+| `DISPLAY_WEBRTC_UDP_PORT` | `40000` | Published WebRTC media port. |
 | `DISPLAY_WEBRTC_ICE_HOST` | Automatic | Advertised WebRTC host when automatic discovery is unsuitable. |
 
 For LAN access, configure the certificate host list before the first start:
@@ -220,7 +220,7 @@ REBROID_TLS_HOSTS=192.168.1.11,localhost,127.0.0.1 \
 ```
 
 The HTTPS edge is the browser entry point. The orchestrator, web backend, and OCR API stay on the
-internal network; WebRTC also uses the published UDP range. The stack controls privileged Android
+internal network; WebRTC also uses the published UDP port. The stack controls privileged Android
 containers and the host firewall, so run it on a host you administer. See
 [deployment](docs/deployment.md) for reverse proxy, firewall, socket, and host configuration.
 

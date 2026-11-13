@@ -94,7 +94,6 @@ test("an offer gates media on the answer and fences bridge callbacks after stop"
     maxFps: 30,
     audio: false,
     iceServers: [],
-    udpPortRange: "",
     assertSourceSupported: async () => undefined,
     attachSource: () => stream,
     launchBridge: () => bridge,

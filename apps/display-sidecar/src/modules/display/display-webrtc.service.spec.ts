@@ -32,7 +32,7 @@ const setup = (scrcpy: object, config = {}, webrtcEnabled = true) => {
       assertCapability: () => undefined,
     } as never,
     scrcpy as never,
-    config as never,
+    { webrtcUdpPort: 40000, sessionMaxActive: 64, ...config } as never,
     {} as never,
     features,
     {
@@ -56,6 +56,35 @@ test("disabled WebRTC rejects offers before probing or attaching a source", asyn
     /WebRTC streaming is disabled/,
   );
 });
+
+// Test the sidecar through the same private sockets as the Go bridge.
+const bridgeScript = (body: string) => `#!${process.execPath}
+const fs = require("node:fs");
+const peers = new Map();
+require("node:net").createServer({ allowHalfOpen: true }, (socket) => {
+  socket.on("error", () => socket.destroy());
+  socket.once("readable", function readHeader() {
+    const header = socket.read(17);
+    if (!header) {
+      socket.once("readable", readHeader);
+      return;
+    }
+    const id = header.subarray(0, 16).toString("hex");
+    const streams = peers.get(id) ?? [];
+    peers.set(id, streams);
+    streams[header[16]] = socket;
+    if (![0, 1, 2].every(index => streams[index])) return;
+    peers.delete(id);
+    const [commands, video, audio] = streams;
+    commands.on("end", () => streams.forEach(stream => stream.destroy()));
+    const input = require("node:readline").createInterface({ input: commands });
+    const send = message => commands.write(JSON.stringify(message) + "\\n");
+    ${body}
+  });
+}).listen(process.argv[2], () => console.log("ready"));
+process.stdin.resume();
+process.stdin.on("end", () => process.exit(0));
+`;
 
 const deferred = () => {
   let resolve!: () => void;
@@ -130,12 +159,11 @@ test("release during bridge signaling detaches bootstrap without attaching a med
   const started = join(directory, "started");
   await writeFile(
     executable,
-    `#!${process.execPath}
-const { createInterface } = require("node:readline");
-createInterface({ input: process.stdin }).once("line", () => {
-  require("node:fs").writeFileSync(${JSON.stringify(started)}, "");
+    bridgeScript(`
+input.once("line", () => {
+  fs.writeFileSync(${JSON.stringify(started)}, "");
 });
-`,
+`),
     { mode: 0o700 },
   );
   let attachments = 0;
@@ -189,7 +217,7 @@ createInterface({ input: process.stdin }).once("line", () => {
     assert.equal(attachments, 1);
     assert.equal(detaches, 1);
   } finally {
-    service.stopSession(offer.sessionId);
+    service.onModuleDestroy();
     await pending.catch(() => undefined);
     await rm(directory, { recursive: true, force: true });
   }
@@ -219,16 +247,14 @@ test("WebRTC waits for the peer and never attaches media from a different codec 
     { webrtcBridgePath: executable },
   );
   t.after(async () => {
-    service.stopSession(offer.sessionId);
+    service.onModuleDestroy();
     source.close();
     await rm(directory, { recursive: true, force: true });
   });
   await writeFile(
     executable,
-    `#!${process.execPath}
-const fs = require("node:fs");
-const input = require("node:readline").createInterface({ input: process.stdin });
-fs.createReadStream(null, { fd: 3 }).once("data", (data) => {
+    bridgeScript(`
+video.once("data", (data) => {
   fs.writeFileSync(${JSON.stringify(receivedVideo)}, data);
 });
 input.once("line", (line) => {
@@ -236,15 +262,15 @@ input.once("line", (line) => {
   const timer = setInterval(() => {
     if (!fs.existsSync(${JSON.stringify(sendAnswer)})) return;
     clearInterval(timer);
-    console.log(JSON.stringify({ type: "answer", sdp: "fixture answer" }));
+    send({ type: "answer", sdp: "fixture answer" });
     const connecting = setInterval(() => {
       if (!fs.existsSync(${JSON.stringify(sendConnected)})) return;
       clearInterval(connecting);
-      console.log(JSON.stringify({ type: "state", state: "connected" }));
+      send({ type: "state", state: "connected" });
     }, 10);
   }, 10);
 });
-`,
+`),
     { mode: 0o700 },
   );
 
@@ -348,21 +374,19 @@ test("losing the bridge audio pipe leaves the video consumer attached", async (t
     { webrtcBridgePath: executable },
   );
   t.after(async () => {
-    service.stopSession(offer.sessionId);
+    service.onModuleDestroy();
     source.close();
     await rm(directory, { recursive: true, force: true });
   });
   await writeFile(
     executable,
-    `#!${process.execPath}
-const fs = require("node:fs");
-const input = require("node:readline").createInterface({ input: process.stdin });
+    bridgeScript(`
 input.on("line", (line) => {
   const message = JSON.parse(line);
   if (message.type === "offer") {
-    fs.closeSync(4);
-    console.log(JSON.stringify({ type: "answer", sdp: "fixture answer" }));
-    console.log(JSON.stringify({ type: "state", state: "connected" }));
+    audio.destroy();
+    send({ type: "answer", sdp: "fixture answer" });
+    send({ type: "state", state: "connected" });
   }
   if (message.payload?.type === "webrtc-profile") {
     fs.writeFileSync(${JSON.stringify(attached)}, "");
@@ -371,7 +395,7 @@ input.on("line", (line) => {
     fs.writeFileSync(${JSON.stringify(disabled)}, "");
   }
 });
-`,
+`),
     { mode: 0o700 },
   );
   source.writeVideo({

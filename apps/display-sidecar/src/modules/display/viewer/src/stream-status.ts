@@ -76,9 +76,18 @@ export function emitViewerSessionExpired(
 export function emitViewerSessionReady(
   transport: ViewerStreamStatus["transport"],
   sessionId: string | null,
+  connectAt?: number,
 ): void {
   emitViewerStreamStatus({
     code: "session-ready",
+    ...(connectAt === undefined
+      ? {}
+      : {
+          startup: {
+            connectAt,
+            presentedAt: performance.timeOrigin + performance.now(),
+          },
+        }),
     severity: "info",
     blocking: false,
     message: "The display session is showing video.",
