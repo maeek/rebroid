@@ -63,20 +63,29 @@ export const DetailFields = ({
     headingLevel={3}
     headingSpacing='compact'
   >
-    <dl className={cn('grid min-w-0 gap-x-6', layout === 'grid' && 'sm:grid-cols-2', compact ? 'gap-y-2' : 'gap-y-4')}>
+    <dl
+      className={cn(
+        'grid min-w-0',
+        layout === 'list'
+          ? 'w-fit max-w-full grid-cols-[minmax(0,max-content)_minmax(0,max-content)] gap-x-4 font-mono text-xs/5 touch:text-sm/5'
+          : 'gap-x-6 sm:grid-cols-2',
+        compact ? 'gap-y-2' : 'gap-y-4',
+        compact && layout === 'list' && 'gap-y-0.5'
+      )}
+    >
       {fields.map(field => (
         <div
           key={field.label}
           className={cn(
             'group/detail min-w-0',
-            layout === 'list' ? 'flex items-center gap-3' : 'grid content-start gap-1',
+            layout === 'list' ? 'col-span-2 grid grid-cols-subgrid items-center' : 'grid content-start gap-1',
             layout === 'grid' && field.fullWidth && 'sm:col-span-2'
           )}
         >
           <dt
             className={cn(
-              'flex min-h-6 min-w-0 items-center gap-1 font-medium [overflow-wrap:anywhere]',
-              layout === 'list' ? 'text-sm/6 touch:text-base/6' : 'text-xs text-foreground-muted touch:text-sm/5'
+              'flex min-w-0 items-center gap-1 [overflow-wrap:anywhere]',
+              layout === 'list' ? 'min-h-5' : 'min-h-6 text-xs font-medium text-foreground-muted touch:text-sm/5'
             )}
           >
             {loading ? <Skeleton className='h-3 w-24' /> : <span>{field.label}</span>}
@@ -89,13 +98,13 @@ export const DetailFields = ({
           </dt>
           <dd
             className={cn(
-              'min-w-0 whitespace-pre-wrap text-sm leading-6 [overflow-wrap:anywhere] touch:text-base/6',
-              layout === 'list' && 'text-foreground-muted tabular-nums',
+              'min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]',
+              layout === 'list' ? 'text-right text-foreground-muted' : 'text-sm leading-6 touch:text-base/6',
               field.code && 'font-mono'
             )}
           >
             {loading ? (
-              <Skeleton className={cn('my-1 h-4', layout === 'list' ? 'w-12' : 'w-3/4')} />
+              <Skeleton className={cn(layout === 'list' ? 'ml-auto h-3 w-12' : 'my-1 h-4 w-3/4')} />
             ) : (
               (field.value ?? 'Not available')
             )}

@@ -3,7 +3,8 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { OverflowText } from '@/shared/ui/overflow-text'
-import { DockerContainerLinks } from '@/shared/ui/platform/docker-container-links'
+import { ServiceConnectionLinks } from '@/shared/ui/platform/service-connection-links'
+import { serviceContainerField } from '@/shared/ui/platform/service-container-field'
 import { castingDetailLabels, formatHealthDetail } from './casting-sidecar-utils'
 import type { ServiceHealth } from '@/shared/contracts/diagnostics'
 
@@ -24,8 +25,13 @@ export const CastingSidecarServiceSection = ({
   onRestart: () => void
 }) => {
   const details = health.details ?? {}
+  const containerName = typeof details.containerName === 'string' ? details.containerName : undefined
   const diagnosticKeys = Object.keys(castingDetailLabels).filter(key => !connectionKeys.includes(key) && key in details)
   const fields = [...connectionKeys, ...diagnosticKeys].map(key => {
+    if (key === 'containerName' && containerId && containerName) {
+      return serviceContainerField({ id: containerId, name: containerName })
+    }
+
     const value = details[key]
     const code = copyableKeys.has(key)
     const text = key === 'publishedHostPort' && value === null ? 'Not published' : formatHealthDetail(value)
@@ -42,32 +48,31 @@ export const CastingSidecarServiceSection = ({
       surface='panel'
       title='Connection'
       description='Managed by your deployment configuration.'
-      actions={
-        !loading && containerId ? (
-          <DockerContainerLinks
-            containerId={containerId}
-            className='max-sm:flex-col max-sm:items-end'
-          />
-        ) : undefined
-      }
       contentClassName='gap-6'
     >
       <DetailFields
         fields={fields}
         loading={loading}
       />
-      <MutationButton
-        type='button'
-        variant='outline'
-        className='self-start'
-        pending={busy === 'restart'}
-        pendingLabel='Restarting…'
-        disabled={loading || (busy !== null && busy !== 'restart')}
-        onClick={onRestart}
-      >
-        <IconRestore className='size-4' />
-        Restart sidecar
-      </MutationButton>
+      <div className='grid justify-items-start gap-3'>
+        <MutationButton
+          type='button'
+          variant='outline'
+          pending={busy === 'restart'}
+          pendingLabel='Restarting…'
+          disabled={loading || (busy !== null && busy !== 'restart')}
+          onClick={onRestart}
+        >
+          <IconRestore className='size-4' />
+          Restart sidecar
+        </MutationButton>
+        {!loading ? (
+          <ServiceConnectionLinks
+            containerId={containerId}
+            showContainerLink={!containerName}
+          />
+        ) : null}
+      </div>
     </Section>
   )
 }

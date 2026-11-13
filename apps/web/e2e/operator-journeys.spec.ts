@@ -595,7 +595,7 @@ test('services hides disabled entries and Features keeps their settings discover
 })
 
 test('Casting shows connection details and links to the Docker Logs tab', async ({ page }) => {
-  for (const width of [390, 1440]) {
+  for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/skeleton-contract-test?editor=display-sessions')
     const heading = page.getByRole('heading', { level: 1, name: 'Casting', exact: true })
@@ -610,16 +610,15 @@ test('Casting shows connection details and links to the Docker Logs tab', async 
     const sessions = page.getByRole('region', { name: 'Sessions' })
     await expect(status).toHaveText('Healthy')
     await expect(page.getByText('Display sidecar API is responding.')).toHaveCount(0)
-    await expect(connection.getByText('rebroid-display-sidecar', { exact: true })).toBeVisible()
-    await expect(connection.getByRole('link', { name: 'Open Docker container' })).toHaveAttribute(
-      'href',
-      '/runtime/containers/preview-display-container'
-    )
-    await expect(connection.getByRole('link', { name: 'View logs' })).toHaveAttribute(
-      'href',
-      '/runtime/containers/preview-display-container?view=logs'
-    )
-    await expect(connection.getByRole('button', { name: 'Restart sidecar' })).toBeVisible()
+    const container = connection.getByRole('link', { name: 'rebroid-display-sidecar' })
+    const logs = connection.getByRole('link', { name: 'View logs' })
+    const restart = connection.getByRole('button', { name: 'Restart sidecar' })
+    await expect(container).toHaveAttribute('href', '/runtime/containers/preview-display-container')
+    await expect(connection.getByRole('link', { name: 'Open Docker container' })).toHaveCount(0)
+    await expect(logs).toHaveAttribute('href', '/runtime/containers/preview-display-container?view=logs')
+    await expect(logs).not.toHaveAttribute('data-slot', 'button')
+    await expect(restart).toBeVisible()
+    expect((await logs.boundingBox())!.y).toBeGreaterThan((await restart.boundingBox())!.y)
     await expect(connection.getByText('Not published')).toBeVisible()
     await expect(sessions.getByRole('table')).toBeVisible()
     const headingBox = (await heading.boundingBox())!
@@ -645,6 +644,44 @@ test('Casting truncates long published ports and shows the full value in a toolt
   await expect(trigger).toHaveAttribute('aria-describedby', (await tooltip.getAttribute('id')) ?? '')
   await page.keyboard.press('Escape')
   await expect(tooltip).toBeHidden()
+})
+
+test('Service detail pages show linked container names and footer logs', async ({ page }) => {
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/skeleton-contract-test?editor=service-orchestrator')
+    const connection = page.getByRole('region', { name: 'Connection' })
+    const diagnostics = connection.getByRole('link', { name: 'Docker diagnostics and limits' })
+    const logs = connection.getByRole('link', { name: 'View logs' })
+    await expect(connection.getByRole('link', { name: 'rebroid-orchestrator' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/preview-orchestrator-container'
+    )
+    await expect(logs).toHaveAttribute('href', '/runtime/containers/preview-orchestrator-container?view=logs')
+    await expect(connection.getByText('·', { exact: true })).toHaveCount(2)
+    const diagnosticsBox = (await diagnostics.boundingBox())!
+    const logsBox = (await logs.boundingBox())!
+    if (width === 320) expect(logsBox.y).toBeGreaterThan(diagnosticsBox.y)
+    else expect(logsBox.y).toBe(diagnosticsBox.y)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+
+    for (const [service, title, name] of [
+      ['ocr', 'OCR perception', 'rebroid-ocr-sidecar'],
+      ['firewall', 'Firewall', 'rebroid-firewall-agent']
+    ]) {
+      await page.goto(`/skeleton-contract-test?editor=service-${service}`)
+      await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
+        'Administration',
+        title
+      ])
+      const container = connection.getByRole('link', { name, exact: true })
+      const href = `/runtime/containers/preview-${service}-container`
+      await expect(container).toHaveAttribute('href', href)
+      await expect(logs).toHaveAttribute('href', `${href}?view=logs`)
+      expect((await logs.boundingBox())!.y).toBeGreaterThan((await container.boundingBox())!.y)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+    }
+  }
 })
 
 test('embedded Files keeps folder navigation, filtering, and details in one workspace', async ({ page }) => {
