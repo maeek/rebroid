@@ -8,10 +8,9 @@ import { ProtectedNavigation } from './protected-navigation'
 import type { OrchestratorHealth, ServiceHealth } from '@/shared/contracts/diagnostics'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
-const navigation = vi.hoisted(() => ({ pathname: '/apps', search: '' }))
+const navigation = vi.hoisted(() => ({ pathname: '/apps' }))
 vi.mock('next/navigation', () => ({
-  usePathname: () => navigation.pathname,
-  useSearchParams: () => new URLSearchParams(navigation.search)
+  usePathname: () => navigation.pathname
 }))
 vi.mock('@/hooks/use-polling-query', () => ({ usePollingQuery: vi.fn() }))
 vi.mock('@/server/orchestrator/diagnostics/actions', () => ({ getOrchestratorHealthSummaryAction: vi.fn() }))
@@ -81,7 +80,6 @@ const mockPoll = (data?: OrchestratorHealth, error?: Error) =>
 describe('platform health navigation', () => {
   beforeEach(() => {
     navigation.pathname = '/apps'
-    navigation.search = ''
   })
 
   it('polls one summary and shows separate statuses on the service links', async () => {
@@ -140,13 +138,13 @@ describe('platform health navigation', () => {
     expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('System degraded')
   })
 
-  it('marks OCR as current when its view is selected', () => {
-    navigation.pathname = '/platform/services'
-    navigation.search = 'service=ocr'
+  it('marks the standalone OCR page as current', () => {
+    navigation.pathname = '/platform/ocr'
     mockPoll(summary)
     render(sidebar())
 
     expect(screen.getByRole('link', { name: 'OCR perception' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'OCR perception' })).toHaveAttribute('href', '/platform/ocr')
     expect(screen.getByRole('link', { name: 'Services' })).not.toHaveAttribute('aria-current')
   })
 })

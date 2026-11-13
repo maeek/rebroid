@@ -20,6 +20,7 @@ const renderableRoutes = [
   '(standard)/platform/casting',
   '(standard)/platform/features',
   '(standard)/platform/console',
+  '(standard)/platform/ocr',
   '(standard)/platform/runtime',
   '(standard)/platform/scheduler',
   '(standard)/platform/services/(connections)',

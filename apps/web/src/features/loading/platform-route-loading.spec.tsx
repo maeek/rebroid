@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FeaturesPageLoading } from '@/features/platform/features/features-page'
+import { OcrPageLoading } from '@/features/platform/pages/ocr/page-loading'
 import { PlatformServicesPageSkeleton } from '@/features/platform/services/services-page-skeleton'
 import { servicesPreviewManifest } from '@/features/platform/services/services-preview'
 import { CastingPageLoading } from '@/features/settings/casting/pages/casting/page-skeleton'
@@ -45,7 +46,8 @@ describe('platform destination loading states', () => {
     ['features', FeaturesPageLoading, 'Feature management', 'OCR perception', 'AdministrationFeature management'],
     ['connections', PlatformServicesPageSkeleton, 'Services', 'Connection', 'SystemServices'],
     ['providers', AiProvidersPageSkeleton, 'AI', 'Providers', 'AdministrationAI'],
-    ['casting', CastingPageLoading, 'Casting', 'Connection', 'AdministrationCasting']
+    ['casting', CastingPageLoading, 'Casting', 'Connection', 'AdministrationCasting'],
+    ['ocr', OcrPageLoading, 'OCR perception', 'Settings', 'AdministrationOCR perception']
   ] as const)('renders the %s page chrome instead of overview content', (_, Component, title, content, breadcrumb) => {
     renderLoading(<Component />)
 
@@ -60,7 +62,7 @@ describe('platform destination loading states', () => {
   it.each([
     ['docker', 'Docker', 'DockerOverview'],
     ['orchestrator', 'Orchestrator', 'SystemServicesOrchestrator'],
-    ['ocr', 'OCR perception', 'SystemServicesOCR perception'],
+    ['ocr', 'OCR perception', 'AdministrationOCR perception'],
     ['firewall', 'Firewall', 'AdministrationFirewall']
   ] as const)('selects the %s service loader from the destination query', (service, title, breadcrumb) => {
     renderLoading(<PlatformServicesPageSkeleton />, `service=${service}`)

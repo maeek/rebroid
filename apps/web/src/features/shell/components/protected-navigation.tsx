@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { Visible } from '@/components/ui/visible'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getBff } from '@/lib/http/bff'
@@ -13,9 +13,7 @@ import {
   appSections,
   isNavigationDestinationActive,
   automationSections,
-  ocrNavigationHref,
   overviewSections,
-  servicesNavigationHref,
   variantStyles,
   type NavigationItem,
   type NavigationVariant
@@ -34,7 +32,6 @@ type ProtectedNavigationProps = {
 
 export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNavigate }: ProtectedNavigationProps) => {
   const pathname = usePathname()
-  const serviceView = useSearchParams().get('service')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
     'navigation:recent-apps',
@@ -43,7 +40,6 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
   )
   const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
-  const isOcrView = pathname === servicesNavigationHref && serviceView === 'ocr' && isFeatureEnabled('feature.ocr')
   const styles = variantStyles[variant]
 
   useEffect(() => {
@@ -60,8 +56,6 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
 
   const itemIsActive = (href: string) => {
     if (href === '/platform/runtime' && isActivePath('/platform/console')) return true
-    if (href === ocrNavigationHref) return isOcrView
-    if (href === servicesNavigationHref && isOcrView) return false
 
     return isActivePath(href, href === '/platform')
   }

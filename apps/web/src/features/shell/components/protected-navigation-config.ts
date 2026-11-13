@@ -55,9 +55,6 @@ export const hasChildWithSameHealth = (healthId: NavigationHealthId | undefined,
 
 export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
 
-export const servicesNavigationHref = '/platform/services'
-export const ocrNavigationHref = '/platform/services?service=ocr'
-
 export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'Casting', Icon: IconCast, href: '/platform/casting', healthId: 'display' },
@@ -68,6 +65,7 @@ export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
     feature: 'feature.firewall',
     healthId: 'firewall'
   },
+  { name: 'OCR perception', Icon: IconSparkles, href: '/platform/ocr', feature: 'feature.ocr', healthId: 'ocr' },
   { name: 'Feature management', Icon: IconToggleLeft, href: '/platform/features' },
   { name: 'AI', Icon: GradientSparklesIcon, href: '/platform/ai', feature: 'feature.ai' },
   {
@@ -111,14 +109,7 @@ export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
     href: '/system/resources',
     healthId: 'system',
     items: [
-      { name: 'Services', Icon: IconPlugConnected, href: servicesNavigationHref, healthId: 'system' },
-      {
-        name: 'OCR perception',
-        Icon: IconSparkles,
-        href: ocrNavigationHref,
-        feature: 'feature.ocr',
-        healthId: 'ocr'
-      },
+      { name: 'Services', Icon: IconPlugConnected, href: '/platform/services', healthId: 'system' },
       { name: 'Maintenance tasks', Icon: IconCalendarTime, href: '/platform/scheduler' }
     ]
   }
