@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { AndroidAppLifecycleJobKind } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
@@ -35,23 +36,32 @@ describe('AndroidAppsRuntimeActivationService', () => {
       inspectContainer: jest.fn(),
       removeContainer: jest.fn(),
     };
+    const android = {
+      shouldPrepareRemoteAccess: jest.fn().mockReturnValue(false),
+      waitForAndroidBoot: jest.fn().mockResolvedValue(undefined),
+      prepareNetworkAttachment: jest
+        .fn()
+        .mockResolvedValue({ networkName: 'app-network' }),
+      prepareRemoteAccess: jest.fn().mockResolvedValue(undefined),
+    };
+    const tracker = { ensureActive: jest.fn() };
+    const network = {
+      attachRuntimeSupport: jest.fn(),
+      createRuntimeBoundary,
+      startWithPolicy: jest.fn(
+        (_app: AndroidApplication, start: () => Promise<void>) => start(),
+      ),
+    };
     const service = new AndroidAppsRuntimeActivationService(
       config,
       lifecycle as never,
       { createApplicationContainer } as never,
       { imageExists: jest.fn().mockResolvedValue(true) } as never,
       { engineSummary: jest.fn().mockResolvedValue({}) } as never,
-      { shouldPrepareRemoteAccess: jest.fn().mockReturnValue(false) } as never,
-      {
-        attachRuntimeSupport: jest.fn(),
-        createRuntimeBoundary,
-        startWithPolicy: (
-          _app: AndroidApplication,
-          start: () => Promise<void>,
-        ) => start(),
-      } as never,
+      android as never,
+      network as never,
       { updateProgress } as never,
-      { ensureActive: jest.fn() } as never,
+      tracker as never,
       { append: jest.fn() } as never,
       new AndroidAppsRuntimeConfigurationService(
         config,
@@ -70,6 +80,9 @@ describe('AndroidAppsRuntimeActivationService', () => {
     return {
       app,
       service,
+      android,
+      network,
+      tracker,
       error,
       startContainer,
       createApplicationContainer,
@@ -79,6 +92,170 @@ describe('AndroidAppsRuntimeActivationService', () => {
       readAndroidRendering,
     };
   };
+
+  function deferred<T = void>() {
+    let resolve!: (value: T) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<T>((yes, no) => {
+      resolve = yes;
+      reject = no;
+    });
+    return { promise, resolve, reject };
+  }
+
+  async function flush() {
+    for (let turn = 0; turn < 30; turn += 1) await Promise.resolve();
+  }
+
+  it('overlaps attachment and boot only after guarded startup and waits for both before ADB', async () => {
+    const { app, service, android, network } = setup(true, false);
+    const policy = deferred();
+    const boot = deferred();
+    const attachment = deferred<{ networkName: string }>();
+    android.shouldPrepareRemoteAccess.mockReturnValue(true);
+    network.startWithPolicy.mockImplementation(async (_app, start) => {
+      await start();
+      await policy.promise;
+    });
+    android.waitForAndroidBoot.mockReturnValue(boot.promise);
+    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
+    const activation = service.activate(app, reservation, 'start');
+    await flush();
+    expect(android.waitForAndroidBoot).not.toHaveBeenCalled();
+    expect(android.prepareNetworkAttachment).not.toHaveBeenCalled();
+    policy.resolve();
+    await flush();
+    expect(android.waitForAndroidBoot).toHaveBeenCalledWith(
+      app,
+      reservation.id,
+    );
+    expect(android.prepareNetworkAttachment).toHaveBeenCalledWith(
+      app,
+      reservation.id,
+    );
+    boot.resolve();
+    await flush();
+    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
+    const prepared = { networkName: app.networkName };
+    attachment.resolve(prepared);
+    await activation;
+    expect(android.prepareRemoteAccess).toHaveBeenCalledWith(
+      app,
+      reservation.id,
+      prepared,
+      expect.any(Number),
+    );
+  });
+
+  it('timestamps boot failure before the admitted attachment drains', async () => {
+    const log = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+    try {
+      const { app, service, android } = setup(true, false);
+      android.shouldPrepareRemoteAccess.mockReturnValue(true);
+      const attachment = deferred<{ networkName: string }>();
+      android.waitForAndroidBoot.mockRejectedValue(
+        new Error('guest unavailable'),
+      );
+      android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
+      const activation = service.activate(app, reservation, 'start');
+      const failure = expect(activation).rejects.toThrow('guest unavailable');
+      await flush();
+      expect(log).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'android_boot_observation_settled',
+          reservationId: reservation.id,
+          containerId: app.containerId,
+          outcome: 'rejected',
+          settledAt: expect.any(String),
+          elapsedMs: expect.any(Number),
+        }),
+      );
+      expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
+      attachment.resolve({ networkName: app.networkName });
+      await failure;
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it('drains an admitted attachment after boot failure before releasing activation', async () => {
+    const { app, service, android } = setup(true, false);
+    android.shouldPrepareRemoteAccess.mockReturnValue(true);
+    const attachment = deferred<{ networkName: string }>();
+    android.waitForAndroidBoot.mockRejectedValue(new Error('boot failed'));
+    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
+    let settled = false;
+    const activation = service.activate(app, reservation, 'start');
+    void activation.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await flush();
+    expect(settled).toBe(false);
+    attachment.resolve({ networkName: app.networkName });
+    await expect(activation).rejects.toThrow('boot failed');
+    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
+  });
+
+  it('drains boot after a permanent attachment failure and never starts remote access', async () => {
+    const { app, service, android } = setup(true, false);
+    android.shouldPrepareRemoteAccess.mockReturnValue(true);
+    const boot = deferred();
+    android.waitForAndroidBoot.mockReturnValue(boot.promise);
+    android.prepareNetworkAttachment.mockRejectedValue(
+      new Error('attachment failed'),
+    );
+    let settled = false;
+    const activation = service.activate(app, reservation, 'start');
+    void activation.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    await flush();
+    expect(settled).toBe(false);
+    boot.resolve();
+    await expect(activation).rejects.toThrow('attachment failed');
+    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
+  });
+
+  it('drains attachment on cancellation and never starts remote access', async () => {
+    const { app, service, android, tracker } = setup(true, false);
+    android.shouldPrepareRemoteAccess.mockReturnValue(true);
+    const attachment = deferred<{ networkName: string }>();
+    android.prepareNetworkAttachment.mockReturnValue(attachment.promise);
+    const activation = service.activate(app, reservation, 'start');
+    await flush();
+    expect(android.prepareNetworkAttachment).toHaveBeenCalledTimes(1);
+    tracker.ensureActive.mockImplementation(() => {
+      throw new Error('cancelled');
+    });
+    attachment.resolve({ networkName: app.networkName });
+    await expect(activation).rejects.toThrow('cancelled');
+    expect(android.prepareRemoteAccess).not.toHaveBeenCalled();
+  });
+
+  it('does not admit boot or attachment after the reservation is superseded', async () => {
+    const { app, service, android, updateProgress } = setup(true, false);
+    android.shouldPrepareRemoteAccess.mockReturnValue(true);
+    updateProgress.mockImplementation(
+      async (_reservation, patch) => patch.lifecycleStage !== 'android_booting',
+    );
+    await expect(service.activate(app, reservation, 'start')).rejects.toThrow(
+      'no longer reserved',
+    );
+    expect(android.waitForAndroidBoot).not.toHaveBeenCalled();
+    expect(android.prepareNetworkAttachment).not.toHaveBeenCalled();
+  });
 
   it('applies the saved render device and replaces legacy GPU arguments on creation', async () => {
     const { app, service, createApplicationContainer, updateProgress } = setup(

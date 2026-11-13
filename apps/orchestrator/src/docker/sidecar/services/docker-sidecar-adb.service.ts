@@ -18,6 +18,7 @@ type AdbStep = 'tcp' | 'connect' | 'state' | 'recovery' | 'display';
 type AdbPreparation = {
   sidecarId: string;
   deadline?: OperationDeadline;
+  signal?: AbortSignal;
   elapsedMs: Partial<Record<AdbStep, number>>;
 };
 
@@ -35,8 +36,14 @@ export class DockerSidecarAdbService {
     adbHost: string,
     adbPort: number,
     deadline?: OperationDeadline,
+    signal?: AbortSignal,
   ): Promise<ViewerTargetStatus> {
-    const preparation: AdbPreparation = { sidecarId, deadline, elapsedMs: {} };
+    const preparation: AdbPreparation = {
+      sidecarId,
+      deadline,
+      signal,
+      elapsedMs: {},
+    };
     const target = `${adbHost}:${adbPort}`;
     try {
       const tcpProbe = await this.probeTcpTarget(preparation, adbHost, adbPort);
@@ -55,8 +62,11 @@ export class DockerSidecarAdbService {
       }
 
       await this.prepareAndroidDisplay(preparation, target);
+      signal?.throwIfAborted();
+      deadline?.throwIfExpired();
       return connection;
     } catch (error) {
+      preparation.signal?.throwIfAborted();
       if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
@@ -221,6 +231,7 @@ export class DockerSidecarAdbService {
     try {
       await this.execStep(preparation, 'display', command, 15_000);
     } catch (error) {
+      preparation.signal?.throwIfAborted();
       if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       this.logger.warn(
@@ -270,6 +281,7 @@ export class DockerSidecarAdbService {
       await this.execStep(preparation, 'tcp', probeCommand, 5_000);
       return null;
     } catch (error) {
+      preparation.signal?.throwIfAborted();
       if (error instanceof OperationDeadlineExceededError) throw error;
       const viewerError = this.viewerTargetError(error);
       return {
@@ -288,22 +300,34 @@ export class DockerSidecarAdbService {
   }
 
   private async execStep(
-    { sidecarId, deadline, elapsedMs }: AdbPreparation,
+    { sidecarId, deadline, signal, elapsedMs }: AdbPreparation,
     step: AdbStep,
     command: string[],
     timeoutMs: number,
   ) {
+    const mutatesTarget =
+      step === 'connect' || step === 'recovery' || step === 'display';
+    const guestOptions = mutatesTarget ? { guestTimeoutMs: timeoutMs } : {};
+    signal?.throwIfAborted();
     if (!deadline) {
-      return this.exec.execInContainerWithOutput(sidecarId, command, {
-        timeoutMs,
-      });
+      const result = await this.exec.execInContainerWithOutput(
+        sidecarId,
+        command,
+        {
+          timeoutMs,
+          ...guestOptions,
+          ...(signal ? { signal } : {}),
+        },
+      );
+      signal?.throwIfAborted();
+      return result;
     }
 
     deadline.throwIfExpired();
     const startedAt = performance.now();
     const remainingMs = deadline.remainingMs();
-    if (remainingMs < timeoutMs) {
-      // Let the in-container process time out before the Docker stream closes.
+    if (!mutatesTarget && remainingMs < timeoutMs) {
+      // Mutations get their guest timeout at admission in the exec adapter.
       const limitSeconds = Math.max(1, remainingMs - 1_000) / 1000;
       command = ['timeout', '-k', '1s', `${limitSeconds}s`, ...command];
     }
@@ -311,9 +335,12 @@ export class DockerSidecarAdbService {
       return await this.exec.execInContainerWithOutput(sidecarId, command, {
         timeoutMs,
         deadline,
+        ...guestOptions,
+        ...(signal ? { signal } : {}),
       });
     } finally {
       elapsedMs[step] = Math.round(performance.now() - startedAt);
+      signal?.throwIfAborted();
       deadline.throwIfExpired();
     }
   }

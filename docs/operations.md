@@ -85,6 +85,54 @@ df -i /var/lib/docker
 | Android exits immediately              | [ReDroid host checks](deployment.md#redroid-host-checks).  |
 | Viewer reconnects repeatedly           | [Display diagnostics](display-streaming.md#diagnostics).   |
 
+### Slow display-network attachment
+
+Compare the application event `Android network attachment completed` across starts
+of the same runtime. `dockerMutationQueueMs` measures Rebroid admission;
+`networkConnectMs` measures the awaited Docker request, including client transport.
+A reused attachment has no connect request. Neither metric measures Android boot.
+Use the concurrent boot observations described in
+[Android startup and attachment timing](orchestrator-architecture.md#android-startup-and-attachment-timing)
+to avoid adding overlapping durations.
+
+For a slow request, use its `networkConnect.dispatchedAt` and `settledAt` UTC
+timestamps to collect a narrow Docker daemon window on the Linux host. Substitute
+the observed time range and sidecar name below; these commands only read state:
+
+```bash
+journalctl --unit docker.service --utc --since '2026-11-13 08:43:30 UTC' --until '2026-11-13 08:43:56 UTC' --no-pager --output short-iso-precise
+docker inspect --format '{{json .NetworkSettings.Networks}}' rebroid-display-sidecar
+docker inspect --format '{{json .NetworkSettings.Ports}}' rebroid-display-sidecar
+```
+
+Look for `sbJoin: gwep4` gateway changes, port-mapping/proxy errors, firewall lock
+waits, and competing network operations. Inspect output is current state, not a
+historical snapshot, so retain it before and after a subsequent controlled start.
+Do not publish complete container inspections: they may contain environment secrets.
+
+One candidate is default-gateway movement when an app network is attached. The
+default deployment publishes 101 UDP ports on the display sidecar and does not set
+gateway priority. Docker can change the gateway when networks are attached;
+[gateway priority](https://docs.docker.com/engine/network/#connecting-to-multiple-networks)
+controls that choice. In the
+[Moby 29.0 gateway selection code](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/sandbox.go#L582-L634),
+otherwise equivalent endpoints with equal priority are ordered by network name.
+This makes `rebroid-net-*` a candidate to replace `rebroid-platform`. It is a
+mechanism to investigate, not proof of why a particular request was slow.
+[Endpoint join](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/endpoint.go#L517-L607)
+updates external connectivity when the gateway changes, and the
+[bridge driver](https://github.com/moby/moby/blob/docker-v29.0.0/daemon/libnetwork/drivers/bridge/bridge_linux.go#L1410-L1478)
+updates port bindings. Verify the deployed daemon version when applying this source
+analysis; a mechanism in 29.0.0 does not establish timing or behavior in every later
+release.
+
+If daemon evidence confirms gateway movement and port remapping, compare an
+isolated canary with the platform network assigned higher gateway priority. Keep
+the image, published ports, host load, and app network unchanged. Check live WebRTC,
+WebSocket, ADB, and firewall isolation as well as attachment duration before changing
+deployment routing. Increasing Rebroid concurrency or caching a missing attachment
+does not eliminate time spent inside an already-dispatched Docker request.
+
 ## Android notification sampling
 
 The navigation badge and application detail poll every 10 seconds while visible. The orchestrator

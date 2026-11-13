@@ -1,3 +1,5 @@
+import type { DockerNetworkAttachmentTimings } from '../../contracts/docker-network-runtime.port';
+import { OperationDeadline } from '../../../common/operation-deadline';
 import { DockerEngineService } from '../../docker-engine.service';
 import { DockerErrorClassifier } from '../../engine/services/docker-error-classifier.service';
 import { DockerNetworkRuntimeService } from './docker-network-runtime.service';
@@ -21,6 +23,7 @@ const createEngine = () => {
   return {
     docker,
     orchestratorHostname: 'a1b2c3d4e5f6',
+    transport: 'local-socket',
     coalesceRead: jest.fn((_key: string, operation: () => Promise<unknown>) =>
       operation(),
     ),
@@ -54,6 +57,164 @@ describe('DockerNetworkRuntimeService', () => {
     ),
     { statusCode: 403 },
   );
+
+  it('separates Docker admission wait from network connect latency', async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = createEngine();
+      engine.mutate = async <T>(operation: () => Promise<T>) => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return operation();
+      };
+      const connect = jest.fn(
+        () => new Promise((resolve) => setTimeout(resolve, 700)),
+      );
+      engine.docker.getNetwork.mockReturnValue({ connect });
+      const timings: DockerNetworkAttachmentTimings = {
+        dockerMutationQueueMs: 0,
+        networkConnectMs: 0,
+        networkConvergenceMs: 0,
+      };
+      const attachment = new DockerNetworkRuntimeService(
+        engine,
+      ).connectContainerToNetwork('container', 'network', timings);
+      await jest.advanceTimersByTimeAsync(900);
+      await attachment;
+      expect(timings).toEqual({
+        dockerMutationQueueMs: 200,
+        networkConnectMs: 700,
+        networkConvergenceMs: 0,
+        networkConnect: {
+          requestId: expect.any(String),
+          containerId: 'container',
+          networkName: 'network',
+          transport: 'local-socket',
+          dispatchedAt: expect.any(String),
+          settledAt: expect.any(String),
+          outcome: 'fulfilled',
+        },
+      });
+      expect(
+        Date.parse(timings.networkConnect!.settledAt!) -
+          Date.parse(timings.networkConnect!.dispatchedAt),
+      ).toBe(700);
+      expect(engine.docker.getNetwork).toHaveBeenCalledTimes(1);
+      expect(engine.docker.getContainer).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('retains a rejected request observation when membership resolves an ambiguous connect', async () => {
+    const engine = createEngine();
+    engine.docker.getNetwork.mockReturnValue({
+      connect: jest.fn().mockRejectedValue(duplicateEndpoint),
+      inspect: jest.fn().mockResolvedValue({ Containers: { container: {} } }),
+    });
+    const timings: DockerNetworkAttachmentTimings = {
+      dockerMutationQueueMs: 0,
+      networkConnectMs: 0,
+      networkConvergenceMs: 0,
+    };
+    await new DockerNetworkRuntimeService(engine).connectContainerToNetwork(
+      'container',
+      'network',
+      timings,
+    );
+    expect(timings.networkConnect).toMatchObject({
+      containerId: 'container',
+      networkName: 'network',
+      outcome: 'rejected',
+      settledAt: expect.any(String),
+    });
+  });
+
+  it.each([true, false])(
+    'accounts for expired queue wait with dispatch callback %s',
+    async (dispatchCallback) => {
+      jest.useFakeTimers();
+      try {
+        const engine = createEngine();
+        const deadline = new OperationDeadline(100);
+        const timings = {
+          dockerMutationQueueMs: 0,
+          networkConnectMs: 0,
+          networkConvergenceMs: 0,
+        };
+        engine.mutate = async <T>(operation: () => Promise<T>) => {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          if (!dispatchCallback) deadline.throwIfExpired();
+          return operation();
+        };
+        const connect = jest.fn();
+        const inspect = jest.fn();
+        engine.docker.getNetwork.mockReturnValue({ connect, inspect });
+        const pending = new DockerNetworkRuntimeService(
+          engine,
+        ).connectContainerToNetwork('container', 'network', timings, {
+          deadline,
+        });
+        const rejected = expect(pending).rejects.toThrow('deadline');
+        await jest.advanceTimersByTimeAsync(200);
+        await rejected;
+        expect(timings.dockerMutationQueueMs).toBe(200);
+        expect(connect).not.toHaveBeenCalled();
+        expect(inspect).not.toHaveBeenCalled();
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it('does not verify membership for cancelled work that never dispatched', async () => {
+    const engine = createEngine();
+    const controller = new AbortController();
+    const reason = Object.assign(new Error('socket hang up'), {
+      code: 'ECONNRESET',
+    });
+    engine.mutate = async <T>(operation: () => Promise<T>) => {
+      controller.abort(reason);
+      return operation();
+    };
+    const connect = jest.fn();
+    const inspect = jest.fn();
+    engine.docker.getNetwork.mockReturnValue({ connect, inspect });
+    await expect(
+      new DockerNetworkRuntimeService(engine).connectContainerToNetwork(
+        'container',
+        'network',
+        undefined,
+        { signal: controller.signal },
+      ),
+    ).rejects.toBe(reason);
+    expect(connect).not.toHaveBeenCalled();
+    expect(inspect).not.toHaveBeenCalled();
+  });
+
+  it('still verifies an ambiguous dispatched mutation after its caller cancels', async () => {
+    const engine = createEngine();
+    const controller = new AbortController();
+    const inspect = jest
+      .fn()
+      .mockResolvedValue({ Containers: { container: {} } });
+    const connect = jest.fn(async () => {
+      controller.abort(new Error('cancelled'));
+      throw Object.assign(new Error('endpoint already exists'), {
+        statusCode: 409,
+      });
+    });
+    engine.docker.getNetwork.mockReturnValue({ connect, inspect });
+    await expect(
+      new DockerNetworkRuntimeService(engine).connectContainerToNetwork(
+        'container',
+        'network',
+        undefined,
+        { signal: controller.signal },
+      ),
+    ).resolves.toBeUndefined();
+    expect(connect).toHaveBeenCalledTimes(1);
+    expect(inspect).toHaveBeenCalledTimes(1);
+  });
 
   it('does not attempt attachment when the orchestrator is missing from the engine', async () => {
     const engine = createEngine();

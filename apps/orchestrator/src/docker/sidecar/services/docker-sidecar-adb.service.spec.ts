@@ -82,6 +82,19 @@ describe(DockerSidecarAdbService.name, () => {
     expect(commands().join('\n')).not.toMatch(
       /adb (kill-server|start-server|reconnect)/,
     );
+    expect(
+      exec.mock.calls.map(([, , options]) => options?.guestTimeoutMs),
+    ).toEqual([
+      undefined,
+      20_000,
+      undefined,
+      15_000,
+      undefined,
+      20_000,
+      undefined,
+      40_000,
+      15_000,
+    ]);
   });
 
   it('retries a timed out connect before preparing the display', async () => {
@@ -126,10 +139,53 @@ describe(DockerSidecarAdbService.name, () => {
       ).rejects.toBeInstanceOf(OperationDeadlineExceededError);
       await jest.advanceTimersByTimeAsync(10_001);
       await result;
-      expect(commands()[1]).toContain('timeout -k 1s 9s sh -lc');
+      expect(commands()[1]).toContain(`adb connect '${target}'`);
+      expect(exec.mock.calls[1]?.[2]).toMatchObject({
+        deadline,
+        guestTimeoutMs: 20_000,
+      });
       expect(exec).toHaveBeenCalledTimes(2);
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('drains an admitted ADB step before propagating cancellation and skips remaining commands', async () => {
+    const controller = new AbortController();
+    let release!: (result: ContainerCommandResult) => void;
+    exec.mockResolvedValueOnce(success()).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = service.prepareTarget(
+      'sidecar',
+      '172.20.0.3',
+      5555,
+      undefined,
+      controller.signal,
+    );
+    let settled = false;
+    void pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    for (let turn = 0; turn < 20; turn++) await Promise.resolve();
+    expect(exec).toHaveBeenCalledTimes(2);
+    controller.abort(new Error('cancelled'));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release(success());
+    await expect(pending).rejects.toThrow('cancelled');
+    expect(exec).toHaveBeenCalledTimes(2);
+    expect(exec.mock.calls[1]?.[2]).toMatchObject({
+      signal: controller.signal,
+      guestTimeoutMs: 20_000,
+    });
   });
 });

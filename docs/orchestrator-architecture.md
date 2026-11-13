@@ -88,6 +88,110 @@ The web service records metadata cleanup before requesting app removal. A bounde
 deletion before removing icon and recent-app metadata and retries pending work after a restart.
 The owning lifecycle services and file-placement rules are listed in [AGENTS.md](../AGENTS.md).
 
+### Android startup and attachment timing
+
+After guarded container startup and network policy installation complete, Android
+boot observation and display-sidecar network attachment run concurrently. Activation
+joins both operations before starting remote ADB setup, including on failure or
+cancellation, so Stop and Remove cannot race an admitted attachment. A recent
+attachment is reusable only for the same reservation, runtime container, network,
+and sidecar generation. Post-boot runtime and ADB target observations remain fresh.
+Attachment observations older than three seconds are rechecked before ADB setup.
+Transient attachment failures fall back to the normal post-boot retry loop. Time
+waiting for attachment after boot consumes the existing remote-access deadline;
+parallel work during boot does not consume that budget.
+
+The application log records `Android network attachment completed` with the
+reservation and runtime identity. `networkAttachmentMs` covers the entire attachment
+including the sidecar FIFO. Its component fields separate `sidecarQueueMs`,
+`sidecarPreparationMs` (discovery and any sidecar startup), `networkInspectMs`,
+`dockerMutationQueueMs`, `networkConnectMs`, and `networkConvergenceMs` (verification
+after an uncertain connect result). `Prepared Android remote access` records only
+the work performed after boot; its nested `networkAttachment` timings capture any
+attachment rechecks or retries. The concurrent attachment time must not be added to
+boot time when calculating total startup latency.
+
+Attachment timings also carry the observed sidecar container ID and, when the
+existing inspection is available, its network count before attachment. When Docker
+returns port mappings, `sidecarPublishedPortCount` counts published container
+port/protocol entries and `sidecarPublishedBindingCount` counts their host bindings
+(including separate IPv4/IPv6 bindings). Unpublished exposed ports do not count;
+an absent port map leaves these fields absent. These observations reuse discovery's
+inspection. The bounded
+`networkConnect` observation describes the latest dispatched request: request ID,
+container/network identity, transport kind, dispatch/settlement UTC timestamps,
+and raw request outcome. A rejected request can still produce a verified successful
+attachment after membership reconciliation. No extra Docker reads collect this
+metadata. Debug events `docker_network_connect_dispatched` and
+`docker_network_connect_settled` carry the same identity. The elapsed request time
+includes client transport and daemon response; it is not a daemon-only measurement.
+
+The orchestrator emits `android_boot_observation_settled` as soon as the boot branch
+settles, before waiting for attachment to drain. Use its reservation, runtime and
+UTC timestamp to distinguish early boot failure from attachment wait. For a slow
+connect, correlate these records with Docker daemon logs/events for the same
+container and network. Compare cold/warm runs and sidecar endpoint counts before
+changing queue admission or caching. Never release a dispatched mutation early to
+improve its reported duration.
+
+Startup Docker work carries its remaining deadline and cancellation signal into
+queue admission. Expired or cancelled entries are removed before dispatch. A
+mutation already dispatched remains owned until it settles and any uncertain
+network result is verified. Sidecar attachment and repair retain their ordering;
+this does not increase Docker mutation concurrency.
+
+Boot observation uses a monotonic budget and bounds each observation by the
+remaining time, with a ten-second per-observation maximum. Unchanged properties
+retain the one-to-three-second cadence, while container liveness is observed on
+each iteration. Up to three consecutive transient observation failures are
+allowed, within that same budget; verified missing or stopped containers and
+permanent errors remain terminal. Readiness requires a successful current runtime
+observation alongside Android properties. Before any successful guest probe, the
+specific structured exit-255 `sh -lc` failure with stderr
+`exec /bin/sh: no such file or directory` is treated as initial guest unavailability.
+It retries within the full boot budget while checking fresh liveness, independently
+of the three-failure transport limit. Other command failures remain terminal, and
+this exception stops applying after a successful guest probe. The bounded
+`android_guest_shell_unavailable` and `android_guest_shell_available` events record
+the first unavailable and first subsequent successful observation, including elapsed
+time and failure count, without logging every poll. Timeout diagnostics share a separate
+five-second allowance and cancellation prevents further diagnostic work.
+
+Each boot observation also emits the structured orchestrator event
+`android_boot_probe`. It carries the application/container/reservation IDs, a
+`bootObservationId`, sequence number, UTC observation timestamp, and monotonic
+elapsed time. `properties` and `runtime` independently report their admission
+queue time, admitted execution time, total time, outcome, and offsets from the
+start of boot observation. Execution includes Docker client/daemon work and any
+adapter retry or cleanup; it is not a measurement of guest execution alone.
+An operation rejected before admission has `dispatched: false` and
+`executionMs: null`. Backoff-only iterations report
+`properties.outcome: skipped_backoff` while still measuring liveness.
+
+`waitSincePreviousObservationMs` separates time between observations from Docker
+work. `propertyReady`, `runtimeRunning`, `initialGuestShellUnavailable`, and
+`cancelled` distinguish readiness, missing guest shell, and failed observations
+without serializing commands, command output, or raw errors. The two operations
+overlap, so do not sum their durations to calculate wall time. A fast, successful
+probe with `propertyReady: false` establishes that Android had not reported ready
+at that observation; a slow probe only bounds when readiness was observed. Compare
+`properties.settledAfterMs` with the runtime settlement to identify liveness checks
+that delayed accepting already-ready properties. Logging adds no Docker calls or
+persisted application-log writes and ends when the bounded boot loop ends.
+
+Sidecar discovery remembers only the last observed container ID. Each use still
+inspects the container; a missing ID falls back to exact-name discovery, and a
+replacement or same-container restart invalidates the ADB generation. Running
+state and network membership are not accepted from an old cached inspection.
+
+Provisioning and recovered viewers share TCP-ADB guest preparation. It validates
+the port, leaves an already-correct running adbd alone, and performs bounded
+idempotent repair otherwise. Guest timeout is calculated after Docker queue
+admission. Once guest mutation starts, its owner drains the bounded execution
+before cancellation completes; cancelling a Docker stream alone cannot establish
+guest exit. Provisioning still fails on unsuccessful setup, while viewer recovery
+logs the setup failure and continues its existing ADB probe.
+
 ## Workflow execution
 
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,

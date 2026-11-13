@@ -1,11 +1,12 @@
 import type { ContainerCommandResult } from '../docker.types';
-import type { OperationDeadline } from '../../common/operation-deadline';
+import type { DockerOperationOptions } from './docker-operation-options';
 
 export const DOCKER_CONTAINER_EXEC = Symbol('DOCKER_CONTAINER_EXEC');
 
-export interface DockerContainerExecOptions {
+export interface DockerContainerExecOptions extends DockerOperationOptions {
   timeoutMs?: number;
-  deadline?: OperationDeadline;
+  /** Wrap a mutating guest command in timeout and drain its admitted execution. */
+  guestTimeoutMs?: number;
 }
 
 export interface DockerContainerExecPort {

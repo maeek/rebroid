@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DockerEngineService } from '../../docker-engine.service';
+import { OperationDeadline } from '../../../common/operation-deadline';
+import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import type { SidecarFeatureSyncPort } from '../../contracts/sidecar-feature-sync.port';
 
@@ -133,46 +135,62 @@ export class DockerSidecarApiService
     return this.toAdminDisplaySession(session);
   }
 
-  async waitForReady(timeoutMs = 10_000) {
-    const deadline = Date.now() + timeoutMs;
+  async waitForReady(timeoutMs = 10_000, options?: DockerOperationOptions) {
+    const deadline = new OperationDeadline(
+      Math.min(timeoutMs, options?.deadline?.remainingMs() ?? timeoutMs),
+    );
+    const readiness = { deadline, signal: options?.signal };
     let lastError = 'Display sidecar API did not respond.';
 
-    while (Date.now() < deadline) {
-      const error = await this.probeHealth();
+    while (deadline.remainingMs() > 0) {
+      options?.signal?.throwIfAborted();
+      const error = await this.probeHealth(readiness);
+      options?.signal?.throwIfAborted();
+      options?.deadline?.throwIfExpired();
       if (!error) {
         try {
-          await this.synchronizeFeatures();
+          await this.synchronizeFeatures(readiness);
           return;
         } catch (syncError) {
+          options?.signal?.throwIfAborted();
+          options?.deadline?.throwIfExpired();
           lastError = this.engine.errorMessage(syncError);
         }
       } else {
         lastError = error;
       }
-      await delay(250);
+      await delay(Math.min(250, deadline.remainingMs()), undefined, {
+        signal: options?.signal,
+      });
     }
 
+    options?.signal?.throwIfAborted();
+    options?.deadline?.throwIfExpired();
     throw new ConflictException(
       `Display sidecar API did not become ready: ${lastError}`,
     );
   }
 
-  async synchronizeFeatures() {
+  async synchronizeFeatures(options?: DockerOperationOptions) {
     const manifest = this.features.getManifest();
     const displayFeatures = manifest.features.filter(
       ({ owner }) => owner === 'display',
     );
     try {
-      await this.request('/features', {
-        method: 'PUT',
-        body: JSON.stringify({
-          revision: manifest.revision,
-          features: displayFeatures.map(({ key, enabled, supported }) => ({
-            key,
-            effective: enabled && supported,
-          })),
-        }),
-      });
+      await this.request(
+        '/features',
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            revision: manifest.revision,
+            features: displayFeatures.map(({ key, enabled, supported }) => ({
+              key,
+              effective: enabled && supported,
+            })),
+          }),
+        },
+        options,
+      );
       for (const { key } of displayFeatures) {
         this.features.markSynchronization(key, manifest.revision, 'applied');
       }
@@ -184,10 +202,10 @@ export class DockerSidecarApiService
     }
   }
 
-  async probeHealth() {
+  async probeHealth(options?: DockerOperationOptions) {
     try {
       const response = await fetch(`${this.baseUrl()}/rebroid/display/health`, {
-        signal: AbortSignal.timeout(2_000),
+        signal: this.requestSignal(2_000, options),
       });
       void response.body?.cancel().catch(() => undefined);
       return response.ok
@@ -198,7 +216,11 @@ export class DockerSidecarApiService
     }
   }
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    path: string,
+    init: RequestInit = {},
+    options?: DockerOperationOptions,
+  ): Promise<T> {
     const secret = this.config.get<string>('app.sharedSecret');
     const response = await fetch(`${this.baseUrl()}/rebroid/display${path}`, {
       ...init,
@@ -208,7 +230,7 @@ export class DockerSidecarApiService
         ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
         ...(init.headers ?? {}),
       },
-      signal: AbortSignal.timeout(10_000),
+      signal: this.requestSignal(10_000, options),
     }).catch((error) => {
       throw new ConflictException(
         `Display sidecar API is not reachable: ${this.engine.errorMessage(error)}`,
@@ -222,6 +244,17 @@ export class DockerSidecarApiService
     }
 
     return response.json() as Promise<T>;
+  }
+
+  private requestSignal(timeoutMs: number, options?: DockerOperationOptions) {
+    options?.signal?.throwIfAborted();
+    options?.deadline?.throwIfExpired();
+    const timeout = AbortSignal.timeout(
+      Math.min(timeoutMs, options?.deadline?.remainingMs() ?? timeoutMs),
+    );
+    return options?.signal
+      ? AbortSignal.any([timeout, options.signal])
+      : timeout;
   }
 
   private baseUrl() {

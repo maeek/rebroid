@@ -1,4 +1,5 @@
 import type Dockerode from 'dockerode';
+import type { DockerOperationOptions } from './docker-operation-options';
 
 export const DOCKER_ENGINE = Symbol('DOCKER_ENGINE');
 
@@ -24,19 +25,30 @@ export interface DockerEnginePort {
   readonly hasPendingDockerWork: boolean;
   ping(): Promise<unknown>;
   info(): Promise<DockerEngineInfo>;
-  read<T>(operation: () => Promise<T>, description?: string): Promise<T>;
+  read<T>(
+    operation: (signal?: AbortSignal) => Promise<T>,
+    description?: string,
+    options?: DockerOperationOptions,
+  ): Promise<T>;
   coalesceRead<T>(
     key: string,
     operation: () => Promise<T>,
     description?: string,
   ): Promise<T>;
-  mutate<T>(operation: () => Promise<T>, description?: string): Promise<T>;
+  mutate<T>(
+    operation: () => Promise<T>,
+    description?: string,
+    options?: DockerOperationOptions,
+  ): Promise<T>;
   longOperation<T>(
     operationName: string,
     description: string,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs?: number,
-    options?: { waitForCleanup?: boolean; changesInventory?: boolean },
+    options?: DockerOperationOptions & {
+      waitForCleanup?: boolean;
+      changesInventory?: boolean;
+    },
   ): Promise<T>;
   labels(applicationId: string, component: string): Record<string, string>;
   isDockerConflict(error: unknown): boolean;

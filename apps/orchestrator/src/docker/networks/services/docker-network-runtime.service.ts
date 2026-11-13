@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { normalizeIpv4Cidr } from '@rebroid/firewall-policy-core/policy';
 import { DockerEngineService } from '../../docker-engine.service';
-import type { DockerNetworkRuntimePort } from '../../contracts/docker-network-runtime.port';
+import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
+import type {
+  DockerNetworkAttachmentTimings,
+  DockerNetworkConnectObservation,
+  DockerNetworkRuntimePort,
+} from '../../contracts/docker-network-runtime.port';
 
 @Injectable()
 export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
@@ -146,17 +152,63 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
     }
   }
 
-  async connectContainerToNetwork(containerId: string, networkName: string) {
+  async connectContainerToNetwork(
+    containerId: string,
+    networkName: string,
+    timings?: DockerNetworkAttachmentTimings,
+    options?: DockerOperationOptions,
+  ) {
     const network = this.engine.docker.getNetwork(networkName);
+    const queuedAt = performance.now();
+    let dispatched = false;
+    let admitted = false;
     try {
       await this.engine.mutate(
-        () =>
-          network.connect({
-            Container: containerId,
-          }),
+        async () => {
+          admitted = true;
+          if (timings)
+            timings.dockerMutationQueueMs += Math.round(
+              performance.now() - queuedAt,
+            );
+          options?.signal?.throwIfAborted();
+          options?.deadline?.throwIfExpired();
+          const observation: DockerNetworkConnectObservation = {
+            requestId: randomUUID(),
+            containerId,
+            networkName,
+            transport: this.engine.transport,
+            dispatchedAt: new Date().toISOString(),
+            outcome: 'pending',
+          };
+          if (timings) timings.networkConnect = observation;
+          this.logger.debug({
+            event: 'docker_network_connect_dispatched',
+            ...observation,
+          });
+          const connectedAt = performance.now();
+          try {
+            dispatched = true;
+            await network.connect({ Container: containerId });
+            observation.outcome = 'fulfilled';
+          } catch (error) {
+            observation.outcome = 'rejected';
+            throw error;
+          } finally {
+            const elapsedMs = Math.round(performance.now() - connectedAt);
+            observation.settledAt = new Date().toISOString();
+            this.logger.debug({
+              event: 'docker_network_connect_settled',
+              ...observation,
+              elapsedMs,
+            });
+            if (timings) timings.networkConnectMs += elapsedMs;
+          }
+        },
         `Connect container ${containerId} to network ${networkName}`,
+        options,
       );
     } catch (error) {
+      if (!dispatched) throw error;
       const transportError = this.engine.isTransientDockerTransportError(error);
       if (
         !transportError &&
@@ -166,15 +218,28 @@ export class DockerNetworkRuntimeService implements DockerNetworkRuntimePort {
         throw error;
       }
 
-      if (transportError) await delay(300);
-      if (!(await this.observeNetworkMembership(containerId, networkName))) {
-        throw error;
+      const convergenceStartedAt = performance.now();
+      try {
+        if (transportError) await delay(300);
+        if (!(await this.observeNetworkMembership(containerId, networkName))) {
+          throw error;
+        }
+      } finally {
+        if (timings)
+          timings.networkConvergenceMs += Math.round(
+            performance.now() - convergenceStartedAt,
+          );
       }
       if (transportError) {
         this.logger.warn(
           `Accepted container ${containerId} network attachment after a transient Docker transport error.`,
         );
       }
+    } finally {
+      if (!admitted && timings)
+        timings.dockerMutationQueueMs += Math.round(
+          performance.now() - queuedAt,
+        );
     }
   }
 

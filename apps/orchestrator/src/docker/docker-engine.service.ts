@@ -14,6 +14,7 @@ import { DockerMetricsObserver } from './engine/services/docker-metrics-observer
 import { DockerOperationExecutor } from './engine/services/docker-operation-executor.service';
 import type { DockerEnginePort } from './contracts/docker-engine.port';
 import type { DockerOperationLimits } from './contracts/docker-operation-limits';
+import type { DockerOperationOptions } from './contracts/docker-operation-options';
 
 export { dockerConnectionOptions };
 
@@ -100,8 +101,12 @@ export class DockerEngineService implements DockerEnginePort {
     return this.inventoryRevision;
   }
 
-  read<T>(operation: () => Promise<T>, description = 'Docker read') {
-    return this.executor.read(operation, description);
+  read<T>(
+    operation: (signal?: AbortSignal) => Promise<T>,
+    description = 'Docker read',
+    options?: DockerOperationOptions,
+  ) {
+    return this.executor.read(operation, description, options);
   }
 
   readStats<T>(operation: (signal: AbortSignal) => Promise<T>) {
@@ -116,10 +121,15 @@ export class DockerEngineService implements DockerEnginePort {
     return this.executor.coalesceRead(key, operation, description);
   }
 
-  mutate<T>(operation: () => Promise<T>, description = 'Docker mutation') {
+  mutate<T>(
+    operation: () => Promise<T>,
+    description = 'Docker mutation',
+    options?: DockerOperationOptions,
+  ) {
     return this.executor.mutate(
       () => this.trackInventoryMutation(operation),
       description,
+      options,
     );
   }
 
@@ -128,7 +138,10 @@ export class DockerEngineService implements DockerEnginePort {
     description: string,
     operation: (docker: Dockerode, signal: AbortSignal) => Promise<T>,
     timeoutMs?: number,
-    options?: { waitForCleanup?: boolean; changesInventory?: boolean },
+    options?: DockerOperationOptions & {
+      waitForCleanup?: boolean;
+      changesInventory?: boolean;
+    },
   ) {
     return this.executor.longOperation(
       operationName,

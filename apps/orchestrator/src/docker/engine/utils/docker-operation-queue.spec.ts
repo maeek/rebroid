@@ -1,3 +1,7 @@
+import {
+  OperationDeadline,
+  OperationDeadlineExceededError,
+} from '../../../common/operation-deadline';
 import { DockerOperationQueue } from './docker-operation-queue';
 
 describe('Docker operation queue reconfiguration', () => {
@@ -95,5 +99,66 @@ describe('Docker operation queue reconfiguration', () => {
     await Promise.all([active, inspect, ...stats]);
     expect(started[0]).toBe('inspect');
     expect(started).toHaveLength(33);
+  });
+});
+
+describe('Docker foreground queue admission', () => {
+  it('withdraws expired work before its predecessor settles and never dispatches it', async () => {
+    jest.useFakeTimers();
+    try {
+      const queue = new DockerOperationQueue();
+      let release!: () => void;
+      const first = queue.run(
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      );
+      await Promise.resolve();
+      const operation = jest.fn().mockResolvedValue(undefined);
+      const queued = queue.run(operation, {
+        deadline: new OperationDeadline(100),
+      });
+      const rejected = expect(queued).rejects.toBeInstanceOf(
+        OperationDeadlineExceededError,
+      );
+      await jest.advanceTimersByTimeAsync(100);
+      await rejected;
+      expect(operation).not.toHaveBeenCalled();
+      release();
+      await first;
+      await queue.run(async () => undefined);
+      expect(operation).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('withdraws cancelled queued work but retains an admitted operation until it settles', async () => {
+    const queue = new DockerOperationQueue();
+    const controller = new AbortController();
+    let release!: () => void;
+    let activeSettled = false;
+    const first = queue.run(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+      { signal: controller.signal },
+    );
+    void first.then(() => {
+      activeSettled = true;
+    });
+    await Promise.resolve();
+    const operation = jest.fn().mockResolvedValue(undefined);
+    const queued = queue.run(operation, { signal: controller.signal });
+    const reason = new Error('cancelled before admission');
+    controller.abort(reason);
+    await expect(queued).rejects.toBe(reason);
+    expect(activeSettled).toBe(false);
+    release();
+    await first;
+    expect(operation).not.toHaveBeenCalled();
+    await expect(queue.run(async () => 'next')).resolves.toBe('next');
   });
 });

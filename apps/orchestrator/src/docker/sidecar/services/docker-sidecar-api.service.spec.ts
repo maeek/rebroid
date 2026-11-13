@@ -1,3 +1,4 @@
+import { OperationDeadline } from '../../../common/operation-deadline';
 import { BadGatewayException } from '@nestjs/common';
 import { DockerSidecarApiService } from './docker-sidecar-api.service';
 
@@ -162,5 +163,61 @@ describe('DockerSidecarApiService', () => {
         { key: 'feature.display-webrtc', effective: false },
       ],
     });
+  });
+
+  it.each(['health', 'features'])(
+    'bounds the %s readiness request by the caller deadline',
+    async (phase) => {
+      jest.useFakeTimers();
+      try {
+        jest.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+          const controller = new AbortController();
+          setTimeout(() => controller.abort(new Error('timeout')), ms);
+          return controller.signal;
+        });
+        const fetchMock = jest.fn(
+          (_url: unknown, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) => {
+              init?.signal?.addEventListener(
+                'abort',
+                () => reject(init?.signal?.reason),
+                { once: true },
+              );
+            }),
+        );
+        if (phase === 'features')
+          fetchMock.mockResolvedValueOnce(Response.json({ ok: true }));
+        global.fetch = fetchMock;
+        const pending = service().waitForReady(10_000, {
+          deadline: new OperationDeadline(50),
+        });
+        const rejected = expect(pending).rejects.toThrow('deadline');
+        await jest.advanceTimersByTimeAsync(50);
+        await rejected;
+        expect(fetchMock).toHaveBeenCalledTimes(phase === 'health' ? 1 : 2);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it('propagates cancellation while waiting for health without beginning feature synchronization', async () => {
+    const controller = new AbortController();
+    global.fetch = jest.fn(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            'abort',
+            () => reject(init.signal?.reason),
+            { once: true },
+          );
+        }),
+    );
+    const pending = service().waitForReady(10_000, {
+      signal: controller.signal,
+    });
+    controller.abort(new Error('startup cancelled'));
+    await expect(pending).rejects.toThrow('startup cancelled');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,10 +1,9 @@
 import { addAbortListener } from 'node:events';
 import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { getErrorMessage } from '../../../common/error-message';
-import {
-  DOCKER_CONTAINER_EXEC,
-  type DockerContainerExecPort,
-} from '../../../docker/contracts/docker-container-exec.port';
+import { OperationDeadline } from '../../../common/operation-deadline';
+import type { DockerOperationOptions } from '../../../docker/contracts/docker-operation-options';
+import { AndroidAppsTcpAdbService } from '../../common/services/android-apps-tcp-adb.service';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
   type DockerContainerLifecyclePort,
@@ -114,8 +113,7 @@ export class AndroidAppsViewerNetworkService {
     private readonly networks: DockerNetworkRuntimePort,
     @Inject(DOCKER_SIDECAR)
     private readonly sidecar: DockerSidecarPort,
-    @Inject(DOCKER_CONTAINER_EXEC)
-    private readonly exec: DockerContainerExecPort,
+    private readonly tcpAdb: AndroidAppsTcpAdbService,
     private readonly networkPolicy: NetworkPolicyService,
     private readonly logs: AndroidAppsLogService,
     private readonly writer: AndroidAppsStateWriter,
@@ -127,12 +125,13 @@ export class AndroidAppsViewerNetworkService {
 
   async observeProvisioningAdbTarget(
     app: AndroidApplication,
+    options?: DockerOperationOptions,
   ): Promise<ObservedAdbTarget> {
     const { containerId } = app;
     if (!containerId)
       return { adbHost: app.containerName, containerStartedAt: null };
 
-    const inspect = await this.lifecycle.inspectContainer(containerId);
+    const inspect = await this.lifecycle.inspectContainer(containerId, options);
     const ip = inspect.NetworkSettings?.Networks?.[app.networkName]?.IPAddress;
     const containerStartedAt =
       ip && inspect.Id === containerId && inspect.State?.Running
@@ -558,29 +557,9 @@ export class AndroidAppsViewerNetworkService {
     }
 
     try {
-      const result = await this.exec.execInContainerWithOutput(
-        app.containerId,
-        [
-          'sh',
-          '-lc',
-          [
-            'set -e',
-            `port=${app.adbPort}`,
-            'persist_port="$(getprop persist.adb.tcp.port 2>/dev/null || true)"',
-            'service_port="$(getprop service.adb.tcp.port 2>/dev/null || true)"',
-            'adbd_state="$(getprop init.svc.adbd 2>/dev/null || true)"',
-            'if { [ "$persist_port" = "$port" ] || [ "$service_port" = "$port" ]; } && [ "$adbd_state" = "running" ]; then',
-            '  echo "Redroid TCP ADB already enabled."',
-            '  exit 0',
-            'fi',
-            'setprop persist.adb.tcp.port "$port"',
-            'setprop service.adb.tcp.port "$port"',
-            '[ "$adbd_state" != "running" ] || stop adbd',
-            'start adbd',
-            'echo "Redroid TCP ADB enabled and adbd restarted."',
-          ].join('\n'),
-        ],
-        { timeoutMs: 10_000 },
+      const result = await this.tcpAdb.prepare(
+        { containerId: app.containerId, adbPort: app.adbPort },
+        new OperationDeadline(10_000),
       );
       await this.appendLifecycleLog(
         app.id,

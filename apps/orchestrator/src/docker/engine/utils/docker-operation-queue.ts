@@ -1,3 +1,6 @@
+import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
+import { dockerOperationScope } from './docker-operation-scope';
+
 export class DockerOperationQueue {
   private concurrency = 1;
   private active = 0;
@@ -13,41 +16,63 @@ export class DockerOperationQueue {
     this.drain();
   }
 
-  run<T>(operation: () => Promise<T>): Promise<T> {
-    return this.enqueue(operation);
+  run<T>(
+    operation: () => Promise<T>,
+    options?: DockerOperationOptions,
+  ): Promise<T> {
+    return this.enqueue(operation, false, options);
   }
 
   runBackground<T>(operation: () => Promise<T>, signal: AbortSignal) {
-    return this.enqueue(operation, signal);
+    return this.enqueue(operation, true, { signal });
   }
 
-  private enqueue<T>(operation: () => Promise<T>, signal?: AbortSignal) {
+  private enqueue<T>(
+    operation: () => Promise<T>,
+    background: boolean,
+    options?: DockerOperationOptions,
+  ) {
     return new Promise<T>((resolve, reject) => {
-      const pending = signal ? this.pendingBackground : this.pending;
-      if (signal?.aborted) return reject(signal.reason);
-      if (signal && pending.length >= 32) {
-        return reject(new Error('The Docker stats queue is full.'));
-      }
+      const pending = background ? this.pendingBackground : this.pending;
+      const scope = dockerOperationScope(options);
+      const cleanup = () => {
+        scope.signal.removeEventListener('abort', abort);
+        scope.dispose();
+      };
       const abort = () => {
         const index = pending.indexOf(start);
         if (index !== -1) pending.splice(index, 1);
-        reject(signal?.reason);
+        cleanup();
+        reject(scope.signal.reason);
       };
       const start = () => {
-        signal?.removeEventListener('abort', abort);
+        cleanup();
         this.active += 1;
-        if (signal) this.activeBackground += 1;
+        if (background) this.activeBackground += 1;
         void Promise.resolve()
-          .then(operation)
+          .then(() => {
+            options?.signal?.throwIfAborted();
+            options?.deadline?.throwIfExpired();
+            return operation();
+          })
           .then(resolve, reject)
           .finally(() => {
             this.active -= 1;
-            if (signal) this.activeBackground -= 1;
+            if (background) this.activeBackground -= 1;
             this.drain();
           });
       };
+      if (scope.signal.aborted) {
+        abort();
+        return;
+      }
+      if (background && pending.length >= 32) {
+        cleanup();
+        reject(new Error('The Docker stats queue is full.'));
+        return;
+      }
       pending.push(start);
-      signal?.addEventListener('abort', abort, { once: true });
+      scope.signal.addEventListener('abort', abort, { once: true });
       this.drain();
     });
   }

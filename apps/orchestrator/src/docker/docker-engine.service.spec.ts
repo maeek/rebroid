@@ -1,3 +1,7 @@
+import {
+  OperationDeadline,
+  OperationDeadlineExceededError,
+} from '../common/operation-deadline';
 import { ConfigService } from '@nestjs/config';
 import {
   dockerConnectionOptions,
@@ -225,6 +229,71 @@ describe('DockerEngineService', () => {
     expect(engine.hasPendingDockerWork).toBe(false);
   });
 
+  it.each([false, true])(
+    'classifies the scope timeout even when the deadline clock still has time remaining (explicit deadline: %s)',
+    async (explicitDeadline) => {
+      jest.useFakeTimers();
+      // Model timer delivery just before the monotonic clock reports expiry.
+      const remaining = jest
+        .spyOn(OperationDeadline.prototype, 'remainingMs')
+        .mockReturnValue(1);
+      try {
+        const engine = createEngine();
+        let aborted = false;
+        const operation = engine.longOperation(
+          'exec',
+          'Container exec stream',
+          async (_docker, signal) =>
+            new Promise<never>((_resolve, reject) => {
+              signal.addEventListener(
+                'abort',
+                () => {
+                  aborted = true;
+                  reject(new Error('aborted'));
+                },
+                { once: true },
+              );
+            }),
+          5,
+          explicitDeadline ? { deadline: new OperationDeadline(5) } : undefined,
+        );
+        const failed = explicitDeadline
+          ? expect(operation).rejects.toBeInstanceOf(
+              OperationDeadlineExceededError,
+            )
+          : expect(operation).rejects.toThrow(
+              'Container exec stream timed out after 5ms.',
+            );
+        await jest.advanceTimersByTimeAsync(1);
+        await failed;
+        expect(aborted).toBe(true);
+        expect(engine.hasPendingDockerWork).toBe(false);
+        expect(new OperationDeadline(5).remainingMs()).toBe(1);
+      } finally {
+        remaining.mockRestore();
+        jest.useRealTimers();
+      }
+    },
+  );
+
+  it('preserves a caller deadline abort instead of relabeling it as a legacy execution timeout', async () => {
+    const engine = createEngine();
+    const controller = new AbortController();
+    const reason = new OperationDeadlineExceededError();
+    const operation = engine.longOperation(
+      'exec',
+      'Container exec stream',
+      async (_docker, signal) => {
+        controller.abort(reason);
+        signal.throwIfAborted();
+      },
+      5_000,
+      { signal: controller.signal },
+    );
+    await expect(operation).rejects.toBe(reason);
+    expect(engine.hasPendingDockerWork).toBe(false);
+  });
+
   it('warns on slow local reads without destroying them', async () => {
     const metrics = new MetricsService();
     const engine = createEngine(
@@ -255,4 +324,183 @@ describe('DockerEngineService', () => {
       'Container <resource-id> failed.',
     );
   });
+});
+
+describe('Docker startup admission budgets', () => {
+  it('observes read admission after queue residence and isolates observer failures', async () => {
+    const engine = createEngine({ 'app.docker.maxConcurrentReads': 1 });
+    let release!: () => void;
+    const first = engine.read(
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const observer = jest.fn(() => {
+      throw new Error('observer failed');
+    });
+    const operation = jest.fn().mockResolvedValue('ready');
+    const second = engine.read(operation, 'Inspect container startup', {
+      onDispatched: observer,
+    });
+    await Promise.resolve();
+    expect(observer).not.toHaveBeenCalled();
+    expect(operation).not.toHaveBeenCalled();
+    release();
+    await first;
+    await expect(second).resolves.toBe('ready');
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  it('isolates long-operation observer failures from execution', async () => {
+    const engine = createEngine();
+    const observer = jest.fn(() => {
+      throw new Error('observer failed');
+    });
+    const operation = jest.fn().mockResolvedValue('ready');
+    await expect(
+      engine.longOperation('probe', 'Probe', operation, 10_000, {
+        onDispatched: observer,
+      }),
+    ).resolves.toBe('ready');
+    expect(observer).toHaveBeenCalledTimes(1);
+    expect(operation).toHaveBeenCalledTimes(1);
+  });
+
+  it('expires a queued mutation without dispatching or incrementing inventory revision', async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = createEngine();
+      let release!: () => void;
+      const first = engine.mutate(
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      );
+      await Promise.resolve();
+      const revision = engine.currentInventoryRevision;
+      const operation = jest.fn().mockResolvedValue(undefined);
+      const queued = engine.mutate(operation, 'Connect container queued', {
+        deadline: new OperationDeadline(100),
+      });
+      const rejected = expect(queued).rejects.toBeInstanceOf(
+        OperationDeadlineExceededError,
+      );
+      await jest.advanceTimersByTimeAsync(100);
+      await rejected;
+      expect(operation).not.toHaveBeenCalled();
+      expect(engine.currentInventoryRevision).toBe(revision);
+      expect(engine.hasPendingMutations).toBe(true);
+      release();
+      await first;
+      expect(engine.hasPendingMutations).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('charges long-operation queue residence to its caller deadline', async () => {
+    jest.useFakeTimers();
+    try {
+      const engine = createEngine({
+        'app.docker.maxConcurrentLongOperations': 1,
+      });
+      let release!: () => void;
+      const first = engine.longOperation(
+        'first',
+        'First',
+        () =>
+          new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+      );
+      await jest.advanceTimersByTimeAsync(0);
+      const operation = jest.fn().mockResolvedValue(undefined);
+      const onDispatched = jest.fn();
+      const second = engine.longOperation(
+        'second',
+        'Second',
+        operation,
+        10_000,
+        { deadline: new OperationDeadline(100), onDispatched },
+      );
+      const rejected = expect(second).rejects.toBeInstanceOf(
+        OperationDeadlineExceededError,
+      );
+      await jest.advanceTimersByTimeAsync(100);
+      await rejected;
+      expect(operation).not.toHaveBeenCalled();
+      expect(onDispatched).not.toHaveBeenCalled();
+      release();
+      await first;
+      expect(engine.hasPendingDockerWork).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+it('preserves deadline classification when a scoped read expires during retry backoff', async () => {
+  jest.useFakeTimers();
+  try {
+    const engine = createEngine();
+    const operation = jest
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error('reset'), { code: 'ECONNRESET' }),
+      );
+    const read = engine.read(operation, 'Inspect container startup', {
+      deadline: new OperationDeadline(100),
+    });
+    const rejected = expect(read).rejects.toBeInstanceOf(
+      OperationDeadlineExceededError,
+    );
+    await jest.advanceTimersByTimeAsync(100);
+    await rejected;
+    expect(operation).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it('preserves the full legacy long-operation execution timeout after queue residence', async () => {
+  jest.useFakeTimers();
+  try {
+    const engine = createEngine({
+      'app.docker.maxConcurrentLongOperations': 1,
+    });
+    let release!: () => void;
+    const first = engine.longOperation(
+      'first',
+      'First',
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    const operation = jest.fn(async (_docker: unknown, signal: AbortSignal) => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50));
+      signal.throwIfAborted();
+      return 'complete';
+    });
+    const second = engine.longOperation(
+      'second',
+      'Legacy operation',
+      operation,
+      100,
+    );
+    const result = expect(second).resolves.toBe('complete');
+    await jest.advanceTimersByTimeAsync(250);
+    expect(operation).not.toHaveBeenCalled();
+    release();
+    await first;
+    await jest.advanceTimersByTimeAsync(50);
+    await result;
+    expect(operation).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
 });

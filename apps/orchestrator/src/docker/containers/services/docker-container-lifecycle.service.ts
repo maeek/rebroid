@@ -5,12 +5,27 @@ import { DockerEngineService } from '../../docker-engine.service';
 import { ContainerRuntimeState } from '../../docker.types';
 import { decodeDockerLogStream } from '../utils/docker-log-stream';
 import type { DockerContainerLifecyclePort } from '../../contracts/docker-container-lifecycle.port';
+import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
 
 @Injectable()
 export class DockerContainerLifecycleService implements DockerContainerLifecyclePort {
   constructor(private readonly engine: DockerEngineService) {}
 
-  async inspectContainer(containerId: string) {
+  async inspectContainer(
+    containerId: string,
+    options?: DockerOperationOptions,
+  ) {
+    if (options?.deadline || options?.signal || options?.onDispatched) {
+      // A caller's cancellation must not abort another coalesced reader.
+      return this.engine.read(
+        (signal) =>
+          this.engine.docker
+            .getContainer(containerId)
+            .inspect({ abortSignal: signal }),
+        `Inspect container ${containerId}`,
+        options,
+      );
+    }
     return this.engine.coalesceRead(
       `container-inspect:${containerId}`,
       () => this.engine.docker.getContainer(containerId).inspect(),
@@ -18,15 +33,21 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
     );
   }
 
-  async findContainerByName(name: string, applicationId?: string) {
+  async findContainerByName(
+    name: string,
+    applicationId?: string,
+    options?: DockerOperationOptions,
+  ) {
     const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const containers = await this.engine.read(
-      () =>
+      (signal) =>
         this.engine.docker.listContainers({
+          ...(options ? { abortSignal: signal } : {}),
           all: true,
           filters: { name: [`^/?${escapedName}$`] },
         }),
       `List containers while finding ${name}`,
+      options,
     );
     const dockerName = `/${name}`;
     const container = containers.find((item) =>
@@ -40,9 +61,10 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
 
   async getContainerRuntimeState(
     containerId: string,
+    options?: DockerOperationOptions,
   ): Promise<ContainerRuntimeState> {
     try {
-      const inspect = await this.inspectContainer(containerId);
+      const inspect = await this.inspectContainer(containerId, options);
       return {
         exists: true,
         running: Boolean(inspect.State?.Running),
@@ -72,17 +94,23 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
     }
   }
 
-  async getContainerLogs(containerId: string, tail = 300) {
+  async getContainerLogs(
+    containerId: string,
+    tail = 300,
+    options?: DockerOperationOptions,
+  ) {
     const container = this.engine.docker.getContainer(containerId);
     const stream = await this.engine.read(
-      () =>
+      (signal) =>
         container.logs({
+          ...(options ? { abortSignal: signal } : {}),
           stdout: true,
           stderr: true,
           timestamps: true,
           tail,
         }),
       `Read logs for container ${containerId}`,
+      options,
     );
 
     return Buffer.isBuffer(stream)
@@ -131,12 +159,13 @@ export class DockerContainerLifecycleService implements DockerContainerLifecycle
     }, `Read bounded logs for container ${containerId}`);
   }
 
-  async startContainer(containerId: string) {
+  async startContainer(containerId: string, options?: DockerOperationOptions) {
     const container = this.engine.docker.getContainer(containerId);
     try {
       await this.engine.mutate(
         () => container.start(),
         `Start container ${containerId}`,
+        options,
       );
     } catch (error) {
       if (!this.engine.isDockerNotModified(error)) {

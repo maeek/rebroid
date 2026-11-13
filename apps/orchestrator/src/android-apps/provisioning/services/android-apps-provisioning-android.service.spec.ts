@@ -1,4 +1,9 @@
 import { spawnSync } from 'node:child_process';
+import { Logger } from '@nestjs/common';
+import type { DockerOperationOptions } from '../../../docker/contracts/docker-operation-options';
+import { ContainerCommandFailedException } from '../../../docker/docker.types';
+import { AndroidAppsTcpAdbService } from '../../common/services/android-apps-tcp-adb.service';
+import { OperationDeadlineExceededError } from '../../../common/operation-deadline';
 import {
   androidBootDiagnosticSummary,
   parseAndroidBootReadiness,
@@ -7,8 +12,26 @@ import {
 import { AndroidAppsProvisioningAndroidService } from './android-apps-provisioning-android.service';
 
 jest.mock('node:timers/promises', () => ({
-  setTimeout: (ms: number) =>
-    new Promise<void>((resolve) => setTimeout(resolve, ms)),
+  setTimeout: (
+    ms: number,
+    _value?: unknown,
+    options?: { signal?: AbortSignal },
+  ) =>
+    new Promise<void>((resolve, reject) => {
+      const signal = options?.signal;
+      if (signal?.aborted) return reject(signal.reason);
+      const cleanup = () => signal?.removeEventListener('abort', abort);
+      const timer = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
+      const abort = () => {
+        clearTimeout(timer);
+        cleanup();
+        reject(signal?.reason);
+      };
+      signal?.addEventListener('abort', abort, { once: true });
+    }),
 }));
 
 describe('Android startup probe scheduling', () => {
@@ -27,7 +50,9 @@ describe('Android startup probe scheduling', () => {
 
   function setup() {
     const exec = {
-      execInContainerWithOutput: jest.fn(),
+      execInContainerWithOutput: jest
+        .fn()
+        .mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 }),
       execInContainer: jest.fn().mockResolvedValue(undefined),
     };
     const lifecycle = {
@@ -35,7 +60,11 @@ describe('Android startup probe scheduling', () => {
         .fn()
         .mockResolvedValue({ exists: true, running: true }),
     };
-    const engine = { isTransientDockerTransportError: jest.fn() };
+    const engine = {
+      isTransientDockerTransportError: jest.fn(
+        (error: unknown) => (error as { code?: string })?.code === 'ECONNRESET',
+      ),
+    };
     const sidecar = {
       adbTargetGeneration: 1,
       ensureSidecarOnNetwork: jest.fn(),
@@ -52,27 +81,37 @@ describe('Android startup probe scheduling', () => {
       }),
       rememberProvisionedAdb: jest.fn(),
     };
+    const tracker = new AndroidAppsProvisioningTrackerService();
+    const logs = { append: jest.fn().mockResolvedValue(undefined) };
     const android = new AndroidAppsProvisioningAndroidService(
       exec as unknown as DockerContainerExecPort,
       lifecycle as unknown as DockerContainerLifecyclePort,
       engine as unknown as DockerEnginePort,
       sidecar as unknown as DockerSidecarPort,
-      { append: jest.fn() } as unknown as AndroidAppsLogService,
-      {
-        ensureActive: jest.fn(),
-      } as unknown as AndroidAppsProvisioningTrackerService,
+      logs as unknown as AndroidAppsLogService,
+      tracker,
       viewer as unknown as AndroidAppsViewerNetworkService,
       new ConfigService({
         app: { redroid: { bootTimeoutSeconds: 15, adbTimeoutSeconds: 10 } },
       }),
+      new AndroidAppsTcpAdbService(
+        exec as unknown as DockerContainerExecPort,
+        engine as unknown as DockerEnginePort,
+      ),
     );
-    return { android, exec, lifecycle, engine, sidecar, viewer };
+    return { android, exec, lifecycle, engine, sidecar, viewer, tracker, logs };
   }
 
   beforeEach(() => jest.useFakeTimers({ now: 0 }));
-  afterEach(() => jest.useRealTimers());
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
 
   it('backs off unchanged Android properties while checking container liveness every second', async () => {
+    const diagnosticLog = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => {});
     const { android, exec, lifecycle } = setup();
     const probeTimes: number[] = [];
     exec.execInContainerWithOutput.mockImplementation(async () => {
@@ -87,6 +126,382 @@ describe('Android startup probe scheduling', () => {
     await expect(boot).resolves.toBeUndefined();
     expect(probeTimes).toEqual([0, 1_000, 3_000, 6_000]);
     expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(7);
+    const observations = diagnosticLog.mock.calls
+      .map(
+        ([entry]) =>
+          entry as { event: string; properties: { outcome: string } },
+      )
+      .filter((entry) => entry.event === 'android_boot_probe');
+    expect(observations).toHaveLength(7);
+    expect(
+      observations.filter(
+        (entry) => entry.properties.outcome === 'skipped_backoff',
+      ),
+    ).toHaveLength(3);
+  });
+
+  it('separates admission and Docker work while preserving concurrent probe settlement times', async () => {
+    const diagnosticLog = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => {});
+    const { android, exec, lifecycle, logs } = setup();
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
+    exec.execInContainerWithOutput.mockImplementation(
+      async (
+        _id: string,
+        _command: string[],
+        options: DockerOperationOptions,
+      ) => {
+        await wait(2_000);
+        options.onDispatched?.();
+        await wait(1_000);
+        return {
+          stdout: 'dev.bootcomplete=1',
+          stderr: 'not included in timing logs',
+        };
+      },
+    );
+    lifecycle.getContainerRuntimeState.mockImplementation(
+      async (_id: string, options: DockerOperationOptions) => {
+        await wait(100);
+        options.onDispatched?.();
+        await wait(5_900);
+        return { exists: true, running: true };
+      },
+    );
+
+    const boot = android.waitForAndroidBoot(app, 'reservation');
+    await jest.advanceTimersByTimeAsync(6_000);
+    await expect(boot).resolves.toBeUndefined();
+    expect(diagnosticLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'android_boot_probe',
+        reservationId: 'reservation',
+        applicationId: app.id,
+        containerId: app.containerId,
+        bootObservationId: expect.any(String),
+        sequence: 1,
+        elapsedMs: 6_000,
+        observationMs: 6_000,
+        waitSincePreviousObservationMs: 0,
+        propertyReady: true,
+        runtimeRunning: true,
+        properties: expect.objectContaining({
+          outcome: 'fulfilled',
+          dispatched: true,
+          queueMs: 2_000,
+          executionMs: 1_000,
+          totalMs: 3_000,
+          settledAfterMs: 3_000,
+        }),
+        runtime: expect.objectContaining({
+          outcome: 'fulfilled',
+          dispatched: true,
+          queueMs: 100,
+          executionMs: 5_900,
+          totalMs: 6_000,
+          settledAfterMs: 6_000,
+        }),
+      }),
+    );
+    expect(JSON.stringify(diagnosticLog.mock.calls)).not.toContain(
+      'not included',
+    );
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(1);
+    expect(logs.append).toHaveBeenCalledTimes(1);
+  });
+
+  function unavailableGuestShell(
+    stderr = 'exec /bin/sh: no such file or directory',
+    exitCode = 255,
+  ) {
+    return new ContainerCommandFailedException({
+      message: `Container command failed with exit code ${exitCode}: ${stderr}`,
+      command: ['sh', '-lc', 'getprop'],
+      exitCode,
+      stdout: '',
+      stderr,
+    });
+  }
+
+  it('replays an initially unavailable guest shell through not-ready properties to readiness', async () => {
+    const diagnosticLog = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => {});
+    const { android, exec, lifecycle, logs } = setup();
+    const failure = unavailableGuestShell();
+    exec.execInContainerWithOutput
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(failure)
+      .mockRejectedValueOnce(failure)
+      .mockResolvedValueOnce({ stdout: 'dev.bootcomplete=0', stderr: '' })
+      .mockResolvedValueOnce({ stdout: 'dev.bootcomplete=1', stderr: '' });
+
+    const boot = android.waitForAndroidBoot(app);
+    await jest.advanceTimersByTimeAsync(4_000);
+    expect(logs.append).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1_000);
+    await expect(boot).resolves.toBeUndefined();
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(6);
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(6);
+    expect(
+      diagnosticLog.mock.calls.filter(
+        ([entry]) =>
+          (entry as { event: string }).event !== 'android_boot_probe',
+      ),
+    ).toEqual([
+      [
+        {
+          event: 'android_guest_shell_unavailable',
+          applicationId: app.id,
+          containerId: app.containerId,
+          observedAt: new Date(0).toISOString(),
+        },
+      ],
+      [
+        {
+          event: 'android_guest_shell_available',
+          applicationId: app.id,
+          containerId: app.containerId,
+          observedAt: new Date(4_000).toISOString(),
+          elapsedMs: 4_000,
+          unavailableObservations: 4,
+        },
+      ],
+    ]);
+    expect(diagnosticLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'android_boot_probe',
+        sequence: 1,
+        initialGuestShellUnavailable: true,
+        propertyReady: null,
+        properties: expect.objectContaining({ outcome: 'rejected' }),
+      }),
+    );
+    expect(logs.append).toHaveBeenCalledWith(
+      app.id,
+      'Android boot completed',
+      expect.anything(),
+    );
+  });
+
+  it('bounds an unavailable initial guest shell by the overall boot budget', async () => {
+    const { android, exec, lifecycle, logs } = setup();
+    exec.execInContainerWithOutput.mockRejectedValue(unavailableGuestShell());
+    const getContainerLogs = jest.fn().mockResolvedValue('guest not available');
+    Object.assign(lifecycle, { getContainerLogs });
+
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+      'Timed out waiting for Android to finish booting after 15s',
+    );
+    await jest.advanceTimersByTimeAsync(15_000);
+    await failed;
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(15);
+    // Fifteen boot observations plus the separately bounded diagnostic command.
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(16);
+    expect(getContainerLogs).toHaveBeenCalledTimes(1);
+    expect(logs.append).toHaveBeenCalledWith(
+      app.id,
+      'Android boot diagnostics',
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    unavailableGuestShell('exec /bin/sh: permission denied'),
+    unavailableGuestShell('exec /bin/sh: no such file or directory', 127),
+    unavailableGuestShell('getprop: permission denied'),
+    new Error('exec /bin/sh: no such file or directory'),
+  ])('does not retry unrelated guest command failure: %s', async (failure) => {
+    const { android, exec, lifecycle } = setup();
+    exec.execInContainerWithOutput.mockRejectedValue(failure);
+    await expect(android.waitForAndroidBoot(app)).rejects.toBe(failure);
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not treat guest shell disappearance after a successful probe as initial startup', async () => {
+    const { android, exec } = setup();
+    const failure = unavailableGuestShell();
+    exec.execInContainerWithOutput
+      .mockResolvedValueOnce({ stdout: 'dev.bootcomplete=0', stderr: '' })
+      .mockRejectedValueOnce(failure);
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toBe(
+      failure,
+    );
+    await jest.advanceTimersByTimeAsync(1_000);
+    await failed;
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    { exists: false, running: false, expected: 'no longer exists' },
+    { exists: true, running: false, oomKilled: true, expected: 'OOM-killed' },
+  ])(
+    'stops guest-shell retries when the runtime is terminal ($expected)',
+    async (state) => {
+      const { android, exec, lifecycle } = setup();
+      exec.execInContainerWithOutput.mockRejectedValue(unavailableGuestShell());
+      lifecycle.getContainerRuntimeState
+        .mockResolvedValueOnce({ exists: true, running: true })
+        .mockResolvedValueOnce(state);
+      const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+        state.expected,
+      );
+      await jest.advanceTimersByTimeAsync(1_000);
+      await failed;
+      expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it('cancels while waiting for the initial guest shell without admitting another probe', async () => {
+    const { android, exec, tracker, logs } = setup();
+    exec.execInContainerWithOutput.mockRejectedValue(unavailableGuestShell());
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+      'cancelled',
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    tracker.cancel(app.id);
+    await failed;
+    await jest.advanceTimersByTimeAsync(1_000);
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(1);
+    expect(logs.append).not.toHaveBeenCalled();
+  });
+
+  it('recovers an uncertain runtime read without trusting ready properties alone', async () => {
+    const { android, exec, lifecycle, logs } = setup();
+    exec.execInContainerWithOutput.mockResolvedValue({
+      stdout: 'dev.bootcomplete=1',
+      stderr: '',
+      exitCode: 0,
+    });
+    lifecycle.getContainerRuntimeState.mockRejectedValueOnce(
+      Object.assign(new Error('reset'), { code: 'ECONNRESET' }),
+    );
+    const boot = android.waitForAndroidBoot(app);
+    await jest.advanceTimersByTimeAsync(0);
+    expect(logs.append).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(1_000);
+    await boot;
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(2);
+    expect(logs.append).toHaveBeenCalledWith(
+      app.id,
+      'Android boot completed',
+      expect.anything(),
+    );
+  });
+
+  it.each([
+    { exists: false, running: false, expected: 'no longer exists' },
+    { exists: true, running: false, oomKilled: true, expected: 'OOM-killed' },
+  ])(
+    'fails terminal runtime observations even with ready properties ($expected)',
+    async (state) => {
+      const { android, exec, lifecycle } = setup();
+      exec.execInContainerWithOutput.mockResolvedValue({
+        stdout: 'dev.bootcomplete=1',
+        stderr: '',
+        exitCode: 0,
+      });
+      lifecycle.getContainerRuntimeState.mockResolvedValue(state);
+      await expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+        state.expected,
+      );
+      expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('fails permanent inspection errors without retrying or diagnostics', async () => {
+    const { android, lifecycle, logs } = setup();
+    lifecycle.getContainerRuntimeState.mockRejectedValue(
+      Object.assign(new Error('forbidden'), { statusCode: 403 }),
+    );
+    await expect(android.waitForAndroidBoot(app)).rejects.toThrow('forbidden');
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(1);
+    expect(logs.append).not.toHaveBeenCalled();
+  });
+
+  it('bounds repeated transient observation failures', async () => {
+    const { android, lifecycle } = setup();
+    lifecycle.getContainerRuntimeState.mockRejectedValue(
+      Object.assign(new Error('reset'), { code: 'ECONNRESET' }),
+    );
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+      'reset',
+    );
+    await jest.advanceTimersByTimeAsync(3_000);
+    await failed;
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(3);
+  });
+
+  it('withdraws a pending boot observation on cancellation without reporting readiness', async () => {
+    const { android, lifecycle, tracker, logs } = setup();
+    lifecycle.getContainerRuntimeState.mockImplementation(
+      (_id: string, options: { signal: AbortSignal }) =>
+        new Promise((_, reject) => {
+          options.signal.addEventListener(
+            'abort',
+            () => reject(options.signal.reason),
+            { once: true },
+          );
+        }),
+    );
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+      'cancelled',
+    );
+    await jest.advanceTimersByTimeAsync(0);
+    tracker.cancel(app.id);
+    await failed;
+    expect(logs.append).not.toHaveBeenCalled();
+  });
+
+  it('shares a bounded diagnostic allowance and skips log reads once it is spent', async () => {
+    const { android, exec, lifecycle, logs } = setup();
+    const getContainerLogs = jest.fn();
+    Object.assign(lifecycle, { getContainerLogs });
+    const remaining: number[] = [];
+    exec.execInContainerWithOutput.mockImplementation(
+      (_id, _command, options) => {
+        remaining.push(options.deadline.remainingMs());
+        return new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new OperationDeadlineExceededError()),
+            options.deadline.remainingMs(),
+          ),
+        );
+      },
+    );
+    const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+      'Timed out waiting for Android to finish booting after 15s',
+    );
+    await jest.advanceTimersByTimeAsync(20_000);
+    await failed;
+    expect(remaining).toEqual([10_000, 4_000, 5_000]);
+    expect(getContainerLogs).not.toHaveBeenCalled();
+    expect(logs.append).toHaveBeenCalledWith(
+      app.id,
+      'Android boot diagnostics',
+      expect.anything(),
+    );
+  });
+
+  it('uses a monotonic boot budget across wall clock changes', async () => {
+    const { android, exec } = setup();
+    exec.execInContainerWithOutput.mockImplementation(async () => {
+      jest.setSystemTime(Date.now() + 60_000);
+      return {
+        stdout: performance.now() >= 1_000 ? 'dev.bootcomplete=1' : '',
+        stderr: '',
+        exitCode: 0,
+      };
+    });
+    const boot = android.waitForAndroidBoot(app);
+    await jest.advanceTimersByTimeAsync(1_000);
+    await expect(boot).resolves.toBeUndefined();
+    expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(2);
   });
 
   it('reuses setup facts on a retry and refreshes both after an observed sidecar restart', async () => {
@@ -113,10 +528,64 @@ describe('Android startup probe scheduling', () => {
     });
   });
 
+  it('reuses a recent boot-overlapped attachment with fresh runtime and target observations', async () => {
+    const { android, sidecar, lifecycle, viewer } = setup();
+    const attachment = await android.prepareNetworkAttachment(
+      app,
+      'reservation',
+    );
+    await android.prepareRemoteAccess(app, 'reservation', attachment);
+    expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
+    expect(lifecycle.getContainerRuntimeState).toHaveBeenCalledTimes(1);
+    expect(viewer.observeProvisioningAdbTarget).toHaveBeenCalledTimes(1);
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a transient attachment failure after boot through normal ADB readiness', async () => {
+    const { android, sidecar, engine } = setup();
+    sidecar.ensureSidecarOnNetwork.mockRejectedValueOnce(
+      new Error('transient disconnect'),
+    );
+    engine.isTransientDockerTransportError.mockReturnValue(true);
+    const attachment = await android.prepareNetworkAttachment(
+      app,
+      'reservation',
+    );
+    expect(attachment).toBeUndefined();
+    await android.prepareRemoteAccess(app, 'reservation', attachment);
+    expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(2);
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['reservation', 'container', 'network', 'generation', 'expiry'])(
+    'rechecks an overlapped attachment after %s changes',
+    async (changed) => {
+      const { android, sidecar } = setup();
+      const attachment = await android.prepareNetworkAttachment(
+        app,
+        'reservation',
+      );
+      if (changed === 'generation') sidecar.adbTargetGeneration += 1;
+      if (changed === 'expiry') await jest.advanceTimersByTimeAsync(3_001);
+      await android.prepareRemoteAccess(
+        {
+          ...app,
+          containerId:
+            changed === 'container' ? 'replacement' : app.containerId,
+          networkName:
+            changed === 'network' ? 'replacement-network' : app.networkName,
+        },
+        changed === 'reservation' ? 'new-reservation' : 'reservation',
+        attachment,
+      );
+      expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(2);
+    },
+  );
+
   it('fails TCP property setup before stopping or starting adbd if setprop fails', async () => {
     const { android, exec } = setup();
     await android.prepareRemoteAccess(app);
-    const [, command] = exec.execInContainer.mock.calls[0]!;
+    const [, command] = exec.execInContainerWithOutput.mock.calls[0]!;
     const shell = spawnSync(
       'sh',
       [
@@ -160,9 +629,25 @@ describe('Android startup probe scheduling', () => {
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
   });
 
+  it('charges attachment work remaining after boot against the remote access deadline', async () => {
+    const { android, exec, sidecar } = setup();
+    const bootCompletedAt = performance.now();
+    await jest.advanceTimersByTimeAsync(10_001);
+    await expect(
+      android.prepareRemoteAccess(
+        app,
+        'reservation',
+        undefined,
+        bootCompletedAt,
+      ),
+    ).rejects.toThrow('Timed out preparing Android remote access after 10s');
+    expect(exec.execInContainerWithOutput).not.toHaveBeenCalled();
+    expect(sidecar.connectAdb).not.toHaveBeenCalled();
+  });
+
   it('uses the time spent configuring the guest against the readiness deadline', async () => {
     const { android, exec, sidecar, viewer } = setup();
-    exec.execInContainer.mockImplementationOnce(
+    exec.execInContainerWithOutput.mockImplementationOnce(
       () => new Promise((resolve) => setTimeout(resolve, 10_001)),
     );
     const result = expect(android.prepareRemoteAccess(app)).rejects.toThrow(
@@ -258,5 +743,5 @@ import type { DockerEnginePort } from '../../../docker/contracts/docker-engine.p
 import type { DockerSidecarPort } from '../../../docker/contracts/docker-sidecar.port';
 import type { AndroidApplication } from '../../android-application.entity';
 import type { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
-import type { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
+import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import type { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';

@@ -15,6 +15,7 @@ import { AndroidAppsQueryService } from './services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from './services/android-apps-runtime-state-reconciler.service';
 import { AndroidAppsStateWriter } from './services/android-apps-state-writer.service';
 import { AndroidAppsStatusService } from './services/android-apps-status.service';
+import { AndroidAppsTcpAdbService } from './services/android-apps-tcp-adb.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
     AndroidAppsRuntimeStateReconciler,
     AndroidAppsStateWriter,
     AndroidAppsStatusService,
+    AndroidAppsTcpAdbService,
   ],
   exports: [
     AndroidAppsLogService,
@@ -52,6 +54,7 @@ import { AndroidAppsStatusService } from './services/android-apps-status.service
     AndroidAppsRuntimeStateReconciler,
     AndroidAppsStateWriter,
     AndroidAppsStatusService,
+    AndroidAppsTcpAdbService,
   ],
 })
 export class AndroidAppsCommonModule {}

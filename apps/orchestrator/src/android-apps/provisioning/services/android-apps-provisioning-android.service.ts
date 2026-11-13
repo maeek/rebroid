@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
+import { randomUUID } from 'node:crypto';
 import { getErrorMessage } from '../../../common/error-message';
 import {
   OperationDeadline,
@@ -26,9 +27,12 @@ import {
 import {
   DOCKER_SIDECAR,
   type DockerSidecarPort,
+  type DockerSidecarAttachmentTimings,
 } from '../../../docker/contracts/docker-sidecar.port';
+import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
+import { AndroidAppsTcpAdbService } from '../../common/services/android-apps-tcp-adb.service';
 import { AndroidAppsProvisioningTrackerService } from '../../common/services/android-apps-provisioning-tracker.service';
 import { AndroidAppsViewerNetworkService } from '../../viewer/services/android-apps-viewer-network.service';
 import { isRedroidRuntime } from '@rebroid/android-application-core/redroid-runtime';
@@ -38,15 +42,26 @@ import {
   parseAndroidBootReadiness,
   truncateDiagnosticText,
 } from '../utils/android-apps-android-provisioning.utils';
+import { AndroidBootOperationTimer } from '../utils/android-boot-operation-timer';
 
 const bootCheckIntervalMs = 1_000;
 const maxUnchangedBootProbeIntervalMs = 3_000;
 const adbSetupObservationTtlMs = 3_000;
-const adbPropertySetupTimeoutMs = 10_000;
+const maxConsecutiveObservationFailures = 3;
+const bootDiagnosticTimeoutMs = 5_000;
+
+type PreparedNetworkAttachment = {
+  reservationId: string;
+  containerId: string;
+  networkName: string;
+  expiresAt: number;
+  attachment: Awaited<ReturnType<DockerSidecarPort['ensureSidecarOnNetwork']>>;
+};
 
 type RemoteAccessTimings = {
   propertySetupMs: number;
   networkAttachmentMs: number;
+  networkAttachment: DockerSidecarAttachmentTimings;
   adbProbeMs: number;
   adbProbeAttempts: number;
 };
@@ -70,18 +85,37 @@ export class AndroidAppsProvisioningAndroidService {
     private readonly tracker: AndroidAppsProvisioningTrackerService,
     private readonly viewerNetwork: AndroidAppsViewerNetworkService,
     private readonly config: ConfigService,
+    private readonly tcpAdb: AndroidAppsTcpAdbService,
   ) {}
 
   /** Waits until Android reports that boot is done. */
-  async waitForAndroidBoot(app: AndroidApplication) {
+  async waitForAndroidBoot(app: AndroidApplication, reservationId?: string) {
     this.assertContainerId(app);
+    return this.tracker.withCancellation(app.id, (signal) =>
+      this.observeAndroidBoot(app, signal, reservationId),
+    );
+  }
 
+  private async observeAndroidBoot(
+    app: AndroidApplication & { containerId: string },
+    signal: AbortSignal,
+    reservationId?: string,
+  ) {
     const timeoutMs =
       this.config.getOrThrow<number>('app.redroid.bootTimeoutSeconds') * 1000;
-    const deadline = Date.now() + timeoutMs;
+    const deadline = new OperationDeadline(timeoutMs);
+    const bootStartedAt = performance.now();
+    const bootObservationId = randomUUID();
+    let observationSequence = 0;
+    let previousObservationSettledAt = bootStartedAt;
     let lastProbe = 'Android boot readiness was not reported.';
-    let nextProbeAt = Date.now();
+    let nextProbeAt = performance.now();
     let probeIntervalMs = bootCheckIntervalMs;
+    let stateFailures = 0;
+    let probeFailures = 0;
+    let guestShellObserved = false;
+    let initialGuestUnavailableAt: number | undefined;
+    let guestUnavailableObservations = 0;
     const probeCommand = [
       'sh',
       '-lc',
@@ -93,39 +127,121 @@ export class AndroidAppsProvisioningAndroidService {
         .join('; '),
     ];
 
-    while (Date.now() < deadline) {
+    while (deadline.remainingMs() > 0) {
       this.tracker.ensureActive(app.id);
-      const [probeResult, runtimeStateResult] = await Promise.allSettled([
-        Date.now() >= nextProbeAt
-          ? this.exec.execInContainerWithOutput(app.containerId, probeCommand, {
-              timeoutMs: 10_000,
-            })
-          : undefined,
-        this.lifecycle.getContainerRuntimeState(app.containerId),
+      signal.throwIfAborted();
+      const observationDeadline = new OperationDeadline(
+        Math.min(10_000, deadline.remainingMs()),
+      );
+      const observationStartedAt = performance.now();
+      const propertyTimer =
+        observationStartedAt >= nextProbeAt
+          ? new AndroidBootOperationTimer(bootStartedAt)
+          : undefined;
+      const runtimeTimer = new AndroidBootOperationTimer(bootStartedAt);
+      const [probeResult, runtime] = await Promise.allSettled([
+        propertyTimer?.run((onDispatched) =>
+          this.exec.execInContainerWithOutput(app.containerId, probeCommand, {
+            deadline: observationDeadline,
+            signal,
+            onDispatched,
+          }),
+        ),
+        runtimeTimer.run((onDispatched) =>
+          this.lifecycle.getContainerRuntimeState(app.containerId, {
+            deadline: observationDeadline,
+            signal,
+            onDispatched,
+          }),
+        ),
       ]);
-      if (runtimeStateResult.status === 'rejected') {
-        throw runtimeStateResult.reason;
-      }
+      const readiness =
+        probeResult.status === 'fulfilled' && probeResult.value
+          ? parseAndroidBootReadiness(probeResult.value.stdout)
+          : undefined;
+      const observationSettledAt = performance.now();
+      this.logger.log({
+        event: 'android_boot_probe',
+        applicationId: app.id,
+        containerId: app.containerId,
+        reservationId: reservationId ?? null,
+        bootObservationId,
+        sequence: ++observationSequence,
+        observedAt: new Date().toISOString(),
+        elapsedMs: Math.round(observationSettledAt - bootStartedAt),
+        waitSincePreviousObservationMs: Math.round(
+          observationStartedAt - previousObservationSettledAt,
+        ),
+        observationMs: Math.round(observationSettledAt - observationStartedAt),
+        properties: propertyTimer?.snapshot() ?? { outcome: 'skipped_backoff' },
+        runtime: runtimeTimer.snapshot(),
+        propertyReady: readiness?.ready ?? null,
+        runtimeRunning:
+          runtime.status === 'fulfilled'
+            ? runtime.value.exists && runtime.value.running
+            : null,
+        initialGuestShellUnavailable:
+          !guestShellObserved &&
+          probeResult.status === 'rejected' &&
+          this.isInitialGuestShellUnavailable(probeResult.reason),
+        cancelled: signal.aborted,
+      });
+      previousObservationSettledAt = observationSettledAt;
+      this.tracker.ensureActive(app.id);
+      signal.throwIfAborted();
+      // A terminal runtime observation wins even if the property probe timed out.
       if (
-        !runtimeStateResult.value.exists ||
-        !runtimeStateResult.value.running
+        runtime.status === 'fulfilled' &&
+        (!runtime.value.exists || !runtime.value.running)
       ) {
-        throw new Error(
-          this.androidBootExitedMessage(runtimeStateResult.value),
-        );
+        throw new Error(this.androidBootExitedMessage(runtime.value));
       }
-
-      if (probeResult.status === 'fulfilled' && probeResult.value) {
-        const { stdout, stderr } = probeResult.value;
-        const readiness = parseAndroidBootReadiness(stdout);
-        const observation = [readiness.probe, stderr.trim()]
+      if (deadline.remainingMs() === 0) break;
+      if (runtime.status === 'rejected') {
+        lastProbe = getErrorMessage(runtime.reason);
+        if (
+          !this.isRetryableBootObservation(runtime.reason) ||
+          ++stateFailures >= maxConsecutiveObservationFailures
+        ) {
+          throw runtime.reason;
+        }
+        // Successful properties alone cannot establish that this runtime is still running.
+        await delay(
+          Math.min(bootCheckIntervalMs, deadline.remainingMs()),
+          undefined,
+          { signal },
+        );
+        continue;
+      }
+      stateFailures = 0;
+      if (
+        probeResult.status === 'fulfilled' &&
+        probeResult.value &&
+        readiness
+      ) {
+        if (!guestShellObserved && initialGuestUnavailableAt !== undefined) {
+          this.logger.log({
+            event: 'android_guest_shell_available',
+            applicationId: app.id,
+            containerId: app.containerId,
+            observedAt: new Date().toISOString(),
+            elapsedMs: Math.round(
+              performance.now() - initialGuestUnavailableAt,
+            ),
+            unavailableObservations: guestUnavailableObservations,
+          });
+        }
+        guestShellObserved = true;
+        probeFailures = 0;
+        const observation = [readiness.probe, probeResult.value.stderr.trim()]
           .filter(Boolean)
           .join(' ');
-
         if (readiness.ready) {
           await this.logs.append(app.id, 'Android boot completed', {
             probe: observation,
           });
+          this.tracker.ensureActive(app.id);
+          signal.throwIfAborted();
           return;
         }
         probeIntervalMs =
@@ -136,19 +252,48 @@ export class AndroidAppsProvisioningAndroidService {
               )
             : bootCheckIntervalMs;
         lastProbe = observation;
-        nextProbeAt = Date.now() + probeIntervalMs;
+        nextProbeAt = performance.now() + probeIntervalMs;
       } else if (probeResult.status === 'rejected') {
         lastProbe = getErrorMessage(probeResult.reason);
+        if (
+          !guestShellObserved &&
+          this.isInitialGuestShellUnavailable(probeResult.reason)
+        ) {
+          // Redroid may be running before its initial guest shell is available.
+          // This boot observation uses the full boot budget, not transport retries.
+          guestUnavailableObservations += 1;
+          if (initialGuestUnavailableAt === undefined) {
+            initialGuestUnavailableAt = performance.now();
+            this.logger.log({
+              event: 'android_guest_shell_unavailable',
+              applicationId: app.id,
+              containerId: app.containerId,
+              observedAt: new Date().toISOString(),
+            });
+          }
+          probeFailures = 0;
+        } else if (
+          !this.isRetryableBootObservation(probeResult.reason) ||
+          ++probeFailures >= maxConsecutiveObservationFailures
+        ) {
+          throw probeResult.reason;
+        }
         probeIntervalMs = bootCheckIntervalMs;
-        nextProbeAt = Date.now() + probeIntervalMs;
+        nextProbeAt = performance.now() + probeIntervalMs;
       }
-
-      await delay(bootCheckIntervalMs);
+      await delay(
+        Math.min(bootCheckIntervalMs, deadline.remainingMs()),
+        undefined,
+        { signal },
+      );
     }
 
-    const diagnostics = await this.collectBootDiagnostics(app);
+    this.tracker.ensureActive(app.id);
+    signal.throwIfAborted();
+    const diagnostics = await this.collectBootDiagnostics(app, signal);
+    this.tracker.ensureActive(app.id);
+    signal.throwIfAborted();
     await this.logs.append(app.id, 'Android boot diagnostics', diagnostics);
-
     throw new Error(
       [
         `Timed out waiting for Android to finish booting after ${timeoutMs / 1000}s.`,
@@ -160,73 +305,151 @@ export class AndroidAppsProvisioningAndroidService {
     );
   }
 
+  private isInitialGuestShellUnavailable(error: unknown): boolean {
+    if (!(error instanceof ContainerCommandFailedException)) return false;
+    const { command, exitCode, stderr } = error.details;
+    return (
+      exitCode === 255 &&
+      command[0] === 'sh' &&
+      command[1] === '-lc' &&
+      stderr?.trim() === 'exec /bin/sh: no such file or directory'
+    );
+  }
+
+  private isRetryableBootObservation(error: unknown): boolean {
+    return (
+      error instanceof OperationDeadlineExceededError ||
+      this.engine.isTransientDockerTransportError(error)
+    );
+  }
+
   /** Checks if this image needs ADB port setup. */
   shouldPrepareRemoteAccess(app: AndroidApplication) {
     return isRedroidRuntime(app.containerImage, app.runtimeKind);
   }
 
-  /** Turns on remote ADB access for redroid. */
-  async prepareRemoteAccess(app: AndroidApplication, reservationId?: string) {
-    this.assertContainerId(app);
-    const timeoutMs =
-      this.config.getOrThrow<number>('app.redroid.adbTimeoutSeconds') * 1000;
-    const deadline = new OperationDeadline(timeoutMs);
-    const startedAt = performance.now();
-    const timings: RemoteAccessTimings = {
-      propertySetupMs: 0,
-      networkAttachmentMs: 0,
-      adbProbeMs: 0,
-      adbProbeAttempts: 0,
-    };
-    const command = [
-      'sh',
-      '-lc',
-      [
-        'set -e',
-        `port=${app.adbPort}`,
-        'persist_port="$(getprop persist.adb.tcp.port 2>/dev/null || true)"',
-        'service_port="$(getprop service.adb.tcp.port 2>/dev/null || true)"',
-        'adbd_state="$(getprop init.svc.adbd 2>/dev/null || true)"',
-        'if { [ "$persist_port" = "$port" ] || [ "$service_port" = "$port" ]; } && [ "$adbd_state" = "running" ]; then exit 0; fi',
-        `setprop persist.adb.tcp.port ${app.adbPort}`,
-        `setprop service.adb.tcp.port ${app.adbPort}`,
-        'if [ "$adbd_state" = "running" ]; then stop adbd; fi',
-        'start adbd',
-      ].join('\n'),
-    ];
-    try {
-      await this.retryTransientRemoteAccessSetup(
-        app,
-        command,
-        deadline,
-      ).finally(() => {
-        timings.propertySetupMs = Math.round(performance.now() - startedAt);
-      });
-      deadline.throwIfExpired();
-      await this.waitForRedroidAdbFromSidecar(app, deadline, timings);
+  /** Admitted after guarded runtime start; callers must join this work before teardown. */
+  async prepareNetworkAttachment(
+    app: AndroidApplication,
+    reservationId: string,
+  ): Promise<PreparedNetworkAttachment | undefined> {
+    return this.tracker.withCancellation(app.id, async (signal) => {
+      this.assertContainerId(app);
       this.tracker.ensureActive(app.id);
-      await this.logs.append(app.id, 'Prepared Android remote access', {
-        adbPort: app.adbPort,
-        reservationId,
-        ...timings,
-        elapsedMs: Math.round(performance.now() - startedAt),
-      });
-    } catch (error) {
-      this.logger.debug({
-        message: 'Android remote access preparation failed.',
-        applicationId: app.id,
-        reservationId,
-        ...timings,
-        elapsedMs: Math.round(performance.now() - startedAt),
-      });
-      if (error instanceof OperationDeadlineExceededError) {
-        throw new Error(
-          `Timed out preparing Android remote access after ${timeoutMs / 1000}s.`,
-          { cause: error },
+      const { containerId, networkName } = app;
+      const deadline = new OperationDeadline(
+        this.config.getOrThrow<number>('app.redroid.adbTimeoutSeconds') * 1000,
+      );
+      const timings = this.remoteAccessTimings();
+      let outcome = 'failed';
+      try {
+        const attachment = await this.attachSidecar(
+          networkName,
+          deadline,
+          timings,
+          signal,
         );
+        this.tracker.ensureActive(app.id);
+        deadline.throwIfExpired();
+        outcome = attachment.connected ? 'connected' : 'unavailable';
+        return {
+          reservationId,
+          containerId,
+          networkName,
+          attachment,
+          expiresAt: performance.now() + adbSetupObservationTtlMs,
+        };
+      } catch (error) {
+        this.tracker.ensureActive(app.id);
+        if (
+          error instanceof OperationDeadlineExceededError ||
+          this.engine.isTransientDockerTransportError(error)
+        ) {
+          outcome = 'retry_after_boot';
+          return undefined;
+        }
+        throw error;
+      } finally {
+        await this.logs.append(app.id, 'Android network attachment completed', {
+          reservationId,
+          containerId,
+          networkName,
+          outcome,
+          networkAttachmentMs: timings.networkAttachmentMs,
+          ...timings.networkAttachment,
+        });
       }
-      throw error;
-    }
+    });
+  }
+
+  /** Turns on remote ADB access for redroid after Android boot. */
+  async prepareRemoteAccess(
+    app: AndroidApplication,
+    reservationId?: string,
+    preparedNetwork?: PreparedNetworkAttachment,
+    readinessStartedAt = performance.now(),
+  ) {
+    return this.tracker.withCancellation(app.id, async (signal) => {
+      this.assertContainerId(app);
+      const timeoutMs =
+        this.config.getOrThrow<number>('app.redroid.adbTimeoutSeconds') * 1000;
+      const startedAt = performance.now();
+      const attachmentWaitAfterBootMs = Math.max(
+        0,
+        startedAt - readinessStartedAt,
+      );
+      const deadline = new OperationDeadline(
+        Math.max(0, timeoutMs - attachmentWaitAfterBootMs),
+      );
+      const timings = this.remoteAccessTimings();
+      try {
+        await this.tcpAdb.prepare(app, deadline, signal).finally(() => {
+          timings.propertySetupMs = Math.round(performance.now() - startedAt);
+        });
+        deadline.throwIfExpired();
+        const initialAttachment =
+          preparedNetwork &&
+          preparedNetwork.reservationId === reservationId &&
+          preparedNetwork.containerId === app.containerId &&
+          preparedNetwork.networkName === app.networkName &&
+          preparedNetwork.expiresAt > performance.now() &&
+          preparedNetwork.attachment.sidecarGeneration ===
+            this.sidecar.adbTargetGeneration
+            ? preparedNetwork.attachment
+            : undefined;
+        await this.waitForRedroidAdbFromSidecar(
+          app,
+          deadline,
+          timings,
+          initialAttachment,
+          signal,
+        );
+        this.tracker.ensureActive(app.id);
+        await this.logs.append(app.id, 'Prepared Android remote access', {
+          adbPort: app.adbPort,
+          reservationId,
+          ...timings,
+          attachmentWaitAfterBootMs: Math.round(attachmentWaitAfterBootMs),
+          elapsedMs: Math.round(performance.now() - startedAt),
+        });
+      } catch (error) {
+        this.logger.debug({
+          message: 'Android remote access preparation failed.',
+          applicationId: app.id,
+          reservationId,
+          ...timings,
+          attachmentWaitAfterBootMs: Math.round(attachmentWaitAfterBootMs),
+          elapsedMs: Math.round(performance.now() - startedAt),
+        });
+        if (error instanceof OperationDeadlineExceededError) {
+          throw new Error(
+            `Timed out preparing Android remote access after ${timeoutMs / 1000}s.`,
+            { cause: error },
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   /** Waits until the sidecar can reach ADB. */
@@ -234,6 +457,8 @@ export class AndroidAppsProvisioningAndroidService {
     app: AndroidApplication,
     deadline: OperationDeadline,
     timings: RemoteAccessTimings,
+    initialAttachment?: PreparedNetworkAttachment['attachment'],
+    signal?: AbortSignal,
   ) {
     this.assertContainerId(app);
 
@@ -267,12 +492,20 @@ export class AndroidAppsProvisioningAndroidService {
           : undefined;
       try {
         const [runtime, attachment, target] = await Promise.allSettled([
-          this.lifecycle.getContainerRuntimeState(app.containerId),
+          this.lifecycle.getContainerRuntimeState(app.containerId, {
+            deadline,
+            signal,
+          }),
           recentSetup?.attachment ??
-            this.attachSidecar(app.networkName, deadline, timings),
+            initialAttachment ??
+            this.attachSidecar(app.networkName, deadline, timings, signal),
           recentSetup?.observation ??
-            this.viewerNetwork.observeProvisioningAdbTarget(app),
+            this.viewerNetwork.observeProvisioningAdbTarget(app, {
+              deadline,
+              signal,
+            }),
         ]);
+        initialAttachment = undefined;
         this.tracker.ensureActive(app.id);
         if (runtime.status === 'rejected') throw runtime.reason;
         if (attachment.status === 'rejected') throw attachment.reason;
@@ -290,7 +523,9 @@ export class AndroidAppsProvisioningAndroidService {
         this.logger.warn(
           `Redroid ADB sidecar readiness for ${app.id} hit a transient Docker transport error: ${lastProbe}`,
         );
-        await delay(Math.min(intervalMs, deadline.remainingMs()));
+        await delay(Math.min(intervalMs, deadline.remainingMs()), undefined, {
+          signal,
+        });
         continue;
       }
       deadline.throwIfExpired();
@@ -305,14 +540,18 @@ export class AndroidAppsProvisioningAndroidService {
           sidecarTarget.message ??
           sidecarTarget.error?.message ??
           'Display sidecar is not attached to the app network.';
-        await delay(Math.min(intervalMs, deadline.remainingMs()));
+        await delay(Math.min(intervalMs, deadline.remainingMs()), undefined, {
+          signal,
+        });
         continue;
       }
 
       const generation = sidecarTarget.sidecarGeneration;
       if (generation !== this.sidecar.adbTargetGeneration) {
         setup = undefined;
-        await delay(Math.min(intervalMs, deadline.remainingMs()));
+        await delay(Math.min(intervalMs, deadline.remainingMs()), undefined, {
+          signal,
+        });
         continue;
       }
       setup = recentSetup ?? {
@@ -325,7 +564,7 @@ export class AndroidAppsProvisioningAndroidService {
       const adbProbeStartedAt = performance.now();
       timings.adbProbeAttempts += 1;
       const adbTarget = await this.sidecar
-        .connectAdb(adbHost, app.adbPort, deadline)
+        .connectAdb(adbHost, app.adbPort, deadline, signal)
         .finally(() => {
           timings.adbProbeMs += Math.round(
             performance.now() - adbProbeStartedAt,
@@ -367,7 +606,9 @@ export class AndroidAppsProvisioningAndroidService {
       if (adbTarget.error?.code === 'adb_missing') {
         throw new Error(lastProbe);
       }
-      await delay(Math.min(intervalMs, deadline.remainingMs()));
+      await delay(Math.min(intervalMs, deadline.remainingMs()), undefined, {
+        signal,
+      });
     }
 
     throw new Error(
@@ -375,54 +616,39 @@ export class AndroidAppsProvisioningAndroidService {
     );
   }
 
+  private remoteAccessTimings(): RemoteAccessTimings {
+    return {
+      propertySetupMs: 0,
+      networkAttachmentMs: 0,
+      networkAttachment: {
+        sidecarQueueMs: 0,
+        sidecarPreparationMs: 0,
+        networkInspectMs: 0,
+        dockerMutationQueueMs: 0,
+        networkConnectMs: 0,
+        networkConvergenceMs: 0,
+      },
+      adbProbeMs: 0,
+      adbProbeAttempts: 0,
+    };
+  }
+
   private async attachSidecar(
     networkName: string,
     deadline: OperationDeadline,
     timings: RemoteAccessTimings,
+    signal?: AbortSignal,
   ) {
     const startedAt = performance.now();
     try {
-      return await this.sidecar.ensureSidecarOnNetwork(networkName, deadline);
+      return await this.sidecar.ensureSidecarOnNetwork(
+        networkName,
+        deadline,
+        timings.networkAttachment,
+        signal,
+      );
     } finally {
       timings.networkAttachmentMs += Math.round(performance.now() - startedAt);
-    }
-  }
-
-  private async retryTransientRemoteAccessSetup(
-    app: AndroidApplication & { containerId: string },
-    command: string[],
-    deadline: OperationDeadline,
-  ) {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      this.tracker.ensureActive(app.id);
-      deadline.throwIfExpired();
-      const guestTimeoutMs = Math.min(
-        adbPropertySetupTimeoutMs,
-        deadline.remainingMs(),
-      );
-      const termSeconds = Math.max(1, guestTimeoutMs - 1_000) / 1_000;
-      try {
-        // Disconnecting Docker's exec stream does not stop the Android shell.
-        await this.exec.execInContainer(
-          app.containerId,
-          ['timeout', '-k', '1s', `${termSeconds}s`, ...command],
-          { deadline },
-        );
-        return;
-      } catch (error) {
-        if (
-          attempt === maxAttempts ||
-          !this.engine.isTransientDockerTransportError(error)
-        ) {
-          throw error;
-        }
-
-        this.logger.warn(
-          `Redroid remote ADB setup hit a transient Docker transport error. Retrying ${attempt}/${maxAttempts - 1}: ${getErrorMessage(error)}`,
-        );
-        await delay(Math.min(500 * attempt, deadline.remainingMs()));
-      }
     }
   }
 
@@ -461,7 +687,12 @@ export class AndroidAppsProvisioningAndroidService {
     return `Managed container ${runtimeState.status ?? 'exited'}${exitCode} before Android finished booting.${oomKilled}${dockerError}`;
   }
 
-  private async collectBootDiagnostics(app: AndroidApplication) {
+  private async collectBootDiagnostics(
+    app: AndroidApplication,
+    signal: AbortSignal,
+  ) {
+    const deadline = new OperationDeadline(bootDiagnosticTimeoutMs);
+    signal.throwIfAborted();
     this.assertContainerId(app);
     const command = [
       'sh',
@@ -488,18 +719,22 @@ export class AndroidAppsProvisioningAndroidService {
       const { stdout, stderr } = await this.exec.execInContainerWithOutput(
         app.containerId,
         command,
-        { timeoutMs: 15_000 },
+        { deadline, signal },
       );
       probe = [stdout.trim(), stderr.trim()].filter(Boolean).join('\n');
     } catch (error) {
       probe = getErrorMessage(error);
     }
 
+    this.tracker.ensureActive(app.id);
+    signal.throwIfAborted();
     let containerLogs: string;
     try {
+      deadline.throwIfExpired();
       containerLogs = await this.lifecycle.getContainerLogs(
         app.containerId,
         200,
+        { deadline, signal },
       );
     } catch (error) {
       containerLogs = getErrorMessage(error);

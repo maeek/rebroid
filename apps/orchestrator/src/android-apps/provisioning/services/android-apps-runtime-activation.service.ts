@@ -305,16 +305,55 @@ export class AndroidAppsRuntimeActivationService {
       return;
     }
 
-    await this.transitions.updateProgress(reservation, {
+    const admitted = await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Waiting for Android to finish booting.',
     });
-    await this.android.waitForAndroidBoot(app);
+    if (!admitted)
+      throw new Error('Application activation is no longer reserved.');
     this.tracker.ensureActive(app.id);
-    await this.transitions.updateProgress(reservation, {
+    // startWithPolicy has completed. Drain both branches before releasing the
+    // reservation, including boot failure and cancellation during attachment.
+    const bootStartedAt = performance.now();
+    const observeBootSettlement = (outcome: 'fulfilled' | 'rejected') => {
+      const settledAt = performance.now();
+      // Record before joining attachment, without adding persistence to readiness.
+      this.logger.log({
+        event: 'android_boot_observation_settled',
+        reservationId: reservation.id,
+        applicationId: app.id,
+        containerId: app.containerId,
+        outcome,
+        settledAt: new Date().toISOString(),
+        elapsedMs: Math.round(settledAt - bootStartedAt),
+      });
+      return settledAt;
+    };
+    const [boot, attachment] = await Promise.allSettled([
+      this.android.waitForAndroidBoot(app, reservation.id).then(
+        () => observeBootSettlement('fulfilled'),
+        (error: unknown) => {
+          observeBootSettlement('rejected');
+          throw error;
+        },
+      ),
+      this.android.prepareNetworkAttachment(app, reservation.id),
+    ]);
+    this.tracker.ensureActive(app.id);
+    if (boot.status === 'rejected') throw boot.reason;
+    if (attachment.status === 'rejected') throw attachment.reason;
+    const preparing = await this.transitions.updateProgress(reservation, {
       lifecycleStage: AndroidApplicationLifecycleStage.AndroidBooting,
       statusMessage: 'Preparing Android remote access.',
     });
-    await this.android.prepareRemoteAccess(app, reservation.id);
+    if (!preparing)
+      throw new Error('Application activation is no longer reserved.');
+    this.tracker.ensureActive(app.id);
+    await this.android.prepareRemoteAccess(
+      app,
+      reservation.id,
+      attachment.value,
+      boot.value,
+    );
   }
 }

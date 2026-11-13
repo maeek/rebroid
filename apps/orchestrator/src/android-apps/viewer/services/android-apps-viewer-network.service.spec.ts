@@ -1,4 +1,5 @@
-import type { DockerContainerExecPort } from '../../../docker/contracts/docker-container-exec.port';
+import { OperationDeadline } from '../../../common/operation-deadline';
+import type { AndroidAppsTcpAdbService } from '../../common/services/android-apps-tcp-adb.service';
 import type { DockerContainerLifecyclePort } from '../../../docker/contracts/docker-container-lifecycle.port';
 import type { DockerNetworkRuntimePort } from '../../../docker/contracts/docker-network-runtime.port';
 import type { DockerSidecarPort } from '../../../docker/contracts/docker-sidecar.port';
@@ -78,10 +79,15 @@ function setup(current = runtime) {
   };
   const queries = { getStored: jest.fn().mockResolvedValue(current) };
   const gate = new AndroidAppsPolicyGate();
+  const tcpAdb = {
+    prepare: jest
+      .fn()
+      .mockResolvedValue({ stdout: 'ready', stderr: '', exitCode: 0 }),
+  };
   const viewer = new AndroidAppsViewerNetworkService(
     networks as unknown as DockerNetworkRuntimePort,
     sidecar as unknown as DockerSidecarPort,
-    {} as DockerContainerExecPort,
+    tcpAdb as unknown as AndroidAppsTcpAdbService,
     policy as unknown as NetworkPolicyService,
     {
       append: jest.fn().mockResolvedValue(undefined),
@@ -100,6 +106,7 @@ function setup(current = runtime) {
     gate,
     networks,
     lifecycle,
+    tcpAdb,
   };
 }
 
@@ -399,3 +406,47 @@ describe('viewer firewall refresh', () => {
   });
 });
 import { ConfigService } from '@nestjs/config';
+
+describe('recovered viewer TCP ADB preparation', () => {
+  const redroid = {
+    ...runtime,
+    containerImage: 'redroid/redroid:16.0.0-latest',
+  };
+
+  it('uses the shared preparation after firewall refresh and before connecting', async () => {
+    const { viewer, policy, tcpAdb, sidecar } = setup(redroid);
+    await viewer.prepareScrcpyAdbTarget(redroid, adbHost);
+    expect(tcpAdb.prepare).toHaveBeenCalledWith(
+      { containerId: redroid.containerId, adbPort: redroid.adbPort },
+      expect.any(OperationDeadline),
+    );
+    expect(policy.refreshViewerPolicy.mock.invocationCallOrder[0]).toBeLessThan(
+      tcpAdb.prepare.mock.invocationCallOrder[0]!,
+    );
+    expect(tcpAdb.prepare.mock.invocationCallOrder[0]).toBeLessThan(
+      sidecar.connectAdb.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('preserves viewer log-then-probe behavior after guest preparation failure', async () => {
+    const { viewer, tcpAdb, sidecar } = setup(redroid);
+    tcpAdb.prepare.mockRejectedValue(new Error('guest setup failed'));
+    await expect(
+      viewer.prepareScrcpyAdbTarget(redroid, adbHost),
+    ).resolves.toEqual(connected);
+    expect(sidecar.connectAdb).toHaveBeenCalledWith(adbHost, redroid.adbPort);
+  });
+
+  it('forwards the provisioning observation budget to container inspection', async () => {
+    const { viewer, lifecycle } = setup();
+    const options = {
+      deadline: new OperationDeadline(100),
+      signal: new AbortController().signal,
+    };
+    await viewer.observeProvisioningAdbTarget(runtime, options);
+    expect(lifecycle.inspectContainer).toHaveBeenCalledWith(
+      runtime.containerId,
+      options,
+    );
+  });
+});

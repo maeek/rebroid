@@ -1,4 +1,22 @@
 import type Dockerode from 'dockerode';
+import type { DockerOperationOptions } from './docker-operation-options';
+
+export interface DockerNetworkConnectObservation {
+  requestId: string;
+  containerId: string;
+  networkName: string;
+  transport: 'local-socket' | 'remote';
+  dispatchedAt: string;
+  settledAt?: string;
+  outcome: 'pending' | 'fulfilled' | 'rejected';
+}
+
+export interface DockerNetworkAttachmentTimings {
+  dockerMutationQueueMs: number;
+  networkConnectMs: number;
+  networkConvergenceMs: number;
+  networkConnect?: DockerNetworkConnectObservation;
+}
 
 export const DOCKER_NETWORK_RUNTIME = Symbol('DOCKER_NETWORK_RUNTIME');
 
@@ -25,6 +43,8 @@ export interface DockerNetworkRuntimePort {
   connectContainerToNetwork(
     containerId: string,
     networkName: string,
+    timings?: DockerNetworkAttachmentTimings,
+    options?: DockerOperationOptions,
   ): Promise<void>;
   disconnectContainerFromNetwork(
     containerId: string,

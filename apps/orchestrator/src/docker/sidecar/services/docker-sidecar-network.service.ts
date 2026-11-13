@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
+import type { DockerSidecarAttachmentTimings } from '../../contracts/docker-sidecar.port';
 import type Dockerode from 'dockerode';
 import { DockerEngineService } from '../../docker-engine.service';
 import { ViewerTargetStatus } from '../../docker.types';
@@ -24,18 +26,60 @@ export class DockerSidecarNetworkService {
     sidecar: Dockerode.Container,
     networkName: string,
     inspect?: Dockerode.ContainerInspectInfo,
+    timings?: DockerSidecarAttachmentTimings,
+    options?: DockerOperationOptions,
   ): Promise<ViewerTargetStatus> {
+    if (timings) {
+      timings.sidecarContainerId = inspect?.Id ?? sidecar.id;
+      if (inspect) {
+        timings.sidecarNetworkCountBefore = Object.keys(
+          inspect.NetworkSettings?.Networks ?? {},
+        ).length;
+        const ports = inspect.NetworkSettings?.Ports;
+        if (ports) {
+          const published = Object.values(ports).filter(
+            (bindings) => bindings && bindings.length > 0,
+          );
+          timings.sidecarPublishedPortCount = published.length;
+          timings.sidecarPublishedBindingCount = published.reduce(
+            (count, bindings) => count + bindings.length,
+            0,
+          );
+        }
+      }
+    }
+    const inspectStartedAt = performance.now();
     const currentIp = await this.getContainerIpOnNetwork(
       sidecar,
       networkName,
       inspect,
-    );
+      options,
+    ).finally(() => {
+      if (timings)
+        timings.networkInspectMs += Math.round(
+          performance.now() - inspectStartedAt,
+        );
+    });
     if (currentIp) {
       return this.sidecarNetworkStatus(networkName, currentIp);
     }
 
-    await this.networks.connectContainerToNetwork(sidecar.id, networkName);
-    const sidecarIp = await this.getContainerIpOnNetwork(sidecar, networkName);
+    await this.networks.connectContainerToNetwork(
+      sidecar.id,
+      networkName,
+      timings,
+      options,
+    );
+    const verifyStartedAt = performance.now();
+    const sidecarIp = await this.getContainerIpOnNetwork(
+      sidecar,
+      networkName,
+    ).finally(() => {
+      if (timings)
+        timings.networkInspectMs += Math.round(
+          performance.now() - verifyStartedAt,
+        );
+    });
     if (!sidecarIp) {
       return {
         configured: true,
@@ -100,12 +144,16 @@ export class DockerSidecarNetworkService {
     sidecar: Dockerode.Container,
     networkName: string,
     currentInspect?: Dockerode.ContainerInspectInfo,
+    options?: DockerOperationOptions,
   ) {
+    options?.signal?.throwIfAborted();
+    options?.deadline?.throwIfExpired();
     const inspect =
       currentInspect ??
       (await this.engine.read(
         () => sidecar.inspect(),
         `Inspect display sidecar on network ${networkName}`,
+        options,
       ));
     return inspect.NetworkSettings.Networks?.[networkName]?.IPAddress || null;
   }
