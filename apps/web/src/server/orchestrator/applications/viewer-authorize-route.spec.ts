@@ -74,7 +74,11 @@ describe('internal viewer authorization', () => {
     expect((await GET(requestFor())).status).toBe(403)
     const response = await GET(requestFor())
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ ownerUserId: 'alice', capabilities: { clipboard: false } })
+    expect(await response.json()).toMatchObject({
+      ownerUserId: 'alice',
+      accountSessionId: 'browser',
+      capabilities: { clipboard: false }
+    })
     vi.mocked(hasPendingViewerRevocation).mockReturnValueOnce(false).mockReturnValueOnce(true)
     expect((await GET(requestFor())).status).toBe(403)
     vi.mocked(isCurrentAccountSession).mockReturnValue(false)

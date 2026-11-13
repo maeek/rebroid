@@ -41,7 +41,11 @@ export const GET = async (request: Request) => {
     return new Response(null, { status: 403, headers })
   }
   return Response.json(
-    { ownerUserId: account.id, capabilities: viewerCapabilitiesFor(account.effectivePermissions) },
+    {
+      ownerUserId: account.id,
+      accountSessionId: identity.sessionId,
+      capabilities: viewerCapabilitiesFor(account.effectivePermissions)
+    },
     { headers }
   )
 }
