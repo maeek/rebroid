@@ -230,4 +230,7 @@ Diagnostics shows grouped, left-aligned technical details before Application log
 
 Application logs use the same editor section surface and heading spacing as Details. The source is labeled above its selector. Application log output uses a stable viewport with a 20rem minimum, scrolling long output so changing sources does not resize the console.
 
+The log viewer renders ANSI colors and text styles in application, container, and build logs. Copy returns plain text without terminal escape sequences.
+
+
 Streaming quality, transport, and audio open from the device pane in a focused sheet; these controls are no longer a resource section. Diagnostic logs load on entry and source changes; Live controls ongoing refresh only.

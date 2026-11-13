@@ -4,6 +4,7 @@ packages:
 
 catalog:
   "@types/node": ^24.13.3
+  anser: 2.3.5
   prettier: 3.9.5
   typescript: ^5.9.3
 

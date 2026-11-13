@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useEffect, useRef } from 'react'
+import { ReactNode, useEffect, useMemo, useRef } from 'react'
 import { IconCopy, IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -8,6 +8,7 @@ import { Visible } from '@/components/ui/visible'
 import { toast } from '@/hooks/use-toast'
 import { formatDateLocale } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { parseLogOutput } from './ansi-log-output'
 
 type LogsConsoleEntry = {
   collectedAt: string
@@ -46,18 +47,19 @@ export const LogsConsole = ({
   showCollectedAt?: boolean
 }) => {
   const output = log?.output || ''
+  const parsedOutput = useMemo(() => parseLogOutput(output), [output])
   const outputRef = useRef<HTMLPreElement>(null)
   useEffect(() => {
     if (followOutput && outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight
   }, [followOutput, output])
 
   const copyOutput = async () => {
-    if (!output) {
+    if (!parsedOutput.text) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(output)
+      await navigator.clipboard.writeText(parsedOutput.text)
       toast({ title: 'Logs copied', variant: 'success' })
     } catch {
       toast({
@@ -78,7 +80,7 @@ export const LogsConsole = ({
           <Button
             type='button'
             variant='ghost'
-            disabled={loading || !output}
+            disabled={loading || !parsedOutput.text}
             onClick={() => void copyOutput()}
           >
             <IconCopy className='size-4' />
@@ -100,6 +102,7 @@ export const LogsConsole = ({
       <pre
         ref={outputRef}
         aria-label={outputLabel}
+        tabIndex={loading ? undefined : 0}
         className={cn(
           'min-h-0 overflow-auto rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
           outputClassName
@@ -110,8 +113,10 @@ export const LogsConsole = ({
             as='span'
             className='block h-4 w-96 max-w-full'
           />
+        ) : parsedOutput.text ? (
+          parsedOutput.content
         ) : (
-          output || emptyMessage
+          emptyMessage
         )}
       </pre>
       <Visible when={log && showCollectedAt}>
