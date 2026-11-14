@@ -5,6 +5,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { usePollingQuery } from './use-polling-query'
 
 describe('usePollingQuery', () => {
+  it('can reject an explicit refresh without treating retained data as a fresh result', async () => {
+    const fetcher = vi.fn<() => Promise<string>>().mockResolvedValue('retained')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(() => usePollingQuery('failed-refresh', fetcher), { wrapper })
+    await waitFor(() => expect(result.current.data).toBe('retained'))
+    fetcher.mockRejectedValue(new Error('Offline'))
+    await act(async () => {
+      await expect(result.current.mutate(undefined, { throwOnError: true })).rejects.toThrow('Offline')
+    })
+    expect(result.current.data).toBe('retained')
+    await act(async () => {
+      // Existing callers retain their nonthrowing refresh contract.
+      expect(await result.current.mutate()).toBe('retained')
+    })
+    queryClient.clear()
+  })
+
   it('deduplicates concurrent reads with the same key', async () => {
     const fetcher = vi.fn<() => Promise<string>>().mockResolvedValue('value')
     const queryClient = new QueryClient()

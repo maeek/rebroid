@@ -7,6 +7,7 @@ type PollingQueryKey = string | readonly unknown[] | null
 
 interface MutateOptions {
   revalidate?: boolean
+  throwOnError?: boolean
 }
 
 interface UsePollingQueryOptions<Error = unknown> {
@@ -66,7 +67,7 @@ export const usePollingQuery = <Data, Error = unknown>(
         return queryClient.fetchQuery({ queryKey, queryFn: overrideFetcher, staleTime: 0 })
       }
 
-      return refetch({ cancelRefetch: false }).then(result => result.data)
+      return refetch({ cancelRefetch: false, throwOnError: options?.throwOnError }).then(result => result.data)
     },
     [enabled, queryClient, queryKey, refetch, serializedKey]
   )
