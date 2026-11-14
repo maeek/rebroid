@@ -169,7 +169,7 @@ describe('FeaturesPage', () => {
 
     fireEvent.click(screen.getByRole('switch', { name: 'Disable OCR perception' }))
 
-    expect(screen.getByLabelText('Applying OCR perception')).toBeTruthy()
+    expect(screen.getByRole('switch', { name: 'Disable OCR perception' })).toHaveAccessibleDescription('Saving…')
 
     await waitFor(() => {
       expect(updateFeatureFlagsAction).toHaveBeenCalledWith({

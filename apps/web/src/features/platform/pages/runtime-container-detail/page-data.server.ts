@@ -3,6 +3,7 @@ import {
   getPlatformContainerLogsAction
 } from '@/server/orchestrator/platform/container-actions'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 const loadContainerLogs = async (id: string) => {
   try {
@@ -15,7 +16,7 @@ const loadContainerLogs = async (id: string) => {
   }
 }
 
-export const loadRuntimeContainerDetailPageData = async (id: string, view: 'overview' | 'logs' = 'overview') => {
+export const loadRuntimeContainerDetailPageData = async (id: string, view: ContainerResourceView = 'overview') => {
   const [details, logResult] = await Promise.all([
     getPlatformContainerAction(id),
     view === 'logs' ? loadContainerLogs(id) : undefined

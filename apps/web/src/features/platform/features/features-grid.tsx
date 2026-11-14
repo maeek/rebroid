@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { IconInfoCircle, IconLoader2 } from '@tabler/icons-react'
+import { createContext, useContext, useMemo, useState } from 'react'
+import { IconInfoCircle } from '@tabler/icons-react'
+import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { Skeleton, SkeletonMask } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -12,16 +12,45 @@ import { FeatureAvailability, FeatureIdentity, FeatureManageLink } from './featu
 import { featureLabel, orderFeaturesForDisplay } from './feature-presentation'
 import { getEffectiveFeatureStatus } from './feature-status'
 import type { FeatureFlagKey, FeatureFlagState } from '@/shared/contracts/feature-flags'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { CellContext, ColumnDef } from '@tanstack/react-table'
+
+type FeatureSwitchActions = {
+  pendingKey: string | null
+  savedKey?: string | null
+  onUpdate: (key: FeatureFlagKey, enabled: boolean) => Promise<void>
+}
+const FeatureSwitchContext = createContext<FeatureSwitchActions | null>(null)
+const FeatureEnabledCell = ({ row: { original: feature } }: CellContext<FeatureFlagState, unknown>) => {
+  const context = useContext(FeatureSwitchContext)
+  if (!context) throw new Error('Feature switches require their grid context.')
+  const { pendingKey, savedKey, onUpdate } = context
+  return (
+    <div className='grid gap-1'>
+      <div className='flex items-center gap-2'>
+        <MutationSwitch
+          checked={feature.enabled}
+          disabled={!feature.mutable || !feature.supported || pendingKey !== null}
+          pending={pendingKey === feature.key}
+          success={savedKey === feature.key}
+          aria-label={`${feature.enabled ? 'Disable' : 'Enable'} ${featureLabel(feature.key)}`}
+          onCheckedChange={enabled => void onUpdate(feature.key, enabled)}
+        />
+      </div>
+      {!feature.mutable ? <span className='text-xs text-foreground-muted'>Deployment managed</span> : null}
+    </div>
+  )
+}
 
 export const FeaturesGrid = ({
   features: manifestFeatures,
   pendingKey,
+  savedKey,
   onUpdate,
   loading = false
 }: {
   features: FeatureFlagState[]
-  pendingKey: FeatureFlagKey | null
+  pendingKey: string | null
+  savedKey?: string | null
   onUpdate: (key: FeatureFlagKey, enabled: boolean) => Promise<void>
   loading?: boolean
 }) => {
@@ -39,12 +68,7 @@ export const FeaturesGrid = ({
           label: 'Feature',
           skeleton: {
             kind: 'custom',
-            render: index => (
-              <FeatureIdentity
-                feature={features[index]}
-                loading
-              />
-            )
+            render: index => <FeatureIdentity feature={features[index]} />
           }
         },
         cell: ({ row: { original: feature } }) => <FeatureIdentity feature={feature} />
@@ -70,34 +94,13 @@ export const FeaturesGrid = ({
             )
           }
         },
-        cell: ({ row: { original: feature } }) => (
-          <div className='grid gap-1'>
-            <div className='flex items-center gap-2'>
-              <Switch
-                checked={feature.enabled}
-                disabled={!feature.mutable || !feature.supported || pendingKey !== null}
-                aria-busy={pendingKey === feature.key || undefined}
-                aria-label={`${feature.enabled ? 'Disable' : 'Enable'} ${featureLabel(feature.key)}`}
-                onCheckedChange={enabled => void onUpdate(feature.key, enabled)}
-              />
-              <span className='size-4 shrink-0'>
-                {pendingKey === feature.key ? (
-                  <IconLoader2
-                    className='size-4 animate-spin text-primary'
-                    aria-label={`Applying ${featureLabel(feature.key)}`}
-                  />
-                ) : null}
-              </span>
-            </div>
-            {!feature.mutable ? <span className='text-xs text-foreground-muted'>Deployment managed</span> : null}
-          </div>
-        )
+        cell: FeatureEnabledCell
       },
       {
         id: 'effectiveStatus',
         accessorFn: feature => getEffectiveFeatureStatus(feature).label,
         enableSorting: false,
-        size: 512,
+        size: 440,
         header: () => (
           <span className='inline-flex items-center gap-1.5'>
             Availability
@@ -153,7 +156,7 @@ export const FeaturesGrid = ({
         cell: ({ row: { original: feature } }) => <FeatureManageLink feature={feature} />
       }
     ],
-    [features, onUpdate, pendingKey]
+    [features]
   )
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -172,29 +175,31 @@ export const FeaturesGrid = ({
     )
   }, [features, search])
   return (
-    <DataGridWorkspace
-      search={searchDraft}
-      searchPlaceholder='Search features'
-      onSearchChange={setSearchDraft}
-      onSearch={setSearch}
-      disabled={loading}
-    >
-      <DataGrid
-        columns={columns}
-        data={visible}
-        totalItems={visible.length}
-        pageIndex={0}
-        pageSize={Math.max(visible.length, 1)}
-        getRowId={feature => feature.key}
-        minWidth='59rem'
-        loading={loading ? { rowCount: features.length || 4, selectable: false, rowMenu: false } : false}
-        emptyState={
-          <DataGridEmptyState
-            title='No features available'
-            description='Platform capabilities will appear here when they are available.'
-          />
-        }
-      />
-    </DataGridWorkspace>
+    <FeatureSwitchContext.Provider value={{ pendingKey, savedKey, onUpdate }}>
+      <DataGridWorkspace
+        search={searchDraft}
+        searchPlaceholder='Search features'
+        onSearchChange={setSearchDraft}
+        onSearch={setSearch}
+        disabled={loading}
+      >
+        <DataGrid
+          columns={columns}
+          data={visible}
+          totalItems={visible.length}
+          pageIndex={0}
+          pageSize={Math.max(visible.length, 1)}
+          getRowId={feature => feature.key}
+          minWidth='59rem'
+          loading={loading ? { rowCount: features.length || 4, selectable: false, rowMenu: false } : false}
+          emptyState={
+            <DataGridEmptyState
+              title='No features available'
+              description='Platform capabilities will appear here when they are available.'
+            />
+          }
+        />
+      </DataGridWorkspace>
+    </FeatureSwitchContext.Provider>
   )
 }

@@ -65,7 +65,7 @@ describe('orchestrator networks section model', () => {
       ])
     ).toEqual({
       title: 'Some networks could not be removed',
-      description: '2 remove requests failed.',
+      description: '0 succeeded, 2 failed. failed',
       variant: 'danger'
     })
   })

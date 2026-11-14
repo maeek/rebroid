@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -47,7 +46,7 @@ export const RuntimeContainersSection = ({
     onSortingChange,
     onPageIndexChange,
     onPageSizeChange,
-    clearSelection,
+    deselectItems,
     refresh
   } = useRuntimeResourceGridController({
     items: containersPage.items,
@@ -65,7 +64,7 @@ export const RuntimeContainersSection = ({
     busyId,
     runContainerAction,
     runBulkAction
-  } = useRuntimeContainerActions({ selectedContainers, clearSelection, refresh })
+  } = useRuntimeContainerActions({ selectedContainers, deselectItems, refresh })
 
   const selectVisibleOrphaned = () => {
     setSelectedIds(selectVisibleOrphanedContainerIds(containersPage.items, selectedIds))
@@ -197,82 +196,80 @@ export const RuntimeContainersSection = ({
             </>
           }
         >
-          <TooltipProvider delayDuration={150}>
-            <DataGrid
-              columns={columns}
-              data={containersPage.items}
-              totalItems={containersPage.total}
-              pageIndex={containersPage.page - 1}
-              pageSize={containersPage.pageSize}
-              getRowId={container => container.id}
-              sorting={sorting}
-              onSortingChange={onSortingChange}
-              selection={{
-                selectedIds,
-                onSelectedIdsChange: setSelectedIds
-              }}
-              emptyState={
-                <DataGridEmptyState
-                  title='No containers'
-                  description='No containers are available in the current Docker inventory.'
-                />
-              }
-              rowContextMenu={row => {
-                const hasBulkSelection = selectedIds.has(row.original.id) && selectedContainers.length > 1
-                return (
-                  <>
-                    {hasBulkSelection ? (
-                      <>
-                        <ContextMenuItem
-                          disabled={busyId === 'bulk'}
-                          onSelect={() => setPendingBulkAction('stop')}
-                        >
-                          <IconPlayerStopFilled className='size-4' />
-                          Stop selected ({selectedContainers.length})
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          className='text-danger focus:text-danger'
-                          disabled={busyId === 'bulk'}
-                          onSelect={() => setPendingBulkAction('remove')}
-                        >
-                          <IconTrash className='size-4' />
-                          Remove selected ({selectedContainers.length})
-                        </ContextMenuItem>
-                      </>
-                    ) : null}
+          <DataGrid
+            columns={columns}
+            data={containersPage.items}
+            totalItems={containersPage.total}
+            pageIndex={containersPage.page - 1}
+            pageSize={containersPage.pageSize}
+            getRowId={container => container.id}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            emptyState={
+              <DataGridEmptyState
+                title='No containers'
+                description='No containers are available in the current Docker inventory.'
+              />
+            }
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedContainers.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
+                    <>
+                      <ContextMenuItem
+                        disabled={busyId === 'bulk'}
+                        onSelect={() => setPendingBulkAction('stop')}
+                      >
+                        <IconPlayerStopFilled className='size-4' />
+                        Stop selected ({selectedContainers.length})
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        className='text-danger focus:text-danger'
+                        disabled={busyId === 'bulk'}
+                        onSelect={() => setPendingBulkAction('remove')}
+                      >
+                        <IconTrash className='size-4' />
+                        Remove selected ({selectedContainers.length})
+                      </ContextMenuItem>
+                    </>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/runtime/containers/${row.original.id}`}>
+                      <IconEye className='size-4' />
+                      Details
+                    </Link>
+                  </ContextMenuItem>
+                  {row.original.applicationId && !row.original.orphaned ? (
                     <ContextMenuItem asChild>
-                      <Link href={`/runtime/containers/${row.original.id}`}>
-                        <IconEye className='size-4' />
-                        Details
+                      <Link href={`/app/${row.original.applicationId}?logs=1`}>
+                        <IconTerminal2 className='size-4' />
+                        Logs
                       </Link>
                     </ContextMenuItem>
-                    {row.original.applicationId && !row.original.orphaned ? (
-                      <ContextMenuItem asChild>
-                        <Link href={`/app/${row.original.applicationId}?logs=1`}>
-                          <IconTerminal2 className='size-4' />
-                          Logs
-                        </Link>
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem
-                      disabled={row.original.state !== 'running'}
-                      onSelect={() => setPendingAction({ type: 'stop', container: row.original })}
-                    >
-                      <IconPlayerStopFilled className='size-4' />
-                      Stop
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      className='text-danger focus:text-danger'
-                      onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
-                    >
-                      <IconTrash className='size-4' />
-                      Remove
-                    </ContextMenuItem>
-                  </>
-                )
-              }}
-            />
-          </TooltipProvider>
+                  ) : null}
+                  <ContextMenuItem
+                    disabled={row.original.state !== 'running'}
+                    onSelect={() => setPendingAction({ type: 'stop', container: row.original })}
+                  >
+                    <IconPlayerStopFilled className='size-4' />
+                    Stop
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className='text-danger focus:text-danger'
+                    onSelect={() => setPendingAction({ type: 'remove', container: row.original })}
+                  >
+                    <IconTrash className='size-4' />
+                    Remove
+                  </ContextMenuItem>
+                </>
+              )
+            }}
+          />
 
           <DataGridPagination
             totalItems={containersPage.total}

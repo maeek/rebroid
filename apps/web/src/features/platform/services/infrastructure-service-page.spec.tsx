@@ -29,7 +29,7 @@ describe('infrastructure service availability', () => {
         container={{ id: 'orchestrator-id', name: 'rebroid-orchestrator' }}
       />
     )
-    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(within(screen.getByRole('banner')).getByRole('status')).toHaveTextContent('Healthy')
     expect(screen.queryByText('Orchestrator API is responding.')).toBeNull()
     const connection = screen.getByRole('region', { name: 'Connection' })
     const links = within(connection).getAllByRole('link')
@@ -71,7 +71,7 @@ describe('infrastructure service availability', () => {
     )
     expect(screen.getByText('Limits loaded')).toBeVisible()
     expect(screen.getByText('Metrics loaded')).toBeVisible()
-    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(within(screen.getByRole('banner')).getByRole('status')).toHaveTextContent('Healthy')
     expect(screen.queryByText('Unknown')).toBeNull()
   })
 

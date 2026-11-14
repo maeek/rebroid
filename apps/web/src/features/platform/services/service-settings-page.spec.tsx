@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
@@ -77,11 +77,15 @@ describe('Service settings detail', () => {
     fireEvent.click(save)
     await waitFor(() => expect(save).toBeEnabled())
     expect(endpoint).toHaveValue(firewall.endpoint)
+    expect(endpoint).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
     expect(timeout).toHaveValue(6000)
+    expect(timeout).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
 
     fireEvent.click(save)
     await waitFor(() => expect(save).toBeDisabled())
     expect(saveOrchestratorUiSettings).toHaveBeenNthCalledWith(2, { services: { firewall } })
+    expect(endpoint).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    expect(timeout).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
     fireEvent.change(endpoint, { target: { value: 'http://firewall.test' } })
     fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
     expect(endpoint).toHaveValue(firewall.endpoint)
@@ -89,7 +93,7 @@ describe('Service settings detail', () => {
 
   it.each(['ocr', 'firewall'] as const)('retains the %s draft when the service page cannot refresh', serviceId => {
     const { rerender } = render(page(serviceId))
-    expect(screen.getByRole('status')).toHaveTextContent('Healthy')
+    expect(within(screen.getByRole('banner')).getByRole('status')).toHaveTextContent('Healthy')
     expect(screen.queryByText('Service is responding.')).toBeNull()
     const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
     fireEvent.change(endpoint, { target: { value: 'http://draft.test' } })

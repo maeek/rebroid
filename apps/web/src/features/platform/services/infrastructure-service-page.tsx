@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useCallback, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { DockerMetricsDashboard } from '@/features/platform/metrics/docker-metrics-dashboard'
 import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
@@ -25,13 +25,20 @@ export const InfrastructureServicePage = ({
   const router = useRouter()
   const [refreshKey, setRefreshKey] = useState(0)
   const [refreshing, startRefresh] = useTransition()
+  const [metricsRefresh, setMetricsRefresh] = useState({ pending: false, succeeded: true })
+  const completeMetricsRefresh = useCallback((succeeded: boolean) => {
+    setMetricsRefresh({ pending: false, succeeded })
+  }, [])
   const isDocker = serviceId === 'docker'
   const canReadDiagnostics = initialHealth?.services.orchestrator.ok === true
   const dockerHealth = initialHealth && canReadDiagnostics ? dockerRuntimeHealth(initialHealth) : undefined
   const health = isDocker ? dockerHealth : initialHealth?.services.orchestrator
   const refresh = () => {
     startRefresh(() => router.refresh())
-    if (canReadDiagnostics) setRefreshKey(value => value + 1)
+    if (isDocker && canReadDiagnostics) {
+      setMetricsRefresh({ pending: true, succeeded: false })
+      setRefreshKey(value => value + 1)
+    }
   }
   return (
     <InfrastructureServiceLayout
@@ -40,7 +47,8 @@ export const InfrastructureServicePage = ({
       container={container}
       actions={
         <PlatformPageRefreshButton
-          isRefreshing={refreshing}
+          refreshResult={{ version: initialHealth, succeeded: canReadDiagnostics && metricsRefresh.succeeded }}
+          isRefreshing={refreshing || (canReadDiagnostics && metricsRefresh.pending)}
           onRefresh={refresh}
         />
       }
@@ -53,7 +61,14 @@ export const InfrastructureServicePage = ({
             : undefined
       }}
       limits={isDocker && canReadDiagnostics ? <DockerOperationLimitsSection onSaved={refresh} /> : undefined}
-      diagnostics={isDocker && canReadDiagnostics ? <DockerMetricsDashboard refreshKey={refreshKey} /> : undefined}
+      diagnostics={
+        isDocker && canReadDiagnostics ? (
+          <DockerMetricsDashboard
+            refreshKey={refreshKey}
+            onRefreshComplete={completeMetricsRefresh}
+          />
+        ) : undefined
+      }
     />
   )
 }

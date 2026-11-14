@@ -31,6 +31,7 @@ export const OcrServiceFields = ({
           <FormField
             layout='vertical'
             label='Max image size'
+            field='maxImageDimension'
             description='Largest image dimension after resizing.'
             error={errors?.maxImageDimension && 'Enter a whole number from 320 to 4,096 px.'}
           >
@@ -47,6 +48,7 @@ export const OcrServiceFields = ({
           <FormField
             layout='vertical'
             label='Min confidence'
+            field='minConfidence'
             description='Discard OCR boxes below this score.'
             error={errors?.minConfidence && 'Enter a number from 0 to 1.'}
           >
@@ -64,6 +66,7 @@ export const OcrServiceFields = ({
           <FormField
             layout='vertical'
             label='Language'
+            field='language'
             description='Use the language configured on the deployed OCR sidecar.'
             error={errors?.language && 'Enter a language code of up to 16 characters.'}
           >

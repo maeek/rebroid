@@ -7,7 +7,6 @@ import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { toast } from '@/hooks/use-toast'
 import {
   applyNetworkPolicyAction,
@@ -323,34 +322,32 @@ export const FirewallSettings = ({
           </MutationButton>
         }
       >
-        <TooltipProvider delayDuration={150}>
-          <DataGrid
-            columns={firewallPolicyColumns}
-            loading={loading ? { rowCount: 4, selectable: true, rowMenu: false } : false}
-            data={paginatedApplications}
-            totalItems={sortedApplications.length}
-            pageIndex={pageIndex}
-            pageSize={pageSize}
-            getRowId={application => application.id}
-            sorting={sorting}
-            onSortingChange={updater => {
-              setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
-              setPageIndex(0)
-            }}
-            selection={{
-              disabled: busy !== null,
-              selectedIds,
-              onSelectedIdsChange: setSelectedIds
-            }}
-            minWidth='64rem'
-            emptyState={
-              <DataGridEmptyState
-                title='No app policies'
-                description='Network policies will appear here when application containers are configured.'
-              />
-            }
-          />
-        </TooltipProvider>
+        <DataGrid
+          columns={firewallPolicyColumns}
+          loading={loading ? { rowCount: 4, selectable: true, rowMenu: false } : false}
+          data={paginatedApplications}
+          totalItems={sortedApplications.length}
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          getRowId={application => application.id}
+          sorting={sorting}
+          onSortingChange={updater => {
+            setSorting(current => (typeof updater === 'function' ? updater(current) : updater))
+            setPageIndex(0)
+          }}
+          selection={{
+            disabled: busy !== null,
+            selectedIds,
+            onSelectedIdsChange: setSelectedIds
+          }}
+          minWidth='64rem'
+          emptyState={
+            <DataGridEmptyState
+              title='No app policies'
+              description='Network policies will appear here when application containers are configured.'
+            />
+          }
+        />
         <DataGridPagination
           loading={loading}
           totalItems={sortedApplications.length}

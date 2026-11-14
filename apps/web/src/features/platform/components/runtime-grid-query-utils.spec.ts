@@ -48,7 +48,7 @@ describe('orchestrator grid query utils', () => {
       summarizePlatformBulkRemoveResults([{ status: 'rejected', reason: new Error('failed') }], 'network')
     ).toEqual({
       title: 'Some networks could not be removed',
-      description: '1 remove request failed.',
+      description: 'failed',
       variant: 'danger'
     })
   })

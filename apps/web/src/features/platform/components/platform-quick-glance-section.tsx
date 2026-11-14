@@ -25,16 +25,19 @@ export const PlatformQuickGlanceSection = ({
   onRefreshComplete
 }: {
   refreshKey?: number
-  onRefreshComplete?: () => void
+  onRefreshComplete?: (succeeded: boolean) => void
 }) => {
-  const { data: resources, error: caughtError, refresh } = useSystemResources()
+  const { data: resources, error: caughtError, mutate: refresh } = useSystemResources()
   const lastRefreshKey = useRef(0)
   const error = caughtError ? getDisplayErrorMessage(caughtError, 'Could not load orchestrator resources.') : null
 
   useEffect(() => {
     if (refreshKey > 0 && refreshKey !== lastRefreshKey.current) {
       lastRefreshKey.current = refreshKey
-      void refresh().finally(() => onRefreshComplete?.())
+      void refresh(undefined, { throwOnError: true }).then(
+        () => onRefreshComplete?.(true),
+        () => onRefreshComplete?.(false)
+      )
     }
   }, [onRefreshComplete, refresh, refreshKey])
 

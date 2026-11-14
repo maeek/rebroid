@@ -11,16 +11,18 @@ export const PlatformOperationsSection = ({
   onRefreshComplete
 }: {
   refreshKey?: number
-  onRefreshComplete?: () => void
+  onRefreshComplete?: (succeeded: boolean) => void
 }) => {
   const [snapshot, setSnapshot] = useState<PlatformOperationsSnapshot | null>(null)
   const [error, setError] = useState(false)
   const [requestId, setRequestId] = useState<string>()
   useEffect(() => {
     let active = true
+    let succeeded = false
     void getBff<PlatformOperationsSnapshot>('/api/bff/platform/operations')
       .then(nextSnapshot => {
         if (active) {
+          succeeded = true
           setSnapshot(nextSnapshot)
           setError(false)
           setRequestId(undefined)
@@ -37,7 +39,7 @@ export const PlatformOperationsSection = ({
         }
       })
       .finally(() => {
-        if (active && refreshKey > 0) onRefreshComplete?.()
+        if (active && refreshKey > 0) onRefreshComplete?.(succeeded)
       })
     return () => {
       active = false

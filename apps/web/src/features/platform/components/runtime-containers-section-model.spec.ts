@@ -70,7 +70,7 @@ describe('orchestrator containers section model', () => {
       )
     ).toEqual({
       title: 'Some containers could not be removed',
-      description: '1 request failed.',
+      description: '1 succeeded, 1 failed. failed',
       variant: 'danger'
     })
   })

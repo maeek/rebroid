@@ -1,4 +1,8 @@
+import { notFound } from 'next/navigation'
+import { getCurrentUser } from '@/server/auth/authorization'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
+import { readContainerResourceView } from '@/shared/model/container-resource-href'
+import { dockerOpenTerminal, hasDockerTerminalPrivilege } from '@/shared/permissions/docker-terminal'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeContainerDetail } from '../../details/runtime-container-detail/runtime-container-detail'
@@ -13,7 +17,8 @@ export async function RuntimeContainerDetailPageEntry({
   searchParams: Promise<{ view?: string | string[] }>
 }) {
   const [{ id }, search] = await Promise.all([params, searchParams])
-  const view = search.view === 'logs' ? 'logs' : 'overview'
+  const view = readContainerResourceView(search.view)
+  if (view === 'terminal' && !hasDockerTerminalPrivilege(await getCurrentUser(), dockerOpenTerminal)) notFound()
 
   const result = await readOrchestratorPage(() => loadRuntimeContainerDetailPageData(id, view), { allowMissing: true })
   if (result.ok) {

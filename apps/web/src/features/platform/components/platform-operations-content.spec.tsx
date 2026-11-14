@@ -4,9 +4,12 @@ import { PlatformOperationsContent } from './platform-operations-content'
 import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-operations'
 
 const snapshot: PlatformOperationsSnapshot = {
+  collectedAt: '2026-11-07T10:00:00Z',
   failedCount: 128,
   pendingCount: 42,
-  activeRunCount: 17
+  activeRunCount: 17,
+  workflowCatalogAvailable: true,
+  activeRuns: [{ id: 'run', name: 'Inventory check', impact: 'Running', href: '/automations/inventory/traces?run=run' }]
 }
 
 describe('platform operations presentation', () => {
@@ -15,6 +18,8 @@ describe('platform operations presentation', () => {
     const attention = screen.getByRole('region', { name: 'Apps needing attention' })
     expect(within(attention).getByText('128')).toBeVisible()
     expect(within(attention).queryByRole('list')).toBeNull()
+    expect(within(attention).getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByText('Snapshot taken')).toBeVisible()
     expect(screen.queryByRole('alert')).toBeNull()
     expect(within(attention).getByRole('link', { name: 'View affected apps' })).toHaveAttribute(
       'href',
@@ -32,11 +37,24 @@ describe('platform operations presentation', () => {
     expect(apps.queryByRole('list')).toBeNull()
     expect(runs.getByText('17')).toBeVisible()
     expect(runs.getByRole('link', { name: 'View active runs' })).toHaveAttribute('href', '/automations/runs/active')
-    expect(runs.queryByRole('list')).toBeNull()
+    expect(runs.getByRole('link', { name: 'Inventory check' })).toHaveAttribute(
+      'href',
+      '/automations/inventory/traces?run=run'
+    )
   })
-  it('shows quiet empty states and does not report a failed refresh as healthy', () => {
+  it('hides unavailable catalog and run actions without showing a zero', () => {
+    render(
+      <PlatformOperationsContent snapshot={{ ...snapshot, activeRunCount: null, workflowCatalogAvailable: false }} />
+    )
+    expect(screen.queryByRole('link', { name: 'All workflows' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Active workflow runs' })).toBeNull()
+    expect(screen.queryByText('No active workflow runs.')).toBeNull()
+  })
+  it('keeps the affected apps link at zero and omits the count when no snapshot is available', () => {
     const { rerender } = render(<PlatformOperationsContent snapshot={{ ...snapshot, failedCount: 0 }} />)
-    expect(screen.getByText('No app failures.')).toBeVisible()
+    const attention = within(screen.getByRole('region', { name: 'Apps needing attention' }))
+    expect(attention.getByText('0', { exact: true })).toBeVisible()
+    expect(attention.getByRole('link', { name: 'View affected apps' })).toHaveAttribute('href', '/apps?status=error')
     rerender(
       <PlatformOperationsContent
         snapshot={null}
@@ -47,8 +65,8 @@ describe('platform operations presentation', () => {
     expect(screen.queryByRole('region', { name: 'Apps needing attention' })).toBeNull()
     expect(screen.queryByRole('region', { name: 'App operations' })).toBeNull()
     expect(screen.queryByRole('region', { name: 'Active workflow runs' })).toBeNull()
-    expect(screen.queryByText(/Snapshot updates/)).toBeNull()
-    expect(screen.queryByText('No app failures.')).toBeNull()
+    expect(screen.queryByText('Snapshot taken')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'View affected apps' })).toBeNull()
   })
   it('retains the last snapshot with a refresh warning', () => {
     render(

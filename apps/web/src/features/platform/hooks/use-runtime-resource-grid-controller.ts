@@ -76,7 +76,8 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
     onSortingChange,
     onPageIndexChange: (pageIndex: number) => pushGridParams({ page: pageIndex + 1 } as Partial<TQuery>),
     onPageSizeChange: (nextPageSize: number) => pushGridParams({ page: 1, pageSize: nextPageSize } as Partial<TQuery>),
-    clearSelection: () => setSelectedIds(new Set()),
+    deselectItems: (ids: ReadonlySet<string>) =>
+      setSelectedIds(current => new Set([...current].filter(id => !ids.has(id)))),
     refresh: () => router.refresh()
   }
 }

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
@@ -12,6 +13,7 @@ import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/se
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { ConsoleDefaultsFields } from './ui/console-defaults-fields'
 
 export const ConsoleDefaultsPageClient = ({
@@ -71,58 +73,67 @@ export const ConsoleDefaultsPageClient = ({
   }
 
   return (
-    <EditorPage className='gap-2'>
-      <PageHeader
-        section={{ label: 'Administration' }}
-        trail={[{ label: 'General', href: '/platform/runtime' }]}
-        title='Console defaults'
-        description='Default list refresh and streaming settings for all users.'
-        actions={
-          <div className='flex flex-wrap gap-2'>
-            <Button
-              variant='ghost'
-              disabled={loading || isSaving}
-              ref={resetTrigger}
-              onClick={() => setResetOpen(true)}
-            >
-              Restore defaults
-            </Button>
-            <MutationButton
-              disabled={loading || !dirty}
-              pending={isSaving}
-              pendingLabel='Saving…'
-              success={saveFeedback.saved}
-              onClick={() => void saveSettings()}
-            >
-              Save defaults
-            </MutationButton>
-          </div>
-        }
+    <FieldChangesProvider
+      value={settings}
+      baseline={loading ? undefined : committed}
+    >
+      <EditorPage className='gap-2'>
+        <PageHeader
+          section={{ label: 'Administration' }}
+          trail={[{ label: 'General', href: '/platform/runtime' }]}
+          title='Console defaults'
+          description='Default list refresh and streaming settings for all users.'
+          actions={
+            <div className='flex flex-wrap gap-2'>
+              <Button
+                variant='ghost'
+                disabled={loading || isSaving}
+                ref={resetTrigger}
+                onClick={() => setResetOpen(true)}
+              >
+                Restore defaults
+              </Button>
+              <MutationButton
+                disabled={loading || !dirty}
+                pending={isSaving}
+                pendingLabel='Saving…'
+                success={saveFeedback.saved}
+                onClick={() => void saveSettings()}
+              >
+                Save defaults
+              </MutationButton>
+            </div>
+          }
+        />
+        <PageContent>
+          <fieldset
+            disabled={loading || isSaving}
+            className='grid min-w-0 gap-4'
+          >
+            <ConsoleDefaultsFields
+              settings={settings}
+              onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
+              loading={loading}
+            />
+          </fieldset>
+        </PageContent>
+        <ConfirmMutationDialog
+          open={resetOpen}
+          onOpenChange={setResetOpen}
+          finalFocus={resetTrigger}
+          title='Restore console defaults?'
+          description='This restores the default app list refresh interval and streaming settings for everyone.'
+          confirmLabel='Restore defaults'
+          pendingLabel='Restoring…'
+          pending={resetOpen && isSaving}
+          tone='warning'
+          onConfirm={() => void resetSettings()}
+        />
+      </EditorPage>
+      <UnsavedChangesGuard
+        dirty={!loading && dirty}
+        onDiscard={() => setSettings(committed)}
       />
-      <PageContent>
-        <fieldset
-          disabled={loading || isSaving}
-          className='grid min-w-0 gap-4'
-        >
-          <ConsoleDefaultsFields
-            settings={settings}
-            onSettingsChange={patch => setSettings(current => ({ ...current, ...patch }))}
-            loading={loading}
-          />
-        </fieldset>
-      </PageContent>
-      <ConfirmMutationDialog
-        open={resetOpen}
-        onOpenChange={setResetOpen}
-        finalFocus={resetTrigger}
-        title='Restore console defaults?'
-        description='This restores the default app list refresh interval and streaming settings for everyone.'
-        confirmLabel='Restore defaults'
-        pendingLabel='Restoring…'
-        pending={resetOpen && isSaving}
-        tone='warning'
-        onConfirm={() => void resetSettings()}
-      />
-    </EditorPage>
+    </FieldChangesProvider>
   )
 }

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { IconPencil } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
@@ -68,71 +69,76 @@ export const DockerOperationLimitsSection = ({
     }
   }
   return (
-    <Dialog
-      open={open}
-      onOpenChange={setDialogOpen}
+    <FieldChangesProvider
+      value={Object.fromEntries(dockerOperationLimitFields.map(({ key }) => [key, Number(draft?.[key])]))}
+      baseline={data}
     >
-      <Section
-        surface='panel'
-        title='Operation limits'
-        description='Control Docker concurrency and operation timing.'
-        actions={
-          <DialogTrigger asChild>
-            <Button
-              type='button'
-              variant='secondary'
-              size='sm'
-              disabled={!data || loading || isLoading}
-            >
-              <IconPencil className='size-4' />
-              Edit limits
-            </Button>
-          </DialogTrigger>
-        }
+      <Dialog
+        open={open}
+        onOpenChange={setDialogOpen}
       >
-        {!loading && error && !data ? (
-          <Notice
-            tone='danger'
-            title='Operation limits unavailable'
-            description='Could not load the current settings.'
-            actions={
-              <MutationButton
+        <Section
+          surface='panel'
+          title='Operation limits'
+          description='Control Docker concurrency and operation timing.'
+          actions={
+            <DialogTrigger asChild>
+              <Button
                 type='button'
-                variant='ghost'
-                pending={isValidating}
-                pendingLabel='Retrying…'
-                onClick={() => void mutate()}
+                variant='secondary'
+                size='sm'
+                disabled={!data || loading || isLoading}
               >
-                Try again
-              </MutationButton>
-            }
-          />
-        ) : (
-          <DetailFields
-            loading={loading || isLoading}
-            fields={dockerOperationLimitFields.map(field => {
-              let value: string | null = null
-              if (data) {
-                const quantity = data[field.key]
-                if (field.unit === 'ms') value = formatOperationLimitDuration(quantity)
-                else value = `${quantity} ${quantity === 1 ? field.unit.slice(0, -1) : field.unit}`
+                <IconPencil className='size-4' />
+                Edit limits
+              </Button>
+            </DialogTrigger>
+          }
+        >
+          {!loading && error && !data ? (
+            <Notice
+              tone='danger'
+              title='Operation limits unavailable'
+              description='Could not load the current settings.'
+              actions={
+                <MutationButton
+                  type='button'
+                  variant='ghost'
+                  pending={isValidating}
+                  pendingLabel='Retrying…'
+                  onClick={() => void mutate()}
+                >
+                  Try again
+                </MutationButton>
               }
-              return { label: field.label, value }
-            })}
+            />
+          ) : (
+            <DetailFields
+              loading={loading || isLoading}
+              fields={dockerOperationLimitFields.map(field => {
+                let value: string | null = null
+                if (data) {
+                  const quantity = data[field.key]
+                  if (field.unit === 'ms') value = formatOperationLimitDuration(quantity)
+                  else value = `${quantity} ${quantity === 1 ? field.unit.slice(0, -1) : field.unit}`
+                }
+                return { label: field.label, value }
+              })}
+            />
+          )}
+        </Section>
+        {draft ? (
+          <DockerOperationLimitsDialog
+            draft={draft}
+            pending={pending}
+            canSave={Boolean(changed && parsed.success)}
+            error={saveError}
+            onChange={(key, value) => setDraft(current => (current ? { ...current, [key]: value } : current))}
+            onSave={() => void save()}
+            onCancel={() => setDialogOpen(false)}
           />
-        )}
-      </Section>
-      {draft ? (
-        <DockerOperationLimitsDialog
-          draft={draft}
-          pending={pending}
-          canSave={Boolean(changed && parsed.success)}
-          error={saveError}
-          onChange={(key, value) => setDraft(current => (current ? { ...current, [key]: value } : current))}
-          onSave={() => void save()}
-          onCancel={() => setDialogOpen(false)}
-        />
-      ) : null}
-    </Dialog>
+        ) : null}
+      </Dialog>
+    </FieldChangesProvider>
   )
 }

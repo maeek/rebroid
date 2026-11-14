@@ -1,26 +1,16 @@
-import { IconAdjustments, IconArrowRight } from '@tabler/icons-react'
-import { Skeleton, SkeletonMask } from '@/components/ui/skeleton'
+import { IconArrowRight } from '@tabler/icons-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { StatusBadge } from '@/components/ui/status-badge'
-import { cn } from '@/lib/utils'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { featureDestination, featureLabel } from './feature-presentation'
 import { getEffectiveFeatureStatus } from './feature-status'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
 
-export const FeatureIdentity = ({ feature, loading = false }: { feature?: FeatureFlagState; loading?: boolean }) => (
+export const FeatureIdentity = ({ feature }: { feature?: FeatureFlagState }) => (
   <div
     id={feature?.key}
-    className='flex min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)] items-center gap-3'
+    className='min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)]'
   >
-    <div
-      aria-hidden='true'
-      className={cn(
-        'flex size-9 shrink-0 items-center justify-center rounded-control',
-        loading ? 'bg-control/60 text-foreground-muted' : 'bg-primary/10 text-primary'
-      )}
-    >
-      <IconAdjustments className='size-5' />
-    </div>
     <div className='grid min-w-0 flex-1 gap-1'>
       {feature ? (
         <>
@@ -49,33 +39,28 @@ export const FeatureAvailability = ({
   feature?: FeatureFlagState
   loading?: boolean
 }) => {
-  if (!feature)
-    return (
-      <div className='grid gap-1'>
-        <Skeleton className='h-5.5 w-20 rounded-full' />
-        <Skeleton className='h-10 w-full' />
-      </div>
-    )
+  if (loading || !feature) return <Skeleton className='h-5.5 w-20 rounded-full' />
   const status = getEffectiveFeatureStatus(feature)
+  const isSyncIssue = ['sync-failed', 'waiting', 'applying', 'restart-required'].includes(status.kind)
+  const destination =
+    feature.owner === 'display'
+      ? { label: 'Check display service', href: '/platform/casting' }
+      : { label: 'Check service health', href: '/platform/services' }
   return (
     <div className='grid gap-1'>
-      <SkeletonMask
-        visible={loading}
+      <StatusBadge
+        tone={status.tone}
         className='w-fit'
       >
-        <StatusBadge
-          tone={status.tone}
-          className='w-fit'
-        >
-          {status.label}
-        </StatusBadge>
-      </SkeletonMask>
-      <SkeletonMask
-        visible={loading}
-        className='w-full'
-      >
-        <span className='block text-xs leading-5 text-foreground-muted'>{status.description}</span>
-      </SkeletonMask>
+        {status.label}
+      </StatusBadge>
+      {status.description ? <p className='text-xs leading-5 text-foreground-muted'>{status.description}</p> : null}
+      {isSyncIssue ? (
+        <p className='text-xs text-foreground-muted'>
+          Currently {feature.effective ? 'active' : 'off'}.{' '}
+          <ResourceLink href={destination.href}>{destination.label}</ResourceLink>
+        </p>
+      ) : null}
     </div>
   )
 }

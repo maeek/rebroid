@@ -40,6 +40,7 @@ export const ServiceConnectionSection = ({
           <FormField
             layout='vertical'
             label='Endpoint'
+            field='endpoint'
             description={meta.endpointDescription}
             error={errors?.endpoint?.[0]}
           >
@@ -53,6 +54,7 @@ export const ServiceConnectionSection = ({
           <FormField
             layout='vertical'
             label='Timeout'
+            field='timeoutMs'
             description='Maximum request time before the service is treated as unavailable.'
             error={errors?.timeoutMs && 'Enter a whole number from 100 to 120,000 ms.'}
           >

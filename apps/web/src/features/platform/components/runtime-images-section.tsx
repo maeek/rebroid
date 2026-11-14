@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -42,7 +41,7 @@ export const RuntimeImagesSection = ({
     onSortingChange,
     onPageIndexChange,
     onPageSizeChange,
-    clearSelection,
+    deselectItems,
     refresh
   } = useRuntimeResourceGridController({
     items: imagesPage.items,
@@ -53,7 +52,7 @@ export const RuntimeImagesSection = ({
     buildHref: buildImagesGridHref
   })
   const { pendingRemove, setPendingRemove, busyId, removeImages } = useRuntimeImageActions({
-    clearSelection,
+    deselectItems,
     refresh
   })
 
@@ -166,58 +165,56 @@ export const RuntimeImagesSection = ({
             </Button>
           }
         >
-          <TooltipProvider delayDuration={150}>
-            <DataGrid
-              columns={columns}
-              data={imagesPage.items}
-              totalItems={imagesPage.total}
-              pageIndex={imagesPage.page - 1}
-              pageSize={imagesPage.pageSize}
-              getRowId={image => image.id}
-              sorting={sorting}
-              onSortingChange={onSortingChange}
-              selection={{
-                selectedIds,
-                onSelectedIdsChange: setSelectedIds
-              }}
-              emptyState={
-                <DataGridEmptyState
-                  title='No images'
-                  description='No images are available in the current Docker inventory.'
-                />
-              }
-              rowContextMenu={row => {
-                const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
-                return (
-                  <>
-                    {hasBulkSelection ? (
-                      <ContextMenuItem
-                        className='text-danger focus:text-danger'
-                        disabled={busyId === 'bulk'}
-                        onSelect={() => setPendingRemove(selectedImages)}
-                      >
-                        <IconTrash className='size-4' />
-                        Remove selected ({selectedImages.length})
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem asChild>
-                      <Link href={`/runtime/images/${encodeURIComponent(row.original.id)}`}>
-                        <IconEye className='size-4' />
-                        Details
-                      </Link>
-                    </ContextMenuItem>
+          <DataGrid
+            columns={columns}
+            data={imagesPage.items}
+            totalItems={imagesPage.total}
+            pageIndex={imagesPage.page - 1}
+            pageSize={imagesPage.pageSize}
+            getRowId={image => image.id}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            emptyState={
+              <DataGridEmptyState
+                title='No images'
+                description='No images are available in the current Docker inventory.'
+              />
+            }
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedImages.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
                     <ContextMenuItem
                       className='text-danger focus:text-danger'
-                      onSelect={() => setPendingRemove([row.original])}
+                      disabled={busyId === 'bulk'}
+                      onSelect={() => setPendingRemove(selectedImages)}
                     >
                       <IconTrash className='size-4' />
-                      Remove
+                      Remove selected ({selectedImages.length})
                     </ContextMenuItem>
-                  </>
-                )
-              }}
-            />
-          </TooltipProvider>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/runtime/images/${encodeURIComponent(row.original.id)}`}>
+                      <IconEye className='size-4' />
+                      Details
+                    </Link>
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className='text-danger focus:text-danger'
+                    onSelect={() => setPendingRemove([row.original])}
+                  >
+                    <IconTrash className='size-4' />
+                    Remove
+                  </ContextMenuItem>
+                </>
+              )
+            }}
+          />
           <DataGridPagination
             totalItems={imagesPage.total}
             pageIndex={imagesPage.page - 1}

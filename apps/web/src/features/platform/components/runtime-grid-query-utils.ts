@@ -1,4 +1,5 @@
-import { isActionFailure, isActionResult, type ActionResult } from '@/shared/actions/action-result'
+import { type ActionResult } from '@/shared/actions/action-result'
+import { summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import type { SortingState } from '@tanstack/react-table'
 
 type PlatformGridQuery = {
@@ -51,48 +52,11 @@ export const buildPlatformGridHref = <TQuery extends PlatformGridQuery>({
   return `${basePath}${params.size ? `?${params.toString()}` : ''}`
 }
 
-export const summarizePlatformBulkActionResults = (
-  results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
-  successTitle: string,
-  failureTitle: string,
-  requestLabel = 'request'
-): PlatformBulkRemoveToast => {
-  const failures = results.filter(result => {
-    if (isActionResult(result)) return isActionFailure(result)
-    if (result.status === 'rejected') return true
-    return isActionFailure(result.value)
-  })
-  const failedCount = failures.length
-
-  if (failedCount === 0) {
-    return { title: successTitle }
-  }
-
-  const firstFailure = failures[0]
-  let firstMessage: string | null = null
-  if (isActionFailure(firstFailure)) {
-    firstMessage = firstFailure.error.message
-  } else if (firstFailure && !isActionResult(firstFailure) && firstFailure.status === 'fulfilled') {
-    firstMessage = isActionFailure(firstFailure.value) ? firstFailure.value.error.message : null
-  }
-
-  return {
-    title: failureTitle,
-    description: firstMessage ?? `${failedCount} ${requestLabel}${failedCount === 1 ? '' : 's'} failed.`,
-    variant: 'danger'
-  }
-}
-
 export const summarizePlatformBulkRemoveResults = (
   results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
   resourceLabel: string
 ): PlatformBulkRemoveToast =>
-  summarizePlatformBulkActionResults(
-    results,
-    `Selected ${resourceLabel}s removed`,
-    `Some ${resourceLabel}s could not be removed`,
-    'remove request'
-  )
+  summarizeBulkResults(results, `Selected ${resourceLabel}s removed`, `Some ${resourceLabel}s could not be removed`)
 
 export const platformSortFromSearchParam = (
   sort: string | undefined,

@@ -26,6 +26,7 @@ export const ConsoleDefaultsFields = ({
     >
       <FormField
         label='List refresh interval'
+        field='appListRefreshIntervalSeconds'
         description='Controls how often app lists refresh automatically across the frontend.'
         layout='vertical'
       >
@@ -57,6 +58,7 @@ export const ConsoleDefaultsFields = ({
       <div className='grid gap-4'>
         <FormField
           label='Preset'
+          field='defaultViewerPreset'
           description='Default quality profile for new viewer sessions.'
           layout='vertical'
         >
@@ -87,6 +89,7 @@ export const ConsoleDefaultsFields = ({
           </Select>
         </FormField>
         <ViewerBitrateField
+          field='defaultViewerBitrateMbps'
           loading={loading}
           value={String(settings.defaultViewerBitrateMbps)}
           onValueChange={value => onSettingsChange({ defaultViewerBitrateMbps: Number(value) })}
@@ -94,6 +97,7 @@ export const ConsoleDefaultsFields = ({
       </div>
       <FormField
         label='Enable keyboard in fullscreen'
+        field='defaultViewerKeyboardCaptureEnabled'
         description='Fullscreen viewer sessions start with keyboard input captured.'
         layout='vertical'
       >
@@ -105,6 +109,7 @@ export const ConsoleDefaultsFields = ({
       </FormField>
       <FormField
         label='Enable sound'
+        field='defaultViewerSoundEnabled'
         description='Request audio when the viewer stream supports it.'
         layout='vertical'
       >

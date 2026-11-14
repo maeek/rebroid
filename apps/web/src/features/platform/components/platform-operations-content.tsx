@@ -5,8 +5,9 @@ import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { activeWorkflowRunsHref } from '@/shared/model/active-workflow-runs-href'
 import { appsInProgressHref, appsNeedingAttentionHref } from '@/shared/model/applications/app-gallery-status'
+import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
-import type { PlatformOperationsSnapshot } from '@/shared/contracts/platform-operations'
+import type { PlatformOperationItem, PlatformOperationsSnapshot } from '@/shared/contracts/platform-operations'
 
 const OperationsGroup = ({
   title,
@@ -14,20 +15,22 @@ const OperationsGroup = ({
   empty,
   href,
   linkLabel,
+  items = [],
   attention = false
 }: {
   title: string
   total?: number
-  empty: string
+  empty?: string
   href: string
   linkLabel: string
+  items?: PlatformOperationItem[]
   attention?: boolean
 }) => {
-  let count: ReactNode = <Skeleton className='h-8 w-8' />
+  let count: ReactNode = <Skeleton className='h-5 w-8' />
   if (total !== undefined)
     count = (
       <span
-        className={`text-2xl font-medium tabular-nums ${attention && total > 0 ? 'text-danger' : 'text-foreground'}`}
+        className={`text-sm font-medium tabular-nums ${attention && total > 0 ? 'text-danger' : 'text-foreground-muted'}`}
       >
         {total}
       </span>
@@ -42,19 +45,39 @@ const OperationsGroup = ({
         <Skeleton className='h-5 w-36' />
       </div>
     )
-  else if (total === 0) content = <p className='text-sm text-foreground-muted'>{empty}</p>
+  else if (total === 0 && empty) content = <p className='text-sm text-foreground-muted'>{empty}</p>
   else
     content = (
-      <ResourceLink
-        href={href}
-        className='inline-flex w-fit items-center gap-1 text-sm font-medium'
-      >
-        {linkLabel}
-        <IconArrowUpRight
-          className='size-4'
-          aria-hidden='true'
-        />
-      </ResourceLink>
+      <>
+        {items.length > 0 ? (
+          <ul className='divide-y divide-surface-border/60'>
+            {items.map(item => (
+              <li
+                key={item.id}
+                className='grid min-w-0 gap-0.5 py-2 first:pt-0'
+              >
+                <ResourceLink
+                  href={item.href}
+                  className='w-fit text-sm font-medium wrap-anywhere'
+                >
+                  {item.name}
+                </ResourceLink>
+                <span className='text-xs text-foreground-muted'>{item.impact}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <ResourceLink
+          href={href}
+          className='inline-flex w-fit items-center gap-1 text-xs font-medium'
+        >
+          {linkLabel}
+          <IconArrowUpRight
+            className='size-3.5'
+            aria-hidden='true'
+          />
+        </ResourceLink>
+      </>
     )
   return (
     <Section
@@ -83,7 +106,6 @@ export const PlatformOperationsContent = ({
     <Section
       surface='plain'
       title='Operations'
-      description='Current app health and work in progress.'
       contentClassName='gap-4'
       actions={
         <div className='flex flex-wrap justify-end gap-x-4 gap-y-2 text-sm'>
@@ -97,16 +119,18 @@ export const PlatformOperationsContent = ({
               aria-hidden='true'
             />
           </ResourceLink>
-          <ResourceLink
-            href='/automations'
-            className='inline-flex items-center gap-1 whitespace-nowrap font-medium'
-          >
-            All workflows{' '}
-            <IconArrowUpRight
-              className='size-4'
-              aria-hidden='true'
-            />
-          </ResourceLink>
+          {snapshot?.workflowCatalogAvailable ? (
+            <ResourceLink
+              href='/automations'
+              className='inline-flex items-center gap-1 whitespace-nowrap font-medium'
+            >
+              All workflows{' '}
+              <IconArrowUpRight
+                className='size-4'
+                aria-hidden='true'
+              />
+            </ResourceLink>
+          ) : null}
         </div>
       }
       titleClassName='flex-wrap'
@@ -126,11 +150,16 @@ export const PlatformOperationsContent = ({
       ) : null}
       {snapshot || !error ? (
         <>
-          <div className='grid min-w-0 items-stretch gap-4 lg:grid-cols-3'>
+          <div
+            className={
+              snapshot?.activeRunCount === null
+                ? 'grid min-w-0 items-stretch gap-4 lg:grid-cols-2'
+                : 'grid min-w-0 items-stretch gap-4 lg:grid-cols-3'
+            }
+          >
             <OperationsGroup
               title='Apps needing attention'
               total={snapshot?.failedCount}
-              empty='No app failures.'
               href={appsNeedingAttentionHref}
               linkLabel='View affected apps'
               attention
@@ -142,17 +171,27 @@ export const PlatformOperationsContent = ({
               href={appsInProgressHref}
               linkLabel='View apps in progress'
             />
-            <OperationsGroup
-              title='Active workflow runs'
-              total={snapshot?.activeRunCount}
-              empty='No active workflow runs.'
-              href={activeWorkflowRunsHref}
-              linkLabel='View active runs'
-            />
+            {snapshot?.activeRunCount !== null ? (
+              <OperationsGroup
+                title='Active workflow runs'
+                total={snapshot?.activeRunCount ?? undefined}
+                empty='No active workflow runs.'
+                href={activeWorkflowRunsHref}
+                linkLabel='View active runs'
+                items={snapshot?.activeRuns}
+              />
+            ) : null}
           </div>
-          <p className='text-xs text-foreground-muted'>
-            Snapshot updates when you refresh. Open a resource for details.
-          </p>
+          {snapshot?.collectedAt ? (
+            <p className='flex flex-wrap items-center gap-x-1 text-xs text-foreground-muted'>
+              Snapshot taken{' '}
+              <DateTimeValue
+                value={snapshot.collectedAt}
+                compact
+                showSeconds
+              />
+            </p>
+          ) : null}
         </>
       ) : null}
     </Section>

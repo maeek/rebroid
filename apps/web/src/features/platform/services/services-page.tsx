@@ -108,6 +108,7 @@ export const PlatformServicesPage = ({
     <ServicesPageLayout
       breadcrumbRefresh={
         <PlatformPageRefreshButton
+          refreshResult={{ version: initialHealth, succeeded: !unavailable }}
           isRefreshing={refreshing}
           onRefresh={() => startRefresh(() => router.refresh())}
         />

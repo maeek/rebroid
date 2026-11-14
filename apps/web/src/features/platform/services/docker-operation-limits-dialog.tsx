@@ -52,6 +52,7 @@ export const DockerOperationLimitsDialog = ({
             controlId={`docker-limit-${field.key}`}
             layout='vertical'
             label={field.label}
+            field={field.key}
             description={field.description}
           >
             <NumericUnitInput

@@ -11,9 +11,19 @@ export const PlatformOperationsPreview = () => (
     <PageContent>
       <PlatformOperationsContent
         snapshot={{
+          collectedAt: '2026-11-07T10:00:00Z',
           failedCount: 128,
           pendingCount: 2,
-          activeRunCount: 1
+          activeRunCount: 1,
+          activeRuns: [
+            {
+              id: 'inventory-run',
+              name: 'Daily inventory check',
+              impact: 'Running',
+              href: '/automations/inventory/traces?run=inventory-run'
+            }
+          ],
+          workflowCatalogAvailable: true
         }}
       />
     </PageContent>

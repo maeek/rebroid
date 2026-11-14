@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -46,7 +45,7 @@ export const RuntimeNetworksSection = ({
     onSortingChange,
     onPageIndexChange,
     onPageSizeChange,
-    clearSelection,
+    deselectItems,
     refresh
   } = useRuntimeResourceGridController({
     items: networksPage.items,
@@ -57,7 +56,7 @@ export const RuntimeNetworksSection = ({
     buildHref: buildNetworksGridHref
   })
   const { pendingRemove, setPendingRemove, busyId, removeNetworks } = useRuntimeNetworkActions({
-    clearSelection,
+    deselectItems,
     refresh
   })
 
@@ -159,59 +158,57 @@ export const RuntimeNetworksSection = ({
             </Button>
           }
         >
-          <TooltipProvider delayDuration={150}>
-            <DataGrid
-              columns={columns}
-              data={networksPage.items}
-              totalItems={networksPage.total}
-              pageIndex={networksPage.page - 1}
-              pageSize={networksPage.pageSize}
-              getRowId={network => network.id}
-              sorting={sorting}
-              onSortingChange={onSortingChange}
-              selection={{
-                selectedIds,
-                onSelectedIdsChange: setSelectedIds
-              }}
-              emptyState={
-                <DataGridEmptyState
-                  title='No networks'
-                  description='No networks are available in the current Docker inventory.'
-                />
-              }
-              rowContextMenu={row => {
-                const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
-                return (
-                  <>
-                    {hasBulkSelection ? (
-                      <ContextMenuItem
-                        className='text-danger focus:text-danger'
-                        disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
-                        onSelect={() => setPendingRemove(selectedNetworks)}
-                      >
-                        <IconTrash className='size-4' />
-                        Remove selected ({selectedNetworks.length})
-                      </ContextMenuItem>
-                    ) : null}
-                    <ContextMenuItem asChild>
-                      <Link href={`/runtime/networks/${row.original.id}`}>
-                        <IconEye className='size-4' />
-                        Details
-                      </Link>
-                    </ContextMenuItem>
+          <DataGrid
+            columns={columns}
+            data={networksPage.items}
+            totalItems={networksPage.total}
+            pageIndex={networksPage.page - 1}
+            pageSize={networksPage.pageSize}
+            getRowId={network => network.id}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
+            selection={{
+              selectedIds,
+              onSelectedIdsChange: setSelectedIds
+            }}
+            emptyState={
+              <DataGridEmptyState
+                title='No networks'
+                description='No networks are available in the current Docker inventory.'
+              />
+            }
+            rowContextMenu={row => {
+              const hasBulkSelection = selectedIds.has(row.original.id) && selectedNetworks.length > 1
+              return (
+                <>
+                  {hasBulkSelection ? (
                     <ContextMenuItem
                       className='text-danger focus:text-danger'
-                      disabled={networkHasAttachedContainers(row.original)}
-                      onSelect={() => setPendingRemove([row.original])}
+                      disabled={busyId === 'bulk' || !canRemoveSelectedNetworks(selectedNetworks)}
+                      onSelect={() => setPendingRemove(selectedNetworks)}
                     >
                       <IconTrash className='size-4' />
-                      Remove
+                      Remove selected ({selectedNetworks.length})
                     </ContextMenuItem>
-                  </>
-                )
-              }}
-            />
-          </TooltipProvider>
+                  ) : null}
+                  <ContextMenuItem asChild>
+                    <Link href={`/runtime/networks/${row.original.id}`}>
+                      <IconEye className='size-4' />
+                      Details
+                    </Link>
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className='text-danger focus:text-danger'
+                    disabled={networkHasAttachedContainers(row.original)}
+                    onSelect={() => setPendingRemove([row.original])}
+                  >
+                    <IconTrash className='size-4' />
+                    Remove
+                  </ContextMenuItem>
+                </>
+              )
+            }}
+          />
 
           <DataGridPagination
             totalItems={networksPage.total}

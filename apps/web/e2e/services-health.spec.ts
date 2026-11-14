@@ -112,6 +112,87 @@ test('Docker failures stay compact and offer scoped recovery', async ({ page }) 
   await expect(metricsError).toBeVisible()
 })
 
+test('Docker diagnostics retain timestamped data when a refresh fails', async ({ page }) => {
+  let samples = 0
+  let unavailable = false
+  const snapshotAt = '2026-11-14T12:00:05.000Z'
+  const limits = {
+    maxConcurrentReads: 8,
+    maxConcurrentLongOperations: 4,
+    slowRequestWarningMs: 5000,
+    longOperationTimeoutMs: 1_800_000,
+    remoteRequestTimeoutMs: 30_000
+  }
+  await page.route('**/api/bff/platform/docker-operation-limits', route =>
+    route.fulfill({ json: { ok: true, requestId: 'preview', data: limits } })
+  )
+  await page.route('**/api/bff/platform/docker-metrics', route => {
+    if (unavailable)
+      return route.fulfill({
+        status: 503,
+        json: {
+          ok: false,
+          requestId: 'preview',
+          error: { requestId: 'preview', code: 'upstream_unavailable', message: 'Service unavailable.' }
+        }
+      })
+    samples += 1
+    return route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: {
+          collectedAt: samples === 1 ? '2026-11-14T12:00:00.000Z' : snapshotAt,
+          transport: 'local-socket',
+          socketPath: '/run/rebroid/docker.sock',
+          limits,
+          totals: { success: 52, errors: samples, timeouts: 4, retries: 2, slow: 1 },
+          inFlight: { read: 1, mutation: 0, long: 0 },
+          queued: { read: 2, mutation: 0, long: 0 },
+          operations: [
+            {
+              class: 'read',
+              operation: 'inspect',
+              success: 10,
+              errors: 1,
+              timeouts: 4,
+              retries: 2,
+              slow: 1,
+              averageDurationMs: 8,
+              maxDurationMs: 30
+            }
+          ],
+          events: [
+            {
+              timestamp: snapshotAt,
+              class: 'read',
+              operation: 'inspect',
+              outcome: 'timeout',
+              durationMs: 30_000,
+              error: null
+            }
+          ]
+        }
+      }
+    })
+  })
+  await page.goto('/skeleton-contract-test?editor=service-docker')
+  const chart = page.getByRole('region', { name: 'Operation events between samples' })
+  await expect(chart.getByText('Collecting samples…')).toBeVisible()
+  const refresh = page.getByRole('button', { name: 'Refresh', exact: true })
+  await refresh.click()
+  await expect(chart.getByText('Errors', { exact: true })).toBeVisible()
+  await expect(chart.getByText('Timeouts', { exact: true })).toBeVisible()
+  const aggregates = page.getByRole('region', { name: 'Per-operation aggregates' })
+  await expect(aggregates.getByRole('columnheader', { name: 'Timeouts' })).toBeVisible()
+  await expect(aggregates.getByRole('cell', { name: '4', exact: true })).toBeVisible()
+  unavailable = true
+  await refresh.click()
+  await expect(page.getByText('Docker metrics could not be refreshed')).toBeVisible()
+  await expect(page.locator(`time[datetime="${snapshotAt}"]`)).toBeVisible()
+  await expect(aggregates.getByRole('cell', { name: '4', exact: true })).toBeVisible()
+})
+
 test('services show complete observed health and matching loading geometry', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })
@@ -178,6 +259,7 @@ test('Docker service edits real limits, retains failed drafts, and leaves connec
         data: {
           collectedAt: new Date().toISOString(),
           transport: 'local-socket',
+          socketPath: '/run/rebroid/docker.sock',
           limits: { ...limits, remoteRequestTimeoutMs: 30_000 },
           totals: { success: 52, errors: 1, timeouts: 0, retries: 2, slow: 0 },
           inFlight: { read: 0, mutation: 0, long: 0 },
@@ -190,6 +272,9 @@ test('Docker service edits real limits, retains failed drafts, and leaves connec
   )
   await page.goto('/skeleton-contract-test?editor=service-docker')
   await expect(page.getByRole('heading', { level: 1, name: 'Docker', exact: true })).toBeVisible()
+  const connection = page.getByRole('region', { name: 'Connection', exact: true })
+  await expect(connection.getByText('Socket path', { exact: true })).toBeVisible()
+  await expect(connection.getByText('/run/rebroid/docker.sock', { exact: true })).toBeVisible()
   await expect(page.getByRole('spinbutton')).toHaveCount(0)
   const editLimits = page.getByRole('button', { name: 'Edit limits', exact: true })
   await editLimits.click()

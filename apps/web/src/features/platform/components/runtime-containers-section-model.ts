@@ -1,4 +1,5 @@
-import { buildPlatformGridHref, summarizePlatformBulkActionResults } from './runtime-grid-query-utils'
+import { summarizeBulkResults } from '@/shared/actions/bulk-action-results'
+import { buildPlatformGridHref } from './runtime-grid-query-utils'
 import type { ActionResult } from '@/shared/actions/action-result'
 import type { PlatformContainer, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
@@ -36,7 +37,7 @@ export const summarizeContainerBulkActionResults = (
   results: Array<PromiseSettledResult<unknown> | ActionResult<unknown>>,
   type: ContainerBulkActionType
 ) =>
-  summarizePlatformBulkActionResults(
+  summarizeBulkResults(
     results,
     type === 'stop' ? 'Selected containers stopped' : 'Selected containers removed',
     type === 'stop' ? 'Some containers could not be stopped' : 'Some containers could not be removed'

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
+import { PlatformPageRefreshButton, type RefreshResult } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { RuntimeImagePullForm } from './runtime-image-pull-form'
@@ -29,6 +29,7 @@ export const RuntimeImagesPageClient = ({
 
   return (
     <RuntimeImagesPageFrame
+      refreshResult={{ version: imagesPage, succeeded: true }}
       isRefreshing={isRefreshing}
       onRefresh={refresh}
     >
@@ -45,11 +46,13 @@ const RuntimeImagesPageFrame = ({
   children,
   isRefreshing = false,
   loading = false,
+  refreshResult,
   onRefresh
 }: {
   children: ReactNode
   isRefreshing?: boolean
   loading?: boolean
+  refreshResult?: RefreshResult
   onRefresh: () => void
 }) => {
   const { isFeatureEnabled } = useFeatureFlags()
@@ -64,6 +67,7 @@ const RuntimeImagesPageFrame = ({
         description='Local images available to application containers, custom runtimes, and platform sidecars.'
         breadcrumbRefresh={
           <PlatformPageRefreshButton
+            refreshResult={refreshResult}
             disabled={loading}
             isRefreshing={isRefreshing}
             onRefresh={onRefresh}

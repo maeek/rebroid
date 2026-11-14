@@ -53,7 +53,7 @@ for (const width of [390, 1440]) {
     await page.goto('/skeleton-contract-test?editor=app-resource')
     await expect(page.getByRole('heading', { name: 'Inventory worker', exact: true })).toBeVisible()
     await expect(page.getByText('Android did not finish starting.').first()).toBeVisible()
-    await expect(page.getByText('Configuration saved; runtime update pending')).toBeVisible()
+    await expect(page.getByText('Runtime update pending')).toBeVisible()
     await expect(
       page.getByRole('navigation', { name: 'App sections' }).getByRole('link', { name: 'Diagnostics', exact: true })
     ).toHaveAttribute('href', '/app/preview-app?view=diagnostics')
@@ -106,20 +106,59 @@ test('failed execution has a full-page trace with a summary panel, steps, and ev
     route.fulfill({ json: { ok: true, requestId: 'preview', data: { events: [], streamUrl: '' } } })
   )
   await page.goto('/skeleton-contract-test?editor=failed-run')
-  await expect(page.getByRole('heading', { level: 1, name: 'Run preview-' })).toBeVisible()
-  const summary = page.getByRole('region', { name: 'Run summary' })
-  await expect(summary).toContainText('preview-authorization-request')
-  await expect(summary.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
+  await expect(page.getByRole('heading', { level: 1, name: /Daily inventory check/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Inventory worker' })).toHaveAttribute(
     'href',
     '/app/preview-app?view=workflows&run=preview-run'
   )
-  await page.getByRole('tab', { name: 'Steps' }).click()
-  await expect(page.getByText('Android boot timed out.')).toBeVisible()
+  const summary = page.getByRole('region', { name: 'Run summary' })
+  await expect(summary).toContainText('preview-authorization-request')
+  await expect(page.getByText('Failed step 1 · Launch app')).toBeVisible()
+  await page.getByRole('button', { name: 'View failed step' }).click()
+  const failedStep = page.getByRole('row').filter({ hasText: 'Launch app' })
+  await expect(failedStep).toBeFocused()
+  await expect(failedStep.getByText('Android boot timed out.')).toBeVisible()
+  await expect(failedStep.getByText('android.launchPackage', { exact: true })).toBeHidden()
+  await failedStep.getByText('Step identifiers').click()
+  await expect(failedStep.getByText('android.launchPackage', { exact: true })).toBeVisible()
+  await expect(failedStep.getByRole('button', { name: 'Copy Step ID' })).toBeAttached()
   await page.getByRole('tab', { name: 'Events' }).click()
   await expect(page.getByText('No recorded events')).toBeVisible()
   await page.getByRole('tab', { name: 'Summary' }).click()
   await page.screenshot({ path: `/tmp/rebroid-failed-run-${test.info().project.name}.png`, animations: 'disabled' })
   await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('the app workflow summary leads with the failed action and keeps the ID in the run summary', async ({ page }) => {
+  await page.route('**/api/bff/applications/preview-app/workflow-runs/preview-run', route =>
+    route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: {
+          id: 'preview-run',
+          automationId: 'preview-workflow',
+          automationName: 'Daily inventory check',
+          status: 'failed',
+          trigger: 'manual',
+          createdAt: '2026-11-07T10:00:00Z',
+          startedAt: '2026-11-07T10:00:00Z',
+          completedAt: '2026-11-07T10:01:00Z',
+          error: 'Target app did not finish starting.',
+          stepResults: [
+            { stepId: 'launch', uses: 'android.launchPackage', status: 'failed', error: 'Android boot timed out.' }
+          ]
+        }
+      }
+    })
+  )
+  await page.goto('/skeleton-contract-test?editor=app-resource&view=workflows&run=preview-run')
+  await expect(page.getByRole('heading', { name: 'Daily inventory check' })).toBeVisible()
+  await expect(page.getByText('Failed step 1 · Launch app')).toBeVisible()
+  await expect(page.getByText('Android boot timed out.')).toBeVisible()
+  const summary = page.getByRole('region', { name: 'Run summary' })
+  await expect(summary.getByText('launch', { exact: true })).toBeVisible()
+  await expect(summary.getByRole('button', { name: 'Copy Failed step ID' })).toBeAttached()
 })
 
 for (const view of ['overview', 'activity', 'diagnostics']) {
@@ -230,6 +269,8 @@ test('resource navigation stays flat and streaming controls open beside the view
   )
   await expect(navigation.getByRole('link', { name: 'Diagnostics' })).toBeVisible()
   await expect(page.getByRole('tablist', { name: 'Runtime tools' })).toHaveCount(0)
+  const switcher = page.getByRole('group', { name: 'App workspace view' })
+  if (await switcher.isVisible()) await switcher.getByRole('button', { name: 'Device' }).click()
   const settings = page
     .getByRole('complementary', { name: 'Android device' })
     .getByRole('button', { name: 'Streaming settings' })
@@ -247,6 +288,7 @@ test('operations stays bounded and readable with many failing apps', async ({ pa
     await page.setViewportSize({ width, height: 1000 })
     const failures = page.getByRole('region', { name: 'Apps needing attention', exact: true })
     await expect(failures.getByRole('listitem')).toHaveCount(0)
+    await expect(failures.getByRole('link')).toHaveCount(1)
     await expect(failures.getByText('128', { exact: true })).toBeVisible()
     await expect(failures.getByRole('link', { name: 'View affected apps' })).toHaveAttribute(
       'href',
@@ -260,7 +302,7 @@ test('operations stays bounded and readable with many failing apps', async ({ pa
       'href',
       '/apps?status=working'
     )
-    await expect(activeRuns.getByRole('listitem')).toHaveCount(0)
+    await expect(activeRuns.getByRole('listitem')).toHaveCount(1)
     await expect(activeRuns.getByText('1', { exact: true })).toBeVisible()
     await expect(activeRuns.getByRole('link', { name: 'View active runs' })).toHaveAttribute(
       'href',

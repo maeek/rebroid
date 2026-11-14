@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { z } from 'zod'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -14,6 +15,7 @@ import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestr
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { ServiceDetailLayout } from '@/shared/ui/platform/service-detail-layout'
 import { ResourceLink } from '@/shared/ui/resource-link'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { OcrServiceFields } from './ocr-service-fields'
 import { ServiceConnectionSection } from './service-connection-section'
 import { serviceMeta, type ServiceId } from './service-definitions'
@@ -101,64 +103,74 @@ export const ServiceSettingsPage = <Id extends ServiceId>({
   }
 
   return (
-    <ServiceDetailLayout
-      title={serviceId === 'firewall' ? 'Firewall' : meta.title}
-      navigation={{ section: { label: 'Administration' } }}
-      loading={loading}
-      health={unavailable ? undefined : initialHealth}
-      healthNotice={{
-        title: unavailable ? `${serviceName} settings unavailable` : undefined,
-        description: unavailable ? 'Refresh to reconnect and load the service configuration.' : undefined,
-        requestId,
-        actions:
-          !unavailable && !enabled ? (
-            <ResourceLink href={`/platform/features#${meta.featureKey}`}>Manage feature</ResourceLink>
-          ) : undefined
-      }}
-      refresh={
-        <PlatformPageRefreshButton
-          disabled={loading || saving}
-          isRefreshing={refreshing}
-          onRefresh={refresh}
-        />
-      }
-      actions={
-        loading || (enabled && (draft || initialSettings)) ? (
-          <ServicesPageActions
-            disabled={disabled}
-            saveDisabled={!parsed.success}
-            hasChanges={hasChanges}
-            saving={saving}
-            saved={saveFeedback.saved}
-            onSave={() => void save()}
-            onDiscard={() => setForm(current => ({ ...current, draft: current.saved }))}
-          />
-        ) : undefined
-      }
+    <FieldChangesProvider
+      value={draft}
+      baseline={loading ? undefined : saved}
     >
-      {loading || draft ? (
-        <>
-          <ServiceConnectionSection
-            serviceId={serviceId}
-            settings={settings}
-            container={settings.endpoint === initialSettings?.endpoint ? container : undefined}
-            disabled={disabled}
-            loading={loading}
-            errors={errors}
-            onChange={changeSettings}
+      <ServiceDetailLayout
+        title={serviceId === 'firewall' ? 'Firewall' : meta.title}
+        navigation={{ section: { label: 'Administration' } }}
+        loading={loading}
+        health={unavailable ? undefined : initialHealth}
+        healthNotice={{
+          title: unavailable ? `${serviceName} settings unavailable` : undefined,
+          description: unavailable ? 'Refresh to reconnect and load the service configuration.' : undefined,
+          requestId,
+          actions:
+            !unavailable && !enabled ? (
+              <ResourceLink href={`/platform/features#${meta.featureKey}`}>Manage feature</ResourceLink>
+            ) : undefined
+        }}
+        refresh={
+          <PlatformPageRefreshButton
+            refreshResult={{ version: initialSettings, succeeded: !unavailable }}
+            disabled={loading || saving}
+            isRefreshing={refreshing}
+            onRefresh={refresh}
           />
-          {'maxImageDimension' in settings ? (
-            <OcrServiceFields
+        }
+        actions={
+          loading || (enabled && (draft || initialSettings)) ? (
+            <ServicesPageActions
+              disabled={disabled}
+              saveDisabled={!parsed.success}
+              hasChanges={hasChanges}
+              saving={saving}
+              saved={saveFeedback.saved}
+              onSave={() => void save()}
+              onDiscard={() => setForm(current => ({ ...current, draft: current.saved }))}
+            />
+          ) : undefined
+        }
+      >
+        {loading || draft ? (
+          <>
+            <ServiceConnectionSection
+              serviceId={serviceId}
               settings={settings}
+              container={settings.endpoint === initialSettings?.endpoint ? container : undefined}
               disabled={disabled}
               loading={loading}
               errors={errors}
               onChange={changeSettings}
             />
-          ) : null}
-        </>
-      ) : null}
-      {children}
-    </ServiceDetailLayout>
+            {'maxImageDimension' in settings ? (
+              <OcrServiceFields
+                settings={settings}
+                disabled={disabled}
+                loading={loading}
+                errors={errors}
+                onChange={changeSettings}
+              />
+            ) : null}
+          </>
+        ) : null}
+        {children}
+      </ServiceDetailLayout>
+      <UnsavedChangesGuard
+        dirty={!loading && hasChanges}
+        onDiscard={() => setForm(current => ({ ...current, draft: current.saved }))}
+      />
+    </FieldChangesProvider>
   )
 }

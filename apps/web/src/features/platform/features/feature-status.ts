@@ -6,7 +6,7 @@ export type EffectiveFeatureStatus = {
   label:
     'Unavailable' | 'Sync failed' | 'Restart required' | 'Waiting for display service' | 'Off' | 'Active' | 'Applying'
   tone: StatusBadgeTone
-  description: string
+  description?: string
 }
 
 export const getEffectiveFeatureStatus = (feature: FeatureFlagState): EffectiveFeatureStatus => {
@@ -23,7 +23,10 @@ export const getEffectiveFeatureStatus = (feature: FeatureFlagState): EffectiveF
       kind: 'sync-failed',
       label: 'Sync failed',
       tone: 'danger',
-      description: 'The configured state could not reach its owner.'
+      description:
+        feature.owner === 'display'
+          ? 'The display service did not acknowledge the saved setting.'
+          : 'The owning service could not apply the saved setting.'
     }
   }
   if (feature.syncStatus === 'restart_required') {
@@ -42,16 +45,14 @@ export const getEffectiveFeatureStatus = (feature: FeatureFlagState): EffectiveF
       description: 'The configuration is saved and is waiting for the display service to acknowledge it.'
     }
   }
-  if (!feature.enabled) {
-    return { kind: 'off', label: 'Off', tone: 'neutral', description: 'The feature is configured off.' }
-  }
-  if (feature.effective) {
-    return { kind: 'active', label: 'Active', tone: 'success', description: 'The configured state is active.' }
+  if (feature.syncStatus === 'applied' && feature.enabled === feature.effective) {
+    if (feature.effective) return { kind: 'active', label: 'Active', tone: 'neutral' }
+    return { kind: 'off', label: 'Off', tone: 'neutral' }
   }
   return {
     kind: 'applying',
     label: 'Applying',
     tone: 'info',
-    description: 'The configured state is still being applied.'
+    description: 'The owning service is still applying the saved setting.'
   }
 }

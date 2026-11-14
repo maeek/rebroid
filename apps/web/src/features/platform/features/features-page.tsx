@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
 import { updateFeatureFlagsAction } from '@/server/orchestrator/settings/actions'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { featureLabel } from './feature-presentation'
 import { FeaturesGrid } from './features-grid'
 import type { FeatureFlagKey, FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 
@@ -28,7 +28,7 @@ const FeaturesPageLayout = ({ children }: { children: ReactNode }) => (
 export const FeaturesPage = ({ initialManifest }: { initialManifest: FeatureFlagManifest }) => {
   const router = useRouter()
   const [manifest, setManifest] = useState(initialManifest)
-  const [pendingKey, setPendingKey] = useState<FeatureFlagKey | null>(null)
+  const { pendingId: pendingKey, savedId, save } = useImmediateSave()
   const changing = useRef(false)
   useEffect(() => {
     setManifest(current => (initialManifest.revision >= current.revision ? initialManifest : current))
@@ -37,12 +37,12 @@ export const FeaturesPage = ({ initialManifest }: { initialManifest: FeatureFlag
     async (key: FeatureFlagKey, enabled: boolean) => {
       if (changing.current) return
       changing.current = true
-      setPendingKey(key)
       try {
-        const updated = await updateFeatureFlagsAction({ revision: manifest.revision, changes: [{ key, enabled }] })
-        setManifest(updated)
-        router.refresh()
-        toast({ title: `${featureLabel(key)} ${enabled ? 'enabled' : 'disabled'}`, variant: 'success' })
+        await save(key, async () => {
+          const updated = await updateFeatureFlagsAction({ revision: manifest.revision, changes: [{ key, enabled }] })
+          setManifest(updated)
+          router.refresh()
+        })
       } catch (error) {
         router.refresh()
         toast({
@@ -52,16 +52,16 @@ export const FeaturesPage = ({ initialManifest }: { initialManifest: FeatureFlag
         })
       } finally {
         changing.current = false
-        setPendingKey(null)
       }
     },
-    [manifest.revision, router]
+    [manifest.revision, router, save]
   )
   return (
     <FeaturesPageLayout>
       <FeaturesGrid
         features={manifest.features}
         pendingKey={pendingKey}
+        savedKey={savedId}
         onUpdate={updateFeature}
       />
     </FeaturesPageLayout>
