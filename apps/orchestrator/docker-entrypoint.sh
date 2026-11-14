@@ -9,8 +9,12 @@ ensure_secret_file() {
   file_path="$1"
   mkdir -p "$(dirname "$file_path")"
   if [ ! -s "$file_path" ]; then
-    create_secret > "$file_path"
-    chmod 600 "$file_path" 2>/dev/null || true
+    # The other containers can read the file as soon as it appears.
+    temporary_file="$(mktemp "${file_path}.XXXXXX")"
+    trap 'rm -f "$temporary_file"' 0
+    create_secret > "$temporary_file"
+    mv -f "$temporary_file" "$file_path"
+    trap - 0
   fi
 }
 

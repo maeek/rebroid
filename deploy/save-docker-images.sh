@@ -65,12 +65,11 @@ build_image \
   "localhost/rebroid/web:local" \
   "${repo_dir}" \
   "${repo_dir}/apps/web/Dockerfile" \
-  --build-arg "NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}" \
-  --build-arg "DISPLAY_SIDECAR_INTERNAL_BASE_URL=${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar:8000}"
+  --build-arg "NEXT_PROXY_CLIENT_MAX_BODY_SIZE=${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}"
 
 build_image \
   "localhost/rebroid/edge:local" \
-  "${repo_dir}" \
+  "${repo_dir}/deploy/edge" \
   "${repo_dir}/deploy/edge/Dockerfile"
 
 build_image \
@@ -80,7 +79,7 @@ build_image \
 
 build_image \
   "localhost/rebroid/ocr-sidecar:local" \
-  "${repo_dir}" \
+  "${repo_dir}/apps/ocr-sidecar" \
   "${repo_dir}/apps/ocr-sidecar/Dockerfile"
 
 build_image \
@@ -89,7 +88,7 @@ build_image \
   "${repo_dir}/apps/firewall-agent/Dockerfile"
 
 build_image \
-  "rebroid/gapps-patcher:latest" \
+  "localhost/rebroid/gapps-patcher:latest" \
   "${repo_dir}/apps/gapps-patcher" \
   "${repo_dir}/apps/gapps-patcher/Dockerfile"
 
@@ -100,7 +99,7 @@ build_image \
   localhost/rebroid/display-sidecar:local \
   localhost/rebroid/ocr-sidecar:local \
   localhost/rebroid/firewall-agent:local \
-  rebroid/gapps-patcher:latest \
+  localhost/rebroid/gapps-patcher:latest \
   --format '{{.RepoTags}} {{.Os}}/{{.Architecture}}'
 
 mkdir -p "${output_dir}"
@@ -123,7 +122,7 @@ localhost/rebroid/orchestrator:local rebroid-orchestrator-local.tar
 localhost/rebroid/display-sidecar:local rebroid-display-sidecar-local.tar
 localhost/rebroid/ocr-sidecar:local rebroid-ocr-sidecar-local.tar
 localhost/rebroid/firewall-agent:local rebroid-firewall-agent-local.tar
-rebroid/gapps-patcher:latest rebroid-gapps-patcher-latest.tar
+localhost/rebroid/gapps-patcher:latest rebroid-gapps-patcher-latest.tar
 EOF
 
 echo "Saved Rebroid images to ${output_dir}"

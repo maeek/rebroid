@@ -48,7 +48,7 @@ Use a Python environment for the sidecar, then run from `apps/ocr-sidecar`.
 Lightweight tests do not load or download Paddle:
 
 ```bash
-python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements-test.txt
 python3 -m pytest -q
 ```
 
@@ -62,12 +62,13 @@ python3 -m uvicorn main:app --host 127.0.0.1 --port 8100
 After readiness succeeds, submit a known image to `/ocr/screenshot` and verify language,
 selected preprocessing pass, and detections. Unit tests do not replace this model check.
 
-Build the production image from the repository root:
+Build the production image from the repository root using the sidecar directory as the context:
 
 ```bash
-docker build -f apps/ocr-sidecar/Dockerfile -t rebroid/ocr-sidecar:local .
+docker build -t localhost/rebroid/ocr-sidecar:local apps/ocr-sidecar
 ```
 
-Runtime dependencies are pinned in `requirements-runtime.txt`. Model provenance is covered in
-[third-party notices](../../THIRD_PARTY_NOTICES.md); service ownership is in the
+Runtime dependencies are pinned in `requirements-runtime.txt` and its included `requirements.txt`.
+Review the selected model's provenance before distributing images. See the
+[third-party notices](../../THIRD_PARTY_NOTICES.md) and the
 [architecture overview](../../docs/architecture.md).

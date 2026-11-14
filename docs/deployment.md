@@ -5,7 +5,7 @@ see [Contributing](../CONTRIBUTING.md#local-development).
 
 ## Host requirements
 
-- A rootful Docker Engine, Compose, and access to the engine socket.
+- A rootful Docker Engine, Docker Compose, and access to the engine socket.
 - Android binder support for ReDroid.
 - Network access for initial builds, runtime images, and model downloads.
 - Host firewall support: Docker `DOCKER-USER`, nftables, or rootful Podman with Netavark.
@@ -35,10 +35,20 @@ docker compose -f deploy/compose.yaml exec web cat /app/data/initial-admin-passw
 
 The generated password is stored in a protected file and never printed to logs.
 
-The test stack in `deploy/compose.test.yaml` uses separate state volumes and publishes HTTPS on
-port `3001` and WebRTC on UDP port `40101` by default. Override the test media port with
-`TEST_DISPLAY_WEBRTC_UDP_PORT`. Run `pnpm test:compose` to check internal routing, shared secret
-mounts, and UDP publication in both resolved configurations.
+The test overlay uses Docker Compose's [`!override` tag](https://docs.docker.com/reference/compose-file/merge/#replace-value),
+which requires Compose 2.24.4 or later. Apply the overlay on top of the base file.
+
+```bash
+docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --build
+```
+
+The test stack keeps its existing state volumes and defaults to [https://localhost:3001](https://localhost:3001)
+and WebRTC UDP port `40101`. Override them with `REBROID_PORT` and `TEST_DISPLAY_WEBRTC_UDP_PORT`. Run the test and
+production stacks on separate hosts if they are active at the same time. Their firewall agents
+manage the same host rules, and their orchestrators use the same managed resource prefix.
+Include both files in subsequent test-stack commands, including `exec web` to read the generated
+password. If you supplied `INITIAL_ADMIN_PASSWORD` for a fresh test database, sign in with that
+password. Run `pnpm test:compose` to verify both resolved configurations.
 
 ## Configuration
 
@@ -51,8 +61,14 @@ These Compose variables control deployment wiring:
 | `REBROID_TLS_HOSTS`             | `localhost,127.0.0.1`  | Certificate hostnames and IPs.                       |
 | `REBROID_PUBLIC_HOSTS`          | TLS host list          | Browser hosts accepted by nginx.                     |
 | `CONTAINER_ENGINE_SOCKET`       | `/var/run/docker.sock` | Rootful engine socket mounted into the orchestrator. |
-| `DISPLAY_WEBRTC_UDP_PORT` | `40000`          | Published UDP media port.                           |
+| `DISPLAY_WEBRTC_UDP_PORT`       | `40000`                | Published UDP media port.                           |
 | `DISPLAY_WEBRTC_ICE_HOST`       | Automatic              | Browser-reachable address advertised for WebRTC.     |
+| `GAPPS_PATCHER_IMAGE`           | `localhost/rebroid/gapps-patcher:latest` | Image for the managed Google Play patch worker. |
+
+The orchestrator creates the internal credential in the `shared-secrets` volume. Web, the display
+sidecar, and the firewall agent read it from read-only mounts. Test deployments use the same
+mechanism with their test volume. If a previous test deployment used `ORCHESTRATOR_SHARED_SECRET`
+from the environment, update any direct API clients to use the credential in that test volume.
 
 The orchestrator requires an external engine socket. The firewall agent uses host networking
 and `NET_ADMIN`, and communicates over a private Unix socket. See the
@@ -61,6 +77,9 @@ and `NET_ADMIN`, and communicates over a private Unix socket. See the
 ## Local HTTPS
 
 nginx terminates HTTPS using the certificate under `/app/data/certificates` in `web-data`.
+The edge accepts the hostnames web records alongside the certificate. Set
+`REBROID_PUBLIC_HOSTS` to override that browser host list. The edge also accepts `rebroid-web`
+for internal HTTPS checks.
 Your browser must trust the self-signed certificate, or the deployment must supply a certificate
 trusted by your clients.
 
@@ -71,8 +90,11 @@ REBROID_TLS_HOSTS=192.168.1.11,localhost,127.0.0.1 \
   docker compose -f deploy/compose.yaml up -d --build
 ```
 
-Then open `https://192.168.1.11:3443`. The default certificate covers only `localhost` and `127.0.0.1`.
-Export the generated public certificate after startup:
+Then open `https://192.168.1.11:3443`. The default certificate covers `localhost` and `127.0.0.1`.
+Keep the same host list in the environment or in a Compose `.env` file for future starts.
+Web regenerates the certificate when that list changes. Apply the new configuration with
+`docker compose -f deploy/compose.yaml up -d`. Compose restarts the edge when it updates web.
+Export the public certificate after startup.
 
 ```bash
 docker compose -f deploy/compose.yaml cp web:/app/data/certificates/rebroid-web.crt ./rebroid-web.crt
@@ -103,9 +125,10 @@ Viewer assets, WebSocket media, and WebRTC signaling go directly from nginx to t
 The container terminal uses the same HTTPS origin and a separate
 `/terminal/docker/containers/` WebSocket route to the orchestrator. Forward upgrades
 on that route when running another proxy in front of nginx.
-The sidecar needs private access to the web backend for viewer authorization. Compose sets
-`WEB_INTERNAL_URL` to `http://web:3101`. A standalone sidecar needs the corresponding web URL
-and the shared service secret. Use the same HTTPS origin for the web console and the browser viewer.
+The sidecar needs private access to the web backend for viewer authorization. On the Compose
+network its default `WEB_INTERNAL_URL` is `http://web:3101`. A standalone sidecar needs the
+corresponding web URL and the shared service secret. Use the same HTTPS origin for the web console
+and the browser viewer.
 Deploy web, orchestrator, display sidecar, and edge together when upgrading from token-based viewer
 links. Reopen existing viewers from the app page after the upgrade.
 WebRTC media uses the published UDP port and needs a browser-reachable address. For extra proxy
@@ -122,8 +145,19 @@ updated Compose file, and forward only the configured UDP port to the host.
 Native Linux rootful Podman with Netavark can use its Docker-compatible socket:
 
 ```bash
+DOCKER_HOST=unix:///run/podman/podman.sock \
 CONTAINER_ENGINE_SOCKET=/run/podman/podman.sock \
   docker compose -f deploy/compose.yaml up -d --build
+```
+
+If SELinux blocks the orchestrator from reading the Podman socket, add this Compose override
+for the orchestrator. It disables SELinux labeling for that container.
+
+```yaml
+services:
+  orchestrator:
+    security_opt:
+      - label=disable
 ```
 
 A rootless socket cannot provide ReDroid's privileged runtime or host firewall access.
@@ -164,7 +198,7 @@ Verify Redroid rendering separately for the exact image and driver combination.
    `ls -l /dev/dri/renderD*`. If there is more than one, use
    `ls -l /dev/dri/by-path` and `lspci -k` to match the AMD GPU to its render node.
    If Docker runs in a VM, use the device visible inside that VM.
-2. As a Rebroid administrator, open **Platform settings → Runtime defaults**.
+2. As a Rebroid administrator, open **Administration → General**.
    Under **Hardware Acceleration**, choose **Host GPU** and enter the node you
    identified, such as `/dev/dri/renderD128`. Select **Save** at the top of the page and confirm the
    rendering change. The path must name a render node directly under `/dev/dri`.
@@ -268,10 +302,18 @@ Compose tests. GPU passthrough alone is insufficient.
 Pre-release state is not migrated automatically. Read the
 [state reset procedures](operations.md#stored-state) before updating across a schema change.
 
-To build and move the complete image set, including the Google Play patch worker, use
+To build and move the Rebroid service images and Google Play patch worker, use
 [`save-docker-images.sh`](../deploy/save-docker-images.sh) and
 [`load-docker-images.sh`](../deploy/load-docker-images.sh). Both accept an optional archive
-directory and support `CONTAINER_ENGINE_BIN` to select the engine.
+directory and support `CONTAINER_ENGINE_BIN` to select the engine. Load the archives on the
+deployment host, then start the prebuilt stack from the repository root.
+
+The archives carry the Rebroid images. The deployment host still needs access to the Android
+runtime images and any OCR models or Google Play packages it will use.
+
+```bash
+docker compose -f deploy/compose.yaml up -d --no-build --pull never
+```
 
 The save script targets `linux/amd64` by default. On Apple Silicon, check
 `podman machine inspect --format '{{.Rosetta}}'` if the web image build aborts

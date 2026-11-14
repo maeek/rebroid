@@ -44,6 +44,12 @@ while read -r archive_name image_name; do
   echo "Loading ${archive_path}"
   "${container_engine}" image load --input "${archive_path}"
 
+  if [[ "${image_name}" == localhost/rebroid/gapps-patcher:latest ]] \
+    && ! "${container_engine}" image inspect "${image_name}" >/dev/null 2>&1 \
+    && "${container_engine}" image inspect rebroid/gapps-patcher:latest >/dev/null 2>&1; then
+    "${container_engine}" image tag rebroid/gapps-patcher:latest "${image_name}"
+  fi
+
   if ! "${container_engine}" image inspect "${image_name}" >/dev/null 2>&1; then
     echo "Loaded archive does not contain expected image: ${image_name}" >&2
     exit 1
@@ -55,7 +61,7 @@ rebroid-edge-local.tar localhost/rebroid/edge:local
 rebroid-display-sidecar-local.tar localhost/rebroid/display-sidecar:local
 rebroid-ocr-sidecar-local.tar localhost/rebroid/ocr-sidecar:local
 rebroid-firewall-agent-local.tar localhost/rebroid/firewall-agent:local
-rebroid-gapps-patcher-latest.tar rebroid/gapps-patcher:latest
+rebroid-gapps-patcher-latest.tar localhost/rebroid/gapps-patcher:latest
 EOF
 
 echo "Loaded and verified Rebroid images from ${input_dir}"

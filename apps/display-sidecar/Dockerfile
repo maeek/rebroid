@@ -11,7 +11,7 @@ COPY packages/android-application-core/package.json packages/android-application
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter @rebroid/display-sidecar... --frozen-lockfile
 COPY packages/android-application-core /workspace/packages/android-application-core
 RUN pnpm --filter @rebroid/android-application-core build
-RUN pnpm --filter @rebroid/display-sidecar deploy --prod /out
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm --filter @rebroid/display-sidecar deploy --prod /out
 
 WORKDIR /workspace/apps/display-sidecar
 COPY apps/display-sidecar/tsconfig.json ./
@@ -22,10 +22,12 @@ RUN pnpm build
 FROM golang:1.24-bookworm AS webrtc-bridge
 
 WORKDIR /src
-COPY apps/display-sidecar/webrtc-bridge/go.mod ./
+COPY apps/display-sidecar/webrtc-bridge/go.mod apps/display-sidecar/webrtc-bridge/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY apps/display-sidecar/webrtc-bridge ./
-RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -o /out/rebroid-webrtc-bridge .
+RUN --mount=type=cache,target=/go/pkg/mod \
+  --mount=type=cache,target=/root/.cache/go-build \
+  CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/rebroid-webrtc-bridge .
 
 FROM node:24-bookworm-slim AS scrcpy-server
 
@@ -68,7 +70,8 @@ ENV NODE_ENV=production \
 WORKDIR /opt/rebroid-display-sidecar
 
 COPY --from=builder /workspace/apps/display-sidecar/dist ./dist
-COPY --from=builder /out ./
+COPY --from=builder /out/node_modules ./node_modules
+COPY --from=builder /out/package.json ./package.json
 # Only the Android server is used. The desktop client and its VA-API decoder
 # are not part of this relay; the viewer's browser decodes the video.
 COPY --from=scrcpy-server /tmp/scrcpy/scrcpy-server ./scrcpy-server

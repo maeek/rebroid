@@ -11,14 +11,9 @@ services:
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
       REDROID_COLLECT_BOOT_EVENTS: ${REDROID_COLLECT_BOOT_EVENTS:-false}
-      DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
       WEB_INTERNAL_URL: http://web:3101
-      FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
+      OCR_SIDECAR_BASE_URL: http://ocr-sidecar:8100
       GAPPS_PATCHER_IMAGE: ${GAPPS_PATCHER_IMAGE:-localhost/rebroid/gapps-patcher:latest}
-      OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar:8100
-    expose:
-      - "4100"
-      - "8000"
     volumes:
       # Redroid requires a rootful Docker-compatible engine socket.
       - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
@@ -55,33 +50,29 @@ services:
       - orchestrator
       - display-sidecar
     environment:
-      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
-    expose:
-      - "3101"
+      REBROID_TLS_HOSTS:
     volumes:
       - web-data:/app/data
-      - shared-secrets:/app/secrets
+      - shared-secrets:/app/secrets:ro
     networks:
       - platform
 
   edge:
     build:
-      context: ..
-      dockerfile: deploy/edge/Dockerfile
+      context: ./edge
     image: localhost/rebroid/edge:local
     container_name: rebroid-edge
-    user: "1000:1000"
     restart: unless-stopped
     depends_on:
       web:
         condition: service_healthy
+        restart: true
       orchestrator:
         condition: service_started
       display-sidecar:
         condition: service_started
     environment:
-      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
-      REBROID_PUBLIC_HOSTS: ${REBROID_PUBLIC_HOSTS:-}
+      REBROID_PUBLIC_HOSTS:
     ports:
       - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
@@ -98,17 +89,13 @@ services:
     container_name: rebroid-display-sidecar
     restart: unless-stopped
     environment:
-      WEB_INTERNAL_URL: http://web:3101
-      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
       DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
-      DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
-      SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
-    expose:
-      - "8000"
+      DISPLAY_WEBRTC_ICE_HOST:
+      SCRCPY_VIDEO_ENCODER:
     ports:
       - "${DISPLAY_WEBRTC_UDP_PORT:-40000}:${DISPLAY_WEBRTC_UDP_PORT:-40000}/udp"
     volumes:
-      - shared-secrets:/app/secrets
+      - shared-secrets:/app/secrets:ro
     networks:
       platform:
         aliases:
@@ -117,17 +104,12 @@ services:
   ocr-sidecar:
     platform: linux/amd64
     build:
-      context: ..
-      dockerfile: apps/ocr-sidecar/Dockerfile
+      context: ../apps/ocr-sidecar
     image: localhost/rebroid/ocr-sidecar:local
     container_name: rebroid-ocr-sidecar
     restart: unless-stopped
-    expose:
-      - "8100"
     networks:
-      platform:
-        aliases:
-          - rebroid-ocr-sidecar
+      - platform
 
 volumes:
   orchestrator-data:

@@ -116,6 +116,7 @@ export class SidecarConfigService {
     const explicitFilePath = environment.DISPLAY_SIDECAR_SHARED_SECRET_FILE;
     const filePath = [
       explicitFilePath,
+      "/app/secrets/rebroid-shared-secret",
       "/app/secrets/display-sidecar-secret",
       "/data/secrets/display-sidecar-secret",
     ].find((candidate) => candidate && existsSync(candidate));

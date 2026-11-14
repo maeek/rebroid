@@ -37,8 +37,10 @@ does not require GPU passthrough to this sidecar. See
 | `DISPLAY_SESSION_MAX_ACTIVE`                                           | Session capacity, default 64.                            |
 | `SCRCPY_VIDEO_ENCODER`                                                 | Explicit encoder chosen through host/image benchmarking. |
 
-Internal APIs fail closed without a secret. The unauthenticated development override must remain
-limited to isolated development. Public viewer routes require short-lived session tokens.
+Internal APIs require a shared secret. Compose mounts the orchestrator's generated secret read-only
+at `/app/secrets/rebroid-shared-secret`. Limit the unauthenticated override to isolated development.
+Viewer URLs carry a display session ID. The sidecar verifies the same-origin account session,
+runtime identity, and capabilities with web before attachment and while transports are active.
 New virtual displays and WebRTC offers require enabled, synchronized state for
 `feature.display-virtual` and `feature.display-webrtc` respectively. The viewer uses WebSocket
 when WebRTC is unavailable under the synchronized feature settings.

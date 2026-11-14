@@ -1,150 +1,72 @@
+# Usage: docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml up -d --build
 services:
   orchestrator:
-    build:
-      context: ..
-      dockerfile: apps/orchestrator/Dockerfile
     image: rebroid/orchestrator:test
     container_name: rebroid-orchestrator-test
-    user: "0:0"
-    restart: unless-stopped
     environment:
-      NODE_ENV: production
-      WEB_INTERNAL_URL: http://web:3101
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      CONTAINER_IMAGE: ${CONTAINER_IMAGE:-redroid/redroid:14.0.0-latest}
+      CONTAINER_IMAGE:
       REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
-      REDROID_PRIVILEGED: ${REDROID_PRIVILEGED:-true}
-      FIREWALL_AGENT_SOCKET: /run/rebroid-firewall/agent.sock
-      DISPLAY_SIDECAR_IMAGE: rebroid/display-sidecar:test
+      REDROID_PRIVILEGED:
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
-      DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
-      DISPLAY_SIDECAR_AUTO_START: "false"
-      DISPLAY_WEBRTC_UDP_PORT: ${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}
-      OCR_SIDECAR_BASE_URL: http://rebroid-ocr-sidecar-test:8100
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
-    expose:
-      - "4100"
     volumes:
-      - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-test-data:/app/data
       - orchestrator-test-uploads:/app/uploads
       - shared-test-secrets:/app/secrets
       - firewall-agent-test-run:/run/rebroid-firewall
-    networks:
-      - platform
 
   firewall-agent:
-    build:
-      context: ..
-      dockerfile: apps/firewall-agent/Dockerfile
     image: rebroid/firewall-agent:test
     container_name: rebroid-firewall-agent-test
-    network_mode: host
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    environment:
-      FIREWALL_AGENT_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
     volumes:
-      - shared-test-secrets:/app/secrets:ro
       - firewall-agent-test-run:/run/rebroid-firewall
+      - shared-test-secrets:/app/secrets:ro
 
   web:
-    build:
-      context: ..
-      dockerfile: apps/web/Dockerfile
-      args:
-        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}
-        DISPLAY_SIDECAR_INTERNAL_BASE_URL: ${DISPLAY_SIDECAR_INTERNAL_BASE_URL:-http://rebroid-display-sidecar-test:8000}
     image: rebroid/web:test
     container_name: rebroid-web-test
-    restart: unless-stopped
-    depends_on:
-      - orchestrator
-      - display-sidecar
+    build:
+      args:
+        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}
     environment:
-      NODE_ENV: production
-      ORCHESTRATOR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      SCRCPY_VIDEO_ENCODER: ${SCRCPY_VIDEO_ENCODER:-}
-      ORCHESTRATOR_API_URL: http://orchestrator:4100
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
-      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
-    expose:
-      - "3101"
+      INITIAL_ADMIN_PASSWORD:
     volumes:
       - web-test-data:/app/data
-      - shared-test-secrets:/app/secrets
-    networks:
-      - platform
+      - shared-test-secrets:/app/secrets:ro
 
   edge:
-    build:
-      context: ..
-      dockerfile: deploy/edge/Dockerfile
     image: rebroid/edge:test
     container_name: rebroid-edge-test
-    user: "1000:1000"
-    restart: unless-stopped
-    depends_on:
-      web:
-        condition: service_healthy
-      orchestrator:
-        condition: service_started
-      display-sidecar:
-        condition: service_started
-    environment:
-      REBROID_TLS_HOSTS: ${REBROID_TLS_HOSTS:-localhost,127.0.0.1}
-    ports:
+    ports: !override
       - "${REBROID_PORT:-3001}:3443"
     volumes:
       - web-test-data:/app/data:ro
-    networks:
-      - platform
 
   display-sidecar:
-    build:
-      context: ..
-      dockerfile: apps/display-sidecar/Dockerfile
     image: rebroid/display-sidecar:test
     container_name: rebroid-display-sidecar-test
-    restart: unless-stopped
     environment:
-      WEB_INTERNAL_URL: http://web:3101
-      DISPLAY_SIDECAR_SHARED_SECRET: ${ORCHESTRATOR_SHARED_SECRET:-}
-      DISPLAY_SIDECAR_SHARED_SECRET_FILE: /app/secrets/rebroid-shared-secret
       DISPLAY_WEBRTC_UDP_PORT: ${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}
-      DISPLAY_WEBRTC_ICE_HOST: ${DISPLAY_WEBRTC_ICE_HOST:-}
-    expose:
-      - "8000"
-    ports:
+    ports: !override
       - "${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}:${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}/udp"
     volumes:
-      - shared-test-secrets:/app/secrets
+      - shared-test-secrets:/app/secrets:ro
     networks:
       platform:
-        aliases:
+        aliases: !override
           - rebroid-display-sidecar-test
 
   ocr-sidecar:
-    build:
-      context: ..
-      dockerfile: apps/ocr-sidecar/Dockerfile
     image: rebroid/ocr-sidecar:test
     container_name: rebroid-ocr-sidecar-test
-    restart: unless-stopped
-    expose:
-      - "8100"
-    networks:
-      platform:
-        aliases:
-          - rebroid-ocr-sidecar-test
 
 volumes:
   orchestrator-test-data:
   orchestrator-test-uploads:
+  firewall-agent-test-run:
   shared-test-secrets:
   web-test-data:
-  firewall-agent-test-run:
 
 networks:
   platform:

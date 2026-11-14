@@ -6,8 +6,8 @@ ensure_runtime_permissions() {
     return
   fi
 
-  mkdir -p /app/data /app/secrets /data/secrets
-  chown -R node:node /app/data /app/secrets /data/secrets 2>/dev/null || true
+  mkdir -p /app/data
+  chown -R node:node /app/data 2>/dev/null || true
 }
 
 run_as_node() {
@@ -147,11 +147,10 @@ read_shared_orchestrator_secret() {
   done
 
   if [ ! -s "$secret_file" ]; then
-    echo "Orchestrator shared secret file was not created yet; generating a local one." >&2
-    ensure_secret_file "$secret_file"
+    echo "Orchestrator shared secret file is unavailable at $secret_file." >&2
+    exit 1
   fi
 
-  chmod 600 "$secret_file" 2>/dev/null || true
   export ORCHESTRATOR_SHARED_SECRET="$(cat "$secret_file")"
 }
 

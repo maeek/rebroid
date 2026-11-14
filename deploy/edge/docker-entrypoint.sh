@@ -1,12 +1,11 @@
 #!/bin/sh
 set -eu
 
-raw_hosts="${REBROID_PUBLIC_HOSTS:-${REBROID_TLS_HOSTS:-localhost,127.0.0.1}}"
-server_names="$(printf '%s' "$raw_hosts" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk 'NF' | tr '\n' ' ') rebroid-web"
-
-if [ -z "$server_names" ]; then
-  server_names="localhost 127.0.0.1"
+raw_hosts="${REBROID_PUBLIC_HOSTS:-${REBROID_TLS_HOSTS:-}}"
+if [ -z "$raw_hosts" ] && [ -s /app/data/certificates/hosts.txt ]; then
+  raw_hosts="$(cat /app/data/certificates/hosts.txt)"
 fi
+server_names="$(printf '%s' "${raw_hosts:-localhost,127.0.0.1}" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | awk 'NF' | tr '\n' ' ') rebroid-web"
 
 case "$server_names" in
   *[!A-Za-z0-9._:\ -]*)

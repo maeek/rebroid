@@ -4,7 +4,7 @@ Rebroid source and container images depend on third-party projects whose license
 
 ## Display sidecar
 
-- **scrcpy 5.0.1**, Copyright Genymobile and contributors, Apache License 2.0. The `linux-x86_64` official GitHub release archive is downloaded during the image build and verified with SHA-256 `9f969d30cc574816077edecda65719c1c70b0aee1df1ba5fa00779ac07b8fd6e`. Source and license: <https://github.com/Genymobile/scrcpy>.
+- **scrcpy 5.0.1**, Copyright Genymobile and contributors, Apache License 2.0. The build verifies the official `linux-x86_64` release archive with SHA-256 `9f969d30cc574816077edecda65719c1c70b0aee1df1ba5fa00779ac07b8fd6e` and copies its Android server into the runtime image. [Source and license](https://github.com/Genymobile/scrcpy)
 - **Pion WebRTC**, Copyright Pion contributors, MIT License. It is compiled from the versions recorded in `apps/display-sidecar/webrtc-bridge/go.sum`. Source and license: <https://github.com/pion/webrtc>.
 - **Android Debug Bridge**, distributed in the Debian `adb` package and subject to the Android Open Source Project licenses. Source: <https://android.googlesource.com/platform/packages/modules/adb/>.
 

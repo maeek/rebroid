@@ -26,9 +26,12 @@ for HTTPS and bootstrap login.
 
 ## Upload limits
 
-The Next.js transport ceiling defaults to `512mb`; the effective APK limit is an orchestrator setting.
+The Next.js transport ceiling defaults to `512mb`. The orchestrator's initial APK limit is 100 MB
+in the base stack and 512 MB in the test overlay unless overridden there.
 For a larger upload, align the edge's `client_max_body_size`, the web build argument
-`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`, and the orchestrator limit. Raising only one layer is insufficient.
+`NEXT_PROXY_CLIENT_MAX_BODY_SIZE`, and the orchestrator's **Max APK size** under
+**Administration → General**. For a source build of the base stack, pass the web build argument
+through a Compose override. The test overlay and image export script forward it from the environment.
 
 ## Verification
 

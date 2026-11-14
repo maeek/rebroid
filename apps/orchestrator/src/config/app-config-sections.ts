@@ -126,7 +126,7 @@ const gappsPatcherSection = (env: Environment) => {
     ? '/app/gapps-patcher'
     : '../gapps-patcher';
   return {
-    image: env.GAPPS_PATCHER_IMAGE ?? 'rebroid/gapps-patcher:latest',
+    image: env.GAPPS_PATCHER_IMAGE ?? 'localhost/rebroid/gapps-patcher:latest',
     buildContext: resolve(
       env.GAPPS_PATCHER_BUILD_CONTEXT ?? defaultBuildContext,
     ),

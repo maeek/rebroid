@@ -13,7 +13,7 @@ RUN apt-get update \
       git \
       jq \
       make \
-      openjdk-17-jdk-headless \
+      openjdk-17-jre-headless \
       python3 \
       unzip \
       wget \
