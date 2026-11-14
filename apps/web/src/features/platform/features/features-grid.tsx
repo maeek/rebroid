@@ -68,7 +68,12 @@ export const FeaturesGrid = ({
           label: 'Feature',
           skeleton: {
             kind: 'custom',
-            render: index => <FeatureIdentity feature={features[index]} />
+            render: index => (
+              <FeatureIdentity
+                feature={features[index]}
+                loading
+              />
+            )
           }
         },
         cell: ({ row: { original: feature } }) => <FeatureIdentity feature={feature} />
@@ -100,7 +105,7 @@ export const FeaturesGrid = ({
         id: 'effectiveStatus',
         accessorFn: feature => getEffectiveFeatureStatus(feature).label,
         enableSorting: false,
-        size: 440,
+        size: 512,
         header: () => (
           <span className='inline-flex items-center gap-1.5'>
             Availability

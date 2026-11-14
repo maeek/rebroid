@@ -34,6 +34,7 @@ export const ServiceConnectionSection = ({
     <Section
       surface='panel'
       title='Connection'
+      contentClassName='gap-6'
     >
       <FieldsBoundary>
         <div className='grid gap-x-form-column gap-y-4 md:grid-cols-2'>

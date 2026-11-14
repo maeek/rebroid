@@ -6,7 +6,7 @@ export type EffectiveFeatureStatus = {
   label:
     'Unavailable' | 'Sync failed' | 'Restart required' | 'Waiting for display service' | 'Off' | 'Active' | 'Applying'
   tone: StatusBadgeTone
-  description?: string
+  description: string
 }
 
 export const getEffectiveFeatureStatus = (feature: FeatureFlagState): EffectiveFeatureStatus => {
@@ -46,8 +46,9 @@ export const getEffectiveFeatureStatus = (feature: FeatureFlagState): EffectiveF
     }
   }
   if (feature.syncStatus === 'applied' && feature.enabled === feature.effective) {
-    if (feature.effective) return { kind: 'active', label: 'Active', tone: 'neutral' }
-    return { kind: 'off', label: 'Off', tone: 'neutral' }
+    if (feature.effective)
+      return { kind: 'active', label: 'Active', tone: 'success', description: 'The configured state is active.' }
+    return { kind: 'off', label: 'Off', tone: 'neutral', description: 'The feature is configured off.' }
   }
   return {
     kind: 'applying',
