@@ -23,6 +23,7 @@ const RuntimeFileNameDialog = ({
   initialName,
   label,
   onOpenChange,
+  onClosed,
   onSubmit,
   open,
   submitLabel,
@@ -32,6 +33,7 @@ const RuntimeFileNameDialog = ({
   initialName: string
   label: string
   onOpenChange: (open: boolean) => void
+  onClosed?: () => void
   onSubmit: (name: string) => Promise<boolean>
   open: boolean
   submitLabel: string
@@ -58,6 +60,9 @@ const RuntimeFileNameDialog = ({
     <Dialog
       modal
       open={open}
+      onOpenChangeComplete={nextOpen => {
+        if (!nextOpen) onClosed?.()
+      }}
       onOpenChange={nextOpen => {
         if (!pending) onOpenChange(nextOpen)
       }}
@@ -122,6 +127,7 @@ export const RuntimeFileDialogs = ({
   deleteEntry,
   onCreate,
   onCreateOpenChange,
+  onActionClosed,
   onDelete,
   onDeleteEntryChange,
   onRename,
@@ -132,6 +138,7 @@ export const RuntimeFileDialogs = ({
   deleteEntry: ApplicationRuntimeFile | null
   onCreate: (name: string) => Promise<boolean>
   onCreateOpenChange: (open: boolean) => void
+  onActionClosed: () => void
   onDelete: (entry: ApplicationRuntimeFile) => Promise<boolean>
   onDeleteEntryChange: (entry: ApplicationRuntimeFile | null) => void
   onRename: (entry: ApplicationRuntimeFile, name: string) => Promise<boolean>
@@ -159,6 +166,7 @@ export const RuntimeFileDialogs = ({
         label='New name'
         initialName={renameEntry?.name ?? ''}
         submitLabel='Rename'
+        onClosed={onActionClosed}
         onOpenChange={open => {
           if (!open) onRenameEntryChange(null)
         }}
@@ -177,6 +185,7 @@ export const RuntimeFileDialogs = ({
         confirmLabel='Delete permanently'
         pendingLabel='Deleting…'
         pending={deletePending}
+        onClosed={onActionClosed}
         onOpenChange={open => {
           if (!open) onDeleteEntryChange(null)
         }}

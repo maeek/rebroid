@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IconUpload } from '@tabler/icons-react'
+import { FileDropZone } from '@/components/ui/file-drop-zone'
 import { Input } from '@/components/ui/input'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { resolveRuntimeFileAccess } from '@/shared/permissions/runtime-files'
@@ -18,19 +18,21 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
+type FileActionFocus = { appId: string; folder: string; path?: string }
+
 export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition; permissions: PermissionMap }) => {
   const runtimeAvailable = app.status === 'running'
   const { canTransferFiles, canManageFiles } = resolveRuntimeFileAccess(permissions)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const dragDepthRef = useRef(0)
   const fileTriggerRef = useRef<HTMLButtonElement>(null)
   const currentFolderRef = useRef<HTMLSpanElement>(null)
   const focusFolderOnNavigation = useRef(false)
+  const completedFileAction = useRef<FileActionFocus | null>(null)
+  const [fileActionFocus, setFileActionFocus] = useState<FileActionFocus | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [renameEntry, setRenameEntry] = useState<ApplicationRuntimeFile | null>(null)
   const [deleteEntry, setDeleteEntry] = useState<ApplicationRuntimeFile | null>(null)
-  const [dragging, setDragging] = useState(false)
   const browser = useRuntimeFileBrowser({ appId: app.id, canTransferFiles, runtimeAvailable })
   const uploads = useRuntimeFileUploads(app.id)
 
@@ -69,6 +71,41 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
     [prefetchPath]
   )
 
+  const restoreFileFocus = useCallback((found: boolean) => {
+    if (!found) currentFolderRef.current?.focus()
+    setFileActionFocus(null)
+  }, [])
+
+  const restoreAfterDialog = () => {
+    const action = completedFileAction.current
+    completedFileAction.current = null
+    if (!action || action.appId !== app.id || action.folder !== currentPath || !runtimeAvailable) return
+    setFileActionFocus(action)
+  }
+
+  const renameAndRestoreFocus = async (entry: ApplicationRuntimeFile, name: string) => {
+    const renamed = await browser.renameFile(entry, name)
+    if (!renamed) return false
+    completedFileAction.current = {
+      appId: app.id,
+      folder: currentPath,
+      path: renamed.path
+    }
+    return true
+  }
+
+  const deleteAndRestoreFocus = async (entry: ApplicationRuntimeFile) => {
+    const index = browser.files.findIndex(file => file.path === entry.path)
+    const neighbor = index >= 0 ? (browser.files[index + 1] ?? browser.files[index - 1]) : undefined
+    if (!(await browser.deleteFile(entry))) return false
+    completedFileAction.current = {
+      appId: app.id,
+      folder: currentPath,
+      path: neighbor?.path
+    }
+    return true
+  }
+
   if (!canTransferFiles) return null
 
   const openRename = (entry: ApplicationRuntimeFile) => {
@@ -97,25 +134,10 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
           description='Start the application to browse its runtime data volume.'
         />
       ) : (
-        <div
-          className='relative grid min-w-0 gap-4'
-          onDragEnter={event => {
-            event.preventDefault()
-            dragDepthRef.current += 1
-            if (event.dataTransfer.types.includes('Files')) setDragging(true)
-          }}
-          onDragOver={event => event.preventDefault()}
-          onDragLeave={event => {
-            event.preventDefault()
-            dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
-            if (dragDepthRef.current === 0) setDragging(false)
-          }}
-          onDrop={event => {
-            event.preventDefault()
-            dragDepthRef.current = 0
-            setDragging(false)
-            addFiles(event.dataTransfer.files)
-          }}
+        <FileDropZone
+          className='grid gap-4'
+          onFiles={addFiles}
+          description={`Destination: ${browser.currentPath}`}
         >
           <Input
             ref={fileInputRef}
@@ -150,6 +172,10 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
             canManageFiles={canManageFiles}
             error={browser.error}
             files={browser.files}
+            focusRequest={
+              fileActionFocus?.appId === app.id && fileActionFocus.folder === currentPath ? fileActionFocus : null
+            }
+            onFocusRestored={restoreFileFocus}
             loading={!browser.hasLoadedFiles && !browser.error}
             refreshing={browser.isRefreshing}
             searchQuery={browser.searchQuery}
@@ -175,17 +201,7 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
             onDismiss={uploads.dismiss}
             onRetry={uploads.retry}
           />
-
-          {dragging ? (
-            <div className='pointer-events-none absolute inset-2 z-40 flex items-center justify-center rounded-panel border-2 border-dashed border-primary bg-surface-elevated/92 text-center shadow-floating supports-[backdrop-filter]:backdrop-blur-md'>
-              <div className='grid gap-2 px-6'>
-                <IconUpload className='mx-auto size-10 text-primary' />
-                <div className='text-lg font-medium'>Drop files to upload</div>
-                <div className='break-all text-sm text-foreground-muted'>Destination: {browser.currentPath}</div>
-              </div>
-            </div>
-          ) : null}
-        </div>
+        </FileDropZone>
       )}
 
       <Sheet
@@ -219,9 +235,10 @@ export const DownloadsToolsSection = ({ app, permissions }: { app: AppDefinition
         renameEntry={renameEntry}
         onCreate={browser.createDirectory}
         onCreateOpenChange={setCreateOpen}
-        onDelete={browser.deleteFile}
+        onActionClosed={restoreAfterDialog}
+        onDelete={deleteAndRestoreFocus}
         onDeleteEntryChange={setDeleteEntry}
-        onRename={browser.renameFile}
+        onRename={renameAndRestoreFocus}
         onRenameEntryChange={setRenameEntry}
       />
     </>

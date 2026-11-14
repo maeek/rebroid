@@ -125,10 +125,10 @@ export const useRuntimeFileBrowser = ({
           void queryClient.invalidateQueries({ queryKey: ['runtime-files', appId] })
         }
         toast({ title: 'Item renamed', description: `${entry.name} is now ${renamed.name}.` })
-        return true
+        return renamed
       } catch (error) {
         runtimeActionErrorToast('Could not rename item', error)
-        return false
+        return null
       }
     },
     [appId, currentPath, queryClient, updateParentCache]

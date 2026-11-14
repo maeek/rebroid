@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { RowActionButton } from '@/components/ui/row-actions'
 import { formatDateLocale } from '@/lib/format'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -54,6 +55,7 @@ export const RuntimeFileList = ({
   canManageFiles,
   error,
   files,
+  focusRequest,
   loading,
   refreshing,
   searchQuery,
@@ -61,6 +63,7 @@ export const RuntimeFileList = ({
   sortDirection,
   onDelete,
   onDownload,
+  onFocusRestored,
   onOpen,
   onPrefetch,
   onRefresh,
@@ -72,6 +75,7 @@ export const RuntimeFileList = ({
   canManageFiles: boolean
   error: Error | null
   files: ApplicationRuntimeFile[]
+  focusRequest?: { path?: string } | null
   loading: boolean
   refreshing?: boolean
   searchQuery: string
@@ -79,6 +83,7 @@ export const RuntimeFileList = ({
   sortDirection: RuntimeFileSortDirection
   onDelete: (entry: ApplicationRuntimeFile) => void
   onDownload: (entry: ApplicationRuntimeFile) => void
+  onFocusRestored?: (found: boolean) => void
   onOpen: (entry: ApplicationRuntimeFile, trigger?: HTMLButtonElement) => void
   onPrefetch: (path: string) => void
   onRefresh: () => void
@@ -90,7 +95,7 @@ export const RuntimeFileList = ({
   const listRef = useRef<HTMLDivElement>(null)
   const [listWidth, setListWidth] = useState(0)
   const compact = listWidth > 0 && listWidth < 560
-  const nameWidth = Math.min(720, Math.max(160, listWidth - (compact ? 56 : 356)))
+  const nameWidth = Math.min(720, Math.max(160, listWidth - (compact ? 116 : 416)))
   const [pageSize, setPageSize] = useState(defaultPageSize)
   useEffect(() => {
     const list = listRef.current
@@ -104,6 +109,24 @@ export const RuntimeFileList = ({
 
   const [requestedPage, setPage] = useState(0)
   const pageIndex = Math.min(requestedPage, Math.max(0, Math.ceil(files.length / pageSize) - 1))
+  useEffect(() => {
+    if (!focusRequest || loading) return
+    const index = files.findIndex(entry => entry.path === focusRequest.path)
+    if (index < 0) {
+      onFocusRestored?.(false)
+      return
+    }
+    const targetPage = Math.floor(index / pageSize)
+    if (targetPage !== pageIndex) {
+      setPage(targetPage)
+      return
+    }
+    const entries = listRef.current?.querySelectorAll<HTMLButtonElement>('[data-runtime-file-entry]')
+    const target = Array.from(entries ?? []).find(entry => entry.dataset.runtimeFileEntry === focusRequest.path)
+    target?.focus()
+    onFocusRestored?.(Boolean(target))
+  }, [files, focusRequest, loading, onFocusRestored, pageIndex, pageSize])
+
   const columns = useMemo<ColumnDef<ApplicationRuntimeFile>[]>(
     () => [
       {
@@ -124,7 +147,7 @@ export const RuntimeFileList = ({
               variant='bare'
               className='h-auto min-h-8 w-full min-w-0 justify-start px-0 text-left'
               aria-label={entry.name}
-              data-runtime-file-entry=''
+              data-runtime-file-entry={entry.path}
               onKeyDown={moveEntryFocus}
               onMouseEnter={() => {
                 if (isDirectory) onPrefetch(entry.path)
@@ -277,6 +300,14 @@ export const RuntimeFileList = ({
                 </>
               ) : null}
             </>
+          )}
+          rowQuickAction={({ original: entry }) => (
+            <RowActionButton
+              label={entry.type === 'file' ? `Download ${entry.name}` : `Open ${entry.name}`}
+              onClick={() => (entry.type === 'file' ? onDownload(entry) : onOpen(entry))}
+            >
+              {entry.type === 'file' ? <IconDownload className='size-4' /> : <IconFolderOpen className='size-4' />}
+            </RowActionButton>
           )}
           emptyState={
             error ? (

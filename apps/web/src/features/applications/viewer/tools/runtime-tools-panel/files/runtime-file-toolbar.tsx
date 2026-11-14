@@ -115,7 +115,7 @@ export const RuntimeFileToolbar = ({
                 {path === currentPath ? (
                   <span
                     ref={currentFolderRef}
-                    className='min-w-0 break-all px-1 font-medium'
+                    className='min-w-0 break-all rounded-control px-1 font-medium focus-visible:ring-2 focus-visible:ring-ring'
                     aria-current='location'
                     tabIndex={-1}
                   >
