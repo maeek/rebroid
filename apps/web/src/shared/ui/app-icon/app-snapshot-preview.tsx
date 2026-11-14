@@ -4,7 +4,6 @@ import { useState, type ComponentProps, type ReactElement } from 'react'
 import { PreviewCard } from '@base-ui/react/preview-card'
 import { floatingLayerClassName } from '@/components/ui/surface'
 import { useApplicationSnapshot } from '@/shared/model/applications/use-application-snapshot'
-import { DateTimeValue } from '@/shared/ui/date-time-value'
 
 type PreviewPosition = Pick<ComponentProps<typeof PreviewCard.Positioner>, 'anchor' | 'side' | 'sideOffset'>
 
@@ -68,36 +67,23 @@ const AppSnapshotPopup = ({
       >
         <PreviewCard.Popup
           data-slot='app-snapshot-preview'
-          className='grid h-[min(15rem,var(--available-height,100dvh))] w-[min(13rem,var(--available-width,100dvw))] grid-rows-[minmax(0,1fr)_2rem] overflow-hidden rounded-overlay border border-surface-border bg-surface-elevated shadow-floating'
+          aria-busy={pending || undefined}
+          className='shadow-floating'
         >
-          <div
-            aria-busy={pending || undefined}
-            className='grid min-h-0 place-items-center overflow-hidden bg-surface-band text-center text-xs text-foreground-muted'
-          >
-            {snapshot ? (
-              <img
-                src={snapshot.dataUrl}
-                alt={`Latest screenshot of ${appName}`}
-                className='block size-full object-contain'
-              />
-            ) : (
-              <span
-                className='px-2'
-                role='status'
-              >
-                {pending ? 'Loading preview…' : 'Preview unavailable'}
-              </span>
-            )}
-          </div>
           {snapshot ? (
-            <div className='flex min-w-0 flex-wrap items-center justify-center gap-x-1 px-2 text-xs text-foreground-muted'>
-              Captured{' '}
-              <DateTimeValue
-                value={snapshot.capturedAt}
-                compact
-              />
+            <img
+              src={snapshot.dataUrl}
+              alt={`Latest screenshot of ${appName}`}
+              className='block h-auto max-h-[min(24rem,var(--available-height,100dvh))] w-auto max-w-[min(18rem,var(--available-width,100dvw))]'
+            />
+          ) : (
+            <div
+              className='rounded-control bg-surface-elevated px-3 py-2 text-xs text-foreground-muted'
+              role='status'
+            >
+              {pending ? 'Loading preview…' : 'Preview unavailable'}
             </div>
-          ) : null}
+          )}
         </PreviewCard.Popup>
       </PreviewCard.Positioner>
     </PreviewCard.Portal>

@@ -179,6 +179,7 @@ export default async function SkeletonContractPage({
     )
   if (editor === 'startup-timings') return <StartupTimingsPreview />
   if (editor === 'apps-gallery') return <AppsGalleryPreview />
+  if (editor === 'apps-gallery-snapshot') return <AppsGalleryPreview withSnapshot />
   if (editor === 'apps-gallery-loading') return <AppsPageSkeleton />
   if (editor === 'overview') return <PlatformOverviewPageClient />
   if (editor === 'active-workflow-runs')

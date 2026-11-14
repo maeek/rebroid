@@ -17,6 +17,57 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/applications', route => route.fulfill({ json: galleryPreviewApplications }))
 })
 
+test('gallery hover previews show full portrait and landscape screenshots', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.route('**/api/applications', route =>
+    route.fulfill({
+      json: galleryPreviewApplications.map(app =>
+        app.id === 'gallery-app-1'
+          ? { ...app, status: { ...app.status, currentStatus: 'running', lifecycleStage: 'ready' } }
+          : app
+      )
+    })
+  )
+  for (const { width, height } of [
+    { width: 600, height: 1200 },
+    { width: 1200, height: 600 }
+  ]) {
+    await page.mouse.move(0, 0)
+    await page.goto('/skeleton-contract-test?editor=apps-gallery-snapshot')
+    const dataUrl = await page.evaluate(
+      ({ imageWidth, imageHeight }) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = imageWidth
+        canvas.height = imageHeight
+        return canvas.toDataURL()
+      },
+      { imageWidth: width, imageHeight: height }
+    )
+    await page.route('**/runtime/snapshot', route =>
+      route.fulfill({
+        json: { ok: true, requestId: 'preview', data: { dataUrl, capturedAt: '2026-11-14T10:00:00Z' } }
+      })
+    )
+    const trigger = page.getByRole('link', { name: /^Open Warehouse scanner/ })
+    const before = await trigger.boundingBox()
+    await trigger.hover()
+    const popup = page.locator('[data-slot="app-snapshot-preview"]')
+    const image = popup.getByRole('img', { name: /^Latest screenshot/ })
+    await expect
+      .poll(() =>
+        image.evaluate(node => {
+          const rect = node.getBoundingClientRect()
+          return rect.height > 0 ? rect.width / rect.height : 0
+        })
+      )
+      .toBeCloseTo(width / height, 2)
+    expect(await popup.boundingBox()).toEqual(await image.boundingBox())
+    await expect(popup.getByText(/Captured/)).toHaveCount(0)
+    expect(await trigger.boundingBox()).toEqual(before)
+    await page.unroute('**/runtime/snapshot')
+  }
+})
+
 test('phone gallery controls share gutters in ready and loading states', async ({ page }) => {
   for (const width of [320, 384, 430]) {
     await page.setViewportSize({ width, height: 800 })
