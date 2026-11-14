@@ -18,6 +18,7 @@ type AppContainerRuntimeSectionProps = {
   containerImageMode?: FieldMode
   containerImageLabel?: string
   containerImageDescription?: string
+  containerArgsModified?: boolean
   containerArgsValue?: string
   onContainerArgsChange?: (value: string) => void
   showContainerArgs?: boolean
@@ -38,6 +39,7 @@ export const AppContainerRuntimeSection = ({
   containerImageMode = 'editable',
   containerImageLabel = 'Image',
   containerImageDescription = 'Container image used to boot this managed app runtime.',
+  containerArgsModified,
   containerArgsValue,
   onContainerArgsChange,
   showContainerArgs = true,
@@ -79,6 +81,7 @@ export const AppContainerRuntimeSection = ({
       <Visible when={showContainerArgs}>
         <FormField
           label={containerArgsLabel}
+          modified={containerArgsModified}
           description={containerArgsDescription}
           layout='vertical'
           className={verticalSettingClassName}

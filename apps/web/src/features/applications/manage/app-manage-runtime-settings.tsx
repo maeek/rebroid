@@ -42,12 +42,19 @@ export const AppManageRuntimeSettings = ({
     >
       <Visible when={canChangeSessionLimit}>
         <AppRuntimeSection
+          modified={{
+            inactivityTimeoutSeconds: Boolean(app && values.inactivityTimeoutSeconds !== app.inactivityTimeoutSeconds)
+          }}
           values={values}
           onChange={onChange}
         />
       </Visible>
       <Visible when={canChangeResources}>
         <AppResourceLimitsSection
+          modified={{
+            memoryLimitMb: Boolean(app && values.memoryLimitMb !== (app.memoryLimitMb?.toString() ?? '')),
+            cpuLimitCpus: Boolean(app && values.cpuLimitCpus !== (app.cpuLimitCpus?.toString() ?? ''))
+          }}
           values={values}
           resourceLimits={resourceLimits}
           onChange={onChange}
@@ -63,6 +70,7 @@ export const AppManageRuntimeSettings = ({
           containerImageDescription='The managed container image for this app runtime.'
           showContainerArgs={showContainerArgs}
           containerArgsValue={values.customContainerArgs}
+          containerArgsModified={Boolean(app && values.customContainerArgs !== (app.containerArgs ?? ''))}
           containerArgsMode='editable'
           onContainerArgsChange={value => onChange({ customContainerArgs: value })}
           containerArgsLabel='Container arguments'

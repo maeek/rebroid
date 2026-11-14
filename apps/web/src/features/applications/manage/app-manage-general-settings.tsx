@@ -62,6 +62,7 @@ export const AppManageGeneralSettings = ({
     <AppIdentitySection
       valuesName={values.name}
       nameLabel='Name'
+      nameModified={Boolean(app && values.name !== app.name)}
       nameError={nameError}
       nameInputRef={nameInputRef}
       nameDescription='Display name shown in the UI for this app. Minimum 2 characters.'

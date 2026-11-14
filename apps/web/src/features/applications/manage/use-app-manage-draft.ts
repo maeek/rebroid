@@ -102,10 +102,24 @@ export const useAppManageDraft = (currentApp: AppDefinition) => {
     hasPendingAppChangesRef.current = false
   }
 
+  const saved = draftFromApp(currentApp)
+  const isDirty =
+    draft.appName !== saved.appName ||
+    draft.inactivityTimeoutSeconds !== saved.inactivityTimeoutSeconds ||
+    draft.memoryLimitMb !== saved.memoryLimitMb ||
+    draft.cpuLimitCpus !== saved.cpuLimitCpus ||
+    draft.containerArgs !== saved.containerArgs
+  const discardChanges = () => {
+    hasPendingAppChangesRef.current = false
+    setDraft(current => ({ ...saved, icon: current.icon }))
+  }
+
   return {
+    discardChanges,
     displayApp: { ...currentApp, name: draft.appName, icon: draft.icon },
     draft,
     formValues,
+    isDirty,
     markSaved,
     updateForm,
     updateIcon

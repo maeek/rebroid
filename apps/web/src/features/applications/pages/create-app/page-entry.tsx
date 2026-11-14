@@ -1,13 +1,19 @@
+import { redirect } from 'next/navigation'
 import { CreateAppForm } from '@/features/applications/create/create-app-form'
+import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { OrchestratorPageBoundary } from '@/server/orchestrator/orchestrator-page-boundary'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { getCreateAppPageData } from './page-data.server'
 
-export const CreateAppPageEntry = ({
+export const CreateAppPageEntry = async ({
   initialImage,
   uploadedApkId
 }: { initialImage?: string; uploadedApkId?: string } = {}) => {
+  const user = await getCurrentUserContext()
+  if (!hasPermission(user.permissions, 'applications:create')) redirect('/apps')
+
   return (
     <OrchestratorPageBoundary
       load={() => getCreateAppPageData(uploadedApkId)}

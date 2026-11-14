@@ -13,6 +13,7 @@ import {
 } from '@/shared/model/network/outbound-policy'
 
 type AppNetworkPolicyEditorSectionProps = {
+  modified?: { restricted: boolean; destinations: boolean }
   restricted?: boolean
   onRestrictedChange: (enabled: boolean) => void
   destinations: string
@@ -26,6 +27,7 @@ type AppNetworkPolicyEditorSectionProps = {
 
 export const AppNetworkPolicyEditorSection = ({
   restricted,
+  modified,
   onRestrictedChange,
   destinations,
   onDestinationsChange,
@@ -50,6 +52,7 @@ export const AppNetworkPolicyEditorSection = ({
     >
       <FormField
         label='Outbound access'
+        modified={modified?.restricted}
         error={modeError}
         layout='vertical'
         description={
@@ -90,6 +93,7 @@ export const AppNetworkPolicyEditorSection = ({
           </div>
           <FormField
             label={mask('Additional IPv4 destinations')}
+            modified={modified?.destinations}
             description={mask(
               'Enter one IPv4 address or CIDR range per line, such as 10.20.0.0/16. You can also paste a comma-separated list.'
             )}

@@ -6,6 +6,7 @@ type AppRuntimeSectionProps = {
   values: {
     inactivityTimeoutSeconds: number
   }
+  modified?: Partial<Record<'inactivityTimeoutSeconds', boolean>>
   onChange: (patch: Partial<{ inactivityTimeoutSeconds: number }>) => void
   title?: string
   description?: string
@@ -15,6 +16,7 @@ type AppRuntimeSectionProps = {
 
 export const AppRuntimeSection = ({
   values,
+  modified,
   onChange,
   title = 'Session',
   description = 'How long the app can stay idle before it stops automatically. Use -1 for no automatic stop.',
@@ -30,6 +32,7 @@ export const AppRuntimeSection = ({
     >
       <FormField
         label='Inactivity timeout'
+        modified={modified?.inactivityTimeoutSeconds}
         error={timeoutError}
         description={description}
         layout='vertical'

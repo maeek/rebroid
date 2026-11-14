@@ -19,6 +19,7 @@ import {
 } from '@/server/orchestrator/applications/actions/configuration/network-policy-actions'
 import { ActionResultError, unwrapActionResult } from '@/shared/actions/action-result'
 import { outboundEnforcement } from '@/shared/model/network/outbound-policy'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication, UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
@@ -171,6 +172,7 @@ export const AppManageNetworkPolicySettings = ({
     >
       <form onSubmit={handleSave}>
         <AppNetworkPolicyEditorSection
+          modified={{ restricted: restricted !== app.networkPolicyEnabled, destinations: destinationsChanged }}
           restricted={restricted}
           onRestrictedChange={networkPolicyEnabled =>
             setAccessDraft(networkPolicyEnabled === app.networkPolicyEnabled ? undefined : networkPolicyEnabled)
@@ -213,6 +215,10 @@ export const AppManageNetworkPolicySettings = ({
             ) : null}
           </div>
         </AppNetworkPolicyEditorSection>
+        <UnsavedChangesGuard
+          dirty={dirty}
+          onDiscard={resetDraft}
+        />
       </form>
     </NetworkPolicyLayout>
   )

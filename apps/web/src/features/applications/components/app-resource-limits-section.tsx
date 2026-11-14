@@ -10,6 +10,7 @@ type AppResourceLimitsSectionProps = {
     cpuLimitCpus: string
   }
   resourceLimits: ResourceLimitBounds | null
+  modified?: Partial<Record<'memoryLimitMb' | 'cpuLimitCpus', boolean>>
   onChange: (patch: Partial<{ memoryLimitMb: string; cpuLimitCpus: string }>) => void
   title?: string
   descriptionForMemory?: string
@@ -21,6 +22,7 @@ type AppResourceLimitsSectionProps = {
 
 export const AppResourceLimitsSection = ({
   values,
+  modified,
   resourceLimits,
   onChange,
   title = 'Resources',
@@ -39,6 +41,7 @@ export const AppResourceLimitsSection = ({
     >
       <FormField
         label='RAM limit'
+        modified={modified?.memoryLimitMb}
         error={memoryError}
         description={descriptionForMemory}
         layout='vertical'
@@ -58,6 +61,7 @@ export const AppResourceLimitsSection = ({
       </FormField>
       <FormField
         label='CPU limit'
+        modified={modified?.cpuLimitCpus}
         error={cpuError}
         description={descriptionForCpu}
         layout='vertical'

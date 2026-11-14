@@ -18,6 +18,7 @@ type AppIdentitySectionProps = {
   nameRequired?: boolean
   nameLabel?: string
   nameMinLength?: number
+  nameModified?: boolean
   nameError?: string
   nameInputRef?: Ref<HTMLInputElement>
   apkError?: string
@@ -36,6 +37,7 @@ export const AppIdentitySection = ({
   nameRequired = true,
   nameLabel = 'Name',
   nameMinLength = 2,
+  nameModified,
   nameError,
   nameInputRef,
   apkError,
@@ -61,6 +63,7 @@ export const AppIdentitySection = ({
         <div className='flex flex-col gap-5'>
           <FormField
             label={nameLabel}
+            modified={nameModified}
             description={nameDescription}
             layout='vertical'
             className={verticalSettingClassName}
@@ -90,7 +93,7 @@ export const AppIdentitySection = ({
               onChange={handleApkSelect}
               aria-label='APK file'
               buttonLabel='Upload APK'
-              filenameLabel={uploadedApkLabel}
+              filenameLabel={isUploadingApk ? undefined : uploadedApkLabel}
             />
           </FormField>
           <Visible when={iconSlot}>

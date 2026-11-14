@@ -12,6 +12,7 @@ import { ActionResultError, actionError, actionOk } from '@/shared/actions/actio
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { AppManageNetworkPolicySettings, AppNetworkPolicySettingsLoading } from './app-manage-network-policy-settings'
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/network-policy-actions', () => ({
   applyNetworkPolicyAction: vi.fn(),

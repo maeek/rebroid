@@ -25,6 +25,7 @@ import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-lim
 import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageIconPanel } from './app-manage-icon-panel'
@@ -44,7 +45,8 @@ export const AppManage = () => {
   const [nameError, setNameError] = useState<string>()
   const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const { displayApp, draft, formValues, markSaved, updateForm, updateIcon } = useAppManageDraft(currentApp)
+  const { discardChanges, displayApp, draft, formValues, isDirty, markSaved, updateForm, updateIcon } =
+    useAppManageDraft(currentApp)
   const draftSnapshot = JSON.stringify(draft)
   const saveFeedback = useSaveFeedback(draftSnapshot)
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
@@ -196,6 +198,10 @@ export const AppManage = () => {
           </Visible>
         </div>
       </PageContent>
+      <UnsavedChangesGuard
+        dirty={isDirty}
+        onDiscard={discardChanges}
+      />
     </EditorPage>
   )
 }

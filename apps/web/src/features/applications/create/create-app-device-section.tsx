@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { applyRedroidDisplayContainerArgs } from '@rebroid/android-application-core/redroid-runtime'
-import { IconChevronRight } from '@tabler/icons-react'
+import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
 import { EditorFormContext } from '@/components/ui/editor-form-context'
 import { FormField } from '@/components/ui/form-field'
 import { Section } from '@/components/ui/section'
@@ -78,14 +78,17 @@ export const CreateAppDeviceSection = ({
 
       {displaySlot}
       <Visible when={canChangeContainerArgs}>
-        <details
+        <Disclosure
           ref={argumentsSection}
           className='group'
         >
-          <summary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground'>
-            <IconChevronRight className='size-4 transition-transform group-open:rotate-90' />
+          <DisclosureSummary className='flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-foreground-muted hover:text-foreground'>
+            <DisclosureChevron
+              direction='right'
+              className='size-4'
+            />
             Runtime arguments
-          </summary>
+          </DisclosureSummary>
           <EditorFormContext.Provider value={false}>
             <div className='grid gap-5 pt-4'>
               <Visible when={isRedroidRuntime}>
@@ -127,7 +130,7 @@ export const CreateAppDeviceSection = ({
               </FormField>
             </div>
           </EditorFormContext.Provider>
-        </details>
+        </Disclosure>
       </Visible>
     </Section>
   )
