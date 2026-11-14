@@ -54,12 +54,14 @@ const runColumns = (
   {
     id: 'status',
     header: 'Status',
-    size: 100,
-    meta: { label: 'Status', skeleton: { kind: 'badge' } },
+    size: 144,
+    minSize: 136,
+    meta: { label: 'Status', skeleton: { kind: 'badge' }, cellContentClassName: 'whitespace-nowrap' },
     cell: ({ row }) => (
       <AutomationRunStatusBadge
         runId={row.original.id}
         status={row.original.status}
+        className='whitespace-nowrap'
       />
     )
   },

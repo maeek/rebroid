@@ -71,7 +71,7 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
             ref={backRef}
             variant='ghost'
             size='sm'
-            className='-ml-2 justify-self-start px-2'
+            className='justify-self-start'
             onClick={() => selectRun(null)}
           >
             <IconArrowLeft />
@@ -95,7 +95,7 @@ export function AppWorkflowsLoading() {
       <Button
         variant='ghost'
         size='sm'
-        className='-ml-2 justify-self-start px-2'
+        className='justify-self-start'
         disabled
       >
         <IconArrowLeft /> Run history
