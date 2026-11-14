@@ -31,6 +31,24 @@ export type EventTimelineItem =
   | ToolTimelineItem
   | PerceptionTimelineItem
 
+export const verifiedPerceptionItems = (
+  result: AutomationRunEvent | undefined,
+  items: EventTimelineItem[]
+): PerceptionTimelineItem[] => {
+  if (result?.data.completed !== true || !Array.isArray(result.data.evidenceIds)) return []
+  const accepted = new Set<unknown>(result.data.evidenceIds)
+  const observations = new Set<unknown>(Array.isArray(result.data.observationIds) ? result.data.observationIds : [])
+  const matched = new Set<string>()
+  return items.filter((item): item is PerceptionTimelineItem => {
+    if (item.type !== 'perception' || item.observed.sequence >= result.sequence) return false
+    const id = item.observed.data.snapshotId
+    if (typeof id !== 'string' || !id || matched.has(id)) return false
+    if (!accepted.has(`snapshot:${id}`) && !observations.has(id)) return false
+    matched.add(id)
+    return true
+  })
+}
+
 const compactValue = (value: unknown) => {
   if (value === null || value === undefined) return 'null'
   if (typeof value === 'string') return value

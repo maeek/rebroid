@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { IconChevronDown, IconEye } from '@tabler/icons-react'
+import { IconEye } from '@tabler/icons-react'
+import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
 import { AiAssistantText, AiToolDetails } from '@/shared/ui/ai/ai-message'
 import { ObservationEventDetails } from './observation-event-details'
 import { observationValues } from './observation-values'
@@ -82,11 +83,11 @@ export const PerceptionDisclosure = ({
 }) => {
   const summary = perceptionSummary(data)
   return (
-    <details
+    <Disclosure
       className='group overflow-hidden rounded-control bg-surface-editor text-xs text-foreground-muted'
       data-testid='perception-disclosure'
     >
-      <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
+      <DisclosureSummary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
         <span className='flex size-7 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
           <IconEye className='size-4' />
         </span>
@@ -94,8 +95,11 @@ export const PerceptionDisclosure = ({
           <span className='font-medium text-foreground'>Inspected screen</span>
           {summary ? <span className='truncate text-xs'>{summary}</span> : null}
         </span>
-        <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
-      </summary>
+        <DisclosureChevron
+          direction='down'
+          className='size-3.5'
+        />
+      </DisclosureSummary>
       <div className='px-3 pb-3'>
         <AiToolDetails>
           <ObservationEventDetails
@@ -109,11 +113,11 @@ export const PerceptionDisclosure = ({
           <VisualAffordanceNote data={data} />
         </AiToolDetails>
       </div>
-    </details>
+    </Disclosure>
   )
 }
 
-export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) => {
+export const PerceptionEventView = ({ item, id }: { item: PerceptionTimelineItem; id?: string }) => {
   const data = {
     ...item.observed.data,
     ...item.summary?.data
@@ -121,8 +125,11 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
   const summary = perceptionSummary(data)
   return (
     <div className='text-xs text-foreground-muted'>
-      <details className='group overflow-hidden rounded-panel border border-surface-border/55 bg-surface-band/24'>
-        <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
+      <Disclosure
+        id={id}
+        className='group scroll-m-4 overflow-hidden rounded-panel border border-surface-border/55 bg-surface-band/24'
+      >
+        <DisclosureSummary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-foreground/3'>
           <span className='flex size-7 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
             <IconEye className='size-4' />
           </span>
@@ -130,8 +137,11 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
             <span className='font-medium text-foreground'>Inspected screen</span>
             {summary ? <span className='truncate text-xs'>{summary}</span> : null}
           </span>
-          <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
-        </summary>
+          <DisclosureChevron
+            direction='down'
+            className='size-3.5'
+          />
+        </DisclosureSummary>
         <div className='px-3 pb-3'>
           <AiToolDetails>
             <ToolEventRow
@@ -150,7 +160,7 @@ export const PerceptionEventView = ({ item }: { item: PerceptionTimelineItem }) 
             <PerceptionRows data={data} />
           </AiToolDetails>
         </div>
-      </details>
+      </Disclosure>
     </div>
   )
 }

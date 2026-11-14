@@ -64,7 +64,7 @@ describe('ChatTurnSaveWorkflowAction', () => {
         }}
       />
     )
-    expect(screen.queryByRole('button', { name: 'Save as workflow' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Draft workflow' })).toBeNull()
   })
 
   it('copies the final response and keeps workflow drafting available', async () => {
@@ -82,7 +82,7 @@ describe('ChatTurnSaveWorkflowAction', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('Settings is open.'))
     expect(await screen.findByRole('button', { name: 'Copied' })).not.toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save as workflow' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Draft workflow' }))
     expect(onSaveWorkflow).toHaveBeenCalledWith(turn)
   })
 })

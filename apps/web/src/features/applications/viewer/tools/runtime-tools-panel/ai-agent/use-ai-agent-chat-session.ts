@@ -65,7 +65,9 @@ export const useAiAgentChatSession = ({
 
   useAiAgentRunStream({ runId: activeTurn?.run?.id, appendRunEvents, conversationVersionRef, runSequencesRef })
   const {
+    submissionFeedback,
     canSubmit,
+    canRunQueuedTurn,
     cancelRun,
     clearConversation,
     isCanceling,
@@ -99,7 +101,9 @@ export const useAiAgentChatSession = ({
     activeTurn,
     adHocTimeoutMinutes,
     adHocTimeoutMs,
+    submissionFeedback,
     canSubmit,
+    canRunQueuedTurn,
     cancelRun,
     catalog,
     clearConversation,

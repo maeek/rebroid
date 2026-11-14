@@ -95,6 +95,45 @@ describe('useAiAgentChatSession', () => {
     })
   })
 
+  it('restores a failed prompt without reporting acceptance', async () => {
+    vi.mocked(actions.runAdHocAiAutomationAction).mockRejectedValue(new Error('Unable to start'))
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(result.current.isLoadingHistory).toBe(false))
+    act(() => result.current.setPrompt('Open settings'))
+    await act(() => result.current.submit())
+    expect(result.current.prompt).toBe('Open settings')
+    expect(result.current.submissionFeedback).toBeNull()
+  })
+
+  it('does not replace a new draft when the previous submission fails', async () => {
+    const request = Promise.withResolvers<AutomationRun>()
+    vi.mocked(actions.runAdHocAiAutomationAction).mockReturnValue(request.promise)
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(result.current.isLoadingHistory).toBe(false))
+    act(() => result.current.setPrompt('Open settings'))
+    let submitting: Promise<void>
+    act(() => {
+      submitting = result.current.submit()
+    })
+    act(() => result.current.setPrompt('My next draft'))
+    await act(async () => {
+      request.reject(new Error('Unable to start'))
+      await submitting
+    })
+    expect(result.current.prompt).toBe('My next draft')
+    expect(result.current.submissionFeedback).toBeNull()
+  })
+
+  it('acknowledges an accepted message and clears its draft', async () => {
+    vi.mocked(actions.runAdHocAiAutomationAction).mockResolvedValue(run)
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+    await waitFor(() => expect(result.current.isLoadingHistory).toBe(false))
+    act(() => result.current.setPrompt('Open settings'))
+    await act(() => result.current.submit())
+    expect(result.current.prompt).toBe('')
+    expect(result.current.submissionFeedback).toBe('Message sent')
+  })
+
   it('clears visible conversation before backend deletion finishes', async () => {
     let resolveClear: (value: { cleared: number }) => void = () => undefined
     const clearPromise = new Promise<{ cleared: number }>(resolve => {

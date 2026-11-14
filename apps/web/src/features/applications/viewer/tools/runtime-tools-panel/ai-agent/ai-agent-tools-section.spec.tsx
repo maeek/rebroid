@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AiAgentToolsSection } from './ai-agent-tools-section'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
+import type { ChatTurn } from './ai-agent-chat-utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AiPromptSuggestion, SuggestAdHocAiPromptsInput } from '@/shared/contracts/automation'
 
@@ -60,6 +61,7 @@ const chatSession = (
   adHocTimeoutMinutes: 5,
   adHocTimeoutMs: 300_000,
   canSubmit: false,
+  canRunQueuedTurn: false,
   cancelRun: () => Promise.resolve(undefined),
   catalog: [],
   clearConversation: () => Promise.resolve(undefined),
@@ -89,6 +91,7 @@ const chatSession = (
   setVisionModelId: vi.fn(),
   setVisionProviderId: vi.fn(),
   showCancelRun: undefined,
+  submissionFeedback: null,
   submit: () => Promise.resolve(undefined),
   submitPrompt: () => Promise.resolve(undefined),
   timeoutMinutesInput: '5',
@@ -105,7 +108,7 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     expect(screen.getByLabelText('Loading AI chat history')).toBeTruthy()
-    expect(screen.getByPlaceholderText('Ask the agent to do something…')).toBeTruthy()
+    expect(screen.getByPlaceholderText('Describe a task for this Android device…')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
   })
 
@@ -114,7 +117,7 @@ describe('AiAgentToolsSection', () => {
 
     render(<AiAgentToolsSection app={app} />)
 
-    expect(screen.getByText('What would you like to do?')).toBeTruthy()
+    expect(screen.getByText('Give the device agent a task')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })
@@ -133,6 +136,46 @@ describe('AiAgentToolsSection', () => {
     expect(screen.getByRole('textbox').hasAttribute('disabled')).toBe(false)
     expect(screen.getByRole('button', { name: 'Send message' }).hasAttribute('disabled')).toBe(true)
     expect(screen.getByText('No model')).toBeTruthy()
+  })
+
+  it('shows when the oldest queued task can be started and keeps dispatch explicit', () => {
+    const queued: ChatTurn = { id: 'queued', prompt: 'Check the display', status: 'queued', run: null, events: [] }
+    const later: ChatTurn = { ...queued, id: 'later', prompt: 'Open Settings' }
+    const runQueuedTurn = vi.fn(async () => {})
+    const active: ChatTurn = { ...queued, id: 'active', status: 'running' }
+    const session = { queuedTurn: queued, turns: [queued, later], runQueuedTurn }
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ ...session, activeTurn: active }))
+    const { rerender } = render(<AiAgentToolsSection app={app} />)
+    expect(screen.getByText('Queued behind the current task.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Run next task' })).toBeNull()
+
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ ...session, canRunQueuedTurn: true }))
+    rerender(<AiAgentToolsSection app={app} />)
+    expect(screen.getByText(/Ready to run/)).toBeVisible()
+    expect(screen.getByText('Queued behind earlier tasks.')).toBeVisible()
+    expect(runQueuedTurn).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Run next task' }))
+    expect(runQueuedTurn).toHaveBeenCalledOnce()
+  })
+
+  it('shows a failed task with no events without saying it is starting', () => {
+    vi.mocked(useAiAgentChatSession).mockReturnValue(
+      chatSession({
+        turns: [
+          {
+            id: 'failed',
+            prompt: 'Check the display',
+            status: 'failed',
+            run: null,
+            events: [],
+            error: 'Device disconnected.'
+          }
+        ]
+      })
+    )
+    render(<AiAgentToolsSection app={app} />)
+    expect(screen.getByText('Device disconnected.')).toBeVisible()
+    expect(screen.queryByText(/Waiting for the agent|Starting the task/)).toBeNull()
   })
 
   it('uses the transcript as the desktop scroll area', () => {

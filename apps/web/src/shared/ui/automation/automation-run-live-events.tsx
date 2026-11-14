@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconActivity, IconChevronRight, IconPlayerStop, IconRobot } from '@tabler/icons-react'
+import { IconActivity, IconPlayerStop, IconRobot } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { sendBff } from '@/lib/http/bff'
@@ -72,14 +73,14 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
   const label =
     authorizationFailure?.title ?? (failed ? workflowRunFailureMessage(event.message, startedAt) : eventLabel(event))
   return (
-    <details
+    <Disclosure
       className='group border-b border-surface-border/50'
       onToggle={change => setOpen(change.currentTarget.open)}
     >
-      <summary className='flex cursor-pointer items-start gap-2 rounded-control px-2 py-2 text-sm hover:bg-control/35 focus-visible:outline-ring'>
-        <IconChevronRight
-          aria-hidden
-          className='mt-0.5 size-4 shrink-0 group-open:rotate-90'
+      <DisclosureSummary className='flex cursor-pointer items-start gap-2 rounded-control px-2 py-2 text-sm hover:bg-control/35 focus-visible:outline-ring'>
+        <DisclosureChevron
+          direction='right'
+          className='mt-0.5 size-4 shrink-0'
         />
         <span
           className={cn('mt-1.5 size-2 shrink-0 rounded-full', eventPresentation(event.type).marker)}
@@ -93,7 +94,7 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
             showSeconds
           />
         </span>
-      </summary>
+      </DisclosureSummary>
       {open ? (
         <div className='grid gap-2 px-4 pb-3'>
           <div className='flex flex-wrap items-center gap-2 text-xs text-foreground-muted'>
@@ -126,7 +127,7 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
           ) : null}
         </div>
       ) : null}
-    </details>
+    </Disclosure>
   )
 }
 

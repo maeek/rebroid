@@ -18,18 +18,39 @@ test('the viewer defaults to the top for a new preference', async ({ page }) => 
   expect(viewer.y + viewer.height).toBeLessThanOrEqual(heading.y)
 })
 
-test('narrow screens keep the viewer on top and hide its layout button', async ({ page }) => {
+test('narrow screens open the current section first and switch to a mounted device', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 })
   const pane = page.getByRole('complementary', { name: 'Android device' })
   const layout = page.getByRole('button', { name: viewerLayoutButton })
 
-  for (const editor of ['app-resource-loading', 'app-resource']) {
-    await page.goto(`/skeleton-contract-test?editor=${editor}`)
-    await expect(layout).toBeHidden()
-    const viewer = (await pane.boundingBox())!
-    const heading = (await page.getByRole('heading', { level: 1 }).boundingBox())!
-    expect(viewer.y + viewer.height).toBeLessThanOrEqual(heading.y)
-  }
+  await page.goto('/skeleton-contract-test?editor=app-resource-loading')
+  const switcher = page.getByRole('group', { name: 'App workspace view' })
+  await expect(switcher.getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(switcher.getByRole('button', { name: 'Device' })).toBeDisabled()
+
+  await page.route('**/preview-display-frame', route =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><body data-preview-display></body>' })
+  )
+  await page.goto('/skeleton-contract-test?editor=agent&viewer=preview')
+  const composer = page.getByRole('textbox', { name: 'Message the device agent' })
+  await expect(composer).toBeInViewport()
+  await expect(layout).toBeHidden()
+  await expect(pane).toBeHidden()
+  await composer.fill('Open Downloads')
+  const device = switcher.getByRole('button', { name: 'Device' })
+  const tool = switcher.getByRole('button', { name: 'AI agent' })
+  await device.press('Enter')
+  await expect(pane).toBeVisible()
+  await expect(device).toBeFocused()
+  const frame = page.locator('iframe[title="display viewer"]')
+  await frame.evaluate(node => node.setAttribute('data-retained', 'true'))
+  await tool.click()
+  await expect(tool).toBeFocused()
+  await expect(composer).toHaveValue('Open Downloads')
+  await expect(frame).toHaveAttribute('data-retained', 'true')
+  await expect(frame).toBeHidden()
+  await device.click()
+  await expect(frame).toHaveAttribute('data-retained', 'true')
 
   await page.keyboard.press('Alt+Shift+L')
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -42,11 +63,12 @@ test('the inline viewer fits the small viewport when mobile browser chrome is pr
   test.skip(!testInfo.project.use.isMobile, 'Uses Chromium mobile browser chrome emulation')
   await page.setViewportSize({ width: 384, height: 600 })
   await page.goto('/skeleton-contract-test?editor=app-resource')
+  await page.getByRole('button', { name: 'Device', exact: true }).click()
   const frame = page.getByRole('complementary', { name: 'Android device' }).locator('[data-viewer-frame]')
   const initial = (await frame.boundingBox())!
   const chrome = frame.locator('.viewer-chrome')
-  await expect(chrome).toHaveCSS('height', '32px')
-  await expect(chrome.getByRole('button', { name: 'Streaming settings' })).toHaveCSS('width', '44px')
+  await expect(chrome).toHaveCSS('height', '44px')
+  await expect(chrome.getByRole('button', { name: 'Streaming settings' })).toHaveCSS('height', '44px')
   expect(initial.height).toBeGreaterThan(300)
   const viewportHeight = await page.evaluate(() => innerHeight)
   const session = await page.context().newCDPSession(page)
@@ -132,6 +154,18 @@ test('agent chat fits the viewport and keeps its composer reachable', async ({ p
     }
     if (width === 1440) await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('agent-empty.png') })
   }
+})
+
+test('verified observations open the cited evidence and focus its summary', async ({ page }) => {
+  await page.goto('/skeleton-contract-test?editor=agent&conversation=history')
+  const transcript = page.getByRole('region', { name: 'AI agent transcript' })
+  const turn = transcript.getByRole('article').last()
+  const link = turn.getByRole('link', { name: 'Observation 1' })
+  await expect(turn.getByText('Captured Android display settings.')).toBeHidden()
+  await link.click()
+  await expect(turn.getByText('Captured Android display settings.')).toBeVisible()
+  await expect(turn.getByText('Inspected screen')).toBeVisible()
+  await expect(turn.locator('summary')).toBeFocused()
 })
 
 test('long conversations scroll independently and can return to latest', async ({ page }, testInfo) => {

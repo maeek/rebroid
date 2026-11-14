@@ -1,4 +1,5 @@
-import { IconAlertTriangle, IconCheck, IconChevronDown, IconLoader2, IconTool } from '@tabler/icons-react'
+import { IconAlertTriangle, IconCheck, IconLoader2, IconTool } from '@tabler/icons-react'
+import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
 import { cn } from '@/lib/utils'
 import { AiToolDetails } from '@/shared/ui/ai/ai-message'
 import type { ToolTimelineItem } from '../ai-agent-chat-event-utils'
@@ -45,8 +46,8 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
     <div
       className={cn('overflow-hidden rounded-control bg-surface-editor', item.status === 'failed' ? 'bg-danger/5' : '')}
     >
-      <details className='group'>
-        <summary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-xs text-foreground-muted transition-colors hover:bg-foreground/3'>
+      <Disclosure className='group'>
+        <DisclosureSummary className='flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 text-xs text-foreground-muted transition-colors hover:bg-foreground/3'>
           <span
             className={cn(
               'flex size-7 shrink-0 items-center justify-center rounded-panel border',
@@ -70,11 +71,14 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
             <span className='truncate font-mono text-xs'>{item.name}</span>
           </span>
           {hasArguments || hasOutput ? (
-            <IconChevronDown className='size-3.5 transition-transform duration-150 group-open:rotate-180' />
+            <DisclosureChevron
+              direction='down'
+              className='size-3.5'
+            />
           ) : (
             <IconTool className='size-3.5 opacity-50' />
           )}
-        </summary>
+        </DisclosureSummary>
         <div className='grid gap-2 px-3 pb-3'>
           {hasArguments ? (
             <div className='grid gap-1'>
@@ -103,7 +107,7 @@ export const ToolEventView = ({ item }: { item: ToolTimelineItem }) => {
             </div>
           ) : null}
         </div>
-      </details>
+      </Disclosure>
       {item.error ? (
         <div className='wrap-anywhere border-t border-danger/15 px-3 py-2 text-xs text-danger/90'>{item.error}</div>
       ) : null}

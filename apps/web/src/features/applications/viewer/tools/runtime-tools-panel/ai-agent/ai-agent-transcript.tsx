@@ -30,8 +30,8 @@ const AiAgentEmptyTranscript = ({ suggestions }: { suggestions?: ReactNode }) =>
   <div className='flex min-h-48 flex-1 items-center justify-center py-6 text-center'>
     <div className='grid max-w-lg place-items-center gap-4'>
       <div className='grid gap-2'>
-        <h3 className='text-2xl font-medium tracking-tight'>What would you like to do?</h3>
-        <p className='text-sm leading-6 text-foreground-muted'>Ask the agent to help with this device.</p>
+        <h3 className='text-xl font-medium'>Give the device agent a task</h3>
+        <p className='text-sm leading-6 text-foreground-muted'>Try asking what’s on the Android screen.</p>
       </div>
       {suggestions}
     </div>
@@ -47,6 +47,9 @@ export const AiAgentTranscript = ({
   onTranscriptScroll,
   transcriptRef,
   turns,
+  activeTask = false,
+  nextQueuedId,
+  canRunQueuedTurn = false,
   suggestions,
   isAtBottom = true,
   onScrollToLatest
@@ -59,6 +62,9 @@ export const AiAgentTranscript = ({
   onTranscriptScroll: () => void
   transcriptRef: RefObject<HTMLDivElement | null>
   turns: ChatTurn[]
+  activeTask?: boolean
+  nextQueuedId?: string
+  canRunQueuedTurn?: boolean
   suggestions?: ReactNode
   isAtBottom?: boolean
   onScrollToLatest?: () => void
@@ -78,16 +84,25 @@ export const AiAgentTranscript = ({
         {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
         {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript suggestions={suggestions} /> : null}
         {!isLoadingHistory
-          ? turns.map(turn => (
-              <ChatTurnView
-                key={turn.id}
-                turn={turn}
-                canSaveWorkflow={canSaveWorkflow}
-                isSavingWorkflow={draftingRunId === turn.run?.id}
-                onApproveEscalation={onApproveEscalation}
-                onSaveWorkflow={onSaveWorkflow}
-              />
-            ))
+          ? turns.map(turn => {
+              let queueMessage = 'Queued behind earlier tasks.'
+              if (turn.id === nextQueuedId) {
+                if (activeTask) queueMessage = 'Queued behind the current task.'
+                else if (canRunQueuedTurn) queueMessage = 'Ready to run. Choose Run next task when you’re ready.'
+                else queueMessage = 'This task is next in the queue.'
+              }
+              return (
+                <ChatTurnView
+                  key={turn.id}
+                  turn={turn}
+                  queueMessage={queueMessage}
+                  canSaveWorkflow={canSaveWorkflow}
+                  isSavingWorkflow={draftingRunId === turn.run?.id}
+                  onApproveEscalation={onApproveEscalation}
+                  onSaveWorkflow={onSaveWorkflow}
+                />
+              )
+            })
           : null}
       </div>
     </div>

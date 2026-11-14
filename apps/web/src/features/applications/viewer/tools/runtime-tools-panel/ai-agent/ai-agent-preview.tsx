@@ -34,17 +34,29 @@ const completedTurn = (
   run: null,
   events: [
     {
-      id: `event-${index}`,
+      id: `observation-${index}`,
       runId: `run-${index}`,
       ownerUserId: 'preview-owner',
       sequence: 1,
+      type: 'ai.perception.observed',
+      stepId: null,
+      parentStepId: null,
+      createdAt: '2026-11-08T09:59:59Z',
+      message: 'Captured Android display settings.',
+      data: { snapshotId: `display-${index}`, visibleText: ['Display', 'Adaptive brightness', 'Dark theme'] }
+    },
+    {
+      id: `event-${index}`,
+      runId: `run-${index}`,
+      ownerUserId: 'preview-owner',
+      sequence: 2,
       type: 'ai.message.completed',
       stepId: null,
       parentStepId: null,
       createdAt: '2026-11-08T10:00:00Z',
       message:
         'Opened **Settings** and verified the display preferences.\n\n- Brightness is set to automatic.\n- Dark theme is enabled.\n\nThe device is ready for your next request.',
-      data: {}
+      data: { completed: true, evidenceIds: [`snapshot:display-${index}`] }
     }
   ]
 })
@@ -80,7 +92,9 @@ export const AiAgentPreview = () => {
         activeTurn,
         adHocTimeoutMinutes: Number(timeout) || 5,
         adHocTimeoutMs: (Number(timeout) || 5) * 60_000,
+        submissionFeedback: null,
         canSubmit: Boolean(model && prompt.trim()),
+        canRunQueuedTurn: false,
         cancelRun: () => Promise.resolve(setTurns(current => current.map(turn => ({ ...turn, status: 'canceled' })))),
         catalog: model ? [provider] : [],
         clearConversation: () => Promise.resolve(setTurns([])),

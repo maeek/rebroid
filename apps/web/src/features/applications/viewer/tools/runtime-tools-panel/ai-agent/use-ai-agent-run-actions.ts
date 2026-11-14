@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
+import { useConfirmedFeedback } from '@/hooks/use-confirmed-feedback'
 import {
   cancelAutomationRunAction,
   clearAdHocAiAutomationRunsAction,
@@ -54,6 +55,8 @@ export const useAiAgentRunActions = ({
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
   turns: ChatTurn[]
 }) => {
+  const submission = useConfirmedFeedback<string>()
+  const submissionVersion = useRef(0)
   const [isCanceling, setIsCanceling] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const pendingStart = useRef<Promise<AutomationRun> | null>(null)
@@ -103,6 +106,7 @@ export const useAiAgentRunActions = ({
           )
         )
         onRunStarted?.(nextRun)
+        return true
       } catch (submitError) {
         if (version !== conversationVersionRef.current) return
         const message = submitError instanceof Error ? submitError.message : 'AI automation could not start.'
@@ -110,6 +114,7 @@ export const useAiAgentRunActions = ({
           current.map(item => (item.id === turn.id ? { ...item, status: 'failed', error: message } : item))
         )
         setError(message)
+        return false
       } finally {
         pendingStart.current = null
       }
@@ -134,6 +139,8 @@ export const useAiAgentRunActions = ({
   ) => {
     const text = promptText.trim()
     if (!app.running || !text || !modelIsValid || clearing.current) return
+    submission.reset()
+    const version = ++submissionVersion.current
     const shouldQueue = Boolean(activeTurn || queuedTurn || pendingStart.current)
     const nextTurn = createPromptTurn({
       id: crypto.randomUUID(),
@@ -144,7 +151,14 @@ export const useAiAgentRunActions = ({
     setTurns(current => [...current, nextTurn])
     if (options.clearComposer) setPrompt('')
     if (!shouldQueue) {
-      await startTurn(nextTurn, conversationBeforeTurn(nextTurn.id, turns))
+      const accepted = await startTurn(nextTurn, conversationBeforeTurn(nextTurn.id, turns))
+      if (version !== submissionVersion.current) return
+      if (accepted) submission.confirm('Message sent')
+      else if (accepted === false && options.clearComposer) {
+        setPrompt(current => current || promptText)
+      }
+    } else {
+      submission.confirm('Task queued')
     }
   }
 
@@ -152,8 +166,9 @@ export const useAiAgentRunActions = ({
     await submitPrompt(prompt, { clearComposer: true })
   }
 
+  const canRunQueuedTurn = app.running && modelIsValid && !isClearing && !activeTurn && Boolean(queuedTurn)
   const runQueuedTurn = async () => {
-    if (!app.running || !queuedTurn || activeTurn) return
+    if (!canRunQueuedTurn || !queuedTurn) return
     await startTurn(queuedTurn, conversationBeforeTurn(queuedTurn.id, turns))
   }
 
@@ -210,6 +225,8 @@ export const useAiAgentRunActions = ({
   const clearConversation = async () => {
     if (clearing.current) return
     clearing.current = true
+    submissionVersion.current += 1
+    submission.reset()
     conversationVersionRef.current += 1
     setTurns([])
     runSequencesRef.current.clear()
@@ -227,7 +244,9 @@ export const useAiAgentRunActions = ({
   }
 
   return {
+    submissionFeedback: submission.confirmation,
     canSubmit: app.running && Boolean(prompt.trim()) && modelIsValid && !isClearing,
+    canRunQueuedTurn,
     cancelRun,
     clearConversation,
     isCanceling,
