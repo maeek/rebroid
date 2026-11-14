@@ -1,0 +1,50 @@
+.summary {
+  cursor: pointer;
+  transition:
+    color 150ms ease-out,
+    background-color 150ms ease-out;
+}
+
+.summary:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.summary:has(.chevron)::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform 150ms ease-out;
+}
+
+.chevron[data-direction='right'] {
+  transform: rotate(-90deg);
+}
+
+.chevron[data-open='true'],
+.disclosure[open] > .summary .chevron:not([data-open]) {
+  transform: rotate(180deg);
+}
+
+.chevron[data-direction='right'][data-open='true'],
+.disclosure[open] > .summary .chevron[data-direction='right']:not([data-open]) {
+  transform: rotate(0deg);
+}
+
+.content {
+  transition:
+    grid-template-rows 150ms ease-out,
+    opacity 150ms ease-out,
+    padding-top 150ms ease-out,
+    padding-bottom 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary,
+  .chevron,
+  .content {
+    transition: none;
+  }
+}

@@ -7,14 +7,17 @@ import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
+import type { FieldPath } from '@/components/ui/field-changes'
 
 export const UserAvatarInput = ({
+  field,
   name,
   avatar,
   disabled = false,
   onChange,
   onPendingChange
 }: {
+  field?: FieldPath
   name: string
   avatar: string | null
   disabled?: boolean
@@ -49,6 +52,7 @@ export const UserAvatarInput = ({
 
   return (
     <FormField
+      field={field}
       label='Profile photo'
       layout='vertical'
       description='PNG, JPEG, or WebP, up to 5 MB. Cropped to a square. Changes apply when you save.'
@@ -113,26 +117,26 @@ const AvatarUploadControl = ({
         aria-describedby={describedBy}
         aria-invalid={invalid}
         accept='image/png,image/jpeg,image/webp'
-        buttonLabel={avatar ? 'Change photo' : 'Choose photo'}
+        buttonLabel='Choose photo'
         pendingLabel='Preparing…'
         pending={pending}
         disabled={disabled}
-        filenameLabel={pending ? 'Preparing photo…' : (filename ?? (avatar ? 'Current photo' : 'Using initials'))}
+        filenameLabel={pending ? undefined : (filename ?? (avatar ? 'Current photo' : 'Using initials'))}
         emptyLabel={avatar ? 'Current photo' : 'Using initials'}
         onChange={onFileChange}
       />
-      {avatar ? (
-        <Button
-          type='button'
-          className='justify-self-start'
-          variant='ghost'
-          size='sm'
-          disabled={disabled || pending}
-          onClick={onRemove}
-        >
-          Remove photo
-        </Button>
-      ) : null}
+      <Button
+        type='button'
+        className={avatar ? 'justify-self-start' : 'invisible justify-self-start'}
+        aria-hidden={!avatar}
+        tabIndex={avatar ? undefined : -1}
+        variant='ghost'
+        size='sm'
+        disabled={disabled || pending || !avatar}
+        onClick={onRemove}
+      >
+        Remove photo
+      </Button>
     </div>
   </div>
 )

@@ -28,6 +28,7 @@ type UseDataGridTableInput<TData> = {
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>
   selection?: DataGridSelectionState
   rowContextMenu?: (row: Row<TData>) => ReactNode
+  rowQuickAction?: (row: Row<TData>) => ReactNode
   loadingState?: DataGridLoadingState
 }
 
@@ -44,6 +45,7 @@ export const useDataGridTable = <TData>({
   onColumnVisibilityChange,
   selection,
   rowContextMenu,
+  rowQuickAction,
   loadingState
 }: UseDataGridTableInput<TData>) => {
   const lastSelectedIndexRef = useRef<number | null>(null)
@@ -70,9 +72,9 @@ export const useDataGridTable = <TData>({
         : []),
       ...columns,
       spacerColumn<TData>(),
-      ...(rowContextMenu || loadingState?.rowMenu ? [rowMenuColumn<TData>()] : [])
+      ...(rowContextMenu || loadingState?.rowMenu ? [rowMenuColumn<TData>(rowQuickAction)] : [])
     ],
-    [columns, getRowId, loadingState?.rowMenu, loadingState?.selectable, rowContextMenu, selection]
+    [columns, getRowId, loadingState?.rowMenu, loadingState?.selectable, rowContextMenu, rowQuickAction, selection]
   )
 
   useEffect(() => {

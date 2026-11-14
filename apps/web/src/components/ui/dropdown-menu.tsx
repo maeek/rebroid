@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
 import { IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
+import { handleMenuSelect, type MenuSelectEvent } from '@/components/ui/menu-select-event'
 import {
   actionMenuItemClassName,
   actionMenuSurfaceClassName,
@@ -12,10 +13,7 @@ import {
   triggerResetClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-
-type MenuSelectEvent = React.MouseEvent<HTMLElement> & {
-  preventBaseUIHandler?: () => void
-}
+import menuMotion from './menu-motion.module.css'
 
 type WithAsChild = {
   asChild?: boolean
@@ -29,18 +27,6 @@ type PositionerProps = {
   align?: 'start' | 'center' | 'end'
   side?: 'top' | 'right' | 'bottom' | 'left'
   sideOffset?: number
-}
-
-function handleMenuSelect(
-  event: MenuSelectEvent,
-  onSelect?: (event: MenuSelectEvent) => void,
-  onClick?: React.MouseEventHandler<HTMLElement>
-) {
-  onSelect?.(event)
-  onClick?.(event)
-  if (event.defaultPrevented) {
-    event.preventBaseUIHandler?.()
-  }
 }
 
 const DropdownMenu = DropdownMenuPrimitive.Root
@@ -119,7 +105,8 @@ const DropdownMenuSubContent = React.forwardRef<
     <DropdownMenuPrimitive.Popup
       ref={ref}
       className={cn(
-        'scrollbar-thin z-50 max-h-(--available-height) overflow-x-hidden overflow-y-auto overscroll-contain data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--transform-origin)',
+        'scrollbar-thin z-50 max-h-(--available-height) overflow-x-hidden overflow-y-auto overscroll-contain origin-(--transform-origin)',
+        menuMotion.popup,
         actionMenuSurfaceClassName,
         'min-w-32',
         className
@@ -143,11 +130,7 @@ const DropdownMenuContent = React.forwardRef<
     >
       <DropdownMenuPrimitive.Popup
         ref={ref}
-        className={cn(
-          'z-50 overflow-hidden data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-          actionMenuSurfaceClassName,
-          className
-        )}
+        className={cn('z-50 overflow-hidden', menuMotion.popup, actionMenuSurfaceClassName, className)}
         {...props}
       />
     </DropdownMenuPrimitive.Positioner>

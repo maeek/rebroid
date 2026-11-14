@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { AiModelMenu } from './ai-model-menu'
 import {
@@ -103,10 +104,10 @@ export const AiModelPicker = ({
             }}
           />
           {advanced || (hasVisionPicker && visionCatalog.length > 0) ? (
-            <details className='group px-2'>
-              <summary className='cursor-pointer rounded-control py-2 text-xs text-foreground-muted outline-none focus-visible:ring-2 focus-visible:ring-ring'>
+            <Disclosure className='group px-2'>
+              <DisclosureSummary className='cursor-pointer rounded-control py-2 text-xs text-foreground-muted outline-none focus-visible:ring-2 focus-visible:ring-ring'>
                 More options
-              </summary>
+              </DisclosureSummary>
               <div className='grid gap-4 pb-2 pt-3'>
                 {visionCatalog.length > 0 && onVisionProviderChange && onVisionModelChange ? (
                   <VisionModelFields
@@ -119,7 +120,7 @@ export const AiModelPicker = ({
                 ) : null}
                 {advanced}
               </div>
-            </details>
+            </Disclosure>
           ) : null}
           <AiModelPickerHealthFooter
             health={health}

@@ -27,7 +27,7 @@ describe('UserAvatarInput', () => {
     render(<Harness />)
     const input = screen.getByLabelText('Profile photo')
     const click = vi.spyOn(input, 'click')
-    fireEvent.click(screen.getByRole('button', { name: 'Change photo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Choose photo' }))
     expect(click).toHaveBeenCalledOnce()
     fireEvent.change(input, { target: { files: [file()] } })
     await waitFor(() => expect(screen.getByTestId('avatar')).toHaveTextContent('base64,new'))
@@ -53,7 +53,7 @@ describe('UserAvatarInput', () => {
     reject(new Error('Could not load image'))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not load image'))
     expect(screen.getByTestId('avatar')).toHaveTextContent('base64,original')
-    expect(screen.getByRole('button', { name: 'Change photo' })).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('button', { name: 'Choose photo' })).toHaveAttribute('aria-invalid', 'true')
     expect(mocks.pending).toHaveBeenLastCalledWith(false)
   })
   it('rejects unsupported files without replacing the current photo', () => {

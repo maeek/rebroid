@@ -1,11 +1,12 @@
 'use client'
 
-import { ReactNode, useEffect, useMemo, useRef } from 'react'
-import { IconCopy, IconLoader2, IconRefresh } from '@tabler/icons-react'
+import { ReactNode, useMemo } from 'react'
+import { IconArrowDown, IconLoader2, IconRefresh } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { CopyButton } from '@/components/ui/copy-button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
-import { toast } from '@/hooks/use-toast'
+import { useFollowOutput } from '@/hooks/use-follow-output'
 import { formatDateLocale } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { parseLogOutput } from './ansi-log-output'
@@ -48,27 +49,7 @@ export const LogsConsole = ({
 }) => {
   const output = log?.output || ''
   const parsedOutput = useMemo(() => parseLogOutput(output), [output])
-  const outputRef = useRef<HTMLPreElement>(null)
-  useEffect(() => {
-    if (followOutput && outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight
-  }, [followOutput, output])
-
-  const copyOutput = async () => {
-    if (!parsedOutput.text) {
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(parsedOutput.text)
-      toast({ title: 'Logs copied', variant: 'success' })
-    } catch {
-      toast({
-        title: 'Could not copy logs',
-        description: 'The browser did not allow clipboard access.',
-        variant: 'danger'
-      })
-    }
-  }
+  const { outputRef, onScroll, isAtBottom, scrollToLatest } = useFollowOutput<HTMLPreElement>(output, followOutput)
 
   return (
     <div className={cn('grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] gap-4', className)}>
@@ -77,15 +58,11 @@ export const LogsConsole = ({
           <div className='min-w-0 flex-1'>{controls}</div>
         </Visible>
         <div className='ml-auto flex shrink-0 items-center gap-2'>
-          <Button
-            type='button'
-            variant='ghost'
+          <CopyButton
+            size='md'
+            value={parsedOutput.text}
             disabled={loading || !parsedOutput.text}
-            onClick={() => void copyOutput()}
-          >
-            <IconCopy className='size-4' />
-            Copy
-          </Button>
+          />
           {onRefresh ? (
             <Button
               type='button'
@@ -93,32 +70,58 @@ export const LogsConsole = ({
               disabled={loading || refreshDisabled || isRefreshing}
               onClick={onRefresh}
             >
-              {isRefreshing ? <IconLoader2 className='size-4 animate-spin' /> : <IconRefresh className='size-4' />}
+              {isRefreshing ? (
+                <IconLoader2 className='size-4 motion-safe:animate-spin' />
+              ) : (
+                <IconRefresh className='size-4' />
+              )}
               Refresh
             </Button>
           ) : null}
         </div>
       </div>
-      <pre
-        ref={outputRef}
-        aria-label={outputLabel}
-        tabIndex={loading ? undefined : 0}
-        className={cn(
-          'min-h-0 overflow-auto rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
-          outputClassName
-        )}
-      >
-        {loading ? (
-          <Skeleton
-            as='span'
-            className='block h-4 w-96 max-w-full'
-          />
-        ) : parsedOutput.text ? (
-          parsedOutput.content
-        ) : (
-          emptyMessage
-        )}
-      </pre>
+      <div className='relative grid min-h-0 min-w-0'>
+        <pre
+          ref={outputRef}
+          onScroll={onScroll}
+          aria-label={outputLabel}
+          tabIndex={loading ? undefined : 0}
+          className={cn(
+            'min-h-0 overflow-auto rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
+            outputClassName
+          )}
+        >
+          {loading ? (
+            <Skeleton
+              as='span'
+              className='block h-4 w-96 max-w-full'
+            />
+          ) : parsedOutput.text ? (
+            parsedOutput.content
+          ) : (
+            emptyMessage
+          )}
+        </pre>
+        {!loading && !isAtBottom ? (
+          <div className='pointer-events-none absolute inset-x-0 bottom-3 flex justify-center'>
+            <Button
+              size='sm'
+              variant='secondary'
+              className='pointer-events-auto shadow-panel'
+              onClick={() => {
+                scrollToLatest()
+                outputRef.current?.focus({ preventScroll: true })
+              }}
+            >
+              <IconArrowDown
+                aria-hidden
+                className='size-4'
+              />{' '}
+              Latest output
+            </Button>
+          </div>
+        ) : null}
+      </div>
       <Visible when={log && showCollectedAt}>
         <p className='text-xs text-foreground-muted'>
           {collectedAtPrefix}{' '}

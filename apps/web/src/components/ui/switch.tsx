@@ -11,7 +11,7 @@ const Switch = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SwitchPrimitives.Root
     className={cn(
-      'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-[background-color,border-color,box-shadow] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[unchecked]:border-control-border-strong/45 data-[unchecked]:bg-control-hover oled:data-[unchecked]:border-control-border-strong/60',
+      'peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full motion-reduce:transition-none transition-[background-color,border-color,box-shadow] data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50 data-[unchecked]:border-control-border-strong/45 data-[unchecked]:bg-control-hover oled:data-[unchecked]:border-control-border-strong/60',
       controlSurfaceClassName,
       controlHoverClassName,
       focusRingClassName,
@@ -23,7 +23,7 @@ const Switch = React.forwardRef<
   >
     <SwitchPrimitives.Thumb
       className={cn(
-        'pointer-events-none block size-4 rounded-full border border-control-border/60 bg-surface-elevated shadow-floating ring-0 transition-[background-color,border-color,transform] data-[checked]:translate-x-4 data-[checked]:!border-primary/70 data-[checked]:!bg-primary data-[unchecked]:translate-x-0 data-[unchecked]:bg-surface-elevated dark:data-[unchecked]:border-control-border-strong/60 dark:data-[unchecked]:bg-control-border-strong oled:data-[unchecked]:border-control-border-strong oled:data-[unchecked]:bg-control-border-strong'
+        'pointer-events-none block size-4 rounded-full border border-control-border/60 bg-surface-elevated shadow-floating ring-0 motion-reduce:transition-none transition-[background-color,border-color,transform] data-[checked]:translate-x-4 data-[checked]:!border-primary/70 data-[checked]:!bg-primary data-[unchecked]:translate-x-0 data-[unchecked]:bg-surface-elevated dark:data-[unchecked]:border-control-border-strong/60 dark:data-[unchecked]:bg-control-border-strong oled:data-[unchecked]:border-control-border-strong oled:data-[unchecked]:bg-control-border-strong'
       )}
     />
   </SwitchPrimitives.Root>

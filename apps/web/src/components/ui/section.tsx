@@ -1,6 +1,6 @@
 'use client'
 import { ReactNode, useContext, useEffect, useId, useRef, useState } from 'react'
-import { IconChevronDown } from '@tabler/icons-react'
+import { DisclosureChevron, disclosureContentClassName, disclosureTriggerClassName } from '@/components/ui/disclosure'
 import { EditorFormContext, EditorSectionContext } from '@/components/ui/editor-form-context'
 import { bandSurfaceClassName, editorSectionClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
@@ -101,7 +101,7 @@ export const Section = ({
       data-slot='section'
       data-surface={editorContainer ? 'editor' : effectiveSurface}
       className={cn(
-        'flex flex-col w-full rounded-panel',
+        'flex flex-col w-full',
         {
           [cn(bandSurfaceClassName, 'p-6 max-sm:p-4')]: effectiveSurface === 'band',
           [cn(panelSurfaceClassName, 'p-6 max-sm:p-4')]: effectiveSurface === 'panel',
@@ -119,6 +119,7 @@ export const Section = ({
             aria-controls={contentId}
             className={cn(
               'touch-control flex w-full items-center justify-between text-left',
+              disclosureTriggerClassName,
               { 'px-6 py-5 max-sm:px-4 max-sm:py-4': panelCollapsible },
               titleClassName
             )}
@@ -131,11 +132,7 @@ export const Section = ({
                 <span className='text-sm font-normal text-foreground-muted'>{description}</span>
               </Visible>
             </span>
-            <IconChevronDown
-              className={cn('transition', {
-                '-rotate-180': isOpen
-              })}
-            />
+            <DisclosureChevron open={isOpen} />
           </button>
         ) : (
           <div
@@ -173,7 +170,8 @@ export const Section = ({
           aria-hidden={!isOpen}
           onInvalidCapture={() => setIsOpen(true)}
           className={cn(
-            'grid overflow-hidden transition-[grid-template-rows,opacity,padding-top,padding-bottom] duration-200 ease-out',
+            'grid overflow-x-visible overflow-y-clip',
+            disclosureContentClassName,
             {
               'px-6 max-sm:px-4': panelCollapsible,
               'grid-rows-[1fr] opacity-100': isOpen,

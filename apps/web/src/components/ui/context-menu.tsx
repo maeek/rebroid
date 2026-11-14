@@ -3,12 +3,10 @@
 import * as React from 'react'
 import { ContextMenu as ContextMenuPrimitive } from '@base-ui/react/context-menu'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
+import { handleMenuSelect, type MenuSelectEvent } from '@/components/ui/menu-select-event'
 import { actionMenuItemClassName, actionMenuSurfaceClassName, floatingLayerClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-
-type MenuSelectEvent = React.MouseEvent<HTMLElement> & {
-  preventBaseUIHandler?: () => void
-}
+import menuMotion from './menu-motion.module.css'
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return (
@@ -55,7 +53,8 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot='context-menu-content'
           className={cn(
-            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto',
+            menuMotion.popup,
             actionMenuSurfaceClassName,
             className
           )}
@@ -95,13 +94,7 @@ function ContextMenuItem({
         actionMenuItemClassName,
         className
       )}
-      onClick={event => {
-        onSelect?.(event)
-        onClick?.(event)
-        if (event.defaultPrevented) {
-          event.preventBaseUIHandler?.()
-        }
-      }}
+      onClick={event => handleMenuSelect(event, onSelect, onClick)}
       {...props}
     >
       {getBaseChildren(asChild, children)}

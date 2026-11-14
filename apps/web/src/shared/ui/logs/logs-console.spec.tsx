@@ -38,6 +38,9 @@ describe('LogsConsole', () => {
     expect(refresh).toHaveBeenCalledOnce()
     expect(screen.getByRole('button', { name: 'Copy' })).toBeDisabled()
     const output = screen.getByLabelText('Log output')
+    output.scrollTo = vi.fn((options?: ScrollToOptions | number) => {
+      if (typeof options === 'object') output.scrollTop = options.top ?? 0
+    })
     Object.defineProperty(output, 'scrollHeight', { configurable: true, value: 480 })
     rerender(
       <LogsConsole

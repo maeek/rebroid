@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { IconSearch, IconX } from '@tabler/icons-react'
+import { useEffect, useRef, useState, useTransition } from 'react'
+import { IconLoader2, IconSearch, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -13,8 +13,9 @@ export type SearchFieldProps = {
   value: string
   placeholder: string
   onValueChange: (value: string) => void
-  onSearch?: (value: string) => void
+  onSearch?: (value: string) => void | Promise<void>
   debounceMs?: number
+  pending?: boolean
   disabled?: boolean
   className?: string
   ariaLabel?: string
@@ -26,6 +27,7 @@ export const SearchField = ({
   onValueChange,
   onSearch,
   debounceMs = 300,
+  pending = false,
   disabled = false,
   className,
   ariaLabel,
@@ -33,6 +35,19 @@ export const SearchField = ({
   'aria-describedby': describedBy,
   'aria-invalid': invalid
 }: SearchFieldProps) => {
+  const [isSearching, startSearch] = useTransition()
+  const [showPending, setShowPending] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const busy = pending || isSearching
+  useEffect(() => {
+    if (!busy) {
+      setShowPending(false)
+      return
+    }
+    const timer = setTimeout(() => setShowPending(true), 200)
+    return () => clearTimeout(timer)
+  }, [busy])
+
   const [pointerHover, setPointerHover] = useState(false)
   const lastCommittedValue = useRef(value)
   const pendingTimeout = useRef<number | null>(null)
@@ -43,7 +58,7 @@ export const SearchField = ({
     pendingTimeout.current = window.setTimeout(() => {
       lastCommittedValue.current = value
       pendingTimeout.current = null
-      onSearch(value)
+      startSearch(() => onSearch(value))
     }, debounceMs)
 
     return () => {
@@ -56,8 +71,10 @@ export const SearchField = ({
     if (pendingTimeout.current !== null) window.clearTimeout(pendingTimeout.current)
     pendingTimeout.current = null
     lastCommittedValue.current = nextValue
-    onSearch?.(nextValue)
+    startSearch(() => onSearch?.(nextValue))
   }
+
+  const SearchIcon = busy && showPending ? IconLoader2 : IconSearch
 
   return (
     <div
@@ -74,12 +91,17 @@ export const SearchField = ({
       onPointerLeave={() => setPointerHover(false)}
       onPointerCancel={() => setPointerHover(false)}
     >
-      <IconSearch
+      <SearchIcon
         aria-hidden='true'
         data-testid='search-field-icon'
-        className='pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-foreground-muted'
+        className={cn(
+          'pointer-events-none absolute left-3 top-1/2 z-10 size-4 -translate-y-1/2 text-foreground-muted',
+          busy && showPending && 'motion-safe:animate-spin'
+        )}
       />
       <Input
+        ref={inputRef}
+        aria-busy={busy || undefined}
         id={id}
         aria-describedby={describedBy}
         aria-invalid={invalid}
@@ -87,7 +109,7 @@ export const SearchField = ({
         value={value}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        className={cn('pl-9 [&::-webkit-search-cancel-button]:hidden', value && 'pr-9 touch:pr-12')}
+        className='pl-9 pr-9 touch:pr-12 [&::-webkit-search-cancel-button]:hidden'
         disabled={disabled}
         onChange={event => onValueChange(event.target.value)}
         onKeyDown={event => {
@@ -106,6 +128,7 @@ export const SearchField = ({
           aria-label='Clear search'
           disabled={disabled}
           onClick={() => {
+            inputRef.current?.focus()
             onValueChange('')
             commit('')
           }}

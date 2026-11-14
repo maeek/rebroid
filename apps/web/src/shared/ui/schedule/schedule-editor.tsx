@@ -22,6 +22,7 @@ export const ScheduleEditor = ({
     <div className='grid min-w-0 gap-x-form-column gap-y-4 sm:grid-cols-2'>
       <FormField
         label='Frequency'
+        field={['schedule', 'frequency']}
         layout='vertical'
       >
         <Select
@@ -42,6 +43,7 @@ export const ScheduleEditor = ({
       <Visible when={schedule.frequency === 'hourly'}>
         <FormField
           label='Interval (hours)'
+          field={['schedule', 'intervalHours']}
           layout='vertical'
         >
           <Input
@@ -57,6 +59,7 @@ export const ScheduleEditor = ({
       <Visible when={schedule.frequency !== 'hourly'}>
         <FormField
           label='Time'
+          field={['schedule', 'time']}
           layout='vertical'
         >
           <Input
@@ -69,6 +72,7 @@ export const ScheduleEditor = ({
       <Visible when={schedule.frequency === 'weekly'}>
         <FormField
           label='Day of week'
+          field={['schedule', 'weekday']}
           layout='vertical'
         >
           <Select
@@ -94,6 +98,7 @@ export const ScheduleEditor = ({
       <Visible when={schedule.frequency === 'monthly'}>
         <FormField
           label='Day of month'
+          field={['schedule', 'monthDay']}
           description='Choose a day from 1 to 28.'
           layout='vertical'
         >

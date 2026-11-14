@@ -6,6 +6,7 @@ import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { floatingSurfaceClassName, semanticToneClassNames } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import styles from './toast-motion.module.css'
 
 const ToastProvider = ToastPrimitives.Provider
 
@@ -25,7 +26,7 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = 'ToastViewport'
 
 const toastVariants = cva(
-  'group pointer-events-auto relative isolate flex w-full items-start justify-between gap-3 overflow-hidden rounded-panel p-4 pr-10 shadow-emphasis transition-all data-[ending-style]:fade-out-80 data-[ending-style]:slide-out-to-right-full data-[ending-style]:animate-out data-[starting-style]:animate-in data-[starting-style]:slide-in-from-bottom-full',
+  'group pointer-events-auto relative isolate flex w-full items-start justify-between gap-3 overflow-hidden rounded-panel p-4 pr-10 shadow-emphasis',
   {
     variants: {
       variant: {
@@ -50,7 +51,7 @@ const Toast = React.forwardRef<
     <ToastPrimitives.Root
       ref={ref}
       data-tone={variant ?? 'neutral'}
-      className={cn(toastVariants({ variant }), className)}
+      className={cn(toastVariants({ variant }), styles.toast, className)}
       {...props}
     />
   )
@@ -76,8 +77,9 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     aria-label='Close'
+    aria-hidden={false}
     className={cn(
-      'absolute right-3 top-3 z-10 rounded-control p-1 text-foreground-muted opacity-0 transition-[background-color,color,opacity] hover:bg-surface-band/80 hover:text-foreground focus:opacity-100 focus:bg-surface-band/80 focus:text-foreground focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.danger]:text-danger group-[.danger]:hover:bg-danger/16 group-[.danger]:hover:text-danger group-[.danger]:focus:ring-danger/60',
+      'absolute right-3 top-3 z-10 rounded-control p-1 text-foreground-muted opacity-70 motion-reduce:transition-none transition-[background-color,color,opacity] hover:bg-surface-band/80 hover:text-foreground focus:opacity-100 focus:bg-surface-band/80 focus:text-foreground focus:outline-none focus:ring-1 group-hover:opacity-100 group-[.danger]:text-danger group-[.danger]:hover:bg-danger/16 group-[.danger]:hover:text-danger group-[.danger]:focus:ring-danger/60',
       className
     )}
     {...props}

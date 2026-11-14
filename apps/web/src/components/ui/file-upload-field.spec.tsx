@@ -25,4 +25,35 @@ describe('FileUploadField', () => {
     render(<FileUploadField pending />)
     expect(screen.getByRole('button', { name: 'Uploading…' })).toBeDisabled()
   })
+  it('keeps visible button text fixed and uses the controlled filename after processing', () => {
+    const { rerender } = render(<FileUploadField filenameLabel='Current APK' />)
+    rerender(
+      <FileUploadField
+        pending
+        filenameLabel='Replacement APK'
+      />
+    )
+    expect(screen.getByRole('button', { name: 'Uploading…' })).toHaveTextContent('Choose file')
+    expect(screen.getByRole('status')).toHaveTextContent('Uploading… Replacement APK')
+    rerender(<FileUploadField filenameLabel='Current APK' />)
+    expect(screen.getByRole('button', { name: 'Choose file' })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Current APK')
+  })
+  it('uses a newly supplied filename when a drop follows a previous picker selection', () => {
+    const { rerender } = render(
+      <FormField label='File'>
+        <FileUploadField />
+      </FormField>
+    )
+    fireEvent.change(screen.getByLabelText('File'), { target: { files: [new File(['apk'], 'previous.apk')] } })
+    rerender(
+      <FormField label='File'>
+        <FileUploadField
+          pending
+          filenameLabel='dropped.apk'
+        />
+      </FormField>
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Uploading… dropped.apk')
+  })
 })

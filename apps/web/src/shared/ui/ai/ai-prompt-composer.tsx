@@ -1,7 +1,10 @@
 'use client'
 
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Keyboard users can reveal the complete composer status. */
+
 import { useId, type ReactNode, type Ref } from 'react'
 import { Textarea } from '@/components/ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 export const AiPromptComposer = ({
@@ -48,6 +51,7 @@ export const AiPromptComposer = ({
 
   return (
     <div
+      data-slot='ai-prompt-composer'
       className={cn(
         variant === 'panel'
           ? 'rounded-feature border border-control-border/25 bg-control p-3 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring'
@@ -66,7 +70,7 @@ export const AiPromptComposer = ({
         placeholder={placeholder}
         onChange={event => onChange(event.target.value)}
         onKeyDown={event => {
-          if (!onSubmit) return
+          if (!onSubmit || disabled) return
           const keyboardEvent = event.nativeEvent
           const submitWithEnter = submitOnEnter && event.key === 'Enter' && !event.shiftKey
           const submitWithShortcut = (event.metaKey || event.ctrlKey) && event.key === 'Enter'
@@ -98,17 +102,22 @@ export const AiPromptComposer = ({
           ))}
         </div>
       ) : null}
-      {status ? (
-        <div
-          className='px-1 pt-1 text-xs leading-5 text-foreground-muted'
-          role='status'
-        >
-          {status}
-        </div>
-      ) : null}
       <div className='mt-2 flex min-w-0 items-center gap-2'>
         {leadingControl ? <div className='shrink-0'>{leadingControl}</div> : null}
-        <div className='ml-auto min-w-0 max-w-full'>{modelControl}</div>
+        <Tooltip disabled={!status}>
+          <TooltipTrigger asChild>
+            <span
+              data-slot='composer-status'
+              role='status'
+              tabIndex={status ? 0 : undefined}
+              className='min-w-0 flex-1 truncate text-xs leading-5 text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring'
+            >
+              {status}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className='max-w-72 break-words'>{status}</TooltipContent>
+        </Tooltip>
+        <div className='min-w-0 max-w-[45%]'>{modelControl}</div>
         {actions ? <div className='flex shrink-0 items-center justify-end gap-2'>{actions}</div> : null}
       </div>
       {metadata ? <div className='mt-2 text-xs leading-5 text-foreground-muted'>{metadata}</div> : null}

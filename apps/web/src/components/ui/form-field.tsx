@@ -5,7 +5,10 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { EditorFormContext } from './editor-form-context'
+import { useFieldModified, type FieldPath } from './field-changes'
+import { FieldValidation } from './field-validation'
 import { FormLoadingContext } from './form-loading-boundary'
+import { ModifiedIndicator } from './modified-indicator'
 
 interface FormFieldProps {
   children: React.ReactNode
@@ -16,6 +19,10 @@ interface FormFieldProps {
   error?: React.ReactNode
   label: React.ReactNode
   layout?: 'vertical' | 'horizontal'
+  /** Shows an unsaved-change marker without changing label alignment. */
+  modified?: boolean
+  /** Field in the nearest saved-draft comparison, including nested paths. */
+  field?: FieldPath
   required?: boolean
   surface?: 'plain' | 'band'
 }
@@ -26,37 +33,47 @@ type FieldControlProps = {
   'aria-invalid'?: React.AriaAttributes['aria-invalid']
 }
 
-export const FormField = ({
-  children,
-  className,
-  contentClassName,
-  controlId,
-  description,
-  error,
-  label,
-  layout = 'horizontal',
-  required,
-  surface = 'plain'
-}: FormFieldProps) => {
+export const FormField = (props: FormFieldProps) => {
+  const {
+    children,
+    className,
+    contentClassName,
+    controlId,
+    description,
+    error,
+    label,
+    layout = 'horizontal',
+    required,
+    surface = 'plain',
+    modified: explicitModified,
+    field
+  } = props
   const loading = React.useContext(FormLoadingContext)
+  const fieldModified = useFieldModified(field)
+  const modified = explicitModified ?? fieldModified
   const inEditor = React.useContext(EditorFormContext)
   const fieldLayout = inEditor ? 'vertical' : layout
   const generatedId = React.useId()
   const child = React.isValidElement<FieldControlProps>(children) ? children : null
   const id = controlId ?? child?.props.id ?? generatedId
   const descriptionId = description ? `${id}-description` : undefined
-  const errorId = error ? `${id}-error` : undefined
-  const describedBy = [child?.props['aria-describedby'], descriptionId, errorId].filter(Boolean).join(' ') || undefined
+  const visibleError = loading ? undefined : error
+  const modifiedId = modified && !loading ? `${id}-modified` : undefined
+  const errorId = visibleError ? `${id}-error` : undefined
+  const describedBy =
+    [child?.props['aria-describedby'], descriptionId, errorId, modifiedId].filter(Boolean).join(' ') || undefined
   const control = child
     ? React.cloneElement(child, {
         id,
         'aria-describedby': describedBy,
-        'aria-invalid': error ? true : child.props['aria-invalid']
+        'aria-invalid': visibleError ? true : child.props['aria-invalid']
       })
     : children
 
   return (
     <div
+      data-slot='form-field'
+      data-modified={(modified && !loading) || undefined}
       data-editor-field={inEditor || undefined}
       className={cn(
         'flex w-full min-w-0',
@@ -72,11 +89,20 @@ export const FormField = ({
       <div className={cn('grid min-w-0 gap-1', fieldLayout === 'horizontal' ? 'flex-1' : 'w-full')}>
         <Label
           htmlFor={id}
-          className='leading-5 touch:text-base/6'
+          className='relative leading-5 touch:text-base/6'
         >
+          {modified !== undefined ? <ModifiedIndicator modified={Boolean(modified && !loading)} /> : null}
           {label}
           {required ? <span className='ml-1 text-xs font-medium text-foreground-muted'>*</span> : null}
         </Label>
+        {modifiedId ? (
+          <span
+            id={modifiedId}
+            className='sr-only'
+          >
+            Unsaved change
+          </span>
+        ) : null}
         {description ? (
           <p
             id={descriptionId}
@@ -85,14 +111,11 @@ export const FormField = ({
             {description}
           </p>
         ) : null}
-        {error && fieldLayout === 'horizontal' ? (
-          <p
-            id={errorId}
-            className='text-xs text-danger touch:text-sm/5'
-            role='alert'
-          >
-            {error}
-          </p>
+        {visibleError && fieldLayout === 'horizontal' ? (
+          <FieldValidation
+            id={`${id}-error`}
+            error={visibleError}
+          />
         ) : null}
       </div>
       <div
@@ -119,14 +142,11 @@ export const FormField = ({
         ) : (
           control
         )}
-        {fieldLayout === 'vertical' && error ? (
-          <p
-            id={errorId}
-            className='mt-1.5 text-xs text-danger touch:text-sm/5'
-            role='alert'
-          >
-            {error}
-          </p>
+        {visibleError && fieldLayout === 'vertical' ? (
+          <FieldValidation
+            id={`${id}-error`}
+            error={visibleError}
+          />
         ) : null}
       </div>
     </div>

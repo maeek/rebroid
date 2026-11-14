@@ -1,9 +1,9 @@
-import { type MouseEvent, type RefObject } from 'react'
+import { type MouseEvent, type ReactNode, type RefObject } from 'react'
 import { IconDotsVertical } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { RowActions, RowActionButton } from '@/components/ui/row-actions'
 import type { DataGridSelectionState } from './data-grid'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { CellContext, ColumnDef, Row } from '@tanstack/react-table'
 
 export const openContextMenuFromButton = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault()
@@ -118,29 +118,33 @@ export const spacerColumn = <TData,>(): ColumnDef<TData> => ({
   cell: () => null
 })
 
-const RowMenuCell = () => (
-  <div className='flex min-h-10 items-center justify-end'>
-    <Button
-      type='button'
-      variant='ghost'
-      size='icon-md'
-      className='size-8'
-      aria-label='Open row actions'
-      onClick={openContextMenuFromButton}
-    >
-      <IconDotsVertical className='size-4' />
-    </Button>
-  </div>
-)
+const RowMenuCell = <TData,>({ row, column }: CellContext<TData, unknown>) => {
+  const quickAction = column.columnDef.meta?.rowQuickAction
+  const contextual = Boolean(quickAction)
+  return (
+    <div className='flex min-h-10 items-center justify-end'>
+      <RowActions visible={!contextual}>
+        {contextual ? <span className='touch-control inline-flex size-8 shrink-0'>{quickAction?.(row)}</span> : null}
+        <RowActionButton
+          label='Open row actions'
+          onClick={openContextMenuFromButton}
+        >
+          <IconDotsVertical className='size-4' />
+        </RowActionButton>
+      </RowActions>
+    </div>
+  )
+}
 
-export const rowMenuColumn = <TData,>(): ColumnDef<TData> => ({
+export const rowMenuColumn = <TData,>(quickAction?: (row: Row<TData>) => ReactNode): ColumnDef<TData> => ({
   id: '__row_menu',
   enableHiding: false,
   enableSorting: false,
-  size: 48,
-  minSize: 48,
-  maxSize: 48,
+  size: quickAction ? 108 : 48,
+  minSize: quickAction ? 108 : 48,
+  maxSize: quickAction ? 108 : 48,
   enableResizing: false,
   header: () => <span className='sr-only'>Row actions</span>,
+  meta: { rowQuickAction: quickAction },
   cell: RowMenuCell
 })

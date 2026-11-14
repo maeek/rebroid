@@ -1,7 +1,11 @@
 'use client'
 
+/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to reveal truncated filenames. */
+
 import { useId, useRef, useState, type ComponentProps } from 'react'
-import { Button } from '@/components/ui/button'
+import { IconUpload } from '@tabler/icons-react'
+import { MutationButton } from '@/components/ui/mutation-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 type FileUploadFieldProps = ComponentProps<'input'> & {
@@ -28,9 +32,14 @@ export const FileUploadField = ({
   const inputId = id ?? generatedId
   const input = useRef<HTMLInputElement>(null)
   const [filename, setFilename] = useState('')
+  const displayFilename = filenameLabel ?? (filename || emptyLabel)
+  let accessibleLabel = props['aria-label'] ? `Choose ${props['aria-label']}` : undefined
+  if (pending) accessibleLabel = pendingLabel
+  const statusText = pending ? `${pendingLabel} ${displayFilename}` : displayFilename
   return (
     <div
-      className={cn('flex min-w-0 w-full flex-wrap items-center gap-3', className)}
+      data-slot='file-upload-field'
+      className={cn('flex min-w-0 w-full items-center gap-3', className)}
       aria-busy={pending}
     >
       <input
@@ -46,24 +55,37 @@ export const FileUploadField = ({
           onChange?.(event)
         }}
       />
-      <Button
+      <MutationButton
         type='button'
         variant='outline'
-        disabled={disabled || pending}
+        pending={pending}
+        pendingLabel={buttonLabel}
+        disabled={disabled}
         aria-controls={inputId}
-        aria-label={props['aria-label'] ? `Choose ${props['aria-label']}` : undefined}
+        aria-label={accessibleLabel}
         aria-describedby={props['aria-describedby']}
         aria-invalid={props['aria-invalid']}
         onClick={() => input.current?.click()}
       >
-        {pending ? pendingLabel : buttonLabel}
-      </Button>
-      <span
-        className='min-w-0 break-all text-xs text-foreground-muted'
-        role='status'
-      >
-        {filenameLabel || filename || emptyLabel}
-      </span>
+        <IconUpload
+          aria-hidden
+          className='size-4'
+        />
+        {buttonLabel}
+      </MutationButton>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            data-slot='file-name'
+            role='status'
+            className='min-w-0 flex-1 truncate text-xs text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring'
+            tabIndex={0}
+          >
+            {statusText}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className='max-w-sm break-all'>{statusText}</TooltipContent>
+      </Tooltip>
     </div>
   )
 }

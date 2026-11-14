@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
-import { IconFilter, IconRestore, IconX } from '@tabler/icons-react'
-import { Badge } from '@/components/ui/badge'
+import { useRef, useState, type ReactNode } from 'react'
+import { IconFilter, IconRestore } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { DataGridEmptyContext } from './data-grid-empty-state'
+import { DataGridFilterSummary } from './data-grid-filter-summary'
 import { DataGridToolbar } from './data-grid-toolbar'
 import styles from '@/shared/ui/page/page-toolbar.module.css'
 
@@ -22,7 +22,7 @@ export type DataGridWorkspaceProps = {
   appliedSearch?: string
   searchPlaceholder: string
   onSearchChange: (value: string) => void
-  onSearch: (value: string) => void
+  onSearch: (value: string) => void | Promise<void>
   filters?: ReactNode
   filterTitle?: string
   filterDescription?: string
@@ -66,6 +66,7 @@ export const DataGridWorkspace = ({
   children,
   className
 }: DataGridWorkspaceProps) => {
+  const filterTriggerRef = useRef<HTMLButtonElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const hasFilters = Boolean(filters)
   const hasSelection = selectionMode || selectedCount > 0
@@ -103,7 +104,9 @@ export const DataGridWorkspace = ({
                     <SheetTrigger
                       render={
                         <Button
+                          ref={filterTriggerRef}
                           type='button'
+                          aria-label={activeFilters.length ? `Filters (${activeFilters.length})` : 'Filters'}
                           variant='ghost'
                           className={compact ? 'relative max-sm:size-9 max-sm:px-0' : undefined}
                           disabled={disabled}
@@ -111,9 +114,16 @@ export const DataGridWorkspace = ({
                       }
                     >
                       <IconFilter className={cn('size-4', compact && activeFilters.length > 0 && 'text-primary')} />
-                      <span className={compact ? 'max-sm:sr-only' : undefined}>
-                        Filters
-                        {activeFilters.length > 0 ? ` (${activeFilters.length})` : null}
+                      <span className={compact ? 'max-sm:sr-only' : undefined}>Filters</span>
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'w-[3ch] text-center tabular-nums',
+                          compact && 'max-sm:hidden',
+                          !activeFilters.length && 'invisible'
+                        )}
+                      >
+                        {activeFilters.length > 99 ? '99+' : activeFilters.length}
                       </span>
                       {compact && activeFilters.length > 0 ? (
                         <span
@@ -162,44 +172,13 @@ export const DataGridWorkspace = ({
             ) : null}
           </div>
 
-          {activeFilters.length > 0 ? (
-            <div className='flex min-h-7 flex-wrap items-center gap-2'>
-              {activeFilters.map(filter => (
-                <Badge
-                  key={filter.id}
-                  variant='neutral'
-                  className='gap-1 py-1 font-normal touch:relative touch:min-h-11 touch:pr-7'
-                >
-                  <span className='text-foreground-muted'>{filter.label}</span>
-                  <span
-                    className='max-w-64 truncate'
-                    title={filter.value}
-                  >
-                    {filter.value}
-                  </span>
-                  <button
-                    type='button'
-                    disabled={disabled}
-                    className='ml-1 rounded-control hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:absolute touch:inset-0 touch:ml-0 touch:flex touch:items-center touch:justify-end touch:pr-2'
-                    aria-label={`Remove ${filter.label} filter`}
-                    onClick={filter.onRemove}
-                  >
-                    <IconX className='size-3' />
-                  </button>
-                </Badge>
-              ))}
-              {onResetFilters && activeFilters.length > 1 ? (
-                <Button
-                  type='button'
-                  size='sm'
-                  variant='ghost'
-                  disabled={disabled}
-                  onClick={onResetFilters}
-                >
-                  Clear all
-                </Button>
-              ) : null}
-            </div>
+          {hasFilters && activeFilters.length > 0 ? (
+            <DataGridFilterSummary
+              filters={activeFilters}
+              disabled={disabled}
+              onReset={onResetFilters}
+              onBeforeRemove={() => filterTriggerRef.current?.focus()}
+            />
           ) : null}
         </div>
 
@@ -210,7 +189,7 @@ export const DataGridWorkspace = ({
             disabled,
             clearSearch: () => {
               onSearchChange('')
-              onSearch('')
+              void onSearch('')
             },
             clearFilters: onResetFilters
           }}

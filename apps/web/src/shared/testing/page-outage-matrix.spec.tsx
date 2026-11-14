@@ -31,6 +31,9 @@ vi.mock('@/server/orchestrator/orchestrator-page-read', async importOriginal => 
   getOrchestratorPageHealth: health
 }))
 vi.mock('@/features/applications/pages/create-app/page-data.server', () => ({ getCreateAppPageData: load }))
+vi.mock('@/server/orchestrator/current-user', () => ({
+  getCurrentUserContext: () => Promise.resolve({ permissions: { 'applications:create': true } })
+}))
 vi.mock('@/features/automations/pages/automation-traces/page-data.server', () => ({
   loadAutomationTracesPageData: load
 }))

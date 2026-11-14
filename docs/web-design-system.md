@@ -87,7 +87,8 @@ Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
 The Docker and System labels open their overview pages. Each has a separate chevron for expanding or collapsing its child links.
 In the icon rail, groups open labeled flyouts with their destinations and available shortcuts.
-Use the circled add icon for sidebar create shortcuts.
+Use the circled add icon for sidebar create shortcuts. Place the workflow and trigger shortcuts
+on their respective navigation items.
 Use one `h1`, `h2` for primary sections, and `h3` for nested sections. Skip subheadings that
 repeat the page title or active tab. Put page-wide context in `PageHeader.description` and
 keep useful section-specific copy in `Section.description` without adding a heading.
@@ -164,10 +165,86 @@ space when displaying completion. Use 160 ms state transitions and 200 ms progre
 without bounce, page motion, or additional motion libraries. Reduced motion disables these
 transitions and spinner rotation while keeping pending labels and outcome icons visible.
 
+Manual page refreshes use `PlatformPageRefreshButton` with an explicit `refreshResult`: a new
+server snapshot or completed request batch and its success flag. Only a user-requested successful
+refresh earns the brief check; polling, failures, and pending ending alone do not. The icon slot and
+accessible action name stay fixed. Aggregated refreshes wait for all requested reads.
+
+Reordered workflow steps and group memberships use `useReorderFeedback`: a brief inset highlight,
+a polite position announcement, and focus that follows the moved item. Keep the item visible across
+pagination; do not animate entire lists or reserve confirmation space. Native disclosures use
+`Disclosure`, `DisclosureSummary`, and `DisclosureChevron`; collapsible `Section` shares their
+150 ms timing and keyboard focus treatment. Preserve existing padding, mounted drafts, and automatic
+validation expansion. Reduced motion removes rotation transitions, collapse transitions, and reorder
+animation while retaining the state cues.
+
+Immediate-save switches use `MutationSwitch` with `useImmediateSave`. Keep the confirmed value
+until the write returns, reserve the compact icon slot, and announce Saving/Saved without changing
+control dimensions. Never infer success from pending ending. Draft-only switches stay plain switches.
+Toast notices use a 140 ms fade with a 4 px offset, no broad property transitions, and a visible close
+control on touch and keyboard. Identical plain-text notices update the existing toast rather than stack.
+Reduced motion removes toast movement, switch transitions, and spinner rotation.
+
+The AI composer keeps routine status in the existing toolbar, with the full text available on focus
+or hover. `AiComposerActions` keeps fixed Send/Queue and Stop/Run next icon slots; action changes
+never resize the composer. Acknowledgements reflect accepted submissions or explicitly queued prompts.
+Failed submissions restore an empty composer without overwriting a newer draft. Validation errors may
+expand naturally; do not add empty message rows to forms or composers.
+
 Resource navigation and resource-style tabs glide their 24 px underline over 180 ms, with a
 160 ms color change. Keep tab dimensions and content rendering immediate. The first selection,
 layout changes, and reduced-motion selection are static. `ResourceNavigationMotionScope` can
 retain the selected item when sections of the same resource remount; key it by resource identity.
+
+Use `CopyButton` for plain-text clipboard actions. Keep the visible label and icon slot fixed;
+show a check only after the browser confirms the write, then reset after 1.6 seconds. Report
+clipboard failures with the shared error feedback rather than showing a successful copy.
+`RowActions` reserves its space and fades in on an owning `data-row-actions-scope` hover or focus.
+Keep actions visible on touch devices and while their menu or feedback is active. Grids can supply
+one `rowQuickAction` alongside the existing menu; both ready and loading rows reserve the same width.
+Tooltips share the page provider: 350 ms initial delay, a 400 ms window for immediate adjacent
+tooltips, and a 120 ms opacity fade. Reduced motion removes copy, row-action, and tooltip transitions.
+
+`SearchField` keeps typing and clearing available while a search transition is pending. Show its
+spinner in the existing icon slot only after 200 ms; do not infer request completion from the
+search debounce. Keep existing results while the transition is pending. Filterable workspaces
+reserve a single-line, horizontally scrollable summary strip and a fixed count slot. Search-only
+workspaces do not reserve filter chrome. Removing a chip returns focus to the Filters control.
+
+Menus, submenus, selects, and combobox popups share a 120 ms opacity transition using Base UI
+starting/ending states. Keep popup geometry and keyboard highlighting immediate, with no zoom
+or slide; reduced motion removes the fade.
+
+Live logs and AI transcripts share `useFollowOutput`: follow new output only while the reader
+stays near the bottom. Scrolling away pauses following; a floating latest-output control restores
+it without changing the scroll region's dimensions or scrolling the page. Explicitly enabling
+following resumes at the bottom. Output following remains instantaneous under all motion settings.
+
+`FileUploadField` keeps its visible button label and icon slot fixed during processing. The filename
+occupies one truncated line; keyboard focus or hover reveals the full value in the shared tooltip.
+Controlled filename labels remain authoritative after processing, including failed uploads.
+`FileDropZone` accepts file drags only and fades an absolute overlay over the existing surface;
+disabled drops never dispatch, and leaving the window clears the feedback. Preserve a picker as
+the keyboard/touch alternative. Reduced motion removes the overlay fade and spinner rotation.
+
+`FormField` renders validation messages only when an error exists; errors may expand the form.
+Do not reserve empty validation rows or increase normal field spacing. The optional `modified`
+marker is absolutely positioned to the left of the label and never changes text alignment or field
+size. Compare with the confirmed saved baseline; clear on revert or successful save, retain after
+failure, and hide during loading. For saved settings forms, wrap the editor in
+`FieldChangesProvider` with its current draft and acknowledged baseline, then identify each
+`FormField` with `field` (a key or nested path). Use `DraftFieldLabel` for editable row or group
+labels. Scope nested editors to their own baseline and match collection entries by stable ID.
+Keep search filters, creation forms, and immediate-save controls outside this feedback.
+
+Page editors with a saved baseline use the shared unsaved-changes dialog for links that leave the
+editor. Preserve the AI provider draft when switching between Models and Connection. Confirmed
+discard resets the draft before navigating, including when the browser retains the page in history.
+
+After a bulk action, remove successful items from selection and retain failed items for retry.
+Summarize the outcome once in the existing toast. After a confirmed file rename or delete, restore
+focus once the dialog closes. Focus the renamed item, the next available row, or the current folder
+when there is no visible row. Use the existing focus ring and success announcement.
 
 Use shared controls, including their focus and keyboard behavior:
 
@@ -273,8 +350,9 @@ and primary action without a breadcrumb. Keep Apps search in one row with the sh
 The sort menu uses a sort icon on mobile and a gear on desktop. Use a single grid of
 cards shared with Recently opened on Overview, with the icon beside the name and status. Offer ownership in Filters for admins
 and show removable chips for active filters. Keep the desktop Select shortcut off touch and narrow layouts.
-Show the owner beside another user's app name and label it “Clone to run” when the user can create a copy.
-Keep the standard viewer frame for administrator inspection and show the separate-session warning inside it.
+Show the owner beside another user's app name and label the tile “Administrator view.”
+Offer **Copy to my apps** when the account can create an app. Keep the standard viewer frame
+for administrator inspection and explain that only the owner can open the live display.
 Touch users can long-press an app tile and choose Select app. The tile’s visible actions menu
 offers the same command for keyboard and pointer users. Selection replaces search controls
 with the count, bulk actions, and Done without shifting the tiles. Keep the Apps selection
@@ -287,8 +365,8 @@ is 24 CSS px with exceptions. The 44 px web target balances density with the tou
 from [Apple](https://developer.apple.com/design/human-interface-guidelines/buttons) and
 [Android](https://developer.android.com/guide/topics/ui/accessibility/views/apps-views).
 Inline and standalone viewer layouts use the small viewport height so browser toolbar movement
-does not resize the device. The viewer toolbar is 32 CSS px tall, with wider controls on touch
-so the toolbar uses less space above the display.
+does not resize the device. The viewer toolbar is 32 CSS px tall for fine pointers and 44 CSS px
+for coarse pointers.
 
 On phones use 24/32 for page titles. For touch layouts use 18/24 for section titles, 16/24
 for form labels, values, and primary reading text, and 14/20 for help, errors, buttons, and tabs.
@@ -305,9 +383,11 @@ Account status in user grids is read-only. Put explicit “Disable user…” an
 
 Keep the visible control available to pointer and keyboard users. Show its shortcut in the
 shared tooltip with keycaps, and expose it through `aria-keyshortcuts` when enabled.
-App pages default to the viewer above the content. At 1024 px and wider, the layout button and
+At 1024 px and wider, app pages default to the viewer above the content. The layout button and
 Alt+Shift+L (Option+Shift+L on Apple keyboards) switch between top and right. Narrow screens
-always place the viewer above the content and keep the saved desktop preference.
+open the selected app section first and place the Device switch beside it. Switching panes keeps
+the display mounted, restores the pane's scroll position, and suspends hidden keyboard capture.
+The desktop placement preference applies when the viewport widens again.
 The shortcut yields to text editing, open menus and dialogs, fullscreen, and Android keyboard
 capture. Preserve focus and the mounted viewer when changing its layout.
 
@@ -375,19 +455,41 @@ the section automatically. Keep essentials and permissions visible.
 
 ## Workflow workspace
 
-Workflow editors use StandardPage, with workflow details in one shared panel above the step workspace.
-Keep the sequence and selected-step inspector aligned on desktop. On smaller screens, open the inspector
-only after an explicit step selection and restore focus on dismissal. Use semantic panel surfaces without
-an extra border, shadow, or selection stripe. Expose Visual editor and YAML modes together above the workspace;
-keep import/export and deletion in the action menu. Existing workflows share Editor / Run history resource
-navigation, including their loading states. Preserve unsaved-change guards on those links.
+The workflow editor uses a compact, borderless toolbar that sticks below the app navigation. Match
+the opaque page background so scrolling steps stay hidden behind it. Keep the workflow name and back
+link alongside Visual editor, YAML, Undo, Redo, and Save. Put Workflow details, Run history, import, export,
+and deletion in the workflow action menu. Workflow details opens a centered dialog with Name, Tags,
+and Description in Visual editor mode. Closing the dialog returns focus to the menu button. Run
+history has a Back to editor link. Preserve unsaved-change guards when leaving the editor and compare
+the draft with the last confirmed save. In Visual editor mode, the workflow heading supports inline
+renaming and keeps heading typography. Apply the rename to the draft on Enter or blur. Escape cancels.
 
-Use the shared searchable action catalog with FormField associations and Select for fixed action choices.
+Align the step sequence and selected-step inspector on desktop. The sequence sits on the page canvas
+with no outer padding or rounding. The inspector fills the available viewport below the toolbar and
+uses a semantic panel surface. On smaller screens, open the inspector only after an
+explicit step selection and restore focus on dismissal. Allow moves that break step references, mark
+each affected step, and identify the unavailable outputs in its inspector. Disable saving until the
+references are fixed. Use the same editor header and workspace for loading states. Workflow YAML
+fills the available desktop workspace below the toolbar and uses the page background without a
+wrapper panel or border.
+
+Show the action's effect or the first condition with its comparison in the outline. Give each
+branch one Add step control and show its drop cue during a valid drag. In the inspector, lead
+with the action fields and put Replace block in the inspector's three-dot menu.
+Use the shared searchable action catalog in Add step and Replace block. Show category headings when
+browsing and searching. Add step also includes the flow blocks and a Paste block action. Show
+previous-step output references beside their fields and keep the field's visual editor available.
+Show full-width settings within their assigned columns. Put optional settings in borderless,
+inline disclosures named for their contents. Relative swipes show labeled direction
+presets, a gesture preview, and exact coordinates for custom gestures.
+Use FormField associations and Select for fixed action choices.
 Trigger dialogs group identity, workflow/target/profile, and schedule without nested panel surfaces. Use side-by-side
 groups on wide screens and stack them on narrow screens. Keep footer actions visible while the form scrolls, and
 retain disabled/pending behavior. Workflow and trigger grids show tags with the name.
 The Workflows grid uses separate Run status and Last run columns, with the trace link beside the timestamp.
 A recorded failure links directly to its full-page trace with Summary, Steps, and Events.
+Lead the trace with the workflow and target app. Identify the failed step by its action label and
+provide a control that opens Steps and focuses the matching result.
 Use the viewer's titled summary panel for run metadata and expose the run ID and any recorded request ID.
 Use ScheduleValue and DateTimeValue for recurrence and time presentation. Related workflow and app names are
 ResourceLinks. Run history preserves the `?run=` selection contract.
@@ -450,6 +552,8 @@ the error and a retry action inside the frame.
 The viewer layout button beside the breadcrumbs switches between the default stacked layout and a right-hand pane. Its tooltip names the destination and shows the keyboard shortcut. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout button and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
 The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.
+The compact display keeps all four corners rounded. Hover or keyboard focus reveals a separate toolbar above it
+without moving or resizing the display.
 Disable input while the preview floats. Closing docks the player, preserves the page scroll position,
 and keeps the preview dismissed until the inline viewer returns.
 The authorized clipboard dialog belongs in the display toolbar, with explicit read, copy, and send actions.
@@ -477,7 +581,7 @@ Stopped devices allow drafting but never submission, including keyboard shortcut
 actual run/provider failures remain accessible errors. New output follows only while the reader is near the
 bottom, with an explicit Latest messages action after scrolling up; do not animate repeated stream scrolling.
 
-App and container resource navigation share `ResourceNavigation` under `shared/ui`; feature wrappers own destinations and permissions. Resource navigation uses a single overflow-safe row of routed links with aria-current, a quiet semantic background, and a compact active indicator. Use the same section names in navigation, breadcrumbs, and canonical view URLs. Keep device-specific controls next to the device, outside resource navigation.
+App and container resource navigation share `ResourceNavigation` under `shared/ui`. Feature wrappers own destinations and permissions. Resource navigation uses a single overflow-safe row of routed links with aria-current, a quiet semantic background, and a compact active indicator. App breadcrumbs end at the app name. The resource navigation identifies the current section. Keep device-specific controls next to the device, outside resource navigation.
 
 Resource references in tables and detail content use shared `ResourceLink`: accent color at rest, underline on hover/focus, and a visible keyboard focus ring. Keep secondary metadata muted. Link only values with a known destination; context menus and section navigation retain their own interaction styling.
 
@@ -491,12 +595,10 @@ Resources pages use `DetailFields` for host and managed-container metadata, matc
 
 Runtime Maintenance and the platform overview’s Infrastructure diagnostics are always-visible sections, with ordinary headings. Do not put these operational destinations behind expanders. Runtime loading reuses the maintenance section with disabled actions.
 
-Overview Operations shows the total number of apps needing attention and links to All apps with the
-Needs attention status filter applied. App operations links to All apps with In progress applied.
-Active workflow runs links to the active run inventory. Both cards show totals. Fetch failures
-remain notices and must not appear as zero failures. When no snapshot exists, hide
-the operation groups, capacity cards, and their sampling hints. On refresh failure, retain real
-values with an explicit stale-data notice. Do not repeat unavailable values beneath an error notice.
+Overview Operations follows Recently opened. App operation cards show a count and a link to the
+filtered Apps inventory. Active workflow runs shows up to three authorized run links, with a count
+and a link to the full active run inventory. Show the snapshot timestamp and retain it with a stale-data notice on refresh
+failure. When the first read fails, show the failure notice and omit unavailable values.
 
 Maintenance tasks uses the shared QuickGlanceCard summary surfaces and flat DataGridWorkspace. Task names open their editor; built-in/custom provenance stays secondary. Combine the last result and timestamp, keep availability on the switch, and avoid repeated name/action labels or enabled badges. Loading reuses the complete scheduler page and column definitions with disabled controls.
 
@@ -612,22 +714,29 @@ and reset the event inspector when switching applications.
 
 ## App discovery
 
-Apps retains a transparent icon gallery with the icon above its name and quiet status text. Apply a
-surface highlight only on hover, keyboard focus, or selection. Use a responsive, bounded tile width
-and consistent icon/name/status geometry. Use the shared search/selection workspace for discovery and bulk actions; keep Create app
+Apps uses compact horizontal cards with the icon beside the name and quiet status text. Use a
+responsive, bounded tile width and consistent icon/name/status geometry. Use the shared
+search/selection workspace for discovery and bulk actions; keep Create app
 in the header and a visible keyboard-accessible menu on each tile. Search names, package, image,
 owner, and IDs; combine it with status and sorting. Bulk actions target selected visible results only.
 Expose failed apps through status filtering instead of repeating their errors above the gallery.
 Loading reuses the gallery toolbar, grid, and tile content.
+On hover or keyboard focus, running app cards and desktop sidebar shortcuts show the latest available screenshot
+for the app owner with screenshot permission. The floating preview reserves the same space during
+loading and refresh, fits the image without cropping, and shows the capture time. It opens to the
+right of the sidebar app row. Open previews refresh once a minute. Stop or access loss clears
+the image and capture time.
 Create and Configuration saves show name conflicts on the Name field and focus it. Compare
 names within the app owner's account, ignoring case and surrounding whitespace. When the source
-name is already taken in the destination account, Open as me uses an available copy name.
+name is already taken in the destination account, **Copy to my apps** uses an available copy name.
 
 Overview puts a bounded Recently opened row before operational summaries. Use the authenticated
 per-user visit history in visit order; exclude deleted and inaccessible apps and do not substitute
-unvisited running apps. Use the same card, grid, owner labels, Configuration action, and Open as me
+unvisited running apps. Use the same card, grid, owner labels, Configuration action, and **Copy to my apps**
 action as All apps. Loading uses the same card and grid. Empty and unavailable histories retain
 access to All apps.
 Sidebar app shortcuts keep their highlight while the context menu is open. Right-click or long-press
 to open app actions or remove a shortcut from recent history. Removing a running shortcut hides it
 until the user opens the app again.
+Sidebar app shortcuts show a status indicator only while the app is running or a lifecycle operation is in progress.
+Keep shortcut row height consistent across statuses and Start action availability.

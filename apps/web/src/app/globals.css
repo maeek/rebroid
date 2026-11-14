@@ -18,6 +18,7 @@
   --page-header-control-size: 2.25rem;
   --app-viewer-height: calc(100svh - 6rem);
   --viewer-chrome-height: 32px;
+  --viewer-chrome-gap: 6px;
   --viewer-rail-width: 32px;
 }
 
@@ -33,10 +34,11 @@
   :root {
     --page-header-control-size: var(--touch-target-size);
     --viewer-rail-width: var(--touch-target-size);
+    --viewer-chrome-height: var(--touch-target-size);
   }
 
   .viewer-chrome [data-slot='button'] {
-    height: calc(var(--viewer-chrome-height) - 2px);
+    height: var(--viewer-chrome-height);
     min-height: 0;
   }
 }
@@ -520,6 +522,16 @@
 
 .app-device-pane[data-viewer-placement='top'] {
   --app-viewer-height: calc(100svh - 9rem);
+}
+
+@media (width < 64rem) {
+  .app-device-layout {
+    --app-device-gap: 0.75rem;
+  }
+
+  .app-device-layout .app-device-pane {
+    --app-viewer-height: calc(100svh - var(--console-top-inset) - var(--console-bottom-inset) - 7.5rem);
+  }
 }
 @media (min-width: 64rem) {
   :root {

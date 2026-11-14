@@ -1,0 +1,34 @@
+.actions {
+  transition: opacity 140ms ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .actions {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  [data-row-actions-scope]:hover .actions,
+  [data-row-actions-scope]:focus-within .actions,
+  [data-row-actions-scope][data-popup-open] .actions,
+  [data-row-actions-scope]:has([data-popup-open], [aria-expanded='true']) .actions,
+  .actions:focus-within,
+  .actions:has([data-feedback-active='true']),
+  .actions[data-visible='true'] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .actions {
+    transition: none;
+  }
+}

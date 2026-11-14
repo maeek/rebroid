@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CreateAppPageLoading } from '@/features/applications/create/create-app-page-loading'
 import { AppManagePageSkeleton, AppProfilesPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import {
@@ -34,6 +34,11 @@ const renderLoading = (node: ReactNode) =>
   )
 
 describe('feature-owned page loading states', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
   it.each([
     ['workflows', AutomationsListPageSkeleton, ['Workflow', 'Steps', 'Last run']],
     ['triggers', AutomationTriggersPageSkeleton, ['Trigger', 'Target']],

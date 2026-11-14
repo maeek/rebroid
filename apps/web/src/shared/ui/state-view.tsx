@@ -31,7 +31,7 @@ export type StateViewAction = {
 }
 
 const defaultIcon = (kind: StateViewKind) => {
-  if (kind === 'loading') return <IconLoader2 className='animate-spin' />
+  if (kind === 'loading') return <IconLoader2 className='motion-safe:animate-spin' />
   if (kind === 'empty') return <IconDatabaseOff />
   if (kind === 'no-results') return <IconFilterOff />
   if (kind === 'not-found') return <IconMapQuestion />

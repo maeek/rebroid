@@ -71,11 +71,16 @@ import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-cont
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { ActionFeedbackPreview } from '@/shared/testing/action-feedback-preview'
-import { ResourceNavigationPreview } from '@/shared/testing/resource-navigation-preview'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
 import { FeedbackPreview } from '@/shared/testing/feedback-preview'
+import { FieldFeedbackPreview } from '@/shared/testing/field-feedback-preview'
+import { ImmediateFeedbackPreview } from '@/shared/testing/immediate-feedback-preview'
+import { InteractionPolishPreview } from '@/shared/testing/interaction-polish-preview'
 import { PageFailurePreview } from '@/shared/testing/page-failure-preview'
+import { ReorderRefreshDisclosurePreview } from '@/shared/testing/reorder-refresh-disclosure-preview'
+import { ResourceNavigationPreview } from '@/shared/testing/resource-navigation-preview'
+import { SearchMenuLogPreview } from '@/shared/testing/search-menu-log-preview'
 import {
   AppActivityPreview,
   AuditLogPreview,
@@ -91,13 +96,18 @@ export const dynamic = 'force-dynamic'
 export default async function SkeletonContractPage({
   searchParams
 }: {
-  searchParams: Promise<{ editor?: string; workflows?: string }>
+  searchParams: Promise<{ editor?: string; workflows?: string; recentApps?: string }>
 }) {
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
-  const { editor, workflows } = await searchParams
+  const { editor, workflows, recentApps } = await searchParams
   if (editor === 'action-feedback') return <ActionFeedbackPreview />
   if (editor === 'resource-navigation') return <ResourceNavigationPreview />
+  if (editor === 'search-menu-log') return <SearchMenuLogPreview />
+  if (editor === 'reorder-refresh-disclosure') return <ReorderRefreshDisclosurePreview />
+  if (editor === 'immediate-feedback') return <ImmediateFeedbackPreview />
+  if (editor === 'field-feedback') return <FieldFeedbackPreview />
+  if (editor === 'interaction-polish') return <InteractionPolishPreview />
   if (editor === 'services-unavailable') return <ServicesPreview unavailable />
   if (editor === 'resources-unavailable')
     return (
@@ -196,6 +206,8 @@ export default async function SkeletonContractPage({
       />
     )
   if (editor === 'workflow') return <WorkflowEditorPreview />
+  if (editor === 'workflow-long') return <WorkflowEditorPreview long />
+  if (editor === 'workflow-references') return <WorkflowEditorPreview withReferences />
   if (editor === 'agent') return <AppResourcePreview agent />
   if (editor === 'workflow-create') return <WorkflowEditorPreview creating />
   if (editor === 'workflow-loading') return <AutomationEditorPageSkeleton />
@@ -254,6 +266,21 @@ export default async function SkeletonContractPage({
     return (
       <ConsoleShellPreview
         initialSidebarCollapsed={parseSidebarCollapsed(requestCookies.get(sidebarCollapsedCookie)?.value)}
+        recentApps={
+          recentApps === '1'
+            ? [
+                {
+                  id: 'starting-app',
+                  name: 'Starting app',
+                  status: 'provisioning',
+                  statusLabel: 'Booting Android',
+                  openedAt: 3
+                },
+                { id: 'stopped-app', name: 'Stopped app', status: 'stopped', canStart: true, openedAt: 2 },
+                { id: 'running-app', name: 'Running app', status: 'running', statusLabel: 'Running', openedAt: 1 }
+              ]
+            : undefined
+        }
         manifest={
           manifest && {
             ...manifest,

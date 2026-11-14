@@ -16,13 +16,15 @@ export const DataGridEmptyState = ({
   description = 'Items will appear here when they are available.',
   actions,
   filtered: filteredOverride,
-  onReset
+  onReset,
+  headingLevel
 }: {
   title?: string
   description?: string
   actions?: StateViewAction[]
   filtered?: boolean
   onReset?: () => void
+  headingLevel?: 2 | 3
 }) => {
   const context = useContext(DataGridEmptyContext)
   const filtered = filteredOverride ?? (context?.hasSearch || context?.hasFilters)
@@ -37,6 +39,7 @@ export const DataGridEmptyState = ({
   return (
     <StateView
       scope='grid'
+      headingLevel={headingLevel}
       kind={filtered ? 'no-results' : 'empty'}
       title={filtered ? 'No matching results' : title}
       description={filtered ? 'Try a different search or adjust the filters.' : description}

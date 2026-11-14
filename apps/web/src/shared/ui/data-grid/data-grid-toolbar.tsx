@@ -9,7 +9,7 @@ export type DataGridToolbarProps = {
   search: string
   searchPlaceholder: string
   onSearchChange: (value: string) => void
-  onSearchSubmit: (value: string) => void
+  onSearchSubmit: (value: string) => void | Promise<void>
   filterControl?: ReactNode
   searchActions?: ReactNode
   selectedCount?: number

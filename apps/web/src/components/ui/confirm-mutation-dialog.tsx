@@ -33,6 +33,7 @@ export const ConfirmMutationDialog = ({
   tone = 'danger',
   title,
   onConfirm,
+  onClosed,
   onOpenChange
 }: {
   cancelLabel?: string
@@ -50,6 +51,7 @@ export const ConfirmMutationDialog = ({
   tone?: 'warning' | 'danger'
   title: ReactNode
   onConfirm: () => void
+  onClosed?: () => void
   onOpenChange: (open: boolean) => void
 }) => {
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -77,7 +79,10 @@ export const ConfirmMutationDialog = ({
       }}
       onOpenChangeComplete={nextOpen => {
         onOpenChangeComplete(nextOpen)
-        if (!nextOpen) setEnteredText('')
+        if (!nextOpen) {
+          setEnteredText('')
+          onClosed?.()
+        }
       }}
     >
       <DialogContent

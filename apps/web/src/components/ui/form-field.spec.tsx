@@ -52,4 +52,32 @@ describe('FormField associations', () => {
     )
     expect(screen.getByRole('combobox', { name: 'Connection' })).toHaveAttribute('aria-invalid', 'true')
   })
+  it('keeps the label stable while announcing unsaved changes and validation independently', () => {
+    const field = (modified: boolean, error?: string) => (
+      <FormField
+        label='Name'
+        modified={modified}
+        error={error}
+        description='Display name'
+        layout='vertical'
+      >
+        <Input
+          value='Example'
+          readOnly
+        />
+      </FormField>
+    )
+    const { rerender } = render(field(false))
+    const input = screen.getByRole('textbox', { name: 'Name' })
+    expect(input).toHaveAccessibleDescription('Display name')
+    rerender(field(true))
+    expect(input).toHaveAccessibleDescription('Display name Unsaved change')
+    rerender(field(true, 'Choose another name.'))
+    expect(input).toHaveAccessibleName('Name')
+    expect(input).toHaveAccessibleDescription('Display name Choose another name. Unsaved change')
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose another name.')
+    rerender(field(false))
+    expect(input).toHaveAccessibleDescription('Display name')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
 })

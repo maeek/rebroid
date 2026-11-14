@@ -10,6 +10,7 @@ import {
   selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import menuMotion from './menu-motion.module.css'
 
 export type MultiSelectComboboxOption = {
   value: string
@@ -155,7 +156,8 @@ export const MultiSelectCombobox = ({
         >
           <Combobox.Popup
             className={cn(
-              'w-[var(--anchor-width)] min-w-64 max-w-[calc(100vw-2rem)] overflow-hidden data-[open]:animate-in data-[closed]:animate-out data-[closed]:fade-out-0 data-[open]:fade-in-0 data-[closed]:zoom-out-95 data-[open]:zoom-in-95',
+              'w-[var(--anchor-width)] min-w-64 max-w-[calc(100vw-2rem)] overflow-hidden',
+              menuMotion.popup,
               menuSurfaceClassName
             )}
           >

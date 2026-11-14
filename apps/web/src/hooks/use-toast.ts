@@ -32,7 +32,6 @@ function normalizeToastOptions(props: ToastInput) {
   const variant = props.variant ?? props.data?.variant ?? props.type ?? 'neutral'
 
   return {
-    id: props.id,
     title: props.title,
     description: props.description,
     type: variant,
@@ -48,7 +47,15 @@ function normalizeToastOptions(props: ToastInput) {
 }
 
 function toast({ ...props }: ToastInput) {
-  const id = toastManager.add(normalizeToastOptions(props))
+  const options = normalizeToastOptions(props)
+  const id = toastManager.add({
+    ...options,
+    id:
+      props.id ??
+      (typeof props.title === 'string' && (props.description === undefined || typeof props.description === 'string')
+        ? `notice:${JSON.stringify([options.type, props.title, props.description ?? ''])}`
+        : undefined)
+  })
 
   const update = (innerProps: ToastInput) => {
     toastManager.update(id, normalizeToastOptions(innerProps))

@@ -274,6 +274,8 @@ export const DataGridTable = <TData,>({
                   const rowContent = (
                     <TableRow
                       key={row.id}
+                      data-reorder-id={getRowId(row.original)}
+                      data-row-actions-scope
                       aria-label={rowActivation?.getLabel(row.original)}
                       className={cn(
                         'transition-none hover:bg-surface-band/50',

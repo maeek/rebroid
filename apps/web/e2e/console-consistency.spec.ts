@@ -2,6 +2,33 @@ import { expect, test } from '@playwright/test'
 
 const widths = [390, 768, 1440, 2048]
 
+test('app shortcuts keep equal row heights with a status dot or Start action', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=console-shell&recentApps=1')
+
+  const checkRows = async () => {
+    const stopped = page.getByRole('listitem').filter({
+      has: page.getByRole('link', { name: 'Stopped app', exact: true })
+    })
+    await expect(stopped.getByRole('button', { name: 'Start Stopped app' })).toBeAttached()
+    for (const [name, status] of [
+      ['Starting app', 'Booting Android'],
+      ['Running app', 'Running']
+    ]) {
+      const row = page.getByRole('listitem').filter({ has: page.getByRole('link', { name, exact: true }) })
+      await expect(row.getByTitle(status, { exact: true })).toBeAttached()
+      expect(await row.evaluate(element => getComputedStyle(element).height)).toBe(
+        await stopped.evaluate(element => getComputedStyle(element).height)
+      )
+    }
+  }
+
+  await checkRows()
+  await page.setViewportSize({ width: 390, height: 800 })
+  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' }).click()
+  await checkRows()
+})
+
 test('the mobile navigation drawer follows a touch drag and dismisses', async ({ page, hasTouch, browserName }) => {
   test.skip(!hasTouch || browserName !== 'chromium', 'Uses Chromium touch input')
   await page.setViewportSize({ width: 390, height: 800 })

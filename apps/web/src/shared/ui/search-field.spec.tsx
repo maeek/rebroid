@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SearchField } from './search-field'
 
-const SearchHarness = ({ onSearch }: { onSearch: (value: string) => void }) => {
+const SearchHarness = ({ onSearch }: { onSearch: (value: string) => void | Promise<void> }) => {
   const [value, setValue] = useState('')
   return (
     <SearchField
@@ -62,5 +62,28 @@ describe('SearchField', () => {
     )
     expect(screen.getByTestId('search-field-icon')).toBeTruthy()
     expect(screen.getByRole('searchbox')).toBeDisabled()
+  })
+  it('keeps input editable while an asynchronous search is pending and restores focus on clear', async () => {
+    let finish!: () => void
+    const pending = new Promise<void>(resolve => {
+      finish = resolve
+    })
+    render(<SearchHarness onSearch={() => pending} />)
+    const input = screen.getByRole('searchbox')
+    fireEvent.change(input, { target: { value: 'image' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(input).toHaveAttribute('aria-busy', 'true')
+    expect(input).toBeEnabled()
+    await act(async () => {
+      finish()
+      await pending
+    })
+    expect(input).not.toHaveAttribute('aria-busy')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+    expect(input).toHaveFocus()
+    expect(input).toHaveValue('')
+    await act(async () => {
+      await pending
+    })
   })
 })

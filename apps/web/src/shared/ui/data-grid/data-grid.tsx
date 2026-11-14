@@ -20,6 +20,7 @@ declare module '@tanstack/react-table' {
     label?: string
     cellContentClassName?: string
     skeleton?: DataGridCellSkeleton
+    rowQuickAction?: (row: Row<TData>) => ReactNode
   }
 }
 
@@ -73,6 +74,7 @@ export type DataGridProps<TData> = {
   emptyState?: ReactNode
   minWidth?: string
   rowContextMenu?: (row: Row<TData>) => ReactNode
+  rowQuickAction?: (row: Row<TData>) => ReactNode
   rowActivation?: DataGridRowActivation<TData>
   className?: string
   loading?: boolean | DataGridLoadingState
@@ -94,6 +96,7 @@ export function DataGrid<TData>({
   emptyState,
   minWidth,
   rowContextMenu,
+  rowQuickAction,
   rowActivation,
   className,
   loading = false
@@ -121,6 +124,7 @@ export function DataGrid<TData>({
     onColumnVisibilityChange,
     selection,
     rowContextMenu,
+    rowQuickAction,
     loadingState
   })
   const columnVisibilityMenu =
