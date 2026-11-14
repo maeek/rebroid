@@ -29,6 +29,9 @@ export interface AutomationEditorPageProps {
 
 export interface AutomationTriggersPageProps {
   loading?: boolean
+  ownedAppIds?: string[]
+  canRun?: boolean
+  canCreateApp?: boolean
   initialApplications: AndroidApplication[]
   initialAutomations: Automation[]
   triggersPage: AutomationTriggersGridPage

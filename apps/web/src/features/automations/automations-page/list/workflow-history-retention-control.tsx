@@ -84,6 +84,7 @@ export const WorkflowHistoryRetentionControl = ({ initial }: { initial: ActionRe
             }}
           >
             <FormField
+              modified={Number(days) !== initial.data.retentionDays}
               label='Retention days'
               description={`Keep runs for 1–3,650 days. The default is ${defaultWorkflowHistoryRetentionDays} days.`}
               layout='vertical'

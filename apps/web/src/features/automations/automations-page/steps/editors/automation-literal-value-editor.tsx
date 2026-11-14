@@ -74,7 +74,7 @@ export function AutomationLiteralValueEditor({
           <Input
             id={id}
             type={kind === 'number' ? 'number' : 'text'}
-            className={kind === 'number' ? 'max-w-48' : undefined}
+            className='w-full'
             disabled={kind === 'null'}
             value={kind === 'null' ? '' : literalInputValue(value)}
             onChange={event => onChange(kind === 'number' ? Number(event.target.value) || 0 : event.target.value)}

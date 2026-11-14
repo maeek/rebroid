@@ -410,6 +410,15 @@ describe('AutomationAiHarnessService', () => {
       toolCalls: 1,
       evidence: { evidenceIds: ['action:1'] },
     });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.message.completed',
+        data: expect.objectContaining({
+          evidenceIds: ['action:1'],
+          observationIds: ['screen-2'],
+        }),
+      }),
+    );
     expect(events.some((event) => event.type === 'ai.tool.completed')).toBe(
       true,
     );

@@ -1,12 +1,6 @@
-import { NumberField, SelectField } from '../shared/action-fields'
-import { percentToPixel, pixelToPercent } from '../shared/coordinate-helpers'
+import { NumberField } from '../shared/action-fields'
 import { numberInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
-
-type CoordinateMode = 'pixels' | 'percent'
-
-const coordinateMode = (uiState: Record<string, unknown>): CoordinateMode =>
-  uiState.coordinateMode === 'percent' ? 'percent' : 'pixels'
 
 export const tapAction: AutomationActionDefinition = {
   uses: 'android.tap',
@@ -17,53 +11,29 @@ export const tapAction: AutomationActionDefinition = {
     x: numberInputValue(input, 'x', 100),
     y: numberInputValue(input, 'y', 100)
   }),
-  fromBackendInput: () => ({ coordinateMode: 'pixels' }),
-  toBackendInput: input => ({
-    x: numberInputValue(input, 'x', 100),
-    y: numberInputValue(input, 'y', 100)
-  }),
-  summary: input => `x: ${numberInputValue(input, 'x', 100)}, y: ${numberInputValue(input, 'y', 100)}`,
-  renderEditor: ({ input, uiState, patchInput, patchUiState }) => {
-    const mode = coordinateMode(uiState)
-    const x = numberInputValue(input, 'x', 100)
-    const y = numberInputValue(input, 'y', 100)
-
-    return (
-      <div className='grid gap-3'>
-        <SelectField
-          label='Position mode'
-          value={mode}
-          options={['pixels', 'percent']}
-          onChange={value => patchUiState({ coordinateMode: value })}
-        />
-        {mode === 'pixels' ? (
-          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
-            <NumberField
-              label='X'
-              value={x}
-              onChange={value => patchInput({ x: value })}
-            />
-            <NumberField
-              label='Y'
-              value={y}
-              onChange={value => patchInput({ y: value })}
-            />
-          </div>
-        ) : (
-          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(10rem,100%),1fr))] gap-x-form-column gap-y-3'>
-            <NumberField
-              label='X (%)'
-              value={pixelToPercent(x, 'x')}
-              onChange={value => patchInput({ x: percentToPixel(value, 'x') })}
-            />
-            <NumberField
-              label='Y (%)'
-              value={pixelToPercent(y, 'y')}
-              onChange={value => patchInput({ y: percentToPixel(value, 'y') })}
-            />
-          </div>
-        )}
+  summary: input => `(${numberInputValue(input, 'x', 100)}, ${numberInputValue(input, 'y', 100)}) px`,
+  renderEditor: ({ input, patchInput }) => (
+    <div className='grid gap-4'>
+      <p className='text-sm text-foreground-muted'>Measured from the top-left corner of the Android display.</p>
+      <div className='grid grid-cols-2 gap-3'>
+        {(
+          [
+            ['x', 'X', 100],
+            ['y', 'Y', 100]
+          ] as const
+        ).map(([field, label, fallback]) => (
+          <NumberField
+            key={field}
+            field={field}
+            label={label}
+            suffix='px'
+            step={1}
+            min={0}
+            value={numberInputValue(input, field, fallback)}
+            onChange={value => patchInput({ [field]: value })}
+          />
+        ))}
       </div>
-    )
-  }
+    </div>
+  )
 }

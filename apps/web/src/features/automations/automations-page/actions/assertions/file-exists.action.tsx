@@ -5,5 +5,7 @@ export const assertFileExistsAction = createTextAction({
   category: 'Assertions',
   iconKey: 'file-check',
   field: 'path',
-  fieldLabel: 'Path'
+  fieldLabel: 'Android file path',
+  fieldDescription: 'Fails the step if the file is missing.',
+  placeholder: '/sdcard/Download/example.txt…'
 })

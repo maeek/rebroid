@@ -2,7 +2,6 @@
 
 import dynamic from 'next/dynamic'
 import { Notice } from '@/components/ui/notice'
-import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import type { AutomationCommand } from '@/shared/contracts/automation'
@@ -11,7 +10,7 @@ const AutomationMonacoYamlEditor = dynamic(
   () => import('./monaco-yaml/automation-monaco-yaml-editor').then(module => module.AutomationMonacoYamlEditor),
   {
     ssr: false,
-    loading: () => <Skeleton className='h-136 w-full' />
+    loading: () => <Skeleton className='h-full w-full rounded-none' />
   }
 )
 
@@ -31,25 +30,41 @@ export function AutomationYamlEditorSection({
   className?: string
 }) {
   return (
-    <Section
-      surface='panel'
-      className={cn('min-h-0 min-w-0', className)}
-    >
-      <AutomationMonacoYamlEditor
-        value={yaml}
-        commands={commands}
-        className='min-h-112 w-full flex-1'
-        onChange={onYamlChange}
-      />
-      {pending && (
-        <p
-          className='text-sm text-foreground-muted'
-          role='status'
-        >
-          Checking workflow YAML…
-        </p>
+    <section
+      aria-label='Workflow YAML'
+      className={cn(
+        'grid h-[28rem] min-w-0 grid-rows-[minmax(0,1fr)] gap-2 has-[>footer]:grid-rows-[minmax(0,1fr)_auto] lg:h-(--workflow-editor-height)',
+        className
       )}
-      {error && <Notice tone='danger'>{error}</Notice>}
-    </Section>
+    >
+      <div className='relative min-h-0 min-w-0'>
+        <AutomationMonacoYamlEditor
+          value={yaml}
+          commands={commands}
+          className='min-h-0 resize-none rounded-none! border-0 bg-background [&_.margin]:bg-background [&_.monaco-editor]:bg-background [&_.monaco-editor-background]:bg-background'
+          onChange={onYamlChange}
+        />
+      </div>
+      {pending || error ? (
+        <footer className='grid gap-2'>
+          {pending && (
+            <p
+              className='text-sm text-foreground-muted'
+              role='status'
+            >
+              Checking workflow YAML…
+            </p>
+          )}
+          {error && (
+            <Notice
+              tone='danger'
+              className='max-h-32 overflow-y-auto'
+            >
+              {error}
+            </Notice>
+          )}
+        </footer>
+      ) : null}
+    </section>
   )
 }

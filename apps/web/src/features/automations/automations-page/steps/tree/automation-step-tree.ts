@@ -1,4 +1,5 @@
-import type { AutomationStepForm } from '../../editor/builder-utils'
+import { forkAutomationStepScope } from '@rebroid/automation-core/definition'
+import { workflowStepId, type AutomationStepForm } from '../../editor/builder-utils'
 
 export const ROOT_STEP_LIST_ID = 'root'
 
@@ -24,6 +25,36 @@ const nestedListsForStep = (step: AutomationStepForm): Array<{ id: string; steps
     return [{ id: `${step.clientKey}:steps`, steps: step.steps }]
   }
   return []
+}
+
+export const visitStepScopes = (
+  steps: AutomationStepForm[],
+  visit: (
+    step: AutomationStepForm,
+    id: string,
+    scope: ReadonlyMap<string, AutomationStepForm>,
+    ancestors: string[]
+  ) => boolean | void
+) => {
+  const visitList = (
+    items: AutomationStepForm[],
+    inherited: ReadonlyMap<string, AutomationStepForm>,
+    ancestors: string[]
+  ): boolean => {
+    const scope = new Map(inherited)
+    for (const [index, step] of items.entries()) {
+      const id = workflowStepId(step, index)
+      if (visit(step, id, scope, ancestors)) return true
+      for (const branch of nestedListsForStep(step)) {
+        const branchScope = forkAutomationStepScope(scope, { id, kind: step.kind, outputs: step })
+        if (visitList(branch.steps, branchScope, [...ancestors, step.clientKey])) return true
+      }
+      scope.set(id, step)
+    }
+    return false
+  }
+
+  visitList(steps, new Map(), [])
 }
 
 export const mapAutomationSteps = (
@@ -96,9 +127,6 @@ export const findStepById = (steps: AutomationStepForm[], stepId: string): Autom
   return collectListRefs(steps).get(location.listId)?.[location.index] ?? null
 }
 
-export const getStepListLength = (steps: AutomationStepForm[], listId: string) =>
-  collectListRefs(steps).get(listId)?.length ?? 0
-
 const nestedListIdsForStep = (step: AutomationStepForm) => {
   const listIds = new Set<string>()
   const visit = (item: AutomationStepForm) => {
@@ -157,45 +185,36 @@ export const replaceStepInList = (
   nextStep: AutomationStepForm
 ) => updateStepList(steps, listId, list => list.map((step, itemIndex) => (itemIndex === index ? nextStep : step)))
 
-export const moveStepByOffset = (steps: AutomationStepForm[], listId: string, stepId: string, offset: -1 | 1) =>
-  updateStepList(steps, listId, list => {
-    const index = list.findIndex(step => step.clientKey === stepId)
-    const targetIndex = index + offset
-    if (index === -1 || targetIndex < 0 || targetIndex >= list.length) return list
-    const next = [...list]
-    const [step] = next.splice(index, 1)
-    if (!step) return list
-    next.splice(targetIndex, 0, step)
-    return next
-  })
-
-export const moveStepToList = (
-  steps: AutomationStepForm[],
-  stepId: string,
-  targetListId: string,
-  targetIndex: number
-) => {
+export const getStepMove = (steps: AutomationStepForm[], stepId: string, target: StepLocation) => {
   const source = findStepLocation(steps, stepId)
-  const sourceStep = findStepById(steps, stepId)
-  if (!source || !sourceStep) return steps
-  if (nestedListIdsForStep(sourceStep).has(targetListId)) return steps
+  if (!source) return null
+  const lists = collectListRefs(steps)
+  const step = lists.get(source.listId)?.[source.index]
+  const destination = lists.get(target.listId)
+  if (!step || !destination || nestedListIdsForStep(step).has(target.listId)) return null
+  if (!Number.isInteger(target.index) || target.index < 0 || target.index > destination.length) return null
 
-  const nextTree = mapAutomationSteps(steps, step => ({ ...step }))
-  const sourceInNext = findStepLocation(nextTree, stepId)
-  if (!sourceInNext) return steps
+  // The drop marker describes a gap in the original list, before removing the source.
+  const index = source.listId === target.listId && source.index < target.index ? target.index - 1 : target.index
+  if (source.listId === target.listId && source.index === index) return null
 
-  const lists = collectListRefs(nextTree)
-  const sourceList = lists.get(sourceInNext.listId)
-  const targetList = lists.get(targetListId)
-  if (!sourceList || !targetList) return steps
+  return { step, source, destination: { listId: target.listId, index } }
+}
 
-  const [movingStep] = sourceList.splice(sourceInNext.index, 1)
-  if (!movingStep) return steps
+export const moveStepToList = (steps: AutomationStepForm[], stepId: string, listId: string, index: number) => {
+  const move = getStepMove(steps, stepId, { listId, index })
+  if (!move) return steps
 
-  const normalizedTargetIndex =
-    sourceInNext.listId === targetListId && sourceInNext.index < targetIndex ? targetIndex - 1 : targetIndex
-  const insertIndex = Math.max(0, Math.min(normalizedTargetIndex, targetList.length))
-  targetList.splice(insertIndex, 0, movingStep)
+  const withoutStep = updateStepList(steps, move.source.listId, list => list.filter(step => step.clientKey !== stepId))
+  return updateStepList(withoutStep, listId, list => [
+    ...list.slice(0, move.destination.index),
+    move.step,
+    ...list.slice(move.destination.index)
+  ])
+}
 
-  return nextTree
+export const moveStepByOffset = (steps: AutomationStepForm[], listId: string, stepId: string, offset: -1 | 1) => {
+  const source = findStepLocation(steps, stepId)
+  if (!source || source.listId !== listId) return steps
+  return moveStepToList(steps, stepId, listId, source.index + (offset === 1 ? 2 : -1))
 }

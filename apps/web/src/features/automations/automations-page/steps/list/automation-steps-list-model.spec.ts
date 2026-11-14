@@ -1,93 +1,72 @@
 import { describe, expect, it } from 'vitest'
+import { defaultConditionStep, defaultStep } from '../../editor/builder-utils'
 import { getStepDraggableId } from './automation-step-drop-target'
-import {
-  getAutomationStepDropTarget,
-  getStepDropData,
-  getStepIdFromDragEvent,
-  isEditablePasteTarget
-} from './automation-steps-list-model'
-import type { DragEndEvent } from '@dnd-kit/core'
+import { getStepIdFromDragEvent, isEditablePasteTarget, resolveStepCollision } from './automation-steps-list-model'
+import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
 
-const dragEvent = ({
-  activeData = {},
-  activeId = getStepDraggableId('dragged-step'),
-  overData,
-  activeTop = 0,
-  overTop = 0
-}: {
-  activeData?: Record<string, unknown>
-  activeId?: string
-  overData?: Record<string, unknown>
-  activeTop?: number
-  overTop?: number
-}): DragEndEvent =>
-  ({
-    active: {
-      id: activeId,
-      data: { current: activeData },
-      rect: {
-        current: {
-          translated: { top: activeTop, height: 20 }
-        }
-      }
-    },
-    over: overData
-      ? {
-          id: 'over',
-          data: { current: overData },
-          rect: { top: overTop, height: 20 }
-        }
-      : null
-  }) as DragEndEvent
+const rect = (left: number, top: number, width: number, height: number) => ({
+  left,
+  top,
+  width,
+  height,
+  right: left + width,
+  bottom: top + height
+})
 
-describe('automation steps list model', () => {
-  it('reads the dragged step id from active data before the draggable id', () => {
-    expect(getStepIdFromDragEvent(dragEvent({ activeData: { stepId: 'from-data' } }))).toBe('from-data')
-    expect(getStepIdFromDragEvent(dragEvent({ activeId: getStepDraggableId('from-id') }))).toBe('from-id')
+const target = (id: string, data: Record<string, string>, bounds: ReturnType<typeof rect>) => ({
+  id,
+  key: id,
+  data: { current: data },
+  disabled: false,
+  node: { current: null },
+  rect: { current: bounds }
+})
+
+const source = defaultStep('android.wait', 1)
+const block = defaultConditionStep(2)
+const last = defaultStep('debug.log', 3)
+const steps = [source, block, last]
+
+const dropAt = (x: number, y: number, stepId = source.clientKey) => {
+  const branch = block.clientKey + ':else'
+  const droppableContainers = [
+    target('root', { type: 'step-list', listId: 'root' }, rect(0, 0, 100, 200)),
+    target('first', { type: 'step-row', listId: 'root', stepId: source.clientKey }, rect(0, 0, 100, 30)),
+    target('middle', { type: 'step-row', listId: 'root', stepId: block.clientKey }, rect(0, 40, 100, 30)),
+    target('last', { type: 'step-row', listId: 'root', stepId: last.clientKey }, rect(0, 170, 100, 30)),
+    target('branch', { type: 'step-list', listId: branch }, rect(20, 110, 80, 45))
+  ]
+  const args: Parameters<CollisionDetection>[0] = {
+    active: { id: stepId, data: { current: { stepId } }, rect: { current: { initial: null, translated: null } } },
+    collisionRect: rect(0, 0, 100, 30),
+    droppableRects: new Map(droppableContainers.map(item => [item.id, item.rect.current])),
+    droppableContainers,
+    pointerCoordinates: { x, y }
+  }
+
+  return resolveStepCollision(steps, args)[0]?.data?.target ?? null
+}
+
+describe('workflow step drop targets', () => {
+  it('cancels releases outside the outline and beside the source', () => {
+    expect(dropAt(120, 185)).toBeNull()
+    expect(dropAt(30, 12)).toBeNull()
   })
 
-  it('normalizes supported drop data shapes', () => {
-    expect(
-      getStepDropData(
-        dragEvent({
-          overData: { type: 'step-row', stepId: 'target-step', listId: 'root', index: 2 }
-        })
-      )
-    ).toEqual({ type: 'step-row', stepId: 'target-step', listId: 'root', index: 2 })
-    expect(getStepDropData(dragEvent({ overData: { type: 'step-list', listId: 'root' } }))).toEqual({
-      type: 'step-list',
-      listId: 'root'
-    })
-    expect(getStepDropData(dragEvent({ overData: { type: 'unknown' } }))).toBeNull()
+  it('updates the insertion gap across the midpoint of a row and between rows', () => {
+    expect(dropAt(30, 175)).toEqual({ listId: 'root', index: 2 })
+    expect(dropAt(30, 190)).toEqual({ listId: 'root', index: 3 })
+    expect(dropAt(10, 165)).toEqual({ listId: 'root', index: 2 })
   })
 
-  it('derives row and list drop targets while rejecting self-drops', () => {
-    expect(
-      getAutomationStepDropTarget(
-        [],
-        dragEvent({
-          activeData: { stepId: 'dragged-step' },
-          overData: { type: 'step-row', stepId: 'target-step', listId: 'root', index: 1 },
-          activeTop: 30,
-          overTop: 0
-        })
-      )
-    ).toEqual({ listId: 'root', index: 2 })
+  it('chooses the nested lane even when empty and cancels a move into the source block', () => {
+    expect(dropAt(30, 130)).toEqual({ listId: block.clientKey + ':else', index: 0 })
+    expect(dropAt(30, 130, block.clientKey)).toBeNull()
+  })
 
-    expect(getAutomationStepDropTarget([], dragEvent({ overData: { type: 'step-list', listId: 'root' } }))).toEqual({
-      listId: 'root',
-      index: 0
-    })
-
-    expect(
-      getAutomationStepDropTarget(
-        [],
-        dragEvent({
-          activeData: { stepId: 'same-step' },
-          overData: { type: 'step-row', stepId: 'same-step', listId: 'root', index: 0 }
-        })
-      )
-    ).toBeNull()
+  it('recognizes the draggable id format when event data is unavailable', () => {
+    const active = { id: getStepDraggableId('source'), data: { current: {} } }
+    expect(getStepIdFromDragEvent({ active } as DragEndEvent)).toBe('source')
   })
 
   it('detects editable paste targets without treating checkboxes as text inputs', () => {

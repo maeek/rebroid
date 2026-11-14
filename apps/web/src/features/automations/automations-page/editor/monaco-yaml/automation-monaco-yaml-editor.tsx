@@ -5,18 +5,13 @@ import { useTheme } from 'next-themes'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { createAutomationYamlCompletionProvider } from './language/automation-yaml-completions'
-import {
-  automationYamlMarkerOwner,
-  configureAutomationYamlLanguage,
-  disableAutomationYamlLanguage,
-  isAutomationYamlWorkerRequestHandlerError
-} from './language/automation-yaml-service'
 import { validateAutomationYamlModel } from './language/automation-yaml-validation'
 import { registerAutomationMonacoWorkers } from './language/automation-yaml-workers'
 import { buildAutomationYamlSchema } from './schema/automation-yaml-schema'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
 
+const automationYamlMarkerOwner = 'rebroid-automation-yaml'
 const defaultModelUri = 'file:///rebroid-automation.yaml'
 
 export function AutomationMonacoYamlEditor({
@@ -66,8 +61,6 @@ export function AutomationMonacoYamlEditor({
     let markersDisposable: Monaco.IDisposable | null = null
     let contentDisposable: Monaco.IDisposable | null = null
     let completionDisposable: Monaco.IDisposable | null = null
-    let yamlLanguageDisposable: { dispose: () => void } | null = null
-    let runtimeErrorDisposable: { dispose: () => void } | null = null
 
     const initialize = async () => {
       try {
@@ -122,17 +115,6 @@ export function AutomationMonacoYamlEditor({
             })
           )
         }
-        runtimeErrorDisposable = registerAutomationYamlRuntimeFallback(validateModel)
-        yamlLanguageDisposable = await configureAutomationYamlLanguage({
-          monaco,
-          modelUri: model.uri.toString(),
-          schema: resolvedSchema
-        })
-        if (disposed || !containerRef.current) {
-          yamlLanguageDisposable?.dispose()
-          return
-        }
-
         editorRef.current = monaco.editor.create(containerRef.current, {
           model,
           automaticLayout: true,
@@ -153,7 +135,8 @@ export function AutomationMonacoYamlEditor({
           })
         )
         contentDisposable = model.onDidChangeContent(() => {
-          onChangeRef.current(model.getValue())
+          const nextValue = model.getValue()
+          if (nextValue !== valueRef.current) onChangeRef.current(nextValue)
           validateModel()
         })
         markersDisposable = monaco.editor.onDidChangeMarkers(uris => {
@@ -187,8 +170,6 @@ export function AutomationMonacoYamlEditor({
         contentDisposable?.dispose()
         markersDisposable?.dispose()
         completionDisposable?.dispose()
-        yamlLanguageDisposable?.dispose()
-        runtimeErrorDisposable?.dispose()
         if (modelRef.current) monacoRef.current?.editor.setModelMarkers(modelRef.current, automationYamlMarkerOwner, [])
         editorRef.current?.dispose()
       } catch {
@@ -232,30 +213,4 @@ export function AutomationMonacoYamlEditor({
       aria-label={`${ariaLabel} editor`}
     />
   )
-}
-
-const registerAutomationYamlRuntimeFallback = (onFallback: () => void) => {
-  const fallback = (error: unknown) => {
-    if (!isAutomationYamlWorkerRequestHandlerError(error)) return false
-    disableAutomationYamlLanguage()
-    onFallback()
-    return true
-  }
-
-  const onUnhandledRejection = (event: PromiseRejectionEvent) => {
-    if (fallback(event.reason)) event.preventDefault()
-  }
-  const onError = (event: ErrorEvent) => {
-    if (fallback(event.error)) event.preventDefault()
-  }
-
-  window.addEventListener('unhandledrejection', onUnhandledRejection)
-  window.addEventListener('error', onError)
-
-  return {
-    dispose() {
-      window.removeEventListener('unhandledrejection', onUnhandledRejection)
-      window.removeEventListener('error', onError)
-    }
-  }
 }

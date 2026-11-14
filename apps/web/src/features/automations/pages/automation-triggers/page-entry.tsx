@@ -7,7 +7,7 @@ export async function AutomationTriggersPageEntry({
 }: {
   searchParams?: Promise<AutomationTriggersSearchParams>
 }) {
-  const { applications, automations, gridQuery, orchestratorError, triggersPage } =
+  const { applications, automations, gridQuery, orchestratorError, triggersPage, ownedAppIds, canRun, canCreateApp } =
     await loadAutomationTriggersPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
@@ -18,6 +18,9 @@ export async function AutomationTriggersPageEntry({
     <AutomationTriggersPage
       initialApplications={applications}
       initialAutomations={automations}
+      ownedAppIds={ownedAppIds}
+      canRun={canRun}
+      canCreateApp={canCreateApp}
       triggersPage={triggersPage}
       gridQuery={gridQuery}
     />

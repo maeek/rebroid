@@ -6,10 +6,14 @@ import {
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { applicationPreview } from '@/shared/testing/application-preview'
+import { previewWorkflow } from '@/shared/testing/automation-preview'
 import { AutomationTriggersPage } from './automation-triggers-page'
 import { AutomationTriggersPreview, previewTrigger } from './automation-triggers-preview'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search)
+}))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/automation-trigger-actions', () => ({
   createAutomationTriggerAction: vi.fn(),
@@ -19,9 +23,42 @@ vi.mock('@/server/orchestrator/automations/automation-trigger-actions', () => ({
 }))
 beforeEach(() => {
   vi.resetAllMocks()
+  window.history.replaceState(null, '', '/')
 })
 
 describe('Triggers editor workflow', () => {
+  it.each([
+    [true, 'Create app', '/apps/create'],
+    [false, 'View apps', '/apps']
+  ])('offers the missing app prerequisite with create permission %s', (canCreateApp, label, href) => {
+    render(
+      <AutomationTriggersPage
+        initialApplications={[]}
+        initialAutomations={[previewWorkflow]}
+        canCreateApp={canCreateApp}
+        gridQuery={{}}
+        triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
+      />
+    )
+    expect(screen.getByRole('heading', { level: 2, name: 'No triggers yet' })).toBeVisible()
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', href)
+    expect(screen.queryByRole('link', { name: 'New workflow' })).toBeNull()
+  })
+
+  it('opens and consumes the sidebar shortcut while keeping other URL parameters', async () => {
+    const { rerender } = render(<AutomationTriggersPreview />)
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    window.history.pushState(null, '', '/automations/triggers?create=1&tag=nightly')
+    rerender(<AutomationTriggersPreview />)
+    const dialog = await screen.findByRole('dialog', { name: 'New trigger' })
+    expect(within(dialog).getByRole('combobox', { name: /Workflow/ })).toHaveValue('Daily inventory check')
+    expect(window.location.search).toBe('?tag=nightly')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
   it('saves the selected app, profile, schedule, and start policy with the existing contract', async () => {
     vi.mocked(createAutomationTriggerAction).mockResolvedValue(previewTrigger)
     render(<AutomationTriggersPreview />)
@@ -185,7 +222,7 @@ describe('Triggers editor workflow', () => {
       finish()
       await Promise.resolve()
     })
-    expect(screen.getByRole('button', { name: 'Disable' })).toBeEnabled()
+    expect(screen.getByRole('checkbox', { name: 'Select current page' })).not.toBeChecked()
   })
 
   it('confirms bulk deletion and prevents closing or repeating a pending request', async () => {

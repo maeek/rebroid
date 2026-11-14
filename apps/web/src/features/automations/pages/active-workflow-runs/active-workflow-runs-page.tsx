@@ -5,7 +5,6 @@ import type { ActiveWorkflowRun } from '@/shared/contracts/active-workflow-run'
 
 export const activeWorkflowRunsTitle = 'Active workflow runs'
 export const activeWorkflowRunsDescription = 'Queued and running executions across your workflows.'
-export const activeWorkflowRunsTrail = [{ label: 'Workflows', href: '/automations' }]
 
 export const ActiveWorkflowRunsPage = ({
   runs = [],
@@ -21,7 +20,6 @@ export const ActiveWorkflowRunsPage = ({
       title={activeWorkflowRunsTitle}
       description={activeWorkflowRunsDescription}
       section={{ label: 'Automations' }}
-      trail={activeWorkflowRunsTrail}
     />
     <PageContent>
       <ActiveWorkflowRunsGrid

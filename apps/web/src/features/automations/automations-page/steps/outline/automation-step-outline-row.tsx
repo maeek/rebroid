@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useContext, useState } from 'react'
+import { useCallback, useContext, useId, useRef, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import {
+  IconAlertTriangle,
   IconArrowDown,
   IconArrowUp,
-  IconChevronDown,
   IconCopy,
   IconCopyCheck,
   IconDotsVertical,
@@ -16,6 +16,7 @@ import {
   IconTrash
 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { DisclosureChevron } from '@/components/ui/disclosure'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +31,7 @@ import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
 import { AutomationStepSettingsDialog } from '../editors/automation-step-dialogs'
 import { getStepDraggableId, getStepRowDropId } from '../list/automation-step-drop-target'
 import { useAutomationStepsContext } from '../list/automation-steps-context'
-import { stepKindLabel, stepSummary, stepTitle } from '../shared/automation-step-utils'
+import { stepSummary, stepTitle } from '../shared/automation-step-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 
 export function AutomationStepOutlineRow({
@@ -64,19 +65,25 @@ export function AutomationStepOutlineRow({
   })
   const { setNodeRef: setDroppableNodeRef } = useDroppable({
     id: getStepRowDropId(step.clientKey),
-    data: { type: 'step-row', stepId: step.clientKey, listId, index }
+    data: { type: 'step-row', stepId: step.clientKey, listId }
   })
   const {
     commandByUses,
     selectedStepKey,
     openBlockKeys,
+    referenceIssues,
     onSelectStep,
     onToggleBlock,
     onMoveStep,
     onStepChange,
     onSetYamlStepKey
   } = useAutomationStepsContext()
+  // Close the menu and release page isolation before moving its trigger.
+  const pendingMenuMove = useRef<-1 | 1 | null>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const loading = useContext(FormLoadingContext)
+  const referenceWarningId = useId()
+  const hasBrokenReferences = !loading && referenceIssues?.has(step.clientKey)
   const [stepSettingsOpen, setStepSettingsOpen] = useState(false)
   const command = step.kind === 'action' ? commandByUses.get(step.uses) : undefined
   const selected = selectedStepKey === step.clientKey
@@ -96,9 +103,10 @@ export function AutomationStepOutlineRow({
     <>
       <div
         ref={setNodeRef}
+        data-reorder-id={step.clientKey}
         data-automation-step-item='true'
         className={cn(
-          'group relative grid min-h-14 rounded-control transition-colors',
+          'group relative grid min-h-14 scroll-mt-[calc(var(--workflow-toolbar-bottom,0px)+0.5rem)] rounded-control transition-colors',
           selected && !loading ? 'bg-primary/10' : 'bg-control/25 hover:bg-control-hover/50',
           isDragging ? 'pointer-events-none opacity-0' : null
         )}
@@ -107,7 +115,8 @@ export function AutomationStepOutlineRow({
           <button
             type='button'
             ref={setActivatorNodeRef}
-            className='flex size-8 cursor-grab items-center justify-center rounded-control text-foreground-muted hover:bg-surface-band/60 active:cursor-grabbing'
+            className='flex size-8 touch-none cursor-grab items-center justify-center rounded-control text-foreground-muted hover:bg-surface-band/60 active:cursor-grabbing'
+            data-reorder-focus='drag'
             aria-label='Drag step'
             {...attributes}
             {...listeners}
@@ -118,8 +127,10 @@ export function AutomationStepOutlineRow({
           <button
             type='button'
             className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-control px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            data-reorder-focus='select'
             data-step-select={step.clientKey}
             aria-pressed={selected}
+            aria-describedby={hasBrokenReferences ? referenceWarningId : undefined}
             aria-label={`Edit step ${index + 1}: ${stepTitle(step, command)}`}
             onClick={() => onSelectStep(step.clientKey)}
           >
@@ -143,13 +154,22 @@ export function AutomationStepOutlineRow({
                 <span className='truncate text-sm font-medium'>
                   {loading ? <Skeleton className='h-4 w-32 max-w-full' /> : stepTitle(step, command)}
                 </span>
-                <span className='hidden text-xs text-foreground-muted sm:inline'>
-                  {loading ? null : stepKindLabel(step)}
-                </span>
               </span>
-              <span className='block truncate text-xs text-foreground-muted'>
+              <span className='line-clamp-2 text-xs text-foreground-muted [overflow-wrap:anywhere]'>
                 {loading ? <Skeleton className='h-3 w-40 max-w-full' /> : stepSummary(step)}
               </span>
+              {hasBrokenReferences ? (
+                <span
+                  id={referenceWarningId}
+                  className='flex items-center gap-1 text-xs font-medium text-warning'
+                >
+                  <IconAlertTriangle
+                    aria-hidden='true'
+                    className='size-3.5 shrink-0'
+                  />
+                  Broken reference
+                </span>
+              ) : null}
             </span>
           </button>
 
@@ -159,19 +179,25 @@ export function AutomationStepOutlineRow({
                 type='button'
                 variant='ghost'
                 size='icon-md'
+                aria-expanded={open}
                 aria-label={open ? 'Collapse block' : 'Expand block'}
                 onClick={event => {
                   event.stopPropagation()
                   onToggleBlock(step.clientKey)
                 }}
               >
-                <IconChevronDown className={cn('size-4 transition-transform', open ? null : '-rotate-90')} />
+                <DisclosureChevron
+                  open={open}
+                  direction='right'
+                  className='size-4'
+                />
               </Button>
             ) : null}
             <Button
               type='button'
               variant='ghost'
               size='icon-md'
+              data-reorder-focus='up'
               aria-label='Move step up'
               disabled={!canMoveUp}
               className='max-sm:hidden'
@@ -186,6 +212,7 @@ export function AutomationStepOutlineRow({
               type='button'
               variant='ghost'
               size='icon-md'
+              data-reorder-focus='down'
               aria-label='Move step down'
               disabled={!canMoveDown}
               className='max-sm:hidden'
@@ -196,11 +223,20 @@ export function AutomationStepOutlineRow({
             >
               <IconArrowDown className='size-4' />
             </Button>
-            <DropdownMenu>
+            <DropdownMenu
+              onOpenChangeComplete={isOpen => {
+                if (isOpen || pendingMenuMove.current === null) return
+                const offset = pendingMenuMove.current
+                pendingMenuMove.current = null
+                onMoveStep(listId, step.clientKey, offset)
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   variant='ghost'
                   size='icon-md'
+                  ref={menuTriggerRef}
+                  data-reorder-focus='menu'
                   aria-label='Step menu'
                   onClick={event => event.stopPropagation()}
                   onKeyDown={event => event.stopPropagation()}
@@ -209,6 +245,7 @@ export function AutomationStepOutlineRow({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
+                finalFocus={menuTriggerRef}
                 align='end'
                 className='min-w-40 p-2'
               >
@@ -234,7 +271,9 @@ export function AutomationStepOutlineRow({
                 <DropdownMenuItem
                   className='gap-2 px-3 py-2 sm:hidden'
                   disabled={!canMoveUp}
-                  onSelect={onMoveUp}
+                  onSelect={() => {
+                    pendingMenuMove.current = -1
+                  }}
                 >
                   <IconArrowUp className='size-4' />
                   Move step up
@@ -242,7 +281,9 @@ export function AutomationStepOutlineRow({
                 <DropdownMenuItem
                   className='gap-2 px-3 py-2 sm:hidden'
                   disabled={!canMoveDown}
-                  onSelect={onMoveDown}
+                  onSelect={() => {
+                    pendingMenuMove.current = 1
+                  }}
                 >
                   <IconArrowDown className='size-4' />
                   Move step down

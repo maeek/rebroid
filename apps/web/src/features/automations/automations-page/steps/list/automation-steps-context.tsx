@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from 'react'
 import type { AutomationStepForm } from '../../editor/builder-utils'
+import type { StepReferenceIssues } from '../shared/automation-step-reference-issues'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 export type AutomationStepDropTarget = {
@@ -17,12 +18,14 @@ interface AutomationStepsContextValue {
   openBlockKeys: string[]
   yamlStepKey: string | null
   dropTarget: AutomationStepDropTarget
+  referenceIssues?: ReadonlyMap<string, StepReferenceIssues>
   onSelectStep: (clientKey: string | null) => void
   onToggleBlock: (clientKey: string) => void
   onOpenBlock: (clientKey: string) => void
   onSetYamlStepKey: (clientKey: string | null) => void
   onListChange: (listId: string, steps: AutomationStepForm[]) => void
   onStepChange: (listId: string, index: number, step: AutomationStepForm) => void
+  onDeleteStep: (stepId: string) => void
   onMoveStep: (listId: string, stepId: string, offset: -1 | 1) => void
 }
 

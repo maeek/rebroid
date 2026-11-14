@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
+import { RowActionButton } from '@/components/ui/row-actions'
 import { toast } from '@/hooks/use-toast'
 import { deleteAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { serializeSortParam } from '@/shared/model/search-params'
@@ -240,6 +242,7 @@ export function AutomationsTable({
           minWidth='60rem'
           emptyState={
             <DataGridEmptyState
+              headingLevel={2}
               title='No workflows yet'
               description='Create a workflow to reuse a sequence of device actions.'
             />
@@ -276,6 +279,16 @@ export function AutomationsTable({
               </>
             )
           }}
+          rowQuickAction={({ original }) => (
+            <RowActionButton
+              asChild
+              label={`Run history for ${original.name}`}
+            >
+              <Link href={`/automations/${encodeURIComponent(original.id)}/traces`}>
+                <IconActivityHeartbeat className='size-4' />
+              </Link>
+            </RowActionButton>
+          )}
         />
         <DataGridPagination
           loading={loading}

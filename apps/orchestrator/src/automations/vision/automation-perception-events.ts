@@ -59,6 +59,7 @@ export const perceptionEventData = (
   clientMessageId: context.clientMessageId ?? null,
   reason: context.reason,
   uses: context.uses ?? null,
+  snapshotId: observation.snapshotId,
   width: observation.image.width,
   height: observation.image.height,
   capturedAt: observation.image.capturedAt,

@@ -314,6 +314,15 @@ export class AutomationAiHarnessService {
     const finalText = sanitizeAiText(result.finalText, 4_000);
     const completed = result.status === 'completed';
     const actionCount = state?.actions ?? 0;
+    const evidenceIds = new Set(result.evidenceIds ?? []);
+    const observationIds = new Set<string>();
+    if (completed && state) {
+      for (const evidence of state.evidence) {
+        if (evidence.snapshotId && evidenceIds.has(evidence.id)) {
+          observationIds.add(evidence.snapshotId);
+        }
+      }
+    }
     const screenEvidence = {
       evidenceIds: result.evidenceIds ?? [],
       targetFingerprint: state?.target.fingerprint ?? null,
@@ -328,6 +337,7 @@ export class AutomationAiHarnessService {
         status: result.status,
         completed,
         clientMessageId: input.clientMessageId ?? null,
+        observationIds: [...observationIds],
         ...screenEvidence,
       },
     );

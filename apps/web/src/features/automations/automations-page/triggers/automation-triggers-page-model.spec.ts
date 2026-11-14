@@ -8,7 +8,6 @@ import {
   defaultTriggerName,
   deletedTriggerIdsFromResults,
   editTriggerFormState,
-  hasActiveTriggerFilters,
   newTriggerFormState,
   retainVisibleTriggerSelection,
   selectedTriggersFromIds,
@@ -160,7 +159,6 @@ describe('automation triggers page model', () => {
     const triggers = [trigger('a'), trigger('b'), trigger('c')]
     const selectedIds = new Set(['a', 'missing', 'c'])
 
-    expect(hasActiveTriggerFilters(query)).toBe(true)
     expect(activeTriggerFilterCount(query)).toBe(2)
     expect([...retainVisibleTriggerSelection(triggers, selectedIds)]).toEqual(['a', 'c'])
     expect(selectedTriggersFromIds(triggers, selectedIds).map(item => item.id)).toEqual(['a', 'c'])

@@ -1,16 +1,9 @@
-import { automationYamlWorkerOptions, createAutomationMonacoWorkerEnvironment } from './automation-yaml-worker-utils'
-
-let registered = false
-
 export const registerAutomationMonacoWorkers = () => {
-  if (registered) return
-  registered = true
+  if (globalThis.MonacoEnvironment?.getWorker || globalThis.MonacoEnvironment?.getWorkerUrl) return
 
-  globalThis.MonacoEnvironment = createAutomationMonacoWorkerEnvironment({
-    existingEnvironment: globalThis.MonacoEnvironment,
-    createYamlWorker: () =>
-      new Worker(new URL('monaco-yaml/yaml.worker', import.meta.url), automationYamlWorkerOptions),
-    createEditorWorker: () =>
-      new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url), automationYamlWorkerOptions)
-  })
+  globalThis.MonacoEnvironment = {
+    ...globalThis.MonacoEnvironment,
+    getWorker: () =>
+      new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url), { type: 'module' })
+  }
 }

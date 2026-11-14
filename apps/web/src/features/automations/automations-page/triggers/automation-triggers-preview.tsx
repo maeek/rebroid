@@ -25,6 +25,7 @@ export const previewTrigger: AutomationTrigger = {
 }
 export const AutomationTriggersPreview = () => (
   <AutomationTriggersPage
+    canRun
     initialApplications={[applicationPreview, { ...applicationPreview, id: 'reports-app', name: 'Reports worker' }]}
     initialAutomations={[
       {

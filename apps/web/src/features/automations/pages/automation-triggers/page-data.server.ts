@@ -1,7 +1,9 @@
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
 import { listAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { listAutomationTriggersGridAction } from '@/server/orchestrator/automations/automation-trigger-actions'
+import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { firstSearchParamValue, positiveIntegerSearchParam, validatedSearchParam } from '@/shared/model/search-params'
+import { hasPermission } from '@/shared/permissions/permissions'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
   Automation,
@@ -53,7 +55,7 @@ export const loadAutomationTriggersPageData = async (searchParams: AutomationTri
     orchestratorError ??= errorMessage(error)
   }
 
-  const [applications, automations, triggersPage] = await Promise.all([
+  const [applications, automations, triggersPage, user] = await Promise.all([
     listApplicationsAction().catch(error => {
       captureError(error)
       return [] as AndroidApplication[]
@@ -65,11 +67,15 @@ export const loadAutomationTriggersPageData = async (searchParams: AutomationTri
     listAutomationTriggersGridAction(gridQuery).catch(error => {
       captureError(error)
       return emptyAutomationTriggersGridPage(gridQuery)
-    })
+    }),
+    getCurrentUserContext()
   ])
 
   return {
     applications,
+    ownedAppIds: applications.filter(app => app.ownerUserId === user.ownerUserId).map(app => app.id),
+    canRun: hasPermission(user.permissions, 'automations:run'),
+    canCreateApp: hasPermission(user.permissions, 'applications:create'),
     automations,
     gridQuery,
     orchestratorError,

@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
-import { Switch } from '@/components/ui/switch'
+import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -14,8 +14,54 @@ import { WorkflowRunResult } from '../shared/workflow-run-result'
 import { getScheduleCron } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
+import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import type { CellContext, ColumnDef, SortingState } from '@tanstack/react-table'
+
+const triggerEmptyState = (missingApps: boolean, missingWorkflows: boolean, canCreateApp: boolean) => {
+  let action: StateViewAction | undefined
+  if (missingWorkflows) action = { label: 'New workflow', href: '/automations/create' }
+  else if (missingApps)
+    action = canCreateApp ? { label: 'Create app', href: '/apps/create' } : { label: 'View apps', href: '/apps' }
+  let description = 'Create a trigger to run a workflow on a schedule.'
+  if (missingApps && missingWorkflows) description = 'A trigger needs a workflow and an app profile.'
+  else if (missingWorkflows) description = 'Create a workflow before scheduling it with a trigger.'
+  else if (missingApps) description = 'Choose an app you own to run the workflow on a schedule.'
+  return (
+    <DataGridEmptyState
+      headingLevel={2}
+      title='No triggers yet'
+      description={description}
+      actions={action ? [action] : undefined}
+    />
+  )
+}
+
+type TriggerSwitchActions = {
+  busyId: string | null
+  disabled: boolean
+  toggleFeedback?: { pendingId: string | null; savedId: string | null }
+  onToggleEnabled: (trigger: AutomationTrigger, enabled: boolean) => Promise<void>
+}
+const TriggerSwitchContext = createContext<TriggerSwitchActions | null>(null)
+const TriggerEnabledCell = ({ row }: CellContext<AutomationTrigger, unknown>) => {
+  const context = useContext(TriggerSwitchContext)
+  if (!context) throw new Error('Trigger switches require their grid context.')
+  const { busyId, disabled, toggleFeedback, onToggleEnabled } = context
+  const busy = disabled || busyId === row.original.id
+  return (
+    <div className='flex items-center'>
+      <MutationSwitch
+        checked={row.original.enabled}
+        pending={toggleFeedback?.pendingId === row.original.id}
+        success={toggleFeedback?.savedId === row.original.id}
+        disabled={busy}
+        aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
+        onCheckedChange={enabled => void onToggleEnabled(row.original, enabled)}
+      />
+    </div>
+  )
+}
 
 function TriggerTags({ tags }: { tags: AutomationTag[] }) {
   if (tags.length === 0) return null
@@ -35,8 +81,11 @@ export function AutomationTriggersTable({
   applicationById,
   automationById,
   busyId,
+  canCreateApp,
   disabled = false,
   loading = false,
+  missingApps,
+  missingWorkflows,
   selectedIds,
   sorting,
   triggers,
@@ -48,13 +97,17 @@ export function AutomationTriggersTable({
   onRun,
   onSelectedIdsChange,
   onSortingChange,
-  onToggleEnabled
+  onToggleEnabled,
+  toggleFeedback
 }: {
   applicationById: Map<string, AndroidApplication>
   automationById: Map<string, Automation>
   busyId: string | null
+  canCreateApp: boolean
   disabled?: boolean
   loading?: boolean
+  missingApps: boolean
+  missingWorkflows: boolean
   selectedIds: Set<string>
   sorting: SortingState
   triggers: AutomationTrigger[]
@@ -63,9 +116,10 @@ export function AutomationTriggersTable({
   onDisableSelected: () => Promise<void>
   onEdit: (trigger: AutomationTrigger) => void
   onEnableSelected: () => Promise<void>
-  onRun: (trigger: AutomationTrigger) => Promise<void>
+  onRun?: (trigger: AutomationTrigger) => Promise<void>
   onSelectedIdsChange: (ids: Set<string>) => void
   onSortingChange: (sorting: SortingState) => void
+  toggleFeedback?: { pendingId: string | null; savedId: string | null }
   onToggleEnabled: (trigger: AutomationTrigger, enabled: boolean) => Promise<void>
 }) {
   const columns = useMemo<ColumnDef<AutomationTrigger>[]>(
@@ -172,100 +226,87 @@ export function AutomationTriggersTable({
         header: 'Enabled',
         size: 128,
         meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
-        cell: ({ row }) => {
-          const busy = disabled || busyId === row.original.id
-          return (
-            <div className='flex items-center'>
-              <Switch
-                checked={row.original.enabled}
-                disabled={busy}
-                aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
-                onCheckedChange={enabled => void onToggleEnabled(row.original, enabled)}
-              />
-            </div>
-          )
-        }
+        cell: TriggerEnabledCell
       }
     ],
-    [applicationById, automationById, busyId, disabled, onEdit, onToggleEnabled]
+    [applicationById, automationById, disabled, onEdit]
   )
 
   return (
-    <DataGrid
-      loading={loading}
-      columns={columns}
-      data={triggers}
-      totalItems={triggers.length}
-      pageIndex={0}
-      pageSize={triggers.length || 20}
-      getRowId={trigger => trigger.id}
-      sorting={sorting}
-      onSortingChange={updater => onSortingChange(typeof updater === 'function' ? updater(sorting) : updater)}
-      selection={{
-        disabled,
-        selectedIds,
-        onSelectedIdsChange
-      }}
-      minWidth='72rem'
-      emptyState={
-        <DataGridEmptyState
-          title='No triggers yet'
-          description='Create a trigger to run a workflow on a schedule.'
-        />
-      }
-      rowContextMenu={row => {
-        const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
-        return (
-          <>
-            {hasBulkSelection ? (
-              <>
+    <TriggerSwitchContext.Provider value={{ busyId, disabled, toggleFeedback, onToggleEnabled }}>
+      <DataGrid
+        loading={loading}
+        columns={columns}
+        data={triggers}
+        totalItems={triggers.length}
+        pageIndex={0}
+        pageSize={triggers.length || 20}
+        getRowId={trigger => trigger.id}
+        sorting={sorting}
+        onSortingChange={updater => onSortingChange(typeof updater === 'function' ? updater(sorting) : updater)}
+        selection={{
+          disabled,
+          selectedIds,
+          onSelectedIdsChange
+        }}
+        minWidth='72rem'
+        emptyState={triggerEmptyState(missingApps, missingWorkflows, canCreateApp)}
+        rowContextMenu={row => {
+          const hasBulkSelection = selectedIds.has(row.original.id) && selectedIds.size > 1
+          return (
+            <>
+              {hasBulkSelection ? (
+                <>
+                  <ContextMenuItem
+                    disabled={disabled}
+                    onSelect={() => void onEnableSelected()}
+                  >
+                    Enable selected ({selectedIds.size})
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={disabled}
+                    onSelect={() => void onDisableSelected()}
+                  >
+                    Disable selected ({selectedIds.size})
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    disabled={disabled}
+                    className='text-danger focus:text-danger'
+                    onSelect={onDeleteSelected}
+                  >
+                    <IconTrash className='size-4' />
+                    Delete selected ({selectedIds.size})
+                  </ContextMenuItem>
+                </>
+              ) : null}
+              <ContextMenuItem
+                disabled={disabled}
+                onSelect={() => onEdit(row.original)}
+              >
+                <IconEdit className='size-4' />
+                Edit
+              </ContextMenuItem>
+              {onRun ? (
                 <ContextMenuItem
                   disabled={disabled}
-                  onSelect={() => void onEnableSelected()}
+                  onSelect={() => void onRun(row.original)}
                 >
-                  Enable selected ({selectedIds.size})
+                  <IconPlayerPlayFilled className='size-4' />
+                  Run now
                 </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={disabled}
-                  onSelect={() => void onDisableSelected()}
-                >
-                  Disable selected ({selectedIds.size})
-                </ContextMenuItem>
-                <ContextMenuItem
-                  disabled={disabled}
-                  className='text-danger focus:text-danger'
-                  onSelect={onDeleteSelected}
-                >
-                  <IconTrash className='size-4' />
-                  Delete selected ({selectedIds.size})
-                </ContextMenuItem>
-              </>
-            ) : null}
-            <ContextMenuItem
-              disabled={disabled}
-              onSelect={() => onEdit(row.original)}
-            >
-              <IconEdit className='size-4' />
-              Edit
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={disabled}
-              onSelect={() => void onRun(row.original)}
-            >
-              <IconPlayerPlayFilled className='size-4' />
-              Run now
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={disabled}
-              className='text-danger focus:text-danger'
-              onSelect={() => onDelete(row.original)}
-            >
-              <IconTrash className='size-4' />
-              Delete
-            </ContextMenuItem>
-          </>
-        )
-      }}
-    />
+              ) : null}
+              <ContextMenuItem
+                disabled={disabled}
+                className='text-danger focus:text-danger'
+                onSelect={() => onDelete(row.original)}
+              >
+                <IconTrash className='size-4' />
+                Delete
+              </ContextMenuItem>
+            </>
+          )
+        }}
+      />
+    </TriggerSwitchContext.Provider>
   )
 }

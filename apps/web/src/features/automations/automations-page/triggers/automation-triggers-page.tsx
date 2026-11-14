@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
@@ -13,11 +14,11 @@ import {
   runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
+import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
 import { serializeSortParam } from '@/shared/model/search-params'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { AutomationEmptySplash } from '../shared/automation-empty-splash'
 import { buildAutomationTagCatalog } from '../shared/automation-tags'
 import { sortFromSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
@@ -27,7 +28,6 @@ import {
   buildAutomationTriggersGridHref,
   deletedTriggerIdsFromResults,
   editTriggerFormState,
-  hasActiveTriggerFilters,
   newTriggerFormState,
   retainVisibleTriggerSelection,
   selectedTriggersFromIds,
@@ -46,11 +46,17 @@ export function AutomationTriggersPage({
   initialAutomations,
   triggersPage,
   gridQuery,
+  ownedAppIds,
+  canRun = false,
+  canCreateApp = false,
   loading = false
 }: AutomationTriggersPageProps) {
   const router = useRouter()
+  const createRequested = useSearchParams()?.get('create') === '1'
   const [form, setForm] = useState<TriggerFormState | null>(null)
+  const [baselineForm, setBaselineForm] = useState<TriggerFormState | null>(null)
   const [formOpen, setFormOpen] = useState(false)
+  const toggleFeedback = useImmediateSave()
   const [busyId, setBusyId] = useState<string | null>(null)
   const mutationPending = useRef(false)
   const [bulkPending, setBulkPending] = useState<'enable' | 'disable' | 'delete' | null>(null)
@@ -86,7 +92,8 @@ export function AutomationTriggersPage({
       ]),
     [triggersPage.facets.tags, triggersPage.items, initialAutomations]
   )
-  const canCreate = initialAutomations.length > 0 && initialApplications.length > 0
+  const targetApps = ownedAppIds ? initialApplications.filter(app => ownedAppIds.includes(app.id)) : initialApplications
+  const canCreate = initialAutomations.length > 0 && targetApps.length > 0
   const selectedTriggers = selectedTriggersFromIds(triggersPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<AutomationTriggersGridQuery>) => {
@@ -95,16 +102,30 @@ export function AutomationTriggersPage({
 
   const openCreate = () => {
     const automation = initialAutomations[0]
-    const app = initialApplications[0]
+    const app = targetApps[0]
     if (!automation || !app) return
 
     setForm(newTriggerFormState({ automation, app }))
+    setBaselineForm(null)
     setFormOpen(true)
   }
 
+  const openFromShortcut = useEffectEvent(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('create')
+    window.history.replaceState(null, '', url)
+    openCreate()
+  })
+
+  useEffect(() => {
+    if (createRequested && !loading && !saving && !formOpen) openFromShortcut()
+  }, [createRequested, loading, saving, formOpen])
+
   const openEdit = (trigger: AutomationTrigger) => {
     const app = applicationById.get(trigger.targetApplicationId)
-    setForm(editTriggerFormState({ trigger, app }))
+    const next = editTriggerFormState({ trigger, app })
+    setForm(next)
+    setBaselineForm(next)
     setFormOpen(true)
   }
 
@@ -164,8 +185,10 @@ export function AutomationTriggersPage({
     mutationPending.current = true
     setBusyId(trigger.id)
     try {
-      await updateAutomationTriggerAction(trigger.id, { enabled })
-      router.refresh()
+      await toggleFeedback.save(trigger.id, async () => {
+        await updateAutomationTriggerAction(trigger.id, { enabled })
+        router.refresh()
+      })
     } catch (error) {
       toast({
         title: 'Could not update trigger',
@@ -232,6 +255,8 @@ export function AutomationTriggersPage({
       const results = await Promise.allSettled(
         selectedTriggers.map(trigger => updateAutomationTriggerAction(trigger.id, { enabled }))
       )
+      const updated = successfulBulkIds(selectedTriggers, results)
+      setSelectedIds(current => new Set([...current].filter(id => !updated.has(id))))
       router.refresh()
       toast(summarizeTriggerBulkUpdateResults(results, enabled))
     } finally {
@@ -270,70 +295,67 @@ export function AutomationTriggersPage({
         title='Triggers'
         description='Run workflows on a schedule for a specific app and profile.'
         actions={
-          <Button
-            disabled={!canCreate || busy}
-            onClick={openCreate}
-          >
-            <IconPlus className='size-4' />
-            New trigger
-          </Button>
+          canCreate || loading ? (
+            <Button
+              disabled={!canCreate || busy}
+              onClick={openCreate}
+            >
+              <IconPlus className='size-4' />
+              New trigger
+            </Button>
+          ) : undefined
         }
       />
 
-      {!loading && !canCreate && triggersPage.total === 0 && !hasActiveTriggerFilters(gridQuery) ? (
-        <AutomationEmptySplash variant='trigger-prerequisites' />
-      ) : !loading && triggersPage.total === 0 && !hasActiveTriggerFilters(gridQuery) ? (
-        <AutomationEmptySplash
-          variant='triggers'
-          onAction={openCreate}
-        />
-      ) : (
-        <PageContent className='grid gap-4 pt-2'>
-          <AutomationTriggersToolbar
-            applications={initialApplications}
-            tags={triggersPage.facets.tags}
-            gridQuery={gridQuery}
-            search={search}
-            onSearchChange={setSearch}
-            onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
-            selectedCount={selectedTriggers.length}
-            pending={bulkPending}
+      <PageContent className='grid gap-4 pt-2'>
+        <AutomationTriggersToolbar
+          applications={initialApplications}
+          tags={triggersPage.facets.tags}
+          gridQuery={gridQuery}
+          search={search}
+          onSearchChange={setSearch}
+          onSearchSubmit={value => pushGridParams({ q: value.trim() || undefined, page: 1 })}
+          selectedCount={selectedTriggers.length}
+          pending={bulkPending}
+          disabled={busy}
+          onUpdateGrid={pushGridParams}
+          onDelete={() => setBulkDeleteOpen(true)}
+          onDisable={() => void updateSelectedEnabled(false)}
+          onEnable={() => void updateSelectedEnabled(true)}
+        >
+          <AutomationTriggersTable
+            loading={loading}
+            missingApps={targetApps.length === 0}
+            missingWorkflows={initialAutomations.length === 0}
+            canCreateApp={canCreateApp}
+            applicationById={applicationById}
+            automationById={automationById}
+            busyId={busyId}
             disabled={busy}
-            onUpdateGrid={pushGridParams}
-            onDelete={() => setBulkDeleteOpen(true)}
-            onDisable={() => void updateSelectedEnabled(false)}
-            onEnable={() => void updateSelectedEnabled(true)}
-          >
-            <AutomationTriggersTable
-              loading={loading}
-              applicationById={applicationById}
-              automationById={automationById}
-              busyId={busyId}
-              disabled={busy}
-              selectedIds={selectedIds}
-              sorting={sorting}
-              triggers={triggersPage.items}
-              onDelete={setPendingDelete}
-              onDeleteSelected={() => setBulkDeleteOpen(true)}
-              onDisableSelected={() => updateSelectedEnabled(false)}
-              onEdit={openEdit}
-              onEnableSelected={() => updateSelectedEnabled(true)}
-              onRun={runNow}
-              onSelectedIdsChange={setSelectedIds}
-              onSortingChange={nextSorting => pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })}
-              onToggleEnabled={toggleEnabled}
-            />
-            <DataGridPagination
-              loading={loading}
-              totalItems={triggersPage.total}
-              pageIndex={triggersPage.page - 1}
-              pageSize={triggersPage.pageSize}
-              onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
-              onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
-            />
-          </AutomationTriggersToolbar>
-        </PageContent>
-      )}
+            selectedIds={selectedIds}
+            sorting={sorting}
+            triggers={triggersPage.items}
+            onDelete={setPendingDelete}
+            onDeleteSelected={() => setBulkDeleteOpen(true)}
+            onDisableSelected={() => updateSelectedEnabled(false)}
+            onEdit={openEdit}
+            onEnableSelected={() => updateSelectedEnabled(true)}
+            onRun={canRun ? runNow : undefined}
+            onSelectedIdsChange={setSelectedIds}
+            onSortingChange={nextSorting => pushGridParams({ sort: serializeSortParam(nextSorting), page: 1 })}
+            onToggleEnabled={toggleEnabled}
+            toggleFeedback={toggleFeedback}
+          />
+          <DataGridPagination
+            loading={loading}
+            totalItems={triggersPage.total}
+            pageIndex={triggersPage.page - 1}
+            pageSize={triggersPage.pageSize}
+            onPageIndexChange={pageIndex => pushGridParams({ page: pageIndex + 1 })}
+            onPageSizeChange={pageSize => pushGridParams({ page: 1, pageSize })}
+          />
+        </AutomationTriggersToolbar>
+      </PageContent>
 
       <ConfirmMutationDialog
         open={Boolean(pendingDelete)}
@@ -357,13 +379,14 @@ export function AutomationTriggersPage({
       />
 
       <AutomationTriggerFormDialog
+        baseline={baselineForm}
         tagSuggestions={tagSuggestions}
         onUpdateWorkflow={updateWorkflow}
         open={formOpen}
         onOpenChangeComplete={open => {
           if (!open) setForm(null)
         }}
-        applications={initialApplications}
+        applications={targetApps}
         automations={initialAutomations}
         form={form}
         saving={saving}

@@ -5,6 +5,7 @@ export const failAction = createTextAction({
   category: 'Flow',
   iconKey: 'alert',
   field: 'reason',
-  fieldLabel: 'Reason',
+  fieldLabel: 'Failure message',
+  fieldDescription: 'Ends the run and shows this message in its results.',
   multiline: true
 })

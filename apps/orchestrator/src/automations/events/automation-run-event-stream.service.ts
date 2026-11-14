@@ -4,7 +4,6 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import websocket from '@fastify/websocket';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { WebSocket } from '@fastify/websocket';
@@ -43,8 +42,7 @@ export class AutomationRunEventStreamService {
     return { token, expiresAt: new Date(expiresAt).toISOString() };
   }
 
-  async register(fastify: FastifyInstance) {
-    await fastify.register(websocket);
+  register(fastify: FastifyInstance) {
     fastify.get(
       '/api/v1/automations/runs/events/ws',
       { websocket: true },

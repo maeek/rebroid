@@ -27,6 +27,7 @@ export function AutomationTriggerTagPicker({
   return (
     <FormField
       label='Tags'
+      field='tags'
       description='Reuse a tag or type a new one and choose Create. Up to 48 characters per tag.'
       layout='vertical'
     >

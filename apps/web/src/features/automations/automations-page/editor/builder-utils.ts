@@ -173,56 +173,90 @@ export const defaultRepeatStep = (
   steps: [defaultStep(action, 1)]
 })
 
-export const definitionToForm = (definition: AutomationDefinition, id: string | null = null): AutomationFormState => ({
-  id,
-  name: definition.metadata.name,
-  description: definition.metadata.description ?? '',
-  tags: definition.metadata.tags ?? [],
-  steps: definition.spec.steps.map((step, index) => stepToForm(step, `spec.steps[${index}]`))
-})
+export const definitionToForm = (
+  definition: AutomationDefinition,
+  id: string | null = null,
+  previousSteps: AutomationStepForm[] = []
+): AutomationFormState => {
+  const keyByStepId = new Map<string, string>()
+  const usedKeys = new Set<string>()
+  const collectKeys = (steps: AutomationStepForm[]) => {
+    for (const step of steps) {
+      const stepId = step.id.trim()
+      if (!keyByStepId.has(stepId)) keyByStepId.set(stepId, step.clientKey)
+      usedKeys.add(step.clientKey)
+      if (step.kind === 'condition') {
+        collectKeys(step.thenSteps)
+        collectKeys(step.elseSteps)
+      } else if (step.kind === 'switch') {
+        step.cases.forEach(item => collectKeys(item.steps))
+        collectKeys(step.defaultSteps)
+      } else if (step.kind === 'repeat') {
+        collectKeys(step.steps)
+      }
+    }
+  }
+  collectKeys(previousSteps)
+  const resolveKey: StepClientKey = (stepId, path) => {
+    const existingKey = keyByStepId.get(stepId)
+    if (existingKey) return existingKey
+    return createClientKey(usedKeys.has(path) ? undefined : path)
+  }
+
+  return {
+    id,
+    name: definition.metadata.name,
+    description: definition.metadata.description ?? '',
+    tags: definition.metadata.tags ?? [],
+    steps: definition.spec.steps.map((step, index) => stepToForm(step, `spec.steps[${index}]`, resolveKey))
+  }
+}
 
 export const automationToForm = (automation: Automation): AutomationFormState =>
   definitionToForm(automation.definition, automation.id)
 
-const stepToForm = (step: AutomationDefinitionStep, path: string): AutomationStepForm => {
+type StepClientKey = (id: string, path: string) => string
+
+const stepToForm = (step: AutomationDefinitionStep, path: string, resolveKey: StepClientKey): AutomationStepForm => {
+  const clientKey = resolveKey(step.id, path)
   if ('type' in step && step.type === 'condition') {
     return {
       kind: 'condition',
-      clientKey: createClientKey(path),
+      clientKey,
       id: step.id,
       condition: step.condition,
-      thenSteps: step.then.map((item, index) => stepToForm(item, `${path}.then[${index}]`)),
-      elseSteps: (step.else ?? []).map((item, index) => stepToForm(item, `${path}.else[${index}]`))
+      thenSteps: step.then.map((item, index) => stepToForm(item, `${path}.then[${index}]`, resolveKey)),
+      elseSteps: (step.else ?? []).map((item, index) => stepToForm(item, `${path}.else[${index}]`, resolveKey))
     }
   }
 
   if ('type' in step && step.type === 'switch') {
     return {
       kind: 'switch',
-      clientKey: createClientKey(path),
+      clientKey,
       id: step.id,
       value: step.value,
       cases: step.cases.map((item, index) => ({
-        clientKey: createClientKey(`${path}.cases[${index}]`),
+        clientKey: createClientKey(`${clientKey}.cases[${index}]`),
         value: item.value,
         steps: item.steps.map((caseStep, stepIndex) =>
-          stepToForm(caseStep, `${path}.cases[${index}].steps[${stepIndex}]`)
+          stepToForm(caseStep, `${path}.cases[${index}].steps[${stepIndex}]`, resolveKey)
         )
       })),
-      defaultSteps: (step.default ?? []).map((item, index) => stepToForm(item, `${path}.default[${index}]`))
+      defaultSteps: (step.default ?? []).map((item, index) => stepToForm(item, `${path}.default[${index}]`, resolveKey))
     }
   }
 
   if ('type' in step && step.type === 'repeat') {
     return {
       kind: 'repeat',
-      clientKey: createClientKey(path),
+      clientKey,
       id: step.id,
       mode: step.count === undefined ? 'while' : 'count',
       count: step.count ?? 1,
       while: step.while ?? defaultConditionExpression(),
       maxIterations: step.maxIterations,
-      steps: step.steps.map((item, index) => stepToForm(item, `${path}.steps[${index}]`))
+      steps: step.steps.map((item, index) => stepToForm(item, `${path}.steps[${index}]`, resolveKey))
     }
   }
 
@@ -230,7 +264,7 @@ const stepToForm = (step: AutomationDefinitionStep, path: string): AutomationSte
 
   return {
     kind: 'action',
-    clientKey: createClientKey(path),
+    clientKey,
     id: step.id,
     uses: step.uses,
     withJson: JSON.stringify(input, null, 2),
@@ -271,17 +305,22 @@ const parseObjectJson = (value: string, fallback: Record<string, unknown> = {}) 
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : fallback
 }
 
+export const workflowStepId = (step: AutomationStepForm, index: number) => {
+  const prefix = step.kind === 'action' ? stepIdBase(step.uses) : step.kind
+  return step.id.trim() || `${prefix}-${index + 1}`
+}
+
 const stepFormToDefinition = (step: AutomationStepForm, index: number): AutomationDefinitionStep => {
   if (step.kind === 'action') {
     return {
-      id: step.id.trim() || `${stepIdBase(step.uses)}-${index + 1}`,
+      id: workflowStepId(step, index),
       uses: step.uses,
       with: getBackendActionInput(step.uses, parseObjectJson(step.withJson), step.uiState ?? {})
     } satisfies AutomationActionStep
   }
   if (step.kind === 'condition') {
     return {
-      id: step.id.trim() || `condition-${index + 1}`,
+      id: workflowStepId(step, index),
       type: 'condition',
       condition: step.condition,
       then: step.thenSteps.map(stepFormToDefinition),
@@ -290,7 +329,7 @@ const stepFormToDefinition = (step: AutomationStepForm, index: number): Automati
   }
   if (step.kind === 'switch') {
     return {
-      id: step.id.trim() || `switch-${index + 1}`,
+      id: workflowStepId(step, index),
       type: 'switch',
       value: step.value,
       cases: step.cases.map(item => ({
@@ -301,7 +340,7 @@ const stepFormToDefinition = (step: AutomationStepForm, index: number): Automati
     } satisfies AutomationSwitchStep
   }
   return {
-    id: step.id.trim() || `repeat-${index + 1}`,
+    id: workflowStepId(step, index),
     type: 'repeat',
     ...(step.mode === 'count' ? { count: step.count } : { while: step.while }),
     maxIterations: step.maxIterations,

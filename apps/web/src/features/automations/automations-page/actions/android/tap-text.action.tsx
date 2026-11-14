@@ -8,7 +8,10 @@ export const tapTextAction: AutomationActionDefinition = {
   iconKey: 'click',
   defaultInput: defaultUiTextInput,
   normalizeInput: normalizeUiTextInput,
-  summary: input => stringInputValue(input, 'text') || 'text:',
+  summary: input => {
+    const text = stringInputValue(input, 'text')
+    return text ? `“${text}” · ${input.match === 'contains' ? 'contains text' : 'exact label'}` : 'Choose text to tap'
+  },
   renderEditor: ({ input, patchInput }) => (
     <UiTextActionFields
       input={input}

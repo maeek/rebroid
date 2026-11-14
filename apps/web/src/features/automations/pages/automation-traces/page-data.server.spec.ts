@@ -4,6 +4,7 @@ import { getAutomationAction } from '@/server/orchestrator/automations/automatio
 import { listAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { loadAutomationTracesPageData } from './page-data.server'
 import type { AutomationRun } from '@/shared/contracts/automation'
 vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', () => ({
@@ -19,9 +20,10 @@ beforeEach(() => {
   >)
   vi.mocked(listApplicationsAction).mockResolvedValue([])
   vi.mocked(listAutomationRunsAction).mockResolvedValue([])
-  vi.mocked(getCurrentUserContext).mockResolvedValue({ ownerUserId: 'owner' } as Awaited<
-    ReturnType<typeof getCurrentUserContext>
-  >)
+  vi.mocked(getCurrentUserContext).mockResolvedValue({
+    ownerUserId: 'owner',
+    permissions: { 'automations:manage': true, 'automations:run': true }
+  } as Awaited<ReturnType<typeof getCurrentUserContext>>)
 })
 describe('selected historical automation run', () => {
   it('loads an older run within its authenticated workflow', async () => {
@@ -29,6 +31,17 @@ describe('selected historical automation run', () => {
     vi.mocked(orchestratorAutomationsClient.getRun).mockResolvedValue(selected)
     expect((await loadAutomationTracesPageData('workflow', 'old-run')).runs).toEqual([selected])
     expect(orchestratorAutomationsClient.getRun).toHaveBeenCalledWith('owner', 'old-run')
+  })
+  it('keeps the selected run accessible when the workflow catalog is disabled', async () => {
+    const selected = { id: 'active-run', automationId: 'workflow', status: 'running' } as AutomationRun
+    vi.mocked(getAutomationAction).mockRejectedValue(
+      new OrchestratorRequestError('Disabled', 409, 'request', { code: 'feature_disabled' })
+    )
+    vi.mocked(orchestratorAutomationsClient.getRun).mockResolvedValue(selected)
+    await expect(loadAutomationTracesPageData('workflow', selected.id)).resolves.toMatchObject({
+      automation: null,
+      runs: [selected]
+    })
   })
   it('does not expose a run belonging to another workflow', async () => {
     vi.mocked(orchestratorAutomationsClient.getRun).mockResolvedValue({

@@ -1,9 +1,14 @@
 'use client'
 
-import { useMemo } from 'react'
 import { FormField } from '@/components/ui/form-field'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { buildReferenceOptions, referenceOptionId, valueRefFromReferenceId } from './automation-value-ref-utils'
+import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { AutomationLiteralValueEditor } from '../editors/automation-literal-value-editor'
+import {
+  buildReferenceOptions,
+  referenceOptionId,
+  valueRefFromReferenceId,
+  valueRefLabel
+} from './automation-value-ref-utils'
 import type { AutomationStepReferenceOption } from './automation-value-ref-constants'
 import type { AutomationValueRef } from '@rebroid/automation-core/definition'
 
@@ -16,76 +21,56 @@ export function AutomationReferencePicker({
 }: {
   id: string
   label: string
-  value: Exclude<AutomationValueRef, { source: 'literal' }>
+  value: AutomationValueRef
   stepOptions: AutomationStepReferenceOption[]
-  onChange: (value: Exclude<AutomationValueRef, { source: 'literal' }>) => void
+  onChange: (value: AutomationValueRef) => void
 }) {
-  const references = useMemo(() => buildReferenceOptions(stepOptions), [stepOptions])
-  const selectedId = referenceOptionId(value)
-  const grouped = {
-    context: references.filter(option => option.group === 'Run context'),
-    steps: references.filter(option => option.group === 'Previous steps')
+  const references = buildReferenceOptions(stepOptions)
+  const selectedId = value.source === 'literal' ? 'literal' : referenceOptionId(value)
+  const options = [
+    { value: 'literal', label: 'Enter a value', group: 'Literal' },
+    ...references.map(reference => ({
+      value: reference.id,
+      label: reference.label,
+      group: reference.group,
+      description: reference.type === 'unknown' ? undefined : reference.type
+    }))
+  ]
+  if (!options.some(option => option.value === selectedId)) {
+    options.push({
+      value: selectedId,
+      label: `${valueRefLabel(value, stepOptions)} (unavailable)`,
+      group: 'Previous steps'
+    })
   }
-
   return (
-    <FormField
-      controlId={id}
-      label={label}
-      layout='vertical'
-    >
-      <Select
-        value={selectedId}
-        onValueChange={nextId => {
-          const nextValue = valueRefFromReferenceId(nextId, references)
-          if (nextValue.source !== 'literal') onChange(nextValue)
-        }}
+    <div className='grid min-w-0 gap-3'>
+      <FormField
+        controlId={id}
+        label={label}
+        layout='vertical'
       >
-        <SelectTrigger
-          id={id}
-          className='w-full'
-        >
-          <SelectValue placeholder='Choose value' />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem
-            value='__context'
-            disabled
-          >
-            Run context
-          </SelectItem>
-          {grouped.context.map(option => (
-            <SelectItem
-              key={option.id}
-              value={option.id}
-            >
-              {option.label}
-            </SelectItem>
-          ))}
-          <SelectItem
-            value='__steps'
-            disabled
-          >
-            Previous steps
-          </SelectItem>
-          {grouped.steps.length === 0 ? (
-            <SelectItem
-              value='__no_steps'
-              disabled
-            >
-              No previous step outputs
-            </SelectItem>
-          ) : (
-            grouped.steps.map(option => (
-              <SelectItem
-                key={option.id}
-                value={option.id}
-              >
-                {option.label}
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
-    </FormField>
+        <SingleSelectCombobox
+          options={options}
+          value={selectedId}
+          placeholder='Find a value or output'
+          onValueChange={nextId => {
+            if (nextId === 'literal') {
+              if (value.source !== 'literal') onChange({ source: 'literal', value: '' })
+              return
+            }
+            if (references.some(option => option.id === nextId)) onChange(valueRefFromReferenceId(nextId, references))
+          }}
+        />
+      </FormField>
+      {value.source === 'literal' ? (
+        <AutomationLiteralValueEditor
+          id={`${id}-literal`}
+          label='Entered value'
+          value={value.value}
+          onChange={literal => onChange({ source: 'literal', value: literal })}
+        />
+      ) : null}
+    </div>
   )
 }

@@ -4,25 +4,25 @@ import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   type AutomationConditionStepForm,
   type AutomationRepeatStepForm,
   type AutomationStepForm,
   type AutomationSwitchCaseForm,
-  type AutomationSwitchStepForm,
-  defaultStep
+  type AutomationSwitchStepForm
 } from '../../editor/builder-utils'
 import { AutomationReferencePicker } from '../value-ref/automation-reference-picker'
+import { defaultLiteralValue, literalKind, typeForValueRef } from '../value-ref/automation-value-ref-utils'
 import { AutomationConditionBuilder } from './automation-condition-builder'
 import { AutomationLiteralValueEditor } from './automation-literal-value-editor'
 import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 
-const createCase = (): AutomationSwitchCaseForm => ({
+const createCase = (value: unknown): AutomationSwitchCaseForm => ({
   clientKey: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-  value: 'value',
-  steps: [defaultStep('debug.log', 1)]
+  value,
+  steps: []
 })
 
 export function AutomationStepBlockSettingsEditor({
@@ -90,8 +90,8 @@ function SwitchBlockSettings({
   stepOptions: AutomationStepReferenceOption[]
   onChange: (step: AutomationStepForm) => void
 }) {
-  const switchValue =
-    step.value.source === 'literal' ? { source: 'runContext' as const, key: 'targetProfileName' } : step.value
+  const valueType = typeForValueRef(step.value, stepOptions)
+  const newCaseValue = valueType === 'number' || valueType === 'boolean' ? defaultLiteralValue(valueType) : ''
   const updateCase = (clientKey: string, patch: Partial<AutomationSwitchCaseForm>) => {
     onChange({
       ...step,
@@ -103,25 +103,27 @@ function SwitchBlockSettings({
     <div className='grid gap-5'>
       <AutomationReferencePicker
         id={`${step.clientKey}-switch-value`}
-        label='Switch value'
-        value={switchValue}
+        label='Value to match'
+        value={step.value}
         stepOptions={stepOptions}
         onChange={value => onChange({ ...step, value })}
       />
-      <div className='grid gap-3'>
-        <div className='flex items-center justify-between gap-3'>
-          <Label>Cases</Label>
-          <Button
-            type='button'
-            size='sm'
-            variant='secondary'
-            onClick={() => onChange({ ...step, cases: [...step.cases, createCase()] })}
-          >
-            <IconPlus className='size-4' />
-            Add case
-          </Button>
-        </div>
-        {step.cases.length === 0 ? <p className='py-4 text-sm text-foreground-muted'>No cases yet.</p> : null}
+      <Section
+        surface='plain'
+        title='Cases'
+        description='Runs the first exact match. Otherwise, the workflow uses the Otherwise branch when it has steps.'
+        contentClassName='gap-3'
+      >
+        <Button
+          type='button'
+          size='sm'
+          variant='secondary'
+          className='justify-self-start'
+          onClick={() => onChange({ ...step, cases: [...step.cases, createCase(newCaseValue)] })}
+        >
+          <IconPlus className='size-4' />
+          Add case
+        </Button>
         {step.cases.map((item, index) => (
           <div
             key={item.clientKey}
@@ -135,6 +137,12 @@ function SwitchBlockSettings({
                   value={item.value}
                   onChange={value => updateCase(item.clientKey, { value })}
                 />
+                {step.cases.slice(0, index).some(previous => Object.is(previous.value, item.value)) ? (
+                  <p className='text-xs text-warning'>An earlier case already matches this value.</p>
+                ) : null}
+                {valueType !== 'unknown' && literalKind(item.value) !== valueType ? (
+                  <p className='text-xs text-warning'>This case has a different type from the value being matched.</p>
+                ) : null}
               </div>
               <Button
                 type='button'
@@ -150,7 +158,7 @@ function SwitchBlockSettings({
             </div>
           </div>
         ))}
-      </div>
+      </Section>
     </div>
   )
 }
@@ -174,37 +182,44 @@ function RepeatBlockSettings({
           value={step.mode}
           onValueChange={mode => onChange({ ...step, mode: mode })}
         >
-          <SelectTrigger className='w-48 max-w-full'>
+          <SelectTrigger className='w-full'>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value='count'>Fixed count</SelectItem>
-            <SelectItem value='while'>While condition</SelectItem>
+            <SelectItem value='count'>Repeat a fixed number of times</SelectItem>
+            <SelectItem value='while'>While condition is true</SelectItem>
           </SelectContent>
         </Select>
       </FormField>
       {step.mode === 'count' ? (
         <NumberField
           id={`${step.clientKey}-count`}
-          label='Count'
+          label='Number of times'
           value={step.count}
           onChange={count => onChange({ ...step, count, maxIterations: Math.max(step.maxIterations, count) })}
         />
       ) : (
         <AutomationConditionBuilder
           id={`${step.clientKey}-while`}
-          label='While'
+          label='While condition is true'
           value={step.while}
           stepOptions={stepOptions}
           onChange={whilePredicate => onChange({ ...step, while: whilePredicate })}
         />
       )}
-      <NumberField
-        id={`${step.clientKey}-max`}
-        label='Max iterations'
-        value={step.maxIterations}
-        onChange={maxIterations => onChange({ ...step, maxIterations })}
-      />
+      {step.mode === 'while' || step.maxIterations < step.count ? (
+        <NumberField
+          id={`${step.clientKey}-max`}
+          label='Maximum iterations'
+          description={
+            step.mode === 'while'
+              ? 'The condition is checked before each iteration. The body may run zero times.'
+              : 'This cap limits the number of repetitions.'
+          }
+          value={step.maxIterations}
+          onChange={maxIterations => onChange({ ...step, maxIterations })}
+        />
+      ) : null}
     </div>
   )
 }
@@ -212,25 +227,30 @@ function RepeatBlockSettings({
 function NumberField({
   id,
   label,
+  description,
   value,
   onChange
 }: {
   id: string
   label: string
+  description?: string
   value: number
   onChange: (value: number) => void
 }) {
   return (
     <FormField
+      layout='vertical'
       controlId={id}
       label={label}
-      layout='vertical'
+      description={description}
+      error={value > 1000 || !Number.isInteger(value) ? 'Enter a whole number from 1 to 1,000.' : undefined}
     >
       <Input
         id={id}
         type='number'
         min={1}
-        className='max-w-48'
+        max={1000}
+        className='w-full'
         value={value}
         onChange={event => onChange(Math.max(1, Number(event.target.value) || 1))}
       />

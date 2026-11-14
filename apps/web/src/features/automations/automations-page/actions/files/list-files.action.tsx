@@ -5,5 +5,7 @@ export const listFilesAction = createTextAction({
   category: 'Files',
   iconKey: 'files',
   field: 'path',
-  fieldLabel: 'Path'
+  fieldLabel: 'Android directory path',
+  fieldDescription: 'Returns the entries under this directory.',
+  placeholder: '/sdcard/Download…'
 })

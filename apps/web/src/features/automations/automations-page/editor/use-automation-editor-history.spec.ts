@@ -1,26 +1,72 @@
+import { StrictMode, createElement } from 'react'
+import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { defaultForm } from './builder-utils'
-import { cloneAutomationForm, pushUndoSnapshot, sameEditorSnapshot } from './use-automation-editor-history'
+import { useAutomationEditorHistory } from './use-automation-editor-history'
 
-describe('automation editor history helpers', () => {
-  it('compares snapshots by form and yaml state', () => {
-    const form = defaultForm()
-    const snapshot = { form, yamlOpen: false, yamlDraft: '' }
+describe('workflow editor history', () => {
+  it('undoes and redoes a committed change as one entry under Strict Mode', () => {
+    const { result } = renderHook(() => useAutomationEditorHistory(defaultForm()), {
+      wrapper: ({ children }) => createElement(StrictMode, null, children)
+    })
+    const first = result.current.form.name
 
-    expect(sameEditorSnapshot(snapshot, { form: cloneAutomationForm(form), yamlOpen: false, yamlDraft: '' })).toBe(true)
-    expect(sameEditorSnapshot(snapshot, { form, yamlOpen: true, yamlDraft: '' })).toBe(false)
+    act(() =>
+      result.current.commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, name: 'Edited' } }))
+    )
+    expect(result.current.hasUnsavedChanges).toBe(true)
+
+    act(() => result.current.undo())
+    expect(result.current.form.name).toBe(first)
+    expect(result.current.canUndo).toBe(false)
+    expect(result.current.hasUnsavedChanges).toBe(false)
+
+    act(() => result.current.redo())
+    expect(result.current.form.name).toBe('Edited')
+    expect(result.current.canRedo).toBe(false)
   })
 
-  it('pushes unique undo snapshots and clears redo', () => {
-    const first = { form: defaultForm(), yamlOpen: false, yamlDraft: '' }
-    const second = { form: { ...defaultForm(), name: 'Updated' }, yamlOpen: false, yamlDraft: '' }
+  it('preserves redo across a no-op and mode switch, and clears it after a new edit', () => {
+    const { result } = renderHook(() => useAutomationEditorHistory(defaultForm()))
+    const yaml = result.current.visualYaml!
 
-    const withFirst = pushUndoSnapshot({ undo: [], redo: [second] }, first)
-    const duplicate = pushUndoSnapshot(withFirst, first)
-    const withSecond = pushUndoSnapshot(duplicate, second)
+    act(() => {
+      result.current.commitEditorChange(snapshot => ({
+        ...snapshot,
+        form: { ...snapshot.form, description: 'Changed' }
+      }))
+      result.current.undo()
+      result.current.commitEditorChange(snapshot => ({ ...snapshot }))
+      result.current.changeEditorView(snapshot => ({ ...snapshot, yamlOpen: true, yamlDraft: yaml }))
+    })
+    expect(result.current.canRedo).toBe(true)
+    expect(result.current.canUndo).toBe(false)
+    expect(result.current.hasUnsavedChanges).toBe(false)
 
-    expect(withFirst.redo).toEqual([])
-    expect(duplicate.undo).toHaveLength(1)
-    expect(withSecond.undo.map(snapshot => snapshot.form.name)).toEqual(['New workflow', 'Updated'])
+    act(() => result.current.commitEditorChange(snapshot => ({ ...snapshot, yamlDraft: '# Draft\n' + yaml })))
+    expect(result.current.canRedo).toBe(false)
+    expect(result.current.hasUnsavedChanges).toBe(true)
+  })
+
+  it('uses the last successful save as the baseline independently of undo availability', () => {
+    const { result } = renderHook(() => useAutomationEditorHistory(defaultForm()))
+    const changeName = (name: string) =>
+      result.current.commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, name } }))
+
+    act(() => changeName('Saved'))
+    act(() => result.current.markEditorSaved({ form: result.current.form, yamlOpen: false, yamlDraft: '' }))
+    expect(result.current.canUndo).toBe(true)
+    expect(result.current.hasUnsavedChanges).toBe(false)
+
+    act(() => result.current.undo())
+    expect(result.current.hasUnsavedChanges).toBe(true)
+    act(() => result.current.redo())
+    expect(result.current.hasUnsavedChanges).toBe(false)
+
+    act(() => {
+      changeName('Another draft')
+      changeName('Saved')
+    })
+    expect(result.current.hasUnsavedChanges).toBe(false)
   })
 })

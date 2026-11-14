@@ -1,13 +1,13 @@
 'use client'
 
-import { useContext } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { IconFileCode, IconRoute, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { AutomationCommandIcon } from '../catalog/automation-command-catalog'
-import { stepKindLabel, stepSummary, stepTitle } from '../shared/automation-step-utils'
+import { stepTitle } from '../shared/automation-step-utils'
 import type { AutomationStepForm } from '../../editor/builder-utils'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
@@ -15,18 +15,20 @@ export function AutomationStepInspectorHeader({
   step,
   command,
   yamlMode,
+  actionControl,
   onToggleYaml,
   onClose
 }: {
   step: AutomationStepForm
   command?: AutomationCommand
   yamlMode: boolean
+  actionControl?: ReactNode
   onToggleYaml?: () => void
   onClose?: () => void
 }) {
   const loading = useContext(FormLoadingContext)
   return (
-    <div className='flex min-w-0 items-start justify-between gap-3 px-6 pt-6 pb-4 max-sm:px-4 max-sm:pt-4'>
+    <div className='flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-6 pt-6 pb-4 max-sm:px-4 max-sm:pt-4'>
       <div className='grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3'>
         <span
           className={cn(
@@ -55,21 +57,10 @@ export function AutomationStepInspectorHeader({
                 stepTitle(step, command)
               )}
             </h3>
-            <span className='text-xs text-foreground-muted'>{loading ? null : stepKindLabel(step)}</span>
           </div>
-          <p className='truncate text-xs text-foreground-muted'>
-            {loading ? (
-              <Skeleton
-                as='span'
-                className='block h-3 w-48 max-w-full'
-              />
-            ) : (
-              stepSummary(step)
-            )}
-          </p>
         </div>
       </div>
-      <div className='flex shrink-0 items-center gap-1'>
+      <div className='ml-auto flex min-w-0 flex-wrap justify-end gap-1'>
         {step.kind === 'action' && onToggleYaml ? (
           <Button
             type='button'
@@ -81,6 +72,7 @@ export function AutomationStepInspectorHeader({
             <IconFileCode className='size-4' />
           </Button>
         ) : null}
+        {loading ? null : actionControl}
         {onClose ? (
           <Button
             type='button'

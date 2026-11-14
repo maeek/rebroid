@@ -1,7 +1,4 @@
-import { hasActionInputBinding } from '@rebroid/automation-core/command-registry'
-import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
-import { NoInputState, SelectField, TextField } from './action-fields'
+import { NoInputState, NumberField, SelectField, TextField } from './action-fields'
 import type { AutomationActionEditorProps } from '../automation-action-definition'
 
 const record = (value: unknown): Record<string, unknown> =>
@@ -16,7 +13,6 @@ export function SchemaActionFields({ command, input, patchInput }: AutomationAct
   return (
     <div className='grid gap-4'>
       {fields.map(key => {
-        if (hasActionInputBinding(input[key])) return null
         const schema = record(properties[key])
         const value = input[key] ?? command.editor.inputDefaults[key]
         const label = typeof schema.title === 'string' ? schema.title : key
@@ -25,6 +21,7 @@ export function SchemaActionFields({ command, input, patchInput }: AutomationAct
           return (
             <SelectField
               key={key}
+              field={key}
               label={label}
               value={typeof value === 'string' ? value : ''}
               options={schema.enum}
@@ -36,6 +33,7 @@ export function SchemaActionFields({ command, input, patchInput }: AutomationAct
           return (
             <SelectField
               key={key}
+              field={key}
               label={label}
               value={typeof value === 'boolean' ? String(value) : ''}
               options={[
@@ -50,6 +48,7 @@ export function SchemaActionFields({ command, input, patchInput }: AutomationAct
           return (
             <TextField
               key={key}
+              field={key}
               label={label}
               value={typeof value === 'string' ? value : ''}
               onChange={setValue}
@@ -58,20 +57,13 @@ export function SchemaActionFields({ command, input, patchInput }: AutomationAct
         }
         if (schema.type === 'number' || schema.type === 'integer') {
           return (
-            <FormField
+            <NumberField
               key={key}
+              field={key}
               label={label}
-              layout='vertical'
-            >
-              <Input
-                type='number'
-                min={typeof schema.minimum === 'number' ? schema.minimum : undefined}
-                max={typeof schema.maximum === 'number' ? schema.maximum : undefined}
-                step={schema.type === 'integer' ? 1 : 'any'}
-                value={typeof value === 'number' ? value : ''}
-                onChange={event => setValue(event.target.value === '' ? undefined : event.target.valueAsNumber)}
-              />
-            </FormField>
+              value={typeof value === 'number' ? value : undefined}
+              onChange={setValue}
+            />
           )
         }
         return (

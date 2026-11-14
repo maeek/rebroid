@@ -5,5 +5,7 @@ export const deleteFileAction = createTextAction({
   category: 'Files',
   iconKey: 'trash',
   field: 'path',
-  fieldLabel: 'Path'
+  fieldLabel: 'Android file path',
+  fieldDescription: 'Deletes this file on the workflow target when the step runs.',
+  placeholder: '/sdcard/Download/example.txt…'
 })

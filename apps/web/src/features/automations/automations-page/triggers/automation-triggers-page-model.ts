@@ -30,9 +30,6 @@ export const defaultTriggerName = (automation: Automation | undefined, app: Andr
   return 'New workflow trigger'
 }
 
-export const hasActiveTriggerFilters = (query: AutomationTriggersGridQuery) =>
-  Boolean(query.q || query.tag || query.targetApplicationId || query.enabled || query.status || query.lastRun)
-
 export const activeTriggerFilterCount = (query: AutomationTriggersGridQuery) =>
   [query.tag, query.targetApplicationId, query.enabled, query.status, query.lastRun].filter(Boolean).length
 

@@ -1,4 +1,6 @@
-import { NumberField, SelectField, TextField } from '../shared/action-fields'
+import { SelectField, TextField } from '../shared/action-fields'
+import { AdvancedActionFields } from '../shared/advanced-action-fields'
+import { DurationField } from '../shared/duration-field'
 import { normalizeStringInput, numberInputValue, stringInputValue } from '../shared/input-values'
 import type { AutomationActionEditorProps } from '../automation-action-definition'
 
@@ -15,11 +17,13 @@ export function UiTextActionFields({ input, patchInput }: Pick<AutomationActionE
   return (
     <div className='grid gap-3'>
       <TextField
-        label='Text'
+        field='text'
+        label='Text or accessibility label'
         value={stringInputValue(input, 'text')}
         onChange={value => patchInput({ text: value })}
       />
       <SelectField
+        field='match'
         label='Label match'
         value={stringInputValue(input, 'match', 'exact')}
         options={[
@@ -28,20 +32,34 @@ export function UiTextActionFields({ input, patchInput }: Pick<AutomationActionE
         ]}
         onChange={value => patchInput({ match: value })}
       />
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(12rem,100%),1fr))] gap-x-form-column gap-y-3'>
-        <NumberField
-          label='Timeout'
-          suffix='ms'
-          value={numberInputValue(input, 'timeoutMs', 10000)}
-          onChange={value => patchInput({ timeoutMs: value })}
+      <DurationField
+        input={input}
+        field='timeoutMs'
+        label='Wait up to'
+        fallback={10000}
+        min={100}
+        presets={[5, 10, 15, 30]}
+        patchInput={patchInput}
+      />
+      <AdvancedActionFields
+        label='Polling interval'
+        summary={
+          typeof input.intervalMs === 'number' && input.intervalMs !== 1000
+            ? `Check every ${input.intervalMs / 1000} s`
+            : undefined
+        }
+        open={typeof input.intervalMs === 'number' && (input.intervalMs < 250 || input.intervalMs > 10000)}
+      >
+        <DurationField
+          input={input}
+          field='intervalMs'
+          label='Check every'
+          fallback={1000}
+          min={250}
+          max={10000}
+          patchInput={patchInput}
         />
-        <NumberField
-          label='Interval'
-          suffix='ms'
-          value={numberInputValue(input, 'intervalMs', 1000)}
-          onChange={value => patchInput({ intervalMs: value })}
-        />
-      </div>
+      </AdvancedActionFields>
     </div>
   )
 }

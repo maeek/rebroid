@@ -5,6 +5,8 @@ export const setClipboardAction = createTextAction({
   category: 'Text',
   iconKey: 'message',
   field: 'text',
-  fieldLabel: 'Text',
+  fieldLabel: 'Clipboard text',
+  fieldDescription: 'Replaces the Android clipboard contents.',
+  maskSummary: true,
   multiline: true
 })

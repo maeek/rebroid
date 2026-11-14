@@ -1,4 +1,6 @@
 import { NumberField, SelectField, TextField } from '../shared/action-fields'
+import { AdvancedActionFields } from '../shared/advanced-action-fields'
+import { DurationField } from '../shared/duration-field'
 import {
   booleanInputValue,
   normalizeBooleanInput,
@@ -27,11 +29,14 @@ export const listPackagesAction: AutomationActionDefinition = {
   renderEditor: ({ input, patchInput }) => (
     <div className='grid gap-3'>
       <TextField
-        label='Package filter'
+        field='query'
+        label='Filter package IDs'
+        placeholder='com.example…'
         value={stringInputValue(input, 'query')}
         onChange={value => patchInput({ query: value })}
       />
       <SelectField
+        field='includeSystem'
         label='Package set'
         value={booleanInputValue(input, 'includeSystem', false) ? 'all' : 'third-party'}
         options={[
@@ -40,17 +45,25 @@ export const listPackagesAction: AutomationActionDefinition = {
         ]}
         onChange={value => patchInput({ includeSystem: value === 'all' })}
       />
-      <NumberField
-        label='Max results'
-        value={numberInputValue(input, 'maxResults', 50)}
-        onChange={value => patchInput({ maxResults: value })}
-      />
-      <NumberField
-        label='Timeout'
-        suffix='ms'
-        value={numberInputValue(input, 'timeoutMs', 10000)}
-        onChange={value => patchInput({ timeoutMs: value })}
-      />
+      <AdvancedActionFields
+        label='Result limit and timeout'
+        summary={input.timeoutMs !== undefined && input.timeoutMs !== 10000 ? 'Custom timeout' : undefined}
+      >
+        <NumberField
+          field='maxResults'
+          label='Max results'
+          value={numberInputValue(input, 'maxResults', 50)}
+          onChange={value => patchInput({ maxResults: value })}
+        />
+        <DurationField
+          input={input}
+          field='timeoutMs'
+          label='Timeout'
+          fallback={10000}
+          min={100}
+          patchInput={patchInput}
+        />
+      </AdvancedActionFields>
     </div>
   )
 }

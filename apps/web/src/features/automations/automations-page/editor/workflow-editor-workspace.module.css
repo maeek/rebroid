@@ -1,0 +1,15 @@
+.workspace {
+  --workflow-toolbar-top: 0px;
+  --workflow-toolbar-height: 0px;
+  --workflow-toolbar-bottom: calc(var(--workflow-toolbar-top) + var(--workflow-toolbar-height));
+  --workflow-workspace-gap: 0.5rem;
+  --workflow-editor-height: calc(
+    100dvh - var(--workflow-toolbar-bottom) - var(--console-bottom-inset) - var(--workflow-workspace-gap) * 2
+  );
+}
+
+@media (width < 64rem) {
+  [data-slot='protected-shell'] .workspace {
+    --workflow-toolbar-top: var(--console-top-inset);
+  }
+}

@@ -1,18 +1,17 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
 import {
   defaultConditionStep,
   defaultRepeatStep,
   defaultStep,
   defaultSwitchStep,
-  preferredWorkflowAction,
   type AutomationStepForm
 } from '../../editor/builder-utils'
+import { workflowBlockChoices } from '../catalog/automation-action-picker'
 import { getStepListDropId } from '../list/automation-step-drop-target'
 import { useAutomationStepsContext } from '../list/automation-steps-context'
 import {
@@ -20,7 +19,7 @@ import {
   copyAutomationStepToClipboard,
   readAutomationStepFromClipboard
 } from '../shared/automation-step-clipboard'
-import { collectStepKeys, selectionAfterDelete } from '../shared/automation-step-selection'
+import { visitStepScopes } from '../tree/automation-step-tree'
 import { AutomationStepAddRow } from './automation-step-add-row'
 import { AutomationStepBranchLane } from './automation-step-branch-lane'
 import { AutomationStepDropIndicator } from './automation-step-drop-indicator'
@@ -35,14 +34,21 @@ export function AutomationStepOutlineListView({
   steps: AutomationStepForm[]
   root?: boolean
 }) {
-  const { rootSteps, commands, selectedStepKey, openBlockKeys, dropTarget, onSelectStep, onOpenBlock, onListChange } =
+  const { rootSteps, commands, openBlockKeys, dropTarget, onSelectStep, onOpenBlock, onListChange, onDeleteStep } =
     useAutomationStepsContext()
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: getStepListDropId(listId),
     data: { type: 'step-list', listId }
   })
   const dropTargetIndex = dropTarget?.listId === listId ? dropTarget.index : null
   const listItemsRef = useRef<HTMLDivElement | null>(null)
+  const setListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      listItemsRef.current = node
+      setNodeRef(node)
+    },
+    [setNodeRef]
+  )
   const [dropIndicatorTop, setDropIndicatorTop] = useState<number | null>(null)
 
   useLayoutEffect(() => {
@@ -61,30 +67,39 @@ export function AutomationStepOutlineListView({
       ? targetRow.offsetTop
       : previousRow
         ? previousRow.offsetTop + previousRow.offsetHeight
-        : 0
+        : listElement.offsetHeight / 2
 
     setDropIndicatorTop(referenceTop)
   }, [dropTargetIndex, steps])
 
-  const addStep = (kind: AutomationStepForm['kind'] = 'action') => {
-    const action = preferredWorkflowAction(commands, kind === 'switch' ? 'debug.log' : 'android.wait')
-    if (!action) return
+  const addStep = (choice: string) => {
+    const kind = workflowBlockChoices.find(block => block === choice) ?? 'action'
     const index = steps.length + 1
     let step: AutomationStepForm
     switch (kind) {
       case 'condition':
-        step = defaultConditionStep(index, undefined, action)
+        step = { ...defaultConditionStep(index), thenSteps: [] }
         break
       case 'switch':
-        step = defaultSwitchStep(index, undefined, action)
+        step = { ...defaultSwitchStep(index), cases: [] }
         break
       case 'repeat':
-        step = defaultRepeatStep(index, undefined, action)
+        step = { ...defaultRepeatStep(index), steps: [] }
         break
-      case 'action':
+      case 'action': {
+        const action = commands.find(command => command.uses === choice)
+        if (!action) return
         step = defaultStep(action, index)
         break
+      }
     }
+    const usedIds = new Set<string>()
+    visitStepScopes(rootSteps, (_, id) => {
+      usedIds.add(id)
+    })
+    const base = step.id
+    let suffix = 2
+    while (usedIds.has(step.id)) step.id = `${base}-${suffix++}`
     onListChange(listId, [...steps, step])
     onSelectStep(step.clientKey)
     if (step.kind !== 'action') onOpenBlock(step.clientKey)
@@ -122,35 +137,16 @@ export function AutomationStepOutlineListView({
     }
   }
 
-  const deleteStep = (index: number) => {
-    const deleted = steps[index]
-    if (!deleted) return
-    const deletedKeys = new Set(collectStepKeys([deleted]))
-    const fallback = selectionAfterDelete(steps, index)
-    const globalFallback = collectStepKeys(rootSteps).find(key => !deletedKeys.has(key)) ?? null
-    const nextSteps = steps.filter((_, itemIndex) => itemIndex !== index)
-    onListChange(listId, nextSteps)
-    if (!selectedStepKey || deletedKeys.has(selectedStepKey)) {
-      onSelectStep(fallback ?? globalFallback)
-    }
-  }
-
   return (
     <Section
-      surface={root ? 'panel' : 'plain'}
+      surface='plain'
       title={root ? 'Step sequence' : undefined}
       className='min-w-0'
       contentClassName='gap-3'
     >
-      <div
-        ref={setNodeRef}
-        className={cn(
-          'grid min-w-0 gap-2 rounded-control transition-colors',
-          isOver ? 'bg-primary/10 ring-1 ring-primary/40' : null
-        )}
-      >
+      <div className='grid min-w-0 gap-2'>
         <div
-          ref={listItemsRef}
+          ref={setListRef}
           className='relative grid min-h-10 gap-2'
         >
           {steps.map((step, index) => (
@@ -177,27 +173,21 @@ export function AutomationStepOutlineListView({
                     )
                 }}
                 onDuplicate={() => duplicateStep(index)}
-                onDelete={() => deleteStep(index)}
+                onDelete={() => onDeleteStep(step.clientKey)}
               />
               {step.kind !== 'action' && openBlockKeys.includes(step.clientKey) ? (
                 <AutomationStepBranchLanes step={step} />
               ) : null}
             </div>
           ))}
+          <AutomationStepAddRow
+            dropping={steps.length === 0 && dropTargetIndex !== null}
+            commands={commands}
+            onAdd={addStep}
+            onPaste={() => void pasteStep()}
+          />
           {dropIndicatorTop !== null ? <AutomationStepDropIndicator top={dropIndicatorTop} /> : null}
         </div>
-
-        {steps.length === 0 ? (
-          <div className='px-3 py-5 text-center text-sm text-foreground-muted'>
-            {root ? 'Add your first step to begin.' : 'Drop steps here'}
-          </div>
-        ) : null}
-        <AutomationStepAddRow
-          label={root ? 'Add step' : 'Drop or add step'}
-          canAdd={commands.length > 0}
-          onAdd={addStep}
-          onPaste={() => void pasteStep()}
-        />
       </div>
     </Section>
   )
@@ -213,7 +203,7 @@ function AutomationStepBranchLanes({ step }: { step: Exclude<AutomationStepForm,
             steps={step.thenSteps}
           />
         </AutomationStepBranchLane>
-        <AutomationStepBranchLane title='Else'>
+        <AutomationStepBranchLane title='Otherwise'>
           <AutomationStepOutlineListView
             listId={`${step.clientKey}:else`}
             steps={step.elseSteps}
@@ -229,7 +219,7 @@ function AutomationStepBranchLanes({ step }: { step: Exclude<AutomationStepForm,
         {step.cases.map(item => (
           <AutomationStepBranchLane
             key={item.clientKey}
-            title={`Case: ${String(item.value)}`}
+            title={`Case ${JSON.stringify(item.value) ?? 'unset'}`}
           >
             <AutomationStepOutlineListView
               listId={`${step.clientKey}:case:${item.clientKey}`}
@@ -237,7 +227,7 @@ function AutomationStepBranchLanes({ step }: { step: Exclude<AutomationStepForm,
             />
           </AutomationStepBranchLane>
         ))}
-        <AutomationStepBranchLane title='Default'>
+        <AutomationStepBranchLane title='Otherwise'>
           <AutomationStepOutlineListView
             listId={`${step.clientKey}:default`}
             steps={step.defaultSteps}

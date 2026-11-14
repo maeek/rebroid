@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import type { AutomationFormState } from './builder-utils'
+import { useCallback, useMemo, useReducer } from 'react'
+import { buildYaml, type AutomationFormState } from './builder-utils'
 
 export type EditorSnapshot = {
   form: AutomationFormState
@@ -7,172 +7,132 @@ export type EditorSnapshot = {
   yamlDraft: string
 }
 
-type EditorHistoryState = {
+type EditorUpdate = (snapshot: EditorSnapshot) => EditorSnapshot
+
+type EditorHistory = {
   undo: EditorSnapshot[]
+  current: EditorSnapshot
   redo: EditorSnapshot[]
+  saved: EditorSnapshot
 }
 
-export const maxEditorHistoryEntries = 100
+type HistoryAction =
+  | { type: 'commit' | 'view'; update: EditorUpdate }
+  | { type: 'saved'; snapshot: EditorSnapshot }
+  | { type: 'undo' | 'redo' | 'discard' }
 
-export const cloneAutomationForm = (form: AutomationFormState): AutomationFormState =>
-  typeof structuredClone === 'function'
-    ? structuredClone(form)
-    : (JSON.parse(JSON.stringify(form)) as AutomationFormState)
+const maxEditorHistoryEntries = 100
 
-export const sameEditorSnapshot = (left: EditorSnapshot, right: EditorSnapshot) =>
+const sameSnapshot = (left: EditorSnapshot, right: EditorSnapshot) =>
   left.yamlOpen === right.yamlOpen &&
   left.yamlDraft === right.yamlDraft &&
-  JSON.stringify(left.form) === JSON.stringify(right.form)
+  (left.form === right.form || JSON.stringify(left.form) === JSON.stringify(right.form))
 
-export const pushUndoSnapshot = (history: EditorHistoryState, snapshot: EditorSnapshot): EditorHistoryState => {
-  const previous = history.undo.at(-1)
-  if (previous && sameEditorSnapshot(previous, snapshot)) return history
-  return {
-    undo: [...history.undo, snapshot].slice(-maxEditorHistoryEntries),
-    redo: []
+const appendUndo = (entries: EditorSnapshot[], snapshot: EditorSnapshot) =>
+  [...entries, snapshot].slice(-maxEditorHistoryEntries)
+
+const initializeHistory = (form: AutomationFormState): EditorHistory => {
+  const snapshot = { form, yamlOpen: false, yamlDraft: '' }
+  return { current: snapshot, saved: snapshot, undo: [], redo: [] }
+}
+
+const updateHistory = (history: EditorHistory, action: HistoryAction): EditorHistory => {
+  switch (action.type) {
+    case 'commit':
+    case 'view': {
+      const next = action.update(history.current)
+      if (sameSnapshot(history.current, next)) return history
+      if (action.type === 'view') return { ...history, current: next }
+      return { ...history, current: next, undo: appendUndo(history.undo, history.current), redo: [] }
+    }
+    case 'saved':
+      return { ...history, current: action.snapshot, saved: action.snapshot }
+    case 'discard':
+      return { ...history, current: history.saved, undo: [], redo: [] }
+    case 'undo': {
+      const previous = history.undo.at(-1)
+      if (!previous) return history
+      return {
+        ...history,
+        current: previous,
+        undo: history.undo.slice(0, -1),
+        redo: [history.current, ...history.redo].slice(0, maxEditorHistoryEntries)
+      }
+    }
+    case 'redo': {
+      const next = history.redo[0]
+      if (!next) return history
+      return { ...history, current: next, undo: appendUndo(history.undo, history.current), redo: history.redo.slice(1) }
+    }
   }
 }
 
-export const isEditableShortcutTarget = (target: EventTarget | null) => {
-  if (!(target instanceof Element)) return false
-  if (target instanceof HTMLElement && target.isContentEditable) return true
-  const editable = target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"]')
-  if (!editable) return false
-  if (editable instanceof HTMLInputElement) {
-    return editable.type !== 'checkbox' && editable.type !== 'radio'
+const serializeVisualDraft = (form: AutomationFormState) => {
+  try {
+    return buildYaml(form)
+  } catch {
+    return null
   }
-  return true
 }
 
-export const useAutomationEditorHistory = ({
-  form,
-  yamlOpen,
-  yamlDraft,
-  setForm,
-  setYamlOpen,
-  setYamlDraft
-}: {
-  form: AutomationFormState
-  yamlOpen: boolean
-  yamlDraft: string
-  setForm: Dispatch<SetStateAction<AutomationFormState>>
-  setYamlOpen: Dispatch<SetStateAction<boolean>>
-  setYamlDraft: Dispatch<SetStateAction<string>>
-}) => {
-  const [history, setHistory] = useState<EditorHistoryState>({ undo: [], redo: [] })
-  const snapshotRef = useRef<EditorSnapshot | null>(null)
-  const canUndo = history.undo.length > 0
-  const canRedo = history.redo.length > 0
+export const useAutomationEditorHistory = (initialForm: AutomationFormState) => {
+  const [history, dispatch] = useReducer(updateHistory, initialForm, initializeHistory)
+  const { current, saved } = history
+  const visualYaml = useMemo(() => serializeVisualDraft(current.form), [current.form])
+  const savedVisualYaml = useMemo(() => serializeVisualDraft(saved.form), [saved.form])
+  const sameVisualDraft =
+    visualYaml !== null && savedVisualYaml !== null
+      ? visualYaml === savedVisualYaml
+      : JSON.stringify(current.form) === JSON.stringify(saved.form)
+  const hasUnsavedChanges = current.yamlOpen
+    ? current.yamlDraft !== savedVisualYaml && (!saved.yamlOpen || current.yamlDraft !== saved.yamlDraft)
+    : !sameVisualDraft
 
-  const currentSnapshot = useCallback(
-    () => ({
-      form: cloneAutomationForm(snapshotRef.current?.form ?? form),
-      yamlOpen: snapshotRef.current?.yamlOpen ?? yamlOpen,
-      yamlDraft: snapshotRef.current?.yamlDraft ?? yamlDraft
-    }),
-    [form, yamlDraft, yamlOpen]
-  )
-
-  const applySnapshot = useCallback(
-    (snapshot: EditorSnapshot) => {
-      const nextSnapshot = {
-        form: cloneAutomationForm(snapshot.form),
-        yamlOpen: snapshot.yamlOpen,
-        yamlDraft: snapshot.yamlDraft
-      }
-      snapshotRef.current = nextSnapshot
-      setForm(nextSnapshot.form)
-      setYamlOpen(nextSnapshot.yamlOpen)
-      setYamlDraft(nextSnapshot.yamlDraft)
-    },
-    [setForm, setYamlDraft, setYamlOpen]
-  )
-
-  const recordHistory = useCallback(() => {
-    const snapshot = currentSnapshot()
-    setHistory(current => pushUndoSnapshot(current, snapshot))
-  }, [currentSnapshot])
-
-  const commitEditorChange = useCallback(
-    (update: () => EditorSnapshot) => {
-      recordHistory()
-      applySnapshot(update())
-    },
-    [applySnapshot, recordHistory]
-  )
-
-  const resetEditorHistory = useCallback((snapshot: EditorSnapshot) => {
-    snapshotRef.current = {
-      form: cloneAutomationForm(snapshot.form),
-      yamlOpen: snapshot.yamlOpen,
-      yamlDraft: snapshot.yamlDraft
-    }
-    setHistory({ undo: [], redo: [] })
-  }, [])
-
-  const undo = useCallback(() => {
-    setHistory(current => {
-      const previous = current.undo.at(-1)
-      if (!previous) return current
-      const currentValue = currentSnapshot()
-      applySnapshot(previous)
-      return {
-        undo: current.undo.slice(0, -1),
-        redo: [currentValue, ...current.redo].slice(0, maxEditorHistoryEntries)
-      }
-    })
-  }, [applySnapshot, currentSnapshot])
-
-  const redo = useCallback(() => {
-    setHistory(current => {
-      const next = current.redo[0]
-      if (!next) return current
-      const currentValue = currentSnapshot()
-      applySnapshot(next)
-      return {
-        undo: [...current.undo, currentValue].slice(-maxEditorHistoryEntries),
-        redo: current.redo.slice(1)
-      }
-    })
-  }, [applySnapshot, currentSnapshot])
-
-  useEffect(() => {
-    snapshotRef.current = {
-      form: cloneAutomationForm(form),
-      yamlOpen,
-      yamlDraft
-    }
-  }, [form, yamlDraft, yamlOpen])
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isModZ = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z'
-      if (!isModZ || event.altKey || isEditableShortcutTarget(event.target)) return
-
-      if (event.shiftKey) {
-        if (!canRedo) return
-        event.preventDefault()
-        redo()
-        return
-      }
-
-      if (!canUndo) return
-      event.preventDefault()
-      undo()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canRedo, canUndo, redo, undo])
+  const commitEditorChange = useCallback((update: EditorUpdate) => dispatch({ type: 'commit', update }), [])
+  const changeEditorView = useCallback((update: EditorUpdate) => dispatch({ type: 'view', update }), [])
+  const markEditorSaved = useCallback((snapshot: EditorSnapshot) => dispatch({ type: 'saved', snapshot }), [])
+  const discardChanges = useCallback(() => dispatch({ type: 'discard' }), [])
+  const undo = useCallback(() => dispatch({ type: 'undo' }), [])
+  const redo = useCallback(() => dispatch({ type: 'redo' }), [])
 
   return {
-    canRedo,
-    canUndo,
+    ...current,
+    visualYaml,
+    savedForm: saved.form,
+    canRedo: history.redo.length > 0,
+    canUndo: history.undo.length > 0,
+    hasUnsavedChanges,
     commitEditorChange,
-    currentSnapshot,
-    hasUnsavedHistory: canUndo,
-    resetEditorHistory,
+    changeEditorView,
+    markEditorSaved,
+    discardChanges,
     undo,
     redo
+  }
+}
+
+export const handleEditorHistoryShortcut = (
+  event: KeyboardEvent,
+  {
+    canUndo,
+    canRedo,
+    undo,
+    redo
+  }: Pick<ReturnType<typeof useAutomationEditorHistory>, 'canUndo' | 'canRedo' | 'undo' | 'redo'>
+) => {
+  if (event.defaultPrevented || event.isComposing || event.altKey || !(event.metaKey || event.ctrlKey)) return
+  if (event.target instanceof HTMLElement) {
+    if (event.target.isContentEditable || event.target.closest('[role="dialog"], textarea, select, .monaco-editor'))
+      return
+    if (event.target instanceof HTMLInputElement && !['checkbox', 'radio', 'button'].includes(event.target.type)) return
+  }
+  const key = event.key.toLowerCase()
+  if ((key === 'z' && event.shiftKey) || (key === 'y' && event.ctrlKey && !event.metaKey && !event.shiftKey)) {
+    if (!canRedo) return
+    event.preventDefault()
+    redo()
+  } else if (key === 'z' && canUndo) {
+    event.preventDefault()
+    undo()
   }
 }

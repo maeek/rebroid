@@ -36,7 +36,7 @@ export interface AutomationActionEditorProps {
   commands: AutomationCommand[]
   input: Record<string, unknown>
   uiState: Record<string, unknown>
-  patchInput: (patch: Record<string, unknown>) => void
+  patchInput: (patch: Record<string, unknown>, uiPatch?: Record<string, unknown>) => void
   replaceInput: (input: Record<string, unknown>) => void
   patchUiState: (patch: Record<string, unknown>) => void
 }

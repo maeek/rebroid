@@ -21,7 +21,7 @@ const run: AutomationRun = {
   stepResults: [
     {
       stepId: 'launch',
-      uses: 'android.launchApp',
+      uses: 'android.launchPackage',
       status: 'failed',
       startedAt: '2026-11-07T10:00:00Z',
       completedAt: '2026-11-07T10:01:00Z',

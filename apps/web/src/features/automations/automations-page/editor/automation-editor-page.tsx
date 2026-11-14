@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
+import { useUnsavedNavigation } from '@/hooks/use-unsaved-navigation'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
   createAutomationAction,
@@ -13,10 +15,10 @@ import {
   updateAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
 import { consumePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
-import { WorkflowResourceNavigation } from '../shared/workflow-resource-navigation'
+import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
+import { UnsavedChangesDialog } from '@/shared/ui/unsaved-changes-dialog'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
+import { collectStepReferenceIssues } from '../steps/shared/automation-step-reference-issues'
 import { AutomationDetailsSection } from './automation-details-section'
 import { AutomationEditorActions } from './automation-editor-actions'
 import { AiDraftDialog } from './automation-editor-dialogs'
@@ -32,11 +34,10 @@ import {
   type AutomationStepForm
 } from './builder-utils'
 import { useAutomationAiDraft } from './use-automation-ai-draft'
-import { cloneAutomationForm, useAutomationEditorHistory } from './use-automation-editor-history'
+import { useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
 import { useAutomationEditorYaml } from './use-automation-editor-yaml'
 import { useAutomationWorkflowFiles } from './use-automation-workflow-files'
-import { useUnsavedAutomationNavigation } from './use-unsaved-automation-navigation'
 import { WorkflowEditorWorkspace } from './workflow-editor-workspace'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/shared/contracts/automation'
@@ -49,11 +50,18 @@ export function AutomationEditorPage({
 }: AutomationEditorPageProps) {
   const router = useRouter()
   const [automation, setAutomation] = useState<Automation | null>(initialAutomation ?? null)
-  const [form, setForm] = useState<AutomationFormState>(() =>
+  const [initialForm] = useState(() =>
     initialAutomation
       ? automationToForm(initialAutomation)
       : defaultForm(preferredWorkflowAction(initialCommands, 'android.viewerCommand') ?? null)
   )
+  const history = useAutomationEditorHistory(initialForm)
+  const { form, yamlOpen, yamlDraft, visualYaml, commitEditorChange, hasUnsavedChanges, markEditorSaved } = history
+  const referenceIssues = useMemo(
+    () => collectStepReferenceIssues(form.steps, initialCommands),
+    [form.steps, initialCommands]
+  )
+  const hasBrokenReferences = !yamlOpen && referenceIssues.size > 0
   const {
     openBlock,
     openBlockKeys,
@@ -68,31 +76,22 @@ export function AutomationEditorPage({
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const workflowId = automation?.id
   const isNew = !automation
-  const title = isNew ? 'New workflow' : automation.name
-  const {
-    currentYaml,
-    setYamlDraft,
-    setYamlOpen,
-    toggleYamlEditor,
-    yamlDraft,
-    yamlError,
-    yamlOpen,
-    yamlPending,
-    yamlValid
-  } = useAutomationEditorYaml({ automation, form, setForm })
-  const saveFeedback = useSaveFeedback(yamlOpen ? yamlDraft : currentYaml)
-  const { commitEditorChange, currentSnapshot, hasUnsavedHistory, resetEditorHistory } = useAutomationEditorHistory({
+  const title = form.name.trim() || automation?.name || 'New workflow'
+  const currentYaml = visualYaml ?? automation?.yaml ?? ''
+  const { toggleYamlEditor, yamlError, yamlPending, yamlValid } = useAutomationEditorYaml({
     form,
     yamlOpen,
     yamlDraft,
-    setForm,
-    setYamlOpen,
-    setYamlDraft
+    currentYaml: visualYaml,
+    changeEditorView: history.changeEditorView
   })
-  const { confirmPendingNavigation, pendingNavigationHref, setPendingNavigationHref } = useUnsavedAutomationNavigation({
-    hasUnsavedChanges: hasUnsavedHistory,
-    push: router.push
+  const saveFeedback = useSaveFeedback(yamlOpen ? yamlDraft : currentYaml)
+  const navigation = useUnsavedNavigation({
+    hasUnsavedChanges,
+    push: router.push,
+    onDiscard: history.discardChanges
   })
   const {
     aiDraftOpen,
@@ -150,15 +149,12 @@ export function AutomationEditorPage({
           throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
         }
         const nextForm = definitionToForm(validation.definition, form.id)
-        setForm(nextForm)
-        setYamlOpen(true)
-        setYamlDraft(validation.yaml ?? pendingDraft.yaml)
         resetSelectionForSteps(nextForm.steps)
-        resetEditorHistory({
+        commitEditorChange(() => ({
           form: nextForm,
           yamlOpen: true,
           yamlDraft: validation.yaml ?? pendingDraft.yaml
-        })
+        }))
         toast({ title: 'Workflow draft ready' })
       })
       .catch(error => {
@@ -169,13 +165,10 @@ export function AutomationEditorPage({
         })
       })
       .finally(() => setBusy(false))
-  }, [form.id, isNew, resetEditorHistory, resetSelectionForSteps, setYamlDraft, setYamlOpen])
+  }, [form.id, isNew, commitEditorChange, resetSelectionForSteps])
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
-    commitEditorChange(() => ({
-      ...currentSnapshot(),
-      form: { ...cloneAutomationForm(currentSnapshot().form), ...patch }
-    }))
+    commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, ...patch } }))
 
   const updateSteps = (steps: AutomationStepForm[]) => {
     updateForm({ steps })
@@ -188,16 +181,15 @@ export function AutomationEditorPage({
   const persistAutomation = async (input: { yaml: string }) => {
     const wasNew = !automation
     const saved = automation ? await updateAutomationAction(automation.id, input) : await createAutomationAction(input)
-    const nextForm = automationToForm(saved)
-    saveFeedback.confirmSaved(yamlOpen ? saved.yaml : buildYaml(nextForm))
+    const savedForm = definitionToForm(saved.definition, saved.id, form.steps)
+    const savedVisualYaml = buildYaml(savedForm)
+    const nextForm = visualYaml === savedVisualYaml ? { ...form, id: saved.id } : savedForm
+    saveFeedback.confirmSaved(yamlOpen ? saved.yaml : savedVisualYaml)
     setAutomation(saved)
-    setForm(nextForm)
-    resetSelectionForSteps(nextForm.steps)
-    if (yamlOpen) setYamlDraft(saved.yaml)
-    resetEditorHistory({
+    markEditorSaved({
       form: nextForm,
       yamlOpen,
-      yamlDraft: yamlOpen ? saved.yaml : yamlDraft
+      yamlDraft: yamlOpen ? saved.yaml : ''
     })
     toast({ title: wasNew ? 'Workflow created' : 'Workflow updated', variant: 'success' })
     if (wasNew) {
@@ -206,7 +198,7 @@ export function AutomationEditorPage({
   }
 
   const save = async () => {
-    if (yamlOpen && !yamlValid) return
+    if (hasBrokenReferences || (yamlOpen && !yamlValid)) return
     setBusy(true)
     saveFeedback.resetSaveFeedback()
     setSaving(true)
@@ -242,19 +234,27 @@ export function AutomationEditorPage({
   }
 
   return (
-    <StandardPage className='gap-0'>
-      <PageHeader
-        section={{ label: 'Automations' }}
-        trail={[{ label: 'Workflows', href: '/automations' }]}
+    <>
+      <WorkflowEditorWorkspace
         title={title}
-        description={
-          automation ? 'Edit workflow steps, settings, and execution behavior.' : 'Create a reusable workflow.'
-        }
+        onRename={name => updateForm({ name })}
         actions={
           <AutomationEditorActions
+            details={
+              <FieldChangesProvider
+                value={form}
+                baseline={automation ? history.savedForm : undefined}
+              >
+                <AutomationDetailsSection
+                  form={form}
+                  onChange={updateForm}
+                />
+              </FieldChangesProvider>
+            }
             busy={busy}
             saving={saving}
             saved={saveFeedback.saved}
+            hasBrokenReferences={hasBrokenReferences}
             canDraftFromPrompt={canDraftFromPrompt}
             canDelete={Boolean(automation)}
             yamlOpen={yamlOpen}
@@ -262,11 +262,42 @@ export function AutomationEditorPage({
             onDelete={() => setDeleteOpen(true)}
             onDraftFromPrompt={() => setAiDraftOpen(true)}
             onExport={exportWorkflow}
+            onRunHistory={workflowId ? () => navigation.requestNavigation(workflowTraceHref(workflowId)) : undefined}
             onImport={importWorkflow}
             onSave={() => void save()}
           />
         }
-      />
+        yamlOpen={yamlOpen}
+        disabled={busy}
+        onToggleYaml={toggleYamlEditor}
+        history={history}
+      >
+        {yamlOpen ? (
+          <AutomationYamlEditorSection
+            yaml={yamlDraft}
+            commands={initialCommands}
+            onYamlChange={yaml => commitEditorChange(snapshot => ({ ...snapshot, yamlDraft: yaml }))}
+            error={yamlError}
+            pending={yamlPending}
+          />
+        ) : (
+          <AutomationStepsList
+            steps={form.steps}
+            referenceIssues={referenceIssues}
+            commands={initialCommands}
+            selectedStepKey={selectedStepKey}
+            openBlockKeys={openBlockKeys}
+            yamlStepKey={yamlStepKey}
+            onSelectStep={setSelectedStepKey}
+            onToggleBlock={toggleBlock}
+            onOpenBlock={openBlock}
+            onYamlStepKeyChange={setYamlStepKey}
+            onChange={updateSteps}
+            onStepChange={updateStepAt}
+            className='w-full'
+          />
+        )}
+      </WorkflowEditorWorkspace>
 
       <AiDraftDialog
         open={aiDraftOpen && canDraftFromPrompt}
@@ -294,61 +325,6 @@ export function AutomationEditorPage({
         onSubmitClarification={() => void submitClarification()}
       />
 
-      <PageContent className='grid gap-6 pt-2'>
-        <WorkflowResourceNavigation
-          workflowId={automation?.id}
-          active='editor'
-        />
-        <fieldset
-          disabled={busy}
-          inert={busy || undefined}
-          className='min-w-0'
-        >
-          <WorkflowEditorWorkspace
-            details={
-              <fieldset
-                disabled={yamlOpen}
-                inert={yamlOpen || undefined}
-                className='min-w-0'
-              >
-                <AutomationDetailsSection
-                  form={form}
-                  onChange={updateForm}
-                />
-              </fieldset>
-            }
-            yamlOpen={yamlOpen}
-            disabled={busy}
-            onToggleYaml={toggleYamlEditor}
-          >
-            {yamlOpen ? (
-              <AutomationYamlEditorSection
-                yaml={yamlDraft}
-                commands={initialCommands}
-                onYamlChange={yaml => commitEditorChange(() => ({ ...currentSnapshot(), yamlDraft: yaml }))}
-                error={yamlError}
-                pending={yamlPending}
-              />
-            ) : (
-              <AutomationStepsList
-                steps={form.steps}
-                commands={initialCommands}
-                selectedStepKey={selectedStepKey}
-                openBlockKeys={openBlockKeys}
-                yamlStepKey={yamlStepKey}
-                onSelectStep={setSelectedStepKey}
-                onToggleBlock={toggleBlock}
-                onOpenBlock={openBlock}
-                onYamlStepKeyChange={setYamlStepKey}
-                onChange={updateSteps}
-                onStepChange={updateStepAt}
-                className='w-full'
-              />
-            )}
-          </WorkflowEditorWorkspace>
-        </fieldset>
-      </PageContent>
-
       <input
         ref={importInputRef}
         type='file'
@@ -369,21 +345,10 @@ export function AutomationEditorPage({
         onOpenChange={setDeleteOpen}
       />
 
-      <ConfirmMutationDialog
-        open={Boolean(pendingNavigationHref)}
-        title='Leave without saving?'
+      <UnsavedChangesDialog
+        navigation={navigation}
         description='This workflow has unsaved changes.'
-        consequence='Leaving now permanently discards the changes made since the last save.'
-        tone='warning'
-        cancelLabel='Stay'
-        confirmLabel='Leave without saving'
-        pendingLabel='Leaving…'
-        pending={false}
-        onConfirm={confirmPendingNavigation}
-        onOpenChange={open => {
-          if (!open) setPendingNavigationHref(null)
-        }}
       />
-    </StandardPage>
+    </>
   )
 }

@@ -18,14 +18,25 @@ export const keyAction: AutomationActionDefinition = {
     return (
       <div className='grid gap-3'>
         <SelectField
+          field='key'
           label='Key'
           value={selected}
-          options={[...commonKeys, 'custom']}
+          options={[
+            ...commonKeys.map(value => ({
+              value,
+              label: value
+                .toLowerCase()
+                .replace('_', ' ')
+                .replace(/^./, letter => letter.toUpperCase())
+            })),
+            { value: 'custom', label: 'Custom Android key' }
+          ]}
           onChange={value => patchInput({ key: value === 'custom' ? '' : value })}
         />
         {selected === 'custom' ? (
           <TextField
             label='Custom key'
+            placeholder='KEYCODE_ENTER…'
             value={key}
             onChange={value => patchInput({ key: value })}
           />

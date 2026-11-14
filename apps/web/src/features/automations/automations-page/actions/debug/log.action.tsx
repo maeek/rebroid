@@ -6,5 +6,7 @@ export const logAction = createTextAction({
   iconKey: 'debug',
   field: 'message',
   fieldLabel: 'Message',
+  fieldDescription: 'Writes the message to this step’s run result.',
+  maskSummary: true,
   multiline: true
 })

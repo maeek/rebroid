@@ -97,6 +97,7 @@ export function AutomationTagsInput({
     <FormField
       controlId={id}
       label={label}
+      field='tags'
       description={description}
       layout='vertical'
     >

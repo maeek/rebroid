@@ -1,7 +1,24 @@
-import { viewerCommands } from '@rebroid/android-application-core/viewer-control'
 import { SelectField } from '../shared/action-fields'
 import { normalizeStringInput, stringInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
+import type { ViewerCommand } from '@rebroid/android-application-core/viewer-control'
+
+const controls = {
+  back: 'Go back',
+  home: 'Go to Home',
+  recents: 'Show recent apps',
+  wake: 'Wake display',
+  sleep: 'Put display to sleep',
+  power: 'Press Power',
+  rotate: 'Rotate current display',
+  'volume-up': 'Volume up',
+  'volume-down': 'Volume down',
+  mute: 'Mute',
+  'expand-notifications': 'Show notifications',
+  'expand-settings': 'Show quick settings',
+  'collapse-panels': 'Close Android panels'
+} satisfies Record<ViewerCommand, string>
+const options = Object.entries(controls).map(([value, label]) => ({ value, label }))
 
 export const viewerCommandAction: AutomationActionDefinition = {
   uses: 'android.viewerCommand',
@@ -9,12 +26,14 @@ export const viewerCommandAction: AutomationActionDefinition = {
   iconKey: 'device',
   defaultInput: () => ({ command: 'wake' }),
   normalizeInput: input => normalizeStringInput(input, 'command', 'wake'),
-  summary: input => stringInputValue(input, 'command', 'wake'),
+  summary: input =>
+    options.find(option => option.value === stringInputValue(input, 'command', 'wake'))?.label ?? 'Choose a control',
   renderEditor: ({ input, patchInput }) => (
     <SelectField
-      label='Command'
+      field='command'
+      label='Control'
       value={stringInputValue(input, 'command', 'wake')}
-      options={[...viewerCommands]}
+      options={options}
       onChange={value => patchInput({ command: value })}
     />
   )

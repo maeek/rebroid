@@ -5,6 +5,7 @@ export const stopAction = createTextAction({
   category: 'Flow',
   iconKey: 'x',
   field: 'reason',
-  fieldLabel: 'Reason',
+  fieldLabel: 'Reason (optional)',
+  fieldDescription: 'Ends the run successfully and skips subsequent steps.',
   multiline: true
 })

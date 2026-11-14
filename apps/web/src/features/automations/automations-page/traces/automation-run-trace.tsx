@@ -1,20 +1,22 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { IconFileText, IconListCheck, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Disclosure, DisclosureChevron, DisclosureSummary } from '@/components/ui/disclosure'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import { sendBff } from '@/lib/http/bff'
+import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
-import { ResourceLink } from '@/shared/ui/resource-link'
+import { DetailFields } from '@/shared/ui/detail-fields'
 import { StateView } from '@/shared/ui/state-view'
 import type { AutomationRun, AutomationStepResult } from '@/shared/contracts/automation'
 
@@ -49,12 +51,14 @@ const elapsed = (start: string | null, end: string | null) => {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`
 }
 
-export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; targetName?: string }) {
+export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; showTargetId: boolean }) {
   const [tab, setTab] = useState('summary')
   const [ocrStep, setOcrStep] = useState<{ stepId: string; path?: string | null }>()
   const [stopError, setStopError] = useState(false)
   const [stopPending, startStopping] = useTransition()
   const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
+  const failedRow = useRef<HTMLTableRowElement>(null)
+  const jumpToFailure = useRef(false)
   const router = useRouter()
   const active = run.status === 'queued' || run.status === 'running'
   const stopping = active && (stopPending || cancelRequestedRunId === run.id)
@@ -75,10 +79,15 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
       }
     })
   }
-  const failedStep = run.stepResults.find(step => step.status === 'failed')
+  const failureIndex = run.stepResults.findIndex(step => step.status === 'failed')
+  const failedStep = run.stepResults[failureIndex]
   const authorizationFailure = workflowAuthorizationFailure(run.failureCode)
-  const targetPath = `/app/${encodeURIComponent(run.targetApplicationId)}`
-  const targetHref = `${targetPath}?view=workflows&run=${encodeURIComponent(run.id)}`
+  useLayoutEffect(() => {
+    if (tab === 'steps' && jumpToFailure.current) {
+      jumpToFailure.current = false
+      failedRow.current?.focus()
+    }
+  }, [tab])
   return (
     <TabsRoot
       value={tab}
@@ -135,14 +144,33 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
         {run.status === 'failed' ? (
           <Notice
             tone='danger'
-            title={
-              authorizationFailure?.title ?? (failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed')
-            }
+            title={authorizationFailure?.title ?? 'Workflow run failed'}
             description={
               authorizationFailure?.description ??
-              workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)
+              workflowRunFailureMessage(failedStep?.error ?? run.error, run.startedAt)
             }
-          />
+            actions={
+              failedStep ? (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  size='sm'
+                  onClick={() => {
+                    jumpToFailure.current = true
+                    setTab('steps')
+                  }}
+                >
+                  View failed step
+                </Button>
+              ) : undefined
+            }
+          >
+            {failedStep ? (
+              <p>
+                Failed step {failureIndex + 1} · {workflowRunStepLabel(failedStep.uses)}
+              </p>
+            ) : null}
+          </Notice>
         ) : null}
         <WorkflowRunSummaryPanel
           fields={[
@@ -150,10 +178,16 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
             ...(run.failureRequestId
               ? [{ label: 'Request ID', value: run.failureRequestId, copyValue: run.failureRequestId, code: true }]
               : []),
-            {
-              label: 'Target app',
-              value: <ResourceLink href={targetHref}>{targetName ?? run.targetApplicationId}</ResourceLink>
-            },
+            ...(showTargetId
+              ? [
+                  {
+                    label: 'Target app ID',
+                    value: run.targetApplicationId,
+                    copyValue: run.targetApplicationId,
+                    code: true
+                  }
+                ]
+              : []),
             {
               label: 'Profile',
               value: run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
@@ -208,10 +242,33 @@ export function AutomationRunTrace({ run, targetName }: { run: AutomationRun; ta
             </TableHeader>
             <TableBody>
               {run.stepResults.map((step, index) => (
-                <TableRow key={`${step.path ?? step.stepId}-${index}`}>
+                <TableRow
+                  key={`${step.path ?? step.stepId}-${index}`}
+                  ref={index === failureIndex ? failedRow : undefined}
+                  tabIndex={index === failureIndex ? -1 : undefined}
+                  className='focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
+                >
                   <TableCell className='whitespace-normal'>
-                    <span className='font-medium'>{step.stepId}</span>
-                    <p className='text-xs text-foreground-muted'>{step.uses}</p>
+                    <span className='font-medium'>
+                      {index + 1}. {workflowRunStepLabel(step.uses)}
+                    </span>
+                    <Disclosure className='mt-1 text-xs text-foreground-muted'>
+                      <DisclosureSummary className='flex w-fit cursor-pointer items-center gap-1 rounded-control focus-visible:outline-ring'>
+                        <DisclosureChevron
+                          direction='right'
+                          className='size-3.5'
+                        />
+                        Step identifiers
+                      </DisclosureSummary>
+                      <DetailFields
+                        compact
+                        layout='list'
+                        fields={[
+                          { label: 'Step ID', value: step.stepId, copyValue: step.stepId },
+                          { label: 'Command ID', value: step.uses, copyValue: step.uses }
+                        ]}
+                      />
+                    </Disclosure>
                     {step.error ? (
                       <p className='mt-1 [overflow-wrap:anywhere]'>
                         {workflowRunFailureMessage(step.error, step.startedAt)}

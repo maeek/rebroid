@@ -1,15 +1,17 @@
 'use client'
 
-import { useState } from 'react'
-import { PageHeader } from '@/shared/ui/page/page-header'
-import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
+import { useMemo, useState } from 'react'
+import { summaryOutput } from '@rebroid/automation-core/command-registry'
+import { useRouter } from 'next/navigation'
+import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { getAutomationActionDefinitions } from '../actions/action-registry'
-import { WorkflowResourceNavigation } from '../shared/workflow-resource-navigation'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
+import { collectStepReferenceIssues } from '../steps/shared/automation-step-reference-issues'
 import { AutomationDetailsSection } from './automation-details-section'
 import { AutomationEditorActions } from './automation-editor-actions'
 import { AutomationYamlEditorSection } from './automation-yaml-editor-section'
-import { buildYaml, defaultForm, defaultStep, type AutomationFormState } from './builder-utils'
+import { defaultForm, defaultStep, type AutomationFormState } from './builder-utils'
+import { useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
 import { WorkflowEditorWorkspace } from './workflow-editor-workspace'
 import type { AutomationCommand } from '@/shared/contracts/automation'
@@ -25,15 +27,29 @@ export const previewCommands: AutomationCommand[] = getAutomationActionDefinitio
   label: commandLabels[action.uses] ?? action.label ?? action.uses,
   description: action.description ?? '',
   requiredPermissions: [],
-  inputSchema: { type: 'object' },
-  outputs: [],
-  editor: { inputDefaults: action.defaultInput(), inputFieldOrder: [], yamlSnippetFields: [] }
+  inputSchema:
+    action.uses === 'debug.log' ? { type: 'object', properties: { message: { type: 'string' } } } : { type: 'object' },
+  outputs: [summaryOutput],
+  editor: {
+    inputDefaults: action.defaultInput(),
+    inputFieldOrder: action.uses === 'debug.log' ? ['message'] : [],
+    yamlSnippetFields: []
+  }
 }))
 
 const noop = () => undefined
 
-export const WorkflowEditorPreview = ({ creating = false }: { creating?: boolean }) => {
-  const [form, setForm] = useState<AutomationFormState>(() =>
+export const WorkflowEditorPreview = ({
+  creating = false,
+  withReferences = false,
+  long = false
+}: {
+  creating?: boolean
+  withReferences?: boolean
+  long?: boolean
+}) => {
+  const router = useRouter()
+  const [initialForm] = useState<AutomationFormState>(() =>
     creating
       ? defaultForm()
       : {
@@ -42,81 +58,88 @@ export const WorkflowEditorPreview = ({ creating = false }: { creating?: boolean
           name: 'Daily inventory check',
           steps: [
             defaultStep('android.viewerCommand', 1, 'wake'),
-            defaultStep('android.wait', 2, 'wait'),
-            defaultStep('debug.log', 3, 'log')
+            { ...defaultStep('android.wait', 2, 'wait'), id: 'wait' },
+            {
+              ...defaultStep('debug.log', 3, 'log'),
+              id: 'log',
+              ...(withReferences
+                ? {
+                    withJson: JSON.stringify({
+                      message: { $ref: { source: 'stepOutput', stepId: 'wait', outputKey: 'summary' } }
+                    })
+                  }
+                : {})
+            },
+            ...(long
+              ? Array.from({ length: 24 }, (_, index) => defaultStep('android.wait', index + 4, `wait-${index + 4}`))
+              : [])
           ]
         }
   )
-  const [yamlOpen, setYamlOpen] = useState(false)
-  const [yaml, setYaml] = useState('')
+  const history = useAutomationEditorHistory(initialForm)
+  const { form, yamlOpen, yamlDraft, visualYaml, commitEditorChange, changeEditorView } = history
+  const referenceIssues = useMemo(() => collectStepReferenceIssues(form.steps, previewCommands), [form.steps])
+  const hasBrokenReferences = !yamlOpen && referenceIssues.size > 0
+  const updateForm = (patch: Partial<AutomationFormState>) =>
+    commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, ...patch } }))
+  const workflowId = form.id
   const selection = useAutomationEditorSelection(form.steps)
   return (
-    <StandardPage className='gap-0'>
-      <PageHeader
-        section={{ label: 'Automations' }}
-        trail={[{ label: 'Workflows', href: '/automations' }]}
-        title={creating ? 'New workflow' : form.name}
-        description={
-          creating ? 'Create a reusable workflow.' : 'Edit workflow steps, settings, and execution behavior.'
-        }
-        actions={
-          <AutomationEditorActions
-            busy={false}
-            canDraftFromPrompt={false}
-            canDelete={!creating}
-            yamlOpen={yamlOpen}
-            yamlValid
-            onSave={noop}
-            onDelete={noop}
-            onDraftFromPrompt={noop}
-            onImport={noop}
-            onExport={noop}
-          />
-        }
-      />
-      <PageContent className='grid gap-6 pt-2'>
-        <WorkflowResourceNavigation
-          workflowId={form.id ?? undefined}
-          active='editor'
-        />
-        <WorkflowEditorWorkspace
+    <WorkflowEditorWorkspace
+      title={form.name.trim() || 'New workflow'}
+      onRename={name => updateForm({ name })}
+      actions={
+        <AutomationEditorActions
           details={
             <AutomationDetailsSection
               form={form}
-              onChange={patch => setForm(current => ({ ...current, ...patch }))}
+              onChange={updateForm}
             />
           }
+          busy={false}
+          hasBrokenReferences={hasBrokenReferences}
+          canDraftFromPrompt={false}
+          canDelete={!creating}
           yamlOpen={yamlOpen}
-          onToggleYaml={() => {
-            setYaml(buildYaml(form))
-            setYamlOpen(current => !current)
-          }}
-        >
-          {yamlOpen ? (
-            <AutomationYamlEditorSection
-              yaml={yaml}
-              commands={previewCommands}
-              onYamlChange={setYaml}
-            />
-          ) : (
-            <AutomationStepsList
-              steps={form.steps}
-              commands={previewCommands}
-              selectedStepKey={selection.selectedStepKey}
-              openBlockKeys={selection.openBlockKeys}
-              yamlStepKey={selection.yamlStepKey}
-              onSelectStep={selection.setSelectedStepKey}
-              onToggleBlock={selection.toggleBlock}
-              onOpenBlock={selection.openBlock}
-              onYamlStepKeyChange={selection.setYamlStepKey}
-              onChange={steps => setForm(current => ({ ...current, steps }))}
-              onStepChange={(index, step) =>
-                setForm(current => ({ ...current, steps: current.steps.map((item, i) => (i === index ? step : item)) }))
-              }
-            />
-          )}
-        </WorkflowEditorWorkspace>
-      </PageContent>
-    </StandardPage>
+          yamlValid
+          onSave={noop}
+          onDelete={noop}
+          onDraftFromPrompt={noop}
+          onRunHistory={workflowId ? () => router.push(workflowTraceHref(workflowId)) : undefined}
+          onImport={noop}
+          onExport={noop}
+        />
+      }
+      yamlOpen={yamlOpen}
+      history={history}
+      onToggleYaml={() =>
+        changeEditorView(snapshot => ({ ...snapshot, yamlOpen: !yamlOpen, yamlDraft: visualYaml ?? '' }))
+      }
+    >
+      {yamlOpen ? (
+        <AutomationYamlEditorSection
+          yaml={yamlDraft}
+          commands={previewCommands}
+          onYamlChange={yaml => commitEditorChange(snapshot => ({ ...snapshot, yamlDraft: yaml }))}
+        />
+      ) : (
+        <AutomationStepsList
+          steps={form.steps}
+          referenceIssues={referenceIssues}
+          commands={previewCommands}
+          selectedStepKey={selection.selectedStepKey}
+          openBlockKeys={selection.openBlockKeys}
+          yamlStepKey={selection.yamlStepKey}
+          onSelectStep={selection.setSelectedStepKey}
+          onToggleBlock={selection.toggleBlock}
+          onOpenBlock={selection.openBlock}
+          onYamlStepKeyChange={selection.setYamlStepKey}
+          onChange={steps => updateForm({ steps })}
+          onStepChange={(index, step) =>
+            updateForm({ steps: form.steps.map((item, i) => (i === index ? step : item)) })
+          }
+        />
+      )}
+    </WorkflowEditorWorkspace>
   )
 }

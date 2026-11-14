@@ -5,5 +5,7 @@ export const pullFileAction = createTextAction({
   category: 'Files',
   iconKey: 'file-export',
   field: 'path',
-  fieldLabel: 'Path'
+  fieldLabel: 'Source file path',
+  fieldDescription: 'Returns the file contents, path, and size.',
+  placeholder: '/sdcard/Download/example.txt…'
 })

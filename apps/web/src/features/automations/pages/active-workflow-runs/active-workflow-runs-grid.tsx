@@ -34,7 +34,9 @@ export const ActiveWorkflowRunsGrid = ({
         meta: { skeleton: { kind: 'stacked' } },
         cell: ({ row: { original: run } }) => (
           <div className='grid justify-items-start gap-1'>
-            <ResourceLink href={workflowTraceHref(run.automationId, run.id)}>{run.workflowName}</ResourceLink>
+            <ResourceLink href={workflowTraceHref(run.automationId, run.id)}>
+              {run.workflowName ?? 'View run'}
+            </ResourceLink>
             <span className='text-xs text-foreground-muted'>Run {run.id.slice(0, 8)}</span>
           </div>
         )
@@ -79,7 +81,7 @@ export const ActiveWorkflowRunsGrid = ({
   )
   const query = appliedSearch.trim().toLowerCase()
   const matches = runs.filter(run =>
-    [run.workflowName, run.id, targets[run.targetApplicationId] ?? run.targetApplicationId].some(value =>
+    [run.workflowName ?? '', run.id, targets[run.targetApplicationId] ?? run.targetApplicationId].some(value =>
       value.toLowerCase().includes(query)
     )
   )

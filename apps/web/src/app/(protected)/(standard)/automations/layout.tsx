@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
-import { requireFeature } from '@/server/orchestrator/features'
+import { notFound } from 'next/navigation'
+import { getCurrentUserContext } from '@/server/orchestrator/current-user'
+import { hasPermission } from '@/shared/permissions/permissions'
 
 export default async function AutomationsLayout({ children }: { children: ReactNode }) {
-  await requireFeature('feature.workflows')
+  const user = await getCurrentUserContext()
+  if (!hasPermission(user.permissions, 'automations:manage')) notFound()
   return children
 }

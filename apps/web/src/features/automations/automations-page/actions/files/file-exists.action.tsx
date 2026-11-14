@@ -5,5 +5,7 @@ export const fileExistsAction = createTextAction({
   category: 'Files',
   iconKey: 'file-check',
   field: 'path',
-  fieldLabel: 'Path'
+  fieldLabel: 'Android file path',
+  fieldDescription: 'Returns an Exists value for use in a condition.',
+  placeholder: '/sdcard/Download/example.txt…'
 })

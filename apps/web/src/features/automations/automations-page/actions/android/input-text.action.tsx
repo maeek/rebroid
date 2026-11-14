@@ -5,6 +5,8 @@ export const inputTextAction = createTextAction({
   category: 'Text',
   iconKey: 'text',
   field: 'text',
-  fieldLabel: 'Text',
+  fieldLabel: 'Text to type',
+  fieldDescription: 'Types into the focused Android field.',
+  maskSummary: true,
   multiline: true
 })

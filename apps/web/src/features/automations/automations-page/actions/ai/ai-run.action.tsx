@@ -1,16 +1,17 @@
 'use client'
 
 import { useCallback, useMemo } from 'react'
-import { hasActionInputBinding } from '@rebroid/automation-core/command-registry'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { FormField } from '@/components/ui/form-field'
+import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox'
+import { automationActionPresentation } from '@/shared/model/workflow-action-presentation'
 import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { NumberField, SelectField, TextareaField } from '../shared/action-fields'
+import { AdvancedActionFields } from '../shared/advanced-action-fields'
 import {
   defaultAiRunCapabilities,
   defaultAiRunInput,
-  nextAiRunCapabilities,
   numberValue,
   selectableAiRunCommands,
   stringArrayValue,
@@ -72,19 +73,15 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
     { id: visionModelId, selected: modelSelection.selectedVisionModel?.id, label: 'Vision model' }
   ].filter(({ id, selected }) => id && id !== selected)
 
-  const toggleTool = (uses: string, enabled: boolean) => {
-    patchInput({ capabilities: nextAiRunCapabilities({ capabilities, commands: selectableCommands, enabled, uses }) })
-  }
-
   return (
     <div className='grid gap-5'>
-      {!hasActionInputBinding(input.prompt) && (
-        <TextareaField
-          label='Prompt'
-          value={stringValue(input, 'prompt')}
-          onChange={prompt => patchInput({ prompt })}
-        />
-      )}
+      <TextareaField
+        field='prompt'
+        label='Task for the device agent'
+        placeholder='Open Android Settings and verify that the main screen appears…'
+        value={stringValue(input, 'prompt')}
+        onChange={prompt => patchInput({ prompt })}
+      />
       {!modelSelection.isLoadingCatalog && unavailableModels.length > 0 && (
         <p
           className='text-sm text-foreground-muted'
@@ -93,25 +90,9 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
           Unavailable in the model catalog {unavailableModels.map(({ id, label }) => `${label} “${id}”`).join(', ')}.
         </p>
       )}
-      <AiModelPickerFields
-        catalog={modelSelection.primaryCatalog}
-        selectedProvider={modelSelection.selectedProvider}
-        selectedModel={modelSelection.selectedModel}
-        selectedVisionProvider={modelSelection.selectedVisionProvider}
-        selectedVisionModel={modelSelection.selectedVisionModel}
-        visionCatalog={modelSelection.visionCatalog}
-        isLoadingCatalog={modelSelection.isLoadingCatalog}
-        onProviderChange={modelSelection.setProviderId}
-        onModelChange={modelSelection.setModelId}
-        onVisionProviderChange={modelSelection.setVisionProviderId}
-        onVisionModelChange={modelSelection.setVisionModelId}
-      />
-      <AiModelPickerHealthFooter
-        health={modelSelection.health}
-        isCheckingHealth={modelSelection.isCheckingHealth}
-        selectedModel={modelSelection.selectedModel}
-        onRecheckHealth={() => void modelSelection.recheckHealth()}
-      />
+      <p className='text-sm text-foreground-muted'>
+        Device control model: {modelSelection.selectedModel?.id ?? (modelId || 'Workflow default')}
+      </p>
       <div className='grid gap-2'>
         <div className='flex items-center justify-between gap-2'>
           <div className='text-sm font-medium'>Allowed capabilities</div>
@@ -126,68 +107,110 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
             </Button>
           )}
         </div>
-        <div className='scrollbar-thin max-h-56 overflow-x-hidden overflow-y-auto rounded-control border border-surface-border/70 bg-surface-band/35 p-3'>
-          <div className='grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-2'>
-            {selectableCommands.map(command => {
-              const checked = selectedCapabilities.includes(command.uses)
-              return (
-                <label
-                  htmlFor={`ai-run-tool-${command.uses}`}
-                  key={command.uses}
-                  className='flex min-w-0 items-start gap-2 rounded-control px-2 py-1 text-sm hover:bg-white/7'
-                >
-                  <Checkbox
-                    id={`ai-run-tool-${command.uses}`}
-                    checked={checked}
-                    onCheckedChange={value => toggleTool(command.uses, value === true)}
-                  />
-                  <span className='min-w-0'>
-                    <span className='block truncate font-medium'>{command.label}</span>
-                    <span className='block truncate text-xs text-foreground-muted'>{command.uses}</span>
-                  </span>
-                </label>
-              )
-            })}
-          </div>
-        </div>
+        {capabilities === undefined ? (
+          <Button
+            type='button'
+            variant='secondary'
+            size='sm'
+            className='justify-self-start'
+            onClick={() => patchInput({ capabilities: selectedCapabilities })}
+          >
+            Customize capabilities
+          </Button>
+        ) : (
+          <FormField
+            label='Capability overrides'
+            layout='vertical'
+          >
+            <MultiSelectCombobox
+              value={selectedCapabilities}
+              options={selectableCommands
+                .map(command => ({
+                  value: command.uses,
+                  label: automationActionPresentation[command.uses]?.[1] ?? command.label,
+                  description: command.description,
+                  keywords: [command.uses]
+                }))
+                .concat(
+                  selectedCapabilities
+                    .filter(uses => !selectableCommands.some(command => command.uses === uses))
+                    .map(uses => ({
+                      value: uses,
+                      label: uses,
+                      description: 'Unavailable to this account.',
+                      keywords: [uses]
+                    }))
+                )}
+              placeholder='Search capabilities'
+              onValueChange={next => patchInput({ capabilities: next })}
+            />
+          </FormField>
+        )}
         <p className='text-xs text-foreground-muted'>
           Defaults follow your permissions. The agent receives up to five relevant routed capabilities per run.
         </p>
       </div>
-      <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-4'>
-        <SelectField
-          label='Agent mode'
-          value={stringValue(input, 'agentMode') || 'adaptive'}
-          options={[
-            { value: 'adaptive', label: 'Adaptive' },
-            { value: 'controller', label: 'Controller' },
-            { value: 'planned', label: 'Planned' }
-          ]}
-          onChange={agentMode => patchInput({ agentMode })}
+      <AdvancedActionFields
+        label='Models and execution limits'
+        summary={providerId || modelId || visionProviderId || visionModelId ? 'Model overrides' : undefined}
+        open={unavailableModels.length > 0 && !modelSelection.isLoadingCatalog}
+      >
+        <AiModelPickerFields
+          catalog={modelSelection.primaryCatalog}
+          selectedProvider={modelSelection.selectedProvider}
+          selectedModel={modelSelection.selectedModel}
+          selectedVisionProvider={modelSelection.selectedVisionProvider}
+          selectedVisionModel={modelSelection.selectedVisionModel}
+          visionCatalog={modelSelection.visionCatalog}
+          isLoadingCatalog={modelSelection.isLoadingCatalog}
+          onProviderChange={modelSelection.setProviderId}
+          onModelChange={modelSelection.setModelId}
+          onVisionProviderChange={modelSelection.setVisionProviderId}
+          onVisionModelChange={modelSelection.setVisionModelId}
         />
-        {(input.rawShellPolicy === 'allowlisted' || canAllowShell) && (
+        <AiModelPickerHealthFooter
+          health={modelSelection.health}
+          isCheckingHealth={modelSelection.isCheckingHealth}
+          selectedModel={modelSelection.selectedModel}
+          onRecheckHealth={() => void modelSelection.recheckHealth()}
+        />
+        <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-4'>
           <SelectField
-            label='Read-only shell escalation'
-            value={stringValue(input, 'rawShellPolicy') || 'deny'}
+            label='Agent mode'
+            value={stringValue(input, 'agentMode') || 'adaptive'}
             options={[
-              { value: 'deny', label: 'Deny' },
-              ...(canAllowShell ? [{ value: 'allowlisted', label: 'Allow listed commands' }] : [])
+              { value: 'adaptive', label: 'Adaptive' },
+              { value: 'controller', label: 'Controller' },
+              { value: 'planned', label: 'Planned' }
             ]}
-            onChange={rawShellPolicy => patchInput({ rawShellPolicy })}
+            onChange={agentMode => patchInput({ agentMode })}
           />
-        )}
-        <NumberField
-          label='Max actions'
-          value={numberValue(input, 'maxActions', 20)}
-          onChange={maxActions => patchInput({ maxActions })}
-        />
-        <NumberField
-          label='Timeout'
-          value={numberValue(input, 'timeoutMs', 120000)}
-          suffix='ms'
-          onChange={timeoutMs => patchInput({ timeoutMs })}
-        />
-      </div>
+          {(input.rawShellPolicy === 'allowlisted' || canAllowShell) && (
+            <SelectField
+              label='Read-only shell escalation'
+              value={stringValue(input, 'rawShellPolicy') || 'deny'}
+              options={[
+                { value: 'deny', label: 'Deny' },
+                ...(canAllowShell ? [{ value: 'allowlisted', label: 'Allow listed commands' }] : [])
+              ]}
+              onChange={rawShellPolicy => patchInput({ rawShellPolicy })}
+            />
+          )}
+          <NumberField
+            field='maxActions'
+            label='Maximum actions'
+            value={numberValue(input, 'maxActions', 20)}
+            onChange={maxActions => patchInput({ maxActions })}
+          />
+          <NumberField
+            field='timeoutMs'
+            label='Timeout'
+            value={numberValue(input, 'timeoutMs', 120000)}
+            suffix='ms'
+            onChange={timeoutMs => patchInput({ timeoutMs })}
+          />
+        </div>
+      </AdvancedActionFields>
     </div>
   )
 }

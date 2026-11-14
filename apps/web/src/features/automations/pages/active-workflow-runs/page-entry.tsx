@@ -3,8 +3,7 @@ import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavai
 import {
   ActiveWorkflowRunsPage,
   activeWorkflowRunsDescription,
-  activeWorkflowRunsTitle,
-  activeWorkflowRunsTrail
+  activeWorkflowRunsTitle
 } from './active-workflow-runs-page'
 import { loadActiveWorkflowRuns } from './page-data.server'
 
@@ -16,7 +15,6 @@ export const ActiveWorkflowRunsPageEntry = () => (
         title={activeWorkflowRunsTitle}
         description={activeWorkflowRunsDescription}
         section={{ label: 'Automations' }}
-        trail={activeWorkflowRunsTrail}
         requestId={requestId}
       />
     )}

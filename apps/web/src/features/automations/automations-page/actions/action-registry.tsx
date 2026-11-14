@@ -1,6 +1,13 @@
 import { hasActionInputBinding } from '@rebroid/automation-core/command-registry'
 import { aiRunAction } from './ai/ai-run.action'
 import { adbShellAction } from './android/adb-shell.action'
+import {
+  collapsePanelsAction,
+  expandNotificationsAction,
+  expandQuickSettingsAction,
+  getSettingAction,
+  openSystemSettingsAction
+} from './android/android-system.action'
 import { getClipboardAction } from './android/get-clipboard.action'
 import { inputTextAction } from './android/input-text.action'
 import { keyAction } from './android/key.action'
@@ -59,10 +66,15 @@ const actionCategories: AutomationActionCategory[] = [
 const actionDefinitions = [
   waitAction,
   viewerCommandAction,
+  expandNotificationsAction,
+  expandQuickSettingsAction,
+  collapsePanelsAction,
   rotateDisplayAction,
   keyAction,
   listPackagesAction,
   launchPackageAction,
+  openSystemSettingsAction,
+  getSettingAction,
   adbShellAction,
   tapAction,
   tapNormalizedAction,
@@ -153,7 +165,7 @@ const createFallbackDefinition = (uses: string, command?: AutomationCommand): Au
     defaultInput: () => ({ ...command?.editor.inputDefaults }),
     summary: input => {
       const entries = Object.entries(input)
-      if (entries.length === 0) return 'No input'
+      if (entries.length === 0) return command?.description ?? ''
 
       return entries
         .slice(0, 3)
@@ -170,8 +182,6 @@ export const getAutomationActionCategories = () => actionCategories
 
 export const getAutomationActionDefinition = (uses: string, command?: AutomationCommand): AutomationActionDefinition =>
   actionDefinitionByUses.get(uses) ?? createFallbackDefinition(uses, command)
-
-export const getAutomationActionCategory = (uses: string) => getAutomationActionDefinition(uses).category
 
 export const getAutomationActionIconKey = (uses: string) => getAutomationActionDefinition(uses).iconKey
 

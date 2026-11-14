@@ -4,7 +4,6 @@ import { operatorsForType } from '@rebroid/automation-core/metadata'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutomationReferencePicker } from '../value-ref/automation-reference-picker'
 import {
@@ -12,10 +11,8 @@ import {
   defaultCompareValue,
   defaultOperatorForType,
   needsCompareValue,
-  typeForValueRef,
-  valueRefLabel
+  typeForValueRef
 } from '../value-ref/automation-value-ref-utils'
-import { AutomationLiteralValueEditor } from './automation-literal-value-editor'
 import type { AutomationStepReferenceOption } from '../value-ref/automation-value-ref-constants'
 import type {
   AutomationConditionExpression,
@@ -75,6 +72,9 @@ export function AutomationConditionBuilder({
   return (
     <fieldset className='grid min-w-0 gap-4'>
       <legend className='mb-4 text-sm font-medium'>{label}</legend>
+      {groups.length > 1 || groups[0]?.conditions.length > 1 ? (
+        <p className='text-sm text-foreground-muted'>All rules in a group must match. Any matching group passes.</p>
+      ) : null}
       <div className='grid min-w-0 gap-4'>
         {groups.map((group, groupIndex) => (
           <div
@@ -109,7 +109,7 @@ export function AutomationConditionBuilder({
               }
             >
               <IconPlus className='size-4' />
-              And condition
+              Add AND rule
             </Button>
           </div>
         ))}
@@ -121,7 +121,7 @@ export function AutomationConditionBuilder({
           onClick={() => onChange({ groups: [...groups, createGroup()] })}
         >
           <IconPlus className='size-4' />
-          Or group
+          Add OR group
         </Button>
       </div>
     </fieldset>
@@ -144,12 +144,17 @@ function ConditionRow({
   onDelete: () => void
 }) {
   const selectedType = typeForValueRef(condition.value, stepOptions)
-  const operators = operatorsForType(selectedType)
-  const operator = operators.includes(condition.operator) ? condition.operator : defaultOperatorForType(selectedType)
+  const typeOperators = operatorsForType(selectedType)
+  const operator = condition.operator
+  const operators = typeOperators.includes(operator) ? typeOperators : [...typeOperators, operator]
   const compare = condition.compare ?? defaultCompareValue(selectedType)
 
-  const setValue = (value: Exclude<AutomationValueRef, { source: 'literal' }>) => {
+  const setValue = (value: AutomationValueRef) => {
     const nextType = typeForValueRef(value, stepOptions)
+    if (selectedType === nextType) {
+      onChange({ ...condition, value })
+      return
+    }
     const nextOperator = defaultOperatorForType(nextType)
     onChange({
       value,
@@ -170,25 +175,13 @@ function ConditionRow({
     <div className='grid min-w-0 gap-4 rounded-control bg-control/25 p-3'>
       <div className='grid grid-cols-[minmax(0,1fr)_auto] gap-3'>
         <div className='grid grid-cols-[repeat(auto-fit,minmax(min(14rem,100%),1fr))] gap-x-form-column gap-y-3'>
-          {condition.value.source === 'literal' ? (
-            <FormField
-              label='Value'
-              layout='vertical'
-            >
-              <Input
-                readOnly
-                value={valueRefLabel(condition.value, stepOptions)}
-              />
-            </FormField>
-          ) : (
-            <AutomationReferencePicker
-              id={`${id}-value`}
-              label='Value'
-              value={condition.value}
-              stepOptions={stepOptions}
-              onChange={setValue}
-            />
-          )}
+          <AutomationReferencePicker
+            id={`${id}-value`}
+            label='Value'
+            value={condition.value}
+            stepOptions={stepOptions}
+            onChange={setValue}
+          />
           <FormField
             controlId={`${id}-operator`}
             label='Condition'
@@ -231,11 +224,12 @@ function ConditionRow({
         </div>
       </div>
       {needsCompareValue(operator) ? (
-        <AutomationLiteralValueEditor
+        <AutomationReferencePicker
           id={`${id}-compare`}
           label='Compare with'
-          value={compare.source === 'literal' ? compare.value : ''}
-          onChange={literal => onChange({ ...condition, operator, compare: { source: 'literal', value: literal } })}
+          value={compare}
+          stepOptions={stepOptions}
+          onChange={value => onChange({ ...condition, operator, compare: value })}
         />
       ) : null}
     </div>
