@@ -8,6 +8,7 @@ import {
   repairDisplaySidecarAction,
   releaseDisplaySidecarSessionAction
 } from '@/server/orchestrator/diagnostics/actions'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { activeStatuses, castingErrorMessage, filterSessions, sortSessions } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession, ServiceHealth } from '@/shared/contracts/diagnostics'
@@ -24,7 +25,7 @@ export const useCastingSidecarController = ({
   initialSessions: DisplaySidecarSession[]
   applications: Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>[]
   refreshKey: number
-  onRefreshComplete?: () => void
+  onRefreshComplete?: (succeeded: boolean) => void
 }) => {
   const [health, setHealth] = useState(initialHealth)
   const lastRefreshKey = useRef(0)
@@ -78,8 +79,10 @@ export const useCastingSidecarController = ({
 
   const refresh = useCallback(async () => {
     setBusy('refresh')
+    let succeeded = false
     try {
       await updateDisplayState(await getDisplaySidecarHealthAction())
+      succeeded = true
     } catch (error) {
       toast({
         title: 'Could not load casting sessions',
@@ -88,7 +91,7 @@ export const useCastingSidecarController = ({
       })
     } finally {
       setBusy(null)
-      onRefreshComplete?.()
+      onRefreshComplete?.(succeeded)
     }
   }, [onRefreshComplete, updateDisplayState])
 
@@ -146,25 +149,24 @@ export const useCastingSidecarController = ({
     if (targets.length === 0) return
     setBusy(targets.length === 1 ? targets[0].id : 'bulk')
     try {
-      const ended = await Promise.all(
-        targets
-          .filter(session => activeStatuses.has(session.status))
-          .map(session => releaseDisplaySidecarSessionAction(session.id))
+      const results = await Promise.allSettled(
+        targets.map(async session =>
+          activeStatuses.has(session.status) ? releaseDisplaySidecarSessionAction(session.id) : session
+        )
       )
-      const endedById = new Map(ended.map(session => [session.id, session]))
+      const endedById = new Map(
+        results.flatMap(result => (result.status === 'fulfilled' ? [[result.value.id, result.value] as const] : []))
+      )
+      const endedIds = successfulBulkIds(targets, results)
       setSessions(current => current.map(session => endedById.get(session.id) ?? session))
-      setSelectedIds(new Set())
-      setPendingEndSessions([])
-      toast({
-        title: targets.length === 1 ? 'Display session ended' : 'Selected display sessions ended',
-        variant: 'success'
-      })
-    } catch (error) {
-      toast({
-        title: 'Could not end display session',
-        description: castingErrorMessage(error),
-        variant: 'danger'
-      })
+      setSelectedIds(current => new Set([...current].filter(id => !endedIds.has(id))))
+      if (targets.length > 1 || endedIds.size) setPendingEndSessions([])
+      const feedback = summarizeBulkResults(
+        results,
+        targets.length === 1 ? 'Display session ended' : 'Selected display sessions ended',
+        targets.length === 1 ? 'Could not end display session' : 'Could not end all display sessions'
+      )
+      toast({ variant: 'success', ...feedback })
     } finally {
       setBusy(null)
     }

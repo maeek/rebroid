@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { IconGauge, IconInfoCircle, IconShieldCheck, IconUser, IconUsers } from '@tabler/icons-react'
+import { DraftFieldLabel } from '@/components/ui/modified-indicator'
 import { Section } from '@/components/ui/section'
 import { TabsRoot, TabsList, TabsTrigger, TabsPanel } from '@/components/ui/tabs'
 
@@ -65,7 +66,8 @@ export const AccessEditorLayout = ({
       {access ? (
         <TabsPanel value='groups'>
           <Section
-            title='Group membership'
+            title={<DraftFieldLabel field='groupIds'>Group membership</DraftFieldLabel>}
+            aria-label='Group membership'
             description='Later groups take precedence when permissions or quotas conflict. The Administrators group always grants full access.'
             surface='plain'
           >

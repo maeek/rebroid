@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
+import { FieldChangesProvider, fieldValuesEqual } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
@@ -15,6 +16,7 @@ import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { AccessEditorLayout } from './components/access-editor-layout'
 import { GroupDetailsSections } from './components/identity-fields'
 import { PermissionEditor } from './components/permission-editor'
@@ -25,6 +27,7 @@ import type { UserGroup } from '@/shared/contracts/auth-user'
 export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   const router = useRouter()
   const [draft, setDraft] = useState(() => toGroupDraft(group))
+  const [savedDraft, setSavedDraft] = useState(() => toGroupDraft(group))
   const [isSaving, setIsSaving] = useState(false)
   const saveFeedback = useSaveFeedback(JSON.stringify(draft))
   const resourceLimits = useResourceLimitBounds(true)
@@ -37,8 +40,11 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
     saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     try {
-      unwrapActionResult(await updateUserGroupAction(group.id, buildGroupUpdateInput(draft)))
-      saveFeedback.confirmSaved(JSON.stringify(draft))
+      const saved = unwrapActionResult(await updateUserGroupAction(group.id, buildGroupUpdateInput(draft)))
+      const next = toGroupDraft(saved)
+      setDraft(next)
+      setSavedDraft(next)
+      saveFeedback.confirmSaved(JSON.stringify(next))
       toast({ title: 'Group saved', variant: 'success' })
       router.refresh()
     } catch (error) {
@@ -53,70 +59,83 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
   }
 
   return (
-    <EditorPage className='gap-2'>
-      <PageHeader
-        section={{ label: 'Users & groups' }}
-        trail={[{ label: 'Groups', href: '/security/groups' }]}
-        breadcrumbLabel={group.name}
-        title={draft.name || group.name}
-        description='Default permissions and quotas for group members.'
-        actions={
-          <MutationButton
-            pending={isSaving}
-            pendingLabel='Saving…'
-            success={saveFeedback.saved}
-            onClick={() => void saveGroup()}
+    <FieldChangesProvider
+      value={draft}
+      baseline={savedDraft}
+    >
+      <EditorPage className='gap-2'>
+        <PageHeader
+          section={{ label: 'Users & groups' }}
+          trail={[{ label: 'Groups', href: '/security/groups' }]}
+          breadcrumbLabel={group.name}
+          title={draft.name || group.name}
+          description='Default permissions and quotas for group members.'
+          actions={
+            <MutationButton
+              pending={isSaving}
+              pendingLabel='Saving…'
+              success={saveFeedback.saved}
+              onClick={() => void saveGroup()}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save Group
+            </MutationButton>
+          }
+        />
+        <PageContent>
+          <fieldset
+            disabled={isSaving}
+            className='min-w-0'
+            aria-busy={isSaving}
           >
-            <IconDeviceFloppy className='size-4' />
-            Save Group
-          </MutationButton>
-        }
+            <AccessEditorLayout
+              identity={
+                <GroupDetailsSections
+                  disabled={isSaving}
+                  draft={draft}
+                  onChange={updateDraft}
+                />
+              }
+              permissions={
+                <PermissionEditor
+                  permissions={draft.permissions}
+                  disabled={isSaving}
+                  onChange={
+                    group.id === administratorsGroupId ? undefined : permissions => updateDraft({ permissions })
+                  }
+                  decisions={
+                    group.id === administratorsGroupId
+                      ? resolveEffectiveAccess([group], [group.id]).decisions
+                      : undefined
+                  }
+                />
+              }
+              quotasDescription={
+                group.id === administratorsGroupId ? 'Resource limits for applications and sessions.' : undefined
+              }
+              quotas={
+                group.id === administratorsGroupId ? (
+                  <StateView
+                    kind='not-applicable'
+                    title='Unlimited quotas'
+                    description='Administrators have unlimited quotas. Group resource limits do not restrict administrator users.'
+                  />
+                ) : (
+                  <QuotaFields
+                    quotas={draft.quotas}
+                    resourceLimits={resourceLimits}
+                    onChange={quotas => updateDraft({ quotas })}
+                  />
+                )
+              }
+            />
+          </fieldset>
+        </PageContent>
+      </EditorPage>
+      <UnsavedChangesGuard
+        dirty={!fieldValuesEqual(draft, savedDraft)}
+        onDiscard={() => setDraft(savedDraft)}
       />
-      <PageContent>
-        <fieldset
-          disabled={isSaving}
-          className='min-w-0'
-          aria-busy={isSaving}
-        >
-          <AccessEditorLayout
-            identity={
-              <GroupDetailsSections
-                disabled={isSaving}
-                draft={draft}
-                onChange={updateDraft}
-              />
-            }
-            permissions={
-              <PermissionEditor
-                permissions={draft.permissions}
-                disabled={isSaving}
-                onChange={group.id === administratorsGroupId ? undefined : permissions => updateDraft({ permissions })}
-                decisions={
-                  group.id === administratorsGroupId ? resolveEffectiveAccess([group], [group.id]).decisions : undefined
-                }
-              />
-            }
-            quotasDescription={
-              group.id === administratorsGroupId ? 'Resource limits for applications and sessions.' : undefined
-            }
-            quotas={
-              group.id === administratorsGroupId ? (
-                <StateView
-                  kind='not-applicable'
-                  title='Unlimited quotas'
-                  description='Administrators have unlimited quotas. Group resource limits do not restrict administrator users.'
-                />
-              ) : (
-                <QuotaFields
-                  quotas={draft.quotas}
-                  resourceLimits={resourceLimits}
-                  onChange={quotas => updateDraft({ quotas })}
-                />
-              )
-            }
-          />
-        </fieldset>
-      </PageContent>
-    </EditorPage>
+    </FieldChangesProvider>
   )
 }

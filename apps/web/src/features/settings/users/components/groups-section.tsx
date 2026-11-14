@@ -9,6 +9,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { toast } from '@/hooks/use-toast'
 import { deleteUserGroupAction } from '@/server/users/actions/delete-user-group-action'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { isBuiltInGroup } from '@/shared/permissions/effective-access'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -72,26 +73,15 @@ export const GroupsSection = ({
     if (targets.length === 0) return
     setIsSaving(true)
     try {
-      const results = await Promise.all(targets.map(group => deleteUserGroupAction(group.id)))
-      const deletedIds = new Set(
-        results
-          .map((result, index) => (result.ok ? targets[index]?.id : null))
-          .filter((id): id is string => Boolean(id))
-      )
+      const results = await Promise.allSettled(targets.map(group => deleteUserGroupAction(group.id)))
+      const deletedIds = successfulBulkIds(targets, results)
       onGroupsDeleted(deletedIds)
-      setSelectedIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
+      setSelectedIds(current => new Set([...current].filter(id => !deletedIds.has(id))))
       setPendingDeleteGroups([])
-      const failedCount = results.length - deletedIds.size
-      const firstError = results.find(result => !result.ok)?.error.message
-      toast(
-        failedCount > 0
-          ? {
-              title: 'Some groups could not be deleted',
-              description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'danger'
-            }
-          : { title: 'Selected groups deleted', variant: 'success' }
-      )
+      toast({
+        variant: 'success',
+        ...summarizeBulkResults(results, 'Selected groups deleted', 'Some groups could not be deleted')
+      })
     } finally {
       setIsSaving(false)
     }

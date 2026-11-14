@@ -142,6 +142,7 @@ export const PlatformRuntimeForm = ({
       <PlatformRuntimeFieldsSection
         images={images}
         settings={settings}
+        savedSettings={savedSettings}
         savedRenderingSettings={savedSettings.androidRendering}
         appliedRenderingSettings={appliedRenderingSettings}
         disabled={isBusy}

@@ -1,5 +1,7 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { OrchestratorAiProviderEditPageClient } from './orchestrator-ai-provider-edit-page-client'
 import { emptyModel, emptyProvider } from './provider-form-model'
 import { useAiProviderEditController } from './use-ai-provider-edit-controller'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
@@ -11,11 +13,12 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   save: vi.fn(),
   refresh: vi.fn(),
+  push: vi.fn(),
   replace: vi.fn(),
   toast: vi.fn()
 }))
 vi.mock('next/navigation', () => {
-  const router = { refresh: mocks.refresh, replace: mocks.replace }
+  const router = { refresh: mocks.refresh, replace: mocks.replace, push: mocks.push }
   return { useRouter: () => router }
 })
 vi.mock('@/hooks/use-toast', () => ({ toast: mocks.toast }))
@@ -31,6 +34,93 @@ const provider = { ...emptyProvider(), id: 'local', label: 'Local', apiKey: '***
 describe('provider editor persistence', () => {
   beforeEach(() => vi.clearAllMocks())
   afterEach(() => vi.useRealTimers())
+
+  it('keeps the connection draft across provider tabs and discards it only after confirmation', async () => {
+    window.history.replaceState(null, '', '/platform/ai/local?view=connection')
+    try {
+      const queryClient = new QueryClient()
+      const editor = (view: 'models' | 'connection') => (
+        <QueryClientProvider client={queryClient}>
+          <OrchestratorAiProviderEditPageClient
+            initialProvider={provider}
+            view={view}
+          />
+        </QueryClientProvider>
+      )
+      const { rerender } = render(editor('connection'))
+      fireEvent.change(screen.getByLabelText('Base URL'), { target: { value: 'http://draft:11434' } })
+
+      const modelsLink = screen.getByRole('link', { name: 'Models' })
+      let tabNavigationAllowed = false
+      modelsLink.addEventListener(
+        'click',
+        event => {
+          tabNavigationAllowed = !event.defaultPrevented
+          event.preventDefault()
+        },
+        { once: true }
+      )
+      fireEvent.click(modelsLink)
+      expect(tabNavigationAllowed).toBe(true)
+      expect(screen.queryByRole('dialog', { name: 'Leave without saving?' })).toBeNull()
+      rerender(editor('models'))
+      rerender(editor('connection'))
+      expect(screen.getByLabelText('Base URL')).toHaveValue('http://draft:11434')
+
+      const leave = () => fireEvent.click(screen.getByRole('link', { name: 'AI' }))
+      leave()
+      fireEvent.click(await screen.findByRole('button', { name: 'Keep editing' }))
+      expect(screen.getByLabelText('Base URL')).toHaveValue('http://draft:11434')
+      expect(mocks.push).not.toHaveBeenCalled()
+
+      leave()
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      expect(mocks.push).toHaveBeenCalledExactlyOnceWith('/platform/ai')
+      expect(screen.getByLabelText('Base URL')).toHaveValue(provider.baseUrl)
+    } finally {
+      window.history.replaceState(null, '', '/')
+    }
+  })
+
+  it('marks individual connection edits, keeps them after failure, and clears them after saving or discarding', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={queryClient}>
+        <OrchestratorAiProviderEditPageClient
+          initialProvider={provider}
+          view='connection'
+        />
+      </QueryClientProvider>
+    )
+    const url = screen.getByLabelText('Base URL')
+    const key = screen.getByLabelText('API key')
+    const enabled = screen.getByRole('switch', { name: 'Available for automation' })
+    expect(url).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    fireEvent.change(url, { target: { value: 'http://other:1234' } })
+    expect(url).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    expect(key).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    fireEvent.change(url, { target: { value: provider.baseUrl } })
+    expect(url).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    fireEvent.change(key, { target: { value: 'replacement-key' } })
+    fireEvent.click(enabled)
+    expect(key).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    expect(enabled).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    mocks.save.mockRejectedValueOnce(new Error('Unavailable'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'danger' })))
+    expect(key).toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    mocks.save.mockImplementation((_id: string, input: AutomationAiProvider) =>
+      Promise.resolve({ ...input, apiKey: '********' })
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(key).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change')))
+    expect(key).toHaveValue('********')
+    expect(enabled).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+    fireEvent.change(url, { target: { value: 'http://draft:1234' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(url).toHaveValue(provider.baseUrl)
+    expect(url).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+  })
 
   it('retries transient progress errors without failing the download or overlapping requests', async () => {
     vi.useFakeTimers()

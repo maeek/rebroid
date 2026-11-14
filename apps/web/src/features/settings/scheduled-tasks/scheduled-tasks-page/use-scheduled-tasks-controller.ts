@@ -7,6 +7,7 @@ import {
   scheduleToCron,
   taskToForm
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/schedule-utils'
+import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
 import {
   createScheduledTaskAction,
@@ -22,14 +23,20 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   const firstActionType = initialActions[0]?.type ?? 'clean_uploaded_apks'
   const [tasks, setTasks] = useState(initialTasks)
   const [form, setForm] = useState<FormState>(() => defaultForm(firstActionType))
+  const [baselineForm, setBaselineForm] = useState<FormState>(() => defaultForm(firstActionType))
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const toggleFeedback = useImmediateSave()
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const actionByType = useMemo(() => new Map(initialActions.map(action => [action.type, action])), [initialActions])
   const enabledCount = tasks.filter(task => task.enabled).length
   const failedCount = tasks.filter(task => task.lastStatus === 'failed').length
 
-  const resetForm = () => setForm(defaultForm(firstActionType))
+  const resetForm = () => {
+    const next = defaultForm(firstActionType)
+    setForm(next)
+    setBaselineForm(next)
+  }
 
   const openCreateForm = () => {
     resetForm()
@@ -37,7 +44,9 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   }
 
   const openEditForm = (task: ScheduledTask) => {
-    setForm(taskToForm(task))
+    const next = taskToForm(task)
+    setForm(next)
+    setBaselineForm(next)
     setIsFormOpen(true)
   }
 
@@ -96,11 +105,14 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     }
   }
 
-  const toggleEnabled = async (task: ScheduledTask, enabled: boolean) => {
+  const toggleEnabled = async (task: ScheduledTask, enabled: boolean, quiet = false) => {
     setBusyTaskId(task.id)
     try {
-      replaceTask(await updateScheduledTaskAction(task.id, { enabled }))
+      await toggleFeedback.save(task.id, async () => {
+        replaceTask(await updateScheduledTaskAction(task.id, { enabled }))
+      })
     } catch (error) {
+      if (quiet) throw error
       toast({
         title: 'Could not update scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -111,12 +123,15 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     }
   }
 
-  const runNow = async (task: ScheduledTask) => {
+  const runNow = async (task: ScheduledTask, quiet = false) => {
     setBusyTaskId(task.id)
     try {
-      replaceTask(await runScheduledTaskNowAction(task.id))
-      toast({ title: 'Scheduled task completed' })
+      const result = await runScheduledTaskNowAction(task.id)
+      replaceTask(result)
+      if (result.lastStatus === 'failed') throw new Error('The task reported a failed run. Check its last result.')
+      if (!quiet) toast({ title: 'Scheduled task completed' })
     } catch (error) {
+      if (quiet) throw error
       toast({
         title: 'Could not run scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -127,7 +142,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     }
   }
 
-  const deleteTask = async (task: ScheduledTask) => {
+  const deleteTask = async (task: ScheduledTask, quiet = false) => {
     setBusyTaskId(task.id)
     try {
       await deleteScheduledTaskAction(task.id)
@@ -136,8 +151,9 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
         setIsFormOpen(false)
         resetForm()
       }
-      toast({ title: 'Scheduled task deleted' })
+      if (!quiet) toast({ title: 'Scheduled task deleted' })
     } catch (error) {
+      if (quiet) throw error
       toast({
         title: 'Could not delete scheduled task',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -153,6 +169,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   }
 
   return {
+    baselineForm,
     actionByType,
     busyTaskId,
     enabledCount,
@@ -169,6 +186,7 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     setForm,
     submitForm,
     toggleEnabled,
+    toggleFeedback,
     updateSchedule
   }
 }

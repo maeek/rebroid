@@ -34,6 +34,7 @@ export const AndroidRenderingSection = ({
     <div className='grid gap-4'>
       <FormField
         label='Rendering mode'
+        modified={!loading && settings.mode !== savedSettings.mode}
         controlId='runtime-rendering-mode'
         layout='vertical'
       >
@@ -61,6 +62,7 @@ export const AndroidRenderingSection = ({
       {settings.mode === 'host' ? (
         <FormField
           label='GPU render device'
+          modified={!loading && settings.renderDevice !== savedSettings.renderDevice}
           controlId='runtime-gpu-render-device'
           description='DRM render node on the Linux host running Docker.'
           error={!loading && !isDrmRenderDevice(settings.renderDevice) ? renderDeviceError : undefined}

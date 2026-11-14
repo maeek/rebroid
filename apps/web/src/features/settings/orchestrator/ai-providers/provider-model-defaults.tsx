@@ -7,11 +7,13 @@ import type { AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
 
 export const ProviderModelDefaults = ({
   models,
+  savedModels,
   disabled = false,
   loading = false,
   onChange
 }: {
   models: AutomationAiProviderModel[]
+  savedModels?: AutomationAiProviderModel[]
   disabled?: boolean
   loading?: boolean
   onChange: (index: number, role: AutomationAiProviderModelRole) => void
@@ -29,6 +31,9 @@ export const ProviderModelDefaults = ({
             key={role}
             controlId={`default-model-${role}`}
             label={label}
+            modified={
+              savedModels ? defaultModelFor(models, role)?.id !== defaultModelFor(savedModels, role)?.id : undefined
+            }
             description={description}
             layout='vertical'
           >

@@ -98,6 +98,8 @@ export const UsersGrid = ({
   loading = false,
   groups,
   busyUserId,
+  selectedIds,
+  setSelectedIds,
   onDisable,
   onEnable,
   onDelete,
@@ -109,6 +111,8 @@ export const UsersGrid = ({
   users: PublicUser[]
   groups: UserGroup[]
   busyUserId: string | null
+  selectedIds: Set<string>
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
   onDisable: (user: PublicUser) => void
   onEnable: (user: PublicUser) => void
   onDelete: (user: PublicUser) => void
@@ -121,7 +125,6 @@ export const UsersGrid = ({
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [mfaFilter, setMfaFilter] = useState('all')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase()
     return users.filter(user => {
@@ -139,7 +142,7 @@ export const UsersGrid = ({
   useEffect(() => {
     const userIds = new Set(users.map(user => user.id))
     setSelectedIds(current => new Set(Array.from(current).filter(id => userIds.has(id))))
-  }, [users])
+  }, [users, setSelectedIds])
 
   const columns = useMemo<ColumnDef<PublicUser>[]>(
     () => [

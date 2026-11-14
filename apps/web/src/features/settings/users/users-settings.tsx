@@ -7,6 +7,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateUserDialog } from './components/create-user-dialog'
@@ -26,6 +27,8 @@ export const UsersSettings = ({
   initialPasswordMinimumLength: number
 }) => {
   const [users, setUsers] = useState(initialUsers)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [passwordMinimumLength, setPasswordMinimumLength] = useState(initialPasswordMinimumLength)
   const groups = initialGroups
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
   const [pendingDisableUsers, setPendingDisableUsers] = useState<PublicUser[]>([])
@@ -70,27 +73,22 @@ export const UsersSettings = ({
     if (changedUsers.length === 0) return
     setBusyUserId(changedUsers.length === 1 ? changedUsers[0].id : 'bulk')
     try {
-      const results = await Promise.all(changedUsers.map(user => setUserDisabledAction(user.id, disabled)))
-      const updatedUsers = results
-        .map(result => (result.ok ? result.data : null))
-        .filter((user): user is PublicUser => Boolean(user))
-      setUsers(current => current.map(user => updatedUsers.find(updated => updated.id === user.id) ?? user))
-      if (disabled) setPendingDisableUsers(changedUsers.filter((_, index) => !results[index].ok))
-      const failedCount = results.length - updatedUsers.length
-      const firstError = results.find(result => !result.ok)?.error.message
+      const results = await Promise.allSettled(changedUsers.map(user => setUserDisabledAction(user.id, disabled)))
+      const updatedUsers = new Map(
+        results.flatMap(result => {
+          if (result.status !== 'fulfilled' || !result.value.ok) return []
+          const user = result.value.data
+          return [[user.id, user] as const]
+        })
+      )
+      setUsers(current => current.map(user => updatedUsers.get(user.id) ?? user))
+      setSelectedIds(current => new Set([...current].filter(id => !updatedUsers.has(id))))
+      if (disabled) {
+        setPendingDisableUsers(changedUsers.filter(user => !updatedUsers.has(user.id)))
+      }
       let successTitle = disabled ? 'Selected users disabled' : 'Selected users enabled'
       if (changedUsers.length === 1) successTitle = disabled ? 'User disabled' : 'User enabled'
-      toast(
-        failedCount > 0
-          ? {
-              title: 'Some users could not be updated',
-              description: firstError ?? `${failedCount} update request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'danger'
-            }
-          : { title: successTitle, variant: 'success' }
-      )
-    } catch (error) {
-      toast({ title: 'Could not update users', description: getDisplayErrorMessage(error), variant: 'danger' })
+      toast({ variant: 'success', ...summarizeBulkResults(results, successTitle, 'Some users could not be updated') })
     } finally {
       setBusyUserId(null)
     }
@@ -100,25 +98,15 @@ export const UsersSettings = ({
     if (targets.length === 0) return
     setBusyUserId('bulk')
     try {
-      const results = await Promise.all(targets.map(user => deleteUserAction(user.id)))
-      const deletedIds = new Set(
-        results
-          .map((result, index) => (result.ok ? targets[index]?.id : null))
-          .filter((id): id is string => Boolean(id))
-      )
+      const results = await Promise.allSettled(targets.map(user => deleteUserAction(user.id)))
+      const deletedIds = successfulBulkIds(targets, results)
       setUsers(current => current.filter(user => !deletedIds.has(user.id)))
+      setSelectedIds(current => new Set([...current].filter(id => !deletedIds.has(id))))
       setPendingDeleteUsers([])
-      const failedCount = results.length - deletedIds.size
-      const firstError = results.find(result => !result.ok)?.error.message
-      toast(
-        failedCount > 0
-          ? {
-              title: 'Some users could not be deleted',
-              description: firstError ?? `${failedCount} delete request${failedCount === 1 ? '' : 's'} failed.`,
-              variant: 'danger'
-            }
-          : { title: 'Selected users deleted', variant: 'success' }
-      )
+      toast({
+        variant: 'success',
+        ...summarizeBulkResults(results, 'Selected users deleted', 'Some users could not be deleted')
+      })
     } finally {
       setBusyUserId(null)
     }
@@ -136,12 +124,14 @@ export const UsersSettings = ({
           <>
             <PasswordPolicyDialog
               initialPasswordMinimumLength={initialPasswordMinimumLength}
+              onSaved={setPasswordMinimumLength}
               disabled={loading}
             />
             <CreateUserDialog
               disabled={loading}
               groups={groups}
               onCreated={upsertUser}
+              passwordMinimumLength={passwordMinimumLength}
             />
           </>
         }
@@ -158,6 +148,8 @@ export const UsersSettings = ({
           users={users}
           groups={groups}
           busyUserId={busyUserId}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
           onDisable={user => requestDisableUsers([user])}
           onEnable={user => void setUsersDisabled([user], false)}
           onDelete={setPendingDeleteUser}

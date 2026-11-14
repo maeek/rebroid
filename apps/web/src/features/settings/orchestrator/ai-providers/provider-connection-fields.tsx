@@ -37,6 +37,7 @@ export const ProviderConnectionFields = ({
       <FormField
         controlId={`${idPrefix}-kind`}
         label='Provider'
+        field='kind'
         layout='vertical'
       >
         <Select
@@ -59,6 +60,7 @@ export const ProviderConnectionFields = ({
       <FormField
         controlId={`${idPrefix}-api-key`}
         label='API key'
+        field='apiKey'
         description={
           mode === 'edit' && provider.apiKey
             ? 'Replace the masked value to change your saved key.'
@@ -80,6 +82,7 @@ export const ProviderConnectionFields = ({
       <FormField
         controlId={`${idPrefix}-base-url`}
         label='Base URL'
+        field='baseUrl'
         description={
           openAi ? undefined : 'Use an address reachable by the orchestrator. Compatible servers usually end in /v1.'
         }
@@ -104,6 +107,7 @@ export const ProviderConnectionFields = ({
           <FormField
             controlId={`${idPrefix}-label`}
             label='Display name'
+            field='label'
             layout='vertical'
           >
             <Input
@@ -131,6 +135,7 @@ export const ProviderConnectionFields = ({
               <FormField
                 controlId={`${idPrefix}-protocol`}
                 label='Transport protocol'
+                field='protocol'
                 layout='vertical'
               >
                 <Select
@@ -152,6 +157,7 @@ export const ProviderConnectionFields = ({
               <FormField
                 controlId={`${idPrefix}-flavor`}
                 label='Server flavor'
+                field='serverFlavor'
                 layout='vertical'
               >
                 <Select

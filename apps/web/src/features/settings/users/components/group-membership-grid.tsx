@@ -40,6 +40,7 @@ const MembershipActionsCell = ({ row }: CellContext<Membership, unknown>) => {
         type='button'
         variant='ghost'
         size='icon-sm'
+        data-reorder-focus='earlier'
         aria-label={`Move ${name} earlier`}
         disabled={disabled || priority === 1}
         onClick={() => onMove(id, -1)}
@@ -50,6 +51,7 @@ const MembershipActionsCell = ({ row }: CellContext<Membership, unknown>) => {
         type='button'
         variant='ghost'
         size='icon-sm'
+        data-reorder-focus='later'
         aria-label={`Move ${name} later`}
         disabled={disabled || priority === membershipCount}
         onClick={() => onMove(id, 1)}

@@ -11,7 +11,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { fieldValuesEqual } from '@/components/ui/field-changes'
 import { FormField } from '@/components/ui/form-field'
+import { useReorderFeedback } from '@/hooks/use-reorder-feedback'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
@@ -32,6 +34,8 @@ export const GroupMembershipEditor = ({
   disabled?: boolean
   loading?: boolean
 }) => {
+  const reorderRef = useRef<HTMLDivElement>(null)
+  const { reportMove, announcement } = useReorderFeedback(reorderRef)
   const titleRef = useRef<HTMLHeadingElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -53,9 +57,21 @@ export const GroupMembershipEditor = ({
     next[index] = next[index + offset]
     next[index + offset] = moving
     onChange(next)
+    const visibleIds = new Set(rows.map(row => row.id))
+    setPageIndex(Math.floor(next.filter(value => visibleIds.has(value)).indexOf(id) / pageSize))
+    reportMove(id, groupsById.get(id)?.name ?? id, index + offset + 1)
   }
   return (
-    <div className='grid min-w-0 gap-4'>
+    <div
+      ref={reorderRef}
+      className='grid min-w-0 gap-4'
+    >
+      <span
+        className='sr-only'
+        role='status'
+      >
+        {announcement}
+      </span>
       <p
         className='text-sm text-foreground-muted'
         aria-live='polite'
@@ -143,6 +159,7 @@ export const GroupMembershipEditor = ({
           <FormField
             layout='vertical'
             label='Groups'
+            modified={!fieldValuesEqual(selection, selectedGroupIds)}
             description='Removing every group restores the default group. This updates the draft; save the user to persist it.'
           >
             <GroupMembershipPicker

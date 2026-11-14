@@ -57,7 +57,7 @@ describe('useCastingSidecarController', () => {
 
     await waitFor(() => expect(result.current.sessions[0]?.id).toBe('fresh'))
     expect(result.current.busy).toBeNull()
-    expect(onRefreshComplete).toHaveBeenCalled()
+    expect(onRefreshComplete).toHaveBeenCalledWith(true)
   })
 
   it('uses the restart response for health and refreshes sessions', async () => {
@@ -123,7 +123,8 @@ describe('useCastingSidecarController', () => {
 
   it('reports refresh errors without replacing the existing state', async () => {
     vi.mocked(getDisplaySidecarHealthAction).mockRejectedValue(new Error('display sidecar failed'))
-    const { result, rerender } = renderController()
+    const onRefreshComplete = vi.fn()
+    const { result, rerender } = renderController(0, onRefreshComplete)
 
     rerender({ key: 1 })
 
@@ -133,6 +134,7 @@ describe('useCastingSidecarController', () => {
       )
     )
     expect(result.current.sessions[0]?.id).toBe('initial')
+    expect(onRefreshComplete).toHaveBeenCalledWith(false)
   })
 
   it('retains previous sessions without querying or mutating an offline display service', async () => {

@@ -213,7 +213,7 @@ export const ProviderHealthBannerContent = ({
       </div>
       <MutationButton
         type='button'
-        variant='ghost'
+        variant='secondary'
         pending={isManualChecking}
         pendingLabel='Checking…'
         disabled={disabled || loading}

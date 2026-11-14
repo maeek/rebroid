@@ -29,7 +29,11 @@ export const CastingSettingsPageClient = ({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isRefreshingPage, startRefresh] = useTransition()
   const router = useRouter()
-  const completeRefresh = useCallback(() => setIsRefreshing(false), [])
+  const [refreshResult, setRefreshResult] = useState({ version: 0, succeeded: false })
+  const completeRefresh = useCallback((succeeded: boolean) => {
+    setIsRefreshing(false)
+    setRefreshResult(previous => ({ version: previous.version + 1, succeeded }))
+  }, [])
   const controller = useCastingSidecarController({
     initialHealth,
     initialSessions,
@@ -54,6 +58,7 @@ export const CastingSettingsPageClient = ({
       gridToolbar
       refresh={
         <PlatformPageRefreshButton
+          refreshResult={refreshResult}
           disabled={loading}
           isRefreshing={isRefreshing || isRefreshingPage}
           onRefresh={refresh}

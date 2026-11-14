@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { DraftFieldLabel } from '@/components/ui/modified-indicator'
 import { modelPurposes, normalizeModelRoles } from './provider-model-usage'
 import type { AutomationAiProviderModelRole } from './provider-form-model'
 
@@ -18,7 +19,9 @@ export const ProviderModelPurposes = ({
       className='grid gap-3'
       disabled={disabled}
     >
-      <legend className='mb-3 text-sm font-medium'>Use this model for</legend>
+      <legend className='mb-3 text-sm font-medium'>
+        <DraftFieldLabel field='roles'>Use this model for</DraftFieldLabel>
+      </legend>
       {modelPurposes.map(({ role, label, description }) => (
         <label
           htmlFor={`${id}-${role}`}

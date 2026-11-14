@@ -1,7 +1,10 @@
+import { requireAdmin } from '@/server/auth/authorization'
 import { userService } from '@/server/auth/user'
 import { getWebSettings } from '@/server/web-settings/store'
 
 export const getUsersListPageData = async () => {
+  await requireAdmin()
+
   const [users, groups, webSettings] = await Promise.all([
     userService.listUsers(),
     userService.listGroups(),

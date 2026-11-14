@@ -1,5 +1,6 @@
 import { createContext, useContext, useId } from 'react'
 import { IconCheck, IconMinus } from '@tabler/icons-react'
+import { DraftFieldLabel } from '@/components/ui/modified-indicator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { setPermissionDecision } from '../model/permission-access'
 import type { EffectiveAccess, EffectivePermissionDecision } from '@/shared/permissions/effective-access'
@@ -93,7 +94,9 @@ const usePermissionEditor = () => {
 }
 export const PermissionIdentityCell = ({ row }: CellContext<PermissionDefinition, unknown>) => (
   <div className='grid gap-1'>
-    <span className='font-normal'>{row.original.name}</span>
+    <span className='font-normal'>
+      <DraftFieldLabel field={['permissions', row.original.id]}>{row.original.name}</DraftFieldLabel>
+    </span>
     <span className='break-words text-xs leading-5 text-foreground-muted'>{row.original.description}</span>
   </div>
 )

@@ -6,6 +6,8 @@ import { ProfilePhotoSettings } from './profile-photo-settings'
 
 const original = 'data:image/webp;base64,original'
 const replacement = 'data:image/webp;base64,replacement'
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+
 const mocks = vi.hoisted(() => ({ prepare: vi.fn(), save: vi.fn(), saved: vi.fn(), toast: vi.fn() }))
 vi.mock('@/shared/model/media/icon-metadata', () => ({ optimizeIconFile: mocks.prepare }))
 vi.mock('@/server/users/actions/update-current-profile-action', () => ({ updateCurrentProfileAction: mocks.save }))

@@ -16,6 +16,7 @@ const numberValue = (value: number, fallback: number) => (Number.isFinite(value)
 export const PlatformRuntimeFieldsSection = ({
   images,
   settings,
+  savedSettings = settings,
   savedRenderingSettings = settings.androidRendering,
   appliedRenderingSettings,
   onSettingsChange,
@@ -25,6 +26,7 @@ export const PlatformRuntimeFieldsSection = ({
 }: {
   images: PlatformImage[]
   settings: OrchestratorUiSettings
+  savedSettings?: OrchestratorUiSettings
   savedRenderingSettings?: AndroidRenderingSettings
   appliedRenderingSettings?: (AndroidRenderingSettings | null)[] | null
   onSettingsChange: (patch: Partial<OrchestratorUiSettings>) => void
@@ -47,6 +49,7 @@ export const PlatformRuntimeFieldsSection = ({
       >
         <FormField
           label='Default image'
+          modified={!loading && settings.defaultContainerImage !== savedSettings.defaultContainerImage}
           controlId='runtime-default-image'
           description='Choose a local image or enter an image reference.'
           layout='vertical'
@@ -65,6 +68,7 @@ export const PlatformRuntimeFieldsSection = ({
         </FormField>
         <FormField
           label='Image registry'
+          modified={!loading && settings.dockerImageRegistry !== savedSettings.dockerImageRegistry}
           controlId='runtime-image-registry'
           description='Optional prefix for image names without a registry host.'
           layout='vertical'
@@ -92,6 +96,9 @@ export const PlatformRuntimeFieldsSection = ({
         <div className='grid min-w-0 gap-x-form-column gap-y-4 @min-[30rem]/behavior:grid-cols-2'>
           <FormField
             label='Default inactivity timeout'
+            modified={
+              !loading && settings.defaultInactivityTimeoutSeconds !== savedSettings.defaultInactivityTimeoutSeconds
+            }
             controlId='runtime-inactivity-timeout'
             description='Stop inactive apps after this interval unless the app overrides it.'
             layout='vertical'
@@ -119,6 +126,7 @@ export const PlatformRuntimeFieldsSection = ({
           </FormField>
           <FormField
             label='Max APK size'
+            modified={!loading && settings.maxApkUploadSizeMb !== savedSettings.maxApkUploadSizeMb}
             controlId='runtime-max-apk-size'
             description='Maximum size for APK uploads across the platform.'
             layout='vertical'
@@ -145,6 +153,7 @@ export const PlatformRuntimeFieldsSection = ({
         <FormField
           layout='vertical'
           label='Remove app data on delete'
+          modified={!loading && settings.removeDataOnDelete !== savedSettings.removeDataOnDelete}
           controlId='runtime-remove-app-data'
           description='Also delete persistent storage and stored APK data when an app is removed.'
         >

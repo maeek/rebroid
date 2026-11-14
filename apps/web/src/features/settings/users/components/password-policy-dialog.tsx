@@ -27,9 +27,11 @@ import {
 
 export const PasswordPolicyDialog = ({
   initialPasswordMinimumLength,
+  onSaved,
   disabled = false
 }: {
   initialPasswordMinimumLength: number
+  onSaved?: (passwordMinimumLength: number) => void
   disabled?: boolean
 }) => {
   const [open, setOpen] = useState(false)
@@ -53,6 +55,7 @@ export const PasswordPolicyDialog = ({
     try {
       const saved = unwrapActionResult(await saveWebSettingsAction({ passwordMinimumLength }))
       setSavedPasswordMinimumLength(saved.passwordMinimumLength)
+      onSaved?.(saved.passwordMinimumLength)
       setOpen(false)
       toast({ title: 'Password policy saved', variant: 'success' })
     } catch (error) {
@@ -93,6 +96,7 @@ export const PasswordPolicyDialog = ({
           </DialogDescription>
         </DialogHeader>
         <FormField
+          modified={passwordMinimumLength !== savedPasswordMinimumLength}
           controlId='password-policy-minimum-length'
           label='Minimum password length'
           description='Applies to new passwords and resets. Set to 0 to allow passwords as short as one character.'

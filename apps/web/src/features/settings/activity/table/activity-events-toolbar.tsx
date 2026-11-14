@@ -14,10 +14,11 @@ import { useActivityController, useActivityData } from '../activity-context'
 
 export const ActivityEventsRefresh = () => {
   const controller = useActivityController()
-  const { loading } = useActivityData()
+  const { loading, result } = useActivityData()
 
   return (
     <PlatformPageRefreshButton
+      refreshResult={{ version: result, succeeded: !loading }}
       disabled={loading || controller.isNavigating || controller.isPurging || controller.isSavingRetention}
       isRefreshing={controller.isRefreshing}
       onRefresh={controller.refresh}

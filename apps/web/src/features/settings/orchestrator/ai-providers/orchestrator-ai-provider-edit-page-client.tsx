@@ -2,15 +2,24 @@
 
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderEditorLayout, type ProviderEditorView } from './provider-editor-layout'
+import { normalizeProviderForm } from './provider-form-model'
 import { ProviderHealthBanner } from './provider-health-badge'
 import { ProviderModelDefaults } from './provider-model-defaults'
 import { ProviderModelsGrid } from './provider-models-grid'
 import { useAiProviderBillingIssues } from './use-ai-provider-billing-issues'
 import { useAiProviderEditController } from './use-ai-provider-edit-controller'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
+
+const isProviderTabNavigation = (destination: URL, current: URL) =>
+  destination.origin === current.origin &&
+  destination.pathname === current.pathname &&
+  [...destination.searchParams.keys()].every(key => key === 'view') &&
+  [null, 'connection'].includes(destination.searchParams.get('view'))
 
 export const OrchestratorAiProviderEditPageClient = ({
   initialProvider,
@@ -32,81 +41,92 @@ export const OrchestratorAiProviderEditPageClient = ({
     if (await controller.saveProvider()) resetIssues()
   }
   return (
-    <ProviderEditorLayout
-      provider={savedProvider}
-      view={view}
-      actions={
-        <>
-          {isDirty ? (
-            <span
-              className='self-center text-xs text-foreground-muted'
-              role='status'
-            >
-              Unsaved changes
-            </span>
-          ) : null}
-          <Button
-            type='button'
-            variant='ghost'
-            disabled={!isDirty || busy}
-            onClick={controller.discardChanges}
-          >
-            Discard changes
-          </Button>
-          <MutationButton
-            type='button'
-            pending={isSaving}
-            pendingLabel='Saving…'
-            success={controller.saveSucceeded}
-            disabled={!isDirty || isDownloadingModel}
-            onClick={() => void saveProvider()}
-          >
-            <IconDeviceFloppy className='size-4' /> Save
-          </MutationButton>
-        </>
-      }
-      health={
-        <ProviderHealthBanner
-          provider={savedProvider}
-          disabled={isDirty || busy}
-        />
-      }
+    <FieldChangesProvider
+      value={normalizeProviderForm(provider)}
+      baseline={normalizeProviderForm(savedProvider)}
     >
-      {view === 'connection' ? (
-        <ProviderConnectionSection
-          provider={provider}
-          billingIssue={billingIssue}
-          containerId={provider.baseUrl === initialProvider.baseUrl ? containerId : undefined}
-          disabled={busy}
-          onChange={controller.updateProvider}
-        />
-      ) : (
-        <>
-          <ProviderModelDefaults
-            models={provider.models}
-            disabled={busy}
-            onChange={controller.setDefaultModel}
+      <ProviderEditorLayout
+        provider={savedProvider}
+        view={view}
+        actions={
+          <>
+            {isDirty ? (
+              <span
+                className='self-center text-xs text-foreground-muted'
+                role='status'
+              >
+                Unsaved changes
+              </span>
+            ) : null}
+            <Button
+              type='button'
+              variant='ghost'
+              disabled={!isDirty || busy}
+              onClick={controller.discardChanges}
+            >
+              Discard changes
+            </Button>
+            <MutationButton
+              type='button'
+              pending={isSaving}
+              pendingLabel='Saving…'
+              success={controller.saveSucceeded}
+              disabled={!isDirty || isDownloadingModel}
+              onClick={() => void saveProvider()}
+            >
+              <IconDeviceFloppy className='size-4' /> Save
+            </MutationButton>
+          </>
+        }
+        health={
+          <ProviderHealthBanner
+            provider={savedProvider}
+            disabled={isDirty || busy}
           />
-          <ProviderModelsGrid
-            initialProvider={savedProvider}
-            modelRows={controller.modelRows}
+        }
+      >
+        {view === 'connection' ? (
+          <ProviderConnectionSection
+            provider={provider}
+            billingIssue={billingIssue}
+            containerId={provider.baseUrl === initialProvider.baseUrl ? containerId : undefined}
             disabled={busy}
-            hasUnsavedChanges={isDirty}
-            onAddModel={controller.addModel}
-            onBulkRemoveModels={controller.removeModels}
-            onBulkUpdateModels={controller.updateModels}
-            onDownloadModel={controller.downloadModel}
-            onRemoveModel={controller.removeModel}
-            onUpdateModel={controller.updateModel}
-            isDownloadingModel={isDownloadingModel}
-            isLoadingRemoteModels={controller.isLoadingRemoteModels}
-            modelDownloads={controller.modelDownloads}
-            remoteModels={controller.remoteModels}
-            remoteModelsError={controller.remoteModelsError}
-            onLoadRemoteModels={controller.loadRemoteModels}
+            onChange={controller.updateProvider}
           />
-        </>
-      )}
-    </ProviderEditorLayout>
+        ) : (
+          <>
+            <ProviderModelDefaults
+              models={provider.models}
+              savedModels={savedProvider.models}
+              disabled={busy}
+              onChange={controller.setDefaultModel}
+            />
+            <ProviderModelsGrid
+              initialProvider={savedProvider}
+              modelRows={controller.modelRows}
+              disabled={busy}
+              hasUnsavedChanges={isDirty}
+              onAddModel={controller.addModel}
+              onBulkRemoveModels={controller.removeModels}
+              onBulkUpdateModels={controller.updateModels}
+              onDownloadModel={controller.downloadModel}
+              onRemoveModel={controller.removeModel}
+              onUpdateModel={controller.updateModel}
+              isDownloadingModel={isDownloadingModel}
+              isLoadingRemoteModels={controller.isLoadingRemoteModels}
+              modelDownloads={controller.modelDownloads}
+              remoteModels={controller.remoteModels}
+              remoteModelsError={controller.remoteModelsError}
+              onLoadRemoteModels={controller.loadRemoteModels}
+            />
+          </>
+        )}
+      </ProviderEditorLayout>
+      <UnsavedChangesGuard
+        dirty={isDirty}
+        onDiscard={controller.discardChanges}
+        preservesDraft={isProviderTabNavigation}
+      />
+    </FieldChangesProvider>
   )
 }

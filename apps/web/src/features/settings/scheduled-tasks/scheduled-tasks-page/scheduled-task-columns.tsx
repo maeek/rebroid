@@ -1,22 +1,33 @@
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
+import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
 import { actionKeepsHistory, defaultRetentionDaysFor } from './schedule-utils'
 import { ScheduledTaskLastRun } from './scheduled-task-last-run'
+import { useScheduledTasksControllerContext } from './scheduled-tasks-context'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { CellContext, ColumnDef } from '@tanstack/react-table'
+
+const ScheduledTaskEnabledCell = ({ row }: CellContext<ScheduledTask, unknown>) => {
+  const { busyTaskId, toggleEnabled, toggleFeedback } = useScheduledTasksControllerContext()
+  return (
+    <MutationSwitch
+      checked={row.original.enabled}
+      pending={toggleFeedback?.pendingId === row.original.id}
+      success={toggleFeedback?.savedId === row.original.id}
+      disabled={busyTaskId !== null}
+      aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
+      onCheckedChange={enabled => void toggleEnabled(row.original, enabled)}
+    />
+  )
+}
 
 export const scheduledTaskColumns = ({
   actionLabel,
-  busyTaskId,
-  openEditForm,
-  toggleEnabled
+  openEditForm
 }: {
   actionLabel: (task: ScheduledTask) => string
-  busyTaskId: string | null
   openEditForm: (task: ScheduledTask) => void
-  toggleEnabled: (task: ScheduledTask, enabled: boolean) => Promise<void>
 }): ColumnDef<ScheduledTask>[] => [
   {
     id: 'name',
@@ -54,14 +65,7 @@ export const scheduledTaskColumns = ({
     header: 'Enabled',
     size: 88,
     meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
-    cell: ({ row }) => (
-      <Switch
-        checked={row.original.enabled}
-        disabled={busyTaskId === row.original.id}
-        aria-label={`${row.original.enabled ? 'Disable' : 'Enable'} ${row.original.name}`}
-        onCheckedChange={enabled => void toggleEnabled(row.original, enabled)}
-      />
-    )
+    cell: ScheduledTaskEnabledCell
   },
   {
     id: 'schedule',

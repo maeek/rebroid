@@ -93,6 +93,7 @@ export const QuotaFields = ({
     <div className='grid gap-x-form-column gap-y-4 sm:grid-cols-2'>
       {quotaFields.map(field => (
         <FormField
+          field={['quotas', field.key]}
           key={field.key}
           label={field.label}
           description={field.description}

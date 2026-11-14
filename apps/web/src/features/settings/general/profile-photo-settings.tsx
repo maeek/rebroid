@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Section } from '@/components/ui/section'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
@@ -9,6 +10,7 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateCurrentProfileAction } from '@/server/users/actions/update-current-profile-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { UserAvatarInput } from '@/shared/ui/user-avatar/user-avatar-input'
 
 export const ProfilePhotoSettings = ({
@@ -49,38 +51,48 @@ export const ProfilePhotoSettings = ({
   }
 
   return (
-    <Section
-      surface='plain'
-      title='Profile'
+    <FieldChangesProvider
+      value={{ avatarDataUrl: draftAvatar }}
+      baseline={loading ? undefined : { avatarDataUrl: savedAvatar }}
     >
-      <UserAvatarInput
-        name={name}
-        avatar={draftAvatar}
-        disabled={busy}
-        onChange={setDraftAvatar}
-        onPendingChange={setPreparing}
+      <Section
+        surface='plain'
+        title='Profile'
+      >
+        <UserAvatarInput
+          field='avatarDataUrl'
+          name={name}
+          avatar={draftAvatar}
+          disabled={busy}
+          onChange={setDraftAvatar}
+          onPendingChange={setPreparing}
+        />
+        <div className='flex flex-wrap gap-2'>
+          <Button
+            type='button'
+            variant='ghost'
+            disabled={!dirty || busy}
+            onClick={() => setDraftAvatar(savedAvatar)}
+          >
+            Discard changes
+          </Button>
+          <MutationButton
+            type='button'
+            disabled={!dirty || loading || preparing}
+            pending={saving}
+            animate
+            pendingLabel='Saving…'
+            success={saveFeedback.saved}
+            onClick={() => void savePhoto()}
+          >
+            Save photo
+          </MutationButton>
+        </div>
+      </Section>
+      <UnsavedChangesGuard
+        dirty={!loading && dirty}
+        onDiscard={() => setDraftAvatar(savedAvatar)}
       />
-      <div className='flex flex-wrap gap-2'>
-        <Button
-          type='button'
-          variant='ghost'
-          disabled={!dirty || busy}
-          onClick={() => setDraftAvatar(savedAvatar)}
-        >
-          Discard changes
-        </Button>
-        <MutationButton
-          type='button'
-          disabled={!dirty || loading || preparing}
-          pending={saving}
-          animate
-          pendingLabel='Saving…'
-          success={saveFeedback.saved}
-          onClick={() => void savePhoto()}
-        >
-          Save photo
-        </MutationButton>
-      </div>
-    </Section>
+    </FieldChangesProvider>
   )
 }

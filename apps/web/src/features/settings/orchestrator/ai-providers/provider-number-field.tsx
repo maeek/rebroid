@@ -1,8 +1,10 @@
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import type { FieldPath } from '@/components/ui/field-changes'
 
 export const ProviderNumberField = ({
   controlId,
+  field,
   label,
   description,
   value,
@@ -12,6 +14,7 @@ export const ProviderNumberField = ({
   disabled,
   onChange
 }: {
+  field?: FieldPath
   controlId: string
   label: string
   description: string
@@ -24,6 +27,7 @@ export const ProviderNumberField = ({
 }) => (
   <FormField
     controlId={controlId}
+    field={field}
     label={label}
     description={description}
     layout='vertical'

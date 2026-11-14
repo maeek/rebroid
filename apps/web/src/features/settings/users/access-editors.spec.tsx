@@ -57,6 +57,34 @@ describe('access editors', () => {
     vi.clearAllMocks()
   })
 
+  it('clears user field markers only after the server acknowledges the new values', async () => {
+    render(
+      <UserEditPage
+        user={user}
+        groups={groups}
+      />
+    )
+    const name = screen.getByRole('textbox', { name: 'Display name' })
+    fireEvent.change(name, { target: { value: 'Updated user' } })
+    expect(name).toHaveAccessibleDescription('Unsaved change')
+    mocks.updateUser.mockResolvedValueOnce({
+      ok: false,
+      requestId: 'failed',
+      error: { code: 'conflict', message: 'Try again' }
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save User' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save User' })).toBeEnabled())
+    expect(name).toHaveAccessibleDescription('Unsaved change')
+    mocks.updateUser.mockResolvedValueOnce({ ok: true, requestId: 'saved', data: { ...user, name: 'Updated user' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save User' }))
+    await waitFor(() => expect(name).not.toHaveAccessibleDescription('Unsaved change'))
+    expect(name).toHaveValue('Updated user')
+    fireEvent.change(name, { target: { value: user.name } })
+    expect(name).toHaveAccessibleDescription('Unsaved change')
+    fireEvent.change(name, { target: { value: 'Updated user' } })
+    expect(name).not.toHaveAccessibleDescription('Unsaved change')
+  })
+
   it.each(['replace', 'remove'])('stages photo %s until Save User is pressed', async change => {
     const original = 'data:image/webp;base64,original'
     const replacement = 'data:image/webp;base64,replacement'

@@ -3,6 +3,8 @@ import { IconDownload, IconPlus, IconSettings, IconTrash } from '@tabler/icons-r
 import { Button } from '@/components/ui/button'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { EditorFormContext } from '@/components/ui/editor-form-context'
+import { fieldValuesEqual } from '@/components/ui/field-changes'
+import { DraftFieldLabel } from '@/components/ui/modified-indicator'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -84,7 +86,16 @@ export const ProviderModelsGrid = ({
               disabled={disabled}
               onClick={() => setSettingsRowId(model.rowId)}
             >
-              {model.label || model.id}
+              <DraftFieldLabel
+                modified={
+                  !fieldValuesEqual(
+                    editableModelSettings(model),
+                    editableModelSettings(initialProvider.models.find(saved => saved.id === model.id))
+                  )
+                }
+              >
+                {model.label || model.id}
+              </DraftFieldLabel>
             </Button>
             <span
               className='truncate font-mono text-xs text-foreground-muted'
@@ -257,6 +268,7 @@ export const ProviderModelsGrid = ({
         />
       </DataGridWorkspace>
       <ProviderModelSettingsDialog
+        baseline={initialProvider.models.find(model => model.id === settingsRow?.id)}
         model={settingsRow}
         provider={initialProvider}
         onClose={() => setSettingsRowId(null)}
@@ -280,3 +292,12 @@ export const ProviderModelsGrid = ({
 
   return <EditorFormContext.Provider value={false}>{section}</EditorFormContext.Provider>
 }
+
+const editableModelSettings = (model?: AutomationAiProviderModel) =>
+  model && {
+    label: model.label.trim() || model.id,
+    enabled: model.enabled,
+    roles: model.roles,
+    defaultFor: model.defaultFor,
+    settings: model.settings ?? {}
+  }

@@ -9,6 +9,8 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
+import { toast } from '@/hooks/use-toast'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
@@ -26,6 +28,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
   const [enabledFilter, setEnabledFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const [bulkPending, setBulkPending] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ScheduledTask[]>([])
   const actionLabel = useCallback(
     (task: ScheduledTask) => actionByType.get(task.actionType)?.label ?? task.actionType,
@@ -55,30 +58,58 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
     setSelectedIds(current => new Set(Array.from(current).filter(id => taskIds.has(id))))
   }, [tasks])
 
-  const runSelected = async () => {
-    for (const task of selectedTasks) {
-      await runNow(task)
+  const runBatch = async (
+    targets: ScheduledTask[],
+    perform: (task: ScheduledTask) => Promise<void>,
+    successTitle: string,
+    failureTitle: string
+  ) => {
+    if (bulkPending || busyTaskId !== null || !targets.length) return
+    setBulkPending(true)
+    try {
+      const results: PromiseSettledResult<void>[] = []
+      for (const task of targets) {
+        try {
+          await perform(task)
+          results.push({ status: 'fulfilled', value: undefined })
+        } catch (reason) {
+          results.push({ status: 'rejected', reason })
+        }
+      }
+      const completed = successfulBulkIds(targets, results)
+      setSelectedIds(current => new Set([...current].filter(id => !completed.has(id))))
+      toast({ variant: 'success', ...summarizeBulkResults(results, successTitle, failureTitle) })
+    } finally {
+      setBulkPending(false)
     }
   }
 
-  const updateSelectedEnabled = async (enabled: boolean) => {
-    for (const task of selectedTasks) {
-      await toggleEnabled(task, enabled)
-    }
-  }
+  const runSelected = () =>
+    runBatch(selectedTasks, task => runNow(task, true), 'Selected tasks completed', 'Could not run all selected tasks')
+
+  const updateSelectedEnabled = (enabled: boolean) =>
+    runBatch(
+      selectedTasks,
+      task => toggleEnabled(task, enabled, true),
+      enabled ? 'Selected tasks enabled' : 'Selected tasks disabled',
+      'Could not update all selected tasks'
+    )
 
   const confirmDelete = async () => {
-    for (const task of pendingDelete) {
-      await deleteTask(task)
+    if (pendingDelete.length === 1) {
+      await deleteTask(pendingDelete[0])
+    } else {
+      await runBatch(
+        pendingDelete,
+        task => deleteTask(task, true),
+        'Selected tasks deleted',
+        'Could not delete all selected tasks'
+      )
     }
-    setSelectedIds(new Set())
     setPendingDelete([])
   }
 
-  const columns = useMemo(
-    () => scheduledTaskColumns({ actionLabel, busyTaskId, openEditForm, toggleEnabled }),
-    [actionLabel, busyTaskId, openEditForm, toggleEnabled]
-  )
+  const columns = useMemo(() => scheduledTaskColumns({ actionLabel, openEditForm }), [actionLabel, openEditForm])
 
   return (
     <>
@@ -195,7 +226,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
               <Button
                 size='sm'
                 variant='ghost'
-                disabled={busyTaskId !== null}
+                disabled={bulkPending || busyTaskId !== null}
                 onClick={() => void runSelected()}
               >
                 Run
@@ -203,7 +234,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
               <Button
                 size='sm'
                 variant='ghost'
-                disabled={busyTaskId !== null}
+                disabled={bulkPending || busyTaskId !== null}
                 onClick={() => void updateSelectedEnabled(true)}
               >
                 Enable
@@ -211,7 +242,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
               <Button
                 size='sm'
                 variant='ghost'
-                disabled={busyTaskId !== null}
+                disabled={bulkPending || busyTaskId !== null}
                 onClick={() => void updateSelectedEnabled(false)}
               >
                 Disable
@@ -219,7 +250,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
               <Button
                 size='sm'
                 variant='danger-ghost'
-                disabled={busyTaskId !== null || !selectedTasksAreCustom}
+                disabled={bulkPending || busyTaskId !== null || !selectedTasksAreCustom}
                 onClick={() => setPendingDelete(selectedTasks)}
               >
                 <IconTrash className='size-4' />
@@ -258,27 +289,27 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
                   {hasBulkSelection ? (
                     <>
                       <ContextMenuItem
-                        disabled={busyTaskId !== null}
+                        disabled={bulkPending || busyTaskId !== null}
                         onSelect={() => void runSelected()}
                       >
                         <IconPlayerPlayFilled className='size-4' />
                         Run selected ({selectedTasks.length})
                       </ContextMenuItem>
                       <ContextMenuItem
-                        disabled={busyTaskId !== null}
+                        disabled={bulkPending || busyTaskId !== null}
                         onSelect={() => void updateSelectedEnabled(true)}
                       >
                         Enable selected ({selectedTasks.length})
                       </ContextMenuItem>
                       <ContextMenuItem
-                        disabled={busyTaskId !== null}
+                        disabled={bulkPending || busyTaskId !== null}
                         onSelect={() => void updateSelectedEnabled(false)}
                       >
                         Disable selected ({selectedTasks.length})
                       </ContextMenuItem>
                       <ContextMenuItem
                         className='text-danger focus:text-danger'
-                        disabled={busyTaskId !== null || !selectedTasksAreCustom}
+                        disabled={bulkPending || busyTaskId !== null || !selectedTasksAreCustom}
                         onSelect={() => setPendingDelete(selectedTasks)}
                       >
                         <IconTrash className='size-4' />
@@ -319,7 +350,7 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
         consequence='The task will no longer run on its schedule. Existing run history is retained.'
         confirmLabel={pendingDelete.length === 1 ? 'Delete task' : 'Delete tasks'}
         pendingLabel='Deleting…'
-        pending={busyTaskId !== null}
+        pending={bulkPending || busyTaskId !== null}
         onOpenChange={open => {
           if (!open) setPendingDelete([])
         }}

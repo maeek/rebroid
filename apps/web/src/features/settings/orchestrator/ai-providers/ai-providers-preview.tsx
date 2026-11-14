@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { FormField } from '@/components/ui/form-field'
 import { Switch } from '@/components/ui/switch'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
@@ -14,6 +15,7 @@ import {
   createProviderModelRows,
   emptyModel,
   emptyProvider,
+  normalizeProviderForm,
   updateProviderModelAt
 } from './provider-form-model'
 import { ProviderHealthBanner } from './provider-health-badge'
@@ -41,6 +43,8 @@ const noop = () => undefined
 
 export const AiProvidersPreview = ({ view }: { view: 'list' | 'models' | 'connection' }) => {
   const [provider, setProvider] = useState(initialProvider)
+  const [savedProvider, setSavedProvider] = useState(initialProvider)
+  const dirty = JSON.stringify(normalizeProviderForm(provider)) !== JSON.stringify(normalizeProviderForm(savedProvider))
   const [creating, setCreating] = useState<AutomationAiProvider | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [suggestions, setSuggestions] = useState(true)
@@ -88,72 +92,84 @@ export const AiProvidersPreview = ({ view }: { view: 'list' | 'models' | 'connec
       </>
     )
   return (
-    <ProviderEditorLayout
-      provider={provider}
-      view={view}
-      health={<ProviderHealthBanner provider={provider} />}
-      actions={
-        <>
-          <Button
-            variant='ghost'
-            disabled
-          >
-            Discard changes
-          </Button>
-          <Button disabled>
-            <IconDeviceFloppy className='size-4' />
-            Save
-          </Button>
-        </>
-      }
+    <FieldChangesProvider
+      value={normalizeProviderForm(provider)}
+      baseline={normalizeProviderForm(savedProvider)}
     >
-      {view === 'connection' ? (
-        <ProviderConnectionSection
-          provider={provider}
-          onChange={patch => setProvider(current => ({ ...current, ...patch }))}
-        />
-      ) : (
-        <>
-          <ProviderModelDefaults
-            models={provider.models}
-            onChange={(index, role) =>
-              updateModels(
-                provider.models.map((model, current) => ({
-                  ...model,
-                  defaultFor:
-                    current === index ? [...model.defaultFor, role] : model.defaultFor.filter(item => item !== role)
-                }))
-              )
-            }
+      <ProviderEditorLayout
+        provider={provider}
+        view={view}
+        health={<ProviderHealthBanner provider={provider} />}
+        actions={
+          <>
+            <Button
+              variant='ghost'
+              disabled={!dirty}
+              onClick={() => setProvider(savedProvider)}
+            >
+              Discard changes
+            </Button>
+            <Button
+              disabled={!dirty}
+              onClick={() => setSavedProvider(provider)}
+            >
+              <IconDeviceFloppy className='size-4' />
+              Save
+            </Button>
+          </>
+        }
+      >
+        {view === 'connection' ? (
+          <ProviderConnectionSection
+            provider={provider}
+            onChange={patch => setProvider(current => ({ ...current, ...patch }))}
           />
-          <ProviderModelsGrid
-            initialProvider={provider}
-            modelRows={createProviderModelRows(provider.models)}
-            onAddModel={(id, label, roles) => {
-              updateModels([
-                ...provider.models,
-                { ...emptyModel(), id, label: label || id, roles: roles ?? ['controller', 'planner'] }
-              ])
-              return true
-            }}
-            onBulkRemoveModels={indexes => updateModels(provider.models.filter((_, index) => !indexes.includes(index)))}
-            onBulkUpdateModels={(indexes, patch) =>
-              updateModels(
-                provider.models.map((model, index) => (indexes.includes(index) ? { ...model, ...patch } : model))
-              )
-            }
-            onDownloadModel={() => Promise.resolve()}
-            onRemoveModel={index => updateModels(provider.models.filter((_, current) => current !== index))}
-            onUpdateModel={(index, patch) => updateModels(updateProviderModelAt(provider.models, index, patch))}
-            isDownloadingModel={false}
-            isLoadingRemoteModels={false}
-            modelDownloads={{}}
-            remoteModels={remoteModels}
-            remoteModelsError={null}
-            onLoadRemoteModels={noop}
-          />
-        </>
-      )}
-    </ProviderEditorLayout>
+        ) : (
+          <>
+            <ProviderModelDefaults
+              models={provider.models}
+              savedModels={savedProvider.models}
+              onChange={(index, role) =>
+                updateModels(
+                  provider.models.map((model, current) => ({
+                    ...model,
+                    defaultFor:
+                      current === index ? [...model.defaultFor, role] : model.defaultFor.filter(item => item !== role)
+                  }))
+                )
+              }
+            />
+            <ProviderModelsGrid
+              initialProvider={savedProvider}
+              modelRows={createProviderModelRows(provider.models)}
+              onAddModel={(id, label, roles) => {
+                updateModels([
+                  ...provider.models,
+                  { ...emptyModel(), id, label: label || id, roles: roles ?? ['controller', 'planner'] }
+                ])
+                return true
+              }}
+              onBulkRemoveModels={indexes =>
+                updateModels(provider.models.filter((_, index) => !indexes.includes(index)))
+              }
+              onBulkUpdateModels={(indexes, patch) =>
+                updateModels(
+                  provider.models.map((model, index) => (indexes.includes(index) ? { ...model, ...patch } : model))
+                )
+              }
+              onDownloadModel={() => Promise.resolve()}
+              onRemoveModel={index => updateModels(provider.models.filter((_, current) => current !== index))}
+              onUpdateModel={(index, patch) => updateModels(updateProviderModelAt(provider.models, index, patch))}
+              isDownloadingModel={false}
+              isLoadingRemoteModels={false}
+              modelDownloads={{}}
+              remoteModels={remoteModels}
+              remoteModelsError={null}
+              onLoadRemoteModels={noop}
+            />
+          </>
+        )}
+      </ProviderEditorLayout>
+    </FieldChangesProvider>
   )
 }

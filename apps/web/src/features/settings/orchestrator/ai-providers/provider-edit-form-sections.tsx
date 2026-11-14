@@ -33,6 +33,7 @@ export const ProviderConnectionSection = ({
       <FormField
         controlId='provider-edit-enabled'
         label='Available for automation'
+        field='enabled'
         description='Enabled models appear in automation when their purposes match.'
         layout='vertical'
       >

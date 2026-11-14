@@ -29,6 +29,7 @@ export const UserAccountSections = ({
         <FormField
           layout='vertical'
           label='Username'
+          field='username'
           required
         >
           <Input
@@ -41,6 +42,7 @@ export const UserAccountSections = ({
         <FormField
           layout='vertical'
           label='Display name'
+          field='name'
         >
           <Input
             value={draft?.name ?? ''}
@@ -57,6 +59,7 @@ export const UserAccountSections = ({
       <FormField
         layout='vertical'
         label='New password'
+        field='password'
         description='Leave empty to keep the current password. A reset requires a change at the next sign-in.'
       >
         <Input
@@ -74,6 +77,7 @@ export const UserAccountSections = ({
       <FormField
         layout='vertical'
         label='Active account'
+        field='disabled'
         description='Allow this user to sign in.'
       >
         <Switch
@@ -88,6 +92,7 @@ export const UserAccountSections = ({
       surface='plain'
     >
       <UserAvatarInput
+        field='avatarDataUrl'
         onPendingChange={onAvatarPendingChange}
         name={draft?.name || draft?.username || ''}
         avatar={draft?.avatarDataUrl ?? null}
@@ -116,6 +121,7 @@ export const GroupDetailsSections = ({
         <FormField
           layout='vertical'
           label='Name'
+          field='name'
           description='A recognizable name for this group.'
           required
         >
@@ -135,6 +141,7 @@ export const GroupDetailsSections = ({
       <FormField
         layout='vertical'
         label='Description'
+        field='description'
         description='Help administrators choose the right group for a user.'
       >
         <Textarea

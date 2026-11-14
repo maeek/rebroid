@@ -11,10 +11,11 @@ import {
 import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
-import { useActivityController } from '../activity-context'
+import { useActivityController, useActivityData } from '../activity-context'
 
 export const ActivityRetentionDialog = () => {
   const controller = useActivityController()
+  const { auditRetentionDays } = useActivityData()
   return (
     <Dialog
       open={controller.retentionOpen}
@@ -38,6 +39,7 @@ export const ActivityRetentionDialog = () => {
           }}
         >
           <FormField
+            modified={Number(controller.retentionDays) !== auditRetentionDays}
             label='Retention days'
             description='Keep events for 1–3,650 days. The default is 30 days.'
             layout='vertical'

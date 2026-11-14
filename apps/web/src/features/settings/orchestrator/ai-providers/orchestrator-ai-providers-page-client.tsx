@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { FormField } from '@/components/ui/form-field'
-import { Switch } from '@/components/ui/switch'
+import { MutationSwitch } from '@/components/ui/mutation-switch'
+import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
@@ -15,6 +16,7 @@ import {
   deleteAutomationAiProviderAction,
   updateAutomationAiProviderAction
 } from '@/server/orchestrator/settings/actions'
+import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
 import { saveAiUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
@@ -38,7 +40,7 @@ export const OrchestratorAiProvidersPageClient = ({
   const [editingProvider, setEditingProvider] = useState<ProviderFormState | null>(null)
   const [creationError, setCreationError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSavingAiSettings, setIsSavingAiSettings] = useState(false)
+  const suggestionsFeedback = useImmediateSave()
   const [isRefreshing, startRefreshTransition] = useTransition()
   const [busyId, setBusyId] = useState<string | null>(null)
   const [selectedProviderIds, setSelectedProviderIds] = useState<Set<string>>(() => new Set())
@@ -109,18 +111,21 @@ export const OrchestratorAiProvidersPageClient = ({
 
     setBusyId('bulk')
     try {
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         selected.map(provider => updateAutomationAiProviderAction(provider.id, { enabled }))
       )
-      setProviders(current => current.map(provider => results.find(result => result.id === provider.id) ?? provider))
-      setSelectedProviderIds(new Set())
-      toast({ title: enabled ? 'Providers enabled' : 'Providers disabled', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not update AI',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
+      const updated = new Map(
+        results.flatMap(result => (result.status === 'fulfilled' ? [[result.value.id, result.value] as const] : []))
+      )
+      setProviders(current => current.map(provider => updated.get(provider.id) ?? provider))
+      setSelectedProviderIds(current => new Set([...current].filter(id => !updated.has(id))))
+      toast(
+        summarizeBulkResults(
+          results,
+          enabled ? 'Providers enabled' : 'Providers disabled',
+          'Could not update all providers'
+        )
+      )
     } finally {
       setBusyId(null)
     }
@@ -130,44 +135,39 @@ export const OrchestratorAiProvidersPageClient = ({
     if (pendingDeleteProviders.length === 0) return
     setBusyId(pendingDeleteProviders.length === 1 ? pendingDeleteProviders[0].id : 'bulk')
     try {
-      const deletedIds = new Set(pendingDeleteProviders.map(provider => provider.id))
-      await Promise.all(pendingDeleteProviders.map(provider => deleteAutomationAiProviderAction(provider.id)))
+      const results = await Promise.allSettled(
+        pendingDeleteProviders.map(provider => deleteAutomationAiProviderAction(provider.id))
+      )
+      const deletedIds = successfulBulkIds(pendingDeleteProviders, results)
       setProviders(current => current.filter(provider => !deletedIds.has(provider.id)))
-      setSelectedProviderIds(current => new Set(Array.from(current).filter(id => !deletedIds.has(id))))
-      toast({
-        title: pendingDeleteProviders.length === 1 ? 'AI provider deleted' : 'AI providers deleted',
-        variant: 'success'
-      })
-      setPendingDeleteProviders([])
-    } catch (error) {
-      toast({
-        title: pendingDeleteProviders.length === 1 ? 'Could not delete AI provider' : 'Could not delete AI providers',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
+      setSelectedProviderIds(current => new Set([...current].filter(id => !deletedIds.has(id))))
+      toast(
+        summarizeBulkResults(
+          results,
+          pendingDeleteProviders.length === 1 ? 'AI provider deleted' : 'AI providers deleted',
+          pendingDeleteProviders.length === 1 ? 'Could not delete AI provider' : 'Could not delete all AI providers'
+        )
+      )
+      if (pendingDeleteProviders.length > 1 || deletedIds.size) setPendingDeleteProviders([])
     } finally {
       setBusyId(null)
     }
   }
 
   const updateContextualSuggestions = async (aiContextualSuggestionsEnabled: boolean) => {
-    const previousValue = settings.aiContextualSuggestionsEnabled
-    setSettings(current => ({ ...current, aiContextualSuggestionsEnabled }))
-    setIsSavingAiSettings(true)
     try {
-      const saved = await saveAiUiSettings({
-        aiContextualSuggestionsEnabled
+      await suggestionsFeedback.save('suggestions', async () => {
+        const saved = await saveAiUiSettings({
+          aiContextualSuggestionsEnabled
+        })
+        setSettings(saved)
       })
-      setSettings(saved)
     } catch (error) {
-      setSettings(current => ({ ...current, aiContextualSuggestionsEnabled: previousValue }))
       toast({
         title: 'Could not save AI settings',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
-    } finally {
-      setIsSavingAiSettings(false)
     }
   }
 
@@ -176,6 +176,7 @@ export const OrchestratorAiProvidersPageClient = ({
       <AiProvidersPageLayout
         breadcrumbRefresh={
           <PlatformPageRefreshButton
+            refreshResult={{ version: initialProviders, succeeded: true }}
             isRefreshing={isRefreshing}
             onRefresh={refresh}
           />
@@ -212,9 +213,10 @@ export const OrchestratorAiProvidersPageClient = ({
             description='Generate prompt suggestions in app sessions. Changes save immediately.'
             layout='vertical'
           >
-            <Switch
+            <MutationSwitch
               checked={settings.aiContextualSuggestionsEnabled}
-              disabled={isSavingAiSettings}
+              pending={suggestionsFeedback.pendingId !== null}
+              success={suggestionsFeedback.savedId === 'suggestions'}
               onCheckedChange={value => void updateContextualSuggestions(value)}
             />
           </FormField>
