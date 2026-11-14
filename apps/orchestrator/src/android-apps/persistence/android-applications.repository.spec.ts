@@ -234,6 +234,24 @@ describe('Android application runtime observations', () => {
     ).resolves.toMatchObject({ affected: 0 });
   });
 
+  it('rejects a stale stop observation after the same container starts again', async () => {
+    const app = await makeApp();
+    const lastStartedAt = new Date('2026-01-01T00:01:00Z');
+    await apps.update(app.id, { lastStartedAt });
+
+    await expect(
+      repository.updateReconciledRuntime(app, {
+        ...app,
+        status: AndroidApplicationStatus.Stopped,
+        lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      }),
+    ).resolves.toMatchObject({ affected: 0 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      status: AndroidApplicationStatus.Running,
+      lastStartedAt,
+    });
+  });
+
   it('discards a viewer policy result for replaced policy settings or runtime', async () => {
     const app = await makeApp();
     const patch = {

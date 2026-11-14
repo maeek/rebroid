@@ -63,6 +63,26 @@ it('rejects a tap after the observed runtime restarts in the same container', as
   expect(tap).not.toHaveBeenCalled();
 });
 
+it('treats an omitted workflow profile name as default and rejects a different owner', async () => {
+  const getStored = jest
+    .fn()
+    .mockResolvedValueOnce({ ...target, profileName: null })
+    .mockResolvedValueOnce({ ...target, ownerUserId: 'another-owner' });
+  const inspectContainer = jest.fn().mockResolvedValue(inspectRuntime());
+  const gate = new AndroidAppsRuntimeOperationGate(
+    { getStored } as never,
+    { inspectContainer } as never,
+  );
+
+  await expect(gate.run(target, undefined, async () => 'screen')).resolves.toBe(
+    'screen',
+  );
+  await expect(gate.run(target, undefined, jest.fn())).rejects.toThrow(
+    'The Android runtime changed during this workflow run.',
+  );
+  expect(inspectContainer).toHaveBeenCalledTimes(1);
+});
+
 it('fences new operations while Stop drains an admitted mutation', async () => {
   const gate = new AndroidAppsRuntimeOperationGate(
     { getStored: jest.fn().mockResolvedValue(target) } as never,
@@ -93,5 +113,38 @@ it('fences new operations while Stop drains an admitted mutation', async () => {
     await command;
     await stopping;
   }
+  expect(stop).toHaveBeenCalledTimes(1);
+});
+
+it('cancels an open terminal before draining it for Stop', async () => {
+  const gate = new AndroidAppsRuntimeOperationGate(
+    { getStored: jest.fn().mockResolvedValue(target) } as never,
+    { inspectContainer: async () => inspectRuntime() } as never,
+  );
+  const controller = new AbortController();
+  let entered!: () => void;
+  let finishCleanup!: () => void;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const cleanup = new Promise<void>((resolve) => {
+    finishCleanup = resolve;
+  });
+  const shell = gate.withCurrentRuntime(
+    target,
+    controller.signal,
+    async () => {
+      entered();
+      await cleanup;
+    },
+    () => controller.abort(),
+  );
+  await started;
+  const stop = jest.fn();
+  const stopping = gate.interrupt(target.id, stop);
+  expect(controller.signal.aborted).toBe(true);
+  expect(stop).not.toHaveBeenCalled();
+  finishCleanup();
+  await Promise.all([shell, stopping]);
   expect(stop).toHaveBeenCalledTimes(1);
 });

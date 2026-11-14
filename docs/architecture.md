@@ -90,6 +90,7 @@ The [orchestrator guide](orchestrator-architecture.md) covers lifecycle and auto
 | Users, authentication, preferences, and audit records        | Web SQLite database and files in `web-data`.         |
 | Applications, lifecycle jobs, workflows, runs, and events    | Orchestrator SQLite database in `orchestrator-data`. |
 | Runtime settings, provider configuration, and feature intent | Orchestrator settings file in `orchestrator-data`.   |
+| Running application thumbnails                               | Private files in `orchestrator-data/runtime-snapshots`. |
 | Uploaded APKs                                                | `orchestrator-uploads`.                              |
 | Android application data                                     | Managed runtime volumes.                             |
 | Internal credentials and TLS material                        | Shared secret volume and web data volume.            |

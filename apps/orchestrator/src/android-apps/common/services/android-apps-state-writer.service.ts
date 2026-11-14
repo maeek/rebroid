@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
 export type AndroidApplicationLifecyclePatch = Partial<
@@ -25,6 +27,7 @@ export class AndroidAppsStateWriter {
   constructor(
     private readonly applications: AndroidApplicationsRepository,
     private readonly status: AndroidAppsStatusService,
+    private readonly snapshots: AndroidAppRuntimeSnapshotsRepository,
   ) {}
 
   save(app: AndroidApplication) {
@@ -36,6 +39,12 @@ export class AndroidAppsStateWriter {
     return this.status.decorateApplication(saved);
   }
 
+  async saveRuntimeReplacement(app: AndroidApplication) {
+    const saved = await this.saveAndDecorate(app);
+    await this.snapshots.deleteIfStale(app.id);
+    return saved;
+  }
+
   async saveReconciledRuntime(
     previous: AndroidApplication,
     next: AndroidApplication,
@@ -44,14 +53,15 @@ export class AndroidAppsStateWriter {
       previous,
       next,
     );
-    return result.affected === 1;
-  }
-
-  async setLifecycle(
-    applicationId: string,
-    patch: AndroidApplicationLifecyclePatch,
-  ) {
-    await this.applications.updateLifecycle(applicationId, patch);
+    if (result.affected !== 1) return false;
+    if (
+      previous.status === AndroidApplicationStatus.Running &&
+      (next.status !== AndroidApplicationStatus.Running ||
+        next.containerId !== previous.containerId)
+    ) {
+      await this.snapshots.deleteIfStale(next.id);
+    }
+    return true;
   }
 
   async setApkPackageName(applicationId: string, apkPackageName: string) {

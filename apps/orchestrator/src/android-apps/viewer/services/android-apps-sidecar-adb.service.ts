@@ -4,6 +4,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { z } from 'zod';
+import { readBoundedResponseBody } from '../../../common/bounded-response-body';
 import { getErrorMessage } from '../../../common/error-message';
 import { waitForOperation } from '../../../common/wait-for-operation';
 import { AndroidApplication } from '../../android-application.entity';
@@ -35,6 +36,7 @@ const uiTextResponseSchema = z.discriminatedUnion('status', [
 interface AdbRequestOptions extends RequestInit {
   requestTimeoutMs?: number;
   awaitMutation?: boolean;
+  maxResponseBytes?: number;
 }
 
 @Injectable()
@@ -326,6 +328,24 @@ export class AndroidAppsSidecarAdbService {
     }>(app, '/screenshot', { signal });
   }
 
+  async captureSnapshotPng(
+    app: AndroidApplication & { containerStartedAt: string },
+    adbHost: string,
+    signal: AbortSignal,
+    maxResponseBytes: number,
+  ) {
+    const target = await this.viewerNetwork.requireObservedAdbTransport(
+      app,
+      adbHost,
+      signal,
+    );
+    return this.requestPrepared<unknown>(target, '/screenshot', {
+      signal,
+      maxResponseBytes,
+      redirect: 'error',
+    });
+  }
+
   private async executeInput(
     app: AndroidApplication,
     path: string,
@@ -371,6 +391,7 @@ export class AndroidAppsSidecarAdbService {
     {
       requestTimeoutMs = 20_000,
       awaitMutation = false,
+      maxResponseBytes,
       ...init
     }: AdbRequestOptions,
   ): Promise<T> {
@@ -410,7 +431,13 @@ export class AndroidAppsSidecarAdbService {
       },
     ).catch(transportFailure);
 
-    const text = await response.text().catch(transportFailure);
+    const text = await (
+      maxResponseBytes === undefined
+        ? response.text()
+        : readBoundedResponseBody(response, maxResponseBytes).then(
+            (body) => body?.text ?? '',
+          )
+    ).catch(transportFailure);
     let payload: (T & { message?: string }) | null;
     try {
       payload = text ? (JSON.parse(text) as T & { message?: string }) : null;

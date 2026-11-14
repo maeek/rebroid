@@ -296,7 +296,7 @@ export class AndroidAppsConfigurationService {
       );
     }
     await this.runtimePreparation.switchProfile(app, dto);
-    return this.writer.saveAndDecorate(app);
+    return this.writer.saveRuntimeReplacement(app);
   }
 
   async deleteSavedProfile(id: string, profileName: string) {

@@ -1,5 +1,5 @@
 import { registerAs } from '@nestjs/config';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { buildAppConfigSections } from './app-config-sections';
 import { orchestratorEnvironmentSchema } from './environment-schema';
 import { environmentCsv, environmentNumber } from './environment-values';
@@ -8,6 +8,9 @@ export default registerAs('app', () => {
   orchestratorEnvironmentSchema.parse(process.env);
   const sharedSecret = process.env.ORCHESTRATOR_SHARED_SECRET?.trim();
   const resourcePrefix = process.env.DOCKER_RESOURCE_PREFIX ?? 'rebroid';
+  const databasePath = resolve(
+    process.env.DATABASE_PATH ?? './data/orchestrator.sqlite',
+  );
 
   return {
     nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -18,9 +21,8 @@ export default registerAs('app', () => {
     sharedSecret: sharedSecret || undefined,
     webInternalUrl: process.env.WEB_INTERNAL_URL ?? 'http://localhost:3101',
     corsOrigins: environmentCsv(process.env.ORCHESTRATOR_CORS_ORIGINS, []),
-    databasePath: resolve(
-      process.env.DATABASE_PATH ?? './data/orchestrator.sqlite',
-    ),
+    databasePath,
+    runtimeSnapshotsDir: resolve(dirname(databasePath), 'runtime-snapshots'),
     settingsPath: resolve(
       process.env.SETTINGS_PATH ?? './data/orchestrator-settings.json',
     ),

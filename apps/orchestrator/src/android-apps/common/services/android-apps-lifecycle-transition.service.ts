@@ -13,6 +13,7 @@ import {
   type AndroidAppLifecycleReservation,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLogService } from './android-apps-log.service';
+import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
 import type { AndroidApplicationLifecyclePatch } from './android-apps-state-writer.service';
 
 const allowedStatusTransitions: Record<
@@ -66,6 +67,7 @@ export class AndroidAppsLifecycleTransitionService {
     private readonly dataSource: DataSource,
     private readonly logs: AndroidAppsLogService,
     private readonly features: FeatureFlagsService,
+    private readonly snapshots: AndroidAppRuntimeSnapshotsRepository,
   ) {}
 
   hasRecreateJob(applicationId: string) {
@@ -147,6 +149,9 @@ export class AndroidAppsLifecycleTransitionService {
         }),
       );
     });
+    if (kind === AndroidAppLifecycleJobKind.Remove) {
+      await this.snapshots.deleteIfStale(applicationId);
+    }
     await this.logs.appendLifecycle(applicationId, patch);
     return reservation;
   }
@@ -330,14 +335,17 @@ export class AndroidAppsLifecycleTransitionService {
     applicationId: string,
     patch: AndroidApplicationLifecyclePatch,
   ) {
-    await this.transaction(async (manager) => {
+    const leftRunning = await this.transaction(async (manager) => {
       const jobs = manager.getRepository(AndroidAppLifecycleJob);
       this.assertRecreateNotActive(await jobs.findOneBy({ applicationId }));
       const app = await this.getApplication(manager, applicationId);
+      const wasRunning = app.status === AndroidApplicationStatus.Running;
       this.applyPatch(app, patch);
       await manager.getRepository(AndroidApplication).save(app);
       await jobs.delete({ applicationId });
+      return wasRunning && app.status !== AndroidApplicationStatus.Running;
     });
+    if (leftRunning) await this.snapshots.deleteIfStale(applicationId);
     await this.logs.appendLifecycle(applicationId, patch);
   }
 

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { rmSync } from "node:fs";
 
 const execute = process.argv.includes("--execute");
@@ -66,7 +66,7 @@ const resetComposeVolumes = (volumeNames) => {
   ];
   const command = [
     stateVolume
-      ? "rm -f /reset-state/orchestrator.sqlite /reset-state/orchestrator.sqlite-shm /reset-state/orchestrator.sqlite-wal"
+      ? "rm -f /reset-state/orchestrator.sqlite /reset-state/orchestrator.sqlite-shm /reset-state/orchestrator.sqlite-wal && rm -rf /reset-state/runtime-snapshots"
       : "",
     uploadsVolume
       ? "rm -rf /reset-uploads/* /reset-uploads/.[!.]* /reset-uploads/..?*"
@@ -102,6 +102,7 @@ const resetComposeVolumes = (volumeNames) => {
 removePath(databasePath);
 removePath(`${databasePath}-shm`);
 removePath(`${databasePath}-wal`);
+removePath(resolve(dirname(databasePath), "runtime-snapshots"));
 removePath(uploadsDirectory);
 
 const containers = dockerIds([

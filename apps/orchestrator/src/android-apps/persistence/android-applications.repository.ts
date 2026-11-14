@@ -44,24 +44,6 @@ export class AndroidApplicationsRepository
     return Object.assign(app, saved);
   }
 
-  updateLifecycle(
-    applicationId: string,
-    patch: Partial<
-      Pick<
-        AndroidApplication,
-        | 'status'
-        | 'lifecycleStage'
-        | 'statusMessage'
-        | 'lastError'
-        | 'provisioningStartedAt'
-        | 'provisioningCompletedAt'
-        | 'removeDataOnRemoval'
-      >
-    >,
-  ) {
-    return this.applications.update(applicationId, patch);
-  }
-
   updateApkPackageName(applicationId: string, apkPackageName: string) {
     return this.applications.update(applicationId, { apkPackageName });
   }
@@ -76,6 +58,7 @@ export class AndroidApplicationsRepository
         status: previous.status,
         lifecycleStage: previous.lifecycleStage,
         containerId: previous.containerId ?? IsNull(),
+        lastStartedAt: previous.lastStartedAt ?? IsNull(),
       },
       {
         status: next.status,

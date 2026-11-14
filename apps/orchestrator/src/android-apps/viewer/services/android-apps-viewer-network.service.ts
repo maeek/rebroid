@@ -18,12 +18,14 @@ import {
   type DockerSidecarPort,
 } from '../../../docker/contracts/docker-sidecar.port';
 import type { ViewerTargetStatus } from '../../../docker/docker.types';
+import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsPolicyGate } from '../../common/services/android-apps-policy-gate.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
+import { runtimeIdentityKey } from '../../common/utils/android-runtime-identity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { isRedroidRuntime } from '@rebroid/android-application-core/redroid-runtime';
 
@@ -69,24 +71,12 @@ type ProvisionedAdbReadiness = ProvisionedAdbTarget & {
 
 const provisionedAdbReadinessTtlMs = 10_000;
 const targetReadinessTtlMs = 60_000;
+const observedTransportTtlMs = 5 * 60_000;
 const maxPreparedTargets = 128;
 const maxPendingTargets = 64;
 
-const runtimeFingerprint = (app: AndroidApplication) =>
-  JSON.stringify([
-    app.id,
-    app.ownerUserId,
-    app.containerId,
-    app.containerName,
-    app.networkName,
-    app.lastStartedAt,
-    app.profileMode,
-    app.profileName,
-    app.adbPort,
-  ]);
-
 const readinessFingerprint = (app: AndroidApplication) =>
-  JSON.stringify([runtimeFingerprint(app), app.networkPolicyRevision]);
+  JSON.stringify([runtimeIdentityKey(app), app.networkPolicyRevision]);
 
 @Injectable()
 export class AndroidAppsViewerNetworkService {
@@ -123,6 +113,7 @@ export class AndroidAppsViewerNetworkService {
     private readonly policyGate: AndroidAppsPolicyGate,
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly lifecycle: DockerContainerLifecyclePort,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   async observeProvisioningAdbTarget(
@@ -178,40 +169,80 @@ export class AndroidAppsViewerNetworkService {
     });
   }
 
-  async prepareViewerTarget(
+  prepareViewerTarget(
     expected: ViewerRuntime,
     signal?: AbortSignal,
     purpose: AdbTargetPreparation = 'interactive',
+  ) {
+    return this.prepareTargetForRuntime(expected, signal, purpose);
+  }
+
+  async requireObservedAdbTransport(
+    expected: ViewerRuntime & { containerStartedAt: string },
+    adbHost: string,
+    signal: AbortSignal,
+  ) {
+    // The snapshot operation has already verified the host and Docker start time.
+    const target = await this.prepareTargetForRuntime(
+      expected,
+      signal,
+      'transport',
+      adbHost,
+    );
+    return this.requireConnectedTarget(target);
+  }
+
+  private async prepareTargetForRuntime(
+    expected: ViewerRuntime,
+    signal: AbortSignal | undefined,
+    purpose: AdbTargetPreparation,
+    observedHost?: string,
   ): Promise<PreparedViewerTarget> {
     signal?.throwIfAborted();
     const app = await this.currentViewerRuntime(expected);
     signal?.throwIfAborted();
+    if (observedHost !== undefined && app.networkPolicyEnabled) {
+      this.features.assertEnabled('feature.firewall');
+    }
     const runtime = readinessFingerprint(app);
-    const key = JSON.stringify([runtime, expected.containerStartedAt, purpose]);
+    const targetKey = (kind: AdbTargetPreparation, host?: string) =>
+      JSON.stringify([runtime, expected.containerStartedAt, kind, host]);
+    const key = targetKey(purpose, observedHost);
     this.expirePreparedTargets();
     for (const [cachedKey, entry] of this.preparedTargets) {
-      if (entry.appId === app.id && entry.runtime !== runtime)
+      if (entry.appId !== app.id) continue;
+      if (
+        entry.runtime !== runtime ||
+        (observedHost !== undefined && entry.target.adbHost !== observedHost)
+      ) {
         this.preparedTargets.delete(cachedKey);
+      }
     }
-    const cached =
-      this.preparedTargets.get(key) ??
-      (purpose === 'transport'
-        ? this.preparedTargets.get(
-            JSON.stringify([
-              runtime,
-              expected.containerStartedAt,
-              'interactive',
-            ]),
-          )
-        : undefined);
+    const cached = this.preparedTargets.get(key);
     if (cached) return cached.target;
+    if (purpose === 'transport') {
+      for (const kind of ['transport', 'interactive'] as const) {
+        const ready = this.preparedTargets.get(targetKey(kind));
+        if (
+          ready &&
+          (observedHost === undefined || ready.target.adbHost === observedHost)
+        ) {
+          return ready.target;
+        }
+      }
+    }
 
     const existing = this.pendingTargets.get(key);
     if (existing) {
       if (!existing.controller.signal.aborted)
         return this.waitForTarget(existing, signal);
       await existing.pending.catch(() => undefined);
-      return this.prepareViewerTarget(expected, signal, purpose);
+      return this.prepareTargetForRuntime(
+        expected,
+        signal,
+        purpose,
+        observedHost,
+      );
     }
     if (this.pendingTargets.size >= maxPendingTargets) {
       throw new ConflictException('Display target preparation is busy.');
@@ -228,6 +259,7 @@ export class AndroidAppsViewerNetworkService {
         key,
         controller.signal,
         purpose,
+        observedHost,
       ).finally(() => {
         this.pendingTargets.delete(key);
       }),
@@ -242,6 +274,10 @@ export class AndroidAppsViewerNetworkService {
     purpose?: AdbTargetPreparation,
   ) {
     const target = await this.prepareViewerTarget(app, signal, purpose);
+    return this.requireConnectedTarget(target);
+  }
+
+  private requireConnectedTarget(target: PreparedViewerTarget) {
     if (!target.viewerTarget.configured || !target.viewerTarget.connected) {
       throw new ConflictException(
         target.viewerTarget.message ?? 'Display target is unavailable.',
@@ -268,6 +304,7 @@ export class AndroidAppsViewerNetworkService {
     key: string,
     signal: AbortSignal,
     purpose: AdbTargetPreparation,
+    observedHost?: string,
   ) {
     const network = await this.ensureNetworkPrepared(app);
     signal.throwIfAborted();
@@ -275,13 +312,21 @@ export class AndroidAppsViewerNetworkService {
     const provisioned = this.provisionedTargets.get(app.id);
     if (purpose === 'interactive') this.provisionedTargets.delete(app.id);
     const connected = network.configured && network.connected;
-    const observed =
+    let observed: ObservedAdbTarget | null = null;
+    if (
       connected &&
       provisioned?.runtime === runtime &&
       provisioned.sidecarGeneration === generation &&
       provisioned.expiresAt > performance.now()
-        ? await this.observeProvisioningAdbTarget(app).catch(() => null)
-        : null;
+    ) {
+      observed =
+        observedHost === undefined
+          ? await this.observeProvisioningAdbTarget(app).catch(() => null)
+          : {
+              adbHost: observedHost,
+              containerStartedAt: app.containerStartedAt ?? null,
+            };
+    }
     if (
       observed?.containerStartedAt &&
       app.containerStartedAt !== undefined &&
@@ -296,7 +341,10 @@ export class AndroidAppsViewerNetworkService {
       observed.containerStartedAt === provisioned.containerStartedAt
         ? provisioned
         : undefined;
-    const adbHost = observed?.adbHost ?? (await this.resolveScrcpyAdbHost(app));
+    const adbHost =
+      observedHost ??
+      observed?.adbHost ??
+      (await this.resolveScrcpyAdbHost(app));
     signal.throwIfAborted();
     if (generation !== this.sidecar.adbTargetGeneration)
       throw new Error('Display sidecar changed during target preparation.');
@@ -327,7 +375,11 @@ export class AndroidAppsViewerNetworkService {
         runtime,
         target,
         generation,
-        expiresAt: performance.now() + targetReadinessTtlMs,
+        expiresAt:
+          performance.now() +
+          (observedHost === undefined
+            ? targetReadinessTtlMs
+            : observedTransportTtlMs),
       });
     }
     return target;
@@ -589,7 +641,7 @@ export class AndroidAppsViewerNetworkService {
       this.networkReleases.has(expected.id) ||
       !app.containerId ||
       app.status !== AndroidApplicationStatus.Running ||
-      runtimeFingerprint(app) !== runtimeFingerprint(expected)
+      runtimeIdentityKey(app) !== runtimeIdentityKey(expected)
     ) {
       throw new ViewerRuntimeChangedError();
     }

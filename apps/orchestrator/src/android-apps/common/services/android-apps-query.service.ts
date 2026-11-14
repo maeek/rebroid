@@ -52,10 +52,12 @@ export class AndroidAppsQueryService {
     return this.status.decorateApplication(app);
   }
 
+  listRunningApplications() {
+    return this.applications.findByStatus(AndroidApplicationStatus.Running);
+  }
+
   async findInactiveRunningApplications(now = new Date()) {
-    const running = await this.applications.findByStatus(
-      AndroidApplicationStatus.Running,
-    );
+    const running = await this.listRunningApplications();
 
     return running.filter((app) => {
       if (app.inactivityTimeoutSeconds < 0) {

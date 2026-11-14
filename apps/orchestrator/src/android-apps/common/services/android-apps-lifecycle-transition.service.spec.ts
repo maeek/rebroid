@@ -29,6 +29,7 @@ describe('open application admission', () => {
         database,
         { appendLifecycle: jest.fn() } as never,
         { isEnabled: quotaEnabled } as never,
+        { deleteIfStale: jest.fn() } as never,
       );
       const makeApp = (name: string, ownerUserId = 'owner') =>
         apps.create({
@@ -173,13 +174,41 @@ describe('AndroidAppsLifecycleTransitionService', () => {
       transaction: jest.fn(async (operation) => operation(manager)),
     };
     const logs = { appendLifecycle: jest.fn().mockResolvedValue(undefined) };
+    const snapshots = { deleteIfStale: jest.fn() };
     const service = new AndroidAppsLifecycleTransitionService(
       dataSource as never,
       logs as never,
       { isEnabled: () => true } as never,
+      snapshots as never,
     );
-    return { app, jobs, logs, service };
+    return { app, jobs, logs, service, snapshots };
   };
+
+  it('clears the snapshot once when Stop leaves the running state', async () => {
+    const { app, service, snapshots } = createService();
+    app.status = AndroidApplicationStatus.Running;
+    await service.cancelActiveJob(app.id, {
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
+    });
+    await service.markState(app.id, {
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+    });
+    expect(snapshots.deleteIfStale).toHaveBeenCalledTimes(1);
+    expect(snapshots.deleteIfStale).toHaveBeenCalledWith(app.id);
+  });
+
+  it('clears a snapshot when Remove reserves the application', async () => {
+    const { app, service, snapshots } = createService();
+    app.status = AndroidApplicationStatus.Running;
+    await service.beginJob(app.id, AndroidAppLifecycleJobKind.Remove, {
+      status: AndroidApplicationStatus.Removing,
+      lifecycleStage: AndroidApplicationLifecycleStage.Removing,
+    });
+    expect(snapshots.deleteIfStale).toHaveBeenCalledTimes(1);
+    expect(snapshots.deleteIfStale).toHaveBeenCalledWith(app.id);
+  });
 
   it('keeps one active lifecycle reservation per application', async () => {
     const { jobs, service } = createService();

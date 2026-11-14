@@ -14,6 +14,7 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
+import { runtimeIdentityKey } from '../../common/utils/android-runtime-identity';
 
 const SAMPLE_FRESHNESS_MS = 5_000;
 const COLLECTION_TIMEOUT_MS = 8_000;
@@ -29,19 +30,6 @@ const isRunning = (app: AndroidApplication) =>
   app.containerId !== null &&
   app.status === AndroidApplicationStatus.Running &&
   app.lifecycleStage !== AndroidApplicationLifecycleStage.Stopping;
-
-const runtimeKey = (app: AndroidApplication) =>
-  JSON.stringify([
-    app.id,
-    app.ownerUserId,
-    app.containerId,
-    app.lastStartedAt?.getTime(),
-    app.profileMode,
-    app.profileName,
-    app.containerName,
-    app.networkName,
-    app.adbPort,
-  ]);
 
 @Injectable()
 export class AndroidAppsRuntimeNotificationsService {
@@ -65,7 +53,7 @@ export class AndroidAppsRuntimeNotificationsService {
       this.samples.delete(id);
       return [];
     }
-    const runtime = runtimeKey(app);
+    const runtime = runtimeIdentityKey(app);
     const sample = this.samples.get(id);
     if (
       sample &&
@@ -118,7 +106,7 @@ export class AndroidAppsRuntimeNotificationsService {
     signal.throwIfAborted();
     if (
       this.tracker.isCancelled(stored.id) ||
-      runtimeKey(stored) !== runtime ||
+      runtimeIdentityKey(stored) !== runtime ||
       stored.status !== expected.status ||
       stored.lifecycleStage !== expected.lifecycleStage
     ) {
@@ -135,12 +123,12 @@ export class AndroidAppsRuntimeNotificationsService {
       );
     }
 
-    const verifiedRuntime = runtimeKey(app);
+    const verifiedRuntime = runtimeIdentityKey(app);
     // Reconciliation can record the first start of a recovered container.
     const recoveredFirstStart =
       outcome === 'updated' &&
       !expected.lastStartedAt &&
-      runtimeKey({ ...app, lastStartedAt: null }) === runtime;
+      runtimeIdentityKey({ ...app, lastStartedAt: null }) === runtime;
     if (verifiedRuntime !== runtime && !recoveredFirstStart) return [];
     if (!(await this.isCurrent(app.id, verifiedRuntime))) return [];
 
@@ -157,7 +145,7 @@ export class AndroidAppsRuntimeNotificationsService {
     return (
       !this.tracker.isCancelled(id) &&
       isRunning(app) &&
-      runtimeKey(app) === runtime
+      runtimeIdentityKey(app) === runtime
     );
   }
 

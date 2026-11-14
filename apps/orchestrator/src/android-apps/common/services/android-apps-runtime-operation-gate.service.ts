@@ -1,18 +1,24 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { isIPv4 } from 'node:net';
 import {
   DOCKER_CONTAINER_LIFECYCLE,
   type DockerContainerLifecyclePort,
 } from '../../../docker/contracts/docker-container-lifecycle.port';
+import type { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import type {
   AndroidAutomationApplication,
   AndroidAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
+import { runtimeIdentityKey } from '../utils/android-runtime-identity';
 import { AndroidAppsQueryService } from './android-apps-query.service';
+
+export class AndroidRuntimeNotRunningError extends ConflictException {}
 
 @Injectable()
 export class AndroidAppsRuntimeOperationGate {
   private readonly operations = new Map<string, Set<Promise<unknown>>>();
+  private readonly cancellations = new Map<string, Set<() => void>>();
   private readonly interrupting = new Set<string>();
 
   constructor(
@@ -38,10 +44,14 @@ export class AndroidAppsRuntimeOperationGate {
     });
   }
 
-  private async withCurrentRuntime<T>(
+  async withCurrentRuntime<T>(
     expected: AndroidAutomationApplication,
     signal: AbortSignal | undefined,
-    operation: (target: AndroidAutomationTarget) => Promise<T>,
+    operation: (
+      target: AndroidApplication & { containerStartedAt: string },
+      managedAdbHost: string | null,
+    ) => Promise<T>,
+    cancel?: () => void,
   ): Promise<T> {
     signal?.throwIfAborted();
     const id = expected.id;
@@ -57,34 +67,71 @@ export class AndroidAppsRuntimeOperationGate {
       if (
         this.interrupting.has(id) ||
         !current.containerId ||
-        !matchesRuntime(expected, current)
+        current.status !== AndroidApplicationStatus.Running ||
+        workflowRuntimeKey(expected) !== workflowRuntimeKey(current)
       ) {
         throw this.runtimeChanged();
       }
-      const container = await this.containers.inspectContainer(
-        current.containerId,
-      );
+      const observed = await this.observeContainer(current, signal);
       signal?.throwIfAborted();
-      const containerStartedAt = container.State?.StartedAt;
-      if (
-        this.interrupting.has(id) ||
-        container.Id !== current.containerId ||
-        !container.State?.Running ||
-        container.State.Restarting ||
-        !containerStartedAt
-      ) {
+      if (this.interrupting.has(id) || !observed) {
         throw this.runtimeChanged();
       }
-      return operation({ ...current, containerStartedAt });
+      if (!observed.running) {
+        throw new AndroidRuntimeNotRunningError(this.runtimeChanged().message);
+      }
+      const { containerStartedAt, managedAdbHost } = observed;
+      if (!containerStartedAt) {
+        throw this.runtimeChanged();
+      }
+      return operation({ ...current, containerStartedAt }, managedAdbHost);
     });
     active.add(pending);
     this.operations.set(id, active);
+    const cancellations = this.cancellations.get(id) ?? new Set();
+    if (cancel) {
+      cancellations.add(cancel);
+      this.cancellations.set(id, cancellations);
+    }
     try {
       return await pending;
     } finally {
       active.delete(pending);
       if (!active.size) this.operations.delete(id);
+      if (cancel) {
+        cancellations.delete(cancel);
+        if (!cancellations.size) this.cancellations.delete(id);
+      }
     }
+  }
+
+  async observeContainer(
+    app: Pick<AndroidApplication, 'id' | 'containerId' | 'networkName'>,
+    signal?: AbortSignal,
+  ) {
+    if (!app.containerId) return null;
+    const container = await this.containers.inspectContainer(
+      app.containerId,
+      signal ? { signal } : undefined,
+    );
+    if (container.Id !== app.containerId) return null;
+
+    const state = container.State;
+    const running = Boolean(state?.Running && !state.Restarting);
+    const labels = container.Config?.Labels;
+    const host =
+      container.NetworkSettings?.Networks?.[app.networkName]?.IPAddress;
+    const managedAdbHost =
+      running &&
+      !state?.Paused &&
+      labels?.['com.rebroid.managed'] === 'true' &&
+      labels['com.rebroid.application-id'] === app.id &&
+      labels['com.rebroid.component'] === 'runtime' &&
+      host &&
+      isIPv4(host)
+        ? host
+        : null;
+    return { running, containerStartedAt: state?.StartedAt, managedAdbHost };
   }
 
   async interrupt<T>(id: string, operation: () => Promise<T>): Promise<T> {
@@ -93,6 +140,7 @@ export class AndroidAppsRuntimeOperationGate {
     }
     this.interrupting.add(id);
     try {
+      for (const cancel of this.cancellations.get(id) ?? []) cancel();
       await Promise.allSettled(this.operations.get(id) ?? []);
       return await operation();
     } finally {
@@ -107,16 +155,5 @@ export class AndroidAppsRuntimeOperationGate {
   }
 }
 
-const matchesRuntime = (
-  expected: AndroidAutomationApplication,
-  current: AndroidAutomationApplication,
-) =>
-  current.status === AndroidApplicationStatus.Running &&
-  current.containerId === expected.containerId &&
-  current.ownerUserId === expected.ownerUserId &&
-  current.containerName === expected.containerName &&
-  current.networkName === expected.networkName &&
-  current.adbPort === expected.adbPort &&
-  current.profileMode === expected.profileMode &&
-  (current.profileName || 'default') === (expected.profileName || 'default') &&
-  current.lastStartedAt?.getTime() === expected.lastStartedAt?.getTime();
+const workflowRuntimeKey = (app: AndroidAutomationApplication) =>
+  runtimeIdentityKey(app, app.profileName || 'default');

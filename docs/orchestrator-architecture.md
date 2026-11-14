@@ -88,6 +88,28 @@ The web service records metadata cleanup before requesting app removal. A bounde
 deletion before removing icon and recent-app metadata and retries pending work after a restart.
 The owning lifecycle services and file-placement rules are listed in [AGENTS.md](../AGENTS.md).
 
+### Running application snapshots
+
+The orchestrator samples owned running apps once per minute through the display sidecar's ADB screenshot command. It
+reuses prepared ADB transport for up to five minutes when the verified container start time and address, policy
+revision, and observed sidecar generation still match. A failed transport request invalidates readiness for the next
+capture. Each capture verifies the Docker runtime again before publishing. The orchestrator
+keeps one thumbnail per app as a WebP with a maximum edge of 480 pixels. Files are private and stored under
+`runtime-snapshots` beside the orchestrator database. Refresh and cleanup check the previous file's metadata with a
+bounded header read. A completed capture atomically replaces the previous file, and a failed capture preserves the
+last valid thumbnail for the current runtime.
+Stop clears the thumbnail when the app leaves the running state. Remove and runtime reconciliation also clear stale
+thumbnails. Cleanup checks the current application state or the observed snapshot record before deleting, so a delayed
+cleanup preserves a newer capture. Reads verify the current Docker container and start time. A capture pass removes
+snapshots for runtimes that stopped or restarted outside Rebroid, along with temporary
+files left by an interrupted write. An existing thumbnail remains available after an orchestrator restart if the same
+Android runtime is still running.
+
+`GET /api/bff/applications/{id}/runtime/snapshot` returns the WebP data URL and capture time in the standard operation
+result. The web backend requires a current account with the screenshot permission. The orchestrator compares the
+account ID from the authenticated web service against the app owner. A missing thumbnail or ownership mismatch
+returns 404. Responses use `Cache-Control: private, no-store`.
+
 ### Android startup and attachment timing
 
 After guarded container startup and network policy installation complete, Android

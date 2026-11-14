@@ -3,6 +3,7 @@ import type { AndroidAppsTcpAdbService } from '../../common/services/android-app
 import type { DockerContainerLifecyclePort } from '../../../docker/contracts/docker-container-lifecycle.port';
 import type { DockerNetworkRuntimePort } from '../../../docker/contracts/docker-network-runtime.port';
 import type { DockerSidecarPort } from '../../../docker/contracts/docker-sidecar.port';
+import type { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
 import type { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import type { AndroidApplication } from '../../android-application.entity';
 import type { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
@@ -84,6 +85,7 @@ function setup(current = runtime) {
       .fn()
       .mockResolvedValue({ stdout: 'ready', stderr: '', exitCode: 0 }),
   };
+  const features = { assertEnabled: jest.fn() };
   const viewer = new AndroidAppsViewerNetworkService(
     networks as unknown as DockerNetworkRuntimePort,
     sidecar as unknown as DockerSidecarPort,
@@ -96,6 +98,7 @@ function setup(current = runtime) {
     queries as unknown as AndroidAppsQueryService,
     gate,
     lifecycle as unknown as DockerContainerLifecyclePort,
+    features as unknown as FeatureFlagsService,
   );
   return {
     viewer,
@@ -107,11 +110,122 @@ function setup(current = runtime) {
     networks,
     lifecycle,
     tcpAdb,
+    features,
   };
 }
 
 describe('shared viewer target preparation', () => {
   afterEach(() => jest.restoreAllMocks());
+
+  it('reuses the observed ADB transport across minute captures and revalidates after five minutes', async () => {
+    jest.useFakeTimers();
+    try {
+      const redroid = {
+        ...runtime,
+        containerImage: 'redroid/redroid:16.0.0-latest',
+      };
+      const { viewer, sidecar, networks, policy, tcpAdb } = setup(redroid);
+      const captureTarget = () =>
+        viewer.requireObservedAdbTransport(
+          { ...redroid, containerStartedAt },
+          adbHost,
+          new AbortController().signal,
+        );
+      const prepared = await captureTarget();
+      for (let minute = 1; minute < 5; minute += 1) {
+        jest.advanceTimersByTime(60_000);
+        await expect(captureTarget()).resolves.toBe(prepared);
+      }
+      expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
+      expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
+      expect(policy.refreshViewerPolicy).toHaveBeenCalledTimes(1);
+      expect(tcpAdb.prepare).toHaveBeenCalledTimes(1);
+      expect(networks.getContainerIpOnNetwork).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(60_000);
+      await expect(captureTarget()).resolves.not.toBe(prepared);
+      expect(sidecar.connectAdb).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('prepares the observed transport again when runtime, address, policy or sidecar changes', async () => {
+    const { viewer, sidecar, networks, policy, queries } = setup();
+    const signal = new AbortController().signal;
+    const target = { ...runtime, containerStartedAt };
+    const initial = await viewer.requireObservedAdbTransport(
+      target,
+      adbHost,
+      signal,
+    );
+    const restarted = {
+      ...target,
+      containerStartedAt: '2026-11-12T22:53:50.818Z',
+    };
+    await expect(
+      viewer.requireObservedAdbTransport(restarted, adbHost, signal),
+    ).resolves.not.toBe(initial);
+    const newHost = '172.18.0.3';
+    await expect(
+      viewer.requireObservedAdbTransport(restarted, newHost, signal),
+    ).resolves.toMatchObject({
+      udid: `${newHost}:${runtime.adbPort}`,
+    });
+
+    const updated = { ...restarted, networkPolicyRevision: 3 };
+    queries.getStored.mockResolvedValue(updated);
+    policy.refreshViewerPolicy.mockResolvedValueOnce({
+      status: 'failed',
+      message: 'policy unavailable',
+    });
+    await expect(
+      viewer.requireObservedAdbTransport(updated, newHost, signal),
+    ).rejects.toThrow('policy unavailable');
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(3);
+    const afterPolicyUpdate = await viewer.requireObservedAdbTransport(
+      updated,
+      newHost,
+      signal,
+    );
+    sidecar.adbTargetGeneration += 1;
+    await expect(
+      viewer.requireObservedAdbTransport(updated, newHost, signal),
+    ).resolves.not.toBe(afterPolicyUpdate);
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(5);
+    expect(networks.getContainerIpOnNetwork).not.toHaveBeenCalled();
+  });
+
+  it('reprepares the observed transport after a failed snapshot request', async () => {
+    const { viewer, sidecar, features } = setup();
+    const adb = new AndroidAppsSidecarAdbService(
+      new ConfigService({
+        app: { displaySidecar: { internalBaseUrl: 'http://sidecar.test' } },
+      }),
+      viewer,
+    );
+    const fetch = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        Response.json({ message: 'ADB unavailable' }, { status: 503 }),
+      )
+      .mockResolvedValueOnce(Response.json({ mimeType: 'image/png' }));
+    const snapshot = () =>
+      adb.captureSnapshotPng(
+        { ...runtime, containerStartedAt },
+        adbHost,
+        new AbortController().signal,
+        1024,
+      );
+    await expect(snapshot()).rejects.toThrow('ADB unavailable');
+    await expect(snapshot()).resolves.toEqual({ mimeType: 'image/png' });
+    expect(sidecar.connectAdb).toHaveBeenCalledTimes(2);
+    features.assertEnabled.mockImplementationOnce(() => {
+      throw new Error('feature.firewall is disabled.');
+    });
+    await expect(snapshot()).rejects.toThrow('feature.firewall is disabled.');
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 
   it('does not let transport-only readiness replace interactive preparation', async () => {
     const { viewer, sidecar } = setup();
@@ -168,9 +282,9 @@ describe('shared viewer target preparation', () => {
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
     expect(sidecar.connectAdb).toHaveBeenCalledWith(adbHost, runtime.adbPort);
     expect(networks.getContainerIpOnNetwork).not.toHaveBeenCalled();
-    expect(
-      policy.refreshViewerPolicy.mock.invocationCallOrder[1],
-    ).toBeLessThan(sidecar.connectAdb.mock.invocationCallOrder[0]!);
+    expect(policy.refreshViewerPolicy.mock.invocationCallOrder[1]).toBeLessThan(
+      sidecar.connectAdb.mock.invocationCallOrder[0]!,
+    );
   });
 
   it('rechecks ADB after a transport read invalidates a provisioning handoff', async () => {

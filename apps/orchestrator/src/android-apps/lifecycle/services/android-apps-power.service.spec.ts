@@ -68,6 +68,7 @@ describe('Android application power commands', () => {
         db,
         logs as never,
         { isEnabled: () => true } as never,
+        { deleteIfStale: jest.fn() } as never,
       );
       const tracker = new AndroidAppsProvisioningTrackerService();
       const cancel = tracker.cancel.bind(tracker);

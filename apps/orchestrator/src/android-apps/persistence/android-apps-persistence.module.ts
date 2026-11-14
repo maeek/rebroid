@@ -5,6 +5,7 @@ import { ANDROID_APPS_APK_REFERENCES } from '../contracts/android-apps-apk-refer
 import { ANDROID_APPS_RUNTIME_INVENTORY } from '../contracts/android-apps-runtime-inventory.port';
 import { AndroidAppLifecycleJob } from '../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidApplicationsRepository } from './android-applications.repository';
+import { AndroidAppRuntimeSnapshotsRepository } from './android-app-runtime-snapshots.repository';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { AndroidApplicationsRepository } from './android-applications.repository
   ],
   providers: [
     AndroidApplicationsRepository,
+    AndroidAppRuntimeSnapshotsRepository,
     {
       provide: ANDROID_APPS_APK_REFERENCES,
       useExisting: AndroidApplicationsRepository,
@@ -23,6 +25,7 @@ import { AndroidApplicationsRepository } from './android-applications.repository
   ],
   exports: [
     AndroidApplicationsRepository,
+    AndroidAppRuntimeSnapshotsRepository,
     ANDROID_APPS_APK_REFERENCES,
     ANDROID_APPS_RUNTIME_INVENTORY,
   ],

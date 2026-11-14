@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import type { BufferedUploadFile } from '../../../common/http-upload';
 import { CloneAndroidApplicationDto } from '../dto/clone-android-application.dto';
@@ -85,6 +89,31 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
       if (app?.containerId === containerId)
         await this.reconciler.reconcileOne(app);
     });
+  }
+
+  async withPlatformContainerTerminal(
+    applicationId: string,
+    containerId: string,
+    startedAt: string,
+    controller: AbortController,
+    operation: () => Promise<void>,
+  ) {
+    const app = await this.queries.getStored(applicationId);
+    await this.runtimeOperations.withCurrentRuntime(
+      app,
+      controller.signal,
+      async (current, managedAdbHost) => {
+        if (
+          current.containerId !== containerId ||
+          current.containerStartedAt !== startedAt ||
+          !managedAdbHost
+        ) {
+          throw new ConflictException('The managed Android runtime changed.');
+        }
+        await operation();
+      },
+      () => controller.abort(),
+    );
   }
 
   /** Provides the narrow Android runtime capabilities used by automations. */
