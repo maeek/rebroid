@@ -3,6 +3,7 @@ import { Notice } from '@/components/ui/notice'
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { RuntimeToolsPanel } from '@/features/applications/viewer/tools/runtime-tools-panel/runtime-tools-panel'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { AppResourceLayout } from './app-resource-layout'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { useApplicationViewerApp } from './application-viewer-context'
@@ -42,8 +43,12 @@ export const AppWorkspaceLayout = ({ toolId, children }: { toolId: RuntimeToolId
     >
       {isForeignOwnedApp ? (
         <Notice
-          title='Separate session required'
-          description='Runtime tools are only available in your own app session.'
+          title='Runtime tools are private'
+          description={
+            hasPermission(permissions, 'applications:create')
+              ? 'Use Copy to my apps to use runtime tools with a separate copy of this app.'
+              : 'Only the app owner can use these runtime tools.'
+          }
         />
       ) : (
         children

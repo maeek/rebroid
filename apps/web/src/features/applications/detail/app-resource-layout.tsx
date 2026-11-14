@@ -15,10 +15,10 @@ export const AppResourceLayout = ({
   children: ReactNode
   workspace?: boolean
 }) => (
-  <PageContent className={cn(workspace && 'pb-4 lg:h-full lg:min-h-0')}>
+  <PageContent className={cn(workspace && 'min-h-0 flex-1 pb-4 lg:h-full')}>
     <div className='shrink-0'>{heading}</div>
     <div className='shrink-0'>{navigation}</div>
-    {status ? <div className='shrink-0'>{status}</div> : null}
+    {status ? <div className='shrink-0 empty:hidden'>{status}</div> : null}
     {workspace ? <div className='flex min-h-0 flex-1 flex-col'>{children}</div> : children}
   </PageContent>
 )

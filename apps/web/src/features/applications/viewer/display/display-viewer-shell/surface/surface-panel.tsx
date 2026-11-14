@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconPictureInPicture, IconX } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
@@ -8,6 +8,7 @@ import { DisplayViewerFrame } from '@/features/applications/viewer/display/displ
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
+import { DisplayViewerVisibility } from '@/features/applications/viewer/display/display-viewer-visibility'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
 import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import { cn } from '@/lib/utils'
@@ -53,6 +54,8 @@ export const SurfacePanel = ({
     viewportSize,
     workspaceHeight
   } = useDisplayViewerSurface(surface)
+  const viewerVisible = useContext(DisplayViewerVisibility)
+  const active = viewerVisible && isActive
   const pinnedViewer = usePinnedViewer()
   const register = pinnedViewer?.register
   const unregister = pinnedViewer?.unregister
@@ -75,8 +78,8 @@ export const SurfacePanel = ({
       displaySize,
       canControl,
       canClipboard: canClipboard === true,
-      isActive,
-      keyboardCaptureEnabled,
+      isActive: active,
+      keyboardCaptureEnabled: viewerVisible && keyboardCaptureEnabled,
       onStreamMetrics: metrics => dockRef.current.onStreamMetrics(metrics),
       onStreamStatus: status => dockRef.current.onStreamStatus(status),
       onRetry: () => dockRef.current.onRetry(),
@@ -96,7 +99,8 @@ export const SurfacePanel = ({
     displaySize,
     canControl,
     canClipboard,
-    isActive,
+    active,
+    viewerVisible,
     keyboardCaptureEnabled,
     isRetrying,
     retryError
@@ -115,31 +119,17 @@ export const SurfacePanel = ({
       className='flex shrink-0 snap-center items-start gap-2'
     >
       <div
-        className='min-w-0'
+        className='flex min-w-0 flex-col gap-(--viewer-chrome-gap)'
         style={{ width: viewportSize.width }}
       >
-        <SurfaceChrome
-          isActive={isActive}
-          showName={showName}
-          actions={chromeActions}
-          surface={surface}
-          isClosing={isClosing}
-          isFullscreen={fullscreenSurface}
-          streamStatus={streamStatus}
-          onClose={onClose}
-          onOpenPopout={onOpenPopout}
-          onToggleFullscreen={() => {
-            if (!managed || !pinnedViewer?.requestFullscreen(applicationId)) onToggleFullscreen()
-          }}
-        />
         <div
           ref={element => {
             onViewportElement(element)
             if (managed && element) setViewport(element)
           }}
           className={cn(
-            'relative overflow-hidden rounded-b-lg border border-surface-border/70 bg-black',
-            fullscreenSurface && 'flex h-screen w-screen items-center justify-center rounded-none border-0'
+            'relative overflow-hidden bg-black',
+            fullscreenSurface ? 'flex h-screen w-screen items-center justify-center' : 'rounded-overlay'
           )}
           style={fullscreenSurface ? undefined : { height: viewportSize.height }}
         >
@@ -186,9 +176,9 @@ export const SurfacePanel = ({
                     key={`${surface.sessionId}:${frameGeneration}`}
                     src={surface.src}
                     keyboardCaptureEnabled={
-                      !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
+                      viewerVisible && !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
                     }
-                    isActive={!miniPlayer && !streamStatus?.blocking && isActive}
+                    isActive={!miniPlayer && !streamStatus?.blocking && active}
                     onStreamMetrics={onStreamMetrics}
                     onStreamStatus={onStreamStatus}
                     surfaceId={surface.id}
@@ -235,6 +225,19 @@ export const SurfacePanel = ({
             />
           </Visible>
         </div>
+        <SurfaceChrome
+          showName={showName}
+          actions={chromeActions}
+          surface={surface}
+          isClosing={isClosing}
+          isFullscreen={fullscreenSurface}
+          streamStatus={streamStatus}
+          onClose={onClose}
+          onOpenPopout={onOpenPopout}
+          onToggleFullscreen={() => {
+            if (!managed || !pinnedViewer?.requestFullscreen(applicationId)) onToggleFullscreen()
+          }}
+        />
       </div>
       {controlsEnabled ? (
         <div

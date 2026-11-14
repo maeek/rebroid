@@ -93,7 +93,12 @@ export const RuntimeToolsPanelLoading = ({ toolId }: { toolId: RuntimeToolId }) 
               onChange={noop}
               leadingControl={<Skeleton className='size-8 rounded-full' />}
               modelControl={<Skeleton className='h-8 w-32' />}
-              actions={<Skeleton className='size-9 rounded-full' />}
+              actions={
+                <div className='flex gap-2'>
+                  <span className='touch-control size-9' />
+                  <Skeleton className='touch-control size-9 rounded-full' />
+                </div>
+              }
             />
           </div>
         }

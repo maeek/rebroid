@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
+import { ViewerActionBar } from '@/features/applications/viewer/components/viewer-action-bar'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { cn } from '@/lib/utils'
 import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
@@ -53,7 +54,6 @@ const StreamStatusIndicator = ({ status }: { status: DisplayViewerStreamStatus }
 }
 
 export const SurfaceChrome = ({
-  isActive,
   showName,
   actions,
   isClosing,
@@ -64,7 +64,6 @@ export const SurfaceChrome = ({
   onOpenPopout,
   onToggleFullscreen
 }: {
-  isActive: boolean
   showName: boolean
   actions?: ReactNode
   isClosing: boolean
@@ -75,13 +74,7 @@ export const SurfaceChrome = ({
   onOpenPopout: () => void
   onToggleFullscreen: () => void
 }) => (
-  <div
-    className={cn(
-      'viewer-chrome flex h-[var(--viewer-chrome-height)] shrink-0 items-center justify-between gap-2 rounded-t-panel border border-b-0 border-surface-border/70 bg-surface-elevated/92 px-1.5 text-foreground shadow-panel backdrop-blur-md',
-      'w-full min-w-0 overflow-x-auto scrollbar-none',
-      isActive && 'bg-surface-band/80'
-    )}
-  >
+  <ViewerActionBar className='justify-between'>
     <div className='flex min-w-0 items-center gap-1.5 overflow-hidden'>
       {showName ? <span className='max-w-32 truncate text-xs font-medium'>{surface.name}</span> : null}
       <Visible when={Boolean(streamStatus)}>
@@ -112,5 +105,5 @@ export const SurfaceChrome = ({
         </IconActionButton>
       </Visible>
     </div>
-  </div>
+  </ViewerActionBar>
 )

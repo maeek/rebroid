@@ -1,4 +1,5 @@
 const surfaceChromeHeight = 32
+const surfaceChromeGap = 6
 export const workspacePadding = 16
 export const viewerControlRailWidth = 32
 const controlRailGap = 8
@@ -31,7 +32,7 @@ export const getDisplayViewportSize = ({
   const railSpace = controlsEnabled ? (workspaceSize.railWidth ?? viewerControlRailWidth) + controlRailGap : 0
   const availableWidth = workspaceSize.width ? Math.max(1, workspaceSize.width - workspacePadding - railSpace) : 320
   const availableHeight = workspaceSize.height
-    ? Math.max(1, workspaceSize.height - workspacePadding - surfaceChromeHeight)
+    ? Math.max(1, workspaceSize.height - workspacePadding - surfaceChromeHeight - surfaceChromeGap)
     : fallbackDisplayViewportHeight
   const fitted = fitAspectRatio(ratio, availableWidth, availableHeight)
   return { ...fitted, width: Math.min(availableWidth, Math.max(120, fitted.width)) }

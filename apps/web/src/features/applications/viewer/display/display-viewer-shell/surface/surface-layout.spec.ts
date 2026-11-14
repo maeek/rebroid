@@ -24,7 +24,7 @@ describe('display viewer surface layout', () => {
         workspaceSize: { width: 500, height: 800 },
         controlsEnabled: true
       })
-    ).toEqual({ width: 423, height: 752 })
+    ).toEqual({ width: 420, height: 746 })
   })
 
   it('fits short landscape browser windows', () => {
@@ -34,7 +34,7 @@ describe('display viewer surface layout', () => {
         workspaceSize: { width: 800, height: 224 },
         controlsEnabled: false
       })
-    ).toEqual({ width: 313, height: 176 })
+    ).toEqual({ width: 302, height: 170 })
   })
 
   it('reserves space for the wider touch control rail', () => {

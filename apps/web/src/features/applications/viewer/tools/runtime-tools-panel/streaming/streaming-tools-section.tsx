@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { IconActivityHeartbeat, IconGauge, IconNetwork } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -18,14 +19,11 @@ import { ToolSection } from '../tool-section'
 import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 
-const metricIsFresh = (metrics: DisplayViewerStreamMetrics | null | undefined) =>
-  Boolean(metrics && Date.now() - metrics.collectedAt < 5_000)
-
 const metricValue = (value: number | undefined, digits = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--'
 
 const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
-  if (!metrics || !metricIsFresh(metrics)) return null
+  if (!metrics) return null
 
   const isWebRtc = metrics.transport === 'webrtc'
   const networkDelay = isWebRtc ? metrics.roundTripTimeMs : metrics.relayQueueDepthMs
@@ -68,7 +66,7 @@ const DiagnosticValue = ({ label, value }: { label: string; value: string }) => 
 )
 
 const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
-  if (!metricIsFresh(metrics) || !metrics) {
+  if (!metrics) {
     return null
   }
 
@@ -82,8 +80,10 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
     sizeChangeDetails = `${previous} → ${current}${duration}`
   }
   return (
-    <details className='rounded-control border border-surface-border/70 bg-surface-band/20 px-3 py-2 text-xs'>
-      <summary className='cursor-pointer font-medium text-foreground'>Streaming diagnostics</summary>
+    <Disclosure className='rounded-control border border-surface-border/70 bg-surface-band/20 px-3 py-2 text-xs'>
+      <DisclosureSummary className='cursor-pointer font-medium text-foreground'>
+        Streaming diagnostics
+      </DisclosureSummary>
       <div className='mt-2 grid gap-x-6'>
         <DiagnosticValue
           label='Pipeline FPS'
@@ -210,7 +210,7 @@ const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetric
           ].join(', ')}
         />
       </div>
-    </details>
+    </Disclosure>
   )
 }
 

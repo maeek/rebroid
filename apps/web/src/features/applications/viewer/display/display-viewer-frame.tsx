@@ -92,7 +92,7 @@ export const DisplayViewerFrame = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const capturesKeyboard = isActive && keyboardCaptureEnabled && !compact
-  const minimizeShortcutEnabled = Boolean(onMinimizeShortcut && !capturesKeyboard && !compact)
+  const minimizeShortcutEnabled = Boolean(isActive && onMinimizeShortcut && !capturesKeyboard && !compact)
   const enabledRef = useRef(capturesKeyboard)
   const viewerOriginRef = useRef<string | null>(null)
   const pendingControls = useRef(new Map<string, (error?: string) => void>())
@@ -264,7 +264,7 @@ export const DisplayViewerFrame = ({
       ref={iframeRef}
       title='display viewer'
       src={src}
-      className='h-full w-full border-0 bg-black'
+      className='block h-full w-full border-0 bg-black'
       data-viewer-compact={compact ? '' : undefined}
       allow='fullscreen; clipboard-write; autoplay'
       onContextMenu={event => event.preventDefault()}

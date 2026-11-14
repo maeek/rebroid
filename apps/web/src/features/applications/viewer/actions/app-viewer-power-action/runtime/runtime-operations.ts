@@ -9,6 +9,7 @@ import {
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   RuntimeActionRunner,
@@ -64,10 +65,11 @@ export const stopAppRuntime = async ({
   }
 
   setActionPhase('stopping')
-  const stopped = await runAction(
-    async () => unwrapActionResult(await requestApplicationStopAction(app.id)),
-    'Could not stop app'
-  )
+  const stopped = await runAction(async () => {
+    const result = unwrapActionResult(await requestApplicationStopAction(app.id))
+    notifyRecentAppsUpdated()
+    return result
+  }, 'Could not stop app')
   setActionPhase(null)
   return stopped
 }
@@ -88,6 +90,7 @@ export const restartAppRuntime = async ({
   setActionPhase('restarting')
   const didSucceed = await runAction(async () => {
     unwrapActionResult(await requestApplicationStopAction(app.id))
+    notifyRecentAppsUpdated()
     unwrapActionResult(await requestApplicationStartAction(app.id))
   }, 'Could not restart app')
   setActionPhase(null)

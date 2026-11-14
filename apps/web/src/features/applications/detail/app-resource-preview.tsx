@@ -22,9 +22,8 @@ import { AppResourceHome } from './app-resource-home'
 import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
-import { ApplicationViewerContext } from './application-viewer-context'
+import { ApplicationViewerContext, type ViewerStreamSample } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 
 const previewDisplay = {
   applicationId: previewApp.id,
@@ -73,9 +72,7 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
   })
   const [app, setApp] = useState<AppDefinition | undefined>(previewApp)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(defaultOrchestratorUiSettings))
-  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<
-    Record<string, DisplayViewerStreamMetrics | undefined>
-  >({})
+  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
   const search = useSearchParams()
   const selected = search.get('view')
   const previewLiveViewer = search.get('viewer') === 'preview'
@@ -85,7 +82,7 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
     selected === 'configuration' || selected === 'files' || selected === 'workflows' || selected === 'network'
       ? selected
       : view
-  const breadcrumbView = showAgent ? 'ai-agent' : workspaceView
+  const layoutView = showAgent ? 'ai-agent' : workspaceView
   return (
     <QueryClientProvider client={queryClient}>
       <ApplicationViewerContext.Provider
@@ -116,13 +113,8 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
           }
         >
           <AppDeviceLayout
-            breadcrumbs={
-              <AppResourceBreadcrumbs
-                appId={previewApp.id}
-                appName={previewApp.name}
-                view={breadcrumbView}
-              />
-            }
+            view={layoutView}
+            breadcrumbs={<AppResourceBreadcrumbs appName={previewApp.name} />}
             viewer={
               previewLiveViewer ? (
                 <DisplayViewerProvider value={previewDisplay}>

@@ -138,7 +138,7 @@ const ViewerPlaceholderStatusIcon = ({
       toneClassName
     )}
   >
-    <Icon className={showSpinner || isStarting ? 'size-6 animate-spin' : 'size-6'} />
+    <Icon className={showSpinner || isStarting ? 'size-6 motion-safe:animate-spin' : 'size-6'} />
   </div>
 )
 
@@ -165,7 +165,7 @@ const ViewerPlaceholderStartButton = ({
     onClick={onStart}
     aria-label={`Start ${appName}`}
   >
-    {isStarting ? <IconLoader2 className='size-6 animate-spin' /> : <IconPlayerPlay className='size-6' />}
+    {isStarting ? <IconLoader2 className='size-6 motion-safe:animate-spin' /> : <IconPlayerPlay className='size-6' />}
   </Button>
 )
 

@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { IconLoader2, IconPictureInPicture } from '@tabler/icons-react'
 import { Visible } from '@/components/ui/visible'
+import { ViewerActionBar } from '@/features/applications/viewer/components/viewer-action-bar'
 import { DisplayViewerProvider } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { DisplayViewerShell } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-shell'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
@@ -12,7 +13,10 @@ import {
   getViewerStartupDeadline,
   redroidViewerRefreshIntervalMs
 } from '@/features/applications/viewer/display/display-viewer-startup'
-import { buildDisplayViewerSurfaces } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import {
+  buildDisplayViewerSurfaces,
+  type DisplayViewerSurface
+} from '@/features/applications/viewer/display/display-viewer-surfaces'
 import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import {
   getViewerFrameClassName,
@@ -20,10 +24,9 @@ import {
   getViewerFrameStyle
 } from '@/features/applications/viewer/player/android-viewer-layout'
 import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
-import { getToastErrorDescription } from '@/features/applications/viewer/utils/viewer-error-utils'
-import { cn } from '@/lib/utils'
 import { getScrcpySessionAction } from '@/server/orchestrator/applications/actions/runtime/viewer-actions'
-import { StateView } from '@/shared/ui/state-view'
+import { appResourceHref } from '@/shared/model/applications/app-resource-links'
+import { StateView, type StateViewAction } from '@/shared/ui/state-view'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
@@ -34,6 +37,17 @@ import type {
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
+
+type EmbeddedViewerError = {
+  description: string
+  requestId?: string
+  recovery: 'retry' | 'app' | 'apps'
+}
+
+const sessionUnavailable: EmbeddedViewerError = {
+  description: 'Rebroid could not start a display session.',
+  recovery: 'retry'
+}
 
 const useBrowserBaseUrl = () => {
   const [baseUrl, setBaseUrl] = useState('http://localhost')
@@ -60,10 +74,13 @@ const EmbeddedViewerFallback = ({
   app: AppDefinition
   loadingDescription: string
   streamingSettings?: ReactNode
-  error?: { description: string; detail?: string }
+  error?: EmbeddedViewerError
   onRetry: () => void
 }) => {
   const layout = getViewerFrameLayout(app, viewerOrientation(app))
+  let action: StateViewAction = { label: 'Try again', onClick: onRetry }
+  if (error?.recovery === 'app') action = { label: 'Open app', href: appResourceHref(app.id) }
+  if (error?.recovery === 'apps') action = { label: 'Back to apps', href: '/apps' }
 
   return (
     <div className='flex w-full items-center justify-center'>
@@ -71,23 +88,18 @@ const EmbeddedViewerFallback = ({
         data-viewer-frame
         role='region'
         aria-label='Android display'
-        className={cn(getViewerFrameClassName(false), 'flex-col')}
+        className={getViewerFrameClassName(false)}
         style={getViewerFrameStyle(layout, false)}
       >
-        {streamingSettings ? (
-          <div className='viewer-chrome flex h-[var(--viewer-chrome-height)] w-full shrink-0 items-center justify-end bg-surface-band px-1.5'>
-            {streamingSettings}
-          </div>
-        ) : null}
-        <div className='flex min-h-0 w-full flex-1 flex-col overflow-auto bg-surface-panel'>
+        <div className='flex min-h-0 w-full flex-1 flex-col overflow-auto rounded-overlay bg-surface-panel'>
           {error ? (
             <StateView
               kind='error'
               scope='grid'
               title='Viewer unavailable'
               description={error.description}
-              detail={error.detail}
-              actions={[{ label: 'Try again', onClick: onRetry }]}
+              requestId={error.requestId}
+              actions={[action]}
               className='my-auto shrink-0'
             />
           ) : (
@@ -104,6 +116,7 @@ const EmbeddedViewerFallback = ({
             />
           )}
         </div>
+        {streamingSettings ? <ViewerActionBar>{streamingSettings}</ViewerActionBar> : null}
       </div>
     </div>
   )
@@ -130,7 +143,7 @@ export const DisplayViewerEmbed = ({
   onViewerSettingsChange?: (settings: ViewerSettings) => void
   streamingSettings?: ReactNode
   clipboard?: ReactNode
-  onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
+  onStreamMetrics?: (surface: DisplayViewerSurface, metrics: DisplayViewerStreamMetrics) => void
   onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation, requestAt?: number) => void
 }) => {
@@ -145,7 +158,8 @@ export const DisplayViewerEmbed = ({
     requestAt: number
     value: ScrcpySession
   } | null>(restoredSession ?? null)
-  const [sessionError, setSessionError] = useState<string | null>(null)
+  const [failure, setFailure] = useState<{ runtime: string; error: EmbeddedViewerError } | null>(null)
+  const sessionError = failure?.runtime === runtime ? failure.error : null
   const [surfaceRefreshVersion, setSurfaceRefreshVersion] = useState(0)
   const [reload, setReload] = useState({ runtime: '', count: 0 })
   const currentSession = sessionRecord?.runtime === runtime ? sessionRecord : null
@@ -162,6 +176,7 @@ export const DisplayViewerEmbed = ({
   )
 
   useEffect(() => {
+    const setSessionError = (error: EmbeddedViewerError | null) => setFailure(error ? { runtime, error } : null)
     if (app.status !== 'running') {
       setSessionRecord(null)
       setSessionError(null)
@@ -196,7 +211,7 @@ export const DisplayViewerEmbed = ({
       if (deadline && Date.now() < deadline.getTime()) {
         void loadSession()
       } else {
-        setSessionError('The display service could not create a viewer session.')
+        setSessionError(sessionUnavailable)
       }
     }
 
@@ -210,7 +225,24 @@ export const DisplayViewerEmbed = ({
 
         if (!result.ok) {
           const retrying = result.error.code === 'upstream_unavailable' && scheduleStartupRetry()
-          setSessionError(retrying ? null : result.error.message)
+          const requestId = result.requestId === 'local' ? undefined : result.requestId
+          const code = result.error.code
+          if (retrying) setSessionError(null)
+          else if (code === 'forbidden' || code === 'not_found' || code === 'unauthenticated') {
+            setSessionError({
+              description: 'This display could not be opened with your account.',
+              recovery: 'apps',
+              requestId
+            })
+          } else if (code === 'conflict') {
+            setSessionError({
+              description: 'The app is not ready for viewing. Check its current status.',
+              recovery: 'app',
+              requestId
+            })
+          } else {
+            setSessionError({ ...sessionUnavailable, requestId })
+          }
           return
         }
 
@@ -222,17 +254,13 @@ export const DisplayViewerEmbed = ({
           nextSession.viewerError?.code !== 'adb_missing' &&
           nextSession.viewerError?.retryable !== false
         const ready = nextSession.displaySession?.viewerPath
-        setSessionError(
-          ready || (canRetry && scheduleStartupRetry())
-            ? null
-            : 'The display service could not create a viewer session.'
-        )
-      } catch (error) {
+        setSessionError(ready || (canRetry && scheduleStartupRetry()) ? null : sessionUnavailable)
+      } catch {
         if (!active) {
           return
         }
 
-        setSessionError(getToastErrorDescription(error))
+        setSessionError(sessionUnavailable)
       }
     }
 
@@ -272,11 +300,11 @@ export const DisplayViewerEmbed = ({
     !session.displaySession?.viewerPath ||
     surfaces.length === 0
   ) {
-    let error: { description: string; detail?: string } | undefined
+    let error = sessionError ?? undefined
     if (session && !session.viewerServiceConfigured) {
-      error = { description: 'The live display service is not ready.' }
-    } else if (sessionError) {
-      error = { description: 'The live display session could not be opened.', detail: sessionError }
+      error = { description: 'The live display service is not ready.', recovery: 'retry' }
+    } else if (session?.viewerError?.code === 'adb_missing') {
+      error = { description: 'This app image does not support live display access.', recovery: 'app' }
     }
 
     return (
@@ -287,7 +315,7 @@ export const DisplayViewerEmbed = ({
         error={error}
         onRetry={() => {
           setSessionRecord(null)
-          setSessionError(null)
+          setFailure(null)
           reloadSession()
         }}
       />
@@ -333,7 +361,12 @@ export const DisplayViewerEmbed = ({
               keyboardCaptureEnabled: enabled
             })
           },
-          onStreamMetrics,
+          onStreamMetrics: onStreamMetrics
+            ? (surfaceId, metrics) => {
+                const surface = surfaces.find(item => item.id === surfaceId)
+                if (surface) onStreamMetrics(surface, metrics)
+              }
+            : undefined,
           onStreamIssue,
           onFirstFrame: observation => {
             if (!currentSession || (observation && observation.connectAt < currentSession.requestAt)) return

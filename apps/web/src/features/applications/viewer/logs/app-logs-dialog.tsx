@@ -92,6 +92,7 @@ export const AppLogsDialog = ({
           </DialogDescription>
         </DialogHeader>
         <LogsConsole
+          followOutput={isLive}
           log={log}
           isRefreshing={isLoading}
           refreshDisabled={!app}

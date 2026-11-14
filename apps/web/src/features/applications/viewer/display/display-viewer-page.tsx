@@ -38,7 +38,9 @@ export async function DisplayViewerPage({
         title={state.title}
         description={state.description}
         detail={state.detail}
-        tone={state.tone}
+        appHref={state.appHref}
+        retry={state.retry}
+        requestId={state.requestId}
       />
     )
   }
@@ -106,7 +108,7 @@ const ViewerStartupSplash = ({
       title={title}
       description={description}
       detail={detail}
-      icon={<IconLoader2 className='size-10 animate-spin' />}
+      loading
     />
   </>
 )

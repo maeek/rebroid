@@ -77,16 +77,11 @@ describe('app resource navigation', () => {
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Workflows' })).toBeNull()
   })
-  it('uses section labels in breadcrumbs instead of Manage', () => {
-    render(
-      <AppResourceBreadcrumbs
-        appId='app-1'
-        appName='Example'
-        view='profiles'
-      />
-    )
-    expect(screen.getByRole('link', { name: 'Configuration' })).toHaveAttribute('href', '/app/app-1?view=configuration')
-    expect(screen.getByText('Profiles')).toBeVisible()
-    expect(screen.queryByText('Manage')).toBeNull()
+  it('links to Apps and ends the breadcrumb at the current app', () => {
+    render(<AppResourceBreadcrumbs appName='Example' />)
+    expect(screen.getByRole('link', { name: 'Apps' })).toHaveAttribute('href', '/apps')
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByText('Example', { selector: '[aria-current="page"] *' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Example' })).toBeNull()
   })
 })

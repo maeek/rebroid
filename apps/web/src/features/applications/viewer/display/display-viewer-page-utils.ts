@@ -8,8 +8,6 @@ import {
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
 
-export const viewerUnavailableDetail = 'Refresh the viewer or restart the app, then try again.'
-
 export type ViewerErrorDetails = {
   code: 'sidecar_unavailable' | 'adb_missing' | 'adb_unreachable' | 'unknown'
   message: string
@@ -141,8 +139,7 @@ export const describeViewerIssue = ({
     return {
       kind: 'fatal' as const,
       title: 'Viewer could not reach the app',
-      description: 'The live Android display could not connect to this app.',
-      detail: viewerUnavailableDetail
+      description: 'The live Android display could not connect to this app.'
     }
   }
 

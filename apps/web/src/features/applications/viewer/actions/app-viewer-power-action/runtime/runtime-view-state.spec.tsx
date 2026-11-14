@@ -54,7 +54,6 @@ describe('runtime power action state helpers', () => {
 
     expect(actions.map(action => [action.key, action.disabled])).toEqual([
       ['start-defaults', false],
-      ['start-profile', true],
       ['stop', true],
       ['restart', true],
       ['recreate', false]

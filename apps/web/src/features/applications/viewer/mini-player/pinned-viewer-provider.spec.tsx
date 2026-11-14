@@ -120,6 +120,63 @@ it('keeps the same iframe through minimize, expand, collapse, navigation and ret
   expect(iframe).not.toHaveAttribute('data-viewer-compact')
 })
 
+it('restores the resized expanded size after collapse while keeping the same stream frame', () => {
+  vi.mocked(useDesktopViewport).mockReturnValue(true)
+  const original = { width: window.innerWidth, height: window.innerHeight }
+  const resizeWindow = (width: number, height: number) => {
+    window.innerWidth = width
+    window.innerHeight = height
+    fireEvent.resize(window)
+  }
+  try {
+    resizeWindow(1440, 1000)
+    render(<Console />)
+    const iframe = screen.getByTitle<HTMLIFrameElement>('display viewer')
+    const frameWindow = iframe.contentWindow
+    const frameSrc = iframe.getAttribute('src')
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize player' }))
+    const player = screen.getByRole('region', { name: 'Android app mini-player' })
+    const expand = () => fireEvent.click(within(player).getByRole('button', { name: 'Expand mini-player' }))
+    const collapse = () => fireEvent.click(within(player).getByRole('button', { name: 'Collapse mini-player' }))
+    expand()
+    const initialWidth = Number.parseFloat(player.style.width)
+    const rect = vi.spyOn(player, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, initialWidth, 0))
+    try {
+      fireEvent.keyDown(within(player).getByRole('button', { name: 'Resize mini-player' }), { key: 'ArrowRight' })
+    } finally {
+      rect.mockRestore()
+    }
+    const assertExpandedSize = (width: number) => {
+      const header = within(player).getByRole('group', { name: 'Mini-player controls' })
+      const videoHeight = Number.parseFloat(player.style.height) - Number.parseFloat(header.style.height) - 6
+      expect(Number.parseFloat(player.style.width)).toBeCloseTo(width)
+      expect(width / videoHeight).toBeCloseTo(displaySize.width / displaySize.height)
+      expect(screen.getByTitle('display viewer')).toBe(iframe)
+      expect(iframe.contentWindow).toBe(frameWindow)
+      expect(iframe).toHaveAttribute('src', frameSrc)
+    }
+    const customWidth = initialWidth + 24
+    assertExpandedSize(customWidth)
+
+    collapse()
+    expect(Number.parseFloat(player.style.width)).toBeLessThan(customWidth)
+    expect(iframe).toHaveAttribute('data-viewer-compact')
+    expand()
+    assertExpandedSize(customWidth)
+
+    collapse()
+    resizeWindow(1100, 400)
+    expand()
+    const constrainedWidth = Number.parseFloat(player.style.width)
+    expect(constrainedWidth).toBeLessThan(customWidth)
+    assertExpandedSize(constrainedWidth)
+    resizeWindow(1440, 1000)
+    assertExpandedSize(customWidth)
+  } finally {
+    resizeWindow(original.width, original.height)
+  }
+})
+
 it('minimizes with i outside text fields only when keyboard capture is off', () => {
   vi.mocked(useDesktopViewport).mockReturnValue(true)
   const view = render(<Console captures />)
@@ -154,7 +211,8 @@ it.each(['webrtc', 'websocket'] as const)(
       const height = Number.parseFloat(card.style.height)
       const header = within(card).getByRole('group', { name: 'Mini-player controls' })
       const headerHeight = Number.parseFloat(header.style.height)
-      expect(width / (height - headerHeight)).toBeCloseTo(ratio)
+      expect(card).toHaveStyle({ rowGap: '6px' })
+      expect(width / (height - headerHeight - 6)).toBeCloseTo(ratio)
       // This fixture is docked bottom-right; its 36px toolbar plus 8px gap faces left.
       expect(x - 44).toBeGreaterThanOrEqual(24 - 1e-8)
       expect(x + width).toBeLessThanOrEqual(window.innerWidth - 24 + 1e-8)

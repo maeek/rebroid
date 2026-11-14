@@ -8,14 +8,17 @@ export type ObservedStreamIssue = {
   observedAt: number
 }
 
-export const ViewerStreamIssue = ({ issue }: { issue: ObservedStreamIssue }) => {
+export const ViewerStreamIssue = ({ issue, displayName }: { issue: ObservedStreamIssue; displayName?: string }) => {
   const { status, observedAt, surfaceId } = issue
   let transport = 'Unknown'
   if (status.transport === 'webrtc') transport = 'WebRTC'
   if (status.transport === 'websocket') transport = 'WebSocket'
   const fields: DetailField[] = [
     { label: 'Transport', value: transport },
-    { label: 'Display', value: surfaceId === 'main' ? 'Main display' : 'Virtual display' },
+    {
+      label: 'Display',
+      value: displayName ?? (surfaceId === 'main' ? 'Main display' : `Virtual display (${surfaceId})`)
+    },
     { label: 'Observed at', value: new Date(observedAt).toLocaleString() },
     { label: 'Stage', value: (status.failureStage ?? status.code).replaceAll('-', ' ') }
   ]

@@ -24,6 +24,7 @@ export const AppLogsContent = ({ app, className, outputClassName }: AppLogsConte
       log={log}
       loading={false}
       isLoading={isLoading}
+      followOutput={isLive}
       refreshDisabled={!app}
       onRefresh={isLive ? undefined : () => void loadLogs()}
       className={className}
@@ -64,6 +65,7 @@ const AppLogsLayout = ({
   log,
   loading,
   isLoading = false,
+  followOutput = false,
   refreshDisabled = false,
   onRefresh,
   className,
@@ -73,6 +75,7 @@ const AppLogsLayout = ({
   log?: { collectedAt: string; output: string }
   loading: boolean
   isLoading?: boolean
+  followOutput?: boolean
   refreshDisabled?: boolean
   onRefresh?: () => void
 }) => {
@@ -81,6 +84,7 @@ const AppLogsLayout = ({
       loading={loading}
       log={log}
       isRefreshing={isLoading}
+      followOutput={followOutput}
       refreshDisabled={refreshDisabled}
       onRefresh={onRefresh}
       emptyMessage='No log output yet.'

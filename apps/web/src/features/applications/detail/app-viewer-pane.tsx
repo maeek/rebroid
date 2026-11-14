@@ -46,6 +46,7 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
   const [isStarting, startTransition] = useTransition()
   const runtimeAvailable = app.status === 'running'
   const useDisplayWorkspace = canAttach && runtimeAvailable
+  const canCopyApp = isForeignOwnedApp && hasPermission(permissions, 'applications:create')
 
   useEffect(() => {
     const display = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
@@ -99,10 +100,10 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
             onStreamIssue={(surfaceId, status) =>
               setStreamIssue({ appId: app.id, runtimeId: app.containerId, surfaceId, status, observedAt: Date.now() })
             }
-            onStreamMetrics={(surfaceId, metrics) =>
+            onStreamMetrics={(surface, metrics) =>
               setViewerStreamMetrics(current => ({
                 ...current,
-                [surfaceId]: metrics
+                [surface.id]: { sessionId: surface.sessionId, runtimeId: app.containerId, metrics }
               }))
             }
           />
@@ -119,8 +120,12 @@ export const AppViewerPane = ({ placement = 'side' }: { placement?: 'side' | 'to
                 <StateView
                   kind='unavailable'
                   scope='grid'
-                  title='Separate session required'
-                  description='This app belongs to another user. Open it as your own copy to start a private viewer session.'
+                  title='Live display is private'
+                  description={
+                    canCopyApp
+                      ? 'Use Copy to my apps to create a separate app with its own live display.'
+                      : 'Only the app owner can open this live display.'
+                  }
                   icon={<IconShieldLock />}
                   className='px-3 py-2'
                 />

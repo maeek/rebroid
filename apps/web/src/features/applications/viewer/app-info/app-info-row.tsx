@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { IconCopy } from '@tabler/icons-react'
+import { CopyButton } from '@/components/ui/copy-button'
+import { RowActions } from '@/components/ui/row-actions'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +12,11 @@ type AppInfoRowProps = {
 }
 
 export const AppInfoRow = ({ label, value, copyValue, valueClassName }: AppInfoRowProps) => {
-  const handleCopy = () => {
-    if (!copyValue) {
-      return
-    }
-
-    void navigator.clipboard.writeText(copyValue)
-  }
-
   return (
-    <div className='group flex flex-col gap-2 border-b border-surface-border/50 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6'>
+    <div
+      data-row-actions-scope
+      className='group flex flex-col gap-2 border-b border-surface-border/50 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between sm:gap-6'
+    >
       <div className='shrink-0 text-xs font-medium uppercase tracking-wide text-foreground-muted sm:w-36'>{label}</div>
       <div
         className={cn(
@@ -29,13 +25,14 @@ export const AppInfoRow = ({ label, value, copyValue, valueClassName }: AppInfoR
         )}
       >
         <Visible when={copyValue}>
-          <button
-            type='button'
-            className='mt-0.5 shrink-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 hover:text-primary'
-            onClick={handleCopy}
-          >
-            <IconCopy className='size-4' />
-          </button>
+          <RowActions>
+            <CopyButton
+              iconOnly
+              value={copyValue ?? ''}
+              aria-label={`Copy ${label}`}
+              className='mt-0.5 size-4'
+            />
+          </RowActions>
         </Visible>
         <div className='min-w-0 break-all'>{value}</div>
       </div>

@@ -43,11 +43,17 @@ type ApplicationViewerContextValue = {
   isForeignOwnedApp: boolean
   permissions: PermissionMap
   setApp: Dispatch<SetStateAction<AppDefinition | undefined>>
-  setViewerStreamMetrics: Dispatch<SetStateAction<Record<string, DisplayViewerStreamMetrics | undefined>>>
+  setViewerStreamMetrics: Dispatch<SetStateAction<Record<string, ViewerStreamSample | undefined>>>
   setViewerSettings: Dispatch<SetStateAction<ViewerSettings>>
-  viewerStreamMetrics: Record<string, DisplayViewerStreamMetrics | undefined>
+  viewerStreamMetrics: Record<string, ViewerStreamSample | undefined>
   viewerSettings: ViewerSettings
   viewerSettingsHydrated?: boolean
+}
+
+export type ViewerStreamSample = {
+  sessionId: string
+  runtimeId: string | null
+  metrics: DisplayViewerStreamMetrics
 }
 
 export const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)
@@ -82,9 +88,7 @@ export const ApplicationViewerProvider = ({
 }) => {
   const [currentApp, setCurrentApp] = useState(app)
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(initialSettings))
-  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<
-    Record<string, DisplayViewerStreamMetrics | undefined>
-  >({})
+  const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
   const [viewerSettingsHydrated, setViewerSettingsHydrated] = useState(false)
   const {
     firstFrameAt: startupFirstFrameAt,
@@ -107,7 +111,7 @@ export const ApplicationViewerProvider = ({
 
   useEffect(() => {
     setViewerStreamMetrics({})
-  }, [app?.id])
+  }, [currentApp?.id, currentApp?.containerId])
 
   useEffect(() => {
     const hasStoredSettings = window.localStorage.getItem(viewerSettingsStorageKey) !== null

@@ -43,23 +43,22 @@ const statusPlaceholders: Partial<Record<AppDefinition['status'], ViewerPlacehol
     showProgress: app => app.lifecycleStage === 'image_pulling'
   },
   removing: {
-    title: 'Preparing app',
-    description: 'Preparing the Android environment and viewer connection.',
+    title: 'Removing app',
+    description: 'The display closes while the app is being removed.',
     toneClassName: 'text-primary',
     Icon: IconLoader2,
-    showSpinner: true,
-    showProgress: app => app.lifecycleStage === 'image_pulling'
+    showSpinner: true
   },
   stopped: {
     title: 'App is stopped',
-    description: 'Start the app to open the live viewer.',
+    description: 'The live display is available once the app is running.',
     toneClassName: 'text-foreground-muted',
     Icon: IconPlayerPlay
   }
 }
 
 const unloadedPlaceholder: ViewerPlaceholder = {
-  title: 'Viewer unavailable',
+  title: 'Loading app',
   description: 'App details are still loading.',
   toneClassName: 'text-foreground-muted',
   Icon: IconPlayerPlay,

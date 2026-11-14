@@ -1,44 +1,53 @@
-import type { ReactNode } from 'react'
-import { IconAlertTriangle, IconDeviceDesktop } from '@tabler/icons-react'
-import { StateView } from '@/shared/ui/state-view'
+'use client'
+
+import { useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import { StateView, type StateViewAction } from '@/shared/ui/state-view'
 
 export const ViewerSplash = ({
   title,
   description,
   detail,
-  tone = 'default',
-  icon
+  appHref,
+  retry = false,
+  requestId,
+  loading = false
 }: {
   title: string
   description: string
-  detail?: string | null
-  tone?: 'default' | 'danger'
-  icon?: ReactNode
-}) => (
-  <main className='flex min-h-screen items-center justify-center overflow-hidden bg-black p-6'>
-    <div className='relative flex min-h-[70vh] w-full max-w-2xl flex-col items-center justify-center gap-5 text-center'>
-      <div className='relative h-44 w-32 rounded-[2rem] border border-surface-border/80 bg-black shadow-emphasis'>
-        <div className='absolute left-1/2 top-3 h-1 w-9 -translate-x-1/2 rounded-full bg-slate-500/80' />
-        <div className='absolute inset-x-5 bottom-10 top-9 flex items-center justify-center overflow-hidden rounded-feature border border-surface-border/60 bg-slate-950'>
-          <IconDeviceDesktop
-            className='size-14 text-primary drop-shadow-[0_0_14px_hsl(var(--primary)/0.55)]'
-            stroke={1.75}
-          />
-        </div>
-        <div className='absolute bottom-5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-primary/70 shadow-[0_0_18px_hsl(var(--primary))]' />
-      </div>
+  detail?: string
+  appHref?: string
+  retry?: boolean
+  requestId?: string
+  loading?: boolean
+}) => {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const actions: StateViewAction[] = []
+  if (retry) {
+    actions.push({
+      label: 'Try again',
+      variant: 'primary',
+      pending,
+      pendingLabel: 'Retrying…',
+      onClick: () => startTransition(() => router.refresh())
+    })
+  }
+  if (!loading) {
+    actions.push(appHref ? { label: 'Open app', href: appHref } : { label: 'Back to apps', href: '/apps' })
+  }
+
+  return (
+    <main className='flex min-h-screen items-center justify-center bg-background p-6 text-foreground'>
       <StateView
-        kind={tone === 'danger' ? 'error' : 'unavailable'}
+        kind={loading ? 'loading' : 'unavailable'}
         scope='immersive'
         title={title}
         description={description}
         detail={detail}
-        icon={
-          icon ??
-          (tone === 'danger' ? <IconAlertTriangle className='size-10' /> : <IconDeviceDesktop className='size-10' />)
-        }
-        className='min-h-0 w-full'
+        requestId={requestId}
+        actions={actions}
       />
-    </div>
-  </main>
-)
+    </main>
+  )
+}

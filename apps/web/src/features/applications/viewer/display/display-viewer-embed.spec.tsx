@@ -32,6 +32,26 @@ const sessionWithoutDisplay: ScrcpySession = {
 
 const unavailable = actionError({ code: 'upstream_unavailable', message: 'Sidecar unreachable' })
 
+it('shows a safe account recovery action without exposing the grant error', async () => {
+  vi.mocked(getScrcpySessionAction).mockResolvedValueOnce(
+    actionError({ code: 'forbidden', message: 'Private ownership detail' }, 'display-request')
+  )
+  render(
+    <DisplayViewerEmbed
+      app={{ ...previewApp, status: 'running' }}
+      viewerSettings={defaultViewerSettings}
+      canControlViewer={false}
+      canCaptureScreenshot={false}
+    />
+  )
+
+  const error = within(await screen.findByRole('alert'))
+  expect(error.getByRole('link', { name: 'Back to apps' })).toHaveAttribute('href', '/apps')
+  expect(error.getByText('Reference: display-request')).toBeVisible()
+  expect(error.queryByText('Private ownership detail')).toBeNull()
+  expect(error.queryByRole('button', { name: 'Try again' })).toBeNull()
+})
+
 it('opens the embedded display session once when an initially hidden tab becomes visible', async () => {
   const openSession = vi.mocked(getScrcpySessionAction)
   openSession.mockReset().mockResolvedValue(actionOk(sessionWithoutDisplay))
@@ -89,7 +109,7 @@ it('keeps the device frame and settings when a session is unavailable and can re
   fireEvent.click(display.getByRole('button', { name: 'Try again' }))
   expect(display.getByText('Starting live display')).toBeVisible()
   expect(openSession).toHaveBeenNthCalledWith(2, previewApp.id)
-  expect(await display.findByText('Sidecar unreachable')).toBeVisible()
+  expect(await display.findByText('Rebroid could not start a display session.')).toBeVisible()
 })
 
 it('retries after a long boot and stops when the same runtime’s Ready deadline is reached', async () => {
@@ -119,7 +139,7 @@ it('retries after a long boot and stops when the same runtime’s Ready deadline
     expect(openSession).toHaveBeenCalledTimes(2)
     await act(() => vi.advanceTimersByTimeAsync(12_000))
     expect(openSession).toHaveBeenCalledTimes(2)
-    expect(screen.getByText('Sidecar unreachable')).toBeVisible()
+    expect(screen.getByText('Rebroid could not start a display session.')).toBeVisible()
     unmount()
   } finally {
     openSession.mockReset()
@@ -165,7 +185,7 @@ it('surfaces a permanent session failure during the startup window', async () =>
       />
     )
     await act(() => vi.advanceTimersByTimeAsync(0))
-    expect(screen.getByText('Viewer access was revoked.')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Back to apps' })).toBeVisible()
     await act(() => vi.advanceTimersByTimeAsync(9_000))
     expect(openSession).toHaveBeenCalledTimes(1)
     unmount()

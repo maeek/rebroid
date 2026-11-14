@@ -10,6 +10,7 @@ import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
+import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -161,22 +162,27 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
 }
 
 const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
-  const failedStep = run.stepResults.find(step => step.status === 'failed')
+  const failureIndex = run.stepResults.findIndex(step => step.status === 'failed')
+  const failedStep = run.stepResults[failureIndex]
   const authorizationFailure = workflowAuthorizationFailure(run.failureCode)
   const profile = run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
   return (
     <>
       {run.status === 'failed' ? (
         <Notice
-          title={
-            authorizationFailure?.title ?? (failedStep ? `Step ${failedStep.stepId} failed` : 'Workflow run failed')
-          }
+          title={authorizationFailure?.title ?? 'Workflow run failed'}
           description={
             authorizationFailure?.description ??
-            workflowRunFailureMessage(run.error ?? failedStep?.error, run.startedAt)
+            workflowRunFailureMessage(failedStep?.error ?? run.error, run.startedAt)
           }
           tone='danger'
-        />
+        >
+          {failedStep ? (
+            <p>
+              Failed step {failureIndex + 1} · {workflowRunStepLabel(failedStep.uses)}
+            </p>
+          ) : null}
+        </Notice>
       ) : null}
       <WorkflowRunSummaryPanel
         compact
@@ -184,6 +190,9 @@ const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
           { label: 'Run ID', value: run.id, copyValue: run.id, code: true },
           ...(run.failureRequestId
             ? [{ label: 'Request ID', value: run.failureRequestId, copyValue: run.failureRequestId, code: true }]
+            : []),
+          ...(failedStep
+            ? [{ label: 'Failed step ID', value: failedStep.stepId, copyValue: failedStep.stepId, code: true }]
             : []),
           {
             label: 'Created',

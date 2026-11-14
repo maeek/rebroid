@@ -93,6 +93,8 @@ export const useDisplayViewerContext = () => {
   return context
 }
 
+export const useStreamingDiagnosticSurfaces = () => useContext(DisplayViewerContext)?.orderedSurfaces
+
 export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
   const {
     activeSurface,

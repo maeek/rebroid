@@ -17,13 +17,13 @@ export const AppViewerOpenAsMeAction = ({ app }: AppViewerOpenAsMeActionProps) =
       variant='primary'
       disabled={!app}
       pending={isCloning}
-      pendingLabel='Opening…'
+      pendingLabel='Copying app…'
       onClick={() => {
         if (app) void openAppAsMe(app.id)
       }}
     >
       <IconCopy className='size-4' />
-      Open as me
+      Copy to my apps
     </MutationButton>
   )
 }

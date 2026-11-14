@@ -1,29 +1,13 @@
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { StateTransition } from '@/components/ui/state-transition'
-import { StatusBadge, type StatusBadgeTone } from '@/components/ui/status-badge'
-import { Visible } from '@/components/ui/visible'
+import { StatusBadge } from '@/components/ui/status-badge'
 import { cn } from '@/lib/utils'
+import { getAppStatusLabel, getAppStatusTone } from '@/shared/model/applications/app-status-label'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 import { AppIconSkeleton } from '@/shared/ui/app-icon/app-icon-skeleton'
 import { PageHeadingRow } from '@/shared/ui/page/page-heading-row'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-
-const appStatusBadgeTone = (status?: AppDefinition['status']): StatusBadgeTone => {
-  if (status === 'error') {
-    return 'danger'
-  }
-
-  if (status === 'provisioning' || status === 'removing') {
-    return 'warning'
-  }
-
-  if (status === 'running') {
-    return 'success'
-  }
-
-  return 'neutral'
-}
 
 export const AppViewerHeading = ({
   app,
@@ -38,6 +22,7 @@ export const AppViewerHeading = ({
   showStatusBadge?: boolean
   loading?: boolean
 }) => {
+  const statusLabel = app ? getAppStatusLabel(app.status, app.lifecycleStage) : undefined
   return (
     <PageHeadingRow
       actions={children}
@@ -57,19 +42,19 @@ export const AppViewerHeading = ({
           {loading ? <Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' /> : app?.name || '<App Name>'}
         </h1>
         {loading && showStatusBadge ? <Skeleton className='h-5 w-16 shrink-0' /> : null}
-        <Visible when={showStatusBadge && app && !loading}>
+        {showStatusBadge && app && !loading ? (
           <StatusBadge
-            tone={appStatusBadgeTone(app?.status)}
-            className='shrink-0 capitalize'
+            tone={getAppStatusTone(app.status, statusLabel)}
+            className='max-w-[45%] shrink-0 whitespace-normal'
           >
             <StateTransition
-              identity={app?.id}
-              state={app?.status ?? 'unknown'}
+              identity={app.id}
+              state={statusLabel ?? app.status}
             >
-              {app?.status}
+              {statusLabel}
             </StateTransition>
           </StatusBadge>
-        </Visible>
+        ) : null}
       </div>
     </PageHeadingRow>
   )

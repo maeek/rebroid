@@ -44,7 +44,7 @@ export const AppViewerActions = ({
       <Visible when={isForeignOwnedApp && hasPermission(permissions, 'applications:create')}>
         <AppViewerOpenAsMeAction app={app} />
       </Visible>
-      <Visible when={canUseRuntime && (canStart || canStop)}>
+      <Visible when={canUseRuntime && (app?.running ? canStop : canStart)}>
         <AppViewerPowerAction />
       </Visible>
       <Visible when={canDelete}>

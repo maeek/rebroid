@@ -9,7 +9,8 @@ export const useMiniPlayerResize = (
   toolbarSpace: number,
   viewport: MiniPlayerSize & { rem: number }
 ) => {
-  const [width, setWidth] = useState<number>()
+  // This preference belongs to the player, whose lifetime spans compact and expanded mode.
+  const [preferredExpandedWidth, setPreferredExpandedWidth] = useState<number>()
   const gesture = useRef<{
     id: number
     x: number
@@ -23,7 +24,7 @@ export const useMiniPlayerResize = (
       viewport,
       ratio,
       expanded: true,
-      preferredWidth: Math.max(160, next),
+      preferredWidth: Math.max(96, next),
       toolbarSpace,
       rem: viewport.rem
     }).width
@@ -47,7 +48,7 @@ export const useMiniPlayerResize = (
     gesture.current = null
   }
   return {
-    width,
+    preferredExpandedWidth,
     start,
     handle: {
       onPointerMove: (event: PointerEvent<HTMLButtonElement>) => {
@@ -55,7 +56,7 @@ export const useMiniPlayerResize = (
         if (!active || active.id !== event.pointerId) return
         const dx = (event.clientX - active.x) * active.directionX
         const dy = (event.clientY - active.y) * active.directionY * ratio
-        setWidth(limit(active.width + (Math.abs(dx) > Math.abs(dy) ? dx : dy)))
+        setPreferredExpandedWidth(limit(active.width + (Math.abs(dx) > Math.abs(dy) ? dx : dy)))
       },
       onPointerUp: finish,
       onPointerCancel: finish,
@@ -64,7 +65,7 @@ export const useMiniPlayerResize = (
         if (!['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft'].includes(event.key)) return
         event.preventDefault()
         const direction = event.key === 'ArrowUp' || event.key === 'ArrowRight' ? 1 : -1
-        setWidth(limit((player.current?.getBoundingClientRect().width ?? 240) + direction * 24))
+        setPreferredExpandedWidth(limit((player.current?.getBoundingClientRect().width ?? 240) + direction * 24))
       }
     }
   }

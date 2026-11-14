@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { IconClipboard } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { CopyButton } from '@/components/ui/copy-button'
 import {
   Dialog,
   DialogContent,
@@ -24,19 +25,13 @@ import {
 
 export const ViewerClipboard = ({ appId }: { appId: string }) => {
   const [text, setText] = useState('')
-  const [operation, setOperation] = useState<'read' | 'send' | 'copy'>('read')
+  const [operation, setOperation] = useState<'read' | 'send'>('read')
   const [pending, startTransition] = useTransition()
 
   const run = (next: typeof operation) => {
     setOperation(next)
     startTransition(async () => {
       try {
-        if (next === 'copy') {
-          await navigator.clipboard.writeText(text)
-          toast({ title: 'Copied to browser clipboard', variant: 'success' })
-          return
-        }
-
         const result =
           next === 'read'
             ? await getApplicationClipboardAction(appId)
@@ -92,15 +87,13 @@ export const ViewerClipboard = ({ appId }: { appId: string }) => {
           >
             Read from device
           </MutationButton>
-          <MutationButton
+          <CopyButton
+            size='md'
             variant='secondary'
+            value={text}
+            label='Copy text'
             disabled={pending || !text}
-            pending={pending && operation === 'copy'}
-            pendingLabel='Copying…'
-            onClick={() => run('copy')}
-          >
-            Copy text
-          </MutationButton>
+          />
           <MutationButton
             disabled={pending}
             pending={pending && operation === 'send'}

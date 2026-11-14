@@ -2,23 +2,37 @@ import { useState, type Dispatch, type SetStateAction } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { useStreamingDiagnosticSurfaces } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { defaultViewerSettings, type ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
+import type { ViewerStreamSample } from './application-viewer-context'
 import type { ObservedStreamIssue } from './viewer-stream-issue'
+import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 
 vi.mock('./application-viewer-context', () => ({ useApplicationViewerApp: vi.fn() }))
+vi.mock('@/features/applications/viewer/display/display-viewer-shell/display-viewer-context', () => ({
+  useStreamingDiagnosticSurfaces: vi.fn()
+}))
 vi.mock('@/shared/model/features/feature-flags-context', () => ({
   useFeatureFlags: () => ({ isFeatureEnabled: () => true })
 }))
 
-const openSettings = (streamIssue?: ObservedStreamIssue) => {
+const renderSettings = (
+  streamIssue?: ObservedStreamIssue,
+  status = 'running',
+  samples: Record<string, ViewerStreamSample> = {},
+  surfaces?: DisplayViewerSurface[]
+) => {
   const apply = vi.fn<Dispatch<SetStateAction<ViewerSettings>>>()
+  vi.mocked(useStreamingDiagnosticSurfaces).mockReturnValue(surfaces)
   vi.mocked(useApplicationViewerApp).mockImplementation(() => {
     const [viewerSettings, setViewerSettings] = useState(defaultViewerSettings)
     return {
+      app: { status, containerId: 'runtime' },
       viewerSettings,
-      viewerStreamMetrics: {},
+      viewerStreamMetrics: samples,
       setViewerSettings: next => {
         apply(next)
         setViewerSettings(next)
@@ -30,6 +44,11 @@ const openSettings = (streamIssue?: ObservedStreamIssue) => {
       <AppViewerStreamingSettings streamIssue={streamIssue} />
     </TooltipProvider>
   )
+  return { apply }
+}
+
+const openSettings = (streamIssue?: ObservedStreamIssue) => {
+  const { apply } = renderSettings(streamIssue)
   fireEvent.click(screen.getByRole('button', { name: 'Streaming settings' }))
   return apply
 }
@@ -41,6 +60,14 @@ const advance = (ms: number) => {
 }
 
 afterEach(() => vi.useRealTimers())
+
+it.each(['stopped', 'error', 'running'])('shows the settings label only while the app is inactive (%s)', status => {
+  renderSettings(undefined, status)
+  const trigger = screen.getByRole('button', { name: 'Streaming settings' })
+  expect(trigger).toHaveTextContent(status === 'running' ? /^$/ : /^Streaming settings$/)
+  fireEvent.click(trigger)
+  expect(screen.getByRole('dialog', { name: 'Streaming settings' })).toBeVisible()
+})
 
 it('applies only the final bitrate across slider and numeric input changes', () => {
   vi.useFakeTimers()
@@ -131,4 +158,63 @@ it('shows the WebRTC attempt ID even if the peer never produced a frame', () => 
   expect(screen.getByText('WebRTC control channel closed.')).toBeVisible()
   expect(screen.getByText('attempt-123')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Copy Attempt ID' })).toBeInTheDocument()
+})
+
+it('defaults to the display with the issue and tracks first, fresh, and stale samples independently', () => {
+  vi.useFakeTimers()
+  const now = Date.now()
+  const sample: DisplayViewerStreamMetrics = {
+    version: 4,
+    transport: 'websocket',
+    renderer: 'chromium-webcodecs',
+    presentedFps: 42,
+    effectiveProfile: {
+      transport: 'websocket',
+      codec: 'h264',
+      maxSize: 0,
+      maxFps: 60,
+      bitrate: 1000,
+      iFrameInterval: 1,
+      audio: false
+    },
+    collectedAt: now
+  }
+  const display = (id: string, name: string, kind: DisplayViewerSurface['kind']): DisplayViewerSurface => ({
+    id,
+    surfaceId: id,
+    sessionId: id,
+    name,
+    kind,
+    src: '/',
+    popoutUrl: '/',
+    displaySize: { width: 1080, height: 720 }
+  })
+  renderSettings(
+    {
+      surfaceId: 'virtual',
+      observedAt: now,
+      status: { code: 'video-stalled', severity: 'warning', blocking: false, message: 'Virtual display stalled.' }
+    },
+    'running',
+    {
+      main: { sessionId: 'main', runtimeId: 'runtime', metrics: sample },
+      virtual: { sessionId: 'closed-session', runtimeId: 'runtime', metrics: { ...sample, presentedFps: 7 } }
+    },
+    [display('main', 'Main display', 'main'), display('virtual', 'Inspection display', 'virtual')]
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Streaming settings' }))
+  const selector = screen.getByRole('combobox', { name: 'Metrics display' })
+  expect(selector).toHaveTextContent('Inspection display')
+  expect(screen.getByText('Collecting the first sample for this display…')).toBeVisible()
+  expect(screen.queryByText('Presented FPS')).toBeNull()
+  fireEvent.click(selector)
+  const main = screen.getByRole('option', { name: 'Main display' })
+  fireEvent.pointerDown(main, { pointerType: 'mouse' })
+  fireEvent.click(main)
+  expect(selector).toHaveTextContent('Main display')
+  expect(screen.getByText('Sample taken')).toBeVisible()
+  expect(screen.getByText('42')).toBeVisible()
+  advance(5001)
+  expect(screen.getByText('Stale sample from')).toBeVisible()
+  expect(screen.getByText('42')).toBeVisible()
 })

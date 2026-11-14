@@ -6,6 +6,7 @@ export type MiniPlayerToolbarSide = 'left' | 'right'
 
 export const miniPlayerViewportInset = 24
 const miniPlayerHeaderHeightRem = 1.75
+const miniPlayerHeaderGap = 6
 export const miniPlayerToolbarWidth = 36
 export const miniPlayerToolbarGap = 8
 export const miniPlayerToolbarSpace = miniPlayerToolbarWidth + miniPlayerToolbarGap
@@ -28,7 +29,8 @@ export const fitMiniPlayer = ({
 }) => {
   const availableWidth = Math.max(0, viewport.width - miniPlayerViewportInset * 2 - toolbarSpace)
   const headerHeight = miniPlayerHeaderHeightRem * rem
-  const availableHeight = Math.max(0, viewport.height - miniPlayerViewportInset * 2 - headerHeight)
+  const headerGap = miniPlayerHeaderGap
+  const availableHeight = Math.max(0, viewport.height - miniPlayerViewportInset * 2 - headerHeight - headerGap)
   let heightLimit = Math.min(viewport.height * 0.36, 18 * rem)
   if (expanded) heightLimit = preferredWidth === undefined ? Math.min(viewport.height * 0.6, 30 * rem) : availableHeight
   const width = Math.min(
@@ -37,7 +39,7 @@ export const fitMiniPlayer = ({
     Math.min(heightLimit, availableHeight) * ratio
   )
   const videoHeight = width / ratio
-  return { width, height: headerHeight + videoHeight, headerHeight, videoHeight }
+  return { width, height: headerHeight + headerGap + videoHeight, headerHeight, headerGap, videoHeight }
 }
 
 export const getMiniPlayerBounds = (

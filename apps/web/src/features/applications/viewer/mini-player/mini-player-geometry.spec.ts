@@ -28,7 +28,7 @@ it.each<MiniPlayerEdge>(['left', 'right', 'top', 'bottom'])(
             expect(layout.y).toBeGreaterThanOrEqual(24 - 1e-8)
             expect(layout.y + size.height).toBeLessThanOrEqual(viewport.height - 24 + 1e-8)
             expect(size.width / size.videoHeight).toBeCloseTo(ratio)
-            expect(size.height - size.videoHeight).toBeCloseTo(28)
+            expect(size.height - size.videoHeight).toBeCloseTo(34)
           }
         }
       }
@@ -54,7 +54,7 @@ it('reclamps an active drag after a viewport shrink or Android rotation', () => 
       expect(layout.x).toBeGreaterThanOrEqual(layout.bounds.minX)
       expect(layout.x).toBeLessThanOrEqual(layout.bounds.maxX)
       expect(layout.y).toBeGreaterThanOrEqual(24)
-      expect(layout.y + size.height).toBeLessThanOrEqual(viewport.height - 24)
+      expect(layout.y + size.height).toBeLessThanOrEqual(viewport.height - 24 + 1e-8)
     }
   }
 })

@@ -36,9 +36,9 @@ const noop = () => undefined
 const DeviceSkeleton = () => (
   <AppViewerPaneLayout placement='top'>
     <div className='flex h-[var(--app-viewer-height)] w-full items-start justify-center gap-2 overflow-hidden p-2'>
-      <div className='w-full max-w-[calc((var(--app-viewer-height)-var(--viewer-chrome-height)-1rem)*0.47)] overflow-hidden rounded-panel'>
-        <Skeleton className='h-[var(--viewer-chrome-height)] w-full rounded-none' />
-        <Skeleton className='aspect-[0.47] w-full rounded-none' />
+      <div className='flex w-full max-w-[calc((var(--app-viewer-height)-var(--viewer-chrome-height)-var(--viewer-chrome-gap)-1rem)*0.47)] flex-col gap-(--viewer-chrome-gap)'>
+        <Skeleton className='aspect-[0.47] w-full rounded-overlay' />
+        <Skeleton className='h-[var(--viewer-chrome-height)] w-full' />
       </div>
       <div className='grid shrink-0 gap-1.5'>
         {Array.from({ length: 10 }, (_, index) => (
@@ -56,12 +56,13 @@ const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceV
   const configuration = view === 'configuration'
   return (
     <AppDeviceLayout
-      breadcrumbs={<AppResourceBreadcrumbs view={view} />}
+      view={view}
+      breadcrumbs={<AppResourceBreadcrumbs />}
       viewer={<DeviceSkeleton />}
       contained={view === 'ai-agent'}
       loading
     >
-      <StandardPage className={view === 'ai-agent' ? 'lg:h-full lg:min-h-0' : undefined}>
+      <StandardPage className={view === 'ai-agent' ? 'min-h-0 flex-1 lg:h-full' : undefined}>
         <AppResourceLayout
           workspace={view === 'ai-agent'}
           heading={
@@ -154,7 +155,8 @@ export const AppManagePageSkeleton = () => {
 
 export const AppProfilesPageSkeleton = () => (
   <AppDeviceLayout
-    breadcrumbs={<AppResourceBreadcrumbs view='profiles' />}
+    view='profiles'
+    breadcrumbs={<AppResourceBreadcrumbs />}
     viewer={<DeviceSkeleton />}
     loading
   >

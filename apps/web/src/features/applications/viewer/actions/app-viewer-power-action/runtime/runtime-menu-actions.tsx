@@ -33,40 +33,48 @@ export const createRuntimeMenuActions = ({
   onStop: () => void
   onRestart: () => void
   onRecreate: () => void
-}): RuntimeMenuAction[] => [
-  {
-    key: 'start-defaults',
-    label: 'Start with defaults',
-    icon: <IconPlayerPlayFilled className='size-4' />,
-    disabled: !canStartDefaults(app, canStart),
-    onSelect: onStartDefaults
-  },
-  {
-    key: 'start-profile',
-    label: 'Start with profile',
-    icon: <IconPlayerPlayFilled className='size-4' />,
-    disabled: !canStartProfile(app, canStart, canSwitchProfile),
-    onSelect: onStartProfile
-  },
-  {
-    key: 'stop',
-    label: 'Stop',
-    icon: <IconPlayerStopFilled className='size-4' />,
-    disabled: !canStopRuntime(app, canStop),
-    onSelect: onStop
-  },
-  {
-    key: 'restart',
-    label: 'Restart',
-    icon: <IconRestore className='size-4' />,
-    disabled: !canRestartRuntime(app, canRestart),
-    onSelect: onRestart
-  },
-  {
-    key: 'recreate',
-    label: 'Recreate runtime…',
-    icon: <IconReplace className='size-4' />,
-    disabled: !canRecreateRuntime(app, canRestart),
-    onSelect: onRecreate
-  }
-]
+}): RuntimeMenuAction[] => {
+  const actions: RuntimeMenuAction[] = [
+    {
+      key: 'start-defaults',
+      label: 'Start with defaults',
+      icon: <IconPlayerPlayFilled className='size-4' />,
+      disabled: !canStartDefaults(app, canStart),
+      onSelect: onStartDefaults
+    },
+    {
+      key: 'start-profile',
+      label: 'Start with profile',
+      icon: <IconPlayerPlayFilled className='size-4' />,
+      disabled: !canStartProfile(app, canStart, canSwitchProfile),
+      onSelect: onStartProfile
+    },
+    {
+      key: 'stop',
+      label: 'Stop',
+      icon: <IconPlayerStopFilled className='size-4' />,
+      disabled: !canStopRuntime(app, canStop),
+      onSelect: onStop
+    },
+    {
+      key: 'restart',
+      label: 'Restart',
+      icon: <IconRestore className='size-4' />,
+      disabled: !canRestartRuntime(app, canRestart),
+      onSelect: onRestart
+    },
+    {
+      key: 'recreate',
+      label: 'Recreate runtime…',
+      icon: <IconReplace className='size-4' />,
+      disabled: !canRecreateRuntime(app, canRestart),
+      onSelect: onRecreate
+    }
+  ]
+  return actions.filter(({ key }) => {
+    if (key === 'start-defaults') return canStart
+    if (key === 'start-profile') return canStart && canSwitchProfile
+    if (key === 'stop') return canStop
+    return canRestart
+  })
+}

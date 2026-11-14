@@ -75,11 +75,28 @@ describe('AppResourceHome', () => {
     setup()
     render(<AppResourceHome view='overview' />)
     expect(screen.getByText('Startup failed')).toBeTruthy()
-    expect(screen.getByText('Configuration saved; runtime update pending')).toBeTruthy()
+    expect(screen.getByText('Runtime update pending')).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Diagnostics' })).toBeNull()
     expect(screen.queryByText('Inspect boot output.')).toBeNull()
     expect(screen.getAllByText('Runtime default')).toHaveLength(2)
     expect(screen.queryByRole('link', { name: 'Open viewer' })).toBeNull()
+  })
+  it('leaves a steady lifecycle state in the heading without repeating it in a notice', () => {
+    vi.mocked(useApplicationViewerApp).mockReturnValue({
+      app: {
+        ...app,
+        status: 'running',
+        running: true,
+        lifecycleStage: 'ready',
+        statusDetail: { ...app.statusDetail, title: 'Running', description: 'Android is ready.' },
+        recreateContainerOnNextStart: false
+      },
+      permissions: {},
+      isForeignOwnedApp: false
+    } as ReturnType<typeof useApplicationViewerApp>)
+    render(<AppResourceHome view='overview' />)
+    expect(screen.getByText('Running', { exact: true })).toBeVisible()
+    expect(screen.queryByText('Android is ready.')).toBeNull()
   })
   it('offers a direct failure investigation path for permitted users', () => {
     setup({ 'applications:view-logs': true, 'applications:view-backend-details': true })

@@ -14,7 +14,7 @@ export interface RuntimeToolDefinition {
 }
 export const runtimeInlineSectionClassName = 'rounded-none border-0 bg-transparent p-0 shadow-none backdrop-blur-none'
 export const runtimeToolPanelClassName = (toolId: RuntimeToolId | null) =>
-  toolId === 'ai-agent' ? 'flex h-[36rem] flex-col overflow-hidden lg:h-full' : 'overflow-auto'
+  toolId === 'ai-agent' ? 'flex min-h-40 flex-1 flex-col overflow-hidden lg:h-full' : 'overflow-auto'
 
 export const getRuntimeTools = ({
   permissions,

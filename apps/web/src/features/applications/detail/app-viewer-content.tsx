@@ -4,8 +4,8 @@ import { AppViewerActions } from '@/features/applications/viewer/actions/app-vie
 import { AppInfo } from '@/features/applications/viewer/app-info/app-info'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
-import { PageBreadcrumbs } from '@/shared/ui/page/page-breadcrumbs'
 import { PageContent } from '@/shared/ui/page/page-layout'
+import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppViewerStatusSection } from './app-viewer-status-section'
 import { useApplicationViewerApp } from './application-viewer-context'
 
@@ -15,11 +15,14 @@ export const AppViewerContent = () => {
   return (
     <PageContent className='pr-2'>
       <div className='flex w-full flex-col gap-6'>
-        <PageBreadcrumbs
-          className='mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) items-center pt-0'
-          items={[{ label: 'Apps', href: '/apps' }, { label: app.name, href: `/app/${app.id}` }, { label: 'Details' }]}
+        <AppResourceBreadcrumbs
+          className='mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) items-center'
+          appName={app.name}
         />
-        <AppViewerHeading app={app}>
+        <AppViewerHeading
+          app={app}
+          showStatusBadge
+        >
           <AppViewerActions mode='details' />
         </AppViewerHeading>
         <Visible when={isForeignOwnedApp}>

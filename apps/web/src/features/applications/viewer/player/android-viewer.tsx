@@ -3,6 +3,7 @@
 import { useMemo, useRef } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { Visible } from '@/components/ui/visible'
+import { ViewerActionBar } from '@/features/applications/viewer/components/viewer-action-bar'
 import {
   getViewerFrameClassName,
   getViewerFrameLayout,
@@ -16,6 +17,7 @@ import {
   useViewerControlRelay
 } from '@/features/applications/viewer/player/android-viewer-relay-hooks'
 import { ViewerPlaceholderScreen } from '@/features/applications/viewer/player/viewer-placeholder-screen'
+import { cn } from '@/lib/utils'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 
@@ -47,7 +49,7 @@ const ViewerIframe = ({
     ref={viewerFrameRef}
     src={src}
     key={src}
-    className='h-full w-full border-0 bg-black'
+    className='block h-full w-full border-0 bg-black'
     allow='fullscreen; clipboard-write; autoplay'
     onContextMenu={event => event.preventDefault()}
     onLoad={() => postKeyboardCaptureState(viewerFrameRef.current?.contentWindow, keyboardCaptureEnabled)}
@@ -84,31 +86,29 @@ export const AppViewer = ({
       onContextMenu={event => event.preventDefault()}
       style={getViewerFrameStyle(layout, fullscreen)}
     >
-      {chrome ? (
-        <div className='viewer-chrome absolute inset-x-0 top-0 z-10 flex h-[var(--viewer-chrome-height)] items-center justify-end bg-surface-band px-1.5'>
-          {chrome}
-        </div>
-      ) : null}
-      <Visible when={viewerSrc}>
-        <ViewerIframe
-          src={viewerSrc ?? ''}
-          viewerFrameRef={viewerFrameRef}
-          keyboardCaptureEnabled={keyboardCaptureEnabled}
-        />
-      </Visible>
-      <Visible when={!viewerSrc && !unavailableContent}>
-        <ViewerPlaceholderScreen
-          app={app}
-          canStart={canStart}
-          isStarting={isStarting}
-          onStart={onStart}
-        />
-      </Visible>
-      {unavailableContent ? (
-        <div className='absolute inset-x-0 bottom-0 top-(--viewer-chrome-height) flex items-center-safe overflow-y-auto bg-background'>
-          {unavailableContent}
-        </div>
-      ) : null}
+      <div className={cn('relative min-h-0 flex-1 overflow-hidden bg-black', !fullscreen && 'rounded-overlay')}>
+        <Visible when={viewerSrc}>
+          <ViewerIframe
+            src={viewerSrc ?? ''}
+            viewerFrameRef={viewerFrameRef}
+            keyboardCaptureEnabled={keyboardCaptureEnabled}
+          />
+        </Visible>
+        <Visible when={!viewerSrc && !unavailableContent}>
+          <ViewerPlaceholderScreen
+            app={app}
+            canStart={canStart}
+            isStarting={isStarting}
+            onStart={onStart}
+          />
+        </Visible>
+        {unavailableContent ? (
+          <div className='absolute inset-0 flex items-center-safe overflow-y-auto bg-background'>
+            {unavailableContent}
+          </div>
+        ) : null}
+      </div>
+      {chrome ? <ViewerActionBar>{chrome}</ViewerActionBar> : null}
     </div>
   )
 }

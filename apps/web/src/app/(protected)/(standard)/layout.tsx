@@ -4,6 +4,7 @@ import { PinnedViewerProvider } from '@/features/applications/viewer/mini-player
 import { ProtectedShell } from '@/features/shell/components/protected-shell'
 import { getCurrentUser } from '@/server/auth/authorization'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
+import { hasPermission } from '@/shared/permissions/permissions'
 
 export default async function FilesLayout({ children }: { children: React.ReactNode }) {
   const [user, requestCookies] = await Promise.all([getCurrentUser(), cookies()])
@@ -13,7 +14,13 @@ export default async function FilesLayout({ children }: { children: React.ReactN
     <TooltipProvider>
       <PinnedViewerProvider>
         <ProtectedShell
-          user={{ name: user.name, avatarDataUrl: user.avatarDataUrl, isPlatformAdmin: user.isPlatformAdmin }}
+          user={{
+            name: user.name,
+            avatarDataUrl: user.avatarDataUrl,
+            isPlatformAdmin: user.isPlatformAdmin,
+            canCreateApp: hasPermission(user.effectivePermissions, 'applications:create'),
+            canManageWorkflows: hasPermission(user.effectivePermissions, 'automations:manage')
+          }}
           initialSidebarCollapsed={initialSidebarCollapsed}
         >
           {children}
