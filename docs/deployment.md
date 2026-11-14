@@ -100,6 +100,9 @@ The edge validates hosts and overwrites forwarded host, protocol, and client-add
 it does not implicitly trust a proxy's claimed client address.
 
 Viewer assets, WebSocket media, and WebRTC signaling go directly from nginx to the display sidecar.
+The container terminal uses the same HTTPS origin and a separate
+`/terminal/docker/containers/` WebSocket route to the orchestrator. Forward upgrades
+on that route when running another proxy in front of nginx.
 The sidecar needs private access to the web backend for viewer authorization. Compose sets
 `WEB_INTERNAL_URL` to `http://web:3101`. A standalone sidecar needs the corresponding web URL
 and the shared service secret. Use the same HTTPS origin for the web console and the browser viewer.

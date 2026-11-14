@@ -8,6 +8,7 @@ import {
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
 import { actionOk, unwrapActionResult } from '@/shared/actions/action-result'
+import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
 import {
   canRunBulkContainerAction,
   shouldStopContainerInBulkAction,
@@ -20,11 +21,11 @@ type PendingContainerAction = { type: 'stop' | 'remove'; container: PlatformCont
 
 export const useRuntimeContainerActions = ({
   selectedContainers,
-  clearSelection,
+  deselectItems,
   refresh
 }: {
   selectedContainers: PlatformContainer[]
-  clearSelection: () => void
+  deselectItems: (ids: ReadonlySet<string>) => void
   refresh: () => void
 }) => {
   const [pendingAction, setPendingAction] = useState<PendingContainerAction>(null)
@@ -57,11 +58,11 @@ export const useRuntimeContainerActions = ({
   }
 
   const runBulkAction = async (type: ContainerBulkActionType) => {
-    if (!canRunBulkContainerAction(selectedContainers)) return
+    if (busyId || !canRunBulkContainerAction(selectedContainers)) return
 
     setBusyId('bulk')
     try {
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         selectedContainers.map(async container => {
           if (type === 'stop' && shouldStopContainerInBulkAction(container)) {
             return stopPlatformContainerAction(container.id)
@@ -72,7 +73,7 @@ export const useRuntimeContainerActions = ({
           return actionOk(undefined)
         })
       )
-      clearSelection()
+      deselectItems(successfulBulkIds(selectedContainers, results))
       setPendingBulkAction(null)
       refresh()
       toast(summarizeContainerBulkActionResults(results, type))

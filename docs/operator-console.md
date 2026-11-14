@@ -78,6 +78,17 @@ Rebroid replaces the app container and its network and starts it with the active
 profiles and app settings are kept. Changes stored only in the old container are lost.
 Recreate requires ownership and permission to start and stop the app.
 
+## Container terminal
+
+Under **Docker → Containers**, open a running managed Android container and select **Terminal**.
+Use **Container user** to enter a name or UID, optionally followed by a group such as
+`1000:1000`. A blank field uses the container's configured user. Select **Connect**
+to start a new shell. **Disconnect** ends it.
+
+The built-in Administrators group grants `docker:open-terminal`. Shells close on
+account-session revocation, runtime changes, five minutes without input, or after
+30 minutes. A shell in a privileged ReDroid container can access host resources.
+
 ## Outbound network access
 
 Use the app's **Network** tab to change where Android can connect. **Approved destinations only**
@@ -138,7 +149,7 @@ changes, grant the specific capability in that step.
 The visual AI step editor preserves YAML settings, including conversation context and model IDs.
 Open the AI step to change its agent mode or read-only shell escalation policy.
 
-An action can use an earlier step's output through the field's **Source** selector or a
+An action can use an earlier step's output through the field's **Use step output** button or a
 `$ref` in YAML. The input and output must have the same scalar type. A branch can use earlier
 steps in its own scope and the outputs of its enclosing condition or switch. If a selected
 output is missing at runtime, the receiving step fails before dispatch.
@@ -202,22 +213,31 @@ time, keeping the latest completed build for each target image. The task leaves 
 
 ## Platform overview
 
-The administrator overview prioritizes app failures, current lifecycle operations, active workflow
-runs, and capacity. The Apps needing attention card shows a count and links to All apps with the
-Needs attention filter applied. Detailed Docker metrics are in a collapsed diagnostics section.
-`GET /api/bff/platform/operations` returns counts for app failures, in-progress app operations,
-and active workflow runs through the standard operation
-result. It requires administrator access, sanitizes app data, and queries active workflow runs only
-when both run and management permissions are present. The snapshot refreshes on request; it does not
-add background polling. It does not aggregate image builds or retain a global historical job ledger.
+Recently opened comes first on the administrator overview. The app operation cards show counts and
+links to the filtered inventory. The workflow card links up to three active runs and the full active
+run inventory. The snapshot timestamp identifies the data shown, including after a refresh failure.
+`GET /api/bff/platform/operations` returns the timestamp, counts, and active run links through the standard
+operation result. It requires administrator access, sanitizes app data, and queries active workflow runs
+only when both run and management permissions are present. The snapshot refreshes on request.
 App operations opens the In progress app inventory. Active workflow runs opens
 `/automations/runs/active`, which lists the current account's queued and running workflow executions
-and links to each trace.
+and links to each trace. Authorized operators can still open active runs and their traces while
+the workflow catalog is disabled. The catalog link appears only when the catalog is available,
+and accounts without active-run access do not see a zero count.
 
 Android notifications remain distinct from platform operations. Health popovers identify which
 capability an unavailable service can affect and link to the relevant diagnostic destination.
 
+Docker metrics lead with recent errors, timeouts, and slow operations. The charts show in-flight
+and queued operations at each sample and event counts between samples. The first sample and counter
+resets leave gaps in the event chart. Errors and timeouts are counted separately throughout.
+A failed refresh keeps the last successful snapshot and its timestamp visible.
+
 ## Layout and verification
+
+On narrow screens, the app opens to the selected section. Choose **Device** to see the display,
+then choose the section name to return to your work. The display session stays mounted while
+switching.
 
 Resource pages share the feature-owned AppResourceLayout and overview grid with their route loader.
 Page headers remain in normal document flow. Lists and technical workspaces use available width;
@@ -237,4 +257,11 @@ The log viewer renders ANSI colors and text styles in application, container, an
 
 Startup timings appears below Application logs. The list shows recorded milestones in chronological order with elapsed time from startup when available. Each milestone retains a copy action for its exact timestamp.
 
-Streaming quality, transport, and audio open from the device pane in a focused sheet; these controls are no longer a resource section. Diagnostic logs load on entry and source changes; Live controls ongoing refresh only.
+Streaming quality, transport, and audio open from the device pane in a focused sheet. The metrics
+selector identifies the display and defaults to the display named in the latest issue when available.
+The sheet shows when it is collecting the first sample and labels samples stale after five seconds.
+Diagnostic logs load on entry and source changes. Live controls ongoing refresh.
+
+Completed Device agent tasks show the result before routine activity. Verified observation links
+open screen observations accepted by the task's completion check. Older runs can show the result
+without observation links when their saved events lack correlation IDs.

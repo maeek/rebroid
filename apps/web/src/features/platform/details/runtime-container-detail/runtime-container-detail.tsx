@@ -13,7 +13,9 @@ import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-sect
 import { ContainerDetailLayout } from './container-detail-layout'
 import { ContainerResourceHeader } from './container-resource-header'
 import { RelatedResourcesSection } from './related-container-sections'
+import { ContainerTerminalSection } from './terminal/container-terminal-section'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
+import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 export const RuntimeContainerDetail = ({
   details,
@@ -22,7 +24,7 @@ export const RuntimeContainerDetail = ({
   view = 'overview'
 }: {
   details: PlatformContainerDetails
-  view?: 'overview' | 'logs'
+  view?: ContainerResourceView
   initialLogs?: PlatformContainerLog
   logReadLimitExceeded?: boolean
 }) => {
@@ -43,7 +45,7 @@ const RuntimeContainerDetailContent = ({
   view,
   logReadLimitExceeded
 }: {
-  view: 'overview' | 'logs'
+  view: ContainerResourceView
   logReadLimitExceeded?: boolean
 }) => {
   const { details } = useContainerDetailContext()
@@ -56,9 +58,9 @@ const RuntimeContainerDetailContent = ({
         id={container.id}
         view={view}
       >
-        {view === 'logs' ? (
-          <ContainerLogsSection logReadLimitExceeded={logReadLimitExceeded} />
-        ) : (
+        {view === 'logs' ? <ContainerLogsSection logReadLimitExceeded={logReadLimitExceeded} /> : null}
+        {view === 'terminal' ? <ContainerTerminalSection /> : null}
+        {view === 'overview' ? (
           <>
             <ContainerOverviewSection />
             <RelatedResourcesSection />
@@ -71,7 +73,7 @@ const RuntimeContainerDetailContent = ({
               value={details.inspect}
             />
           </>
-        )}
+        ) : null}
       </ContainerDetailLayout>
 
       <ContainerActionDialog />

@@ -2,13 +2,13 @@ import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { actionError } from '@/shared/actions/action-result'
 
-const contentSecurityPolicy = (nonce: string) =>
+const contentSecurityPolicy = (nonce: string, terminalSource?: string) =>
   [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
-    "connect-src 'self'",
+    `connect-src 'self'${terminalSource ? ` ${terminalSource}` : ''}`,
     "worker-src 'self' blob:",
     "frame-src 'self'",
     "frame-ancestors 'self'",
@@ -71,7 +71,12 @@ export const proxy = (request: NextRequest) => {
     )
   }
   const nonce = Buffer.from(randomUUID()).toString('base64')
-  const policy = contentSecurityPolicy(nonce)
+  const origin = requestOrigin(request)
+  const terminalSource =
+    request.nextUrl.pathname.startsWith('/runtime/containers/') && origin && /^https:\/\/[a-z0-9.:[\]-]+$/i.test(origin)
+      ? `${origin.replace(/^https:/, 'wss:')}/terminal/docker/containers/`
+      : undefined
+  const policy = contentSecurityPolicy(nonce, terminalSource)
   const headers = new Headers(request.headers)
   headers.set('x-nonce', nonce)
   headers.set('x-request-id', requestId)

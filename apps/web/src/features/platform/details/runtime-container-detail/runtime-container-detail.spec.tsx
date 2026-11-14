@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RuntimeContainerDetail } from './runtime-container-detail'
 import type { PlatformContainerDetails } from '@/shared/contracts/platform'
+import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 const { details } = vi.hoisted(() => ({
   details: {
@@ -77,7 +78,7 @@ describe('container resource details', () => {
   beforeEach(() => {
     details.container.state = 'exited'
   })
-  const page = (view: 'overview' | 'logs' = 'overview') =>
+  const page = (view: ContainerResourceView = 'overview') =>
     render(
       <RuntimeContainerDetail
         view={view}
@@ -119,5 +120,17 @@ describe('container resource details', () => {
       '/runtime/containers/container-id?view=logs'
     )
     expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('opens the Terminal tab and prevents connection to an exited container', () => {
+    page('terminal')
+    expect(screen.getByRole('link', { name: 'Terminal' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Terminal' })).toHaveAttribute(
+      'href',
+      '/runtime/containers/container-id?view=terminal'
+    )
+    expect(screen.getByLabelText('Container user')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Connect' })).toBeDisabled()
+    expect(screen.getByText('Container must be running to open a terminal.')).toBeVisible()
   })
 })

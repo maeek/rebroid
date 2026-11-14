@@ -1,7 +1,12 @@
 import { ConfigService } from '@nestjs/config';
+import websocket from '@fastify/websocket';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AutomationRunEventStreamService } from './automations/events/automation-run-event-stream.service';
+import { registerDockerTerminalWebSocket } from './docker-maintenance/containers/controllers/docker-terminal-websocket';
+import { DockerTerminalAuthorizationService } from './docker-maintenance/containers/services/docker-terminal-authorization.service';
+import { DockerTerminalSessionService } from './docker-maintenance/containers/services/docker-terminal-session.service';
+import { terminalFrameLimit } from './docker-maintenance/containers/services/docker-terminal-stream';
 import {
   configureFastifyPlatform,
   createOrchestratorApplication,
@@ -58,9 +63,17 @@ async function bootstrap() {
     });
   }
 
-  await app
-    .get(AutomationRunEventStreamService)
-    .register(app.getHttpAdapter().getInstance());
+  const fastify = app.getHttpAdapter().getInstance();
+  await fastify.register(websocket, {
+    options: { maxPayload: terminalFrameLimit },
+  });
+  app.get(AutomationRunEventStreamService).register(fastify);
+  registerDockerTerminalWebSocket(
+    fastify,
+    app.get(DockerTerminalAuthorizationService),
+    app.get(DockerTerminalSessionService),
+  );
+  app.enableShutdownHooks();
 
   const port = config.getOrThrow<number>('app.port');
   await app.listen(port, '0.0.0.0');

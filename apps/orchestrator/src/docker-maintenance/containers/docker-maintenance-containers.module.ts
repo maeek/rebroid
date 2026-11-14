@@ -5,6 +5,8 @@ import { DockerModule } from '../../docker/docker.module';
 import { DockerMaintenanceContainersController } from './controllers/docker-maintenance-containers.controller';
 import { DockerMaintenanceContainerQueryService } from './services/docker-maintenance-container-query.service';
 import { DockerMaintenanceContainerCommandService } from './services/docker-maintenance-container-command.service';
+import { DockerTerminalAuthorizationService } from './services/docker-terminal-authorization.service';
+import { DockerTerminalSessionService } from './services/docker-terminal-session.service';
 
 @Module({
   imports: [DockerModule, AndroidAppsPersistenceModule, AndroidAppsModule],
@@ -12,6 +14,8 @@ import { DockerMaintenanceContainerCommandService } from './services/docker-main
   providers: [
     DockerMaintenanceContainerQueryService,
     DockerMaintenanceContainerCommandService,
+    DockerTerminalAuthorizationService,
+    DockerTerminalSessionService,
   ],
 })
 export class DockerMaintenanceContainersModule {}

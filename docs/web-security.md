@@ -37,6 +37,9 @@ account must remain in Administrators.
 
 Check permissions and resource ownership on the server before orchestrator calls. Shared
 permission/quota types support UI and server code, but browser visibility is not authorization.
+The web backend validates application IDs and log sources before building upstream URLs and
+encodes each path selector as its own segment. Administrative user and group page loaders check
+current administrator access before reading account or group data.
 Automation definitions, targets, profiles, and triggers are revalidated before use; unknown command
 permissions fail closed.
 
@@ -55,6 +58,14 @@ Public errors contain safe messages and request references. Ordinary users recei
 backend identifiers, endpoints, filesystem paths, and diagnostics. Raw upstream failures and
 secrets must not appear in responses, logs, or client bundles.
 Platform health and service diagnostics are available to platform administrators only.
+
+The `docker:open-terminal` privilege is derived from built-in Administrators membership.
+Group policy cannot delegate it. The orchestrator validates the terminal WebSocket Origin
+and asks the private web backend to check the live account session before upgrading. It
+rechecks during the connection and closes the shell when authorization is lost. Terminal
+sessions target the current running managed Android runtime by full container ID and
+engine start time. ReDroid runs privileged by default, so terminal access can expose
+host resources. The orchestrator logs session metadata and cleanup outcomes.
 
 Audit details redact credential-like keys. Retention runs automatically from web settings,
 and CSV exports neutralize spreadsheet formulas. Persistence changes use the
