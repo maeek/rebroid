@@ -132,9 +132,10 @@ the reduced-motion preference. The compact header appears on hover or keyboard f
 the display. Click the compact display to expand it, or drag it to change its dock. The player
 keeps the display aspect ratio and follows that edge when the window resizes. Compact mode mutes playback and blocks input.
 Expanded mode offers a vertical viewer toolbar on the inward side of the dock and clipboard
-according to the account's permissions. The expanded top bar sits above the video and contains
-**Collapse mini-player**. Drag from the outer resize corner to resize while preserving aspect
+according to the account's permissions. The expanded action bar sits below the video and contains
+**Collapse mini-player**. Drag the marked outside corner to resize while preserving aspect
 ratio and viewport bounds. Keyboard users can focus the resize corner and use the arrow keys.
+Reopening the expanded player restores its last resized size within the current window bounds.
 Viewport changes and Android rotation refit the display and its inward-facing toolbar together,
 preserving aspect ratio and the 24 px edge inset. Long toolbars
 scroll within the display height. A player opened on desktop stays mounted if the window is
