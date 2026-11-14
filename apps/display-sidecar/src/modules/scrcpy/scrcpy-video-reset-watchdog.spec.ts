@@ -80,13 +80,23 @@ test("a reset waits for control dispatch and cannot restart a later control sock
   assert.equal(scrcpy.requestVideoReset("display", "test"), true);
   t.mock.timers.tick(2_900);
   assert.equal(source.resetWatchdog.pending, false);
+  assert.equal(source.resetWatchdog.deadlineMs, undefined);
+  const publishDeadline = t.mock.method(stream, "setVideoResetDeadline");
   dispatched();
   await Promise.resolve();
   assert.equal(source.resetWatchdog.pending, true);
   assert.equal(source.resetCount, 1);
+  assert.equal(source.resetWatchdog.deadlineMs, 10_900);
+  assert.deepEqual(
+    publishDeadline.mock.calls.map((call) => call.arguments),
+    [[10_900]],
+  );
   t.mock.timers.tick(2_900);
+  assert.equal(scrcpy.requestVideoReset("display", "webrtc:pli"), true);
+  assert.equal(publishDeadline.mock.callCount(), 1);
   assert.equal(stopAttempt.mock.callCount(), 0);
   scrcpy["controlSockets"].set("display", { ...active });
   t.mock.timers.tick(100);
   assert.equal(stopAttempt.mock.callCount(), 0);
+  assert.equal(source.resetWatchdog.deadlineMs, undefined);
 });

@@ -43,6 +43,7 @@ const maxAudioFrames = 8;
 
 interface GopAwareVideoQueueOptions {
   keyFrameRecoveryTimeoutMs?: number;
+  isVideoResetPending?: () => boolean;
   onRecoveryTimeout?: (error: Error) => void;
   onKeyFrameNeeded?: () => void;
 }
@@ -184,7 +185,8 @@ export class GopAwareVideoQueue {
       defaultKeyFrameRecoveryTimeoutMs;
     if (
       timestampUs - this.recoveryStartTimestampUs <=
-      BigInt(timeoutMs) * 1_000n
+        BigInt(timeoutMs) * 1_000n ||
+      this.options.isVideoResetPending?.()
     ) {
       return;
     }

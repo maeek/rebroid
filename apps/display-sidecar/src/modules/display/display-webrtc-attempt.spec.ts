@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Logger } from "@nestjs/common";
+import { ScrcpySourceStream } from "../scrcpy/scrcpy-source-stream";
+import { ScrcpyVideoResetWatchdog } from "../scrcpy/scrcpy-video-reset-watchdog";
 import { scrcpyVideoConfigurationChangedCloseCode } from "../scrcpy/scrcpy.types";
 import type {
   ScrcpyMediaSink,
@@ -92,6 +94,7 @@ test("codec change notifies the current peer before bounded shutdown and fences 
     sendDataChannel: (message) => {
       replies.push(message);
     },
+    waitForVideoReset: () => undefined,
     writeVideo: async () => undefined,
     writeAudio: async () => undefined,
     stopAudio: () => undefined,
@@ -201,5 +204,139 @@ test("codec change notifies the current peer before bounded shutdown and fences 
     );
   } finally {
     attempt.stop();
+  }
+});
+
+test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 10_000 });
+  const watchdog = new ScrcpyVideoResetWatchdog();
+  const expired = t.mock.fn();
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => {
+      watchdog.beginDispatch();
+      watchdog.confirmDispatch(expired);
+      assert.ok(watchdog.deadlineMs);
+      source.setVideoResetDeadline(watchdog.deadlineMs);
+      return true;
+    },
+  );
+  const writeVideo = (
+    timestampUs: bigint,
+    kind: "config" | "idr" | "delta",
+  ) => {
+    const packet = {
+      timestampUs,
+      config: kind === "config",
+      keyFrame: kind === "idr",
+      data: Buffer.from(
+        kind === "config"
+          ? "000000016742c032da0280b7fe5c050505020000000168ce06e2"
+          : kind === "idr"
+            ? "00000001658884"
+            : "00000001418884",
+        "hex",
+      ),
+    };
+    watchdog.observe(packet);
+    source.writeVideo(packet);
+  };
+  writeVideo(0n, "config");
+  writeVideo(1n, "idr");
+  // Keep the configuration available for SDP, with a GOP too old to replay.
+  writeVideo(100_000n, "delta");
+
+  let receive!: (message: WebrtcBridgeMessage) => void;
+  let open = true;
+  const closeListeners: Array<() => void> = [];
+  const sentMedia: Buffer[] = [];
+  const sendDataChannel = t.mock.fn<(message: unknown) => void>();
+  const waitForVideoReset = t.mock.fn();
+  const bridge: WebrtcBridge = {
+    isOpen: () => open,
+    onClose: (listener) => closeListeners.push(listener),
+    listen: ({ onMessage }) => {
+      receive = onMessage;
+    },
+    sendOffer: () => receive({ type: "answer", sdp: "answer" }),
+    sendDataChannel,
+    waitForVideoReset,
+    writeVideo: async (payload) => {
+      sentMedia.push(payload);
+    },
+    writeAudio: async () => undefined,
+    stopAudio: () => undefined,
+    close: () => {
+      if (!open) return;
+      open = false;
+      closeListeners.forEach((listener) => listener());
+    },
+  };
+  const attempt = new DisplayWebrtcAttempt({
+    sessionId: "display",
+    sdp: [
+      "m=video 9 UDP/TLS/RTP/SAVPF 96",
+      "a=rtpmap:96 H264/90000",
+      "a=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+    ].join("\r\n"),
+    iceHost: "localhost",
+    maxFps: 60,
+    audio: false,
+    allowClipboard: false,
+    iceServers: [],
+    attachSource: (sink) => source.attach(sink, { mode: "bootstrap" }),
+    launchBridge: () => bridge,
+    executeControl: () => {
+      throw new Error("Unexpected control command");
+    },
+    onFinish: () => undefined,
+  });
+
+  try {
+    await attempt.run();
+    receive({ type: "state", state: "connected" });
+    assert.deepEqual(
+      waitForVideoReset.mock.calls.map((call) => call.arguments),
+      [[13_000]],
+    );
+    const resetNotice = sendDataChannel.mock.calls
+      .flatMap((call) => call.arguments)
+      .find(
+        (message) =>
+          message &&
+          typeof message === "object" &&
+          "type" in message &&
+          message.type === "webrtc-video-reset",
+      );
+    assert.deepEqual(resetNotice, {
+      type: "webrtc-video-reset",
+      remainingMs: 3_000,
+    });
+
+    t.mock.timers.tick(50);
+    writeVideo(250_000n, "delta");
+    t.mock.timers.tick(2_750);
+    writeVideo(3_000_000n, "delta");
+    assert.equal(open, true, "the recovery watchdog still has time");
+    assert.equal(sentMedia.length, 0, "deltas wait for the IDR");
+
+    t.mock.timers.tick(50);
+    writeVideo(3_050_000n, "config");
+    writeVideo(3_050_000n, "idr");
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    t.mock.timers.tick(50);
+    writeVideo(3_100_000n, "delta");
+    assert.equal(open, true);
+    assert.deepEqual(
+      sentMedia.map((frame) => frame.readUInt16BE(6)),
+      [5, 6, 0],
+    );
+    t.mock.timers.tick(100);
+    assert.equal(expired.mock.callCount(), 0);
+  } finally {
+    attempt.stop();
+    source.close();
+    watchdog.clear();
   }
 });

@@ -2079,6 +2079,7 @@ export class ScrcpyService implements OnModuleDestroy {
       clearTimeout(source.resetTimer);
     }
     source.resetWatchdog.clear();
+    source.stream.setVideoResetDeadline(0);
     source.resetTimer = null;
     source.resetPending = false;
   }
@@ -2173,6 +2174,7 @@ export class ScrcpyService implements OnModuleDestroy {
       count: source.resetCount,
     });
     const completed = source.resetWatchdog.confirmDispatch(() => {
+      source.stream.setVideoResetDeadline(0);
       if (
         this.sources.get(sessionId) !== source ||
         this.controlSockets.get(sessionId) !== active ||
@@ -2188,6 +2190,8 @@ export class ScrcpyService implements OnModuleDestroy {
         `[scrcpy:${active.udid}:${sessionId}] encoder reset watchdog restart`,
       );
     });
+    const deadlineMs = source.resetWatchdog.deadlineMs;
+    if (deadlineMs !== undefined) source.stream.setVideoResetDeadline(deadlineMs);
     if (completed) this.finishVideoReset(source);
   }
 
@@ -2200,6 +2204,7 @@ export class ScrcpyService implements OnModuleDestroy {
   }
 
   private finishVideoReset(source: ActiveScrcpySource): void {
+    source.stream.setVideoResetDeadline(0);
     const elapsedMs = Math.round(performance.now() - source.resetStartedAt);
     this.logger.debug(
       `[scrcpy] encoder reset completed resetGeneration=${source.resetGeneration} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} elapsedMs=${elapsedMs}`,

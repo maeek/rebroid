@@ -17,6 +17,7 @@ type BinaryWriter = (payload: Buffer) => Promise<void>;
 export interface QueuedScrcpyMediaSinkOptions {
   allowClipboard?: boolean;
   onVideoKeyFrameNeeded?: () => void;
+  onVideoReset?: (deadlineMs: number) => void;
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   writeStatus: (payload: string) => void;
@@ -35,6 +36,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
   private lastSourceTimestampUs: bigint | null = null;
   private videoSequence = 0;
   private audioSequence = 0;
+  private videoResetDeadlineMs = 0;
   private readonly audioQueue: BoundedAudioQueue;
   private readonly videoQueue: GopAwareVideoQueue;
   private closed = false;
@@ -68,6 +70,9 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
         ),
       (timestampUs) => this.audioQueue.discardBefore(timestampUs),
       {
+        isVideoResetPending: () =>
+          this.videoResetDeadlineMs !== 0 &&
+          Date.now() < this.videoResetDeadlineMs,
         onKeyFrameNeeded: options.onVideoKeyFrameNeeded,
         onRecoveryTimeout: (error) => this.close(1011, error.message),
       },
@@ -100,6 +105,12 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
     if (this.isOpen()) {
       this.options.writeStatus(JSON.stringify(payload));
     }
+  }
+
+  waitForVideoReset(deadlineMs: number): void {
+    if (!this.options.onVideoReset) return;
+    this.videoResetDeadlineMs = deadlineMs;
+    this.options.onVideoReset(deadlineMs);
   }
 
   writeVideo(

@@ -22,8 +22,9 @@ type configMessage struct {
 }
 
 type stdinMessage struct {
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
+	Type       string          `json:"type"`
+	Payload    json.RawMessage `json:"payload"`
+	DeadlineMs int64           `json:"deadlineMs"`
 }
 
 type stdoutMessage struct {
@@ -92,13 +93,21 @@ func readMediaFrame(reader io.Reader, expectedKind uint8) (mediaFrame, error) {
 	}, nil
 }
 
-func readCommands(reader *bufio.Scanner, send func([]byte) error) error {
+func readCommands(reader *bufio.Scanner, send func([]byte) error, waitForVideoReset func(int64)) error {
 	for reader.Scan() {
 		var message stdinMessage
-		if json.Unmarshal(reader.Bytes(), &message) == nil && message.Type == "datachannel" && len(message.Payload) > 0 {
-			if err := send(message.Payload); err != nil {
-				return err
+		if json.Unmarshal(reader.Bytes(), &message) != nil {
+			continue
+		}
+		switch message.Type {
+		case "datachannel":
+			if len(message.Payload) > 0 {
+				if err := send(message.Payload); err != nil {
+					return err
+				}
 			}
+		case "video-reset":
+			waitForVideoReset(message.DeadlineMs)
 		}
 	}
 	return reader.Err()

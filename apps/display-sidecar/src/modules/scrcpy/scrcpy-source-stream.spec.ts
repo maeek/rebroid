@@ -118,6 +118,30 @@ test("one failed consumer does not close another consumer", async () => {
   assert.equal(source.isOpen(), true);
 });
 
+test("reattachment inherits the remaining reset window until the reset completes", (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: 10_000 });
+  const source = new ScrcpySourceStream(
+    () => undefined,
+    () => undefined,
+    () => true,
+  );
+  t.after(() => source.close());
+  const first = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  source.attach(first);
+  source.setVideoResetDeadline(13_000);
+  assert.deepEqual(first.waitForVideoReset.mock.calls[0]?.arguments, [13_000]);
+
+  t.mock.timers.tick(2_850);
+  const late = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  source.attach(late);
+  assert.deepEqual(late.waitForVideoReset.mock.calls[0]?.arguments, [13_000]);
+
+  source.setVideoResetDeadline(0);
+  const recovered = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  source.attach(recovered);
+  assert.equal(recovered.waitForVideoReset.mock.callCount(), 0);
+});
+
 test("a warm consumer skips an oversized cached GOP and starts at the next IDR", async () => {
   const source = new ScrcpySourceStream(
     () => undefined,

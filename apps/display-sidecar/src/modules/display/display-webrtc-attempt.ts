@@ -193,6 +193,14 @@ export class DisplayWebrtcAttempt {
       isOpen: () => bridge.isOpen(),
       onClose: (listener) => bridge.onClose(listener),
       writeStatus: (payload) => bridge.sendDataChannel(JSON.parse(payload)),
+      onVideoReset: (deadlineMs) => {
+        if (signal.aborted || codecChangeTimer) return;
+        bridge.waitForVideoReset(deadlineMs);
+        bridge.sendDataChannel({
+          type: "webrtc-video-reset",
+          remainingMs: Math.max(0, deadlineMs - Date.now()),
+        });
+      },
       writeVideo: (payload) => bridge.writeVideo(payload),
       writeAudio: async (payload) => {
         if (audioDisabled) return;

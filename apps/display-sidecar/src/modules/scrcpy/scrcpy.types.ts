@@ -34,6 +34,7 @@ export interface ScrcpyMediaSink {
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   sendStatus: (payload: unknown) => void;
+  waitForVideoReset?: (deadlineMs: number) => void;
   writeVideo: (
     packet: ScrcpyPacket,
     completion?: (error?: Error, delivered?: boolean) => void,

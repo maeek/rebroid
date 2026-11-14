@@ -56,6 +56,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
   private readonly cachedStatuses = new Map<string, unknown>();
   private readonly bootstrapWaiters = new Set<BootstrapWaiter>();
   private actualEncoder: string | undefined;
+  private videoResetDeadlineMs = 0;
   private sourceVideoFrames = 0;
   private closed = false;
 
@@ -87,6 +88,9 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     this.consumers.set(consumerId, consumer);
     sink.onClose(() => this.detachConsumer(consumerId, false));
     this.replayCachedStatuses(sink);
+    if (this.videoResetDeadlineMs > Date.now()) {
+      sink.waitForVideoReset?.(this.videoResetDeadlineMs);
+    }
     const replayedGop = this.replayCachedGop(consumer, mode);
     this.onConsumerAdded();
     // SDP bootstrap needs only the current configuration and an IDR. A media
@@ -136,6 +140,17 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
 
   setActualEncoder(actualEncoder: string): void {
     this.actualEncoder = actualEncoder;
+  }
+
+  setVideoResetDeadline(deadlineMs: number): void {
+    if (this.videoResetDeadlineMs === deadlineMs) return;
+    this.videoResetDeadlineMs = deadlineMs;
+    // Existing consumers keep the original deadline while the recovery IDR
+    // drains through media queues independently of reset status messages.
+    if (deadlineMs === 0) return;
+    for (const consumer of this.openConsumers()) {
+      consumer.sink.waitForVideoReset?.(deadlineMs);
+    }
   }
 
   invalidateVideoBootstrap(): void {

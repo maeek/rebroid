@@ -48,6 +48,7 @@ export function createControlChannel({
     onReady?: () => void,
     acceptStatus = true,
     onCodecChanged?: () => void,
+    onVideoReset?: (remainingMs: number) => void,
   ) => {
     if (typeof data !== "string") return;
     try {
@@ -72,6 +73,15 @@ export function createControlChannel({
           reply.consumerAttemptId.length <= 128
         ) {
           onCodecChanged?.();
+        }
+      } else if (reply.type === "webrtc-video-reset") {
+        if (
+          acceptStatus &&
+          typeof reply.remainingMs === "number" &&
+          Number.isSafeInteger(reply.remainingMs) &&
+          reply.remainingMs > 0
+        ) {
+          onVideoReset?.(reply.remainingMs);
         }
       } else if (acceptStatus) {
         onMessage?.(reply as JsonRecord);
@@ -369,7 +379,7 @@ export function createControlChannel({
       connectRequested = true;
       return connectControlWs();
     },
-    useDataChannels(reliable, movement, onCodecChanged) {
+    useDataChannels(reliable, movement, onCodecChanged, onVideoReset) {
       reliableDataChannel = reliable;
       movementDataChannel = movement ?? null;
       reliable.onmessage = (event) =>
@@ -378,6 +388,7 @@ export function createControlChannel({
           undefined,
           reliableDataChannel === reliable,
           onCodecChanged,
+          onVideoReset,
         );
       reliable.onclose = () => {
         if (reliableDataChannel === reliable) {

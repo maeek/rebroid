@@ -87,8 +87,10 @@ timestamps and configuration, keyframe, and discontinuity flags.
   The bridge derives RTP timing from source timestamps and continuously drains sender RTCP.
 - The Go bridge owns shutdown of its peer and media workers. A track-local audio error closes
   that input and leaves video active. A shared timestamp regression ends the peer attempt.
-- Repeated RTCP feedback leaves an outstanding consumer recovery deadline in place. The deadline
-  advances with source PTS while waiting for configuration and an IDR.
+- Consumer recovery normally expires after 1.5 seconds of advancing source PTS without an IDR.
+  An attached WebRTC peer can wait through a confirmed scrcpy reset. The sidecar relay, Go bridge
+  and browser presentation monitor use the reset's remaining time while video waits for an IDR.
+  Repeated RTCP feedback cannot extend the reset deadline.
 - A new capture must deliver configuration and an IDR before the sidecar can send scrcpy reset-video
   message `17` over its control socket. A bootstrap attachment can reuse the current
   configuration and IDR. A media attachment requests a reset only if the source cannot

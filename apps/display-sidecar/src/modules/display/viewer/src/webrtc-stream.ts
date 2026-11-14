@@ -322,6 +322,7 @@ export class WebrtcPresentationProgress {
     receivedFrames: number,
     decodedFrames: number,
     visible: boolean,
+    waitingForVideoReset = false,
   ) {
     const previousSource = this.source;
     const freshSource = source !== null && source !== previousSource;
@@ -357,7 +358,7 @@ export class WebrtcPresentationProgress {
     this.stalledSamples += 1;
     return {
       freeze: presentedFrames !== undefined && this.stalledSamples === 2,
-      stalled: this.stalledSamples >= 3,
+      stalled: this.stalledSamples >= 3 && !waitingForVideoReset,
       idle: false,
     };
   }
@@ -477,6 +478,7 @@ function startWebrtcMetricsMonitor(
   jitterController: AdaptiveJitterBufferController,
   negotiatedProfileLevelId: string | undefined,
   onStall: () => void,
+  waitingForVideoReset: () => boolean,
   reliableChannel: RTCDataChannel,
   displaySizePresentation: DisplaySizePresentationTracker,
 ): () => void {
@@ -621,6 +623,7 @@ function startWebrtcMetricsMonitor(
         receivedFrames,
         decodedFrames,
         !document.hidden,
+        waitingForVideoReset(),
       );
       sourceActive = !presentation.idle;
       if (presentation.idle) lastPresentedAt = null;
@@ -1058,8 +1061,14 @@ export function createWebrtcStream({
       },
       { once: true, signal },
     );
-    controlChannel.useDataChannels(reliableChannel, movementChannel, () =>
-      recoverCurrent("WebRTC video codec configuration changed."),
+    let videoResetDeadline = 0;
+    controlChannel.useDataChannels(
+      reliableChannel,
+      movementChannel,
+      () => recoverCurrent("WebRTC video codec configuration changed."),
+      (remainingMs) => {
+        videoResetDeadline = performance.now() + Math.min(remainingMs, 3_000);
+      },
     );
     const videoTransceiver = connection.addTransceiver("video", {
       direction: "recvonly",
@@ -1195,6 +1204,7 @@ export function createWebrtcStream({
         jitterController,
         answer.profileLevelId,
         () => recoverCurrent("WebRTC video stopped presenting frames."),
+        () => performance.now() < videoResetDeadline,
         reliableChannel,
         displaySizePresentation,
       );

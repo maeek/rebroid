@@ -356,6 +356,7 @@ test("retired transports cannot publish diagnostics but can acknowledge dispatch
   const { createControlChannel } =
     await import("../dist/modules/display/viewer/assets/control-channel.js");
   const statuses = [];
+  const resetWindows = [];
   const channel = createControlChannel({
     sessionId: "session",
     lifecycle: {
@@ -378,21 +379,29 @@ test("retired transports cannot publish diagnostics but can acknowledge dispatch
 
   const oldData = new FakeWebSocket();
   oldData.readyState = "open";
-  channel.useDataChannels(oldData);
+  channel.useDataChannels(oldData, undefined, undefined, (ms) =>
+    resetWindows.push(ms),
+  );
   const pending = channel.send({ type: "action", command: "home" }, "actions");
   await Promise.resolve();
   assert.equal(oldData.messages.length, 1);
   const data = new FakeWebSocket();
   data.readyState = "open";
-  channel.useDataChannels(data);
+  channel.useDataChannels(data, undefined, undefined, (ms) =>
+    resetWindows.push(ms),
+  );
   oldData.reply({ type: "ready", sourceAttemptId: "retired-data" });
   data.reply({ type: "ready", sourceAttemptId: "current-data" });
+  oldData.reply({ type: "webrtc-video-reset", remainingMs: 3_000 });
+  data.reply({ type: "webrtc-video-reset", remainingMs: "3000" });
+  data.reply({ type: "webrtc-video-reset", remainingMs: 2_850 });
   oldData.reply({ id: oldData.messages[0].id, ok: true });
   await pending;
   assert.deepEqual(
     statuses.map((message) => message.sourceAttemptId),
     ["current-socket", "current-data"],
   );
+  assert.deepEqual(resetWindows, [2_850]);
 });
 
 test("rotation notices and reliable close recover only the active WebRTC peer", async (t) => {

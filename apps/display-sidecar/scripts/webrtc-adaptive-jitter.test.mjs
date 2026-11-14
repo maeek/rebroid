@@ -97,6 +97,24 @@ import {
   WebrtcPresentationProgress,
 } from "../dist/modules/display/viewer/assets/webrtc-stream.js";
 
+test("WebRTC defers presentation reconnect while the encoder reset is pending", () => {
+  const progress = new WebrtcPresentationProgress();
+  const sample = (frames, waitingForVideoReset) =>
+    progress.sample(
+      { sourceVideoFrames: frames },
+      20,
+      20,
+      20,
+      true,
+      waitingForVideoReset,
+    );
+  sample(20, false);
+  sample(40, true);
+  assert.equal(sample(60, true).freeze, true);
+  assert.equal(sample(80, true).stalled, false);
+  assert.equal(sample(100, false).stalled, true);
+});
+
 test("WebRTC detects frozen presentation while reception and decoding advance", () => {
   const progress = new WebrtcPresentationProgress();
   const sample = (frames, presented) =>

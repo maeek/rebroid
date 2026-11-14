@@ -10,13 +10,14 @@ import (
 const keyFrameRecoveryPTSUs = uint64(1_500_000)
 
 type videoRecovery struct {
-	requestMu    sync.Mutex
-	lastRequest  time.Time
-	generation   atomic.Uint64
-	presentation videoPresentation
-	lastPLITrace time.Time
-	ackReceived  uint64
-	ackMatched   uint64
+	requestMu       sync.Mutex
+	lastRequest     time.Time
+	generation      atomic.Uint64
+	resetDeadlineMs atomic.Int64
+	presentation    videoPresentation
+	lastPLITrace    time.Time
+	ackReceived     uint64
+	ackMatched      uint64
 
 	// Only the video worker touches the recovery episode and cached configuration.
 	seenGeneration  uint64
@@ -30,6 +31,10 @@ func (recovery *videoRecovery) request(now time.Time) bool {
 	recovery.requestMu.Lock()
 	defer recovery.requestMu.Unlock()
 	return recovery.requestLocked(now)
+}
+
+func (recovery *videoRecovery) waitForVideoReset(deadlineMs int64) {
+	recovery.resetDeadlineMs.Store(deadlineMs)
 }
 
 func (recovery *videoRecovery) requestLocked(now time.Time) bool {
@@ -63,7 +68,9 @@ func (recovery *videoRecovery) accept(frame mediaFrame) ([]byte, error) {
 			recovery.dropped = true
 		}
 		if recoveryExpiredPTS(recovery.firstDroppedPTS, frame.timestampUs) {
-			return nil, errors.New("RBD1 video PTS advanced without a recovery keyframe")
+			if deadline := recovery.resetDeadlineMs.Load(); deadline == 0 || time.Now().UnixMilli() >= deadline {
+				return nil, errors.New("RBD1 video PTS advanced without a recovery keyframe")
+			}
 		}
 		return nil, nil
 	}

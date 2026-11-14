@@ -36,6 +36,7 @@ export interface WebrtcBridge {
   }): void;
   sendOffer(offer: WebrtcBridgeOffer): void;
   sendDataChannel(payload: unknown): void;
+  waitForVideoReset(deadlineMs: number): void;
   writeVideo(payload: Buffer): Promise<void>;
   writeAudio(payload: Buffer): Promise<void>;
   stopAudio(): void;
@@ -104,6 +105,8 @@ export const connectWebrtcBridge = (
     },
     sendOffer: send,
     sendDataChannel: (payload) => send({ type: "datachannel", payload }),
+    waitForVideoReset: (deadlineMs) =>
+      send({ type: "video-reset", deadlineMs }),
     writeVideo: (payload) => writeMedia(video, payload),
     writeAudio: (payload) => writeMedia(audio, payload),
     stopAudio: () => audio.destroy(),

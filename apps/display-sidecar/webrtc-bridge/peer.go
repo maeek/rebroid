@@ -167,7 +167,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	startWorker(func() {
 		stop(withPeerFailure("bridge_command_read_failed", readCommands(reader, func(payload []byte) error {
 			return control.messages.put(payload, dataChannelReplaceKey(payload))
-		})))
+		}, recovery.waitForVideoReset)))
 	})
 
 	select {

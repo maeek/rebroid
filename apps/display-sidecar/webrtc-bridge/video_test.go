@@ -23,6 +23,7 @@ func (capture *captureRTP) WriteRTP(packet *rtp.Packet) error {
 func TestRepeatedFeedbackKeepsFirstDroppedPTS(t *testing.T) {
 	var recovery videoRecovery
 	feedback := time.Now()
+	recovery.waitForVideoReset(feedback.Add(-time.Millisecond).UnixMilli())
 	recovery.request(feedback)
 	for _, pts := range []uint64{0, 1_000_000} {
 		if payload, err := recovery.accept(mediaFrame{timestampUs: pts, data: []byte{1}}); payload != nil || err != nil {
@@ -60,6 +61,41 @@ func TestH264RelayWaitsForConfigAndIDRAfterGap(t *testing.T) {
 	}
 	if gap := output.timestamps[len(output.timestamps)-1] - output.timestamps[0]; gap != 90_000 {
 		t.Fatalf("expected 90000 ticks of source time, got %d", gap)
+	}
+}
+
+func TestH264RelayRecoversAfterTwoPointEightFiveSeconds(t *testing.T) {
+	var media bytes.Buffer
+	put := func(pts uint64, flags uint16, payload []byte) {
+		media.Write(encodedMediaFrame(mediaKindVideo, 1, pts, flags, payload))
+	}
+	config := []byte{0, 0, 0, 1, 0x67, 0x42, 0xe0, 0x1f, 0, 0, 0, 1, 0x68, 0xce, 0x06, 0xe2}
+	key := []byte{0, 0, 0, 1, 0x65, 1}
+	delta := []byte{0, 0, 0, 1, 0x41, 1}
+	put(0, mediaFlagConfig, config)
+	put(1, mediaFlagKey, key)
+	put(50_000, 0, delta)
+	put(1_600_001, 0, delta)
+	put(2_800_000, 0, delta)
+	put(2_850_000, mediaFlagConfig, config)
+	put(2_850_000, mediaFlagKey, key)
+	put(2_900_000, 0, delta)
+
+	var metrics bridgeMetrics
+	var track captureRTP
+	var recovery videoRecovery
+	err := streamH264(&media, &track, &metrics, &recovery, &sourceTimeline{}, func(event stdoutMessage) {
+		if event.Message == "first timestamped video access unit written" {
+			now := time.Now()
+			if !recovery.requestPLI(now).requested {
+				t.Fatal("expected recovery after picture loss")
+			}
+			recovery.waitForVideoReset(now.Add(3 * time.Second).UnixMilli())
+		}
+	})
+	if err != nil || metrics.videoDropped.Load() != 3 || metrics.videoFrames.Load() != 3 {
+		t.Fatalf("expected IDR and next delta on the same relay, got dropped=%d relayed=%d err=%v",
+			metrics.videoDropped.Load(), metrics.videoFrames.Load(), err)
 	}
 }
 

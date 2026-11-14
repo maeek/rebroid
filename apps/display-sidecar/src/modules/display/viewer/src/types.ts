@@ -48,6 +48,7 @@ export type ControlChannel = {
     reliable: RTCDataChannel,
     movement?: RTCDataChannel,
     onCodecChanged?: () => void,
+    onVideoReset?: (remainingMs: number) => void,
   ) => void;
   send: (
     messagePayload: JsonRecord,

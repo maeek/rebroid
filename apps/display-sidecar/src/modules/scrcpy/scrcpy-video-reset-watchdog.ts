@@ -2,12 +2,17 @@ const RECOVERY_TIMEOUT_MS = 3_000;
 
 export class ScrcpyVideoResetWatchdog {
   private timer: NodeJS.Timeout | undefined;
+  private deadline: number | undefined;
   private dispatching = false;
   private sawConfiguration = false;
   private recoveredWhileDispatching = false;
 
   get pending(): boolean {
     return this.timer !== undefined;
+  }
+
+  get deadlineMs(): number | undefined {
+    return this.deadline;
   }
 
   beginDispatch(): void {
@@ -21,6 +26,7 @@ export class ScrcpyVideoResetWatchdog {
       this.clear();
       return true;
     }
+    this.deadline = Date.now() + RECOVERY_TIMEOUT_MS;
     const timer = setTimeout(() => {
       if (this.timer !== timer) return;
       this.clear();
@@ -55,6 +61,7 @@ export class ScrcpyVideoResetWatchdog {
   clear(): void {
     clearTimeout(this.timer);
     this.timer = undefined;
+    this.deadline = undefined;
     this.dispatching = false;
     this.sawConfiguration = false;
     this.recoveredWhileDispatching = false;
