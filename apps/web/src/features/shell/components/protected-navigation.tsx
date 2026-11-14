@@ -92,7 +92,7 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
       <SectionHeader
         title='Apps'
         variant={variant}
-        actionHref='/apps/create'
+        actionHref={initialUser.canCreateApp ? '/apps/create' : undefined}
         actionLabel='Create app'
         onNavigate={onNavigate}
       />
@@ -120,22 +120,20 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
         ))}
       </ul>
 
-      <Visible when={isFeatureEnabled('feature.workflows')}>
+      <Visible when={initialUser.canManageWorkflows === true && isFeatureEnabled('feature.workflows')}>
         <SectionHeader
           title='Automations'
           variant={variant}
-          actionHref='/automations/create'
-          actionLabel='Create workflow'
-          onNavigate={onNavigate}
         />
         <ul className={styles.list}>
-          {automationSections.map(({ name, Icon, href }) => (
+          {automationSections.map(({ name, Icon, href, shortcut }) => (
             <NavLink
               key={name}
               href={href}
               label={name}
               Icon={Icon}
               isActive={isActivePath(href, href === '/automations')}
+              shortcut={shortcut}
               variant={variant}
               onNavigate={onNavigate}
             />

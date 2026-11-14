@@ -45,6 +45,10 @@ export const MobileNavigation = ({
     if (isDesktop) setOpen(false)
   }, [isDesktop])
 
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
   return (
     <>
       <header className='fixed inset-x-0 top-0 z-50 flex h-(--console-top-inset) items-center justify-between gap-2 bg-background/90 pt-[env(safe-area-inset-top)] ps-4 pe-2 backdrop-blur-xl sm:pe-4 lg:hidden'>

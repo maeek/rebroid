@@ -33,13 +33,23 @@ export type NavigationItem = {
 }
 
 export const appsNavigationItem: NavigationItem = { name: 'All apps', Icon: IconApps, href: '/apps' }
-export const workflowsNavigationItem: NavigationItem = { name: 'Workflows', Icon: IconRobot, href: '/automations' }
+export const workflowsNavigationItem: NavigationItem = {
+  name: 'Workflows',
+  Icon: IconRobot,
+  href: '/automations',
+  shortcut: { href: '/automations/create', label: 'Create workflow' }
+}
 
 export const appSections = [appsNavigationItem]
 
 export const automationSections: NavigationItem[] = [
   workflowsNavigationItem,
-  { name: 'Triggers', Icon: IconCalendarTime, href: '/automations/triggers' }
+  {
+    name: 'Triggers',
+    Icon: IconCalendarTime,
+    href: '/automations/triggers',
+    shortcut: { href: '/automations/triggers?create=1', label: 'Create trigger' }
+  }
 ]
 
 export type NavigationGroup = {

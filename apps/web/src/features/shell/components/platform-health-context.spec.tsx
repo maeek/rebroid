@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
@@ -51,17 +51,27 @@ const feature = (key: FeatureFlagState['key'], enabled: boolean): FeatureFlagSta
   conflicts: []
 })
 
-const sidebar = (optionalServicesEnabled = true) => (
+const sidebar = (optionalServicesEnabled = true, canManage = true) => (
   <FeatureFlagsProvider
     manifest={{
       revision: 1,
-      features: [feature('feature.ocr', optionalServicesEnabled), feature('feature.firewall', optionalServicesEnabled)]
+      features: [
+        feature('feature.ocr', optionalServicesEnabled),
+        feature('feature.firewall', optionalServicesEnabled),
+        feature('feature.workflows', optionalServicesEnabled)
+      ]
     }}
   >
     <PlatformHealthProvider polling>
       <ProtectedNavigation
         variant='sidebar'
-        initialUser={{ name: 'Admin', avatarDataUrl: null, isPlatformAdmin: true }}
+        initialUser={{
+          name: 'Admin',
+          avatarDataUrl: null,
+          isPlatformAdmin: true,
+          canCreateApp: canManage,
+          canManageWorkflows: canManage
+        }}
         pollRecentApps
       />
     </PlatformHealthProvider>
@@ -80,6 +90,32 @@ const mockPoll = (data?: OrchestratorHealth, error?: Error) =>
 describe('platform health navigation', () => {
   beforeEach(() => {
     navigation.pathname = '/apps'
+  })
+
+  it('hides app and workflow creation shortcuts from users without permission', () => {
+    mockPoll()
+    render(sidebar(true, false))
+    expect(screen.getByRole('link', { name: 'All apps' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Create app' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Workflows' })).toBeNull()
+  })
+
+  it('places each automation creation shortcut on its destination row', () => {
+    mockPoll()
+    render(sidebar())
+
+    const rows = screen.getAllByRole('listitem')
+    const workflows = rows.find(row => within(row).queryByRole('link', { name: 'Workflows' }))!
+    const triggers = rows.find(row => within(row).queryByRole('link', { name: 'Triggers' }))!
+    expect(within(workflows).getByRole('link', { name: 'Create workflow' })).toHaveAttribute(
+      'href',
+      '/automations/create'
+    )
+    expect(within(triggers).getByRole('link', { name: 'Create trigger' })).toHaveAttribute(
+      'href',
+      '/automations/triggers?create=1'
+    )
+    expect(screen.getAllByRole('link', { name: 'Create workflow' })).toHaveLength(1)
   })
 
   it('polls one summary and shows separate statuses on the service links', async () => {

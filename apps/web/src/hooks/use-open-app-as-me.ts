@@ -14,12 +14,12 @@ export const useOpenAppAsMe = () => {
     runAction(async () => {
       const cloned = unwrapActionResult(await requestApplicationCloneAction(appId))
       toast({
-        title: 'Opening your own copy',
-        description: 'A separate app session is being prepared for your profile.'
+        title: 'App copy requested',
+        description: 'Rebroid is preparing a separate app in your account.'
       })
       router.push(`/app/${cloned.id}`)
       onOpened?.()
-    }, 'Could not open app as your copy')
+    }, 'Could not copy app')
 
   return { isCloning: isRunningAction, openAppAsMe }
 }

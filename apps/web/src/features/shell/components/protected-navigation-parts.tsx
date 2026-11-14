@@ -1,6 +1,7 @@
 import { useId } from 'react'
-import { IconChevronRight, IconCirclePlus } from '@tabler/icons-react'
+import { IconCirclePlus } from '@tabler/icons-react'
 import Link from 'next/link'
+import { DisclosureChevron } from '@/components/ui/disclosure'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { NavigationHint } from './navigation-hint'
@@ -17,6 +18,7 @@ type NavLinkProps = {
   label: string
   Icon: NavigationItem['Icon']
   healthId?: NavigationItem['healthId']
+  shortcut?: NavigationItem['shortcut']
   isActive: boolean
   variant: NavigationVariant
   onNavigate?: () => void
@@ -97,7 +99,7 @@ export const NavigationHealthDot = ({
     />
   ) : null
 
-export const NavLink = ({ href, label, Icon, healthId, isActive, variant, onNavigate }: NavLinkProps) => {
+export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, variant, onNavigate }: NavLinkProps) => {
   const styles = variantStyles[variant]
   const statuses = usePlatformHealth()
   const status = healthId ? statuses[healthId] : undefined
@@ -105,7 +107,12 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, variant, onNavi
   const link = (
     <Link
       href={href}
-      className={cn(styles.item, isActive && styles.activeItem, compact && status && 'relative')}
+      className={cn(
+        styles.item,
+        isActive && styles.activeItem,
+        compact && status && 'relative',
+        shortcut && !compact && 'min-w-0 flex-1 pr-9 touch:pr-2'
+      )}
       onClick={onNavigate}
       aria-current={isActive ? 'page' : undefined}
       title={status?.label}
@@ -113,7 +120,7 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, variant, onNavi
       <div className={styles.iconWrap}>
         <Icon className={styles.icon} />
       </div>
-      <span className={styles.label}>{label}</span>
+      <span className={cn(styles.label, shortcut && !compact && 'truncate')}>{label}</span>
       <NavigationHealthDot
         status={status}
         compact={compact}
@@ -122,8 +129,17 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, variant, onNavi
   )
 
   return (
-    <li>
+    <li className={shortcut ? cn('relative flex items-center', compact && 'flex-col') : undefined}>
       {compact ? <NavigationHint label={status ? `${label} · ${status.label}` : label}>{link}</NavigationHint> : link}
+      {shortcut ? (
+        <NavigationAddLink
+          href={shortcut.href}
+          label={shortcut.label}
+          variant={variant}
+          className={compact ? undefined : 'touch-control absolute right-2 size-6 touch:static'}
+          onNavigate={onNavigate}
+        />
+      ) : null}
     </li>
   )
 }
@@ -174,9 +190,10 @@ export const NestedNavigationMenu = ({
     </>
   )
   const chevron = (
-    <IconChevronRight
-      aria-hidden='true'
-      className={cn('size-3.5 shrink-0 text-foreground-muted transition-transform', isOpen && 'rotate-90')}
+    <DisclosureChevron
+      open={isOpen}
+      direction='right'
+      className='size-3.5 shrink-0 text-foreground-muted'
     />
   )
 
