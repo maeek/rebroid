@@ -497,6 +497,8 @@ ResourceLinks. Run history preserves the `?run=` selection contract.
 The app's Workflows view shows persisted runs for that app in a flat grid. Open a run in the
 same content area with Summary and Events, and keep the shared device pane visible. Use the
 `?run=` selection and restore the run grid and focus when returning to history.
+Keep the Run history button inside the content edge and size the Status column for the full
+Completed chip.
 
 ## Image builders
 
@@ -560,6 +562,7 @@ The authorized clipboard dialog belongs in the display toolbar, with explicit re
 
 The embedded Files view opens in Downloads and uses one folder grid with visible location shortcuts, ancestor
 breadcrumbs, current-folder search, and column sorting. Upload and New folder act on the current folder.
+The upload queue uses a collapsible panel with flat rows and shows progress only during an upload.
 File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
 App Configuration keeps Runtime settings visible as an ordinary section container. Technical Details and Logs belong only in Diagnostics.
@@ -722,10 +725,9 @@ owner, and IDs; combine it with status and sorting. Bulk actions target selected
 Expose failed apps through status filtering instead of repeating their errors above the gallery.
 Loading reuses the gallery toolbar, grid, and tile content.
 On hover or keyboard focus, running app cards and desktop sidebar shortcuts show the latest available screenshot
-for the app owner with screenshot permission. The floating preview reserves the same space during
-loading and refresh, fits the image without cropping, and shows the capture time. It opens to the
-right of the sidebar app row. Open previews refresh once a minute. Stop or access loss clears
-the image and capture time.
+for the app owner with screenshot permission. The floating preview shows the full image at its
+original aspect ratio and fits the available viewport. It opens to the right of the sidebar app row.
+Open previews refresh once a minute. Stop or access loss clears the image.
 Create and Configuration saves show name conflicts on the Name field and focus it. Compare
 names within the app owner's account, ignoring case and surrounding whitespace. When the source
 name is already taken in the destination account, **Copy to my apps** uses an available copy name.
