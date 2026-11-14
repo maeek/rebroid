@@ -2,11 +2,7 @@
 services:
   orchestrator:
     image: rebroid/orchestrator:test
-    container_name: rebroid-orchestrator-test
     environment:
-      CONTAINER_IMAGE:
-      REDROID_ADB_PORT: ${REDROID_ADB_PORT:-5555}
-      REDROID_PRIVILEGED:
       DISPLAY_SIDECAR_CONTAINER_NAME: rebroid-display-sidecar-test
       MAX_APK_UPLOAD_SIZE_MB: ${MAX_APK_UPLOAD_SIZE_MB:-512}
     volumes:
@@ -17,27 +13,20 @@ services:
 
   firewall-agent:
     image: rebroid/firewall-agent:test
-    container_name: rebroid-firewall-agent-test
     volumes:
       - firewall-agent-test-run:/run/rebroid-firewall
       - shared-test-secrets:/app/secrets:ro
 
   web:
     image: rebroid/web:test
-    container_name: rebroid-web-test
-    build:
-      args:
-        NEXT_PROXY_CLIENT_MAX_BODY_SIZE: ${NEXT_PROXY_CLIENT_MAX_BODY_SIZE:-512mb}
     environment:
       DISPLAY_SIDECAR_INTERNAL_BASE_URL: http://rebroid-display-sidecar-test:8000
-      INITIAL_ADMIN_PASSWORD:
     volumes:
       - web-test-data:/app/data
       - shared-test-secrets:/app/secrets:ro
 
   edge:
     image: rebroid/edge:test
-    container_name: rebroid-edge-test
     ports: !override
       - "${REBROID_PORT:-3001}:3443"
     volumes:
@@ -52,14 +41,9 @@ services:
       - "${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}:${TEST_DISPLAY_WEBRTC_UDP_PORT:-40101}/udp"
     volumes:
       - shared-test-secrets:/app/secrets:ro
-    networks:
-      platform:
-        aliases: !override
-          - rebroid-display-sidecar-test
 
   ocr-sidecar:
     image: rebroid/ocr-sidecar:test
-    container_name: rebroid-ocr-sidecar-test
 
 volumes:
   orchestrator-test-data:

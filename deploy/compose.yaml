@@ -5,31 +5,26 @@ services:
       context: ..
       dockerfile: apps/orchestrator/Dockerfile
     image: localhost/rebroid/orchestrator:local
-    container_name: rebroid-orchestrator
+    # The rootful engine socket may be writable only by root or a host-specific GID.
     user: "0:0"
     restart: unless-stopped
     environment:
       DISPLAY_SIDECAR_AUTO_START: "false"
-      REDROID_COLLECT_BOOT_EVENTS: ${REDROID_COLLECT_BOOT_EVENTS:-false}
       WEB_INTERNAL_URL: http://web:3101
       OCR_SIDECAR_BASE_URL: http://ocr-sidecar:8100
-      GAPPS_PATCHER_IMAGE: ${GAPPS_PATCHER_IMAGE:-localhost/rebroid/gapps-patcher:latest}
     volumes:
-      # Redroid requires a rootful Docker-compatible engine socket.
       - ${CONTAINER_ENGINE_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - orchestrator-data:/app/data
       - orchestrator-uploads:/app/uploads
       - shared-secrets:/app/secrets
       - firewall-agent-run:/run/rebroid-firewall
-    networks:
-      - platform
+    networks: [platform]
 
   firewall-agent:
     build:
       context: ..
       dockerfile: apps/firewall-agent/Dockerfile
     image: localhost/rebroid/firewall-agent:local
-    container_name: rebroid-firewall-agent
     network_mode: host
     restart: unless-stopped
     cap_add:
@@ -44,31 +39,24 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
     image: localhost/rebroid/web:local
-    container_name: rebroid-web
     restart: unless-stopped
-    depends_on:
-      - orchestrator
-      - display-sidecar
+    depends_on: [orchestrator]
     environment:
       REBROID_TLS_HOSTS:
     volumes:
       - web-data:/app/data
       - shared-secrets:/app/secrets:ro
-    networks:
-      - platform
+    networks: [platform]
 
   edge:
     build:
       context: ./edge
     image: localhost/rebroid/edge:local
-    container_name: rebroid-edge
     restart: unless-stopped
     depends_on:
       web:
         condition: service_healthy
         restart: true
-      orchestrator:
-        condition: service_started
       display-sidecar:
         condition: service_started
     environment:
@@ -77,8 +65,7 @@ services:
       - "${REBROID_HTTPS_PORT:-3443}:3443"
     volumes:
       - web-data:/app/data:ro
-    networks:
-      - platform
+    networks: [platform]
 
   display-sidecar:
     platform: linux/amd64
@@ -91,25 +78,19 @@ services:
     environment:
       DISPLAY_WEBRTC_UDP_PORT: ${DISPLAY_WEBRTC_UDP_PORT:-40000}
       DISPLAY_WEBRTC_ICE_HOST:
-      SCRCPY_VIDEO_ENCODER:
     ports:
       - "${DISPLAY_WEBRTC_UDP_PORT:-40000}:${DISPLAY_WEBRTC_UDP_PORT:-40000}/udp"
     volumes:
       - shared-secrets:/app/secrets:ro
-    networks:
-      platform:
-        aliases:
-          - rebroid-display-sidecar
+    networks: [platform]
 
   ocr-sidecar:
     platform: linux/amd64
     build:
       context: ../apps/ocr-sidecar
     image: localhost/rebroid/ocr-sidecar:local
-    container_name: rebroid-ocr-sidecar
     restart: unless-stopped
-    networks:
-      - platform
+    networks: [platform]
 
 volumes:
   orchestrator-data:

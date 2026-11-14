@@ -9,7 +9,7 @@ for (const name of [
   "REBROID_PORT",
   "DISPLAY_WEBRTC_UDP_PORT",
   "TEST_DISPLAY_WEBRTC_UDP_PORT",
-  "GAPPS_PATCHER_IMAGE",
+  "CONTAINER_ENGINE_SOCKET",
 ]) {
   delete defaultEnvironment[name];
 }
@@ -46,7 +46,7 @@ function loadCompose(files, overrides = {}) {
   return JSON.parse(result.stdout);
 }
 
-function checkStack({ services }, httpsPort, mediaPort) {
+function checkStack({ services }, httpsPort, mediaPort, engineSocket) {
   const { orchestrator, web, edge } = services;
   const display = services["display-sidecar"];
   const firewall = services["firewall-agent"];
@@ -69,7 +69,7 @@ function checkStack({ services }, httpsPort, mediaPort) {
   ]) {
     assert(
       Object.hasOwn(service.networks ?? {}, "platform"),
-      `${service.container_name} needs the platform network`,
+      `${service.image} needs the platform network`,
     );
   }
   assert(
@@ -81,6 +81,21 @@ function checkStack({ services }, httpsPort, mediaPort) {
   assert.equal(edge.ports[0].target, 3443);
   assert.equal(edge.depends_on.web.condition, "service_healthy");
   assert.equal(edge.depends_on.web.restart, true);
+  assert.equal(edge.depends_on["display-sidecar"].condition, "service_started");
+
+  assert.equal(orchestrator.user, "0:0");
+  assert(Object.values(services).every((service) => !service.privileged));
+  assert.equal(firewall.network_mode, "host");
+  assert.deepEqual(firewall.cap_add, ["NET_ADMIN"]);
+  assert(!firewall.networks);
+  const socketMounts = Object.entries(services).flatMap(([name, service]) =>
+    (service.volumes ?? [])
+      .filter(({ target }) => target === "/var/run/docker.sock")
+      .map(({ source, type }) => ({ name, source, type })),
+  );
+  assert.deepEqual(socketMounts, [
+    { name: "orchestrator", source: engineSocket, type: "bind" },
+  ]);
 
   const secretServices = [orchestrator, web, display, firewall];
   const secretMounts = secretServices.map((service) =>
@@ -105,7 +120,11 @@ function checkStack({ services }, httpsPort, mediaPort) {
   assert.equal(edgeData.source, webData.source);
   assert(edgeData.read_only);
 
-  assert(display.networks.platform.aliases.includes(display.container_name));
+  assert.equal(
+    display.container_name,
+    orchestrator.environment.DISPLAY_SIDECAR_CONTAINER_NAME ??
+      "rebroid-display-sidecar",
+  );
   assert.equal(display.environment.DISPLAY_WEBRTC_UDP_PORT, mediaPort);
   assert.equal(orchestrator.environment.DISPLAY_WEBRTC_UDP_PORT, undefined);
   const udp = display.ports?.filter(({ protocol }) => protocol === "udp") ?? [];
@@ -119,14 +138,17 @@ const productionFiles = ["compose.yaml"];
 const testFiles = ["compose.yaml", "compose.test.yaml"];
 const production = loadCompose(productionFiles);
 const test = loadCompose(testFiles);
-assert.equal(checkStack(production, "3443", "40000"), "shared-secrets");
-assert.equal(checkStack(test, "3001", "40101"), "shared-test-secrets");
+const dockerSocket = "/var/run/docker.sock";
+assert.equal(
+  checkStack(production, "3443", "40000", dockerSocket),
+  "shared-secrets",
+);
+assert.equal(
+  checkStack(test, "3001", "40101", dockerSocket),
+  "shared-test-secrets",
+);
 assert.equal(production.networks.platform.name, "rebroid-platform");
 assert.equal(test.networks.platform.name, "rebroid-test-platform");
-assert.equal(
-  test.services.orchestrator.environment.DISPLAY_SIDECAR_CONTAINER_NAME,
-  test.services["display-sidecar"].container_name,
-);
 assert.equal(
   test.services.web.environment.DISPLAY_SIDECAR_INTERNAL_BASE_URL,
   `http://${test.services["display-sidecar"].container_name}:8000`,
@@ -141,14 +163,17 @@ checkStack(
   }),
   "4443",
   "42000",
+  dockerSocket,
 );
 checkStack(
   loadCompose(testFiles, {
     REBROID_PORT: "4444",
     TEST_DISPLAY_WEBRTC_UDP_PORT: "42001",
     DISPLAY_WEBRTC_UDP_PORT: "42000",
+    CONTAINER_ENGINE_SOCKET: "/run/podman/podman.sock",
   }),
   "4444",
   "42001",
+  "/run/podman/podman.sock",
 );
 console.log("Compose wiring checks passed.");

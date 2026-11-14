@@ -47,8 +47,11 @@ and WebRTC UDP port `40101`. Override them with `REBROID_PORT` and `TEST_DISPLAY
 production stacks on separate hosts if they are active at the same time. Their firewall agents
 manage the same host rules, and their orchestrators use the same managed resource prefix.
 Include both files in subsequent test-stack commands, including `exec web` to read the generated
-password. If you supplied `INITIAL_ADMIN_PASSWORD` for a fresh test database, sign in with that
 password. Run `pnpm test:compose` to verify both resolved configurations.
+
+Use Compose service names for commands such as `docker compose -f deploy/compose.yaml logs web`.
+Compose assigns container names automatically. The display sidecar keeps its explicit name
+because the orchestrator uses it to find the container for ADB network attachment and restarts.
 
 ## Configuration
 
@@ -63,16 +66,24 @@ These Compose variables control deployment wiring:
 | `CONTAINER_ENGINE_SOCKET`       | `/var/run/docker.sock` | Rootful engine socket mounted into the orchestrator. |
 | `DISPLAY_WEBRTC_UDP_PORT`       | `40000`                | Published UDP media port.                           |
 | `DISPLAY_WEBRTC_ICE_HOST`       | Automatic              | Browser-reachable address advertised for WebRTC.     |
-| `GAPPS_PATCHER_IMAGE`           | `localhost/rebroid/gapps-patcher:latest` | Image for the managed Google Play patch worker. |
 
 The orchestrator creates the internal credential in the `shared-secrets` volume. Web, the display
 sidecar, and the firewall agent read it from read-only mounts. Test deployments use the same
 mechanism with their test volume. If a previous test deployment used `ORCHESTRATOR_SHARED_SECRET`
 from the environment, update any direct API clients to use the credential in that test volume.
 
-The orchestrator requires an external engine socket. The firewall agent uses host networking
-and `NET_ADMIN`, and communicates over a private Unix socket. See the
+The orchestrator runs as `0:0` in Compose so it can open root-owned engine sockets without a
+host-specific group ID. Opening that socket grants control of the rootful engine. The engine
+starts privileged Redroid containers when requested. No Compose service runs in privileged mode.
+The firewall agent uses host networking and `NET_ADMIN` to manage host rules, and communicates
+over a private Unix socket. See the
 [architecture overview](architecture.md) for service ownership and storage.
+
+For advanced settings such as `REDROID_COLLECT_BOOT_EVENTS`, `GAPPS_PATCHER_IMAGE`, or
+`SCRCPY_VIDEO_ENCODER`, add a Compose override that sets the variable on the relevant service.
+The test stack inherits the orchestrator defaults for the Redroid image, ADB port, and runtime
+privilege. Use a test override to customize those defaults, set `INITIAL_ADMIN_PASSWORD` on web,
+or set `NEXT_PROXY_CLIENT_MAX_BODY_SIZE` under `web.build.args`.
 
 ## Local HTTPS
 
