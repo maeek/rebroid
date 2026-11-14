@@ -3,6 +3,7 @@ import {
   MetricsService,
   type DockerOperationClass,
 } from '../../../metrics/metrics.service';
+import type { DockerOperationLimits } from '../../contracts/docker-operation-limits';
 import { DockerConnection } from './docker-connection.factory';
 import { DockerErrorClassifier } from './docker-error-classifier.service';
 
@@ -16,16 +17,13 @@ export class DockerMetricsObserver {
   ) {}
 
   configure(
-    transport: DockerConnection['transport'],
-    options: {
-      maxConcurrentReads: number;
-      maxConcurrentLongOperations: number;
-      slowRequestWarningMs: number;
-      longOperationTimeoutMs: number;
-      remoteRequestTimeoutMs: number;
+    connection: {
+      transport: DockerConnection['transport'];
+      socketPath: string | null;
     },
+    limits: DockerOperationLimits & { remoteRequestTimeoutMs: number },
   ) {
-    this.metrics.configureDocker(transport, options);
+    this.metrics.configureDocker(connection, limits);
   }
 
   queueDockerOperation(className: DockerOperationClass, delta: number) {

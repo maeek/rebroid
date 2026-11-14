@@ -81,6 +81,7 @@ export class DockerConnectionFactory {
         ).options,
       ),
       transport: connection.transport,
+      socketPath: connection.options.socketPath ?? null,
       remoteRequestTimeoutMs,
     };
   }

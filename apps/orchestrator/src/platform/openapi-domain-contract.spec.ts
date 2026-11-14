@@ -9,6 +9,7 @@ type OpenApiOperation = {
 
 type OpenApiDocument = {
   paths: Record<string, Partial<Record<string, OpenApiOperation>>>;
+  components: { schemas: Record<string, unknown> };
 };
 
 const document = JSON.parse(
@@ -66,6 +67,24 @@ describe('orchestrator OpenAPI domain contract', () => {
           },
         },
       },
+    });
+  });
+
+  it('documents the nullable Docker socket path in diagnostics', () => {
+    expect(
+      document.paths['/api/v1/metrics/docker']?.get?.responses,
+    ).toMatchObject({
+      200: {
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/DockerMetricsSnapshotDto' },
+          },
+        },
+      },
+    });
+    expect(document.components.schemas.DockerMetricsSnapshotDto).toMatchObject({
+      properties: { socketPath: { type: 'string', nullable: true } },
+      required: expect.arrayContaining(['socketPath']),
     });
   });
 

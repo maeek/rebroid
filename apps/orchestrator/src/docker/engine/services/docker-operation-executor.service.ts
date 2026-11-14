@@ -7,6 +7,7 @@ import {
   OperationDeadline,
   OperationDeadlineExceededError,
 } from '../../../common/operation-deadline';
+import type { DockerOperationLimits } from '../../contracts/docker-operation-limits';
 import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
 import { DockerConnection } from './docker-connection.factory';
 import { DockerErrorClassifier } from './docker-error-classifier.service';
@@ -37,20 +38,20 @@ export class DockerOperationExecutor {
     private readonly metrics: DockerMetricsObserver,
   ) {}
 
-  configure(options: {
-    transport: DockerConnection['transport'];
-    maxConcurrentReads: number;
-    maxConcurrentLongOperations: number;
-    slowRequestWarningMs: number;
-    longOperationTimeoutMs: number;
-    remoteRequestTimeoutMs: number;
-  }) {
-    this.transport = options.transport;
-    this.slowRequestWarningMs = options.slowRequestWarningMs;
-    this.longOperationTimeoutMs = options.longOperationTimeoutMs;
-    this.limitRead.setConcurrency(options.maxConcurrentReads);
-    this.limitLongOperation.setConcurrency(options.maxConcurrentLongOperations);
-    this.metrics.configure(options.transport, options);
+  configure(
+    options: DockerOperationLimits & {
+      transport: DockerConnection['transport'];
+      socketPath: string | null;
+      remoteRequestTimeoutMs: number;
+    },
+  ) {
+    const { transport, socketPath, ...limits } = options;
+    this.transport = transport;
+    this.slowRequestWarningMs = limits.slowRequestWarningMs;
+    this.longOperationTimeoutMs = limits.longOperationTimeoutMs;
+    this.limitRead.setConcurrency(limits.maxConcurrentReads);
+    this.limitLongOperation.setConcurrency(limits.maxConcurrentLongOperations);
+    this.metrics.configure({ transport, socketPath }, limits);
   }
 
   get hasPendingMutations() {

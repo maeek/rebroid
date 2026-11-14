@@ -67,6 +67,43 @@ describe('DockerEngineService', () => {
     });
   });
 
+  it.each([
+    ['', 'local-socket', '/run/custom.sock'],
+    [
+      'unix:///run/docker%20engine.sock',
+      'local-socket',
+      '/run/docker engine.sock',
+    ],
+    ['tcp://docker.example:2375', 'remote', null],
+  ])(
+    'reports the effective socket path with DOCKER_HOST=%s',
+    (host, transport, socketPath) => {
+      const env = jest.replaceProperty(process, 'env', {
+        ...process.env,
+        DOCKER_HOST: host,
+      });
+      try {
+        const metrics = new MetricsService();
+        const engine = createEngine(
+          { 'app.docker.socketPath': '/run/custom.sock' },
+          metrics,
+        );
+        engine.setOperationLimits({
+          ...engine.getOperationLimits(),
+          maxConcurrentReads: 3,
+        });
+
+        expect(metrics.dockerSnapshot()).toMatchObject({
+          transport,
+          socketPath,
+          limits: { maxConcurrentReads: 3 },
+        });
+      } finally {
+        env.restore();
+      }
+    },
+  );
+
   it('retries transient Docker transport errors', async () => {
     const engine = createEngine();
     let attempts = 0;

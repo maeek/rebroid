@@ -26,6 +26,7 @@ export class DockerEngineService implements DockerEnginePort {
   readonly orchestratorHostname = hostname();
   readonly transport: DockerConnection['transport'];
   private operationLimits: DockerOperationLimits;
+  private readonly socketPath: string | null;
   private readonly remoteRequestTimeoutMs: number;
   private inventoryRevision = 0;
 
@@ -52,6 +53,7 @@ export class DockerEngineService implements DockerEnginePort {
     this.docker = connection.docker;
     this.streamDocker = connection.streamDocker;
     this.transport = connection.transport;
+    this.socketPath = connection.socketPath;
     this.resourcePrefix = this.engineConfig.resourcePrefix;
     const maxConcurrentReads = this.engineConfig.maxConcurrentReads;
     const maxConcurrentLongOperations =
@@ -77,6 +79,7 @@ export class DockerEngineService implements DockerEnginePort {
     this.executor.configure({
       ...limits,
       transport: this.transport,
+      socketPath: this.socketPath,
       remoteRequestTimeoutMs: this.remoteRequestTimeoutMs,
     });
   }

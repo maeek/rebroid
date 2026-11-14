@@ -50,7 +50,10 @@ export class MetricsService {
   private readonly inFlight = { read: 0, mutation: 0, long: 0 };
   private readonly queued = { read: 0, mutation: 0, long: 0 };
   private readonly events: DockerOperationEvent[] = [];
-  private transport = 'local-socket';
+  private dockerConnection: { transport: string; socketPath: string | null } = {
+    transport: 'local-socket',
+    socketPath: null,
+  };
   private limits = {
     maxConcurrentReads: 0,
     maxConcurrentLongOperations: 0,
@@ -177,8 +180,11 @@ export class MetricsService {
     };
   }
 
-  configureDocker(transport: string, limits: MetricsService['limits']) {
-    this.transport = transport;
+  configureDocker(
+    connection: MetricsService['dockerConnection'],
+    limits: MetricsService['limits'],
+  ) {
+    this.dockerConnection = { ...connection };
     this.limits = { ...limits };
   }
 
@@ -253,7 +259,7 @@ export class MetricsService {
 
     return {
       collectedAt: new Date().toISOString(),
-      transport: this.transport,
+      ...this.dockerConnection,
       limits: this.limits,
       totals,
       inFlight: this.inFlight,

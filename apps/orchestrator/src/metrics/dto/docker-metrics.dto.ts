@@ -50,6 +50,7 @@ export class DockerMetricsEventDto {
 export class DockerMetricsSnapshotDto {
   @ApiProperty() collectedAt!: string;
   @ApiProperty() transport!: string;
+  @ApiProperty({ nullable: true, type: String }) socketPath!: string | null;
   @ApiProperty({ type: DockerMetricsLimitsDto })
   limits!: DockerMetricsLimitsDto;
   @ApiProperty({ type: DockerMetricsTotalsDto })

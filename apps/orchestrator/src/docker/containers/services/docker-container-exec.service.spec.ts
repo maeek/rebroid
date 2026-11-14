@@ -30,6 +30,7 @@ function setup() {
   );
   executor.configure({
     transport: 'local-socket',
+    socketPath: null,
     maxConcurrentReads: 1,
     maxConcurrentLongOperations: 1,
     slowRequestWarningMs: 60_000,

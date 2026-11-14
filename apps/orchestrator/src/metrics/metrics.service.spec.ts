@@ -3,13 +3,16 @@ import { MetricsService } from './metrics.service';
 describe('MetricsService', () => {
   it('reports Docker access metrics for Prometheus and dashboard snapshots', async () => {
     const service = new MetricsService();
-    service.configureDocker('local-socket', {
-      maxConcurrentReads: 8,
-      maxConcurrentLongOperations: 4,
-      slowRequestWarningMs: 5_000,
-      longOperationTimeoutMs: 1_800_000,
-      remoteRequestTimeoutMs: 60_000,
-    });
+    service.configureDocker(
+      { transport: 'local-socket', socketPath: '/var/run/docker.sock' },
+      {
+        maxConcurrentReads: 8,
+        maxConcurrentLongOperations: 4,
+        slowRequestWarningMs: 5_000,
+        longOperationTimeoutMs: 1_800_000,
+        remoteRequestTimeoutMs: 60_000,
+      },
+    );
     service.queueDockerOperation('read', 1);
     service.queueDockerOperation('read', -1);
     service.recordDockerRetry('container_inspect', 'ECONNRESET');
@@ -22,6 +25,7 @@ describe('MetricsService', () => {
 
     expect(service.dockerSnapshot()).toMatchObject({
       transport: 'local-socket',
+      socketPath: '/var/run/docker.sock',
       limits: {
         maxConcurrentReads: 8,
         maxConcurrentLongOperations: 4,
@@ -50,6 +54,9 @@ describe('MetricsService', () => {
     });
     await expect(service.registry.metrics()).resolves.toContain(
       'rebroid_docker_api_operations_total',
+    );
+    await expect(service.registry.metrics()).resolves.not.toContain(
+      '/var/run/docker.sock',
     );
   });
 });
