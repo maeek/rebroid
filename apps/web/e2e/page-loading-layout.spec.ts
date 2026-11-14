@@ -44,6 +44,24 @@ for (const [ready, loading, kind] of pairs) {
   })
 }
 
+test('the app loading player fits phone and tablet aspect ratios', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  for (const { display, view, ratio } of [
+    { display: 'phone', view: 'overview', ratio: 1080 / 2340 },
+    { display: 'tablet', view: 'profiles', ratio: 1600 / 1000 }
+  ]) {
+    await page.goto(`/skeleton-contract-test?editor=app-resource-loading&display=${display}&view=${view}`)
+    const device = page.getByRole('complementary', { name: 'Android device' })
+    const screen = device.locator('[data-slot="device-screen-skeleton"]')
+    await expect(screen).toBeVisible()
+    const bounds = (await screen.boundingBox())!
+    const pane = (await device.boundingBox())!
+    expect(bounds.width / bounds.height).toBeCloseTo(ratio, 2)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(pane.x + pane.width)
+    expect(bounds.y + bounds.height).toBeLessThanOrEqual(pane.y + pane.height)
+  }
+})
+
 test('current page loaders fit all supported widths and themes without runtime errors', async ({ page }) => {
   test.setTimeout(90_000)
   const errors: string[] = []

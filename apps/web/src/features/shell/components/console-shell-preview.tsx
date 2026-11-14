@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
@@ -23,11 +23,13 @@ const defaultManifest: FeatureFlagManifest = { revision: 1, features: [] }
 export const ConsoleShellPreview = ({
   initialSidebarCollapsed,
   manifest = defaultManifest,
-  recentApps
+  recentApps,
+  children
 }: {
   initialSidebarCollapsed?: boolean
   manifest?: FeatureFlagManifest
   recentApps?: RecentApp[]
+  children?: ReactNode
 }) => {
   const [client] = useState(() => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { enabled: false } } })
@@ -42,17 +44,19 @@ export const ConsoleShellPreview = ({
           initialSidebarCollapsed={initialSidebarCollapsed}
           pollNavigation={false}
         >
-          <PageHeader
-            section={{ label: 'Docker' }}
-            trail={[{ label: 'Containers', href: '/runtime/containers' }]}
-            title={'rebroid-runtime-' + 'inventory-worker-'.repeat(8)}
-            actions={
-              <>
-                <Button variant='secondary'>Stop</Button>
-                <Button variant='danger'>Remove</Button>
-              </>
-            }
-          />
+          {children ?? (
+            <PageHeader
+              section={{ label: 'Docker' }}
+              trail={[{ label: 'Containers', href: '/runtime/containers' }]}
+              title={'rebroid-runtime-' + 'inventory-worker-'.repeat(8)}
+              actions={
+                <>
+                  <Button variant='secondary'>Stop</Button>
+                  <Button variant='danger'>Remove</Button>
+                </>
+              }
+            />
+          )}
         </ProtectedShell>
       </FeatureFlagsProvider>
     </QueryClientProvider>

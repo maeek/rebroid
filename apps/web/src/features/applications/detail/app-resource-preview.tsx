@@ -24,8 +24,9 @@ import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
 import { ApplicationViewerContext, type ViewerStreamSample } from './application-viewer-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { DisplayViewerProviderValue } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 
-const previewDisplay = {
+const previewDisplay: DisplayViewerProviderValue = {
   applicationId: previewApp.id,
   canCaptureScreenshot: false,
   canControl: false,
@@ -36,7 +37,7 @@ const previewDisplay = {
       id: 'preview-display',
       surfaceId: 'preview-display',
       sessionId: 'preview-session',
-      kind: 'main' as const,
+      kind: 'main',
       name: 'Main display',
       src: '/preview-display-frame',
       popoutUrl: '/preview-display-frame',
@@ -45,7 +46,35 @@ const previewDisplay = {
   ]
 }
 
-type AppResourcePreviewProps = { activity?: ReactNode; agent?: boolean }
+const dockedPreviewDisplay: DisplayViewerProviderValue = {
+  ...previewDisplay,
+  canControl: true,
+  controlsEnabled: true,
+  surfaces: [{ ...previewDisplay.surfaces[0], displaySize: { width: 1080, height: 2340 } }],
+  dockedSession: {
+    name: previewApp.name,
+    runtime: 'preview-runtime',
+    session: {
+      requestAt: 0,
+      value: {
+        applicationId: previewApp.id,
+        transport: 'websocket',
+        udid: 'preview:5555',
+        proxyRemote: '',
+        player: 'webcodecs',
+        viewerServiceConfigured: true,
+        viewerTargetConnected: true,
+        viewerMessage: null,
+        viewerError: null,
+        adbHost: 'preview',
+        adbPort: 5555,
+        displaySession: null
+      }
+    }
+  }
+}
+
+type AppResourcePreviewProps = { activity?: ReactNode; agent?: boolean; docked?: boolean }
 
 export const AppResourcePreview = (props: AppResourcePreviewProps) => (
   <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
@@ -56,7 +85,7 @@ export const AppResourcePreview = (props: AppResourcePreviewProps) => (
 )
 
 /** Static context keeps the gated visual fixture free of authenticated background requests. */
-const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePreviewProps) => {
+const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: AppResourcePreviewProps) => {
   const [queryClient] = useState(() => {
     const client = new QueryClient({
       defaultOptions: { queries: { staleTime: Infinity, refetchOnWindowFocus: false } }
@@ -75,7 +104,7 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
   const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
   const search = useSearchParams()
   const selected = search.get('view')
-  const previewLiveViewer = search.get('viewer') === 'preview'
+  const previewLiveViewer = docked || search.get('viewer') === 'preview'
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
   const workspaceView =
@@ -83,6 +112,10 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
       ? selected
       : view
   const layoutView = showAgent ? 'ai-agent' : workspaceView
+  const Container = docked ? 'div' : 'main'
+  const mainClassName = agent
+    ? 'main-layout min-h-screen bg-background pt-(--console-top-inset) lg:pl-72'
+    : 'min-h-screen bg-background pt-(--console-top-inset)'
   return (
     <QueryClientProvider client={queryClient}>
       <ApplicationViewerContext.Provider
@@ -104,24 +137,20 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
           setViewerStreamMetrics
         }}
       >
-        <main
-          tabIndex={-1}
-          className={
-            agent
-              ? 'main-layout min-h-screen bg-background pt-(--console-top-inset) lg:pl-72'
-              : 'min-h-screen bg-background pt-(--console-top-inset)'
-          }
+        <Container
+          tabIndex={docked ? undefined : -1}
+          className={docked ? undefined : mainClassName}
         >
           <AppDeviceLayout
             view={layoutView}
             breadcrumbs={<AppResourceBreadcrumbs appName={previewApp.name} />}
             viewer={
               previewLiveViewer ? (
-                <DisplayViewerProvider value={previewDisplay}>
+                <DisplayViewerProvider value={docked ? dockedPreviewDisplay : previewDisplay}>
                   <DisplayViewerShell
                     className='h-[var(--app-viewer-height)]'
                     clipboard={<ViewerClipboard appId={previewApp.id} />}
-                    miniPlayerEnabled
+                    miniPlayerEnabled={!docked}
                   />
                 </DisplayViewerProvider>
               ) : (
@@ -158,7 +187,7 @@ const AppResourcePreviewContent = ({ activity, agent = false }: AppResourcePrevi
               />
             )}
           </AppDeviceLayout>
-        </main>
+        </Container>
       </ApplicationViewerContext.Provider>
     </QueryClientProvider>
   )

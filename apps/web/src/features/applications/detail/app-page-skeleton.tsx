@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, use, useContext } from 'react'
 import { IconDeviceFloppy, IconPlayerPlay } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -24,33 +24,63 @@ import { fullPermissions } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AppDeviceLayout } from './app-device-layout'
+import { AppLoadingDisplayContext } from './app-loading-display-context'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppConfigurationSummary } from './app-resource-home'
 import { AppResourceLayout, AppResourceOverviewLayout } from './app-resource-layout'
 import { AppResourceNavigation } from './app-resource-navigation'
 import { AppViewerPaneLayout } from './app-viewer-pane'
+import type { DisplaySize } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import type { AppResourceView } from '@/shared/model/applications/app-resource-links'
 
 const noop = () => undefined
 
-const DeviceSkeleton = () => (
-  <AppViewerPaneLayout placement='top'>
-    <div className='flex h-[var(--app-viewer-height)] w-full items-start justify-center gap-2 overflow-hidden p-2'>
-      <div className='flex w-full max-w-[calc((var(--app-viewer-height)-var(--viewer-chrome-height)-var(--viewer-chrome-gap)-1rem)*0.47)] flex-col gap-(--viewer-chrome-gap)'>
-        <Skeleton className='aspect-[0.47] w-full rounded-overlay' />
-        <Skeleton className='h-[var(--viewer-chrome-height)] w-full' />
-      </div>
-      <div className='grid shrink-0 gap-1.5'>
-        {Array.from({ length: 10 }, (_, index) => (
-          <Skeleton
-            key={index}
-            className='size-[var(--viewer-rail-width)]'
-          />
-        ))}
-      </div>
+const DeviceSkeletonFrame = ({ displaySize }: { displaySize?: DisplaySize | null }) => {
+  if (!displaySize) return <Skeleton className='h-full min-w-0 flex-1 rounded-overlay' />
+  const { width, height } = displaySize
+  const availableWidth = 'calc(100% - var(--viewer-rail-width) - 0.5rem)'
+  const availableHeight = 'var(--app-viewer-height) - var(--viewer-chrome-height) - var(--viewer-chrome-gap) - 1rem'
+  return (
+    <div
+      className='flex min-w-0 flex-col gap-(--viewer-chrome-gap)'
+      style={{
+        width: `min(${availableWidth}, calc((${availableHeight}) * ${width / height}))`
+      }}
+    >
+      <Skeleton
+        data-slot='device-screen-skeleton'
+        className='w-full rounded-overlay'
+        style={{ aspectRatio: `${width} / ${height}` }}
+      />
+      <Skeleton className='h-[var(--viewer-chrome-height)] w-full' />
     </div>
-  </AppViewerPaneLayout>
+  )
+}
+
+const ConfiguredDeviceSkeleton = ({ size }: { size: Promise<DisplaySize | null> }) => (
+  <DeviceSkeletonFrame displaySize={use(size)} />
 )
+
+const DeviceSkeleton = () => {
+  const size = useContext(AppLoadingDisplayContext)
+  return (
+    <AppViewerPaneLayout placement='top'>
+      <div className='flex h-[var(--app-viewer-height)] w-full items-start justify-center gap-2 overflow-hidden p-2'>
+        <Suspense fallback={<DeviceSkeletonFrame />}>
+          {size ? <ConfiguredDeviceSkeleton size={size} /> : <DeviceSkeletonFrame />}
+        </Suspense>
+        <div className='grid shrink-0 gap-1.5'>
+          {Array.from({ length: 10 }, (_, index) => (
+            <Skeleton
+              key={index}
+              className='size-[var(--viewer-rail-width)]'
+            />
+          ))}
+        </div>
+      </div>
+    </AppViewerPaneLayout>
+  )
+}
 
 const LoadingAppLayout = ({ view = 'overview', children }: { view?: AppResourceView; children: React.ReactNode }) => {
   const configuration = view === 'configuration'

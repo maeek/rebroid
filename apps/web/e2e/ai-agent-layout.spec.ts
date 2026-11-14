@@ -1,10 +1,58 @@
 import { expect, test } from '@playwright/test'
 import { viewerPlacementCookie } from '../src/shared/model/settings/viewer-placement'
+import type { WebSocketRoute } from '@playwright/test'
 
 const viewerLayoutButton = /^Move viewer to /
 
 test.beforeEach(async ({ page, baseURL }) => {
   await page.context().addCookies([{ name: viewerPlacementCookie, value: 'right', url: baseURL }])
+})
+
+test('the live player follows the dock when the sidebar toggles at the content width cap', async ({ page }) => {
+  await page.setViewportSize({ width: 2440, height: 1080 })
+  await page.route('**/preview-display-frame', route =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><body data-preview-display></body>' })
+  )
+  await page.goto('/skeleton-contract-test?editor=docked-viewer')
+
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  const display = page.getByRole('region', { name: 'Inventory worker display' })
+  const frame = display.locator('iframe[title="display viewer"]')
+  const dock = page.getByRole('region', { name: 'Main display' })
+  const footer = dock.locator('.viewer-chrome')
+  const toolbar = dock.getByRole('group', { name: 'Device controls' })
+  await expect(frame).toBeVisible()
+  const frameBody = frame.contentFrame().locator('[data-preview-display]')
+  await frameBody.evaluate(node => node.setAttribute('data-retained', 'true'))
+
+  const assertAligned = async () => {
+    const [video, controls, chrome] = await Promise.all([
+      frame.boundingBox(),
+      toolbar.boundingBox(),
+      footer.boundingBox()
+    ])
+    expect(video!.x).toBeCloseTo(chrome!.x, 0)
+    expect(video!.width).toBeCloseTo(chrome!.width, 0)
+    expect(video!.x + video!.width).toBeLessThan(controls!.x)
+    expect(video!.y + video!.height).toBeLessThan(chrome!.y)
+    return video!
+  }
+
+  const initial = await assertAligned()
+  for (const [label, width] of [
+    ['Collapse sidebar', '64px'],
+    ['Expand sidebar', '288px']
+  ] as const) {
+    await sidebar.getByRole('button', { name: label, exact: true }).click()
+    await expect(sidebar).toHaveCSS('width', width)
+    await expect(async () => {
+      const video = await assertAligned()
+      expect(video.width).toBe(initial.width)
+      if (label === 'Collapse sidebar') expect(video.x).toBeLessThan(initial.x)
+      else expect(video.x).toBeCloseTo(initial.x, 0)
+    }).toPass({ timeout: 1500 })
+    await expect(frameBody).toHaveAttribute('data-retained', 'true')
+  }
 })
 
 test('the viewer defaults to the top for a new preference', async ({ page }) => {
@@ -209,26 +257,49 @@ test('stacked viewer floats without reconnecting and the chat passes wheel scrol
   await page.route('**/preview-display-frame', route =>
     route.fulfill({ contentType: 'text/html', body: '<!doctype html><body data-preview-display></body>' })
   )
+  const streams: WebSocketRoute[] = []
+  let closedStreams = 0
+  await page.routeWebSocket('**/preview-display-stream', stream => {
+    streams.push(stream)
+    stream.onClose(() => closedStreams++)
+  })
+  await page.addInitScript(() => {
+    if (location.pathname !== '/preview-display-frame') return
+    const url = new URL('/preview-display-stream', location.href)
+    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const stream = new WebSocket(url)
+    stream.addEventListener('message', event => {
+      if (typeof event.data === 'string') document.body.dataset.streamPacket = event.data
+    })
+  })
   await page.goto('/skeleton-contract-test?editor=agent&viewer=preview')
   const frame = page.locator('iframe[title="display viewer"]')
+  const inertFrame = frame.and(page.locator('[inert] iframe'))
+  const frameBody = frame.contentFrame().locator('[data-preview-display]')
   const transcript = page.getByRole('region', { name: 'AI agent transcript' })
   const closePreview = page.getByRole('button', { name: 'Close mini player' })
+  const expectStreamPacket = async (packet: string) => {
+    streams[0].send(packet)
+    await expect(frameBody).toHaveAttribute('data-stream-packet', packet)
+    expect(streams).toHaveLength(1)
+    expect(closedStreams).toBe(0)
+  }
+
   await expect(frame).toBeInViewport()
-  await expect(frame.contentFrame().locator('[data-preview-display]')).toBeAttached()
+  await expect(inertFrame).toHaveCount(0)
+  await expect(frameBody).toBeAttached()
+  await expect.poll(() => streams.length).toBe(1)
+  await expectStreamPacket('inline')
   const clipboard = page.getByRole('button', { name: 'Device clipboard' })
   await clipboard.click()
   const clipboardDialog = page.getByRole('dialog', { name: 'Device clipboard' })
   await expect(clipboardDialog.getByRole('textbox', { name: 'Clipboard text' })).toBeEditable()
   await page.keyboard.press('Escape')
   await expect(clipboard).toBeFocused()
-  await frame.evaluate(element => {
-    const iframe = element as HTMLIFrameElement
-    iframe.contentDocument!.body.dataset.retained = 'true'
-  })
-
   await page.evaluate(() => window.scrollBy(0, 650))
   await expect(closePreview).toBeInViewport()
-  await expect(frame.locator('..')).toHaveAttribute('inert', '')
+  await expect(inertFrame).toHaveCount(1)
+  await expectStreamPacket('floating')
   await expect(transcript).toBeInViewport()
   await transcript.hover()
   const scrolledDown = await page.evaluate(() => scrollY)
@@ -241,14 +312,15 @@ test('stacked viewer floats without reconnecting and the chat passes wheel scrol
   await closePreview.click()
   await expect(closePreview).toHaveCount(0)
   expect(await page.evaluate(() => scrollY)).toBe(beforeClose)
-  await expect(frame.locator('..')).not.toHaveAttribute('inert')
+  await expect(inertFrame).toHaveCount(0)
+  await expectStreamPacket('dismissed')
   await page.evaluate(() => window.scrollTo(0, 0))
   await expect(frame).toBeInViewport()
-  expect(await frame.evaluate(element => (element as HTMLIFrameElement).contentDocument!.body.dataset.retained)).toBe(
-    'true'
-  )
+  await expectStreamPacket('restored')
   await page.evaluate(() => window.scrollBy(0, 650))
   await expect(closePreview).toBeInViewport()
+  await expect(inertFrame).toHaveCount(1)
+  await expectStreamPacket('floating again')
   expect(errors).toEqual([])
 })
 

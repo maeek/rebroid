@@ -68,7 +68,7 @@ const AppSnapshotPopup = ({
         <PreviewCard.Popup
           data-slot='app-snapshot-preview'
           aria-busy={pending || undefined}
-          className='shadow-floating'
+          className='overflow-hidden rounded-overlay shadow-floating'
         >
           {snapshot ? (
             <img

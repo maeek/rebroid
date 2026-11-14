@@ -1,3 +1,5 @@
+import { cache } from 'react'
+import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-application-core/redroid-runtime'
 import { unstable_rethrow } from 'next/navigation'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { withStoredAppIcon } from '@/features/applications/icons/enrich'
@@ -12,7 +14,7 @@ import { getOwnerDisplayName, getVisibleOwnerDisplayNames } from '@/server/users
 import { isApplicationId } from '@/shared/model/application-id'
 import type { AppPageFailureState } from '@/features/applications/components/app-page-failure'
 
-const loadApplication = async (id: string) => {
+const loadApplication = cache(async (id: string) => {
   try {
     return { app: mapAndroidApplicationToAppDefinition(await getApplicationAction(id)) }
   } catch (error) {
@@ -34,6 +36,14 @@ const loadApplication = async (id: string) => {
     })
     return { failure: { kind: 'unavailable', requestId } satisfies AppPageFailureState }
   }
+})
+
+export const getApplicationLoadingDisplaySize = async (id: string) => {
+  if (!isApplicationId(id)) return null
+  const { app } = await loadApplication(id)
+  if (!app) return null
+  const { width, height } = getRedroidDisplayDimensionsFromArgs(app.containerArgs)
+  return { width, height }
 }
 
 export const getApplicationPageData = async (id: string) => {

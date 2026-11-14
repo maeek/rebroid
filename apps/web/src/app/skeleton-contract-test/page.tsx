@@ -2,12 +2,14 @@ import { cookies } from 'next/headers'
 import { notFound } from 'next/navigation'
 import { CreateAppPageLoading } from '@/features/applications/create/create-app-page-loading'
 import { CreateAppPreview } from '@/features/applications/create/create-app-preview'
+import { AppLoadingDisplayContext } from '@/features/applications/detail/app-loading-display-context'
 import { AppPageSkeleton, AppProfilesPageSkeleton } from '@/features/applications/detail/app-page-skeleton'
 import { AppResourcePreview } from '@/features/applications/detail/app-resource-preview'
 import { appResourcePreviewFeatures } from '@/features/applications/detail/app-resource-preview-data'
 import { AppsGalleryPreview } from '@/features/applications/list/apps-gallery-preview'
 import { AppsPageSkeleton } from '@/features/applications/list/apps-page-skeleton'
 import { StartupTimingsPreview } from '@/features/applications/viewer/diagnostics/startup-timings-preview'
+import { PinnedViewerProvider } from '@/features/applications/viewer/mini-player/pinned-viewer-provider'
 import {
   AutomationCreatePageSkeleton,
   AutomationEditorPageSkeleton,
@@ -96,11 +98,11 @@ export const dynamic = 'force-dynamic'
 export default async function SkeletonContractPage({
   searchParams
 }: {
-  searchParams: Promise<{ editor?: string; workflows?: string; recentApps?: string }>
+  searchParams: Promise<{ editor?: string; workflows?: string; recentApps?: string; display?: string }>
 }) {
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
-  const { editor, workflows, recentApps } = await searchParams
+  const { editor, workflows, recentApps, display } = await searchParams
   if (editor === 'action-feedback') return <ActionFeedbackPreview />
   if (editor === 'resource-navigation') return <ResourceNavigationPreview />
   if (editor === 'search-menu-log') return <SearchMenuLogPreview />
@@ -167,7 +169,13 @@ export default async function SkeletonContractPage({
     return (
       <main className='min-h-screen bg-background pt-(--console-top-inset)'>
         <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
-          <AppPageSkeleton activity={<AppActivityLoading />} />
+          <AppLoadingDisplayContext
+            value={Promise.resolve(
+              display === 'tablet' ? { width: 1600, height: 1000 } : { width: 1080, height: 2340 }
+            )}
+          >
+            <AppPageSkeleton activity={<AppActivityLoading />} />
+          </AppLoadingDisplayContext>
         </FeatureFlagsProvider>
       </main>
     )
@@ -289,6 +297,18 @@ export default async function SkeletonContractPage({
           }
         }
       />
+    )
+  }
+  if (editor === 'docked-viewer') {
+    const requestCookies = await cookies()
+    return (
+      <PinnedViewerProvider>
+        <ConsoleShellPreview
+          initialSidebarCollapsed={parseSidebarCollapsed(requestCookies.get(sidebarCollapsedCookie)?.value)}
+        >
+          <AppResourcePreview docked />
+        </ConsoleShellPreview>
+      </PinnedViewerProvider>
     )
   }
   if (editor === 'triggers') return <AutomationTriggersPreview />

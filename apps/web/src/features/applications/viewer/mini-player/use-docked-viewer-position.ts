@@ -47,6 +47,9 @@ export const useDockedViewerPosition = (element: HTMLDivElement, floating: boole
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
     resize?.observe(element)
     if (workspace) resize?.observe(workspace)
+    // The sidebar animates main's padding, moving a width-capped workspace without resizing it.
+    const main = element.closest('main')
+    if (main) resize?.observe(main, { box: 'content-box' })
     if (document.body) resize?.observe(document.body)
     const intersection = typeof IntersectionObserver === 'undefined' ? undefined : new IntersectionObserver(schedule)
     intersection?.observe(element)
