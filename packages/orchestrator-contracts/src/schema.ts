@@ -902,6 +902,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apps/{id}/runtime/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the latest thumbnail for an owned running application. */
+        get: operations["AndroidAppsRuntimeSnapshotController_read"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apps/{id}/runtime/logs/container": {
         parameters: {
             query?: never;
@@ -2063,6 +2080,7 @@ export interface components {
         DockerMetricsSnapshotDto: {
             collectedAt: string;
             transport: string;
+            socketPath: string | null;
             limits: components["schemas"]["DockerMetricsLimitsDto"];
             totals: components["schemas"]["DockerMetricsTotalsDto"];
             inFlight: components["schemas"]["DockerMetricsClassCountsDto"];
@@ -3804,6 +3822,14 @@ export interface components {
             status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
             containerId: string | null;
         };
+        ApplicationRuntimeSnapshotDto: {
+            /** @enum {string} */
+            mimeType: "image/webp";
+            /** @example data:image/webp;base64,UklGRg== */
+            dataUrl: string;
+            /** Format: date-time */
+            capturedAt: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -5489,6 +5515,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApplicationScreenshotDto"];
                 };
+            };
+        };
+    };
+    AndroidAppsRuntimeSnapshotController_read: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Authenticated account ID supplied by the trusted web service. */
+                "x-rebroid-snapshot-owner": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRuntimeSnapshotDto"];
+                };
+            };
+            /** @description The application snapshot is unavailable. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

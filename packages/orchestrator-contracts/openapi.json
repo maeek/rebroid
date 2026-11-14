@@ -2843,6 +2843,49 @@
         ]
       }
     },
+    "/api/v1/apps/{id}/runtime/snapshot": {
+      "get": {
+        "operationId": "AndroidAppsRuntimeSnapshotController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-snapshot-owner",
+            "in": "header",
+            "description": "Authenticated account ID supplied by the trusted web service.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRuntimeSnapshotDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The application snapshot is unavailable."
+          }
+        },
+        "summary": "Read the latest thumbnail for an owned running application.",
+        "tags": [
+          "app-runtime"
+        ]
+      }
+    },
     "/api/v1/apps/{id}/runtime/logs/container": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_containerLogs",
@@ -6104,6 +6147,10 @@
           "transport": {
             "type": "string"
           },
+          "socketPath": {
+            "type": "string",
+            "nullable": true
+          },
           "limits": {
             "$ref": "#/components/schemas/DockerMetricsLimitsDto"
           },
@@ -6132,6 +6179,7 @@
         "required": [
           "collectedAt",
           "transport",
+          "socketPath",
           "limits",
           "totals",
           "inFlight",
@@ -12105,6 +12153,30 @@
           "ownerUserId",
           "status",
           "containerId"
+        ]
+      },
+      "ApplicationRuntimeSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/webp"
+            ]
+          },
+          "dataUrl": {
+            "type": "string",
+            "example": "data:image/webp;base64,UklGRg=="
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "mimeType",
+          "dataUrl",
+          "capturedAt"
         ]
       }
     }
