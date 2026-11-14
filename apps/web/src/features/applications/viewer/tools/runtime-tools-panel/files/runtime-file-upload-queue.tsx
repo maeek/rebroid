@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { IconCheck, IconChevronDown, IconChevronUp, IconRotate, IconUpload, IconX } from '@tabler/icons-react'
+import { IconCheck, IconRotate, IconX } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { OperationProgress } from '@/components/ui/operation-progress'
+import { Section } from '@/components/ui/section'
 import { StateTransition } from '@/components/ui/state-transition'
 import { cn } from '@/lib/utils'
 import type { RuntimeFileUploadItem } from './use-runtime-file-uploads'
@@ -39,116 +40,112 @@ export const RuntimeFileUploadQueue = ({
   if (items.length === 0) return null
 
   return (
-    <div
-      className='sticky bottom-0 z-20 border-t border-surface-border/70 bg-surface-elevated/95 shadow-floating max-sm:[&_button]:min-h-11 supports-[backdrop-filter]:backdrop-blur-xl'
-      aria-live='polite'
+    <Section
+      surface='panel'
+      title='Upload queue'
+      summary={activeCount > 0 ? `${activeCount} upload${activeCount === 1 ? '' : 's'} in progress` : undefined}
+      headingLevel={3}
+      headingSpacing='compact'
+      collapsible
+      open={expanded}
+      onOpenChange={setExpanded}
+      className='sticky bottom-0 z-20'
     >
-      <Button
-        type='button'
-        variant='bare'
-        className='min-h-11 w-full justify-between px-4 text-left'
-        onClick={() => setExpanded(value => !value)}
-        aria-expanded={expanded}
+      <ul
+        className='scrollbar-thin max-h-56 min-w-0 divide-y divide-surface-border/60 overflow-y-auto'
+        aria-live='polite'
       >
-        <span className='flex items-center gap-2'>
-          <IconUpload className='size-4 text-primary' />
-          {activeCount > 0 ? `${activeCount} upload${activeCount === 1 ? '' : 's'} in progress` : 'Upload queue'}
-        </span>
-        {expanded ? <IconChevronDown className='size-4' /> : <IconChevronUp className='size-4' />}
-      </Button>
-      {expanded ? (
-        <div className='scrollbar-thin grid max-h-56 gap-2 overflow-y-auto border-t border-surface-border/60 px-3 pt-3 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-3'>
-          {items.map(item => (
-            <div
-              key={item.id}
-              className='grid gap-2 rounded-control border border-surface-border/60 bg-surface-band/55 px-3 py-2'
-            >
-              <div className='flex min-w-0 items-center gap-3'>
-                <span className='min-w-0 flex-1'>
-                  <span className='block truncate text-sm font-medium'>{item.file.name}</span>
-                  <span
-                    className={cn('block text-xs text-foreground-muted', {
-                      'text-danger': item.status === 'failed',
-                      'text-warning': item.status === 'conflict'
-                    })}
+        {items.map(item => (
+          <li
+            key={item.id}
+            className='grid min-w-0 gap-2 py-2 first:pt-0 last:pb-0'
+          >
+            <div className='flex min-w-0 items-center gap-3'>
+              <span className='min-w-0 flex-1'>
+                <span className='block wrap-anywhere text-sm font-medium'>{item.file.name}</span>
+                <span
+                  className={cn('block text-xs text-foreground-muted', {
+                    'text-danger': item.status === 'failed',
+                    'text-warning': item.status === 'conflict'
+                  })}
+                >
+                  <StateTransition
+                    identity={item.id}
+                    state={item.status}
+                    className='flex'
                   >
-                    <StateTransition
-                      identity={item.id}
-                      state={item.status}
-                      className='flex'
-                    >
-                      {item.status === 'completed' ? (
-                        <IconCheck
-                          aria-hidden
-                          className='size-3.5 shrink-0 text-success'
-                        />
-                      ) : null}
-                      <span className='truncate'>{item.error ?? uploadStatusLabel(item)}</span>
-                    </StateTransition>
-                  </span>
+                    {item.status === 'completed' ? (
+                      <IconCheck
+                        aria-hidden
+                        className='size-3.5 shrink-0 text-success'
+                      />
+                    ) : null}
+                    <span className='wrap-anywhere'>{item.error ?? uploadStatusLabel(item)}</span>
+                  </StateTransition>
                 </span>
-                {item.status === 'queued' || item.status === 'uploading' ? (
-                  <Button
-                    type='button'
-                    size='icon-sm'
-                    variant='ghost'
-                    onClick={() => onCancel(item.id)}
-                    aria-label={`Cancel ${item.file.name}`}
-                  >
-                    <IconX className='size-4' />
-                  </Button>
-                ) : null}
-                {item.status === 'failed' ? (
+              </span>
+              {item.status === 'queued' || item.status === 'uploading' ? (
+                <Button
+                  type='button'
+                  size='icon-sm'
+                  variant='ghost'
+                  onClick={() => onCancel(item.id)}
+                  aria-label={`Cancel ${item.file.name}`}
+                >
+                  <IconX className='size-4' />
+                </Button>
+              ) : null}
+              {item.status === 'failed' ? (
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='outline'
+                  onClick={() => onRetry(item.id)}
+                >
+                  <IconRotate className='size-4' />
+                  Retry
+                </Button>
+              ) : null}
+              {item.status === 'conflict' ? (
+                <div className='flex items-center gap-1'>
                   <Button
                     type='button'
                     size='sm'
                     variant='outline'
-                    onClick={() => onRetry(item.id)}
+                    onClick={() => onDismiss(item.id)}
                   >
-                    <IconRotate className='size-4' />
-                    Retry
+                    Skip
                   </Button>
-                ) : null}
-                {item.status === 'conflict' ? (
-                  <div className='flex items-center gap-1'>
-                    <Button
-                      type='button'
-                      size='sm'
-                      variant='outline'
-                      onClick={() => onDismiss(item.id)}
-                    >
-                      Skip
-                    </Button>
-                    <Button
-                      type='button'
-                      size='sm'
-                      onClick={() => onRetry(item.id, true)}
-                    >
-                      Replace
-                    </Button>
-                  </div>
-                ) : null}
-                {item.status === 'completed' || item.status === 'canceled' ? (
                   <Button
                     type='button'
-                    size='icon-sm'
-                    variant='ghost'
-                    onClick={() => onDismiss(item.id)}
-                    aria-label={`Dismiss ${item.file.name}`}
+                    size='sm'
+                    onClick={() => onRetry(item.id, true)}
                   >
-                    <IconX className='size-4' />
+                    Replace
                   </Button>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+              {item.status === 'completed' || item.status === 'canceled' ? (
+                <Button
+                  type='button'
+                  size='icon-sm'
+                  variant='ghost'
+                  onClick={() => onDismiss(item.id)}
+                  aria-label={`Dismiss ${item.file.name}`}
+                >
+                  <IconX className='size-4' />
+                </Button>
+              ) : null}
+            </div>
+            {item.status === 'uploading' ? (
               <OperationProgress
                 label={`Upload progress for ${item.file.name}`}
                 value={item.progress}
-                active={item.status === 'uploading'}
               />
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </Section>
   )
 }
