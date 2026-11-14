@@ -1,5 +1,9 @@
 # AMD hardware acceleration in Rebroid
 
+For the shipped **Host GPU** setting and verification steps, use the
+[Linux GPU rendering guide](../deployment.md#android-gpu-rendering-on-linux). This research
+records the earlier investigation into Android rendering and hardware encoding.
+
 Research date: **2026-11-11**. Scope: source and documentation review only; no Docker, Android, ADB, GPU, or performance experiments were run. User-provided environment: Linux/x64 Docker host, **Ryzen 7 4800U with Radeon Graphics**, working Jellyfin VA-API, and working Android 16 in Rebroid. “Reported” below means upstream authors' results, not independent verification. Recommendations are proposed future work.
 
 ## Recommendation

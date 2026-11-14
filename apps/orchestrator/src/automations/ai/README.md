@@ -20,7 +20,8 @@ Android UI data, OCR, and optional model descriptions into the evidence used by 
 
 ## Running a device task
 
-Configure an enabled provider/model in **Platform → AI**. Use the application's **AI agent**
+Enable AI in **Administration → Feature management** and configure a Device control model
+under **Administration → AI**. Use the application's **AI agent**
 workspace or add an `ai.run` step to a workflow:
 
 ```yaml
@@ -40,8 +41,10 @@ spec:
         rawShellPolicy: deny
 ```
 
-Ad hoc prompts are recorded when the run is queued, so the conversation can restore them even if
-execution never starts. Save as workflow uses the prompt and a completed AI task result.
+The conversation records each prompt before dispatch. Prompts queued behind another task stay in
+submission order. Select **Run next task** to start the oldest queued prompt once the device is
+available. Queued prompts stay out of provider history until dispatched. After a task completes,
+**Draft workflow** uses its prompt and result to prepare an editable workflow draft.
 
 The target is selected when the workflow runs. The caller needs `automations:run-ai` and the
 permissions required by the actions it executes. `providerId` and `modelId` can select a specific

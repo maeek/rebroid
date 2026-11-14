@@ -6,8 +6,8 @@ be reported through the [security policy](../SECURITY.md).
 ## Sessions and account access
 
 - `getCurrentUser()` validates the persisted account session, auth epoch, per-user session version,
-  disabled state, and required password changes. Only the protected layout and forced-password-change
-  completion use `getAuthenticatedUser()`.
+  disabled state, and required password changes. The protected routing shell and forced-password-change
+  screen and completion use `getAuthenticatedUser()`.
 - Each browser sign-in creates its own account session. Revocation takes effect on the next authenticated
   request, even if the browser retains the cookie. Visible protected tabs check every 15 seconds and
   when they regain focus. This status check leaves the existing 30-day rolling cookie lifetime alone.
@@ -44,9 +44,9 @@ Automation definitions, targets, profiles, and triggers are revalidated before u
 permissions fail closed.
 
 Cookie-authenticated mutation APIs require a same-origin `Origin`. NextAuth keeps its own CSRF
-handling. Display session tokens and automation subscription tokens grant narrow, short-lived
-access. Open automation streams expire with their token and reconnect through the web
-authorization check. Platform feature flags never replace permission checks.
+handling. Automation subscriptions use short-lived tokens. Open streams expire with their token
+and reconnect through the web authorization check. Viewer access requires the current account
+session and the matching display grant. Platform feature flags never replace permission checks.
 
 ## Proxies and public output
 
@@ -104,8 +104,7 @@ authorization route. Web checks the browser's current session, app ownership, an
 running container ID. Pending revocation blocks grant creation and attachment. Active transports
 close on revocation or a failed authorization recheck. Attached transports with the same Display
 session and browser credentials share a live recheck. Each new transport authorizes independently.
-Viewer URLs contain only a session ID and
-playback settings. nginx blocks the internal viewer authorization and display session management
+Viewer URLs contain the session ID and playback settings. nginx blocks the internal viewer authorization and display session management
 routes from public ingress.
 
 Workflow inputs must not override the session owner or supply alternate unchecked definitions.

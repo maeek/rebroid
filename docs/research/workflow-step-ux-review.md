@@ -1,6 +1,10 @@
 # Workflow step configuration UX review
 
-Temporary design guidance · 14 November 2026
+Design review · 14 November 2026
+
+This review records the editor behavior and proposals at the time of the review. The
+[operator console guide](../operator-console.md#build-and-schedule-workflows) and
+[workflow design guidance](../web-design-system.md#workflow-workspace) describe the current editor.
 
 This review covers the three supplied screenshots, the current visual editor, and **42 registered actions and three control blocks**. The proposed names, values, and layouts are design recommendations. Gesture behavior, task completion times, and keyboard interactions still need a hands-on pass.
 
@@ -38,7 +42,10 @@ Each proposed display label maps to the current command or control block shown i
 | **Tap relative position** · `android.tapNormalized` | Offer **Center** (50%, 50%), a point on a phone diagram, and two exact percentage fields with an accessible keyboard path. Show the origin at the top left. Offer an output shortcut for a compatible `vision.locate` step that inserts both center coordinates inside the **Found** branch. |
 | **Tap by pixels** · `android.tap` | Show X/Y together with px units. When selecting a point on a device screenshot, show its source dimensions and orientation. Make the current distinction from relative taps explicit in the picker. |
 
-Sources for current behavior. [Gesture schemas](../../apps/orchestrator/src/automations/commands/android-automation-command-schemas.ts) · [Runtime coordinate conversion](../../apps/orchestrator/src/automations/commands/android-input-automation-commands.ts) · [Fixed editor reference size](../../apps/web/src/features/automations/automations-page/actions/shared/coordinate-helpers.ts)
+The fixed reference size came from the former `actions/shared/coordinate-helpers.ts` in the web
+workflow editor at commit `b2a047e9`. See the [gesture schemas](../../apps/orchestrator/src/automations/commands/android-automation-command-schemas.ts)
+and [runtime coordinate conversion](../../apps/orchestrator/src/automations/commands/android-input-automation-commands.ts)
+for the command contracts.
 
 #### Proposed swipe presets
 

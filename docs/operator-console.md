@@ -45,6 +45,13 @@ Open **Administration → Casting** (`/platform/casting`) to check display servi
 restart the display sidecar, or manage viewer sessions. The Display service row in **System → Services**
 also opens Casting. **View logs** in Connection opens the sidecar's Docker **Logs** tab.
 
+## Feature management
+
+Open **Administration → Feature management** to change a capability and see its effective status.
+The switch updates the saved setting. **Waiting for display service** means the display service
+has yet to acknowledge it. **Unavailable** means the deployment lacks the required support.
+Enable **AI** here before configuring a provider under **Administration → AI**.
+
 ## Runtime images
 
 Administrators can use **Pull image** above the Images grid to download or update an image from
@@ -56,7 +63,8 @@ managed image inventory and are recorded in the audit log.
 
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
 - `/app/[id]` opens the resource overview with stored status, configuration, pending runtime changes,
-  and relevant destinations. Reading this page does not reconcile Docker or create a viewer session.
+  and relevant destinations. The embedded viewer requests its own display session for running apps
+  while the browser tab is visible.
 - Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
 - The resource navigation is one row, with permission-based destinations kept consistent across views.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
@@ -69,7 +77,8 @@ managed image inventory and are recorded in the audit log.
 - Files opens in Downloads. Use the location shortcuts or breadcrumbs to change folders. Uploads,
   including drag-and-drop, go into the current folder.
 
-Creation lands on the resource overview, allowing provisioning to be observed without opening media.
+After creating an app, follow provisioning in the resource overview. On narrow screens, open
+**Device** once Android is ready to use the live display.
 Saved runtime changes are distinguished from the currently active runtime; recreation is reported
 as pending until the next start. Lifecycle commands keep their existing server-side authorization.
 
@@ -103,6 +112,16 @@ Administrators can manage the firewall agent connection under **Firewall** (`/se
 **Network policies** table below **Connection** shows app access and enforcement. The **Application**
 column shows the owner's username beside the app name when available. Open an app's policy from its
 row, or use **Sync all rules** to refresh host rules and remove stale entries.
+
+## Build and schedule workflows
+
+Open **Workflows** and select **New workflow**. In **Visual editor**, select **Add step** and
+search or browse the catalog. Select a step in **Step sequence** to configure it. Use the move
+controls or drag to reorder steps. Switch to **YAML** to edit the same draft as text.
+
+To run a saved workflow on a device, open the app's **Workflows** view and select **Run workflow**.
+For recurring runs, open **Triggers → New trigger**, then choose a workflow, target app, profile,
+and schedule. Enable **Start app if needed** when the trigger has permission to start a stopped app.
 
 ## Workflow device steps
 

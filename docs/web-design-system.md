@@ -553,6 +553,9 @@ the error and a retry action inside the frame.
 
 The viewer layout button beside the breadcrumbs switches between the default stacked layout and a right-hand pane. Its tooltip names the destination and shows the keyboard shortcut. In the stacked layout, breadcrumbs stay first, then the same mounted device pane, then the full-width resource content. The layout button and Preferences → General share one browser preference, applied on the first render. The app tab bar preserves vertical scroll on navigation. Old Viewer tab links open Overview. The device chrome can open the viewer in a separate window.
 
+The app workspace loader uses saved display dimensions for the player skeleton as soon as the
+authorized app lookup resolves. Show a neutral pane placeholder while the dimensions are pending.
+
 The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.
 The compact display keeps all four corners rounded. Hover or keyboard focus reveals a separate toolbar above it
 without moving or resizing the display.
@@ -568,9 +571,9 @@ File details open in a drawer so the grid keeps its width. Log source choices si
 App Configuration keeps Runtime settings visible as an ordinary section container. Technical Details and Logs belong only in Diagnostics.
 
 The device agent is a viewport-contained workspace on desktop. Its header and resource navigation stay in
-normal flow; the transcript owns vertical scrolling and the composer occupies the remaining pane footer.
-Do not give the chat another viewport-height calculation beneath the page chrome. Smaller screens stack the
-device below a bounded conversation. Ready and loading states reuse AppResourceLayout, RuntimeToolPanelLayout,
+normal flow. The transcript owns vertical scrolling and the composer occupies the pane footer.
+Keep one viewport-height calculation for the workspace. On narrow screens, show the conversation
+first and use the **Device** switch to reach the mounted viewer. Ready and loading states reuse AppResourceLayout, RuntimeToolPanelLayout,
 and AiAgentConversationLayout. Keep one quiet conversation toolbar, readable neutral message bubbles, and
 compact tool/observation disclosures. The empty state shows at most three quiet suggested requests; all
 requests remain in the composer’s Suggestions control. Keep conversation export/clear in one action menu.
@@ -583,6 +586,8 @@ as separate values when selecting a row.
 Stopped devices allow drafting but never submission, including keyboard shortcuts. Setup guidance is neutral;
 actual run/provider failures remain accessible errors. New output follows only while the reader is near the
 bottom, with an explicit Latest messages action after scrolling up; do not animate repeated stream scrolling.
+Show the completed result and its verified observation links before routine activity. Distinguish prompts
+waiting behind an active task from the prompt ready for **Run next task**.
 
 App and container resource navigation share `ResourceNavigation` under `shared/ui`. Feature wrappers own destinations and permissions. Resource navigation uses a single overflow-safe row of routed links with aria-current, a quiet semantic background, and a compact active indicator. App breadcrumbs end at the app name. The resource navigation identifies the current section. Keep device-specific controls next to the device, outside resource navigation.
 
@@ -636,7 +641,7 @@ show the container name as a link to its overview. Place **View logs**
 with the other text links below the connection details. Use a muted middle dot between adjacent links
 and let the links wrap on narrow screens. **View logs** opens the container's **Logs** tab,
 which reads a bounded log tail on demand. Long port values truncate to one line and expose the full value in a tooltip.
-Infrastructure diagnostics and administrator-only operation limits live on the Docker view, with a
+Infrastructure diagnostics and administrator-only orchestrator Docker-client limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.
 When orchestrator health is missing or offline, the Docker view shows one warning and does not mount

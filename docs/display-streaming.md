@@ -119,7 +119,8 @@ session-expiry handling still routes recovery through the authorized web viewer.
 The main display suspends its browser consumer when the document is hidden. WebRTC cancels
 its offer and retries and closes its peer. WebSocket closes its media socket and keeps the
 worker's canvas available for resume. Control connections and media processing suspend with
-the viewer. A visible return starts one new attempt, including after a back/forward-cache
+the viewer. On narrow app pages, switching from **Device** to the selected app section also
+hides the mounted main display and suspends its consumer. A visible return starts one new attempt, including after a back/forward-cache
 restore. A route exit closes that browser consumer. The display session can still be reused
 subject to authorization and expiry.
 

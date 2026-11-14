@@ -2,6 +2,9 @@
 
 14 November 2026
 
+This review records the interface observed on that date. For current behavior, see the
+[operator console guide](../operator-console.md) and [web design system](../web-design-system.md).
+
 Rebroid looks most distinctive when the operator can see the Android display, the decisions a workflow will take, or the evidence behind an agent’s result. Some of the interface gives equal weight to routine status, repeated labels, and generic panels. The biggest improvements are in the paths operators use when something goes wrong or when they switch between the device and their work.
 
 ## Fix first
@@ -46,7 +49,7 @@ The gallery currently uses horizontal cards with a surface fill. Its tests expec
 
 Keep one compact, stable card layout for browsing and use authentic device thumbnails when they help identify or monitor running apps. Reserve the preview area while a permitted capture loads, or place it in a separate preview that leaves the grid stable. Show the existing capture timestamp and use neutral language when an eligible preview is unavailable. Verify that a user without screenshot access sees no image or preview metadata. Use the filter summary for active chips and clear actions. Decide where the card menu should be visible while idle, then update the guide and tests to match.
 
-[Gallery guidance](../web-design-system.md#app-discovery) · [Card contract](../../apps/web/e2e/apps-gallery.spec.ts#L77) · [Card layout](../../apps/web/src/shared/ui/app-icon/app-gallery-tile.tsx#L12) · [Snapshot rendering](../../apps/web/src/shared/ui/app-icon/app-gallery-snapshot.tsx#L6) · [Filter summary](../../apps/web/src/shared/ui/data-grid/data-grid-filter-summary.tsx#L17)
+[Gallery guidance](../web-design-system.md#app-discovery) · [Card contract](../../apps/web/e2e/apps-gallery.spec.ts#L77) · [Card layout](../../apps/web/src/shared/ui/app-icon/app-gallery-tile.tsx#L12) · [Current snapshot preview](../../apps/web/src/shared/ui/app-icon/app-snapshot-preview.tsx) · [Filter summary](../../apps/web/src/shared/ui/data-grid/data-grid-filter-summary.tsx#L17)
 
 ### Make workflow rows say what the workflow does
 
@@ -54,7 +57,7 @@ The outline and inspector repeat type labels such as **Condition**, **Switch**, 
 
 Use sequence and branch indentation to show structure. Give each row an effect or readable predicate, for example **If package is com.example.inventory · 2 more rules**. Give each empty branch one **Add step** action and show the drop cue during a drag. Lead the inspector with the parameter the operator came to edit and keep action replacement as a labeled header control. On a failed run, show the workflow, target, and failed step first, with a direct link to the relevant step or event. Keep identifiers copyable in details. The [workflow step UX review](workflow-step-ux-review.md) covers deeper action-specific changes.
 
-[Step summaries](../../apps/web/src/features/automations/automations-page/steps/shared/automation-step-utils.ts#L16) · [Outline](../../apps/web/src/features/automations/automations-page/steps/outline/automation-step-outline-row.tsx#L152) · [Empty branch](../../apps/web/src/features/automations/automations-page/steps/outline/automation-step-outline-list-view.tsx#L173) · [Inspector fields](../../apps/web/src/features/automations/automations-page/steps/editors/automation-step-editor.tsx#L98) · [Trace title](../../apps/web/src/features/automations/automations-page/traces/automation-traces-page.tsx#L36)
+[Step summaries](../../apps/web/src/features/automations/automations-page/steps/shared/automation-step-utils.ts) · [Outline](../../apps/web/src/features/automations/automations-page/steps/outline/automation-step-outline-row.tsx) · [Empty branch](../../apps/web/src/features/automations/automations-page/steps/outline/automation-step-outline-list-view.tsx) · [Inspector fields](../../apps/web/src/features/automations/automations-page/steps/editors/automation-step-editor.tsx) · [Trace title](../../apps/web/src/features/automations/automations-page/traces/automation-traces-page.tsx)
 
 ### Spend status color on changes and exceptions
 
@@ -70,7 +73,7 @@ Workflows and Triggers replace the grid with a large illustration and repeat the
 
 Keep the page title and useful search or filter controls stable. Give each state a specific explanation and one next action. Feature management already shows **Clear search** after zero matches, and Apps offers **Clear search and filters**. Apply the same clarity to first use. Link to the missing app or workflow for a new trigger, show one permission-aware creation action for a genuinely empty collection, and use an H2 for the message under the page heading.
 
-[Workflows](../../apps/web/src/features/automations/automations-page/list/automations-list-page.tsx#L26) · [Triggers](../../apps/web/src/features/automations/automations-page/triggers/automation-triggers-page.tsx#L291) · [Prerequisite state](../../apps/web/src/features/automations/automations-page/shared/automation-empty-splash.tsx#L20) · [Feature search](../../apps/web/src/features/platform/features/features-grid.tsx#L166) · [Empty Apps](../../apps/web/src/features/applications/list/components/apps-list-empty-state.tsx#L7)
+[Workflows](../../apps/web/src/features/automations/automations-page/list/automations-list-page.tsx) · [Triggers](../../apps/web/src/features/automations/automations-page/triggers/automation-triggers-table.tsx) · [Feature search](../../apps/web/src/features/platform/features/features-grid.tsx) · [Empty Apps](../../apps/web/src/features/applications/list/components/apps-list-empty-state.tsx)
 
 ## Fill the gaps in operational diagnostics
 

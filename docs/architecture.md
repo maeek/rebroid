@@ -14,9 +14,11 @@ flowchart TB
     Web -->|Authenticated API| Orchestrator["NestJS orchestrator"]
     Edge -->|Viewer and signaling| Display["Display sidecar"]
     Edge -->|Token-scoped run events| Orchestrator
+    Edge -->|Authorized container terminal| Orchestrator
     Orchestrator -->|Container engine socket| Engine["Rootful Docker-compatible engine"]
     Engine --> Android["ReDroid containers"]
     Orchestrator -->|Session management| Display
+    Display -->|Viewer authorization| Web
     Display -->|ADB and scrcpy| Android
     Orchestrator -->|Private Unix socket| Firewall["Firewall agent"]
     Firewall --> Rules["Host firewall rules"]
@@ -54,7 +56,9 @@ explicit reconciliation, rather than making every page read contact the engine.
 
 Ordinary browser operations use the BFF. Automation event streams are a separate path: after web
 authorization, the browser receives a short-lived subscription token and connects through the edge
-straight to the orchestrator's event WebSocket. The edge strips internal shared-secret headers.
+straight to the orchestrator's event WebSocket. The container terminal also upgrades through the
+edge. The orchestrator verifies the account session with web before opening the shell and rechecks
+access during the connection. The edge strips internal shared-secret headers.
 
 ## Live display
 
@@ -106,7 +110,8 @@ Pre-release schemas have no in-place upgrade path. Use the documented
 ## Feature configuration
 
 The orchestrator persists feature intent and revision, then publishes an immutable runtime snapshot.
-Administrators manage feature flags under **Platform settings → Features**.
+Administrators manage feature flags under **Administration → Feature management**.
+The switch shows the requested setting. The status shows whether the owning service has applied it.
 The display sidecar receives only the virtual-display and WebRTC settings. Both require enabled,
 synchronized state before admitting new work.
 
@@ -116,6 +121,10 @@ synchronized state before admitting new work.
 | Workflows        | On      | Blocks workflow editing and new manual or scheduled runs. Active runs can finish.                                                        |
 | Resource quota   | On      | Suspends per-user open-app, CPU, memory, and session quota enforcement for subsequent operations. Saved quotas apply again when enabled. |
 | WebRTC streaming | On      | New viewer connections use WebSocket. Existing WebRTC connections can finish.                                                            |
+| Virtual displays | Off     | Blocks creation of new virtual displays. Active displays drain.                                                                          |
+| Image builder    | On      | Blocks new image builds. Active jobs can finish.                                                                                          |
+| OCR perception   | On when configured | Blocks new OCR requests.                                                                                                         |
+| Firewall         | On when configured | Blocks restricted operations and preserves installed host rules.                                                                  |
 
 OCR readiness and recognition responses must both report the configured deployment language.
 Disabling a feature blocks new work according to its policy. In-flight OCR and image builds can

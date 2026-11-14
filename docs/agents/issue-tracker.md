@@ -15,9 +15,7 @@ Issues and specs live in GitHub Issues for `maeek/rebroid`. Use `gh` with `--rep
 
 ## Pull requests as a triage surface
 
-**PRs as a request surface: no.**
-
-If enabled, triage external pull requests with the same label mapping and state transitions. List open pull requests through `gh api --paginate 'repos/maeek/rebroid/pulls?state=open'`, excluding authors associated as `OWNER`, `MEMBER`, or `COLLABORATOR`. Read a PR with `gh pr view`, `gh pr view --comments`, and `gh pr diff`. Use the corresponding `gh pr` commands to comment, edit labels, or close.
+Use GitHub Issues for requests and triage. Pull requests are for reviewing and landing changes.
 
 ## Wayfinding
 

@@ -4,28 +4,29 @@
 
 Use the [Linux GPU setup guide](deployment.md#android-gpu-rendering-on-linux)
 to configure a render node on the Docker host. Saving records a platform setting.
-The **Hardware Acceleration** section in **Runtime defaults** shows when recorded runtime configuration differs
-from the saved setting and counts older runtimes whose configuration is unknown.
-Neither state verifies GPU activity.
+The **Hardware Acceleration** section under **Administration → General** shows when recorded runtime
+configuration differs from the saved setting and counts runtimes whose configuration is unknown.
+Verify GPU activity using the renderer reported by Android.
 
 If Start reports a device mapping problem, check that the configured render node
 exists on the Docker daemon's host and that a deployment device mapping does not
 use its container path for another device. If Android fails to boot with GPU
-rendering, select **Software (default)** under **Hardware Acceleration**, save, then use the
+rendering, select **Software** under **Hardware Acceleration**, save, then use the
 normal stopped application Start flow. This replaces the runtime when needed and
 keeps persistent profile volumes.
 
-Use **Platform → Overview** and **Platform → Services** for routine diagnostics.
+Use **Overview** for app and workflow status and **System → Services** for service diagnostics.
 For installation and host requirements, see [Deployment](deployment.md).
 
 ## Health checks
 
-The paths below belong to each service; only the edge is published by Compose.
-Use the internal service network or a local development listener for the other checks.
+Compose publishes the edge's HTTPS port and the display sidecar's WebRTC media port.
+Use the internal service network or a local development listener for internal HTTP checks.
 
 | Service         | Endpoint                                                | Meaning                                              |
 | --------------- | ------------------------------------------------------- | ---------------------------------------------------- |
 | Edge            | `/edge-health`                                          | HTTPS ingress liveness.                              |
+| Web             | `/login`                                                | Web container health check.                         |
 | Orchestrator    | `/health/live`                                          | Process liveness.                                    |
 | Orchestrator    | `/health/ready`                                         | Required Docker dependency readiness.                |
 | Orchestrator    | `/api/v1/diagnostics` and `/api/v1/diagnostics/summary` | Authenticated full and shallow diagnostics.          |
@@ -34,21 +35,23 @@ Use the internal service network or a local development listener for the other c
 | Firewall agent  | `/v1/health` on the private Unix socket                 | Committed firewall policy readiness.                 |
 | OCR sidecar     | `/health/live` and `/health`                            | Liveness and model readiness.                        |
 
-Docker health checks use liveness, so an optional downstream outage does not restart a healthy process.
-OCR readiness stays false until its model has warmed up.
+The orchestrator and display container health checks use liveness. The OCR container health check
+uses model readiness and becomes healthy after warmup.
 If a firewall update cannot be saved and rollback also fails, firewall health reports the
 recovery failure. The next authenticated policy command first restores the committed rules.
 
 ## Docker troubleshooting
 
-Open **Services → Docker → Infrastructure diagnostics** for failures, retries, queue depth, and slow operations. Ordinary local engine requests
+Open **Administration → Docker** and find **Infrastructure diagnostics** for failures, retries,
+queue depth, and slow operations. Ordinary local engine requests
 log slow work without terminating it; remote HTTP/TCP requests have bounded ordinary request timeouts.
 Archive transfers, image pulls, builds, and exec streams have separate concurrency limits and deadlines.
 For local connections, **Connection** shows the socket path as seen by the orchestrator.
 
-Administrators can change concurrent reads (1–64), concurrent long operations (1–16), slow-operation
-warnings (100–300,000 ms), and long-operation timeouts (1,000–3,600,000 ms) on the same Docker service
-page. Changes persist in orchestrator settings and apply without a restart. Deployment values supply
+Under **Operation limits**, **Edit limits** configures the orchestrator's Docker client. It offers
+concurrent reads (1–64), concurrent long operations (1–16), slow-operation warnings
+(100–300,000 ms), and long-operation timeouts (1,000–3,600,000 ms). Changes persist in orchestrator
+settings and apply without a restart. Deployment values supply
 the initial defaults. Updating concurrency retains running and queued work; running or already queued
 long operations retain their deadlines. Mutations stay serialized. Runtime-default resets preserve
 these separately managed Docker limits. Remote request timeouts and Docker connection settings remain
@@ -176,6 +179,13 @@ changes require a clean database. The commands below delete data when `--execute
 Preview the reported paths and resources first. The account-session schema requires a fresh web
 database. Older web databases are rejected at startup.
 
+These scripts discover base-stack volumes by name and managed resources by label on the current
+Docker engine. Review the dry run before executing on a host with other Rebroid deployments.
+The test overlay uses different state volume names. To discard its Compose volumes, run
+`docker compose -f deploy/compose.yaml -f deploy/compose.test.yaml down --volumes` with the same
+project name used to start it. This deletes the test stack's accounts, databases, and generated
+credentials. Managed Android containers, networks, and profile volumes are separate engine resources.
+
 ### Orchestrator reset
 
 This removes the orchestrator database, uploads/build contexts, and Rebroid-managed runtime
@@ -206,8 +216,9 @@ pnpm reset:all-state -- --execute
 docker compose -f deploy/compose.yaml up -d
 ```
 
-Stop local development processes as well. `docker compose down -v` is not a substitute for the
-targeted reset: it also removes web state and generated credentials.
+Stop local development processes as well. `docker compose down -v` removes the selected
+project's Compose volumes, including web state and generated credentials. The full reset script
+also handles local state and discovers labeled runtime resources outside Compose.
 
 ## Google Play image patching
 
@@ -240,7 +251,11 @@ Record image IDs, payload validation, duration, disk usage, and peak memory.
 
 ## AI provider compatibility
 
-- In **Platform → AI → Add provider**, OpenAI starts with the editable `https://api.openai.com/v1`
+Enable AI in **Administration → Feature management** before opening **Administration → AI**.
+Assign enabled models to **Device control** for device tasks, **Planning** for workflow drafts and
+suggestions, and **Screen understanding** if you want an optional vision model.
+
+- In **AI → Add provider**, OpenAI starts with the editable `https://api.openai.com/v1`
   URL and GPT-5.6 Luna configured for planning and device control. Enter your API key and connect.
   If the project does not list Luna, turn off the starter model and choose another model after
   connecting. In the workflow editor, **Draft with AI** offers enabled models assigned to Planning.

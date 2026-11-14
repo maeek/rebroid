@@ -90,7 +90,8 @@ package admission, dead code, and production builds:
 pnpm check
 ```
 
-With the OCR test dependencies and a container engine with Compose installed, run
+Install the [OCR test dependencies](apps/ocr-sidecar/README.md#development) and use Docker Compose
+2.24.4 or later for the [test overlay](docs/deployment.md#start-the-stack). Then run
 `pnpm test:backend-services` for OCR, resolved Compose wiring, and the GApps worker fixture.
 The checks are also available individually as `pnpm test:ocr`, `pnpm test:compose`, and
 `pnpm test:gapps-patcher`. Set `CONTAINER_ENGINE` to select the engine executable and
@@ -101,9 +102,9 @@ contracts. Never edit generated `schema.ts` files by hand. Use `pnpm openapi:che
 `pnpm boundaries` to verify contracts and imports.
 
 Scrcpy startup/cleanup changes require the [manual Redroid matrix](docs/display-streaming.md#manual-verification).
-Model tests use recorded fixtures. Keep applied orchestrator migrations stable and add a forward
-migration when changing a supported schema. Web schema changes and incompatible stored state follow
-the [state reset procedures](docs/operations.md#stored-state).
+Model tests use recorded fixtures. While Rebroid is in prerelease, update the initial SQLite schema
+in the owning service. Follow the [state reset procedures](docs/operations.md#stored-state) to test
+schema changes against existing local state.
 
 ## Dependency updates
 
