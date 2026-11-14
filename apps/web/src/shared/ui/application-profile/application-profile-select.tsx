@@ -14,6 +14,7 @@ import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { SavedApplicationProfile } from '@/shared/model/application-profile/profile-history'
 
 type ApplicationProfileSelectProps = {
+  modified?: boolean
   mode: ApplicationProfileMode
   name: string
   savedProfiles: SavedApplicationProfile[]
@@ -38,6 +39,7 @@ const profileOptionItemClassName =
 
 export const ApplicationProfileSelect = ({
   mode,
+  modified,
   name,
   savedProfiles,
   onModeChange,
@@ -119,6 +121,7 @@ export const ApplicationProfileSelect = ({
     <div className='grid gap-4'>
       <FormField
         label='Profile'
+        modified={modified}
         layout='vertical'
       >
         <Select
@@ -224,6 +227,7 @@ export const ApplicationProfileSelect = ({
       <Visible when={allowCustomName && editNewProfileName}>
         <FormField
           label='New profile name'
+          modified={modified}
           controlId={nameId}
           layout='vertical'
         >
