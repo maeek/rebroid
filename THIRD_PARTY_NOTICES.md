@@ -10,7 +10,8 @@ Rebroid source and container images depend on third-party projects whose license
 
 ## OCR sidecar
 
-- **PaddleOCR** and **PaddlePaddle**, Copyright PaddlePaddle Authors, Apache License 2.0. Python runtime versions are pinned in `apps/ocr-sidecar/requirements-runtime.txt`. Source and license: <https://github.com/PaddlePaddle/PaddleOCR> and <https://github.com/PaddlePaddle/Paddle>.
+- **PaddleOCR** and **PaddlePaddle**, Copyright PaddlePaddle Authors, Apache License 2.0. Runtime versions are pinned in `apps/ocr-sidecar/install_runtime.py` and `apps/ocr-sidecar/requirements-runtime.txt`. The image removes PaddlePaddle's development headers and OpenVINO CPU plugin and strips unused native symbols. [PaddleOCR source and license](https://github.com/PaddlePaddle/PaddleOCR) · [PaddlePaddle source and license](https://github.com/PaddlePaddle/Paddle)
+- **OpenCV** is installed through `opencv-contrib-python-headless`. The build repacks PaddleOCR, imgaug, Albumentations, and albucore with dependency metadata that selects this wheel. Each repacked wheel retains its upstream code and license files. [OpenCV wheel source and license](https://github.com/opencv/opencv-python)
 - Pillow, NumPy, FastAPI, Uvicorn, and their transitive dependencies are installed from the pinned requirements files and retain their respective licenses.
 
 Before public distribution, generate a complete dependency-license report, review model-file provenance for the selected OCR language, and confirm compatibility with the repository license once that license is chosen.

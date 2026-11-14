@@ -1,5 +1,6 @@
 -r requirements.txt
-paddleocr==2.9.1
+# PaddleOCR and its OpenCV-dependent packages are installed by install_runtime.py.
+opencv-contrib-python-headless==4.11.0.86
 paddlepaddle==3.0.0
 setuptools==80.9.0
 uvicorn[standard]==0.32.1

@@ -52,10 +52,12 @@ python3 -m pip install -r requirements-test.txt
 python3 -m pytest -q
 ```
 
-For model integration, install the runtime and start the API from the same directory:
+For model integration in a clean Python environment, install the runtime and start the API from the same directory:
 
 ```bash
-python3 -m pip install -r requirements-runtime.txt
+python3 -m pip install wheel==0.46.3
+python3 install_runtime.py
+python3 -m pip check
 python3 -m uvicorn main:app --host 127.0.0.1 --port 8100
 ```
 
@@ -68,7 +70,17 @@ Build the production image from the repository root using the sidecar directory 
 docker build -t localhost/rebroid/ocr-sidecar:local apps/ocr-sidecar
 ```
 
-Runtime dependencies are pinned in `requirements-runtime.txt` and its included `requirements.txt`.
+Runtime dependencies are declared in `requirements-runtime.txt`, `requirements.txt`, and
+`install_runtime.py`. The installer repacks four pinned upstream wheels with a common dependency
+on `opencv-contrib-python-headless`. The wheels' Python code is unchanged. The build checks the
+upstream OpenCV declarations before replacing them and verifies that one OpenCV distribution is
+installed. Recheck these declarations and run model integration when upgrading the affected wheels.
+
+The Linux image removes PaddlePaddle's C++ development headers and the OpenVINO CPU plugin.
+The sidecar runs Paddle's native inference engine and keeps its linked libraries. The dependency
+stage also strips unneeded symbols from shared libraries and updates their installed package
+records. Recheck the trimmed paths and run model integration before changing PaddlePaddle versions.
+
 Review the selected model's provenance before distributing images. See the
 [third-party notices](../../THIRD_PARTY_NOTICES.md) and the
 [architecture overview](../../docs/architecture.md).

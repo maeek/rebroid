@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -11,15 +11,30 @@ WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
-    libglib2.0-0 \
-    libgl1 \
     libgomp1 \
   && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements-runtime.txt /app/
-RUN --mount=type=cache,target=/root/.cache/pip \
-  PIP_CACHE_DIR=/root/.cache/pip pip install --no-compile -r /app/requirements-runtime.txt
+FROM base AS dependencies
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends binutils \
+  && rm -rf /var/lib/apt/lists/*
 
+RUN python -m venv /opt/ocr
+ENV PATH=/opt/ocr/bin:$PATH
+
+COPY requirements.txt requirements-runtime.txt install_runtime.py /app/
+RUN --mount=type=cache,target=/root/.cache/pip \
+  export PIP_CACHE_DIR=/root/.cache/pip \
+  && pip install --no-compile --target /tmp/wheel-tools wheel==0.46.3 \
+  && PYTHONPATH=/tmp/wheel-tools python install_runtime.py \
+  && rm -rf /tmp/wheel-tools
+
+COPY trim_runtime.py /app/
+RUN python trim_runtime.py && pip check
+
+FROM base AS runtime
+ENV PATH=/opt/ocr/bin:$PATH
+COPY --from=dependencies /opt/ocr /opt/ocr
 COPY main.py /app/main.py
 COPY ocr_sidecar /app/ocr_sidecar
 
