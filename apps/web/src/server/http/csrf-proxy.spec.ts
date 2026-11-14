@@ -54,6 +54,13 @@ describe('API CSRF boundary', () => {
     expect(csrfRequestIsAllowed(request('/api/bff/preferences/ui-settings'))).toBe(true)
   })
 
+  it('allows the same-origin terminal WebSocket on the container detail page', () => {
+    const response = proxy(new NextRequest('https://rebroid.example:3443/runtime/containers/id?view=terminal'))
+    expect(response.headers.get('content-security-policy')).toContain(
+      "connect-src 'self' wss://rebroid.example:3443/terminal/docker/containers/"
+    )
+  })
+
   it('returns rejected mutations through the shared operation-result contract', async () => {
     const response = proxy(
       request('/api/bff/platform/image-builds/gapps/cache', {
