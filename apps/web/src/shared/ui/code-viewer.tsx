@@ -2,13 +2,12 @@
 
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to focus the scrollable code region. */
 
-import { useState, useTransition, type ReactNode } from 'react'
-import { IconCopy, IconTextWrap } from '@tabler/icons-react'
+import { useState, type ReactNode } from 'react'
+import { IconTextWrap } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import { MutationButton } from '@/components/ui/mutation-button'
+import { CopyButton } from '@/components/ui/copy-button'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
 export const CodeViewer = ({
@@ -29,7 +28,6 @@ export const CodeViewer = ({
   loading?: boolean
 }) => {
   const [wrap, setWrap] = useState(true)
-  const [copying, startCopy] = useTransition()
 
   return (
     <Section
@@ -50,26 +48,10 @@ export const CodeViewer = ({
           >
             <IconTextWrap className='size-4' /> Wrap
           </Button>
-          <MutationButton
-            type='button'
-            variant='ghost'
-            size='sm'
-            pending={copying}
+          <CopyButton
+            value={output}
             disabled={loading}
-            pendingLabel='Copying…'
-            onClick={() =>
-              startCopy(async () => {
-                try {
-                  await navigator.clipboard.writeText(output)
-                  toast({ title: `${formatLabel} copied`, variant: 'success' })
-                } catch {
-                  toast({ title: `Could not copy ${formatLabel}`, variant: 'danger' })
-                }
-              })
-            }
-          >
-            <IconCopy className='size-4' /> Copy
-          </MutationButton>
+          />
         </>
       }
     >
