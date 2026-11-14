@@ -1,29 +1,37 @@
 # Documentation
 
-Start with the [project README](../README.md) for features, screenshots, and a quick start.
+Start with the [project README](../README.md) to install Rebroid and open your first Android display.
 
 ## Install and operate
 
-| Guide                       | Covers                                                                              |
-| --------------------------- | ----------------------------------------------------------------------------------- |
-| [Deployment](deployment.md) | Host requirements, Compose stacks, [AMD GPU rendering setup](deployment.md#android-gpu-rendering-on-linux), HTTPS, networking, and configuration. |
-| [Operations](operations.md) | Service health, [GPU rendering troubleshooting](operations.md#android-gpu-rendering), Docker operation limits, [slow network attachment](operations.md#slow-display-network-attachment), inventory caching, state resets, [Google Play image builds](operations.md#google-play-image-patching), and AI providers. |
+| Guide | Covers |
+| --- | --- |
+| [Deployment](deployment.md) | Linux host requirements, Compose and its test overlay, HTTPS, networking, GPU rendering, and prebuilt image transfer |
+| [Operator console](operator-console.md) | App lifecycle, device files, feature controls, outbound access, workflow editing and scheduling, and run history |
+| [Operations](operations.md) | Service diagnostics, stored state, Google Play image patching, and AI provider setup |
+| [Display streaming](display-streaming.md) | WebRTC and WebSocket playback, viewer recovery, diagnostics, and the manual ReDroid test matrix |
+| [Web security](web-security.md) | Account sessions, group permissions, viewer authorization, and container terminal access |
 
-## Understand and contribute
+## Develop and contribute
 
-| Guide                                                              | Covers                                                                                  |
-| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| [Architecture overview](architecture.md)                           | Services, request and media flows, state ownership, and deployment boundaries.          |
-| [Contributing](../CONTRIBUTING.md)                                 | Local development, backend verification, dependency updates, and pull requests.         |
-| [Orchestrator architecture](orchestrator-architecture.md)          | Domain boundaries, lifecycle jobs, [running application snapshots](orchestrator-architecture.md#running-application-snapshots), Android startup, bounded admission and attachment timing, profile storage, maintenance schedules, automation execution, and AI decisions. |
-| [AI automation](../apps/orchestrator/src/automations/ai/README.md) | Device tasks, workflow drafts, decisions, evidence, and provider/perception boundaries. |
-| [OCR sidecar](../apps/ocr-sidecar/README.md)                        | Request limits, inference admission, deployment language, and local verification.       |
-| [Web contributor guide](web-contributor-guide.md)                  | Page structure, browser/server contracts, and code placement.                           |
-| [Operator console](operator-console.md) | Sidebar and app navigation, [finding permissions](operator-console.md#finding-permissions), [personal preferences and platform settings](operator-console.md#preferences-and-platform-settings), [Casting](operator-console.md#casting), image pulls, live viewer, device files, app recovery, [Firewall and outbound network access](operator-console.md#outbound-network-access), [workflow device steps](operator-console.md#workflow-device-steps), [workflow history retention](operator-console.md#workflow-history-retention), and [image build maintenance](operator-console.md#image-build-maintenance). |
-| [Web design system](web-design-system.md)                          | Shared navigation, service health, connection and log links, controls, action feedback, and loading states. |
-| [Web security](web-security.md)                                    | Sessions, password policy, MFA, group authorization, [container terminal](operator-console.md#container-terminal), viewer revocation, and public error handling. |
-| [Display streaming](display-streaming.md)                          | Media transport, startup timings, protocol invariants, audio diagnosis, video-progress recovery, and manual verification. |
-| [AMD acceleration research](research/amd-hardware-acceleration.md) | Redroid Forge integration, Ryzen 7 4800U suitability, Android compatibility, and a proposed implementation plan. |
+| Guide | Covers |
+| --- | --- |
+| [Contributing](../CONTRIBUTING.md) | Local development, verification, dependency updates, and pull requests |
+| [Architecture](architecture.md) | Service responsibilities, request and media flows, state ownership, and feature configuration |
+| [Orchestrator architecture](orchestrator-architecture.md) | Lifecycle jobs, running app snapshots, startup timing, firewall reconciliation, and workflow execution |
+| [Web contributor guide](web-contributor-guide.md) | Page structure, browser and server boundaries, and code placement |
+| [Web design system](web-design-system.md) | Navigation, controls, feedback, loading states, and accessibility |
+| [Workspace packages](../packages/README.md) | Shared libraries, OpenAPI contracts, and package checks |
 
-For vulnerability reports, use the [security policy](../SECURITY.md).
-Third-party artifacts are listed in [third-party notices](../THIRD_PARTY_NOTICES.md).
+Service-specific setup and verification are in the [web](../apps/web/README.md),
+[orchestrator](../apps/orchestrator/README.md), [display sidecar](../apps/display-sidecar/README.md),
+[OCR sidecar](../apps/ocr-sidecar/README.md), and [AI automation](../apps/orchestrator/src/automations/ai/README.md) guides.
+
+## Research notes
+
+- [AMD hardware acceleration](research/amd-hardware-acceleration.md)
+- [Rebroid UI review](research/rebroid-ui-review.md)
+- [Workflow step editor review](research/workflow-step-ux-review.md)
+
+Report vulnerabilities through the [security policy](../SECURITY.md).
+See the [third-party notices](../THIRD_PARTY_NOTICES.md) for bundled artifacts.
