@@ -130,6 +130,27 @@ test('failed execution has a full-page trace with a summary panel, steps, and ev
 })
 
 test('the app workflow summary leads with the failed action and keeps the ID in the run summary', async ({ page }) => {
+  await page.route('**/api/bff/applications/preview-app/workflow-runs?*', route =>
+    route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: {
+          items: [
+            {
+              id: 'preview-run',
+              automationName: 'Daily inventory check',
+              status: 'success',
+              trigger: 'manual',
+              createdAt: '2026-11-07T10:00:00Z'
+            }
+          ],
+          total: 1,
+          pageSize: 25
+        }
+      }
+    })
+  )
   await page.route('**/api/bff/applications/preview-app/workflow-runs/preview-run', route =>
     route.fulfill({
       json: {
@@ -153,12 +174,26 @@ test('the app workflow summary leads with the failed action and keeps the ID in 
     })
   )
   await page.goto('/skeleton-contract-test?editor=app-resource&view=workflows&run=preview-run')
+  const back = page.getByRole('button', { name: 'Run history' })
+  const section = page.getByRole('heading', { name: 'Daily inventory check' })
+  await expect(back).toBeVisible()
+  expect((await back.boundingBox())!.x).toBeGreaterThanOrEqual((await section.boundingBox())!.x)
   await expect(page.getByRole('heading', { name: 'Daily inventory check' })).toBeVisible()
   await expect(page.getByText('Failed step 1 · Launch app')).toBeVisible()
   await expect(page.getByText('Android boot timed out.')).toBeVisible()
   const summary = page.getByRole('region', { name: 'Run summary' })
   await expect(summary.getByText('launch', { exact: true })).toBeVisible()
   await expect(summary.getByRole('button', { name: 'Copy Failed step ID' })).toBeAttached()
+  await back.click()
+  const status = page.getByText('Completed', { exact: true })
+  await expect(status).toBeVisible()
+  expect(
+    await status.evaluate(node => {
+      const cell = node.closest('td')!
+      const content = cell.firstElementChild!
+      return content.scrollWidth <= content.clientWidth
+    })
+  ).toBe(true)
 })
 
 for (const view of ['overview', 'activity', 'diagnostics']) {
@@ -608,6 +643,7 @@ test('services hides disabled entries and Features keeps their settings discover
     await expect(page.getByRole('columnheader', { name: /^Enabled/ })).toBeVisible()
     await expect(page.getByRole('columnheader', { name: /^Availability/ })).toBeAttached()
     const builder = page.getByRole('row').filter({ hasText: 'Image builder' })
+    await expect(builder.getByText('The configured state is active.')).toBeVisible()
     await expect(builder.getByRole('link', { name: 'Open image builder' })).toHaveAttribute(
       'href',
       '/runtime/images/build'
@@ -707,6 +743,7 @@ test('Service detail pages show linked container names and footer logs', async (
     else expect(logsBox.y).toBe(diagnosticsBox.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
 
+    const serviceConnectionGaps = []
     for (const [service, title, name] of [
       ['ocr', 'OCR perception', 'rebroid-ocr-sidecar'],
       ['firewall', 'Firewall', 'rebroid-firewall-agent']
@@ -720,9 +757,17 @@ test('Service detail pages show linked container names and footer logs', async (
       const href = `/runtime/containers/preview-${service}-container`
       await expect(container).toHaveAttribute('href', href)
       await expect(logs).toHaveAttribute('href', `${href}?view=logs`)
-      expect((await logs.boundingBox())!.y).toBeGreaterThan((await container.boundingBox())!.y)
+      const timeout = await connection.getByRole('spinbutton', { name: 'Timeout' }).boundingBox()
+      const metadata = await container.locator('xpath=ancestor::dl').boundingBox()
+      const footer = await logs.locator('..').boundingBox()
+      const fieldsGap = metadata!.y - (timeout!.y + timeout!.height)
+      const footerGap = footer!.y - (metadata!.y + metadata!.height)
+      expect(fieldsGap).toBeGreaterThanOrEqual(24)
+      expect(footerGap).toBeCloseTo(fieldsGap, 0)
+      serviceConnectionGaps.push([fieldsGap, footerGap])
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
     }
+    expect(serviceConnectionGaps[0]).toEqual(serviceConnectionGaps[1])
   }
 })
 
@@ -747,8 +792,30 @@ test('embedded Files keeps folder navigation, filtering, and details in one work
     const path = new URL(route.request().url()).searchParams.get('path')
     return route.fulfill({ json: { ok: true, requestId: 'preview', data: path === '/data' ? [directory] : [file] } })
   })
+  await page.route('**/api/bff/applications/preview-app/runtime/files/upload?*', route =>
+    route.fulfill({
+      json: {
+        ok: true,
+        requestId: 'preview',
+        data: { ...file, name: 'document.txt', path: '/sdcard/Download/document.txt' }
+      }
+    })
+  )
   await page.goto('/skeleton-contract-test?editor=app-resource&view=files')
   await expect(page.getByRole('button', { name: 'Upload files' })).toBeVisible()
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'document.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('preview upload')
+  })
+  const queue = page.getByRole('region', { name: 'Upload queue' })
+  await expect(queue).toHaveAttribute('data-surface', 'panel')
+  await expect(queue.getByText('Complete', { exact: true })).toBeVisible()
+  await queue.getByRole('button', { name: 'Upload queue' }).click()
+  await expect(queue.getByRole('button', { name: 'Upload queue' })).toHaveAttribute('aria-expanded', 'false')
+  await queue.getByRole('button', { name: 'Upload queue' }).click()
+  await queue.getByRole('button', { name: 'Dismiss document.txt' }).click()
+  await expect(queue).toHaveCount(0)
   await expect
     .poll(() =>
       page.getByRole('table').evaluate(table => {
