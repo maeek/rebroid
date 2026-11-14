@@ -51,6 +51,8 @@ const user = (
   quotas
 })
 
+const networkPolicyAppId = '3efe13c4-d805-42f9-a583-c6c6f6815b62'
+
 const disabledFirewall: FeatureFlagManifest = {
   revision: 1,
   features: [
@@ -83,16 +85,16 @@ describe('network policy actions', () => {
       })
     )
     vi.mocked(orchestratorAppCatalogClient.getApplication).mockResolvedValue({
-      id: 'app-1',
+      id: networkPolicyAppId,
       name: 'Test app',
       ownerUserId: 'owner-1'
     } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.getApplication>>)
     vi.mocked(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).mockResolvedValue({
-      id: 'app-1',
+      id: networkPolicyAppId,
       name: 'Test app'
     } as Awaited<ReturnType<typeof orchestratorAppNetworkPolicyClient.updateNetworkPolicy>>)
     vi.mocked(orchestratorAppNetworkPolicyClient.applyNetworkPolicy).mockResolvedValue({
-      id: 'app-1',
+      id: networkPolicyAppId,
       name: 'Test app'
     } as Awaited<ReturnType<typeof orchestratorAppNetworkPolicyClient.applyNetworkPolicy>>)
     vi.mocked(requireFeature).mockRejectedValue(new Error('feature.firewall is disabled.'))
@@ -100,10 +102,10 @@ describe('network policy actions', () => {
 
   it('allows disabling and applying a policy without a web feature gate', async () => {
     const input = { networkPolicyEnabled: false, networkPolicyAllowCidrs: [] }
-    expect(await updateNetworkPolicyAction('app-1', input)).toMatchObject({ ok: true })
-    expect(await applyNetworkPolicyAction('app-1')).toMatchObject({ ok: true })
-    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith('app-1', input, true)
-    expect(orchestratorAppNetworkPolicyClient.applyNetworkPolicy).toHaveBeenCalledWith('app-1')
+    expect(await updateNetworkPolicyAction(networkPolicyAppId, input)).toMatchObject({ ok: true })
+    expect(await applyNetworkPolicyAction(networkPolicyAppId)).toMatchObject({ ok: true })
+    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith(networkPolicyAppId, input, true)
+    expect(orchestratorAppNetworkPolicyClient.applyNetworkPolicy).toHaveBeenCalledWith(networkPolicyAppId)
     expect(requireFeature).not.toHaveBeenCalled()
   })
 
@@ -113,18 +115,22 @@ describe('network policy actions', () => {
       new OrchestratorRequestError('Denied', 403, 'request', { code: 'network_egress_forbidden' })
     )
     const input = { networkPolicyEnabled: false }
-    await expect(updateNetworkPolicyAction('app-1', input)).resolves.toMatchObject({
+    await expect(updateNetworkPolicyAction(networkPolicyAppId, input)).resolves.toMatchObject({
       ok: false,
       error: { code: 'forbidden', message: 'You do not have permission to allow broad internet access.' }
     })
-    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith('app-1', input, false)
+    expect(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).toHaveBeenCalledWith(
+      networkPolicyAppId,
+      input,
+      false
+    )
   })
 
   it.each([updateNetworkPolicyAction, applyNetworkPolicyAction])(
     'preserves configuration permissions',
     async action => {
       vi.mocked(getCurrentUserContext).mockResolvedValue(user({ 'applications:use-internet': true }))
-      await expect(action('app-1', { networkPolicyEnabled: false })).resolves.toMatchObject({
+      await expect(action(networkPolicyAppId, { networkPolicyEnabled: false })).resolves.toMatchObject({
         ok: false,
         error: { code: 'forbidden' }
       })
@@ -135,7 +141,7 @@ describe('network policy actions', () => {
 
   it.each([updateNetworkPolicyAction, applyNetworkPolicyAction])('preserves ownership checks', async action => {
     vi.mocked(getCurrentUserContext).mockResolvedValue({ ...user({}, false), ownerUserId: 'other-owner' })
-    await expect(action('app-1', { networkPolicyEnabled: false })).resolves.toMatchObject({
+    await expect(action(networkPolicyAppId, { networkPolicyEnabled: false })).resolves.toMatchObject({
       ok: false,
       error: { code: 'not_found' }
     })
@@ -147,7 +153,7 @@ describe('network policy actions', () => {
     vi.mocked(orchestratorAppNetworkPolicyClient.updateNetworkPolicy).mockRejectedValue(
       new OrchestratorRequestError('feature.firewall is disabled.', 409)
     )
-    await expect(updateNetworkPolicyAction('app-1', { networkPolicyEnabled: true })).resolves.toMatchObject({
+    await expect(updateNetworkPolicyAction(networkPolicyAppId, { networkPolicyEnabled: true })).resolves.toMatchObject({
       ok: false,
       error: {
         code: 'conflict',

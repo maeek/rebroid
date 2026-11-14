@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type ReactElement, type ReactNode } from 'react'
+import { useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { IconCheck, IconCopy, IconDotsVertical, IconListCheck, IconSettings } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -12,13 +12,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { RowActions } from '@/components/ui/row-actions'
 import { focusRingClassName, panelSurfaceClassName } from '@/components/ui/surface'
 import { useOpenAppAsMe } from '@/hooks/use-open-app-as-me'
 import { cn } from '@/lib/utils'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { AppGalleryTile, type AppGalleryCardData } from './app-gallery-tile'
+import { AppSnapshotPreview } from './app-snapshot-preview'
 
-const actionPosition = 'absolute right-2 top-1/2 -translate-y-1/2'
+const actionPosition = 'absolute right-2 top-[2.375rem] -translate-y-1/2'
 
 type CardSelection = {
   selected: boolean
@@ -79,7 +81,8 @@ const AppGalleryLink = ({
   disabled: boolean
   actions?: ReactNode
 }) => {
-  const contextOpen = useRef(false)
+  const [contextOpen, setContextOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
   const { isCloning, openAppAsMe } = useOpenAppAsMe()
   const menuLabel = `Actions for ${label}`
   const items = (
@@ -101,7 +104,7 @@ const AppGalleryLink = ({
           disabled={isCloning}
           onSelect={() => void openAppAsMe(app.id)}
         >
-          <IconCopy className='size-4' /> Open as me
+          <IconCopy className='size-4' /> Copy to my apps
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuItem
@@ -115,41 +118,54 @@ const AppGalleryLink = ({
       {actions}
     </>
   )
+  const link = (
+    <ContextMenuTrigger asChild>
+      <Link
+        href={appResourceHref(app.id)}
+        aria-label={`${app.ownerDisplayName ? 'View' : 'Open'} ${label}`}
+        onClick={event => {
+          if (contextOpen) event.preventDefault()
+        }}
+        className={cn(
+          focusRingClassName,
+          'block rounded-panel transition-colors hover:bg-surface-band touch:select-none'
+        )}
+      >
+        <AppGalleryTile app={app} />
+      </Link>
+    </ContextMenuTrigger>
+  )
 
   return (
     <>
       <ContextMenu
         disabled={disabled}
-        onOpenChange={open => {
-          contextOpen.current = open
-        }}
+        onOpenChange={setContextOpen}
       >
-        <ContextMenuTrigger asChild>
-          <Link
-            href={appResourceHref(app.id)}
-            aria-label={`${app.ownerDisplayName ? 'View' : 'Open'} ${label}`}
-            onClick={event => {
-              if (contextOpen.current) event.preventDefault()
-            }}
-            className={cn(
-              focusRingClassName,
-              'block rounded-panel transition-colors hover:bg-surface-band touch:select-none'
-            )}
+        {app.status === 'running' && app.canViewSnapshot && !disabled ? (
+          <AppSnapshotPreview
+            appId={app.id}
+            appName={app.name}
+            suppressed={contextOpen || actionsOpen}
           >
-            <AppGalleryTile app={app} />
-          </Link>
-        </ContextMenuTrigger>
+            {link}
+          </AppSnapshotPreview>
+        ) : (
+          link
+        )}
         <ContextMenuContent aria-label={menuLabel}>{items}</ContextMenuContent>
       </ContextMenu>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
-        <DropdownMenuContent
-          align='end'
-          aria-label={menuLabel}
-        >
-          {items}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <RowActions className={actionPosition}>
+        <DropdownMenu onOpenChange={setActionsOpen}>
+          <DropdownMenuTrigger asChild>{menuTrigger}</DropdownMenuTrigger>
+          <DropdownMenuContent
+            align='end'
+            aria-label={menuLabel}
+          >
+            {items}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </RowActions>
     </>
   )
 }
@@ -174,7 +190,7 @@ export const AppGalleryCard = ({
       type='button'
       variant='ghost'
       size='icon-sm'
-      className={actionPosition}
+      className={!app ? actionPosition : undefined}
       aria-label={app ? `Actions for ${label}` : 'Loading app actions'}
       disabled={disabled || !app}
     >
@@ -226,6 +242,7 @@ export const AppGalleryCard = ({
     <li
       className={cn(panelSurfaceClassName, 'relative min-w-0', selection?.selected && 'bg-accent')}
       data-app-tile={app?.id}
+      data-row-actions-scope
     >
       {content}
     </li>

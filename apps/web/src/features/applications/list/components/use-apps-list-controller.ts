@@ -54,10 +54,14 @@ const listApplications = async () => {
 }
 
 export const useAppsListController = ({
+  canStop,
+  canDelete,
   currentOwnerUserId,
   yourApps,
   initialSettings
 }: {
+  canStop: boolean
+  canDelete: boolean
   currentOwnerUserId: string
   yourApps: AppDefinition[]
   initialSettings: OrchestratorUiSettings
@@ -170,6 +174,7 @@ export const useAppsListController = ({
       updateApp(optimisticStoppingApp(app), true)
       const command = unwrapActionResult(await requestApplicationStopAction(app.id))
       updateApp(applyApplicationPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
+      notifyRecentAppsUpdated()
     } catch (error) {
       updateApp(app)
       toast({
@@ -236,6 +241,8 @@ export const useAppsListController = ({
     apps: visibleApps,
     selectedIds: visibleSelectedIds,
     currentOwnerUserId,
+    canStop,
+    canDelete,
     bulkAction
   })
 
@@ -285,6 +292,7 @@ export const useAppsListController = ({
     })
 
     toast(summarizeBulkStopAppsResult(results))
+    if (results.some(result => result.status === 'fulfilled')) notifyRecentAppsUpdated()
 
     finishBulkAction(appsToStop, results)
   }
@@ -314,6 +322,8 @@ export const useAppsListController = ({
     activeBulkApps,
     allSelected,
     bulkAction,
+    canStop,
+    canDelete,
     closeBulkAction: () => {
       if (!isBulkWorking) {
         setBulkAction(null)
@@ -334,7 +344,11 @@ export const useAppsListController = ({
     exitManageMode,
     isBulkWorking,
     isManaging,
-    openBulkAction: setBulkAction,
+    openBulkAction: action => {
+      if (action === 'stop' ? stoppableSelectedApps.length > 0 : deletableSelectedApps.length > 0) {
+        setBulkAction(action)
+      }
+    },
     openPendingAppAction: setPendingAppAction,
     pendingAppAction,
     closePendingAppAction: () => {
@@ -349,11 +363,12 @@ export const useAppsListController = ({
 
       setPendingAppAction(null)
       if (pendingAppAction.action === 'stop') {
+        if (!canStop || pendingAppAction.app.ownerUserId !== currentOwnerUserId) return
         await stopApp(pendingAppAction.app)
         return
       }
 
-      await deleteApp(pendingAppAction.app)
+      if (canDelete) await deleteApp(pendingAppAction.app)
     },
     removeDataOnDelete: settings.removeDataOnDelete,
     selectedIds: visibleSelectedIds,

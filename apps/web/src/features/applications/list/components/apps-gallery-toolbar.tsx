@@ -96,6 +96,7 @@ export const AppsGalleryToolbar = ({
   onStatusChange,
   ownership,
   onOwnershipChange,
+  canSelect = true,
   children,
   loading = false
 }: {
@@ -105,12 +106,15 @@ export const AppsGalleryToolbar = ({
   onStatusChange: (value: AppsGalleryStatus) => void
   ownership?: AppsGalleryOwnership
   onOwnershipChange: (value: AppsGalleryOwnership) => void
+  canSelect?: boolean
   children: ReactNode
   loading?: boolean
 }) => {
   const context = useAppsListContext()
   const {
     allSelected,
+    canStop,
+    canDelete,
     exitManageMode,
     isBulkWorking,
     isManaging,
@@ -136,28 +140,32 @@ export const AppsGalleryToolbar = ({
         <IconCheck className='size-4' />
         <span className='max-sm:sr-only'>{allSelected ? 'Clear selection' : 'Select visible'}</span>
       </Button>
-      <Button
-        variant='ghost'
-        size='sm'
-        className='max-sm:size-8 max-sm:px-0'
-        title='Stop'
-        onClick={() => openBulkAction('stop')}
-        disabled={!stoppableSelectedCount || isBulkWorking}
-      >
-        <IconPlayerStopFilled className='size-4' />
-        <span className='max-sm:sr-only'>Stop</span>
-      </Button>
-      <Button
-        variant='danger-ghost'
-        size='sm'
-        className='max-sm:size-8 max-sm:px-0'
-        title='Delete'
-        onClick={() => openBulkAction('delete')}
-        disabled={!deletableSelectedCount || isBulkWorking}
-      >
-        <IconTrash className='size-4' />
-        <span className='max-sm:sr-only'>Delete</span>
-      </Button>
+      {canStop ? (
+        <Button
+          variant='ghost'
+          size='sm'
+          className='max-sm:size-8 max-sm:px-0'
+          title='Stop'
+          onClick={() => openBulkAction('stop')}
+          disabled={!stoppableSelectedCount || isBulkWorking}
+        >
+          <IconPlayerStopFilled className='size-4' />
+          <span className='max-sm:sr-only'>Stop</span>
+        </Button>
+      ) : null}
+      {canDelete ? (
+        <Button
+          variant='danger-ghost'
+          size='sm'
+          className='max-sm:size-8 max-sm:px-0'
+          title='Delete'
+          onClick={() => openBulkAction('delete')}
+          disabled={!deletableSelectedCount || isBulkWorking}
+        >
+          <IconTrash className='size-4' />
+          <span className='max-sm:sr-only'>Delete</span>
+        </Button>
+      ) : null}
     </>
   )
   return (
@@ -175,11 +183,13 @@ export const AppsGalleryToolbar = ({
       selectionMode={isManaging}
       bulkActions={bulkActions}
       manageActions={
-        <SelectAppsButton
-          isManaging={isManaging}
-          onClick={isManaging ? exitManageMode : () => startManaging()}
-          disabled={loading || isBulkWorking}
-        />
+        canSelect && (canStop || canDelete) ? (
+          <SelectAppsButton
+            isManaging={isManaging}
+            onClick={isManaging ? exitManageMode : () => startManaging()}
+            disabled={loading || isBulkWorking}
+          />
+        ) : null
       }
     >
       {children}
@@ -236,7 +246,7 @@ export const AppsGalleryWorkspace = ({
       )
     }
     selectionMode={selectionMode}
-    toolbarAction={manageActions ?? <SelectAppsButton disabled />}
+    toolbarAction={manageActions === undefined ? <SelectAppsButton disabled /> : manageActions}
     searchActions={
       <AppsGallerySortMenu
         mode={sortMode}

@@ -33,6 +33,8 @@ describe('gallery discovery and selection', () => {
       apps: visible,
       selectedIds,
       currentOwnerUserId: base.ownerUserId!,
+      canStop: true,
+      canDelete: true,
       bulkAction: 'delete'
     })
     expect(result.activeBulkApps.map(app => app.id)).toEqual(['checkout'])

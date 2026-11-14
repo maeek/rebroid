@@ -35,6 +35,7 @@ export type RenameApplicationRuntimeFileInput = OrchestratorApiSchemas['RenameAp
 export type DeleteApplicationRuntimeFileResult = OrchestratorApiSchemas['DeleteApplicationRuntimeFileDto']
 export type ApplicationClipboard = OrchestratorApiSchemas['ApplicationClipboardDto']
 export type ApplicationScreenshot = OrchestratorApiSchemas['ApplicationScreenshotDto']
+export type ApplicationRuntimeSnapshot = OrchestratorApiSchemas['ApplicationRuntimeSnapshotDto']
 export type ApplicationViewerControlCommand = OrchestratorApiSchemas['ApplicationViewerControlDto']['command']
 export type ApplicationViewerControlResponse = OrchestratorApiSchemas['ApplicationViewerControlResponseDto']
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']

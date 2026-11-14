@@ -48,6 +48,7 @@ export const loadViewerPageApplication = async (id: string) => {
   const { app, user } = await getAccessibleApplication(id)
   return {
     app: sanitizeAndroidApplicationForUser(app, user),
+    isForeignOwnedApp: app.ownerUserId !== user.ownerUserId,
     openSession: async () => {
       if (app.ownerUserId !== user.ownerUserId) {
         throw new PublicActionError(ownedRuntimeMessage, { code: 'forbidden', status: 403 })

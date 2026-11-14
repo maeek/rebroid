@@ -21,8 +21,15 @@ describe('app creation affordances', () => {
   })
 
   it('keeps restricted empty states free of unavailable actions', () => {
-    render(<AppsListEmptyState canCreate={false} />)
+    render(
+      <>
+        <AppsListHeader canCreate={false} />
+        <AppsListEmptyState canCreate={false} />
+      </>
+    )
     expect(screen.queryByRole('link', { name: 'Create app' })).toBeNull()
     expect(screen.getByText('No apps are available for your account.')).toBeVisible()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 2, name: 'No Android apps yet' })).toBeVisible()
   })
 })

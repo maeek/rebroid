@@ -1,5 +1,6 @@
 'use server'
 
+import { z } from 'zod'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
@@ -14,6 +15,11 @@ import { sanitizeAndroidApplicationForUser } from '../../safety'
 import { assertCanAccessApplication } from '../common/action-helpers'
 import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
+const networkPolicyUpdateSchema = z.strictObject({
+  networkPolicyEnabled: z.boolean().optional(),
+  networkPolicyAllowCidrs: z.array(z.string().max(64)).optional()
+})
+
 export const updateNetworkPolicyAction = async (id: string, input: UpdateNetworkPolicyInput) =>
   runSafeAction(
     async () => {
@@ -25,8 +31,12 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
           status: 403
         })
       }
+      const policy = networkPolicyUpdateSchema.safeParse(input)
+      if (!policy.success) {
+        throw new PublicActionError('Invalid network policy settings.', { code: 'validation', status: 400 })
+      }
       const command = await orchestratorAppNetworkPolicyClient
-        .updateNetworkPolicy(id, input, hasPermission(user.permissions, 'applications:use-internet'))
+        .updateNetworkPolicy(id, policy.data, hasPermission(user.permissions, 'applications:use-internet'))
         .catch((error: unknown) => {
           if (error instanceof OrchestratorRequestError && error.details?.code === 'network_egress_forbidden') {
             throw new PublicActionError('You do not have permission to allow broad internet access.', {
@@ -45,8 +55,8 @@ export const updateNetworkPolicyAction = async (id: string, input: UpdateNetwork
         resourceId: id,
         resourceLabel: command.name,
         details: {
-          networkPolicyEnabled: input.networkPolicyEnabled,
-          allowCidrsCount: input.networkPolicyAllowCidrs?.length ?? 0
+          networkPolicyEnabled: policy.data.networkPolicyEnabled,
+          allowCidrsCount: policy.data.networkPolicyAllowCidrs?.length ?? 0
         }
       })
       revalidateApplicationList()

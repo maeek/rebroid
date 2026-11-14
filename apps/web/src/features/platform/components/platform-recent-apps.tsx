@@ -18,7 +18,12 @@ export const PlatformRecentApps = () => {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
     queryKey: recentlyOpenedAppsQueryKey,
-    queryFn: () => getBff<RecentApp[]>('/api/bff/applications/recent')
+    queryFn: ({ signal }) => getBff<RecentApp[]>('/api/bff/applications/recent', signal),
+    refetchInterval: query => {
+      const apps = query.state.data
+      if (apps?.some(app => app.status === 'running' && app.canViewSnapshot)) return 5_000
+      return apps?.some(app => app.canViewSnapshot) ? 15_000 : false
+    }
   })
   useEffect(() => {
     const refresh = () => void queryClient.invalidateQueries({ queryKey: recentlyOpenedAppsQueryKey })

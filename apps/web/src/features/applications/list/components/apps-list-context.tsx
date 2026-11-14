@@ -9,6 +9,8 @@ export type AppsListContextValue = {
   activeBulkApps: AppDefinition[]
   allSelected: boolean
   bulkAction: BulkAction | null
+  canStop: boolean
+  canDelete: boolean
   closeBulkAction: () => void
   confirmBulkAction: () => Promise<void>
   deleteApp: (app: AppDefinition) => Promise<void>

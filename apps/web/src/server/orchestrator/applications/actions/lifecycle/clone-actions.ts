@@ -59,5 +59,5 @@ export const requestApplicationCloneAction = async (id: string) =>
       revalidateApplicationDetail(command.id)
       return { id: command.id }
     },
-    { fallbackMessage: 'Could not open app as your copy.' }
+    { fallbackMessage: 'Could not copy app.' }
   )

@@ -3,7 +3,6 @@ import {
   IconAppWindow,
   IconCopy,
   IconHistoryOff,
-  IconLoader2,
   IconPlayerPlayFilled,
   IconPlayerStopFilled,
   IconSettings
@@ -12,6 +11,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { RowActions, RowActionButton } from '@/components/ui/row-actions'
 import { Visible } from '@/components/ui/visible'
 import { useOpenAppAsMe } from '@/hooks/use-open-app-as-me'
 import { toast } from '@/hooks/use-toast'
@@ -25,6 +25,8 @@ import { dismissRecentAppAction } from '@/server/recent-apps/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
+import { AppSnapshotPreview } from '@/shared/ui/app-icon/app-snapshot-preview'
+import { AppStatusIndicator } from '@/shared/ui/app-icon/app-status-indicator'
 import { NavigationHint } from './navigation-hint'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
 import type { RecentApp } from '@/shared/contracts/recent-app'
@@ -45,16 +47,21 @@ export const RecentAppLink = ({
   const styles = variantStyles[variant]
   const router = useRouter()
   const linkRef = useRef<HTMLAnchorElement>(null)
+  const rowRef = useRef<HTMLLIElement>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [stopDialogOpen, setStopDialogOpen] = useState(false)
   const [isStopping, setIsStopping] = useState(false)
   const [isDismissing, setIsDismissing] = useState(false)
   const { isCloning, openAppAsMe } = useOpenAppAsMe()
   const [contextOpen, setContextOpen] = useState(false)
-  const isOperating = app.status === 'provisioning' || app.status === 'removing' || isStarting
+  const status = isStarting ? 'provisioning' : app.status
+  const statusLabel = isStarting ? 'Starting' : (app.statusLabel ?? app.status)
+  const showStatus =
+    status === 'running' || status === 'provisioning' || status === 'removing' || statusLabel === 'Stopping'
   const canStart = app.canStart && (app.status === 'stopped' || app.status === 'error')
   const canStop = app.canStop && app.status === 'running'
   const rail = variant === 'rail'
+  const canPreviewSnapshot = variant !== 'drawer' && app.status === 'running' && app.canViewSnapshot
   const highlighted = isActive || contextOpen
   const href = `/app/${encodeURIComponent(app.id)}`
   const label = app.ownerDisplayName ? `${app.name} · ${app.ownerDisplayName}` : app.name
@@ -126,7 +133,7 @@ export const RecentAppLink = ({
         href={href}
         aria-label={label}
         aria-current={isActive ? 'page' : undefined}
-        title={rail ? undefined : label}
+        title={rail || canPreviewSnapshot ? undefined : label}
         onClick={event => {
           if (contextOpen) event.preventDefault()
           else onNavigate?.()
@@ -135,14 +142,16 @@ export const RecentAppLink = ({
           'touch:select-none touch:[-webkit-touch-callout:none]',
           rail
             ? cn(styles.item, 'relative', highlighted && styles.activeItem)
-            : 'flex min-w-0 flex-1 items-center gap-2'
+            : 'flex min-h-7 min-w-0 flex-1 items-center gap-2 touch:min-h-(--touch-target-size)'
         )}
       >
         {rail ? icon : <span className={styles.iconWrap}>{icon}</span>}
-        {rail && app.status === 'running' ? (
-          <span
-            className='absolute right-1 top-1 size-2 rounded-full bg-success'
-            aria-hidden='true'
+        {rail && showStatus && status && statusLabel ? (
+          <AppStatusIndicator
+            status={status}
+            label={statusLabel}
+            compact
+            className='absolute right-1 top-1'
           />
         ) : null}
         {!rail ? (
@@ -159,10 +168,32 @@ export const RecentAppLink = ({
     </ContextMenuTrigger>
   )
 
+  let entry = trigger
+  if (canPreviewSnapshot) {
+    entry = (
+      <AppSnapshotPreview
+        appId={app.id}
+        appName={app.name}
+        anchor={rowRef}
+        side='right'
+        sideOffset={20}
+        suppressed={contextOpen || stopDialogOpen || isStopping}
+      >
+        {trigger}
+      </AppSnapshotPreview>
+    )
+  } else if (rail) {
+    entry = <NavigationHint label={label}>{trigger}</NavigationHint>
+  }
+
   return (
-    <li className={cn(!rail && styles.item, 'group', !rail && highlighted && styles.activeItem)}>
+    <li
+      ref={rowRef}
+      data-row-actions-scope
+      className={cn(!rail && styles.item, 'group', !rail && highlighted && styles.activeItem)}
+    >
       <ContextMenu onOpenChange={setContextOpen}>
-        {rail ? <NavigationHint label={label}>{trigger}</NavigationHint> : trigger}
+        {entry}
         <ContextMenuContent aria-label={`Actions for ${label}`}>
           <ContextMenuItem asChild>
             <Link
@@ -198,7 +229,7 @@ export const RecentAppLink = ({
               disabled={isCloning}
               onSelect={() => void openAppAsMe(app.id, onNavigate)}
             >
-              <IconCopy /> Open as me
+              <IconCopy /> Copy to my apps
             </ContextMenuItem>
           ) : null}
           <ContextMenuItem
@@ -223,30 +254,24 @@ export const RecentAppLink = ({
         onOpenChange={setStopDialogOpen}
         onConfirm={() => void stopApp()}
       />
-      <Visible when={!rail && app.status === 'running'}>
-        <span
-          title='Running'
-          aria-label='Running'
-          className='mr-2 size-2 shrink-0 rounded-full bg-success'
+      {!rail && showStatus && status && statusLabel ? (
+        <AppStatusIndicator
+          status={status}
+          label={statusLabel}
+          compact
+          className='mr-2'
         />
-      </Visible>
-      <Visible when={!rail && isOperating}>
-        <IconLoader2
-          title={app.statusLabel ?? 'Working'}
-          aria-label={app.statusLabel ?? 'Working'}
-          className='mr-1.5 size-4 shrink-0 animate-spin text-primary'
-        />
-      </Visible>
+      ) : null}
       <Visible when={!rail && canStart && !isStarting}>
-        <button
-          type='button'
-          title={`Start ${app.name}`}
-          aria-label={`Start ${app.name}`}
-          className='mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-foreground-muted opacity-0 transition hover:bg-primary/15 hover:text-primary focus:opacity-100 group-hover:opacity-100'
-          onClick={() => void startAndOpen()}
-        >
-          <IconPlayerPlayFilled className='size-4' />
-        </button>
+        <RowActions className='mr-0.5'>
+          <RowActionButton
+            label={`Start ${app.name}`}
+            className='size-7 rounded-full text-foreground-muted'
+            onClick={() => void startAndOpen()}
+          >
+            <IconPlayerPlayFilled className='size-4' />
+          </RowActionButton>
+        </RowActions>
       </Visible>
     </li>
   )

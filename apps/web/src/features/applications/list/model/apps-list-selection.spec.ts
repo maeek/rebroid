@@ -45,12 +45,16 @@ describe('apps list selection model', () => {
       apps,
       selectedIds,
       currentOwnerUserId: 'owner-1',
+      canStop: true,
+      canDelete: true,
       bulkAction: 'stop'
     })
     const deleteSelection = deriveAppsListSelection({
       apps,
       selectedIds,
       currentOwnerUserId: 'owner-1',
+      canStop: true,
+      canDelete: true,
       bulkAction: 'delete'
     })
 
@@ -69,6 +73,19 @@ describe('apps list selection model', () => {
     ] satisfies PromiseSettledResult<string>[]
 
     expect(fulfilledBulkDeleteAppIds(results)).toEqual(['app-1', 'app-3'])
+  })
+
+  it('excludes selected apps from operations the account cannot perform', () => {
+    const result = deriveAppsListSelection({
+      apps: [app('running-owned', { running: true, status: 'running' })],
+      selectedIds: new Set(['running-owned']),
+      currentOwnerUserId: 'owner-1',
+      canStop: false,
+      canDelete: false,
+      bulkAction: 'delete'
+    })
+    expect(result.stoppableSelectedApps).toEqual([])
+    expect(result.activeBulkApps).toEqual([])
   })
 
   it('summarizes bulk app stop and delete results', () => {

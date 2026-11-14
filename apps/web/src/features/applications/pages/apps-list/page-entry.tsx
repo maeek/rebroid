@@ -5,13 +5,27 @@ import { StandardPage } from '@/shared/ui/page/page-layout'
 import { getAppsListPageData } from './page-data.server'
 
 const AppsPageContent = async () => {
-  const { apps, canCreate, canFilterByOwner, currentOwnerUserId, initialSettings, orchestratorError } =
-    await getAppsListPageData()
+  const {
+    apps,
+    canCreate,
+    canStart,
+    canStop,
+    canDelete,
+    canFilterByOwner,
+    canViewSnapshots,
+    currentOwnerUserId,
+    initialSettings,
+    orchestratorError
+  } = await getAppsListPageData()
 
   return (
     <AppsList
       canCreate={canCreate}
+      canStart={canStart}
+      canStop={canStop}
+      canDelete={canDelete}
       canFilterByOwner={canFilterByOwner}
+      canViewSnapshots={canViewSnapshots}
       yourApps={apps}
       currentOwnerUserId={currentOwnerUserId}
       initialSettings={initialSettings}

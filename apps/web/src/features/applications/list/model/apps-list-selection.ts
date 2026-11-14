@@ -18,18 +18,22 @@ export const deriveAppsListSelection = ({
   apps,
   selectedIds,
   currentOwnerUserId,
+  canStop,
+  canDelete,
   bulkAction
 }: {
   apps: AppDefinition[]
   selectedIds: Set<string>
   currentOwnerUserId: string
+  canStop: boolean
+  canDelete: boolean
   bulkAction: AppsListBulkAction | null
 }) => {
   const selectedApps = apps.filter(app => selectedIds.has(app.id))
   const stoppableSelectedApps = selectedApps.filter(
-    app => app.ownerUserId === currentOwnerUserId && app.running && app.status !== 'removing'
+    app => canStop && app.ownerUserId === currentOwnerUserId && app.running && app.status !== 'removing'
   )
-  const deletableSelectedApps = selectedApps.filter(app => app.status !== 'removing')
+  const deletableSelectedApps = selectedApps.filter(app => canDelete && app.status !== 'removing')
   const activeBulkApps = bulkAction === 'stop' ? stoppableSelectedApps : deletableSelectedApps
 
   return {

@@ -1,4 +1,7 @@
+import { z } from 'zod'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest, formRequest, jsonRequest, responseRequest, streamRequest } from '../request'
+import { applicationPath, encodeApplicationPathSegment } from './application-path'
 import type {
   AndroidNotification,
   ApplicationClipboard,
@@ -13,14 +16,23 @@ import type {
   RenameApplicationRuntimeFileInput
 } from '@/shared/contracts/application'
 
+const logSourceSchema = z.enum(['orchestrator', 'container', 'adb'])
+export type ApplicationLogSource = z.infer<typeof logSourceSchema>
+
 export const orchestratorAppRuntimeClient = {
   getNotifications(id: string) {
-    return emptyRequest<AndroidNotification[]>(`/apps/${id}/runtime/notifications`)
+    return emptyRequest<AndroidNotification[]>(`${applicationPath(id)}/runtime/notifications`)
   },
 
-  getApplicationLogs(id: string, source: 'orchestrator' | 'container' | 'adb', tail = 300) {
+  getApplicationLogs(id: string, source: ApplicationLogSource, tail = 300) {
+    const parsedSource = logSourceSchema.safeParse(source)
+    if (!parsedSource.success) {
+      throw new PublicActionError('Invalid application log source.', { code: 'validation', status: 400 })
+    }
     const query = new URLSearchParams({ tail: String(tail) })
-    return emptyRequest<ApplicationLog>(`/apps/${id}/runtime/logs/${source}?${query.toString()}`)
+    return emptyRequest<ApplicationLog>(
+      `${applicationPath(id)}/runtime/logs/${encodeURIComponent(parsedSource.data)}?${query.toString()}`
+    )
   },
 
   listDownloadFiles(id: string, input: ApplicationRuntimeFilesProfileInput = {}) {
@@ -28,40 +40,47 @@ export const orchestratorAppRuntimeClient = {
     if (input.profileMode) query.set('profileMode', input.profileMode)
     if (input.profileName) query.set('profileName', input.profileName)
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<ApplicationRuntimeFile[]>(`/apps/${id}/runtime/download-files${suffix}`)
+    return emptyRequest<ApplicationRuntimeFile[]>(`${applicationPath(id)}/runtime/download-files${suffix}`)
   },
 
   listFiles(id: string, path = '/data', signal?: AbortSignal) {
     const query = new URLSearchParams({ path })
-    return emptyRequest<ApplicationRuntimeFile[]>(`/apps/${id}/runtime/data-files?${query.toString()}`, { signal })
+    return emptyRequest<ApplicationRuntimeFile[]>(`${applicationPath(id)}/runtime/data-files?${query.toString()}`, {
+      signal
+    })
   },
 
   previewRuntimeFile(id: string, path: string, signal?: AbortSignal) {
     const query = new URLSearchParams({ path })
-    return responseRequest(`/apps/${id}/runtime/data-files/preview?${query.toString()}`, {
+    return responseRequest(`${applicationPath(id)}/runtime/data-files/preview?${query.toString()}`, {
       headers: { accept: 'image/webp' },
       signal
     })
   },
 
   createRuntimeDirectory(id: string, input: CreateApplicationRuntimeDirectoryInput) {
-    return jsonRequest<ApplicationRuntimeFile>(`/apps/${id}/runtime/data-directories`, 'POST', input)
+    return jsonRequest<ApplicationRuntimeFile>(`${applicationPath(id)}/runtime/data-directories`, 'POST', input)
   },
 
   renameRuntimeFile(id: string, input: RenameApplicationRuntimeFileInput) {
-    return jsonRequest<ApplicationRuntimeFile>(`/apps/${id}/runtime/data-files`, 'PATCH', input)
+    return jsonRequest<ApplicationRuntimeFile>(`${applicationPath(id)}/runtime/data-files`, 'PATCH', input)
   },
 
   deleteRuntimeFile(id: string, path: string) {
     const query = new URLSearchParams({ path })
-    return emptyRequest<DeleteApplicationRuntimeFileResult>(`/apps/${id}/runtime/data-files?${query.toString()}`, {
-      method: 'DELETE'
-    })
+    return emptyRequest<DeleteApplicationRuntimeFileResult>(
+      `${applicationPath(id)}/runtime/data-files?${query.toString()}`,
+      {
+        method: 'DELETE'
+      }
+    )
   },
 
   downloadRuntimeFile(id: string, path: string) {
     const query = new URLSearchParams({ path })
-    return emptyRequest<ApplicationRuntimeFileDownload>(`/apps/${id}/runtime/data-files/download?${query.toString()}`)
+    return emptyRequest<ApplicationRuntimeFileDownload>(
+      `${applicationPath(id)}/runtime/data-files/download?${query.toString()}`
+    )
   },
 
   uploadDownloadFile(id: string, input: FormData, profile: ApplicationRuntimeFilesProfileInput = {}) {
@@ -69,7 +88,11 @@ export const orchestratorAppRuntimeClient = {
     if (profile.profileMode) query.set('profileMode', profile.profileMode)
     if (profile.profileName) query.set('profileName', profile.profileName)
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return formRequest<ApplicationRuntimeFileUpload>(`/apps/${id}/runtime/download-files${suffix}`, 'POST', input)
+    return formRequest<ApplicationRuntimeFileUpload>(
+      `${applicationPath(id)}/runtime/download-files${suffix}`,
+      'POST',
+      input
+    )
   },
 
   uploadDataFileStream(
@@ -82,7 +105,7 @@ export const orchestratorAppRuntimeClient = {
   ) {
     const query = new URLSearchParams({ path, overwrite: String(overwrite) })
     return streamRequest<ApplicationRuntimeFileUpload>(
-      `/apps/${encodeURIComponent(id)}/runtime/data-files?${query.toString()}`,
+      `${applicationPath(id)}/runtime/data-files?${query.toString()}`,
       'POST',
       input,
       contentType,
@@ -96,19 +119,19 @@ export const orchestratorAppRuntimeClient = {
     if (input.profileName) query.set('profileName', input.profileName)
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
     return emptyRequest<ApplicationRuntimeFileDownload>(
-      `/apps/${id}/runtime/download-files/${encodeURIComponent(fileName)}${suffix}`
+      `${applicationPath(id)}/runtime/download-files/${encodeApplicationPathSegment(fileName)}${suffix}`
     )
   },
 
   getClipboard(id: string) {
-    return emptyRequest<ApplicationClipboard>(`/apps/${id}/runtime/clipboard`)
+    return emptyRequest<ApplicationClipboard>(`${applicationPath(id)}/runtime/clipboard`)
   },
 
   setClipboard(id: string, text: string) {
-    return jsonRequest<ApplicationClipboard>(`/apps/${id}/runtime/clipboard`, 'PUT', { text })
+    return jsonRequest<ApplicationClipboard>(`${applicationPath(id)}/runtime/clipboard`, 'PUT', { text })
   },
 
   captureScreenshot(id: string) {
-    return emptyRequest<ApplicationScreenshot>(`/apps/${id}/runtime/screenshot`, { method: 'POST' })
+    return emptyRequest<ApplicationScreenshot>(`${applicationPath(id)}/runtime/screenshot`, { method: 'POST' })
   }
 }

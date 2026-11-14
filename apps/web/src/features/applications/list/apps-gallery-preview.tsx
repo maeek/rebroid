@@ -10,6 +10,9 @@ export const AppsGalleryPreview = () => (
   <StandardPage gridToolbar>
     <AppsList
       canCreate
+      canStart
+      canStop
+      canDelete
       canFilterByOwner
       yourApps={galleryPreviewApplications.map(app => ({
         ...mapAndroidApplicationToAppDefinition(app),

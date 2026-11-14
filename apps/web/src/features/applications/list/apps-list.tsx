@@ -17,14 +17,22 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchest
 
 export const AppsList = ({
   canCreate,
+  canStart = false,
+  canStop = false,
+  canDelete = false,
   canFilterByOwner,
+  canViewSnapshots = false,
   yourApps,
   currentOwnerUserId,
   initialSettings,
   orchestratorError
 }: {
   canCreate: boolean
+  canStart?: boolean
+  canStop?: boolean
+  canDelete?: boolean
   canFilterByOwner: boolean
+  canViewSnapshots?: boolean
   yourApps: AppDefinition[]
   currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
@@ -41,6 +49,8 @@ export const AppsList = ({
     contextValue,
     hasApps
   } = useAppsListController({
+    canStop,
+    canDelete,
     currentOwnerUserId,
     initialSettings,
     yourApps
@@ -64,10 +74,6 @@ export const AppsList = ({
     )
   }
 
-  if (!hasApps) {
-    return <AppsListEmptyState canCreate={canCreate} />
-  }
-
   return (
     <AppsListProvider value={contextValue}>
       <AppsListHeader canCreate={canCreate} />
@@ -80,8 +86,11 @@ export const AppsList = ({
           onStatusChange={setStatusFilter}
           ownership={canFilterByOwner ? ownershipFilter : undefined}
           onOwnershipChange={setOwnershipFilter}
+          canSelect={hasApps}
         >
-          {availableApps.length ? (
+          {!hasApps ? (
+            <AppsListEmptyState canCreate={canCreate} />
+          ) : availableApps.length ? (
             <AppGalleryGrid>
               {availableApps.map(app => (
                 <AppsListItem
@@ -89,6 +98,10 @@ export const AppsList = ({
                   app={app}
                   showOwner={app.ownerUserId !== currentOwnerUserId}
                   canClone={canCreate && app.ownerUserId !== currentOwnerUserId}
+                  canStart={canStart && app.ownerUserId === currentOwnerUserId}
+                  canStop={canStop && app.ownerUserId === currentOwnerUserId}
+                  canDelete={canDelete}
+                  canViewSnapshot={canViewSnapshots && app.ownerUserId === currentOwnerUserId}
                 />
               ))}
             </AppGalleryGrid>

@@ -1,4 +1,5 @@
 import { emptyRequest, jsonRequest } from '../request'
+import { applicationPath, encodeApplicationPathSegment } from './application-path'
 import type {
   ApplicationViewerControlCommand,
   ApplicationViewerControlResponse,
@@ -8,7 +9,7 @@ import type {
 
 export const orchestratorAppViewerClient = {
   sendViewerControl(id: string, command: ApplicationViewerControlCommand) {
-    return jsonRequest<ApplicationViewerControlResponse>(`/apps/${id}/viewer/control`, 'POST', { command })
+    return jsonRequest<ApplicationViewerControlResponse>(`${applicationPath(id)}/viewer/control`, 'POST', { command })
   },
 
   getScrcpySession(id: string, access: ScrcpySessionAccess = {}) {
@@ -17,11 +18,11 @@ export const orchestratorAppViewerClient = {
     if (access.clipboard) query.set('clipboard', 'true')
     if (access.screenshot) query.set('screenshot', 'true')
     const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<ScrcpySession>(`/apps/${id}/viewer/session${suffix}`)
+    return emptyRequest<ScrcpySession>(`${applicationPath(id)}/viewer/session${suffix}`)
   },
 
   recordViewerActivity(id: string) {
-    return emptyRequest<{ id: string; lastScrcpyActivityAt: string }>(`/apps/${id}/viewer/activity`, {
+    return emptyRequest<{ id: string; lastScrcpyActivityAt: string }>(`${applicationPath(id)}/viewer/activity`, {
       method: 'POST'
     })
   },
@@ -32,14 +33,17 @@ export const orchestratorAppViewerClient = {
       clipboard: String(access.clipboard === true),
       screenshot: String(access.screenshot === true)
     })
-    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(`/apps/${id}/viewer/displays?${query}`, {
-      method: 'POST'
-    })
+    return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(
+      `${applicationPath(id)}/viewer/displays?${query}`,
+      {
+        method: 'POST'
+      }
+    )
   },
 
   releaseVirtualDisplay(id: string, surfaceId: string) {
     return emptyRequest<NonNullable<ScrcpySession['displaySession']>>(
-      `/apps/${id}/viewer/displays/${encodeURIComponent(surfaceId)}/release`,
+      `${applicationPath(id)}/viewer/displays/${encodeApplicationPathSegment(surfaceId)}/release`,
       {
         method: 'POST'
       }

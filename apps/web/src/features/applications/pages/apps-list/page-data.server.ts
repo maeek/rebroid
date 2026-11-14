@@ -40,6 +40,10 @@ export const getAppsListPageData = async () => {
   return {
     apps,
     canCreate: hasPermission(user.permissions, 'applications:create'),
+    canStart: hasPermission(user.permissions, 'applications:start'),
+    canStop: hasPermission(user.permissions, 'applications:stop'),
+    canDelete: hasPermission(user.permissions, 'applications:delete'),
+    canViewSnapshots: hasPermission(user.permissions, 'applications:capture-screenshot'),
     canFilterByOwner: user.isPlatformAdmin,
     currentOwnerUserId: user.ownerUserId,
     initialSettings,

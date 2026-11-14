@@ -112,6 +112,28 @@ describe('authorized recent application reads', () => {
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
   })
 
+  it('grants snapshot access only to the owner with screenshot permission', async () => {
+    const user = await getCurrentUserContext()
+    vi.mocked(getCurrentUserContext).mockResolvedValue({
+      ...user,
+      isPlatformAdmin: true,
+      permissions: { 'applications:capture-screenshot': true }
+    })
+    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+      { ...summary('older', 'running'), ownerUserId: user.ownerUserId },
+      { ...summary('newest', 'running'), ownerUserId: 'another-user' }
+    ])
+    expect(await listRecentlyOpenedApps()).toMatchObject([
+      { id: 'newest', canViewSnapshot: false },
+      { id: 'older', canViewSnapshot: true }
+    ])
+
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user)
+    expect(await listVisibleRecentApps()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'older', canViewSnapshot: false })])
+    )
+  })
+
   it('omits dismissed running apps and restricts power actions to owned apps', async () => {
     const user = await getCurrentUserContext()
     vi.mocked(getCurrentUserContext).mockResolvedValue({

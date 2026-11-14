@@ -9,11 +9,19 @@ import type { AppDefinition } from '@/features/applications/domain/app-definitio
 export const AppsListItem = ({
   app,
   showOwner = false,
-  canClone = false
+  canClone = false,
+  canStart,
+  canStop,
+  canDelete,
+  canViewSnapshot = false
 }: {
   app: AppDefinition
   showOwner?: boolean
   canClone?: boolean
+  canStart: boolean
+  canStop: boolean
+  canDelete: boolean
+  canViewSnapshot?: boolean
 }) => {
   const { isManaging, isBulkWorking, openPendingAppAction, selectedIds, startApp, startManaging, toggleSelected } =
     useAppsListContext()
@@ -28,7 +36,8 @@ export const AppsListItem = ({
         status: app.status,
         statusLabel: getAppStatusLabel(app.status, app.lifecycleStage),
         ownerDisplayName: showOwner ? (app.ownerDisplayName ?? 'Unknown owner') : null,
-        canClone
+        canClone,
+        canViewSnapshot
       }}
       disabled={isBulkWorking}
       selection={
@@ -39,10 +48,10 @@ export const AppsListItem = ({
             }
           : undefined
       }
-      onSelect={() => startManaging(app.id)}
+      onSelect={canStop || canDelete ? () => startManaging(app.id) : undefined}
       actions={
         <>
-          {!showOwner ? (
+          {(app.running ? canStop : canStart) ? (
             <DropdownMenuItem
               className='gap-2'
               disabled={busy}
@@ -52,14 +61,16 @@ export const AppsListItem = ({
               {app.running ? 'Stop app…' : 'Start app'}
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem
-            className='gap-2 text-danger'
-            disabled={app.status === 'removing' || isBulkWorking}
-            onClick={() => openPendingAppAction({ action: 'delete', app })}
-          >
-            {app.status === 'provisioning' ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
-            {app.status === 'provisioning' ? 'Cancel and delete…' : 'Delete app…'}
-          </DropdownMenuItem>
+          {canDelete ? (
+            <DropdownMenuItem
+              className='gap-2 text-danger'
+              disabled={app.status === 'removing' || isBulkWorking}
+              onClick={() => openPendingAppAction({ action: 'delete', app })}
+            >
+              {app.status === 'provisioning' ? <IconX className='size-4' /> : <IconTrash className='size-4' />}
+              {app.status === 'provisioning' ? 'Cancel and delete…' : 'Delete app…'}
+            </DropdownMenuItem>
+          ) : null}
         </>
       }
     />

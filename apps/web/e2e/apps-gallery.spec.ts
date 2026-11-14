@@ -50,6 +50,7 @@ test('gallery search, status, menus and visible selection work together without 
   await expect(page.getByRole('button', { name: 'Sort apps' }).locator('svg.tabler-icon-settings')).toBeVisible()
   const tiles = page.locator('[data-app-tile]')
   await expect(tiles).toHaveCount(8)
+  await expect(page.getByRole('group', { name: 'Active filters' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: /^My apps|^Other users/ })).toHaveCount(0)
   const search = page.getByRole('searchbox')
   await search.fill('warehouse')
@@ -57,6 +58,8 @@ test('gallery search, status, menus and visible selection work together without 
   await expect(tiles).toContainText('Warehouse scanner')
   await page.getByRole('button', { name: 'Clear search', exact: true }).click()
   await expect(tiles).toHaveCount(8)
+  const appLink = page.getByRole('link', { name: 'Open Inventory worker', exact: true })
+  if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) await appLink.hover()
   await page.getByRole('button', { name: 'Actions for Inventory worker', exact: true }).click()
   await expect(page.getByRole('menuitem', { name: 'Configuration' })).toHaveAttribute(
     'href',
@@ -76,7 +79,6 @@ test('gallery search, status, menus and visible selection work together without 
   await expect(page.getByRole('button', { name: 'Remove Status filter' })).toBeVisible()
   await page.mouse.move(0, 0)
   await expect(tiles.first()).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
-  const appLink = page.getByRole('link', { name: 'Open Inventory worker', exact: true })
   await expect(appLink).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) {
     await appLink.hover()
@@ -329,10 +331,10 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   expect(overviewTile.width).toBe(galleryTile.width)
   expect(overviewTile.height).toBe(galleryTile.height)
   await expect(shortcuts.nth(1)).toContainText('Operations')
-  await expect(shortcuts.nth(1)).toContainText('Clone to run')
+  await expect(shortcuts.nth(1)).toContainText('Administrator view')
   await recent.getByRole('button', { name: 'Actions for Inventory worker · Operations' }).click()
   const menu = page.getByRole('menu', { name: 'Actions for Inventory worker · Operations' })
-  await expect(menu.getByRole('menuitem', { name: 'Open as me' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Copy to my apps' })).toBeVisible()
   await expect(menu.getByRole('menuitem', { name: 'Configuration' })).toHaveAttribute(
     'href',
     '/app/recent-1?view=configuration'

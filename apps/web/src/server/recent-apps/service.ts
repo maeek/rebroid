@@ -49,9 +49,7 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
 
   return Promise.all(
     navigationApps.map(async ({ app, openedAt }) => {
-      const statusLabel = recentOnly
-        ? getAppStatusLabel(app.currentStatus, app.lifecycleStage)
-        : (app.detail?.title ?? null)
+      const statusLabel = getAppStatusLabel(app.currentStatus, app.lifecycleStage)
       const entry = await toRecentApp(app, openedAt, statusLabel)
       const isForeignOwned = user.isPlatformAdmin && app.ownerUserId !== user.ownerUserId
       return {
@@ -59,7 +57,9 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
         ownerDisplayName: isForeignOwned ? (getOwnerDisplayName(ownerNames, app.ownerUserId) ?? 'Unknown owner') : null,
         canStart: !isForeignOwned && hasPermission(user.permissions, 'applications:start'),
         canStop: app.ownerUserId === user.ownerUserId && hasPermission(user.permissions, 'applications:stop'),
-        canClone: isForeignOwned && hasPermission(user.permissions, 'applications:create')
+        canClone: isForeignOwned && hasPermission(user.permissions, 'applications:create'),
+        canViewSnapshot:
+          app.ownerUserId === user.ownerUserId && hasPermission(user.permissions, 'applications:capture-screenshot')
       }
     })
   )

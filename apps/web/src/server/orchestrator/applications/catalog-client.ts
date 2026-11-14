@@ -1,5 +1,6 @@
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest, jsonRequest, OrchestratorRequestError } from '../request'
+import { applicationPath } from './application-path'
 import { applicationImageAccessHeaders, type ApplicationImageActor } from './image-access'
 import { openAppQuotaHeaders, throwOpenAppQuotaError } from './open-app-quota'
 import type {
@@ -48,11 +49,7 @@ export const orchestratorAppCatalogClient = {
   },
 
   reconcileApplication(id: string) {
-    return jsonRequest<AndroidAppRuntimeReconciliation>(
-      `/apps/${encodeURIComponent(id)}/runtime-state/reconcile`,
-      'POST',
-      {}
-    )
+    return jsonRequest<AndroidAppRuntimeReconciliation>(`${applicationPath(id)}/runtime-state/reconcile`, 'POST', {})
   },
 
   listApplicationSummaries(
@@ -68,29 +65,29 @@ export const orchestratorAppCatalogClient = {
   },
 
   getApplication(id: string, signal?: AbortSignal) {
-    return emptyRequest<AndroidApplication>(`/apps/${id}`, { signal })
+    return emptyRequest<AndroidApplication>(applicationPath(id), { signal })
   },
 
   getViewerRuntime(id: string, signal?: AbortSignal) {
     return emptyRequest<OrchestratorApiSchemas['AndroidApplicationViewerRuntimeDto']>(
-      `/apps/${encodeURIComponent(id)}/viewer-runtime`,
+      `${applicationPath(id)}/viewer-runtime`,
       { signal }
     )
   },
 
   cloneApplication(id: string, input: CloneApplicationInput, maxOpenApps: number | null, actor: ApplicationImageActor) {
-    return jsonRequest<ApplicationCommandResult>(`/apps/${id}/clone`, 'POST', input, {
+    return jsonRequest<ApplicationCommandResult>(`${applicationPath(id)}/clone`, 'POST', input, {
       headers: { ...openAppQuotaHeaders(maxOpenApps), ...applicationImageAccessHeaders(actor) }
     }).catch(throwAppCreateError)
   },
 
   updateApplication(id: string, input: UpdateAndroidApplicationInput) {
-    return jsonRequest<ApplicationCommandResult>(`/apps/${id}`, 'PATCH', input)
+    return jsonRequest<ApplicationCommandResult>(applicationPath(id), 'PATCH', input)
   },
 
   deleteApplication(id: string, removeData = true) {
     const query = new URLSearchParams({ removeData: String(removeData) })
-    return emptyRequest<DeleteAndroidApplicationResponse>(`/apps/${id}?${query.toString()}`, {
+    return emptyRequest<DeleteAndroidApplicationResponse>(`${applicationPath(id)}?${query.toString()}`, {
       method: 'DELETE'
     })
   }

@@ -9,4 +9,5 @@ export type RecentApp = {
   canStart?: boolean
   canStop?: boolean
   canClone?: boolean
+  canViewSnapshot?: boolean
 }
