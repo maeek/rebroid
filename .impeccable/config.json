@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "apps/display-sidecar/src/modules/display/viewer/index.html"
+        ],
+        "createdAt": "2026-11-15T20:21:12.594Z",
+        "reason": "Agent: this pre-existing glow depicts the green indicator light on the decorative device illustration shown during viewer startup."
+      }
+    ]
+  }
+}
