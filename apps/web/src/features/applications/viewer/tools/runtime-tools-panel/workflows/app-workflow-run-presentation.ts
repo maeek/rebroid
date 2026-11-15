@@ -2,9 +2,7 @@ import type { AutomationRunTrigger } from '@/shared/contracts/automation'
 
 export const workflowRunTriggerLabels: Record<AutomationRunTrigger, string> = {
   manual: 'Manual',
-  schedule: 'Scheduled',
-  webhook: 'Webhook',
-  event: 'Event'
+  schedule: 'Scheduled'
 }
 
 export const workflowRunDuration = (startedAt: string | null, completedAt: string | null) => {
