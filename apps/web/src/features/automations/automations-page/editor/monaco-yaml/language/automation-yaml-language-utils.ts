@@ -68,9 +68,13 @@ export const schemaContextForCurrentProperty = (
   }
 }
 
-export const workflowContext = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+export const workflowContext = (
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+  inferBlankIndent = true
+) => {
   let currentIndent = indentation(model.getLineContent(position.lineNumber))
-  if (model.getLineContent(position.lineNumber).trim() === '') {
+  if (inferBlankIndent && model.getLineContent(position.lineNumber).trim() === '') {
     currentIndent = inferredBlankLineIndent(model, position.lineNumber) ?? currentIndent
   }
   let uses: string | null = null
@@ -126,7 +130,7 @@ const schemaAtPath = (schema: unknown, path: Array<string | number>): JsonSchema
   return isRecord(current) ? current : null
 }
 
-const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
+export const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
   const node = yamlNodeAtPath(root, stepPath)
   if (!node || !isMap(node)) return null
 
@@ -134,7 +138,7 @@ const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | n
   return usesPair?.value && isScalar(usesPair.value) ? String(usesPair.value.value) : null
 }
 
-const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+export const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
   if ('getOffsetAt' in model && typeof model.getOffsetAt === 'function') return model.getOffsetAt(position)
 
   let offset = 0

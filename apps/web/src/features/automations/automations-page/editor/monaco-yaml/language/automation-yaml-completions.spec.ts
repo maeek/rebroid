@@ -209,6 +209,11 @@ describe('automation YAML completions', () => {
     expect(suggestions.map(suggestion => suggestion.label)).toEqual(['assistant'])
   })
 
+  it('suggests command inputs on an unindented blank line after with', () => {
+    const suggestions = completeAtEnd('spec:\n  steps:\n    - uses: android.viewerCommand\n      with:\n', 5)
+    expect(suggestions).toEqual([expect.objectContaining({ label: 'command', insertText: '        command: ' })])
+  })
+
   it('suggests step skeletons after a bare item in a step array', () => {
     const suggestions = completeAtEnd(
       `spec:
