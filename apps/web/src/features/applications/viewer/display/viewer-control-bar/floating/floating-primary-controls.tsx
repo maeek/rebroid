@@ -1,83 +1,67 @@
 'use client'
 
-import { Visible } from '@/components/ui/visible'
 import {
   displayControls,
   IconCommandGroup,
+  navigationControls,
+  panelControls,
   volumeControls
 } from '@/features/applications/viewer/display/viewer-control-bar/commands/command-groups'
 import {
-  AndroidPanelsMenu,
   CaptureScreenshotButton,
-  FullscreenButton,
   KeyboardCaptureButton,
   PopoutButton
 } from '@/features/applications/viewer/display/viewer-control-bar/controls/control-buttons'
 import { useViewerControlContext } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 
-export const FloatingPrimaryControls = () => {
+const fullscreenCommands = [...navigationControls, ...volumeControls, ...displayControls, ...panelControls]
+
+export const FloatingPrimaryControls = ({ buttonClassName }: { buttonClassName: string }) => {
   const {
     canCaptureScreenshot,
+    canControl,
     controlsDisabled,
     controlIcon,
-    fullscreen,
     isCapturing,
     keyboardCaptureEnabled,
     runtimeAvailable,
     sendControl,
     onCaptureScreenshot,
     onOpenPopout,
-    onToggleFullscreen,
     onToggleKeyboardCapture
   } = useViewerControlContext()
 
   return (
-    <>
-      <Visible when={runtimeAvailable && canCaptureScreenshot}>
+    <div className='scrollbar-none grid min-h-0 grid-cols-3 gap-1 overflow-y-auto overscroll-contain border-t border-surface-border/60 p-1'>
+      {runtimeAvailable && canControl && (
+        <>
+          <IconCommandGroup
+            buttonClassName={buttonClassName}
+            className='contents'
+            controls={fullscreenCommands}
+            controlsDisabled={controlsDisabled}
+            controlIcon={controlIcon}
+            sendControl={sendControl}
+          />
+          <KeyboardCaptureButton
+            className={buttonClassName}
+            controlsDisabled={controlsDisabled}
+            keyboardCaptureEnabled={keyboardCaptureEnabled}
+            onToggleKeyboardCapture={onToggleKeyboardCapture}
+          />
+        </>
+      )}
+      {runtimeAvailable && canCaptureScreenshot && (
         <CaptureScreenshotButton
-          className='size-9'
+          className={buttonClassName}
           isCapturing={isCapturing}
           onCaptureScreenshot={onCaptureScreenshot}
         />
-      </Visible>
-      <IconCommandGroup
-        buttonClassName='size-9'
-        buttonVariant='secondary'
-        className='contents'
-        controls={volumeControls}
-        controlsDisabled={controlsDisabled}
-        controlIcon={controlIcon}
-        sendControl={sendControl}
-      />
-      <IconCommandGroup
-        buttonClassName='size-9'
-        buttonVariant='secondary'
-        className='contents'
-        controls={displayControls}
-        controlsDisabled={controlsDisabled}
-        controlIcon={controlIcon}
-        sendControl={sendControl}
-      />
-      <KeyboardCaptureButton
-        className='size-9'
-        controlsDisabled={controlsDisabled}
-        keyboardCaptureEnabled={keyboardCaptureEnabled}
-        onToggleKeyboardCapture={onToggleKeyboardCapture}
-      />
-      <AndroidPanelsMenu
-        buttonClassName='size-9'
-        controlsDisabled={controlsDisabled}
-        sendControl={sendControl}
-      />
-      <FullscreenButton
-        className='size-9'
-        fullscreen={fullscreen}
-        onToggleFullscreen={onToggleFullscreen}
-      />
+      )}
       <PopoutButton
-        className='size-9'
+        className={buttonClassName}
         onOpenPopout={onOpenPopout}
       />
-    </>
+    </div>
   )
 }

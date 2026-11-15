@@ -3,8 +3,8 @@
 import { useContext, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { IconDeviceDesktop, IconDeviceMobile, IconPictureInPicture, IconX } from '@tabler/icons-react'
+import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
-import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
@@ -37,6 +37,7 @@ export const SurfacePanel = ({
     compactSwitcher,
     multipleDisplays,
     displayHeaderSpace,
+    fullscreenElement,
     fullscreenSurface,
     isActive,
     isClosing,
@@ -67,6 +68,12 @@ export const SurfacePanel = ({
   const unregister = pinnedViewer?.unregister
   const managed = surface.kind === 'main' && Boolean(register && dockedSession)
   const isFloating = pinnedViewer?.pinnedAppId === applicationId && managed
+  // Native fullscreen shows only the host and its DOM descendants, including when the main frame is docked.
+  const fullscreenHost =
+    fullscreenElement &&
+    (fullscreenSurface || (managed && pinnedViewer?.isFullscreenHost(applicationId, fullscreenElement)))
+      ? fullscreenElement
+      : null
   const [registration] = useState(() => Symbol('viewer dock'))
   const [viewport, setViewport] = useState<HTMLDivElement | null>(null)
   const dockRef = useRef({ onStreamStatus, onStreamMetrics, onRetry, onSelect })
@@ -256,12 +263,6 @@ export const SurfacePanel = ({
               </div>
             ) : null}
           </div>
-          <Visible when={controlsEnabled && fullscreenSurface}>
-            <ViewerControlBar
-              mode='floating'
-              surfaceId={surface.id}
-            />
-          </Visible>
         </div>
         {!compact && (
           <SurfaceChrome
@@ -290,6 +291,14 @@ export const SurfacePanel = ({
           {isActive && !isFloating ? <ViewerControlBar surfaceId={surface.id} /> : null}
         </div>
       ) : null}
+      {fullscreenHost &&
+        createPortal(
+          <ViewerControlBar
+            mode='floating'
+            surfaceId={surface.id}
+          />,
+          fullscreenHost
+        )}
     </section>
   )
 }

@@ -41,6 +41,7 @@ export const PinnedViewerContext = createContext<{
   minimize: (appId: string) => void
   restore: (appId: string) => void
   requestFullscreen: (appId: string) => boolean
+  isFullscreenHost: (appId: string, element: Element) => boolean
 } | null>(null)
 
 export const usePinnedViewer = () => useContext(PinnedViewerContext)

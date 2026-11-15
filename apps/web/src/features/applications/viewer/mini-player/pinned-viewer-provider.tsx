@@ -105,9 +105,10 @@ export const PinnedViewerProvider = ({ children }: { children: ReactNode }) => {
       unregister,
       minimize,
       restore,
-      requestFullscreen
+      requestFullscreen,
+      isFullscreenHost: (appId: string, element: Element) => hostElements.get(appId) === element
     }),
-    [isDesktop, activePin, getSession, register, unregister, minimize, restore, requestFullscreen]
+    [isDesktop, activePin, getSession, hostElements, register, unregister, minimize, restore, requestFullscreen]
   )
 
   return (

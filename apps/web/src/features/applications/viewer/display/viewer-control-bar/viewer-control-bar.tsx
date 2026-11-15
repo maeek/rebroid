@@ -11,10 +11,7 @@ type ViewerControlBarProps = {
 
 export const ViewerControlBar = ({ mode = 'bar', surfaceId }: ViewerControlBarProps) => {
   return (
-    <ViewerControlProvider
-      mode={mode}
-      surfaceId={surfaceId}
-    >
+    <ViewerControlProvider surfaceId={surfaceId}>
       {mode === 'floating' ? <FloatingViewerControls /> : <StandardViewerControls />}
     </ViewerControlProvider>
   )

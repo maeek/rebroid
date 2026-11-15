@@ -235,3 +235,76 @@ test('the mobile device view fits a narrow, short viewport and retains both fram
     'rgba(0, 0, 0, 0)'
   )
 })
+
+for (const display of ['Main display', 'Virtual display'] as const) {
+  test(`mobile fullscreen keeps a movable toolbar with the ${display.toLowerCase()}`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'Exercises touch gestures in fullscreen')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.route('**/preview-display-frame*', route =>
+      route.fulfill({
+        contentType: 'text/html',
+        body: `<!doctype html><body data-preview-display><script>
+          window.addEventListener('message', ({ source, origin, data }) => {
+            if (source !== parent || origin !== location.origin || data.type !== 'rebroid-viewer-control-event') return
+            document.body.dataset.command = data.command
+            parent.postMessage({ type: 'rebroid-viewer-control-result', requestId: data.requestId, ok: true }, origin)
+          })
+        </script></body>`
+      })
+    )
+    await page.goto('/skeleton-contract-test?editor=docked-viewer&virtual-display=portrait')
+    await page.getByRole('button', { name: 'Device', exact: true }).tap()
+    if (display === 'Virtual display') {
+      await page.getByRole('button', { name: 'Main display', exact: true }).tap()
+      await page.getByRole('menuitemradio', { name: display }).tap()
+    }
+
+    const src = display === 'Main display' ? '/preview-display-frame' : '/preview-display-frame?virtual'
+    const frame = page.frameLocator(`iframe[src="${src}"]`).locator('body')
+    await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
+    await page.getByRole('button', { name: 'Enter fullscreen' }).tap()
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true)
+
+    const toolbar = page.getByRole('group', { name: 'Fullscreen viewer controls' })
+    const handle = toolbar.getByRole('button', { name: 'Move viewer toolbar' })
+    const exit = toolbar.getByRole('button', { name: 'Exit fullscreen' })
+    const back = toolbar.getByRole('button', { name: 'Back', exact: true })
+    await expect(back).toBeVisible()
+    await expect(handle).toHaveCSS('height', '44px')
+    await back.tap()
+    await expect(frame).toHaveAttribute('data-command', 'back')
+    await toolbar.getByRole('button', { name: 'Hide toolbar' }).tap()
+    await expect(back).toBeHidden()
+    await expect(exit).toBeVisible()
+
+    const start = (await handle.boundingBox())!
+    const x = start.x + start.width / 2
+    const y = start.y + start.height / 2
+    const touch = await page.context().newCDPSession(page)
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: 385, y: 839 }] })
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await expect.poll(async () => (await handle.boundingBox())!.x).toBeGreaterThan(start.x + 100)
+
+    await toolbar.getByRole('button', { name: 'Show toolbar' }).tap()
+    await expect(back).toBeVisible()
+    await expect(toolbar).toBeInViewport({ ratio: 1 })
+    await touch.send('Emulation.setDeviceMetricsOverride', {
+      width: 500,
+      height: 320,
+      deviceScaleFactor: 1,
+      mobile: true,
+      screenOrientation: { type: 'landscapePrimary', angle: 90 }
+    })
+    await expect.poll(() => page.evaluate(() => window.innerHeight)).toBe(320)
+    await expect(toolbar).toBeInViewport({ ratio: 1 })
+    await expect(exit).toBeInViewport({ ratio: 1 })
+    const beforeKey = (await handle.boundingBox())!.x
+    await handle.press('ArrowLeft')
+    await expect.poll(async () => (await handle.boundingBox())!.x).toBeLessThan(beforeKey)
+    await exit.tap()
+    await expect(toolbar).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Enter fullscreen' })).toBeVisible()
+    await expect(frame).toHaveAttribute('data-retained', 'true')
+  })
+}

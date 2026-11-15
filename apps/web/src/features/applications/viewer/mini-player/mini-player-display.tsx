@@ -1,9 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useId, useState } from 'react'
-import { IconArrowsMinimize } from '@tabler/icons-react'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
-import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { ViewerClipboard } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-clipboard'
 import { ViewerActivityKeepalive } from '@/features/applications/viewer/display/viewer-activity-keepalive'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
@@ -129,18 +127,6 @@ export const MiniPlayerDisplay = ({
       onExpandedChange={onExpandedChange}
       onElement={setHostElement}
       inlineStyle={floating ? undefined : inlineStyle}
-      inlineOverlay={
-        fullscreen && (
-          <div className='absolute right-3 top-3 z-10'>
-            <IconActionButton
-              label='Exit fullscreen'
-              onClick={() => void document.exitFullscreen()}
-            >
-              <IconArrowsMinimize className='size-3.5' />
-            </IconActionButton>
-          </div>
-        )
-      }
       expandedActions={viewer.canClipboard && <ViewerClipboard appId={viewer.appId} />}
       expandedToolbar={
         <MiniPlayerToolbar

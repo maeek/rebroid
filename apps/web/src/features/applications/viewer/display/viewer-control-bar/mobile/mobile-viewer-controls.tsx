@@ -35,10 +35,7 @@ export const MobileViewerControls = ({
   actions?: ReactNode
   onFullscreen?: () => boolean
 }) => (
-  <ViewerControlProvider
-    mode='bar'
-    surfaceId={surfaceId}
-  >
+  <ViewerControlProvider surfaceId={surfaceId}>
     <MobileControlBar
       controlsEnabled={controlsEnabled}
       actions={actions}

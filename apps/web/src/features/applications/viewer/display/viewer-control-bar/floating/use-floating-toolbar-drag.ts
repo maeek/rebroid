@@ -1,146 +1,91 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import type { PointerEvent } from 'react'
-import type { DragState, FloatingPosition } from '@/features/applications/viewer/display/viewer-control-bar/types'
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
-export const clampFloatingPosition = (nextX: number, nextY: number): FloatingPosition => {
-  const maxX = typeof window === 'undefined' ? nextX : window.innerWidth - 72
-  const maxY = typeof window === 'undefined' ? nextY : window.innerHeight - 72
+type Position = { x: number; y: number }
 
-  return {
-    x: Math.min(Math.max(8, nextX), Math.max(8, maxX)),
-    y: Math.min(Math.max(8, nextY), Math.max(8, maxY))
-  }
+const keyboardMoves: Record<string, Position> = {
+  ArrowLeft: { x: -16, y: 0 },
+  ArrowRight: { x: 16, y: 0 },
+  ArrowUp: { x: 0, y: -16 },
+  ArrowDown: { x: 0, y: 16 }
 }
 
-const getDraggedPosition = (state: DragState, clientX: number, clientY: number) =>
-  clampFloatingPosition(state.originX + clientX - state.startX, state.originY + clientY - state.startY)
+export const useFloatingToolbarDrag = () => {
+  const boundsRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const drag = useRef<{ pointerId: number; offset: Position } | null>(null)
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
 
-const getMatchingDragState = (dragState: { current: DragState | null }, pointerId: number) => {
-  const state = dragState.current
-  return state?.pointerId === pointerId ? state : null
-}
+  const moveToolbar = (getPosition: (current: Position) => Position) => {
+    const bounds = boundsRef.current
+    const toolbar = toolbarRef.current
+    if (!bounds || !toolbar) return
 
-const releasePointerCapture = (event: PointerEvent<HTMLButtonElement>) => {
-  try {
-    event.currentTarget.releasePointerCapture(event.pointerId)
-  } catch {
-    // Pointer capture may already be gone on mobile browsers.
-  }
-}
-
-const capturePointer = (event: PointerEvent<HTMLButtonElement>) => {
-  try {
-    event.currentTarget.setPointerCapture(event.pointerId)
-  } catch {
-    // Some mobile browsers do not retain capture when the dragged element moves.
-  }
-}
-
-const createFloatingDragCleanup =
-  (
-    handleWindowPointerMove: (event: globalThis.PointerEvent) => void,
-    finishWindowDrag: (event: globalThis.PointerEvent) => void,
-    cleanupRef: { current: (() => void) | null }
-  ) =>
-  () => {
-    window.removeEventListener('pointermove', handleWindowPointerMove)
-    window.removeEventListener('pointerup', finishWindowDrag)
-    window.removeEventListener('pointercancel', finishWindowDrag)
-    cleanupRef.current = null
+    const maxX = Math.max(0, bounds.clientWidth - toolbar.offsetWidth)
+    const maxY = Math.max(0, bounds.clientHeight - toolbar.offsetHeight)
+    setPosition(current => {
+      const next = getPosition(current)
+      const x = Math.min(maxX, Math.max(0, next.x))
+      const y = Math.min(maxY, Math.max(0, next.y))
+      return x === current.x && y === current.y ? current : { x, y }
+    })
   }
 
-const clearFloatingDragCleanup = (cleanupRef: { current: (() => void) | null }) => {
-  cleanupRef.current?.()
-}
+  useLayoutEffect(() => {
+    const bounds = boundsRef.current
+    const toolbar = toolbarRef.current
+    if (!bounds || !toolbar) return
 
-const registerFloatingWindowDrag = ({
-  cleanupRef,
-  dragState,
-  setFloatingPosition
-}: {
-  cleanupRef: { current: (() => void) | null }
-  dragState: { current: DragState | null }
-  setFloatingPosition: (position: FloatingPosition) => void
-}) => {
-  const handleWindowPointerMove = (moveEvent: globalThis.PointerEvent) => {
-    const state = getMatchingDragState(dragState, moveEvent.pointerId)
-    if (!state) {
-      return
-    }
-
-    moveEvent.preventDefault()
-    setFloatingPosition(getDraggedPosition(state, moveEvent.clientX, moveEvent.clientY))
-  }
-
-  const finishWindowDrag = (upEvent: globalThis.PointerEvent) => {
-    const state = getMatchingDragState(dragState, upEvent.pointerId)
-    if (!state) {
-      return
-    }
-
-    upEvent.preventDefault()
-    dragState.current = null
-    cleanupRef.current?.()
-  }
-
-  window.addEventListener('pointermove', handleWindowPointerMove, { passive: false })
-  window.addEventListener('pointerup', finishWindowDrag, { passive: false })
-  window.addEventListener('pointercancel', finishWindowDrag, { passive: false })
-  cleanupRef.current = createFloatingDragCleanup(handleWindowPointerMove, finishWindowDrag, cleanupRef)
-}
-
-export const useFloatingToolbarDrag = (
-  floatingPosition: FloatingPosition,
-  setFloatingPosition: (position: FloatingPosition) => void
-) => {
-  const floatingDragCleanup = useRef<(() => void) | null>(null)
-  const dragState = useRef<DragState | null>(null)
-
-  useEffect(() => {
-    return () => clearFloatingDragCleanup(floatingDragCleanup)
+    const resize = new ResizeObserver(() => moveToolbar(current => current))
+    resize.observe(bounds)
+    resize.observe(toolbar)
+    return () => resize.disconnect()
   }, [])
 
-  const handleFloatingPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+  const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 || drag.current || !toolbarRef.current) return
+    const rect = toolbarRef.current.getBoundingClientRect()
+    drag.current = {
+      pointerId: event.pointerId,
+      offset: { x: event.clientX - rect.left, y: event.clientY - rect.top }
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.stopPropagation()
+  }
+
+  const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const activeDrag = drag.current
+    if (activeDrag?.pointerId !== event.pointerId || !boundsRef.current) return
+    const bounds = boundsRef.current.getBoundingClientRect()
+    const x = event.clientX - bounds.left - activeDrag.offset.x
+    const y = event.clientY - bounds.top - activeDrag.offset.y
+    moveToolbar(() => ({ x, y }))
+  }
+
+  const finishDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const move = keyboardMoves[event.key]
+    if (!move) return
     event.preventDefault()
     event.stopPropagation()
-    floatingDragCleanup.current?.()
-    dragState.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: floatingPosition.x,
-      originY: floatingPosition.y
-    }
-
-    capturePointer(event)
-    registerFloatingWindowDrag({ cleanupRef: floatingDragCleanup, dragState, setFloatingPosition })
-  }
-
-  const handleFloatingPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
-    const state = getMatchingDragState(dragState, event.pointerId)
-    if (!state) {
-      return
-    }
-
-    setFloatingPosition(getDraggedPosition(state, event.clientX, event.clientY))
-  }
-
-  const handleFloatingPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
-    const state = getMatchingDragState(dragState, event.pointerId)
-    if (!state) {
-      return
-    }
-
-    dragState.current = null
-    floatingDragCleanup.current?.()
-    releasePointerCapture(event)
+    moveToolbar(current => ({ x: current.x + move.x, y: current.y + move.y }))
   }
 
   return {
-    handleFloatingPointerDown,
-    handleFloatingPointerMove,
-    handleFloatingPointerUp
+    boundsRef,
+    toolbarRef,
+    position,
+    dragHandle: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: finishDrag,
+      onPointerCancel: finishDrag,
+      onLostPointerCapture: finishDrag,
+      onKeyDown
+    }
   }
 }

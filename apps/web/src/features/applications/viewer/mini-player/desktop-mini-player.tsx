@@ -23,7 +23,6 @@ type DesktopMiniPlayerProps = {
   expandedActions?: ReactNode
   expandedToolbar?: ReactNode
   inlineStyle?: CSSProperties
-  inlineOverlay?: ReactNode
   onElement?: (element: HTMLDivElement | null) => void
   restoreLabel?: string
   onRestoreInline?: () => void
@@ -42,7 +41,6 @@ export const DesktopMiniPlayer = ({
   expandedActions,
   expandedToolbar,
   inlineStyle,
-  inlineOverlay,
   onElement,
   restoreLabel = 'Open viewer',
   onRestoreInline,
@@ -285,7 +283,6 @@ export const DesktopMiniPlayer = ({
           {expandedToolbar}
         </div>
       )}
-      {inlineStyle && inlineOverlay}
     </Surface>
   )
 }

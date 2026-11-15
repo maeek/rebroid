@@ -363,6 +363,7 @@ export const useDisplayViewerShellState = ({
     multipleDisplays,
     viewportSizes,
     fullscreen,
+    fullscreenElement,
     fullscreenSurfaceId,
     keyboardCaptureEnabled,
     orderedSurfaces,
