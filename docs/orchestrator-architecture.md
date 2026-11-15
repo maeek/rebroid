@@ -230,6 +230,9 @@ logs the setup failure and continues its existing ADB probe.
 
 ## Workflow execution
 
+The Workflows grid reads summaries and nested step counts from `GET /automations/grid`.
+Workflow detail reads include the full definition and editable YAML.
+
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
