@@ -19,6 +19,7 @@ import type { ViewerControlCommandEventDetail } from '@/features/applications/vi
 
 const presentationMessageType = 'rebroid-viewer-presentation'
 const minimizeShortcutMessageType = 'rebroid-viewer-minimize-shortcut'
+const activateDisplayMessageType = 'rebroid-viewer-activate-display'
 
 const isKeyboardCaptureMessage = (value: unknown): value is { type: string; enabled: boolean } => {
   if (!value || typeof value !== 'object') {
@@ -66,8 +67,8 @@ const isViewerControlResult = (value: unknown): value is { requestId: string; ok
   )
 }
 
-const isMinimizeShortcut = (value: unknown) =>
-  Boolean(value && typeof value === 'object' && 'type' in value && value.type === minimizeShortcutMessageType)
+const hasMessageType = (value: unknown, type: string) =>
+  Boolean(value && typeof value === 'object' && 'type' in value && value.type === type)
 
 let nextControlRequest = 0
 
@@ -79,6 +80,7 @@ export const DisplayViewerFrame = ({
   surfaceId,
   isActive = true,
   compact = false,
+  onActivate,
   onMinimizeShortcut
 }: {
   src: string
@@ -88,6 +90,7 @@ export const DisplayViewerFrame = ({
   surfaceId?: string
   isActive?: boolean
   compact?: boolean
+  onActivate?: () => void
   onMinimizeShortcut?: () => void
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -159,7 +162,11 @@ export const DisplayViewerFrame = ({
     const handleMessage = (event: MessageEvent<unknown>) => {
       const viewerOrigin = getViewerOrigin()
       const isFrameSource = event.source === iframeRef.current?.contentWindow
-      if (event.origin === viewerOrigin && isFrameSource && isMinimizeShortcut(event.data)) {
+      if (event.origin === viewerOrigin && isFrameSource && hasMessageType(event.data, activateDisplayMessageType)) {
+        if (!compact) onActivate?.()
+        return
+      }
+      if (event.origin === viewerOrigin && isFrameSource && hasMessageType(event.data, minimizeShortcutMessageType)) {
         if (minimizeShortcutEnabled && !enabledRef.current) onMinimizeShortcut?.()
         return
       }
@@ -203,6 +210,7 @@ export const DisplayViewerFrame = ({
     isActive,
     keyboardCaptureEnabled,
     minimizeShortcutEnabled,
+    onActivate,
     onMinimizeShortcut,
     onStreamMetrics,
     onStreamStatus,
@@ -267,6 +275,7 @@ export const DisplayViewerFrame = ({
       className='block h-full w-full border-0 bg-black'
       data-viewer-compact={compact ? '' : undefined}
       allow='fullscreen; clipboard-write; autoplay'
+      onFocus={compact ? undefined : onActivate}
       onContextMenu={event => event.preventDefault()}
       onLoad={() => {
         postPresentation()

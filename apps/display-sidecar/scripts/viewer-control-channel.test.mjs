@@ -115,11 +115,16 @@ test("only the parent can change presentation and compact mode releases an activ
       Object.assign(new Event("keydown", { cancelable: true }), { key: "i" }),
     );
   window.closest = () => null;
+  const activateDisplay = () => window.dispatchEvent(new Event("pointerdown"));
 
   receive(true, {});
   receive(true, parent, "https://foreign.test");
   assert.equal(presentation.isCompact(), false);
   assert.equal(pressShortcut(), true);
+  activateDisplay();
+  assert.deepEqual(replies.splice(0), [
+    { type: "rebroid-viewer-activate-display" },
+  ]);
   touchDown();
   assert.equal(captured, true);
   receive(true);
@@ -130,6 +135,7 @@ test("only the parent can change presentation and compact mode releases an activ
     ["down", "cancel"],
   );
   assert.equal(pressShortcut(), true);
+  activateDisplay();
   assert.deepEqual(replies, []);
 
   receive(false);

@@ -8,6 +8,27 @@ import {
 } from '../player/viewer-keyboard-relay'
 import { DisplayViewerFrame } from './display-viewer-frame'
 
+it('only accepts display activation from its own viewer frame and origin', () => {
+  const onActivate = vi.fn()
+  render(
+    <DisplayViewerFrame
+      src='/viewer/main'
+      keyboardCaptureEnabled={false}
+      onActivate={onActivate}
+    />
+  )
+  const frame = screen.getByTitle<HTMLIFrameElement>('display viewer')
+  const activate = (source: Window, origin: string) =>
+    window.dispatchEvent(
+      new MessageEvent('message', { source, origin, data: { type: 'rebroid-viewer-activate-display' } })
+    )
+  activate(window, window.location.origin)
+  activate(frame.contentWindow!, 'https://other.example')
+  expect(onActivate).not.toHaveBeenCalled()
+  activate(frame.contentWindow!, window.location.origin)
+  expect(onActivate).toHaveBeenCalledOnce()
+})
+
 it('routes parent keyboard input to one active display and correlates a targeted control result', () => {
   const frames = (active: 'main' | 'virtual') => (
     <>

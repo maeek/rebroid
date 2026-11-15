@@ -2,6 +2,7 @@ import type { PageLifecycle } from "./types.js";
 
 const presentationMessageType = "rebroid-viewer-presentation";
 const minimizeShortcutMessageType = "rebroid-viewer-minimize-shortcut";
+const activateDisplayMessageType = "rebroid-viewer-activate-display";
 
 export function createViewerPresentation(lifecycle: PageLifecycle) {
   let compact =
@@ -64,11 +65,21 @@ export function createViewerPresentation(lifecycle: PageLifecycle) {
     );
   };
 
+  const onPointerDown = () => {
+    if (compact || window.parent === window || !lifecycle.hasDemand()) return;
+    window.parent.postMessage(
+      { type: activateDisplayMessageType },
+      window.location.origin,
+    );
+  };
+
   window.addEventListener("message", onMessage);
   window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("pointerdown", onPointerDown, true);
   lifecycle.onClose(() => {
     window.removeEventListener("message", onMessage);
     window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("pointerdown", onPointerDown, true);
     listeners.clear();
   });
 
