@@ -13,6 +13,7 @@ type AppIdentitySectionProps = {
   uploadedApkLabel?: string | null
   pendingApkName?: string | null
   isUploadingApk: boolean
+  apkUploadProgress?: number | null
   onApkSelect: (file: File | null) => void
   iconSlot?: React.ReactNode
   nameDescription?: string
@@ -34,6 +35,7 @@ export const AppIdentitySection = ({
   uploadedApkLabel,
   pendingApkName,
   isUploadingApk,
+  apkUploadProgress = null,
   onApkSelect,
   iconSlot,
   nameDescription = 'At least 2 characters.',
@@ -111,6 +113,8 @@ export const AppIdentitySection = ({
                 accept='.apk,application/vnd.android.package-archive'
                 disabled={disabled}
                 pending={isUploadingApk}
+                pendingLabel={apkUploadProgress === 100 ? 'Processing APK…' : undefined}
+                progress={apkUploadProgress}
                 onChange={handleApkSelect}
                 aria-label='APK file'
                 buttonLabel={uploadedApkLabel ? 'Replace APK' : 'Upload APK'}

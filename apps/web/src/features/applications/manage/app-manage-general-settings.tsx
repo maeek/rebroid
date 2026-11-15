@@ -1,6 +1,5 @@
 import { useState, type Ref } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTopLoader } from 'nextjs-toploader'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
 import { toast } from '@/hooks/use-toast'
@@ -36,10 +35,10 @@ export const AppManageGeneralSettings = ({
   onAppNameChange
 }: AppManageGeneralSettingsProps) => {
   const [pendingApkName, setPendingApkName] = useState<string | null>(null)
+  const [apkUploadProgress, setApkUploadProgress] = useState<number | null>(null)
   const [apkError, setApkError] = useState<string>()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const router = useRouter()
-  const topLoader = useTopLoader()
 
   const handleApkUpload = async (file: File | null) => {
     if (!file || pendingApkName !== null) return
@@ -52,7 +51,7 @@ export const AppManageGeneralSettings = ({
         errorTitle: 'Could not upload APK',
         file,
         maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-        topLoader,
+        onProgress: setApkUploadProgress,
         onError: setApkError
       })
       if (!uploaded) return
@@ -64,6 +63,7 @@ export const AppManageGeneralSettings = ({
       setApkError(getDisplayErrorMessage(cause, 'Could not replace the APK.'))
     } finally {
       setPendingApkName(null)
+      setApkUploadProgress(null)
     }
   }
 
@@ -80,6 +80,7 @@ export const AppManageGeneralSettings = ({
       uploadedApkLabel={app?.apkOriginalName}
       isUploadingApk={pendingApkName !== null}
       pendingApkName={pendingApkName}
+      apkUploadProgress={apkUploadProgress}
       onApkSelect={file => {
         void handleApkUpload(file)
       }}

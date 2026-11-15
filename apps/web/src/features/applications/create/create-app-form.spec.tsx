@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
@@ -9,12 +10,16 @@ import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { appResourcePreviewFeatures } from '../detail/app-resource-preview-data'
 import { CreateAppForm } from './create-app-form'
+import type { PlatformImage } from '@/shared/contracts/platform'
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }))
+const { push, topLoader } = vi.hoisted(() => ({
+  push: vi.fn(),
+  topLoader: { start: vi.fn(), setProgress: vi.fn(), done: vi.fn() }
+}))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('nextjs-toploader', () => ({
-  useTopLoader: () => ({ start: vi.fn(), setProgress: vi.fn(), done: vi.fn() })
+  useTopLoader: () => topLoader
 }))
 vi.mock('@/server/orchestrator/applications/actions/configuration/create-update-actions', () => ({
   submitCreateApplicationAction: vi.fn()
@@ -29,7 +34,7 @@ vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
   useResourceLimitBounds: () => ({ maxMemoryMb: 16384, maxCpuCpus: 8 })
 }))
 
-const renderForm = (firewallEnabled = false) =>
+const renderForm = (firewallEnabled = false, formProps: Partial<ComponentProps<typeof CreateAppForm>> = {}) =>
   render(
     <FeatureFlagsProvider
       manifest={{
@@ -46,6 +51,7 @@ const renderForm = (firewallEnabled = false) =>
         initialSettings={defaultOrchestratorUiSettings}
         permissions={{ 'applications:change-resources': true, 'applications:configure-egress': true }}
         canBuildImages={false}
+        {...formProps}
       />
     </FeatureFlagsProvider>
   )
@@ -76,7 +82,62 @@ describe('Create app failure feedback', () => {
     expect(screen.getByText('Network access')).toBeVisible()
   })
 
+  it('shows Google Play support beneath the picker after choosing the recommended image', () => {
+    const images = (['none', 'gapps'] as const).map((gmsMode): PlatformImage => ({
+      id: gmsMode,
+      shortId: gmsMode,
+      repoTags: [`local/${gmsMode}:14`],
+      repoDigests: [],
+      sizeBytes: 1,
+      sharedSizeBytes: 0,
+      virtualSizeBytes: 1,
+      createdAt: '',
+      labels: {},
+      managed: true,
+      containers: 0,
+      runtimeMetadataSource: 'stored',
+      runtimeMetadata: {
+        runtimeKind: 'redroid',
+        androidVersion: '14',
+        architecture: 'amd64',
+        gmsMode,
+        signatureSpoofing: 'not_applicable'
+      }
+    }))
+    renderForm(false, {
+      images,
+      initialContainerImage: 'local/none:14',
+      permissions: { 'applications:change-base-image': true },
+      initialUploadedApk: {
+        id: 'apk-1',
+        ownerUserId: null,
+        originalName: 'app.apk',
+        sha256: '',
+        sizeBytes: 10,
+        filePath: '',
+        extractedIconDataUrl: null,
+        displayName: 'Android app',
+        packageName: null,
+        googlePlayServices: { verdict: 'required', evidence: ['manifest_gms_version'], analysisVersion: 1 },
+        createdAt: '',
+        updatedAt: ''
+      }
+    })
+    const picker = screen.getByRole('combobox', { name: 'Runtime image' })
+    expect(screen.getByText('Google Play services required')).toBeVisible()
+    expect(screen.queryByText('Google Play services included')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use recommended image' }))
+
+    expect(picker).toHaveValue('local/gapps:14')
+    expect(picker).toHaveAccessibleDescription(/Google Play services included/)
+    expect(screen.getByText('Google Play services included')).toBeVisible()
+    expect(screen.queryByText('Google Play services required')).not.toBeInTheDocument()
+  })
+
   it('keeps the selected APK and icon when a dropped replacement fails', async () => {
+    const transfer = Promise.withResolvers<void>()
+    const inspection = Promise.withResolvers<void>()
     vi.mocked(uploadApkWithFeedback)
       .mockResolvedValueOnce({
         id: 'apk-1',
@@ -92,9 +153,13 @@ describe('Create app failure feedback', () => {
         createdAt: '',
         updatedAt: ''
       })
-      .mockImplementationOnce(({ onError }) => {
+      .mockImplementationOnce(async ({ onError, onProgress }) => {
+        onProgress?.(42)
+        await transfer.promise
+        onProgress?.(100)
+        await inspection.promise
         onError?.('Choose a valid APK file.')
-        return Promise.resolve(null)
+        return null
       })
     renderForm()
     const picker = screen.getByLabelText('APK file', { exact: true })
@@ -107,7 +172,27 @@ describe('Create app failure feedback', () => {
     fireEvent.drop(picker, {
       dataTransfer: { types: ['Files'], files: [replacement] }
     })
+    const progress = screen.getByRole('progressbar', { name: 'File upload progress' })
+    expect(progress).toHaveAttribute('aria-valuenow', '42')
+    expect(screen.getByText('42%')).toBeVisible()
+    expect(topLoader.start).not.toHaveBeenCalled()
+    expect(topLoader.setProgress).not.toHaveBeenCalled()
+    expect(topLoader.done).not.toHaveBeenCalled()
+
+    await act(async () => {
+      transfer.resolve()
+      await transfer.promise
+    })
+    expect(progress).toHaveAttribute('aria-valuenow', '100')
+    expect(screen.getByText('Processing APK… replacement.apk')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Create app' })).toBeDisabled()
+
+    await act(async () => {
+      inspection.resolve()
+      await inspection.promise
+    })
     expect(await screen.findByText('Choose a valid APK file.')).toBeVisible()
+    expect(screen.queryByRole('progressbar')).toBeNull()
     expect(screen.getByText('original.apk')).toBeVisible()
     expect(screen.getByRole('switch', { name: 'Use icon from APK' })).toBeChecked()
   })

@@ -5,6 +5,7 @@
 import { useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { OperationProgress } from '@/components/ui/operation-progress'
 import { Surface } from '@/components/ui/surface'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils'
 type FileUploadFieldProps = ComponentProps<'input'> & {
   pendingLabel?: string
   pending?: boolean
+  progress?: number | null
   filenameLabel?: string | null
   buttonLabel?: string
   emptyLabel?: string
@@ -24,6 +26,7 @@ export const FileUploadField = ({
   onChange,
   disabled,
   pending,
+  progress,
   pendingLabel = 'Uploading…',
   filenameLabel,
   buttonLabel = 'Choose file',
@@ -40,22 +43,39 @@ export const FileUploadField = ({
   if (pending && !preview) accessibleLabel = pendingLabel
   const statusText = pending ? [pendingLabel, displayFilename].filter(Boolean).join(' ') : displayFilename
   const status = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span
-          data-slot='file-name'
-          role='status'
-          className={cn(
-            'min-w-0 flex-1 truncate text-xs text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring',
-            preview && 'text-foreground touch:text-sm/5 max-[379px]:self-end'
-          )}
-          tabIndex={0}
-        >
-          {statusText}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent className='max-w-sm break-all'>{statusText}</TooltipContent>
-    </Tooltip>
+    <div className={cn('min-w-0 flex-1', preview && 'max-[379px]:self-end')}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            data-slot='file-name'
+            role='status'
+            className={cn(
+              'block truncate text-xs text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring',
+              preview && 'text-foreground touch:text-sm/5'
+            )}
+            tabIndex={0}
+          >
+            {statusText}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className='max-w-sm break-all'>{statusText}</TooltipContent>
+      </Tooltip>
+      {pending && progress !== undefined ? (
+        <div className='mt-1 flex items-center gap-2'>
+          <OperationProgress
+            value={progress}
+            label='File upload progress'
+            className='h-1 bg-control-border/45'
+          />
+          <span
+            aria-hidden='true'
+            className='w-[4ch] shrink-0 text-right text-xs/4 text-foreground-muted tabular-nums'
+          >
+            {progress === null ? null : `${progress}%`}
+          </span>
+        </div>
+      ) : null}
+    </div>
   )
   const picker = (
     <MutationButton

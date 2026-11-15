@@ -56,8 +56,8 @@ export const uploadFormDataWithProgress = <Response>({
       request.timeout = timeoutMs
     }
     request.upload.onprogress = event => {
-      if (event.lengthComputable) {
-        onProgress?.(Math.round((event.loaded / event.total) * 100))
+      if (event.lengthComputable && event.total > 0) {
+        onProgress?.(Math.floor((event.loaded / event.total) * 100))
       }
     }
     request.onload = () => {

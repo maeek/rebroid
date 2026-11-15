@@ -10,6 +10,7 @@ type AppFormGeneralSectionProps = {
   apkLabel?: string | null
   pendingApkName?: string | null
   isUploadingApk: boolean
+  apkUploadProgress: number | null
   disabled?: boolean
   iconSlot?: ReactNode
   nameError?: string
@@ -25,6 +26,7 @@ export const AppFormGeneralSection = ({
   apkLabel,
   pendingApkName,
   isUploadingApk,
+  apkUploadProgress,
   disabled,
   iconSlot,
   nameError,
@@ -41,6 +43,7 @@ export const AppFormGeneralSection = ({
       uploadedApkLabel={uploadedApkLabel}
       pendingApkName={pendingApkName}
       isUploadingApk={isUploadingApk}
+      apkUploadProgress={apkUploadProgress}
       disabled={disabled}
       onApkSelect={file => onApkSelect(file)}
       iconSlot={iconSlot}

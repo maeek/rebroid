@@ -53,7 +53,7 @@ describe('CreateAppGooglePlayGuidance', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('offers but does not automatically apply a recommended image', () => {
+  it('offers a recommended image without selecting it automatically', () => {
     const onUseImage = vi.fn()
     render(
       <CreateAppGooglePlayGuidance
@@ -66,6 +66,7 @@ describe('CreateAppGooglePlayGuidance', () => {
       />
     )
 
+    expect(screen.getByRole('status')).toHaveAttribute('data-tone', 'warning')
     expect(onUseImage).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Use recommended image' }))
     expect(onUseImage).toHaveBeenCalledWith('local/gapps:14')

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import {
   applyRedroidDisplayContainerArgs,
   getRedroidDisplayProfile
@@ -29,6 +29,7 @@ type CreateAppDeviceSectionProps = {
   canChangeBaseImage: boolean
   canChangeContainerArgs: boolean
   isRedroidRuntime: boolean
+  imageIncludesGooglePlay?: boolean
   imageError?: string
   argumentsError?: string
 }
@@ -41,10 +42,12 @@ export const CreateAppDeviceSection = ({
   canChangeBaseImage,
   canChangeContainerArgs,
   isRedroidRuntime,
+  imageIncludesGooglePlay,
   imageError,
   argumentsError
 }: CreateAppDeviceSectionProps) => {
   const argumentsSection = useRef<HTMLDetailsElement>(null)
+  const googlePlayHintId = useId()
   useEffect(() => {
     if (argumentsError && argumentsSection.current) argumentsSection.current.open = true
   }, [argumentsError])
@@ -82,19 +85,30 @@ export const CreateAppDeviceSection = ({
         >
           <div className='grid min-w-0 gap-4'>
             <Visible when={canChangeBaseImage}>
-              <FormField
-                label='Runtime image'
-                error={imageError}
-                description='Container image used to boot Android.'
-                layout='vertical'
-                className={verticalSettingClassName}
-              >
-                <RuntimeImagePicker
-                  images={images}
-                  value={values.containerImage}
-                  onChange={value => onChange({ containerImage: value })}
-                />
-              </FormField>
+              <div className='grid min-w-0 gap-1.5'>
+                <FormField
+                  label='Runtime image'
+                  error={imageError}
+                  description='Container image used to boot Android.'
+                  layout='vertical'
+                  className={verticalSettingClassName}
+                >
+                  <RuntimeImagePicker
+                    images={images}
+                    value={values.containerImage}
+                    aria-describedby={imageIncludesGooglePlay ? googlePlayHintId : undefined}
+                    onChange={value => onChange({ containerImage: value })}
+                  />
+                </FormField>
+                {imageIncludesGooglePlay ? (
+                  <p
+                    id={googlePlayHintId}
+                    className='text-xs leading-relaxed text-foreground-muted touch:text-sm/5'
+                  >
+                    Google Play services included
+                  </p>
+                ) : null}
+              </div>
             </Visible>
             {showDisplay ? (
               <CreateAppDisplaySection

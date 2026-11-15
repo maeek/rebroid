@@ -24,7 +24,11 @@ import { unconfirmedAppCreationMessage } from '@/shared/contracts/application'
 import { isApplicationId } from '@/shared/model/application-id'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
-import { runtimeKindForImageReference } from '@/shared/model/runtime-image/runtime-image-metadata'
+import {
+  findPlatformImageByReference,
+  resolvePlatformImageRuntimeMetadata,
+  runtimeKindForImageReference
+} from '@/shared/model/runtime-image/runtime-image-metadata'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
@@ -77,6 +81,7 @@ export const CreateAppForm = ({
   })
   const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(initialUploadedApk ?? null)
   const [pendingApkName, setPendingApkName] = useState<string | null>(null)
+  const [apkUploadProgress, setApkUploadProgress] = useState<number | null>(null)
   const [apkUploadError, setApkUploadError] = useState<string>()
   const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
   const [isPreparingIcon, setIsPreparingIcon] = useState(false)
@@ -109,12 +114,17 @@ export const CreateAppForm = ({
   const canConfigureEgress =
     isFeatureEnabled('feature.firewall') && hasPermission(permissions, 'applications:configure-egress')
   const canUseInternet = hasPermission(permissions, 'applications:use-internet')
-  const runtimeKind = runtimeKindForImageReference(images, formValues.containerImage)
+  const selectedImage = findPlatformImageByReference(images, formValues.containerImage)
+  const selectedImageMetadata = selectedImage ? resolvePlatformImageRuntimeMetadata(selectedImage).metadata : null
+  const runtimeKind =
+    selectedImageMetadata?.runtimeKind ?? runtimeKindForImageReference(images, formValues.containerImage)
   const isRedroidRuntime = runtimeKind === 'redroid'
+  const imageIncludesGooglePlay = selectedImageMetadata?.gmsMode === 'gapps'
+  const showGooglePlayGuidance = uploadedApk !== null && !imageIncludesGooglePlay
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
-  const showRuntimeSection = showDeviceSection || Boolean(uploadedApk)
+  const showRuntimeSection = showDeviceSection || showGooglePlayGuidance
   const showAdvancedSection = showSessionSection || showResourcesSection
   const resourceSummary =
     formValues.memoryLimitMb || formValues.cpuLimitCpus ? 'Custom RAM or CPU limits' : 'Default RAM and CPU limits'
@@ -227,7 +237,7 @@ export const CreateAppForm = ({
         errorTitle: 'Could not upload APK',
         file,
         maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-        topLoader,
+        onProgress: setApkUploadProgress,
         onError: setApkUploadError
       })
       if (!uploaded) return
@@ -248,6 +258,7 @@ export const CreateAppForm = ({
       }
     } finally {
       setPendingApkName(null)
+      setApkUploadProgress(null)
     }
   }
 
@@ -415,6 +426,7 @@ export const CreateAppForm = ({
                 uploadedApk={uploadedApk}
                 pendingApkName={pendingApkName}
                 isUploadingApk={isUploadingApk}
+                apkUploadProgress={apkUploadProgress}
                 disabled={loading || isCreating}
                 nameError={nameEdited || formValues.name || fieldErrors.name ? fieldError('name') : undefined}
                 nameInputRef={nameInput}
@@ -453,12 +465,13 @@ export const CreateAppForm = ({
                     canChangeBaseImage={canChangeBaseImage}
                     canChangeContainerArgs={canChangeContainerArgs}
                     isRedroidRuntime={isRedroidRuntime}
+                    imageIncludesGooglePlay={!loading && imageIncludesGooglePlay}
                     imageError={fieldError('containerImage')}
                     argumentsError={fieldError('containerArgs')}
                     displayFieldErrors={visibleErrors}
                   />
                 </Visible>
-                {uploadedApk ? (
+                {showGooglePlayGuidance ? (
                   <div className={showDeviceSection ? 'mt-6' : undefined}>
                     <CreateAppGooglePlayGuidance
                       uploadedApk={uploadedApk}
