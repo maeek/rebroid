@@ -118,10 +118,6 @@ export function createDisplayStream({
       if (status) {
         emitViewerStreamStatus(status);
       }
-      ui.showCompatibility(
-        typeof payload.mode === "string" ? payload.mode : "normal",
-        typeof payload.message === "string" ? payload.message : undefined,
-      );
       return;
     }
     if (payload.type === "clipboard" && typeof payload.text === "string") {

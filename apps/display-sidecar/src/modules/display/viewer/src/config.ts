@@ -69,7 +69,6 @@ export function getViewerElements(): ViewerElements {
     title: document.getElementById("message-title"),
     copy: document.getElementById("message-copy"),
     status: document.getElementById("status"),
-    compatibility: document.getElementById("compatibility"),
     message: document.getElementById("message"),
     canvas,
     snapshot,

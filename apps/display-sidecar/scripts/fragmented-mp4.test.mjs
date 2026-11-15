@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { FragmentedMp4Muxer } from "../dist/modules/display/viewer/assets/fragmented-mp4.js";
 import { codecConfiguration } from "../dist/modules/display/viewer/assets/h264.js";
+import { inspectScrcpyH264Configuration } from "../dist/modules/scrcpy/scrcpy-h264-profile.js";
 
 const annexB = (...nals) =>
   Uint8Array.from(nals.flatMap((nal) => [0, 0, 0, 1, ...nal]));
@@ -62,11 +63,31 @@ test("fragmented MP4 keeps source PTS and emits bounded AVC fragments", () => {
   assert.ok(fragment.durationMs >= 33 && fragment.durationMs < 34);
 });
 
-test("H.264 SPS exposes the native portrait dimensions and level", () => {
+test("the browser and server builds agree on portrait SPS dimensions and level", () => {
   const configuration = codecConfiguration(nativePortraitConfiguration);
   assert.equal(configuration.profileLevelId, "42c033");
   assert.equal(configuration.width, 1080);
   assert.equal(configuration.height, 2340);
+  const bootstrap = inspectScrcpyH264Configuration({
+    data: Buffer.from(nativePortraitConfiguration),
+  });
+  assert.equal(bootstrap.profileLevelId, configuration.profileLevelId);
+  assert.equal(bootstrap.width, configuration.width);
+  assert.equal(bootstrap.height, configuration.height);
+});
+
+test("a truncated SPS preserves the codec level without fabricating dimensions", () => {
+  const truncated = annexB([0x67, 0x42, 0xc0, 0x33]);
+  const browser = codecConfiguration(truncated);
+  const server = inspectScrcpyH264Configuration({
+    data: Buffer.from(truncated),
+  });
+  assert.equal(browser.profileLevelId, "42c033");
+  assert.equal(server.profileLevelId, browser.profileLevelId);
+  for (const configuration of [browser, server]) {
+    assert.equal(configuration.width, undefined);
+    assert.equal(configuration.height, undefined);
+  }
 });
 
 test("fragmented MP4 rejects reordered source PTS", () => {

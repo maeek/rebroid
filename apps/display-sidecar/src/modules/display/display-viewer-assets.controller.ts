@@ -8,7 +8,6 @@ import { basename, extname, join } from "node:path";
 
 const viewerDirectory = join(__dirname, "viewer");
 const assetContentTypes: Record<string, string> = {
-  ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
 };
 const viewerContentSecurityPolicy =

@@ -7,6 +7,7 @@ import {
 import { OnGatewayConnection, WebSocketGateway } from "@nestjs/websockets";
 import { IncomingMessage } from "node:http";
 import { WebSocket } from "ws";
+import { createRelayMetricsSampler } from "./display-relay-metrics";
 import { QueuedScrcpyMediaSink } from "../scrcpy/scrcpy-media-sink";
 import { ScrcpyService } from "../scrcpy/scrcpy.service";
 import { DisplaySessionService } from "./display-session.service";
@@ -112,35 +113,14 @@ export class DisplayGateway implements OnGatewayConnection {
           // Media sockets accept only the bounded resync control message.
         }
       });
-      let previousSourceFrames = 0;
-      let previousSourceBytes = 0;
-      let previousSnapshotAt = Date.now();
+      const sampleRelayMetrics = createRelayMetricsSampler();
       const queueMetricsTimer = setInterval(() => {
         const snapshotAt = Date.now();
         const snapshot = sink.snapshot();
-        const elapsedSeconds = Math.max(
-          (snapshotAt - previousSnapshotAt) / 1_000,
-          0.001,
-        );
         sink.sendStatus({
           type: "relay-metrics",
           metrics: {
-            sourceFps:
-              (snapshot.sourceVideoFrames - previousSourceFrames) /
-              elapsedSeconds,
-            sourceBitrateMbps:
-              (((snapshot.sourceVideoBytes ?? 0) - previousSourceBytes) * 8) /
-              elapsedSeconds /
-              1_000_000,
-            sourceFrameSizeP95Bytes: snapshot.sourceFrameSizeP95Bytes,
-            keyFrameSizeBytes: snapshot.lastKeyFrameBytes,
-            sourceInterFrameP95Ms: snapshot.sourceInterFrameP95Ms,
-            droppedFrames: snapshot.video.droppedFrames,
-            queueDepthMs: snapshot.video.queueDepthMs,
-            relayP95Ms: snapshot.scrcpyReadToSinkWriteP95Ms,
-            relayP99Ms: snapshot.scrcpyReadToSinkWriteP99Ms,
-            eventLoopUtilization: snapshot.eventLoopUtilization,
-            gcPauseP95Ms: snapshot.gcPauseP95Ms,
+            ...sampleRelayMetrics(snapshot, snapshotAt),
             browserGeneration: browserWatermark?.generation,
             browserReceivedSequence: browserWatermark?.receivedSequence,
             browserDecodedSequence: browserWatermark?.decodedSequence,
@@ -151,9 +131,6 @@ export class DisplayGateway implements OnGatewayConnection {
             ),
           },
         });
-        previousSourceFrames = snapshot.sourceVideoFrames;
-        previousSourceBytes = snapshot.sourceVideoBytes ?? 0;
-        previousSnapshotAt = snapshotAt;
       }, 1_000);
       queueMetricsTimer.unref?.();
       let stopWatching: (() => void) | undefined;

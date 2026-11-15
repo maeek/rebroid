@@ -175,10 +175,6 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
     if (status) {
       emitViewerStreamStatus(status);
     }
-    ui.showCompatibility(
-      typeof message.mode === "string" ? message.mode : "normal",
-      typeof message.message === "string" ? message.message : undefined,
-    );
     return;
   }
   if (message.type === "audio-disabled") {

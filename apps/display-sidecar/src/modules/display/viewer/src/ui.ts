@@ -1,16 +1,7 @@
 import type { ViewerElements, ViewerUi } from "./types.js";
 
 export function createViewerUi(elements: ViewerElements): ViewerUi {
-  const {
-    title,
-    copy,
-    status,
-    compatibility,
-    message,
-    canvas,
-    snapshot,
-    video,
-  } = elements;
+  const { title, copy, status, message, canvas, snapshot, video } = elements;
 
   const showStatus = (text: string, nextTitle?: string, nextCopy?: string) => {
     if (nextTitle && title) title.textContent = nextTitle;
@@ -75,13 +66,6 @@ export function createViewerUi(elements: ViewerElements): ViewerUi {
         "Starting live display",
         "Rebroid is opening the app screen.",
       );
-    },
-    showCompatibility(_mode: string, _detail?: string) {
-      if (!compatibility) {
-        return;
-      }
-      compatibility.classList.add("hidden");
-      compatibility.textContent = "";
     },
   };
 }

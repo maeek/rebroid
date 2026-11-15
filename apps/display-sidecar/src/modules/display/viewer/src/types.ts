@@ -13,7 +13,6 @@ export type ViewerElements = {
   title: HTMLElement | null;
   copy: HTMLElement | null;
   status: HTMLElement | null;
-  compatibility: HTMLElement | null;
   message: HTMLElement | null;
   canvas: HTMLCanvasElement;
   snapshot: HTMLCanvasElement;
@@ -27,7 +26,6 @@ export type ViewerUi = {
   showVideo: () => void;
   preserveVideoFrame: (source: HTMLVideoElement) => boolean;
   showStarting: (text?: string) => void;
-  showCompatibility: (mode: string, message?: string) => void;
 };
 
 export type PageLifecycle = {
