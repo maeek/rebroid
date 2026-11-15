@@ -1,5 +1,10 @@
 import { ConflictException, Injectable } from '@nestjs/common';
+import { createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable, Transform, type TransformCallback } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import {
   type MultipartUploadRequest,
   consumeSingleFileUpload,
@@ -29,6 +34,30 @@ export class RuntimeUploadStreamService {
       canceledError: () => new ConflictException('File upload was cancelled.'),
       consume: (stream, originalName) => store(stream, originalName),
     });
+  }
+
+  async withStagedFile(
+    stream: Readable,
+    store: (path: string) => Promise<void>,
+  ) {
+    const directory = await mkdtemp(join(tmpdir(), 'rebroid-runtime-upload-'));
+    try {
+      const path = join(directory, 'upload');
+      let sizeBytes = 0;
+      await pipeline(
+        stream,
+        this.createByteCounter((bytes) => {
+          sizeBytes += bytes;
+        }),
+        createWriteStream(path, { mode: 0o600 }),
+      );
+      await store(path);
+      return sizeBytes;
+    } finally {
+      await rm(directory, { recursive: true, force: true }).catch(
+        () => undefined,
+      );
+    }
   }
 
   createByteCounter(onBytes: (bytes: number) => void) {

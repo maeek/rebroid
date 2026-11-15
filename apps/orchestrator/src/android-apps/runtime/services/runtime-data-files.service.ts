@@ -5,12 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join, posix } from 'node:path';
+import { posix } from 'node:path';
 import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import { type MultipartUploadRequest } from '../../../common/http-upload';
 import {
   DOCKER_CONTAINER_ARCHIVE,
@@ -310,51 +306,38 @@ export class RuntimeDataFilesService {
         'printf "%s" "$parent"',
       ])
     ).trim();
-    const tempDir = await mkdtemp(join(tmpdir(), 'rebroid-runtime-upload-'));
-    const tempPath = join(tempDir, fileName);
-    const stagingName = `.rebroid-upload-${randomUUID()}`;
-    let sizeBytes = 0;
-    const counter = this.uploads.createByteCounter((bytes) => {
-      sizeBytes += bytes;
-    });
-
-    try {
-      await pipeline(
-        stream,
-        counter,
-        createWriteStream(tempPath, { mode: 0o600 }),
-      );
-      const stagingDirectory = await this.createUploadStagingDirectory(
-        app,
-        resolvedDirectory,
-        stagingName,
-      );
-      try {
-        await this.archive.copyFileToContainer(
-          app.containerId!,
-          tempPath,
-          stagingDirectory,
-          fileName,
-        );
-        await this.finalizeStagedUpload(
-          app,
-          resolvedDirectory,
-          stagingName,
-          fileName,
-          overwrite,
-        ).finally(() => this.previews.invalidate(app.containerId!));
-      } finally {
-        await this.removeUploadStagingDirectory(
+    const sizeBytes = await this.uploads.withStagedFile(
+      stream,
+      async (tempPath) => {
+        const stagingName = `.rebroid-upload-${randomUUID()}`;
+        const stagingDirectory = await this.createUploadStagingDirectory(
           app,
           resolvedDirectory,
           stagingName,
         );
-      }
-    } finally {
-      await rm(tempDir, { recursive: true, force: true }).catch(
-        () => undefined,
-      );
-    }
+        try {
+          await this.archive.copyFileToContainer(
+            app.containerId!,
+            tempPath,
+            stagingDirectory,
+            fileName,
+          );
+          await this.finalizeStagedUpload(
+            app,
+            resolvedDirectory,
+            stagingName,
+            fileName,
+            overwrite,
+          ).finally(() => this.previews.invalidate(app.containerId!));
+        } finally {
+          await this.removeUploadStagingDirectory(
+            app,
+            resolvedDirectory,
+            stagingName,
+          );
+        }
+      },
+    );
 
     return {
       uploaded: true,

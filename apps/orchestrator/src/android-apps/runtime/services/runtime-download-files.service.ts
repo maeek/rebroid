@@ -1,10 +1,5 @@
 import { Inject, ConflictException, Injectable } from '@nestjs/common';
-import { createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import {
   type BufferedUploadFile,
   type MultipartUploadRequest,
@@ -165,32 +160,19 @@ export class RuntimeDownloadFilesService {
       `mkdir -p ${this.paths.shellQuote(this.paths.downloadDirectory)}`,
     ]);
 
-    const tempDir = await mkdtemp(join(tmpdir(), 'rebroid-download-upload-'));
-    const tempPath = join(tempDir, fileName);
-    let sizeBytes = 0;
-    const counter = this.uploads.createByteCounter((bytes) => {
-      sizeBytes += bytes;
-    });
-
-    try {
-      await pipeline(
-        stream,
-        counter,
-        createWriteStream(tempPath, { mode: 0o600 }),
-      );
-      await this.archive.copyFileToContainer(
-        app.containerId!,
-        tempPath,
-        this.paths.downloadDirectory,
-        fileName,
-      );
-      await this.prepareRunningDownloadFile(app, fileName);
-      this.scanRunningDownloadFileInBackground(app, fileName);
-    } finally {
-      await rm(tempDir, { recursive: true, force: true }).catch(
-        () => undefined,
-      );
-    }
+    const sizeBytes = await this.uploads.withStagedFile(
+      stream,
+      async (tempPath) => {
+        await this.archive.copyFileToContainer(
+          app.containerId!,
+          tempPath,
+          this.paths.downloadDirectory,
+          fileName,
+        );
+        await this.prepareRunningDownloadFile(app, fileName);
+        this.scanRunningDownloadFileInBackground(app, fileName);
+      },
+    );
 
     return this.volumes.uploadResult(fileName, sizeBytes);
   }
