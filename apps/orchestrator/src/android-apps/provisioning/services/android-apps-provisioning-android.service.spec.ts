@@ -175,7 +175,11 @@ describe('Android startup probe scheduling', () => {
         };
       });
 
-      const runtime = android.prepareRuntime(app, 'reservation', async () => {});
+      const runtime = android.prepareRuntime(
+        app,
+        'reservation',
+        async () => {},
+      );
       await jest.advanceTimersByTimeAsync(1_000);
       await runtime;
       expect(remote).toHaveBeenCalledTimes(1);

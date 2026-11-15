@@ -191,8 +191,7 @@ export class AndroidAppsProvisioningAndroidService {
     let initialGuestUnavailableAt: number | undefined;
     let guestUnavailableObservations = 0;
     let lastNotReady:
-      | { startedAt?: string | null; sample: BootPropertySample }
-      | undefined;
+      { startedAt?: string | null; sample: BootPropertySample } | undefined;
     const probeCommand = androidBootProbeCommand();
 
     while (deadline.remainingMs() > 0) {

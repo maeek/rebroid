@@ -89,23 +89,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/rebroid/adb/{udid}/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read Android notification dump through ADB. */
-        get: operations["AdbController_notifications"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/rebroid/adb/{udid}/screenshot": {
         parameters: {
             query?: never;
@@ -634,10 +617,6 @@ export interface components {
             /** @example 05-25 20:30:00.000 ... */
             output: string;
         };
-        AdbNotificationsDto: {
-            /** @example Notification dump output */
-            output: string;
-        };
         AdbScreenshotDto: {
             /** @example image/png */
             mimeType: string;
@@ -836,7 +815,7 @@ export interface components {
              *     }
              */
             surfaces: Record<string, never>;
-            actions: ("back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels")[];
+            actions: ("back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels")[];
             /** @example true */
             adbOwnedBySidecar: boolean;
             features: components["schemas"]["DisplayFeatureStateDto"][];
@@ -1061,7 +1040,7 @@ export interface components {
              * @example home
              * @enum {string}
              */
-            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels";
         };
         DisplayActionAcknowledgmentDto: {
             /** @enum {boolean} */
@@ -1070,7 +1049,7 @@ export interface components {
              * @example home
              * @enum {string}
              */
-            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels";
             /** @enum {boolean} */
             executed: true;
             /** @enum {string} */
@@ -1090,7 +1069,7 @@ export interface components {
              * @example home
              * @enum {string}
              */
-            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command?: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels";
             /** @example true */
             executed?: boolean;
             /** @example stream-control */
@@ -1357,31 +1336,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdbLogcatDto"];
-                };
-            };
-        };
-    };
-    AdbController_notifications: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description Required when sidecar shared-secret auth is configured. */
-                "x-rebroid-sidecar-secret"?: string;
-            };
-            path: {
-                /** @description ADB serial or host:port target reachable from the sidecar. */
-                udid: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AdbNotificationsDto"];
                 };
             };
         };

@@ -144,25 +144,12 @@ For ADB preparation, look for `display_sidecar_adb_preparation` in the
 orchestrator logs. The event reports the preparation purpose, transport outcome
 (reused, reconnected, or failed), and elapsed milliseconds for each step that ran.
 A healthy transport runs the initial state check. Interactive preparation also
-runs Android display setup. Runtime startup without an attached APK, notification
-reads, and Android log reads can use transport preparation without waking the
-display or changing its settings. The first viewer or interactive command still
+runs Android display setup. Runtime startup without an attached APK and Android log reads
+can use transport preparation without waking the display or changing its settings.
+The first viewer or interactive command still
 prepares the display. Runtime startup with an attached APK prepares the display
 before launch. The reconnect path adds a TCP probe, connection, and state verification.
 The display sidecar separately logs `viewer_adb_connection` for session creation.
-
-## Android notification sampling
-
-The navigation badge and application detail poll every 10 seconds while visible. The orchestrator
-shares a successful notification sample for the same Android runtime for up to five seconds. It
-collects on demand, with a bounded number of concurrent Docker inspections and ADB dumps.
-
-To verify on a ReDroid host, compare Docker container inspections and display-sidecar ADB
-notification command launches with the same set of running apps and the same foreground clients
-before and after the change. Stagger the clients so their requests do not always overlap. Post and
-dismiss a test notification at different points in the polling cycle and measure when the badge
-updates. The healthy foreground target is 15 seconds at p95 for both operations. Count a missed
-update as a failure.
 
 ## Runtime image previews
 
@@ -236,6 +223,12 @@ package built from a pinned GitLab revision. Android 15 uses `vic` and Android 1
 Only one patch job runs at a time. The non-root worker has no Docker socket, host paths, or app
 secrets. The pulled image digest, source revision, and package checksum are recorded; extraction
 and APK/XML validation complete before the final image is accepted.
+
+Patched images start ReDroid's `/init` directly with the base image's boot arguments and
+`ro.setupwizard.mode=DISABLED`. To recover an app whose container logs report
+`exec /usr/local/bin/rebroid-gapps-entrypoint: no such file or directory`, rebuild its Google Play
+image using the same tag, then choose **Runtime actions → Recreate runtime** on the errored app.
+Recreating the runtime keeps the app's profile volumes.
 
 Canceling removes the worker and temporary files while retaining verified cache entries. A patch
 job interrupted by restart is marked failed. A retry can reuse the cache. Under **Package cache**,

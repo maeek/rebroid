@@ -29,14 +29,6 @@ export interface AndroidAutomationDisplaySession {
   surfaceId: string;
 }
 
-export interface AndroidAutomationNotification {
-  packageName: string;
-  title: string;
-  text: string;
-  appName: string | null;
-  raw: string;
-}
-
 export interface AndroidAutomationNetworkPolicyUpdate {
   networkPolicyEnabled?: boolean;
   networkPolicyAllowCidrs?: string[];
@@ -143,9 +135,6 @@ export interface AndroidAutomationAdbPort {
     app: AndroidAutomationApplication,
     tail: number,
   ): Promise<{ source: 'adb'; collectedAt: string; output: string }>;
-  notifications(
-    app: AndroidAutomationApplication,
-  ): Promise<AndroidAutomationNotification[]>;
   screenshot(
     app: AndroidAutomationApplication,
     signal?: AbortSignal,

@@ -59,6 +59,11 @@ Docker Hub. Choose **Other registry** and enter a full reference such as `ghcr.i
 to pull from another registry. Both options use anonymous access. Successful pulls refresh the
 managed image inventory and are recorded in the audit log.
 
+On an image’s detail page, **Pull again** pulls its first listed tag or, for an untagged image,
+its first registry digest. The header shows **Pulling image…** while Docker works. On success,
+the page opens the pulled reference so it shows the image the tag now points to. A local image
+with no registry tag or digest cannot be pulled again.
+
 ## App lifecycle
 
 - `/apps` shows app failures and in-progress lifecycle operations above the inventory.
@@ -244,7 +249,7 @@ and links to each trace. Authorized operators can still open active runs and the
 the workflow catalog is disabled. The catalog link appears only when the catalog is available,
 and accounts without active-run access do not see a zero count.
 
-Android notifications remain distinct from platform operations. Health popovers identify which
+Health popovers identify which
 capability an unavailable service can affect and link to the relevant diagnostic destination.
 
 Docker metrics lead with recent errors, timeouts, and slow operations. The charts show in-flight

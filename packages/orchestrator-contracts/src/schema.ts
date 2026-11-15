@@ -745,22 +745,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsRuntimeController_notifications"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/apps/{id}/runtime/data-files": {
         parameters: {
             query?: never;
@@ -2787,14 +2771,14 @@ export interface components {
              * @example home
              * @enum {string}
              */
-            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels";
         };
         ApplicationViewerControlResponseDto: {
             /**
              * @example home
              * @enum {string}
              */
-            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-notifications" | "expand-settings" | "collapse-panels";
+            command: "back" | "home" | "recents" | "power" | "wake" | "sleep" | "volume-up" | "volume-down" | "mute" | "rotate" | "expand-settings" | "collapse-panels";
             /** @example true */
             executed: boolean;
             /** @example Viewer control command executed. */
@@ -2830,18 +2814,6 @@ export interface components {
             profileMode: "persistent" | "temporary";
             /** @example default */
             profileName?: string;
-        };
-        AndroidNotificationDto: {
-            /** @example android */
-            packageName: string;
-            /** @example System UI */
-            title: string;
-            /** @example VPN is active */
-            text: string;
-            /** @example Clock */
-            appName?: string | null;
-            /** @example NotificationRecord(...) */
-            raw: string;
         };
         ApplicationRuntimeFileDto: {
             /** @example report.pdf */
@@ -5135,27 +5107,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplicationCommandResultDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsRuntimeController_notifications: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidNotificationDto"][];
                 };
             };
         };

@@ -7,7 +7,6 @@ import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { AndroidAppsRuntimeDeviceService } from './android-apps-runtime-device.service';
 import { AndroidAppsRuntimeDiagnosticsService } from './android-apps-runtime-diagnostics.service';
-import { AndroidAppsRuntimeNotificationsService } from './android-apps-runtime-notifications.service';
 import { RuntimeDataFilesService } from './runtime-data-files.service';
 import { RuntimeDownloadFilesService } from './runtime-download-files.service';
 
@@ -18,12 +17,7 @@ export class AndroidAppsRuntimeAccessService {
     private readonly downloadFiles: RuntimeDownloadFilesService,
     private readonly device: AndroidAppsRuntimeDeviceService,
     private readonly diagnostics: AndroidAppsRuntimeDiagnosticsService,
-    private readonly notificationSamples: AndroidAppsRuntimeNotificationsService,
   ) {}
-
-  notifications(id: string) {
-    return this.notificationSamples.list(id);
-  }
 
   containerLogs(id: string, tail = 300) {
     return this.diagnostics.containerLogs(id, tail);

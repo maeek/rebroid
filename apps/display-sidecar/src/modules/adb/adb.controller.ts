@@ -35,7 +35,6 @@ import {
   AdbKeyDto,
   AdbListFilesResultDto,
   AdbLogcatDto,
-  AdbNotificationsDto,
   AdbPullFileResultDto,
   AdbPushFileDto,
   AdbRotateDisplayDto,
@@ -131,21 +130,6 @@ export class AdbController {
     return {
       source: "adb" as const,
       collectedAt: new Date().toISOString(),
-      output: result.stdout,
-    };
-  }
-
-  @Get("notifications")
-  @ApiOperation({ summary: "Read Android notification dump through ADB." })
-  @ApiOkResponse({ type: AdbNotificationsDto })
-  async notifications(
-    @Param("udid") udid: string,
-    @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
-    const result = await whileClientConnected(reply, (signal) =>
-      this.adb.notifications(udid, signal),
-    );
-    return {
       output: result.stdout,
     };
   }

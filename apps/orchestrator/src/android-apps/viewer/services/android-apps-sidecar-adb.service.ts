@@ -12,7 +12,6 @@ import type {
   AndroidAutomationUiTextInput,
   AndroidAutomationUiTextResult,
 } from '../../contracts/android-apps-automation.port';
-import { parseAndroidNotifications } from '../../runtime/utils/android-apps-notification.utils';
 import {
   AndroidAppsViewerNetworkService,
   type PreparedViewerTarget,
@@ -308,16 +307,6 @@ export class AndroidAppsSidecarAdbService {
       {},
       'transport',
     );
-  }
-
-  async notifications(app: AndroidApplication, signal?: AbortSignal) {
-    const result = await this.request<{ output: string }>(
-      app,
-      '/notifications',
-      { signal },
-      'transport',
-    );
-    return parseAndroidNotifications(result.output);
   }
 
   async screenshot(app: AndroidApplication, signal?: AbortSignal) {

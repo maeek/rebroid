@@ -65,7 +65,8 @@ describe('appConfig', () => {
       process.env.REDROID_COLLECT_BOOT_EVENTS = 'yes';
       expect(() => load()).toThrow();
     } finally {
-      if (previous === undefined) delete process.env.REDROID_COLLECT_BOOT_EVENTS;
+      if (previous === undefined)
+        delete process.env.REDROID_COLLECT_BOOT_EVENTS;
       else process.env.REDROID_COLLECT_BOOT_EVENTS = previous;
     }
   });

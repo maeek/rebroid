@@ -12,7 +12,6 @@ export const CONTROL_MESSAGE = {
   INJECT_TEXT: 1,
   INJECT_TOUCH_EVENT: 2,
   BACK_OR_SCREEN_ON: 4,
-  EXPAND_NOTIFICATION_PANEL: 5,
   EXPAND_SETTINGS_PANEL: 6,
   COLLAPSE_PANELS: 7,
   SET_CLIPBOARD: 9,
@@ -64,10 +63,6 @@ const BROWSER_CONTROL_KEY_CODES: Record<string, number> = {
 
 export class ScrcpyControlCodec {
   viewerActionPayloads(command: ViewerCommand) {
-    if (command === "expand-notifications") {
-      return [Buffer.from([CONTROL_MESSAGE.EXPAND_NOTIFICATION_PANEL])];
-    }
-
     if (command === "expand-settings") {
       return [Buffer.from([CONTROL_MESSAGE.EXPAND_SETTINGS_PANEL])];
     }

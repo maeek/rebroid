@@ -19,7 +19,6 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { AndroidNotificationDto } from '../dto/android-notification.dto';
 import {
   ApplicationClipboardDto,
   UpdateApplicationClipboardDto,
@@ -44,12 +43,6 @@ import { AndroidAppsRuntimeAccessService } from '../services/android-apps-runtim
 @Controller('apps')
 export class AndroidAppsRuntimeController {
   constructor(private readonly runtime: AndroidAppsRuntimeAccessService) {}
-
-  @Get(':id/runtime/notifications')
-  @ApiOkResponse({ type: AndroidNotificationDto, isArray: true })
-  notifications(@Param('id') id: string) {
-    return this.runtime.notifications(id);
-  }
 
   @Get(':id/runtime/data-files')
   @ApiOperation({

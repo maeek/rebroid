@@ -221,45 +221,6 @@
         "tags": ["adb"]
       }
     },
-    "/rebroid/adb/{udid}/notifications": {
-      "get": {
-        "operationId": "AdbController_notifications",
-        "parameters": [
-          {
-            "name": "x-rebroid-sidecar-secret",
-            "in": "header",
-            "description": "Required when sidecar shared-secret auth is configured.",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "udid",
-            "required": true,
-            "in": "path",
-            "description": "ADB serial or host:port target reachable from the sidecar.",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdbNotificationsDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Read Android notification dump through ADB.",
-        "tags": ["adb"]
-      }
-    },
     "/rebroid/adb/{udid}/screenshot": {
       "get": {
         "operationId": "AdbController_screenshot",
@@ -1792,16 +1753,6 @@
         },
         "required": ["source", "collectedAt", "output"]
       },
-      "AdbNotificationsDto": {
-        "type": "object",
-        "properties": {
-          "output": {
-            "type": "string",
-            "example": "Notification dump output"
-          }
-        },
-        "required": ["output"]
-      },
       "AdbScreenshotDto": {
         "type": "object",
         "properties": {
@@ -2212,7 +2163,6 @@
                 "volume-down",
                 "mute",
                 "rotate",
-                "expand-notifications",
                 "expand-settings",
                 "collapse-panels"
               ]
@@ -2676,7 +2626,6 @@
               "volume-down",
               "mute",
               "rotate",
-              "expand-notifications",
               "expand-settings",
               "collapse-panels"
             ],
@@ -2704,7 +2653,6 @@
               "volume-down",
               "mute",
               "rotate",
-              "expand-notifications",
               "expand-settings",
               "collapse-panels"
             ],
@@ -2758,7 +2706,6 @@
               "volume-down",
               "mute",
               "rotate",
-              "expand-notifications",
               "expand-settings",
               "collapse-panels"
             ],

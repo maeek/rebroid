@@ -54,7 +54,9 @@ describe(DockerSidecarAdbService.name, () => {
   afterEach(() => jest.restoreAllMocks());
 
   it('does not wake the screen or change settings for transport-only preparation', async () => {
-    const log = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
+    const log = jest
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => {});
     exec.mockResolvedValueOnce(success(device));
     await expect(
       service.prepareTarget(

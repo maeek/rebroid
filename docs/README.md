@@ -7,8 +7,8 @@ Start with the [project README](../README.md) to install Rebroid and open your f
 | Guide | Covers |
 | --- | --- |
 | [Deployment](deployment.md) | Linux host requirements, Compose and its test overlay, HTTPS, networking, GPU rendering, and prebuilt image transfer |
-| [Operator console](operator-console.md) | App lifecycle, device files, feature controls, outbound access, workflow editing and scheduling, and run history |
-| [Operations](operations.md) | Service diagnostics, stored state, Google Play image patching, and AI provider setup |
+| [Operator console](operator-console.md) | App lifecycle, device files, runtime image pulls, feature controls, outbound access, workflow editing and scheduling, and run history |
+| [Operations](operations.md) | Service diagnostics, stored state, Google Play image builds and recovery, and AI provider setup |
 | [Display streaming](display-streaming.md) | WebRTC and WebSocket playback, viewer recovery, diagnostics, and the manual ReDroid test matrix |
 | [Web security](web-security.md) | Account sessions, group permissions, viewer authorization, and container terminal access |
 

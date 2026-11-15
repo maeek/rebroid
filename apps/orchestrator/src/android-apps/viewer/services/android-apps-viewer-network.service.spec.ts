@@ -392,7 +392,7 @@ describe('shared viewer target preparation', () => {
     expect(sidecar.connectAdb).toHaveBeenCalledWith(adbHost, runtime.adbPort);
   });
 
-  it('uses one network attachment, address read and ADB connect for a Display session and notification tool', async () => {
+  it('uses one network attachment, address read and ADB connect for a Display session and ADB log reads', async () => {
     const { viewer, queries, sidecar, networks } = setup();
     const config = new ConfigService({
       app: {
@@ -428,15 +428,15 @@ describe('shared viewer target preparation', () => {
       .mockResolvedValueOnce(Response.json({ output: '' }));
 
     await bootstrap.scrcpySession(runtime.id);
-    await adb.notifications(runtime);
-    await expect(adb.notifications(runtime)).rejects.toThrow('Invalid command');
-    await adb.notifications(runtime);
+    await adb.logcat(runtime, 300);
+    await expect(adb.logcat(runtime, 300)).rejects.toThrow('Invalid command');
+    await adb.logcat(runtime, 300);
     expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
     expect(networks.getContainerIpOnNetwork).toHaveBeenCalledTimes(1);
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(1);
 
-    await expect(adb.notifications(runtime)).rejects.toThrow('ADB unavailable');
-    await adb.notifications(runtime);
+    await expect(adb.logcat(runtime, 300)).rejects.toThrow('ADB unavailable');
+    await adb.logcat(runtime, 300);
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenCalledTimes(5);
   });

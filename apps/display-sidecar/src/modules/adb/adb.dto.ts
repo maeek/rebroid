@@ -24,11 +24,6 @@ export class AdbLogcatDto {
   output!: string;
 }
 
-export class AdbNotificationsDto {
-  @ApiProperty({ example: "Notification dump output" })
-  output!: string;
-}
-
 export class AdbScreenshotDto {
   @ApiProperty({ example: "image/png" })
   mimeType!: "image/png";

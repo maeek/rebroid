@@ -143,30 +143,6 @@ export class AdbService {
     );
   }
 
-  async notifications(udid: string, signal?: AbortSignal) {
-    const timeoutMs = 5_000;
-    const deadline = AbortSignal.timeout(timeoutMs);
-    const operationSignal = signal
-      ? AbortSignal.any([signal, deadline])
-      : deadline;
-    try {
-      return await this.shell(
-        udid,
-        ["dumpsys", "notification", "--noredact"],
-        timeoutMs,
-        operationSignal,
-      );
-    } catch {
-      operationSignal.throwIfAborted();
-      return this.shell(
-        udid,
-        ["dumpsys", "notification"],
-        timeoutMs,
-        operationSignal,
-      );
-    }
-  }
-
   async screencapPng(udid: string, timeoutMs = 8_000) {
     return this.adbBuffer(
       ["-s", udid, "exec-out", "screencap", "-p"],
@@ -329,10 +305,6 @@ export class AdbService {
   async viewerAction(udid: string, command: ViewerCommand) {
     if (command === "rotate") {
       return this.rotateDisplay(udid);
-    }
-
-    if (command === "expand-notifications") {
-      return this.shell(udid, ["cmd", "statusbar", "expand-notifications"]);
     }
 
     if (command === "expand-settings") {

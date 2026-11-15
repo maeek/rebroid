@@ -2060,39 +2060,6 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/notifications": {
-      "get": {
-        "operationId": "AndroidAppsRuntimeController_notifications",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AndroidNotificationDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "app-runtime"
-        ]
-      }
-    },
     "/api/v1/apps/{id}/runtime/data-files": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_listFiles",
@@ -8691,7 +8658,6 @@
               "volume-down",
               "mute",
               "rotate",
-              "expand-notifications",
               "expand-settings",
               "collapse-panels"
             ],
@@ -8718,7 +8684,6 @@
               "volume-down",
               "mute",
               "rotate",
-              "expand-notifications",
               "expand-settings",
               "collapse-panels"
             ],
@@ -8793,38 +8758,6 @@
             "example": "default"
           }
         }
-      },
-      "AndroidNotificationDto": {
-        "type": "object",
-        "properties": {
-          "packageName": {
-            "type": "string",
-            "example": "android"
-          },
-          "title": {
-            "type": "string",
-            "example": "System UI"
-          },
-          "text": {
-            "type": "string",
-            "example": "VPN is active"
-          },
-          "appName": {
-            "type": "string",
-            "example": "Clock",
-            "nullable": true
-          },
-          "raw": {
-            "type": "string",
-            "example": "NotificationRecord(...)"
-          }
-        },
-        "required": [
-          "packageName",
-          "title",
-          "text",
-          "raw"
-        ]
       },
       "ApplicationRuntimeFileDto": {
         "type": "object",

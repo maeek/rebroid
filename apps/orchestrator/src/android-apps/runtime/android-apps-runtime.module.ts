@@ -9,7 +9,6 @@ import { AndroidAppsRuntimeSnapshotController } from './controllers/android-apps
 import { AndroidAppsRuntimeAccessService } from './services/android-apps-runtime-access.service';
 import { AndroidAppsRuntimeDeviceService } from './services/android-apps-runtime-device.service';
 import { AndroidAppsRuntimeDiagnosticsService } from './services/android-apps-runtime-diagnostics.service';
-import { AndroidAppsRuntimeNotificationsService } from './services/android-apps-runtime-notifications.service';
 import { AndroidAppsRuntimeSnapshotService } from './services/android-apps-runtime-snapshot.service';
 import { RuntimeDataFilesService } from './services/runtime-data-files.service';
 import { RuntimeDownloadFilesService } from './services/runtime-download-files.service';
@@ -34,7 +33,6 @@ import { RuntimeUploadStreamService } from './services/runtime-upload-stream.ser
     AndroidAppsRuntimeAccessService,
     AndroidAppsRuntimeDeviceService,
     AndroidAppsRuntimeDiagnosticsService,
-    AndroidAppsRuntimeNotificationsService,
     AndroidAppsRuntimeSnapshotService,
     RuntimeDataFilesService,
     RuntimeDownloadFilesService,

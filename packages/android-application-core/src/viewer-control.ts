@@ -9,7 +9,6 @@ export const viewerCommands = [
   "volume-down",
   "mute",
   "rotate",
-  "expand-notifications",
   "expand-settings",
   "collapse-panels",
 ] as const;

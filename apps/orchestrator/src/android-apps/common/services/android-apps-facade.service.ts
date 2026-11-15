@@ -215,11 +215,6 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     return this.viewer.recordViewerActivity(id);
   }
 
-  /** Reads recent Android notifications. */
-  notifications(id: string) {
-    return this.runtime.notifications(id);
-  }
-
   /** Reads recent container logs. */
   containerLogs(id: string, tail = 300) {
     return this.runtime.containerLogs(id, tail);
