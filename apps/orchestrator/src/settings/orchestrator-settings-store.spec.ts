@@ -88,8 +88,8 @@ describe('OrchestratorSettingsStore', () => {
   it('restores runtime defaults and connections while preserving unrelated settings', async () => {
     const settings = new SettingsService(store, {} as never);
     const defaults = store.normalizeSettings(store.defaults());
-    const configured = await store.writeSettings({
-      ...defaults,
+    const configured = await store.updateSettings((current) => ({
+      ...current,
       androidRendering: { mode: 'host', renderDevice: '/dev/dri/renderD128' },
       defaultContainerImage: 'rebroid:custom',
       dockerImageRegistry: 'registry.test',
@@ -127,7 +127,7 @@ describe('OrchestratorSettingsStore', () => {
         slowRequestWarningMs: 500,
         longOperationTimeoutMs: 5000,
       },
-    });
+    }));
 
     await expect(settings.resetSettings()).resolves.toEqual(
       store.toPublicSettings({

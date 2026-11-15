@@ -60,14 +60,6 @@ export class OrchestratorSettingsStore {
     return this.normalizeSettings(await this.readStoredSettings());
   }
 
-  writeSettings(settings: StoredOrchestratorSettings) {
-    return this.enqueueWrite(async () => {
-      const normalized = this.normalizeSettings(settings);
-      await this.persistSettings(normalized);
-      return normalized;
-    });
-  }
-
   updateSettings(
     update: (
       current: StoredOrchestratorSettings,
