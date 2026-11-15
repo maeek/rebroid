@@ -249,6 +249,8 @@ following resumes at the bottom. Output following remains instantaneous under al
 `FileUploadField` keeps its visible button label and icon slot fixed during processing. The filename
 occupies one truncated line; keyboard focus or hover reveals the full value in the shared tooltip.
 Controlled filename labels remain authoritative after processing, including failed uploads.
+Show APK transfer progress below the filename in the picker. At 100%, keep the picker pending
+with a processing label until the APK operation finishes.
 `FileDropZone` accepts file drags only and fades an absolute overlay over the existing surface;
 disabled drops never dispatch, and leaving the window clears the feedback. Preserve a picker as
 the keyboard/touch alternative. Reduced motion removes the overlay fade and spinner rotation.
@@ -626,6 +628,9 @@ a display selector, and a single bottom control bar. Show only the selected disp
 the other stream mounted and inert. Keep Android navigation and fullscreen in the bar, with
 secondary actions in the device controls drawer. Fit the display and controls within the small
 viewport and safe-area insets. Returning from Device restores the app section and its scroll.
+In fullscreen, float the device controls over the selected display within the safe-area insets.
+The grip moves the toolbar by touch, pointer, or arrow keys. The grip and fullscreen exit stay visible
+when the toolbar is collapsed. Entering and leaving fullscreen retains the live display.
 
 Keep the embedded device frame and streaming settings visible when a session fails to open. Show
 the error and a retry action inside the frame.

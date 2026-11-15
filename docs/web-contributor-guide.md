@@ -47,9 +47,10 @@ Operations return the shared result envelope with a request ID, stable error cod
 
 Browser-facing settings use the same audience projection for BFF responses and initial page props.
 Loaders can require live settings or accept defaults during an outage.
-Workflow traces and device-agent chat share run-event replay. The BFF authorizes the subscription,
-then the browser connects through the edge to the orchestrator's run WebSocket. Each view
-projects the delivered events into its own state.
+Workflow traces and device-agent chat share run-event replay. HTTP history uses the same
+byte-bounded pages as WebSocket replay and returns a continuation sequence when more events exist.
+The BFF authorizes history reads and issues a WebSocket token when the browser is ready to
+subscribe through the edge. Each view projects the delivered events into its own state.
 
 Use `getCurrentUser()` before protected operations. Check permission, ownership, and input before
 calling upstream services. Shared permission definitions and quotas live in `src/shared/permissions`;
