@@ -64,16 +64,6 @@ export const freshWebSchema = `
     user_agent TEXT
   );
 
-  CREATE TABLE automation_drafts (
-    token TEXT PRIMARY KEY NOT NULL,
-    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    yaml TEXT NOT NULL,
-    source_run_id TEXT,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    consumed_at TEXT
-  );
-
   CREATE TABLE auth_state (
     id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
     epoch TEXT NOT NULL
@@ -122,7 +112,6 @@ export const freshWebSchema = `
   CREATE INDEX audit_events_created_at ON audit_events(created_at DESC);
   CREATE INDEX audit_events_category_created_at ON audit_events(category, created_at DESC);
   CREATE INDEX audit_events_actor_created_at ON audit_events(actor_user_id, created_at DESC);
-  CREATE INDEX automation_drafts_expiry ON automation_drafts(expires_at);
   CREATE INDEX login_rate_limits_reset_at ON login_rate_limits(reset_at);
   CREATE INDEX account_sessions_user_activity ON account_sessions(user_id, last_active_at DESC);
   CREATE INDEX account_sessions_expiry ON account_sessions(expires_at);

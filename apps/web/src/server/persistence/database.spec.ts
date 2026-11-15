@@ -17,7 +17,6 @@ import {
   purgeAuditEvents
 } from './audit-repository'
 import { consumePersistentRateLimit, getAuthEpoch } from './auth-security-repository'
-import { createAutomationDraft, consumeAutomationDraft } from './automation-drafts-repository'
 import { getDatabase, resetDatabaseForTests } from './database'
 import { getMfaSetup, saveMfaSetup } from './mfa-setup-repository'
 import {
@@ -56,7 +55,6 @@ describe('fresh web database', () => {
       'account_sessions',
       'audit_events',
       'auth_state',
-      'automation_drafts',
       'group_memberships',
       'groups',
       'login_rate_limits',
@@ -109,22 +107,11 @@ describe('fresh web database', () => {
     expect(listRecentApplications('user-1')[0]).toEqual({ id: 'app-1', openedAt: 9 })
   })
 
-  it('consumes automation drafts once and only for their owner', async () => {
-    const administrator = await completeTestAdministratorSetup()
-    const owner = await userService.createUser({ username: 'owner', password: 'original-password' }, administrator)
-    const draft = createAutomationDraft(owner.id, 'name: draft', 'run-1')
-    expect(consumeAutomationDraft('another-user', draft.token)).toBeNull()
-    expect(consumeAutomationDraft(owner.id, draft.token)).toMatchObject({ yaml: 'name: draft', sourceRunId: 'run-1' })
-    expect(consumeAutomationDraft(owner.id, draft.token)).toBeNull()
-  })
-
-  it('keeps drafts and MFA setup for retained accounts while cascading actual deletions', async () => {
+  it('keeps MFA setup for retained accounts and removes it when an account is deleted', async () => {
     const administrator = await completeTestAdministratorSetup()
     const first = await userService.createUser({ username: 'first', password: 'original-password' }, administrator)
     const second = await userService.createUser({ username: 'second', password: 'original-password' }, administrator)
     const group = await userService.createGroup({ name: 'Extra group' }, administrator)
-    const firstDraft = createAutomationDraft(first.id, 'name: first')
-    const secondDraft = createAutomationDraft(second.id, 'name: second')
     saveMfaSetup(first.id, 'first-setup')
     saveMfaSetup(second.id, 'second-setup')
 
@@ -133,15 +120,10 @@ describe('fresh web database', () => {
     await userService.deleteGroup(group.id, administrator)
     expect(getMfaSetup(first.id)).toBe('first-setup')
     expect(getMfaSetup(second.id)).toBe('second-setup')
-    expect(consumeAutomationDraft(first.id, firstDraft.token)).toMatchObject({ yaml: 'name: first' })
 
     await userService.deleteUser(first.id, administrator)
     expect(getMfaSetup(first.id)).toBeNull()
     expect(getMfaSetup(second.id)).toBe('second-setup')
-    expect(consumeAutomationDraft(second.id, secondDraft.token)).toMatchObject({ yaml: 'name: second' })
-    expect(
-      getDatabase().prepare('SELECT 1 FROM automation_drafts WHERE token = ?').get(firstDraft.token)
-    ).toBeUndefined()
   })
 
   it('lists and prunes audit events', () => {

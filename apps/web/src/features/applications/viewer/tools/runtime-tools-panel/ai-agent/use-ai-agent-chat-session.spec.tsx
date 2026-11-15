@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getBff } from '@/lib/http/bff'
+import { getBff, sendBff } from '@/lib/http/bff'
 import * as actions from '@/server/orchestrator/automations/automation-run-actions'
 import { useAiAgentChatSession } from './use-ai-agent-chat-session'
 import * as modelSettings from './use-ai-agent-model-settings'
@@ -13,7 +13,7 @@ vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({
   listAdHocAiAutomationRunHistoryAction: vi.fn(),
   runAdHocAiAutomationAction: vi.fn()
 }))
-vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 
 vi.mock('./use-ai-agent-model-settings', () => ({
   useAiAgentModelSettings: vi.fn()
@@ -56,7 +56,7 @@ const userEvent = {
   data: { clientMessageId: 'turn_1' },
   createdAt: '2026-01-01T00:00:00.000Z'
 } satisfies AutomationRunEvent
-const eventPage = (events: AutomationRunEvent[]) => ({ events, hasMore: false, streamUrl: 'ws://localhost/events' })
+const eventPage = (events: AutomationRunEvent[]) => ({ events, nextAfter: null })
 const eventPath = (after: number) => `/api/bff/automations/runs/${run.id}/events?after=${after}`
 
 describe('useAiAgentChatSession', () => {
@@ -64,6 +64,7 @@ describe('useAiAgentChatSession', () => {
     vi.clearAllMocks()
     vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockResolvedValue([{ run, events: [userEvent] }])
     vi.mocked(getBff).mockResolvedValue(eventPage([]))
+    vi.mocked(sendBff).mockResolvedValue({ streamUrl: 'ws://localhost/events' })
     vi.mocked(modelSettings.useAiAgentModelSettings).mockReturnValue({
       adHocTimeoutMinutes: 5,
       adHocTimeoutMs: 300_000,
