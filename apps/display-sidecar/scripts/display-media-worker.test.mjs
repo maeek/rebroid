@@ -1,5 +1,27 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { parseViewerMediaFrame } from "../dist/modules/display/viewer/assets/media-frame.js";
+import { rbd1 } from "./rbd1-test-frame.mjs";
+
+test("decodes the shared RBD1 fixture within browser timestamp precision", () => {
+  const fixture = readFileSync(
+    new URL("../webrtc-bridge/testdata/rbd1-frames.bin", import.meta.url),
+  );
+  // The shared fixture has two 24 + 5 byte video frames and one audio frame.
+  const config = new Uint8Array(fixture.subarray(0, 29)).buffer;
+  const unsafeTimestamp = new Uint8Array(fixture.subarray(29, 58)).buffer;
+  const audio = new Uint8Array(fixture.subarray(58)).buffer;
+  assert.equal(parseViewerMediaFrame(config).config, true);
+  assert.throws(
+    () => parseViewerMediaFrame(unsafeTimestamp),
+    /timestamp exceeds browser precision/,
+  );
+  const audioFrame = parseViewerMediaFrame(audio);
+  assert.equal(audioFrame.kind, "audio");
+  assert.equal(audioFrame.sequence, 0xffffffff);
+  assert.equal(audioFrame.timestampUs, 42_000);
+});
 
 const annexB = (...nals) =>
   Uint8Array.from(nals.flatMap((nal) => [0, 0, 0, 1, ...nal]));
@@ -21,27 +43,6 @@ const landscapeConfiguration = Uint8Array.from(
 );
 const keyFrame = annexB([0x65, 0x88, 0x84]);
 const deltaFrame = annexB([0x41, 0x9a, 0x20]);
-
-const rbd1 = ({
-  sequence,
-  timestampUs,
-  kind = 1,
-  config = false,
-  key = false,
-  discontinuity = false,
-  data,
-}) => {
-  const buffer = new ArrayBuffer(24 + data.byteLength);
-  const bytes = new Uint8Array(buffer);
-  bytes.set([0x52, 0x42, 0x44, 0x31, 1, kind]);
-  const view = new DataView(buffer);
-  view.setUint16(6, (config ? 1 : 0) | (key ? 2 : 0) | (discontinuity ? 4 : 0));
-  view.setUint32(8, sequence);
-  view.setBigUint64(12, BigInt(timestampUs));
-  view.setUint32(20, data.byteLength);
-  bytes.set(data, 24);
-  return buffer;
-};
 
 class FakeEncodedVideoChunk {
   constructor(init) {
