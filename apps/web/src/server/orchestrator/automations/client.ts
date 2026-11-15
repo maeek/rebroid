@@ -9,6 +9,7 @@ import type {
   AutomationCommand,
   AutomationRun,
   AutomationRunEvent,
+  AutomationRunEventPage,
   AutomationRunEventStreamToken,
   AiPromptSuggestions,
   AutomationTrigger,
@@ -107,6 +108,11 @@ export const orchestratorAutomationsClient = {
     const query = new URLSearchParams({ ownerUserId, after: String(after) })
     if (view) query.set('view', view)
     return emptyRequest<AutomationRunEvent[]>(`/automations/runs/${encodeURIComponent(runId)}/events?${query}`)
+  },
+
+  listRunEventPage(ownerUserId: string, runId: string, after: number) {
+    const query = new URLSearchParams({ ownerUserId, after: String(after) })
+    return emptyRequest<AutomationRunEventPage>(`/automations/runs/${encodeURIComponent(runId)}/events/page?${query}`)
   },
 
   createRunEventStreamToken(ownerUserId: string, runId: string) {

@@ -32,6 +32,14 @@ export class AutomationRunEventDto {
   createdAt!: string;
 }
 
+export class AutomationRunEventPageDto {
+  @ApiProperty({ type: AutomationRunEventDto, isArray: true })
+  events!: AutomationRunEventDto[];
+
+  @ApiProperty({ type: Number, nullable: true })
+  nextAfter!: number | null;
+}
+
 export class AutomationRunEventStreamTokenDto {
   @ApiProperty()
   token!: string;

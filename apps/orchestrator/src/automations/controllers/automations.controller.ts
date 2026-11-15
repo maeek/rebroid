@@ -43,6 +43,7 @@ import {
 } from '../dto/automation-ai-run.dto';
 import {
   AutomationRunEventDto,
+  AutomationRunEventPageDto,
   AutomationRunEventStreamTokenDto,
 } from '../dto/automation-run-event.dto';
 import {
@@ -259,6 +260,21 @@ export class AutomationsController {
       runId,
       after === undefined ? undefined : Number(after),
       view,
+    );
+  }
+
+  @Get('runs/:runId/events/page')
+  @ApiQuery({ name: 'after', required: false, type: String })
+  @ApiOkResponse({ type: AutomationRunEventPageDto })
+  listRunEventPage(
+    @Param('runId') runId: string,
+    @Query('ownerUserId') ownerUserId: string,
+    @Query('after') after?: string,
+  ) {
+    return this.automations.listRunEventPage(
+      ownerUserId,
+      runId,
+      Number(after ?? 0),
     );
   }
 

@@ -90,7 +90,7 @@ describe('AutomationRunLiveEvents', () => {
           data: { path: 'steps[0].iterations[3].steps[0]' }
         }
       ],
-      streamUrl: 'ws://example.test/events'
+      nextAfter: null
     })
     const clear = vi.fn()
     render(
@@ -112,7 +112,7 @@ describe('AutomationRunLiveEvents', () => {
   })
 
   it('removes Stop and avoids opening a live socket after replay reaches a terminal status', async () => {
-    vi.mocked(getBff).mockResolvedValue({ events: [failedEvent], streamUrl: 'ws://example.test/events' })
+    vi.mocked(getBff).mockResolvedValue({ events: [failedEvent], nextAfter: null })
     vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'canceled' })
 
     render(<AutomationRunLiveEvents run={run} />)
@@ -123,7 +123,7 @@ describe('AutomationRunLiveEvents', () => {
     expect(sendBff).not.toHaveBeenCalled()
   })
   it('describes missing historical events without suggesting a completed run is still active', async () => {
-    vi.mocked(getBff).mockResolvedValue({ events: [], streamUrl: 'ws://example.test/events' })
+    vi.mocked(getBff).mockResolvedValue({ events: [], nextAfter: null })
     render(
       <AutomationRunLiveEvents
         run={{ ...run, status: 'failed' }}
@@ -138,13 +138,11 @@ describe('AutomationRunLiveEvents', () => {
     vi.mocked(getBff)
       .mockResolvedValueOnce({
         events: [{ ...failedEvent, sequence: 1000, type: 'step.completed', message: 'First page step' }],
-        hasMore: true,
-        streamUrl: 'ws://example.test/events'
+        nextAfter: 1000
       })
       .mockResolvedValueOnce({
         events: [{ ...failedEvent, id: 'event_terminal', sequence: 1001 }],
-        hasMore: false,
-        streamUrl: 'ws://example.test/events'
+        nextAfter: null
       })
     render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
 
@@ -158,7 +156,7 @@ describe('AutomationRunLiveEvents', () => {
   it('preserves the recorded terminal status while replaying earlier events', async () => {
     vi.mocked(getBff).mockResolvedValue({
       events: [{ ...failedEvent, type: 'run.started', message: 'Earlier start event' }],
-      streamUrl: 'ws://example.test/events'
+      nextAfter: null
     })
     render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
     expect(await screen.findByText('Earlier start event')).toBeTruthy()

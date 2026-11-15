@@ -334,7 +334,7 @@ it('reads the failure code and request ID from the owner’s terminal event', as
   }
 });
 
-it('pages WebSocket replay by payload bytes and the captured sequence', async () => {
+it('bounds HTTP history and WebSocket replay by payload bytes', async () => {
   const { db, events, run } = await createRunPersistence();
   try {
     const append = (text: string) =>
@@ -358,6 +358,31 @@ it('pages WebSocket replay by payload bytes and the captured sequence', async ()
     await expect(
       events.listReplayPage('other-owner', run.id, 0, 3),
     ).resolves.toEqual([]);
+
+    const bus = new AutomationRunEventBus(events);
+    const history = (after: number) =>
+      bus.listPage(run.ownerUserId, run.id, after);
+    await expect(history(0)).resolves.toMatchObject({
+      events: [{ sequence: 1 }],
+      nextAfter: 1,
+    });
+    await expect(history(1)).resolves.toMatchObject({
+      events: [{ sequence: 2 }],
+      nextAfter: 2,
+    });
+    await expect(history(2)).resolves.toMatchObject({
+      events: [{ sequence: 3 }],
+      nextAfter: 3,
+    });
+    await expect(history(3)).resolves.toMatchObject({
+      events: [{ sequence: 4 }],
+      nextAfter: null,
+    });
+    await expect(history(4)).resolves.toEqual({ events: [], nextAfter: null });
+    await expect(bus.listPage('other-owner', run.id, 0)).resolves.toEqual({
+      events: [],
+      nextAfter: null,
+    });
   } finally {
     await db.destroy();
   }

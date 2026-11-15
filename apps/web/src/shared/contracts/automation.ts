@@ -3,8 +3,8 @@ import type { AutomationCommandOutput, AutomationDefinition, AutomationTag } fro
 
 export type AutomationLastStatus = 'never_run' | 'success' | 'failed' | 'running'
 export type AutomationRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'canceled'
-export type AutomationRunTrigger = 'manual' | 'schedule' | 'webhook' | 'event'
-export type AutomationTriggerType = 'schedule' | 'webhook' | 'event'
+export type AutomationRunTrigger = 'manual' | 'schedule'
+export type AutomationTriggerType = 'schedule'
 export type AutomationStartPolicy = 'require-running' | 'start-if-needed'
 
 export interface Automation {
@@ -214,6 +214,11 @@ export interface AutomationRunEvent {
   message: string
   data: Record<string, unknown>
   createdAt: string
+}
+
+export interface AutomationRunEventPage {
+  events: AutomationRunEvent[]
+  nextAfter: number | null
 }
 
 export interface AutomationRunEventStreamToken {

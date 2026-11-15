@@ -8,12 +8,14 @@ import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 export const readAutomationRunEvents = async (runId: string, after: number) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:run')
-  const [events, token] = await Promise.all([
-    orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, after),
-    orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
-  ])
-  const streamAfter = events.at(-1)?.sequence ?? after
-  const query = new URLSearchParams({ token: token.token, after: String(streamAfter) })
+  return orchestratorAutomationsClient.listRunEventPage(user.ownerUserId, runId, after)
+}
+
+export const subscribeToAutomationRunEvents = async (runId: string, after: number) => {
+  const user = await getCurrentUserContext()
+  assertAutomationPermission(user, 'automations:run')
+  const token = await orchestratorAutomationsClient.createRunEventStreamToken(user.ownerUserId, runId)
+  const query = new URLSearchParams({ token: token.token, after: String(after) })
   const requestHeaders = await headers()
   const isHttps =
     requestHeaders.get('x-forwarded-proto')?.split(',')[0]?.trim() === 'https' ||
@@ -29,7 +31,7 @@ export const readAutomationRunEvents = async (runId: string, after: number) => {
   const streamUrl = browserOrigin
     ? new URL(`/api/v1/automations/runs/events/ws?${query}`, browserOrigin.replace(/^https:/, 'wss:')).toString()
     : getOrchestratorBrowserWsUrl(`/automations/runs/events/ws?${query}`, { secure: isHttps })
-  return { events, hasMore: events.length === 1_000, streamUrl }
+  return { streamUrl }
 }
 
 export const cancelAutomationRun = async (runId: string) => {

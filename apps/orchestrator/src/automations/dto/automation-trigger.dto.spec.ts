@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
@@ -44,8 +46,27 @@ it('publishes the persisted trigger description in create, update, and response 
       expect(
         committed.components.schemas[name].properties.description,
       ).toMatchObject({ type: 'string', nullable: true });
+      expect(
+        committed.components.schemas[name].properties.triggerType.enum,
+      ).toEqual(['schedule']);
     }
   } finally {
     await app.close();
   }
 });
+
+it.each(['webhook', 'event'])(
+  'rejects the unsupported %s trigger on create and update',
+  (triggerType) => {
+    for (const dto of [
+      CreateAutomationTriggerDto,
+      UpdateAutomationTriggerDto,
+    ]) {
+      expect(validateSync(plainToInstance(dto, { triggerType }))).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ property: 'triggerType' }),
+        ]),
+      );
+    }
+  },
+);

@@ -25,6 +25,7 @@ import {
 } from '../dto/automation-ai-run.dto';
 import {
   AutomationRunEventDto,
+  AutomationRunEventPageDto,
   AutomationRunEventStreamTokenDto,
 } from '../dto/automation-run-event.dto';
 import { RunAutomationDto } from '../dto/automation-run.dto';
@@ -374,6 +375,15 @@ export class AutomationsService {
     return view === 'conversation'
       ? this.events.listConversationEvents(ownerUserId, [runId])
       : this.events.list(ownerUserId, runId, after);
+  }
+
+  async listRunEventPage(
+    ownerUserId: string,
+    runId: string,
+    after: number,
+  ): Promise<AutomationRunEventPageDto> {
+    await this.assertOwnedRun(ownerUserId, runId);
+    return this.events.listPage(ownerUserId, runId, after);
   }
 
   async createRunEventStreamToken(

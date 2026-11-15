@@ -5865,6 +5865,52 @@
           "apps"
         ]
       }
+    },
+    "/api/v1/automations/runs/{runId}/events/page": {
+      "get": {
+        "operationId": "AutomationsController_listRunEventPage",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "after",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutomationRunEventPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
     }
   },
   "info": {
@@ -9458,9 +9504,7 @@
             "type": "string",
             "enum": [
               "manual",
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "status": {
@@ -9889,9 +9933,7 @@
           "triggerType": {
             "type": "string",
             "enum": [
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "triggerConfig": {
@@ -10069,9 +10111,7 @@
           "triggerType": {
             "type": "string",
             "enum": [
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "triggerConfig": {
@@ -10134,9 +10174,7 @@
           "triggerType": {
             "type": "string",
             "enum": [
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "triggerConfig": {
@@ -11860,9 +11898,7 @@
             "type": "string",
             "enum": [
               "manual",
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "status": {
@@ -11944,9 +11980,7 @@
             "type": "string",
             "enum": [
               "manual",
-              "schedule",
-              "webhook",
-              "event"
+              "schedule"
             ]
           },
           "status": {
@@ -12110,6 +12144,25 @@
           "mimeType",
           "dataUrl",
           "capturedAt"
+        ]
+      },
+      "AutomationRunEventPageDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationRunEventDto"
+            }
+          },
+          "nextAfter": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "events",
+          "nextAfter"
         ]
       }
     }

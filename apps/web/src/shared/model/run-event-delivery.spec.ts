@@ -1,9 +1,9 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { getBff } from '@/lib/http/bff'
-import { subscribeToRunEvents } from './run-event-delivery'
+import { getBff, sendBff } from '@/lib/http/bff'
+import { replayTerminalRunEvents, subscribeToRunEvents } from './run-event-delivery'
 import type { AutomationRunEvent } from '@/shared/contracts/automation'
 
-vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 
 const runId = 'run-1'
 const event = (sequence: number, type: AutomationRunEvent['type']): AutomationRunEvent => ({
@@ -50,7 +50,8 @@ it('replays from the last delivered event, retries a failed read and closes on t
   const started = event(1, 'run.started')
   const progress = event(2, 'step.progress')
   const finished = event(3, 'run.completed')
-  const page = (events: AutomationRunEvent[]) => ({ events, hasMore: false, streamUrl: 'wss://example.test/events' })
+  const page = (events: AutomationRunEvent[]) => ({ events, nextAfter: null })
+  vi.mocked(sendBff).mockResolvedValue({ streamUrl: 'wss://example.test/events' })
   vi.mocked(getBff)
     .mockResolvedValueOnce(page([started]))
     .mockRejectedValueOnce(new Error('temporarily unavailable'))
@@ -75,6 +76,10 @@ it('replays from the last delivered event, retries a failed read and closes on t
       expect.any(AbortSignal)
     )
     expect(onError.mock.calls).toEqual([['invalid-event'], ['unavailable']])
+    expect(vi.mocked(sendBff).mock.calls).toEqual([
+      [`/api/bff/automations/runs/${runId}/events?after=1`, {}],
+      [`/api/bff/automations/runs/${runId}/events?after=2`, {}]
+    ])
     expect(received).toEqual([started, progress])
     expect(connections).toHaveLength(2)
 
@@ -87,4 +92,19 @@ it('replays from the last delivered event, retries a failed read and closes on t
   } finally {
     stop()
   }
+})
+
+it('follows short history pages through the terminal event without requesting a socket token', async () => {
+  const progress = event(7, 'step.progress')
+  const finished = event(8, 'run.completed')
+  vi.mocked(getBff)
+    .mockResolvedValueOnce({ events: [progress], nextAfter: progress.sequence })
+    .mockResolvedValueOnce({ events: [finished], nextAfter: null })
+  const onEvents = vi.fn()
+
+  await replayTerminalRunEvents({ runId, after: 6, onEvents, isCurrent: () => true })
+
+  expect(onEvents.mock.calls).toEqual([[[progress]], [[finished]]])
+  expect(getBff).toHaveBeenLastCalledWith(`/api/bff/automations/runs/${runId}/events?after=7`, undefined)
+  expect(sendBff).not.toHaveBeenCalled()
 })

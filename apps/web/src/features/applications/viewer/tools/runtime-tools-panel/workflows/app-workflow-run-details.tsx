@@ -222,7 +222,7 @@ const AppWorkflowRunSummary = ({ run }: { run: ApplicationWorkflowRun }) => {
             )
           },
           { label: 'Duration', value: workflowRunDuration(run.startedAt, run.completedAt) },
-          { label: 'Trigger', value: workflowRunTriggerLabels[run.trigger] },
+          { label: 'Trigger', value: workflowRunTriggerLabels[run.trigger] ?? run.trigger },
           { label: 'Profile', value: profile }
         ]}
       />

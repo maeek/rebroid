@@ -36,8 +36,7 @@ const durationLabel = (run: AutomationRun) => {
 const triggerLabel = (run: AutomationRun) => {
   if (run.trigger === 'manual') return 'Manual'
   if (run.trigger === 'schedule') return 'Schedule'
-  if (run.trigger === 'webhook') return 'Webhook'
-  return 'Event'
+  return run.trigger
 }
 
 const stepProgressLabel = (run: AutomationRun) => {
@@ -244,7 +243,7 @@ export function AutomationTracesSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value='all'>Any source</SelectItem>
-                  {['manual', 'schedule', 'webhook', 'event'].map(value => (
+                  {['manual', 'schedule'].map(value => (
                     <SelectItem
                       key={value}
                       value={value}

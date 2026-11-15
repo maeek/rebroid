@@ -2015,6 +2015,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/automations/runs/{runId}/events/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunEventPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3074,7 +3090,7 @@ export interface components {
             targetProfileMode: string | null;
             targetProfileName: string | null;
             /** @enum {string} */
-            trigger: "manual" | "schedule" | "webhook" | "event";
+            trigger: "manual" | "schedule";
             /** @enum {string} */
             status: "queued" | "running" | "success" | "failed" | "canceled";
             startedAt: string | null;
@@ -3188,7 +3204,7 @@ export interface components {
             enabled: boolean;
             tags: components["schemas"]["AutomationTagDto"][];
             /** @enum {string} */
-            triggerType: "schedule" | "webhook" | "event";
+            triggerType: "schedule";
             triggerConfig: Record<string, never>;
             lastRunAt: string | null;
             lastRunId: string | null;
@@ -3235,7 +3251,7 @@ export interface components {
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
             /** @enum {string} */
-            triggerType: "schedule" | "webhook" | "event";
+            triggerType: "schedule";
             triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
         };
         UpdateAutomationTriggerDto: {
@@ -3254,7 +3270,7 @@ export interface components {
             enabled: boolean;
             tags?: components["schemas"]["AutomationTagDto"][];
             /** @enum {string} */
-            triggerType?: "schedule" | "webhook" | "event";
+            triggerType?: "schedule";
             triggerConfig?: components["schemas"]["AutomationScheduleTriggerConfigDto"];
         };
         RunAutomationDto: {
@@ -3744,7 +3760,7 @@ export interface components {
             targetProfileMode: string | null;
             targetProfileName: string | null;
             /** @enum {string} */
-            trigger: "manual" | "schedule" | "webhook" | "event";
+            trigger: "manual" | "schedule";
             /** @enum {string} */
             status: "queued" | "running" | "success" | "failed" | "canceled";
             startedAt: string | null;
@@ -3763,7 +3779,7 @@ export interface components {
             id: string;
             automationId: string;
             /** @enum {string} */
-            trigger: "manual" | "schedule" | "webhook" | "event";
+            trigger: "manual" | "schedule";
             /** @enum {string} */
             status: "queued" | "running" | "success" | "failed" | "canceled";
             startedAt: string | null;
@@ -3801,6 +3817,10 @@ export interface components {
             dataUrl: string;
             /** Format: date-time */
             capturedAt: string;
+        };
+        AutomationRunEventPageDto: {
+            events: components["schemas"]["AutomationRunEventDto"][];
+            nextAfter: number | null;
         };
     };
     responses: never;
@@ -7434,6 +7454,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AndroidApplicationViewerRuntimeDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunEventPage: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                after?: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunEventPageDto"];
                 };
             };
         };

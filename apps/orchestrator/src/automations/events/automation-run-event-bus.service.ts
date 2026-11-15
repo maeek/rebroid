@@ -60,6 +60,21 @@ export class AutomationRunEventBus {
     return this.events.listForRun(ownerUserId, runId, after);
   }
 
+  async listPage(ownerUserId: string, runId: string, after: number) {
+    const through = await this.events.latestSequence(ownerUserId, runId);
+    const events = await this.events.listReplayPage(
+      ownerUserId,
+      runId,
+      after,
+      through,
+    );
+    const last = events.at(-1);
+    return {
+      events,
+      nextAfter: last && last.sequence < through ? last.sequence : null,
+    };
+  }
+
   listConversationEvents(ownerUserId: string, runIds: string[]) {
     return this.events.listConversationEvents(ownerUserId, runIds);
   }

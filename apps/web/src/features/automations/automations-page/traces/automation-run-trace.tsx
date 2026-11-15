@@ -20,7 +20,7 @@ import { DetailFields } from '@/shared/ui/detail-fields'
 import { StateView } from '@/shared/ui/state-view'
 import type { AutomationRun, AutomationStepResult } from '@/shared/contracts/automation'
 
-const triggerLabels = { manual: 'Manual', schedule: 'Scheduled', webhook: 'Webhook', event: 'Event' } as const
+const triggerLabels = { manual: 'Manual', schedule: 'Scheduled' } as const
 const ocrStepCommands = new Set(['vision.observe', 'vision.locate', 'ai.run'])
 
 const stepResultBadge = ({ status, output }: AutomationStepResult) => {
@@ -192,7 +192,7 @@ export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; 
               label: 'Profile',
               value: run.targetProfileMode === 'temporary' ? 'Temporary' : (run.targetProfileName ?? 'Default')
             },
-            { label: 'Trigger', value: triggerLabels[run.trigger] },
+            { label: 'Trigger', value: triggerLabels[run.trigger] ?? run.trigger },
             {
               label: 'Created',
               value: (

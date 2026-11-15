@@ -37,7 +37,7 @@ test('app run history survives reload and opens summary and events beside the sa
         ok: true,
         requestId: 'test',
         data: {
-          streamUrl: 'ws://127.0.0.1/unused',
+          nextAfter: null,
           events: [
             {
               id: 'event-1',

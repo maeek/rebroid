@@ -147,7 +147,7 @@ test('workflow rows keep the latest run and failure action on one line', async (
 
 test('failed execution has a full-page trace with a summary panel, steps, and events', async ({ page }) => {
   await page.route('**/api/bff/automations/runs/**/events*', route =>
-    route.fulfill({ json: { ok: true, requestId: 'preview', data: { events: [], streamUrl: '' } } })
+    route.fulfill({ json: { ok: true, requestId: 'preview', data: { events: [], nextAfter: null } } })
   )
   await page.goto('/skeleton-contract-test?editor=failed-run')
   await expect(page.getByRole('heading', { level: 1, name: /Daily inventory check/ })).toBeVisible()

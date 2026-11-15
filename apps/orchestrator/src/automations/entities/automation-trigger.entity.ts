@@ -8,8 +8,6 @@ import {
 
 export enum AutomationTriggerType {
   Schedule = 'schedule',
-  Webhook = 'webhook',
-  Event = 'event',
 }
 
 export enum AutomationStartPolicy {

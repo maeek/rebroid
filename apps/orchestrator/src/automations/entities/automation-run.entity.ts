@@ -18,8 +18,6 @@ export enum AutomationRunStatus {
 export enum AutomationRunTrigger {
   Manual = 'manual',
   Schedule = 'schedule',
-  Webhook = 'webhook',
-  Event = 'event',
 }
 
 @Entity({ name: 'automation_runs' })

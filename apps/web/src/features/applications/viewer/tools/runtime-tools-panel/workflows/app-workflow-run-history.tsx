@@ -84,7 +84,7 @@ const runColumns = (
     header: 'Trigger',
     size: 94,
     meta: { compactSlot: 'details', label: 'Trigger', skeleton: { kind: 'text', width: 'w-16' } },
-    cell: ({ row }) => workflowRunTriggerLabels[row.original.trigger]
+    cell: ({ row }) => workflowRunTriggerLabels[row.original.trigger] ?? row.original.trigger
   },
   {
     id: 'duration',

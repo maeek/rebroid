@@ -1,12 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  In,
-  MoreThan,
-  Repository,
-  type EntityManager,
-} from 'typeorm';
+import { DataSource, In, Repository, type EntityManager } from 'typeorm';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import type {
   AutomationRunEventInput,
@@ -178,18 +172,12 @@ export class AutomationRunEventsRepository {
   }
 
   listForRun(ownerUserId: string, runId: string, after = 0) {
-    return this.queue.run(async () => {
-      const rows = await this.events.find({
-        where: {
-          ownerUserId,
-          runId,
-          sequence: MoreThan(Math.max(0, Math.trunc(after))),
-        },
-        order: { sequence: 'ASC' },
-        take: eventPageSize,
-      });
-      return rows.map(toRecord);
-    });
+    return this.listReplayPage(
+      ownerUserId,
+      runId,
+      after,
+      Number.MAX_SAFE_INTEGER,
+    );
   }
 
   listReplayPage(
@@ -219,7 +207,7 @@ export class AutomationRunEventsRepository {
           {
             ownerUserId,
             runId,
-            after,
+            after: Number.isFinite(after) ? Math.max(0, Math.trunc(after)) : 0,
             through,
             pageSize: eventPageSize,
             pageBytes: replayPageBytes,

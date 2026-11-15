@@ -1,15 +1,12 @@
-import { getBff } from '@/lib/http/bff'
+import { getBff, sendBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
-import type { AutomationRunEvent } from '@/shared/contracts/automation'
+import type { AutomationRunEvent, AutomationRunEventPage } from '@/shared/contracts/automation'
 
-interface RunEventPage {
-  events: AutomationRunEvent[]
-  hasMore: boolean
-  streamUrl: string
-}
+const runEventsUrl = (runId: string, after: number) =>
+  `/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${after}`
 
 const readRunEventPage = (runId: string, after: number, signal?: AbortSignal) =>
-  getBff<RunEventPage>(`/api/bff/automations/runs/${encodeURIComponent(runId)}/events?after=${after}`, signal)
+  getBff<AutomationRunEventPage>(runEventsUrl(runId, after), signal)
 
 const isTerminalEvent = ({ type }: AutomationRunEvent) =>
   type === 'run.completed' || type === 'run.failed' || type === 'run.canceled'
@@ -36,9 +33,13 @@ export const replayTerminalRunEvents = async ({
       if (!page) break
       onEvents(page.events)
       if (page.events.some(isTerminalEvent)) return
-      const next = page.events.at(-1)?.sequence ?? cursor
-      hasMore = page.hasMore && next > cursor
-      cursor = next
+      const next = page.nextAfter
+      if (next !== null && next > cursor) {
+        cursor = next
+      } else {
+        hasMore = false
+        cursor = page.events.at(-1)?.sequence ?? cursor
+      }
     }
   }
 }
@@ -110,19 +111,21 @@ export const subscribeToRunEvents = ({
   const connect = async () => {
     if (!current()) return
     try {
-      let page
-      let previous
+      let pageAfter = cursor
       do {
-        previous = cursor
-        page = await readRunEventPage(runId, cursor, controller.signal)
+        const page = await readRunEventPage(runId, pageAfter, controller.signal)
         if (!current()) return
         accept(page.events)
-      } while (!live() && page.hasMore && cursor > previous)
+        if (live() || page.nextAfter === null || page.nextAfter <= pageAfter) break
+        pageAfter = page.nextAfter
+      } while (current())
       if (!current()) return
       onReady?.()
       if (!live()) return
 
-      const connection = new WebSocket(page.streamUrl)
+      const { streamUrl } = await sendBff<{ streamUrl: string }>(runEventsUrl(runId, cursor), {})
+      if (!current() || !live()) return
+      const connection = new WebSocket(streamUrl)
       socket = connection
       connection.onmessage = message => {
         if (!current() || socket !== connection) return
