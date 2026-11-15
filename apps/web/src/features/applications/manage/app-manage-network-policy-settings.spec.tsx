@@ -144,7 +144,10 @@ describe('App network policy settings', () => {
     )
     expect(screen.getByRole('heading', { name: 'Firewall enforcement' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Network access' })).toBeVisible()
-    expect(screen.queryByText('Allow managed destinations and any IPv4 destinations you add.')).toBeNull()
+    expect(screen.getByText('Allow managed destinations and any IPv4 destinations you add.')).toHaveAttribute(
+      'aria-hidden',
+      'true'
+    )
     expect(screen.queryByText('Approved destinations only')).toBeNull()
     expect(screen.queryByRole('combobox')).toBeNull()
   })

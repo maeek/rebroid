@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { join } from 'path'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const sourceRoot = join(__dirname, '../../..')
@@ -46,12 +47,22 @@ describe('page layout contract', () => {
 
   it('makes every form field layout explicit', () => {
     for (const file of sourceFiles) {
-      const source = readFileSync(file, 'utf8')
-      const formFieldTags = source.match(/<FormField\b[\s\S]*?>/g) ?? []
+      const source = ts.createSourceFile(file, readFileSync(file, 'utf8'), ts.ScriptTarget.Latest)
 
-      for (const tag of formFieldTags) {
-        expect(tag, file).toContain('layout=')
+      const visit = (node: ts.Node) => {
+        if (
+          (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+          node.tagName.getText(source) === 'FormField'
+        ) {
+          const hasLayout = node.attributes.properties.some(
+            attribute => ts.isJsxAttribute(attribute) && attribute.name.getText(source) === 'layout'
+          )
+          expect(hasLayout, file).toBe(true)
+        }
+        ts.forEachChild(node, visit)
       }
+
+      visit(source)
     }
   })
 })

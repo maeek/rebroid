@@ -606,20 +606,23 @@ test('reorders workflow steps with the keyboard and cancels with Escape', async 
   const marker = sequence.locator('[data-step-drop-indicator]')
   const undo = page.getByRole('button', { name: 'Undo', exact: true })
 
+  const dragDown = async () => {
+    await page.keyboard.press('Space')
+    await expect(handle).toHaveAttribute('aria-pressed', 'true')
+    // The keyboard sensor registers its document listener after starting the drag.
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowDown')
+    await expect(marker).toBeVisible()
+  }
+
   await handle.focus()
-  await page.keyboard.press('Space')
-  await expect(sequence.getByRole('button', { name: 'Drag step' }).first()).toHaveAttribute('aria-pressed', 'true')
-  for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowDown')
-  await expect(marker).toBeVisible()
+  await dragDown()
   await page.keyboard.press('Escape')
   await expect(marker).toHaveCount(0)
   await expect(undo).toBeDisabled()
   await expect(handle).toBeFocused()
 
-  await page.keyboard.press('Space')
-  await expect(sequence.getByRole('button', { name: 'Drag step' }).first()).toHaveAttribute('aria-pressed', 'true')
-  for (let step = 0; step < 4; step++) await page.keyboard.press('ArrowDown')
-  await expect(marker).toBeVisible()
+  await dragDown()
   await page.keyboard.press('Space')
   await expect(sequence.getByRole('button', { name: 'Edit step 2: Device control', exact: true })).toBeVisible()
 })

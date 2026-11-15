@@ -261,7 +261,12 @@ test('the app Network view keeps its editor separate and accepts pasted destinat
   await page.goto('/skeleton-contract-test?editor=app-resource-loading&view=network')
   await expect(page.getByRole('heading', { name: 'Firewall enforcement' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save network access' })).toBeDisabled()
-  await expect(page.getByLabel('Android device')).toBeVisible()
+  if (page.viewportSize()!.width < 1024) {
+    await expect(page.getByRole('button', { name: 'Device', exact: true })).toBeDisabled()
+    await expect(page.getByLabel('Android device')).toBeAttached()
+  } else {
+    await expect(page.getByRole('complementary', { name: 'Android device' })).toBeVisible()
+  }
 
   await page.goto('/skeleton-contract-test?editor=app-resource&view=network')
   const navigation = page.getByRole('navigation', { name: 'App sections' })
@@ -667,13 +672,13 @@ test('Files opens Downloads and keeps folder navigation available on narrow and 
     await page.goto('/skeleton-contract-test?editor=app-resource&view=files')
     const path = page.getByRole('navigation', { name: 'Current folder' })
     await expect(path.locator('[aria-current]')).toHaveText('Downloads')
-    await expect(page.getByRole('button', { name: 'summary.csv' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'summary.csv', exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await page.screenshot({ path: testInfo.outputPath(`files-${width}.png`) })
     await page.getByRole('button', { name: 'Reports', exact: true }).click()
     await expect(path.locator('[aria-current]')).toHaveText('Reports')
     await expect(page.getByRole('heading', { name: 'This folder is empty' })).toBeVisible()
     await path.getByRole('button', { name: 'Downloads', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'summary.csv' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'summary.csv', exact: true })).toBeVisible()
   }
 })

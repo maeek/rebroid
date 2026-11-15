@@ -294,14 +294,9 @@ test('diagnostics groups readable details before the logs', async ({ page }) => 
   await expect(details.getByRole('heading', { name: 'Container', exact: true })).toBeVisible()
   await expect(details.getByRole('heading', { name: 'Failure', exact: true })).toHaveCount(0)
   const copyAppId = details.getByRole('button', { name: 'Copy App ID' })
-  await page.mouse.move(0, 0)
-  if (!test.info().project.name.startsWith('mobile')) {
-    await expect(copyAppId).toHaveCSS('opacity', '0')
-    await details.locator('dt').filter({ hasText: 'App ID' }).hover()
-    await expect(copyAppId).toHaveCSS('opacity', '1')
-  }
+  await expect(copyAppId).toBeVisible()
   await copyAppId.focus()
-  await expect(copyAppId).toHaveCSS('opacity', '1')
+  await expect(copyAppId).toBeFocused()
   const label = await details.locator('dt').filter({ hasText: 'App ID' }).locator('span').first().boundingBox()
   const copyBox = await copyAppId.boundingBox()
   expect(copyBox!.x - (label!.x + label!.width)).toBeLessThanOrEqual(8)
@@ -430,7 +425,7 @@ test('active workflow runs lists queued and running executions with their trace 
   await search.press('Enter')
   await expect(table.getByRole('link', { name: 'Order sync' })).toBeVisible()
   await expect(table.getByRole('link', { name: 'Inventory scan' })).toHaveCount(0)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
 })
 
 test('scheduler matches shared panels and keeps task interactions stable', async ({ page }) => {

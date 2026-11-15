@@ -23,7 +23,8 @@ const run = {
 }
 
 test('app run history survives reload and opens summary and events beside the same device', async ({ page }, info) => {
-  await page.setViewportSize({ width: info.project.name === 'mobile-chromium' ? 390 : 1440, height: 960 })
+  const narrow = info.project.name === 'mobile-chromium'
+  await page.setViewportSize({ width: narrow ? 390 : 1440, height: 960 })
   const appUrl = '/skeleton-contract-test?editor=app-resource&view=workflows'
   const history = '**/api/bff/applications/preview-app/workflow-runs'
   await page.route(`${history}?*`, route =>
@@ -54,8 +55,16 @@ test('app run history survives reload and opens summary and events beside the sa
   )
 
   await page.goto(appUrl)
-  const device = page.getByRole('complementary', { name: 'Android device' })
-  await expect(device).toBeVisible()
+  const device = page.getByLabel('Android device')
+  const expectDevicePane = async () => {
+    if (narrow) {
+      await expect(device).toBeHidden()
+      await expect(page.getByRole('button', { name: 'Device', exact: true })).toBeEnabled()
+    } else {
+      await expect(device).toBeVisible()
+    }
+  }
+  await expectDevicePane()
   await device.evaluate(element => element.setAttribute('data-workflow-test-mounted', 'true'))
   const link = page.getByRole('link', { name: 'Check inventory', exact: true })
   const search = page.getByPlaceholder('Search workflows or run IDs')
@@ -73,7 +82,7 @@ test('app run history survives reload and opens summary and events beside the sa
     `/automations/workflow-1/traces?run=${id}`
   )
   await expect(device).toHaveAttribute('data-workflow-test-mounted', 'true')
-  await expect(device).toBeVisible()
+  await expectDevicePane()
   await page.getByRole('button', { name: 'Run history', exact: true }).click()
   await expect(link).toBeFocused()
   await expect(search).toHaveValue('inventory')
@@ -89,7 +98,7 @@ test('app run history survives reload and opens summary and events beside the sa
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     page.viewportSize()!.width
   )
-  await expect(device).toBeVisible()
+  await expectDevicePane()
   await page.getByRole('button', { name: 'Run history', exact: true }).click()
   await expect(link).toBeVisible()
   await page.reload()
@@ -101,14 +110,22 @@ test('app run history survives reload and opens summary and events beside the sa
 
 test('workflow loading keeps the device and the requested run view', async ({ page }) => {
   const url = '/skeleton-contract-test?editor=app-resource-loading&view=workflows'
+  const device = page.getByLabel('Android device')
+  const expectDevicePane = async () => {
+    if (page.viewportSize()!.width < 1024) {
+      await expect(device).toBeAttached()
+      await expect(page.getByRole('button', { name: 'Device', exact: true })).toBeDisabled()
+    } else {
+      await expect(device).toBeVisible()
+    }
+  }
   await page.goto(url)
-  const device = page.getByRole('complementary', { name: 'Android device' })
-  await expect(device).toBeVisible()
+  await expectDevicePane()
   await expect(page.getByRole('heading', { name: 'Run history', exact: true })).toBeVisible()
   await expect(page.getByRole('columnheader').filter({ hasText: 'Workflow' })).toBeVisible()
 
   await page.goto(`${url}&run=${id}`)
-  await expect(device).toBeVisible()
+  await expectDevicePane()
   await expect(page.getByRole('heading', { name: 'Run details', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Run history', exact: true })).toBeDisabled()
 })

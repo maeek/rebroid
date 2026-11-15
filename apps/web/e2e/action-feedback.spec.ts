@@ -65,14 +65,13 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   })
 }
 
-test('app header keeps its Start split button compact', async ({ page }) => {
+test('app header keeps Start and runtime actions compact', async ({ page }) => {
   await page.goto('/skeleton-contract-test?editor=action-feedback')
   const reference = await page.getByTestId('button-sizing-md').getByRole('button').first().boundingBox()
   await page.goto('/skeleton-contract-test?editor=app-resource')
   const start = page.getByRole('button', { name: 'Start', exact: true })
   const primary = await start.boundingBox()
-  // The joined primary button omits its right border.
-  expect(primary!.width).toBe(reference!.width - 1)
+  expect(primary!.width).toBe(reference!.width)
   expect(primary!.height).toBe(reference!.height)
   await expect(page.getByRole('button', { name: 'Runtime actions', exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)

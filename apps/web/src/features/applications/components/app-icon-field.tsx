@@ -79,6 +79,7 @@ export const AppIconField = ({
         <EditorFormContext.Provider value={false}>
           <FormField
             label='Use icon from APK'
+            layout='horizontal'
             className='relative min-h-11 px-2'
           >
             <Switch

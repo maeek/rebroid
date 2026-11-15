@@ -67,7 +67,7 @@ for (const width of [390, 768, 1440, 2048]) {
         })
         await dialog.getByRole('button', { name: 'Add model', exact: true }).click()
         await expect(page.getByRole('dialog')).toHaveCount(0)
-        await expect(page.getByRole('button', { name: 'Another model', exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Another model (unsaved change)', exact: true })).toBeVisible()
         await page.getByRole('button', { name: 'Device controller', exact: true }).click()
         await expect(page.getByRole('dialog').getByRole('checkbox', { name: /^Device control/ })).toBeDisabled()
         await page.getByRole('dialog').getByRole('button', { name: 'Advanced generation settings' }).click()
@@ -83,7 +83,9 @@ for (const width of [390, 768, 1440, 2048]) {
         await expect(temperature).toHaveValue('0.7')
         await expect(done).toBeInViewport({ ratio: 1 })
         await done.click()
-        await expect(page.getByRole('button', { name: 'Device controller', exact: true })).toBeFocused()
+        await expect(
+          page.getByRole('button', { name: 'Device controller (unsaved change)', exact: true })
+        ).toBeFocused()
       }
       if (view === 'connection') {
         const field = page

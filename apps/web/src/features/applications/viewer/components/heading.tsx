@@ -41,7 +41,7 @@ export const AppViewerHeading = ({
         ) : null}
         <div className='flex min-w-0 flex-1 flex-col items-start gap-1'>
           <h1
-            className='max-w-full truncate text-xl/6 font-semibold'
+            className='max-w-full truncate text-xl/6 font-medium'
             title={loading ? undefined : app?.name}
           >
             {loading ? (

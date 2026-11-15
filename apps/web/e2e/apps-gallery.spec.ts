@@ -383,6 +383,7 @@ test('overview recent shortcuts preserve visit order and handle empty or unavail
   expect(overviewTile.height).toBe(galleryTile.height)
   await expect(shortcuts.nth(1)).toContainText('Operations')
   await expect(shortcuts.nth(1)).toContainText('Administrator view')
+  await shortcuts.nth(1).hover()
   await recent.getByRole('button', { name: 'Actions for Inventory worker · Operations' }).click()
   const menu = page.getByRole('menu', { name: 'Actions for Inventory worker · Operations' })
   await expect(menu.getByRole('menuitem', { name: 'Copy to my apps' })).toBeVisible()

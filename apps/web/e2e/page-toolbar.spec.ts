@@ -226,11 +226,14 @@ test('the trail expands with the available toolbar space and preserves the curre
   await search.focus()
   await expect(earlier).toBeVisible()
   expect(await current.evaluate(fits)).toBe(true)
-  const [currentBounds, toolbarBounds] = await Promise.all([
-    current.boundingBox(),
-    page.locator('[data-slot="data-grid-toolbar"]').boundingBox()
-  ])
-  expect(currentBounds!.x + currentBounds!.width).toBeLessThan(toolbarBounds!.x)
+  await expect
+    .poll(() =>
+      current.evaluate(node => {
+        const toolbar = document.querySelector('[data-slot="data-grid-toolbar"]')!
+        return node.getBoundingClientRect().right - toolbar.getBoundingClientRect().left
+      })
+    )
+    .toBeLessThan(0)
   await search.blur()
   await expect(workflows).toBeVisible()
 })
@@ -260,11 +263,12 @@ test('breadcrumbs end at the resource on tabbed pages', async ({ page }) => {
       await expect(switcher.locator('[aria-current="page"]')).toHaveText(activeTab)
       const parentLink = breadcrumb.getByRole('link', { name: parent, exact: true })
       const overflow = breadcrumb.getByRole('button', { name: 'Earlier pages' })
-      await expect(parentLink.or(overflow)).toBeVisible()
-      if (await overflow.isVisible()) {
-        await overflow.click()
-        await expect(page.getByRole('menuitem', { name: parent, exact: true })).toBeVisible()
-      }
+      await expect(async () => {
+        if (await parentLink.isVisible()) return
+        const menuItem = page.getByRole('menuitem', { name: parent, exact: true })
+        if (!(await menuItem.isVisible())) await overflow.click({ timeout: 1_000 })
+        await expect(menuItem).toBeVisible({ timeout: 1_000 })
+      }).toPass({ timeout: 5_000 })
     }
   }
 })

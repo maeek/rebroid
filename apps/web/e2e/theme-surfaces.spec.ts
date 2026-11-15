@@ -38,41 +38,46 @@ test('workflow controls share neutral surfaces across themes and accents', async
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('/skeleton-contract-test?editor=workflow')
   await page.addStyleTag({ content: '* { transition: none !important; animation: none !important; }' })
-  const name = page.getByRole('textbox', { name: /^Name/ })
-  await expect(name).toBeVisible()
+  const accents = ['blue', 'cyan', 'green', 'purple', 'pink', 'red', 'amber']
+  const setPalette = (theme: string, accent: string) =>
+    page.evaluate(
+      ({ theme: mode, accent: color }) => {
+        document.documentElement.classList.remove('light', 'dark', 'oled')
+        document.documentElement.classList.add(mode)
+        document.documentElement.dataset.accent = color
+        document.documentElement.style.colorScheme = mode === 'light' ? 'light' : 'dark'
+      },
+      { theme, accent }
+    )
+  const details = page.getByRole('dialog', { name: 'Workflow details' })
   for (const theme of ['light', 'dark', 'oled']) {
-    let neutralSurfaces: unknown
+    await page.getByRole('button', { name: 'More workflow actions' }).click()
+    await page.getByRole('menuitem', { name: 'Workflow details' }).click()
+    const name = details.getByRole('textbox', { name: /^Name/ })
+    await expect(name).toBeFocused()
+    let neutralSurfaces: { canvas: string; panel: string; input: string; textarea: string } | undefined
     const selections = new Set<string>()
-    for (const accent of ['blue', 'cyan', 'green', 'purple', 'pink', 'red', 'amber']) {
-      await page.evaluate(
-        ({ theme: mode, accent: color }) => {
-          document.documentElement.classList.remove('light', 'dark', 'oled')
-          document.documentElement.classList.add(mode)
-          document.documentElement.dataset.accent = color
-          document.documentElement.style.colorScheme = mode === 'light' ? 'light' : 'dark'
-        },
-        { theme, accent }
-      )
-      const colors = await page.evaluate(() => {
+    for (const accent of accents) {
+      await setPalette(theme, accent)
+      const colors = await name.evaluate(input => {
         const background = (node: Element | null) => {
           if (!node) throw new Error('Missing theme preview element')
           return getComputedStyle(node).backgroundColor
         }
-        const panel = document.querySelector('#automation-name')?.closest('section')
+        const panel = input.closest('[role="dialog"]')
         return {
           canvas: background(document.body),
-          panel: background(panel ?? null),
-          input: background(document.querySelector('#automation-name')),
-          textarea: background(document.querySelector('textarea')),
-          catalog: background(document.querySelector('input[role="combobox"]')),
-          selected: background(document.querySelector('[data-automation-step-item="true"] > .group'))
+          panel: background(panel),
+          input: background(input),
+          textarea: background(panel?.querySelector('#automation-description') ?? null),
+          selected: background(
+            document.querySelector('[data-step-select][aria-pressed="true"]')?.closest('[data-reorder-id]') ?? null
+          )
         }
       })
       const { selected, ...neutrals } = colors
       selections.add(selected)
       expect(colors.input).toBe(colors.textarea)
-      expect(colors.catalog).toBe(colors.input)
-      expect(colors.panel).not.toBe(colors.canvas)
       expect(colors.panel).not.toBe(colors.input)
       expect(colors.panel).not.toBe('rgba(0, 0, 0, 0)')
       if (neutralSurfaces) expect(neutrals).toEqual(neutralSurfaces)
@@ -86,7 +91,15 @@ test('workflow controls share neutral surfaces across themes and accents', async
       }
     }
     expect(selections.size).toBe(7)
-    await name.focus()
-    await expect(name).toBeFocused()
+    await details.getByRole('button', { name: 'Done', exact: true }).click()
+    await page.getByRole('button', { name: 'Add step', exact: true }).click()
+    const catalog = page.getByRole('dialog', { name: 'Add step' })
+    const search = catalog.getByRole('combobox', { name: 'Search steps' })
+    for (const accent of accents) {
+      await setPalette(theme, accent)
+      await expect(search).toHaveCSS('background-color', neutralSurfaces!.input)
+    }
+    await search.press('Escape')
+    await expect(catalog).toHaveCount(0)
   }
 })

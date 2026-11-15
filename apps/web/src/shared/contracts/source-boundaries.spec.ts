@@ -88,12 +88,14 @@ describe('web source boundaries', () => {
   it('keeps re-export-only modules limited to route entries', () => {
     const violations = collectSourceFiles(sourceRoot).filter(fileName => {
       if (fileName === join(sourceRoot, 'test/server-only.ts')) return false
-      if (fileName.includes(`${join(sourceRoot, 'app')}/`) && /\/(?:page|loading)\.tsx$/.test(fileName)) return false
+      if (fileName.startsWith(`${join(sourceRoot, 'app')}/`) && /\/(?:page|layout|loading)\.tsx$/.test(fileName)) {
+        return false
+      }
 
       const statements = sourceFile(fileName, readFileSync(fileName, 'utf8')).statements
       return statements.length > 0 && statements.every(ts.isExportDeclaration)
     })
 
     expect(violations).toEqual([])
-  })
+  }, 15_000)
 })

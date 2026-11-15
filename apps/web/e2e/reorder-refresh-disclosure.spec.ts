@@ -40,7 +40,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     const crossPage = page.getByRole('button', { name: 'Move Group 5 later' })
     await crossPage.focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByText('6-7 of 7')).toBeVisible()
+    await expect(page.getByText('6–7 of 7')).toBeVisible()
     await expect(crossPage).toBeFocused()
     await expect(page.getByRole('status').filter({ hasText: 'Group 5 moved' })).toHaveText(
       'Group 5 moved to position 6.'

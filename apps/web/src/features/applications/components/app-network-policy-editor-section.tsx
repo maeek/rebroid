@@ -3,7 +3,7 @@ import { FormField } from '@/components/ui/form-field'
 import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Skeleton, SkeletonMask } from '@/components/ui/skeleton'
+import { SkeletonMask } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import {
   approvedDestinationsLabel,
@@ -39,9 +39,10 @@ export const AppNetworkPolicyEditorSection = ({
 }: AppNetworkPolicyEditorSectionProps) => {
   const loading = useContext(FormLoadingContext)
   const mode = restricted ? 'approved' : 'unrestricted'
-  const modeDescription = restricted
-    ? 'Allow managed destinations and any IPv4 destinations you add.'
-    : 'Allow all outbound destinations.'
+  const modeDescription =
+    restricted || loading
+      ? 'Allow managed destinations and any IPv4 destinations you add.'
+      : 'Allow all outbound destinations.'
   const mask = (text: string) => (loading ? <SkeletonMask>{text}</SkeletonMask> : text)
 
   return (
@@ -58,16 +59,7 @@ export const AppNetworkPolicyEditorSection = ({
             modified={modified?.restricted}
             error={modeError}
             layout='vertical'
-            description={
-              loading ? (
-                <Skeleton
-                  as='span'
-                  className='inline-block h-3 w-64 max-w-full'
-                />
-              ) : (
-                modeDescription
-              )
-            }
+            description={mask(modeDescription)}
           >
             <Select
               value={loading ? undefined : mode}

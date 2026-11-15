@@ -35,7 +35,8 @@ describe('RuntimeImagePullForm', () => {
     expect(image).toHaveValue('alpine:3')
     expect(onPulled).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pull image' }))
+    await waitFor(() => expect(submit).toBeEnabled())
+    fireEvent.click(submit)
     await waitFor(() => expect(onPulled).toHaveBeenCalledTimes(1))
     expect(image).toHaveValue('')
   })

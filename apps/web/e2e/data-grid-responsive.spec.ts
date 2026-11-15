@@ -146,7 +146,7 @@ test('settings grids reflow inside a narrow pane on a desktop viewport', async (
       await expect(task.getByText('Every Sunday')).toBeVisible()
       const menu = task.getByRole('button', { name: 'Open row actions' })
       await expectAligned(name, menu)
-      expect(await menu.boundingBox()).toMatchObject({ width: 44, height: 44 })
+      await expect.poll(() => menu.boundingBox()).toMatchObject({ width: 44, height: 44 })
       await task.getByRole('button', { name: 'View failed run for Weekend image cleanup' }).click()
       await expect(page.getByRole('dialog').getByRole('heading', { name: 'Last run failed' })).toBeVisible()
       await page.keyboard.press('Escape')

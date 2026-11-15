@@ -41,3 +41,4 @@ next-env.d.ts
 mockServiceWorker.js
 certificates
 data/
+graphify-out/

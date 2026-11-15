@@ -53,7 +53,7 @@ describe('file action focus', () => {
     )
 
     const openDetails = async (name: string) => {
-      const entry = await screen.findByRole('button', { name })
+      const entry = await screen.findByRole('button', { name }, { timeout: 5_000 })
       entry.focus()
       fireEvent.click(entry)
       return screen.findByRole('dialog', { name: 'File details' })

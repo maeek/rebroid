@@ -124,13 +124,17 @@ test('overview hides unavailable cards, recovers, and retains data on subsequent
   unavailable = false
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await expect(page.getByText('12.0%')).toBeVisible()
-  await expect(page.getByText('No app failures.')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Apps needing attention' }).getByText('0', { exact: true })
+  ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
   unavailable = true
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await expect(page.getByText('Operations could not be refreshed')).toBeVisible()
   await expect(page.getByText('Capacity could not be refreshed')).toBeVisible({ timeout: 15000 })
   await expect(page.getByText('12.0%')).toBeVisible()
-  await expect(page.getByText('No app failures.')).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: 'Apps needing attention' }).getByText('0', { exact: true })
+  ).toBeVisible()
   await expect(page.getByText(/Showing the last loaded snapshot/)).toBeVisible()
 })

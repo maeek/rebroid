@@ -148,7 +148,12 @@ test('platform subpage loaders retain their own destination and chrome', async (
       await page.goto(`/skeleton-contract-test?editor=${variant}`)
       await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
       const visibleContent = variant === 'services-all-loading' && width === 390 ? 'Service' : content
-      await expect(page.getByText(visibleContent, { exact: true })).toBeVisible()
+      let marker = page.getByText(visibleContent, { exact: true })
+      if (variant === 'services-all-loading')
+        marker = page.getByRole('columnheader', { name: visibleContent, exact: true })
+      if (variant === 'display-sessions-loading')
+        marker = page.getByRole('heading', { name: visibleContent, exact: true })
+      await expect(marker).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Recently opened', exact: true })).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Capacity', exact: true })).toHaveCount(0)
       for (const theme of ['light', 'dark', 'oled']) {

@@ -10,7 +10,8 @@ test('Firewall shows the connection above network policies and saves connection 
   await search.fill('Firewall')
   const row = page.getByRole('row', { name: 'View details for Firewall agent' })
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(2)
-  await expect(row.getByRole('link', { name: 'View details' })).toHaveAttribute('href', '/security/firewall')
+  const detailsLink = page.viewportSize()!.width < 640 ? 'Firewall agent' : 'View details'
+  await expect(row.getByRole('link', { name: detailsLink, exact: true })).toHaveAttribute('href', '/security/firewall')
   await expect(page.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
 
   const firewall = { endpoint: '/run/draft-firewall.sock', timeoutMs: 6000 }

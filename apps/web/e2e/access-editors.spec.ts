@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { permissionDefinitions } from '../src/shared/permissions/permissions'
 
 for (const editor of ['user', 'group']) {
   test(`${editor} access editor keeps drafts, quotas, and bounded tables usable`, async ({ page }) => {
@@ -19,9 +20,9 @@ for (const editor of ['user', 'group']) {
       if (editor === 'user') {
         await page.getByRole('tab', { name: 'Groups', exact: true }).click()
         await expect(page.getByRole('table').getByRole('row')).toHaveCount(6)
-        await expect(page.getByText('1-5 of 12', { exact: true })).toBeVisible()
+        await expect(page.getByText('1–5 of 12', { exact: true })).toBeVisible()
         await page.getByRole('button', { name: 'Next page' }).click()
-        await expect(page.getByText('6-10 of 12', { exact: true })).toBeVisible()
+        await expect(page.getByText('6–10 of 12', { exact: true })).toBeVisible()
         await page.screenshot({
           path: `/tmp/rebroid-membership-${width}-${test.info().project.name}.png`,
           fullPage: true,
@@ -36,7 +37,10 @@ for (const editor of ['user', 'group']) {
         await expect(page.getByRole('button', { name: 'Edit membership', exact: true })).toBeFocused()
       }
       await page.getByRole('tab', { name: 'Permissions', exact: true }).click()
-      await expect(page.getByRole('table').getByRole('row')).toHaveCount(11)
+      const permissions = page.getByRole('table')
+      await expect(permissions.getByRole('row').filter({ has: page.getByRole('cell') })).toHaveCount(
+        permissionDefinitions.length
+      )
       await expect(page.getByRole('spinbutton', { name: 'Max Open Apps', exact: true })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Quotas', exact: true })).toHaveCount(0)
       if (width >= 1440) {
@@ -44,16 +48,26 @@ for (const editor of ['user', 'group']) {
         const category = await page.getByRole('combobox', { name: 'Permission category', exact: true }).boundingBox()
         expect(Math.abs(search!.y + search!.height - category!.y - category!.height)).toBeLessThan(1)
       }
-      const action = editor === 'user' ? 'Override' : 'Set'
-      const choice = page.getByRole('combobox', { name: `${action} Create applications`, exact: true })
-      await choice.click()
-      await page.getByRole('option', { name: 'Deny', exact: true }).click()
-      await expect(choice).toHaveText('Deny')
-      await expect(choice).toBeFocused()
+      const createPermission = permissions.getByRole('row', { name: /^Create applications/ })
+      const choice = createPermission.getByRole('combobox', { name: 'Set Create applications', exact: true })
+      if (editor === 'user') {
+        await expect(createPermission).toContainText('From Operations team 10')
+        await expect(createPermission.getByRole('combobox')).toHaveCount(0)
+      } else {
+        await choice.click()
+        await page.getByRole('option', { name: 'Deny', exact: true }).click()
+        await expect(choice).toHaveText('Deny')
+        await expect(choice).toBeFocused()
+      }
       await page.getByRole('tab', { name: 'Quotas', exact: true }).click()
       await expect(page.getByRole('table')).toHaveCount(0)
       const quota = page.getByRole('spinbutton', { name: 'Max Open Apps', exact: true })
-      await quota.fill('7')
+      if (editor === 'user') {
+        await expect(page.getByRole('term').filter({ hasText: 'Max Open Apps' })).toBeVisible()
+        await expect(quota).toHaveCount(0)
+      } else {
+        await quota.fill('7')
+      }
       for (const theme of ['light', 'dark', 'oled']) {
         await page.evaluate(value => {
           document.documentElement.className = value
@@ -68,9 +82,13 @@ for (const editor of ['user', 'group']) {
       await page.getByRole('tab', { name: editor === 'user' ? 'Account' : 'Details', exact: true }).click()
       await expect(page.getByRole('textbox', { name: identity, exact: false }).first()).toHaveValue('Draft name')
       await page.getByRole('tab', { name: 'Permissions', exact: true }).click()
-      await expect(choice).toHaveText('Deny')
+      if (editor === 'user') {
+        await expect(createPermission).toContainText('From Operations team 10')
+      } else {
+        await expect(choice).toHaveText('Deny')
+      }
       await page.getByRole('tab', { name: 'Quotas', exact: true }).click()
-      await expect(quota).toHaveValue('7')
+      if (editor === 'group') await expect(quota).toHaveValue('7')
     }
   })
 }
@@ -91,7 +109,7 @@ test('profile photo supports native upload, inline errors, and removal', async (
       'base64'
     )
   })
-  await expect(page.getByRole('button', { name: 'Change photo', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Remove photo', exact: true })).toBeEnabled()
   await expect(page.getByRole('status')).toHaveText('photo.png')
   const image = page.getByAltText(/profile photo$/)
   await expect(image).toBeVisible()

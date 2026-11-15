@@ -4,10 +4,11 @@ test('model picker has no blank empty-state row and dialogs separate controls fr
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=ai-models')
-    await page.getByRole('button', { name: 'Add model', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: 'Add model', exact: true })
-    const input = dialog.getByRole('combobox', { name: 'Available model', exact: true })
+    const models = page.getByRole('region', { name: 'Models', exact: true })
     for (const theme of ['light', 'dark', 'oled']) {
+      await models.getByRole('button', { name: 'Add model', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Add model', exact: true })
+      const input = dialog.getByRole('combobox', { name: 'Available model', exact: true })
       await page.evaluate(value => {
         document.documentElement.className = value
       }, theme)
@@ -37,8 +38,8 @@ test('model picker has no blank empty-state row and dialogs separate controls fr
       expect((await liveRegion.boundingBox())!.height).toBeGreaterThan(0)
       await input.fill('Another')
       await page.getByRole('option', { name: /Another model/ }).click()
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     }
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   }
 })
 
