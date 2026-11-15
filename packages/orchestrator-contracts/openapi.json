@@ -9747,14 +9747,14 @@
           "name",
           "description",
           "tags",
-          "definition",
-          "yaml",
           "lastRunAt",
           "lastRunId",
           "lastStatus",
           "lastError",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "definition",
+          "yaml"
         ]
       },
       "AutomationsGridFacetsDto": {
@@ -9784,7 +9784,7 @@
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AutomationDto"
+              "$ref": "#/components/schemas/AutomationGridRowDto"
             }
           },
           "total": {
@@ -12163,6 +12163,75 @@
         "required": [
           "events",
           "nextAfter"
+        ]
+      },
+      "AutomationGridRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
+          "lastRunAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastRunId": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastStatus": {
+            "type": "string",
+            "enum": [
+              "never_run",
+              "success",
+              "failed",
+              "running"
+            ]
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "stepCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "ownerUserId",
+          "name",
+          "description",
+          "tags",
+          "lastRunAt",
+          "lastRunId",
+          "lastStatus",
+          "lastError",
+          "createdAt",
+          "updatedAt",
+          "stepCount"
         ]
       }
     }

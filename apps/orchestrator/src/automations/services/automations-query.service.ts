@@ -1,4 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type {
+  AutomationDefinition,
+  AutomationDefinitionStep,
+} from '@rebroid/automation-core/definition';
 import {
   AutomationsGridPageDto,
   ListAutomationsGridQueryDto,
@@ -56,15 +60,25 @@ export class AutomationsQueryService {
       targetApplicationIdsByAutomation.set(trigger.automationId, appIds);
     }
 
-    const automationDtos = automations.map((automation) =>
-      this.mapper.automation(automation, latestRuns.get(automation.id)),
-    );
+    const rows = automations.map((automation) => {
+      const definition = JSON.parse(
+        automation.definitionJson,
+      ) as AutomationDefinition;
+      return {
+        ...this.mapper.automationSummary(
+          automation,
+          definition.metadata.tags ?? [],
+          latestRuns.get(automation.id),
+        ),
+        steps: definition.spec.steps,
+      };
+    });
     const facets = automationGridFacets(
-      automationDtos,
+      rows,
       triggers.map((trigger) => trigger.targetApplicationId),
     );
     const filtered = filterAutomationGridItems({
-      automations: automationDtos,
+      automations: rows,
       lastRun: query.lastRun ?? 'all',
       query,
       targetApplicationIdsByAutomation,
@@ -73,7 +87,12 @@ export class AutomationsQueryService {
     const sorted = sortAutomationGridItems(filtered, query.sort);
     const offset = (page - 1) * pageSize;
     return {
-      items: sorted.slice(offset, offset + pageSize),
+      items: sorted
+        .slice(offset, offset + pageSize)
+        .map(({ steps, ...summary }) => ({
+          ...summary,
+          stepCount: countAutomationSteps(steps),
+        })),
       total: sorted.length,
       page,
       pageSize,
@@ -97,3 +116,27 @@ export class AutomationsQueryService {
     return automation;
   }
 }
+
+const countAutomationSteps = (steps: AutomationDefinitionStep[]): number =>
+  steps.reduce((count, step) => {
+    if ('uses' in step) return count + 1;
+    if (step.type === 'condition')
+      return (
+        count +
+        1 +
+        countAutomationSteps(step.then) +
+        countAutomationSteps(step.else ?? [])
+      );
+    if (step.type === 'switch') {
+      return (
+        count +
+        1 +
+        step.cases.reduce(
+          (sum, item) => sum + countAutomationSteps(item.steps),
+          0,
+        ) +
+        countAutomationSteps(step.default ?? [])
+      );
+    }
+    return count + 1 + countAutomationSteps(step.steps);
+  }, 0);

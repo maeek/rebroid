@@ -1,5 +1,5 @@
 import type {
-  AutomationDto,
+  AutomationSummaryDto,
   ListAutomationsGridQueryDto,
 } from '../dto/automation.dto';
 import type {
@@ -11,7 +11,7 @@ export const tagNames = (value: { tags: { name: string }[] }) =>
   value.tags.map((tag) => tag.name);
 
 export const automationGridFacets = (
-  automations: AutomationDto[],
+  automations: AutomationSummaryDto[],
   targetApplicationIds: string[],
 ) => ({
   tags: [
@@ -34,7 +34,7 @@ export const automationTriggerGridFacets = (
 });
 
 export const matchesAutomationLastRun = (
-  automation: AutomationDto,
+  automation: AutomationSummaryDto,
   filter: ListAutomationsGridQueryDto['lastRun'],
 ) => matchesLastRun(automation.lastRunAt, filter);
 
@@ -43,13 +43,13 @@ export const matchesAutomationTriggerLastRun = (
   filter: ListAutomationTriggersGridQueryDto['lastRun'],
 ) => matchesLastRun(trigger.lastRunAt, filter);
 
-export const filterAutomationGridItems = ({
+export const filterAutomationGridItems = <T extends AutomationSummaryDto>({
   automations,
   lastRun,
   query,
   targetApplicationIdsByAutomation,
 }: {
-  automations: AutomationDto[];
+  automations: T[];
   lastRun: ListAutomationsGridQueryDto['lastRun'];
   query: ListAutomationsGridQueryDto;
   targetApplicationIdsByAutomation: Map<string, Set<string>>;
@@ -120,8 +120,8 @@ export const filterAutomationTriggerGridItems = ({
   });
 };
 
-export const sortAutomationGridItems = (
-  items: AutomationDto[],
+export const sortAutomationGridItems = <T extends AutomationSummaryDto>(
+  items: T[],
   sort?: string,
 ) =>
   sortGridItems(items, sort, automationGridSortFields, (left, right, id) => {

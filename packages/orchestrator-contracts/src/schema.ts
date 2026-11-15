@@ -3163,7 +3163,7 @@ export interface components {
             targetApplicationIds: string[];
         };
         AutomationsGridPageDto: {
-            items: components["schemas"]["AutomationDto"][];
+            items: components["schemas"]["AutomationGridRowDto"][];
             total: number;
             page: number;
             pageSize: number;
@@ -3821,6 +3821,21 @@ export interface components {
         AutomationRunEventPageDto: {
             events: components["schemas"]["AutomationRunEventDto"][];
             nextAfter: number | null;
+        };
+        AutomationGridRowDto: {
+            id: string;
+            ownerUserId: string;
+            name: string;
+            description: string | null;
+            tags: components["schemas"]["AutomationTagDto"][];
+            lastRunAt: string | null;
+            lastRunId: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed" | "running";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+            stepCount: number;
         };
     };
     responses: never;

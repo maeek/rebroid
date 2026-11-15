@@ -21,7 +21,6 @@ import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-ru
 import {
   automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
-  countAutomationSteps,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
   selectedAutomationsFromIds,
@@ -30,7 +29,7 @@ import {
 import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
-  Automation,
+  AutomationGridRow,
   AutomationsGridPage,
   AutomationsGridQuery,
   AutomationTrigger
@@ -53,8 +52,7 @@ const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => {
   )
 }
 
-const workflowStepLabel = (workflow: Automation) => {
-  const count = countAutomationSteps(workflow.definition.spec.steps)
+const workflowStepLabel = (count: number) => {
   return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
@@ -74,7 +72,7 @@ export function AutomationsTable({
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
   const [search, setSearch] = useState(gridQuery.q ?? '')
-  const [pendingDelete, setPendingDelete] = useState<Automation | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<AutomationGridRow | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
@@ -95,7 +93,7 @@ export function AutomationsTable({
     router.push(buildAutomationsGridHref({ gridQuery, pageSize: automationsPage.pageSize, patch }))
   }
 
-  const deleteMany = async (items: Automation[]) => {
+  const deleteMany = async (items: AutomationGridRow[]) => {
     setBusy(true)
     const results = await Promise.allSettled(items.map(item => deleteAutomationAction(item.id)))
     const deletedIds = deletedAutomationIdsFromResults(items, results)
@@ -107,7 +105,7 @@ export function AutomationsTable({
     toast(summarizeAutomationDeleteResults(items, deletedIds, results))
   }
 
-  const columns = useMemo<ColumnDef<Automation>[]>(
+  const columns = useMemo<ColumnDef<AutomationGridRow>[]>(
     () => [
       {
         id: 'name',
@@ -179,7 +177,9 @@ export function AutomationsTable({
         meta: { label: 'Steps', compactSlot: 'details', skeleton: { kind: 'text', width: 'w-20' } },
         cell: ({ row }) => (
           <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-            <span className='text-sm tabular-nums text-foreground-muted'>{workflowStepLabel(row.original)}</span>
+            <span className='text-sm tabular-nums text-foreground-muted'>
+              {workflowStepLabel(row.original.stepCount)}
+            </span>
             <div className={styles.settingsOnly}>
               <WorkflowRunDetailsLink
                 status={row.original.lastStatus}

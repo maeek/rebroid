@@ -179,7 +179,7 @@ export class ListAutomationsGridQueryDto {
   sort?: string;
 }
 
-export class AutomationDto {
+export class AutomationSummaryDto {
   @ApiProperty()
   id!: string;
 
@@ -194,12 +194,6 @@ export class AutomationDto {
 
   @ApiProperty({ type: AutomationTagDto, isArray: true })
   tags!: AutomationTagDto[];
-
-  @ApiProperty({ type: AutomationDefinitionDto })
-  definition!: AutomationDefinitionDto;
-
-  @ApiProperty()
-  yaml!: string;
 
   @ApiProperty({ type: String, nullable: true })
   lastRunAt!: string | null;
@@ -220,6 +214,19 @@ export class AutomationDto {
   updatedAt!: string;
 }
 
+export class AutomationDto extends AutomationSummaryDto {
+  @ApiProperty({ type: AutomationDefinitionDto })
+  definition!: AutomationDefinitionDto;
+
+  @ApiProperty()
+  yaml!: string;
+}
+
+class AutomationGridRowDto extends AutomationSummaryDto {
+  @ApiProperty({ type: 'integer', minimum: 0 })
+  stepCount!: number;
+}
+
 export class AutomationsGridFacetsDto {
   @ApiProperty({ type: String, isArray: true })
   tags!: string[];
@@ -229,8 +236,8 @@ export class AutomationsGridFacetsDto {
 }
 
 export class AutomationsGridPageDto {
-  @ApiProperty({ type: AutomationDto, isArray: true })
-  items!: AutomationDto[];
+  @ApiProperty({ type: AutomationGridRowDto, isArray: true })
+  items!: AutomationGridRowDto[];
 
   @ApiProperty()
   total!: number;

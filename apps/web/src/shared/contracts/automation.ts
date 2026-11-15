@@ -1,5 +1,6 @@
 import type { AutomationCommandEditorMetadata } from '@rebroid/automation-core/command-registry'
 import type { AutomationCommandOutput, AutomationDefinition, AutomationTag } from '@rebroid/automation-core/definition'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 export type AutomationLastStatus = 'never_run' | 'success' | 'failed' | 'running'
 export type AutomationRunStatus = 'queued' | 'running' | 'success' | 'failed' | 'canceled'
@@ -23,6 +24,9 @@ export interface Automation {
   updatedAt: string
 }
 
+export type AutomationGridRow = OrchestratorApiSchemas['AutomationGridRowDto']
+export type AutomationsGridPage = OrchestratorApiSchemas['AutomationsGridPageDto']
+
 export type AutomationsGridLastRunFilter = 'all' | 'never' | '7d' | '30d' | '90d'
 
 export interface AutomationsGridQuery {
@@ -34,17 +38,6 @@ export interface AutomationsGridQuery {
   status?: AutomationLastStatus
   lastRun?: AutomationsGridLastRunFilter
   sort?: string
-}
-
-export interface AutomationsGridPage {
-  items: Automation[]
-  total: number
-  page: number
-  pageSize: number
-  facets: {
-    tags: string[]
-    targetApplicationIds: string[]
-  }
 }
 
 export interface AutomationTriggersGridQuery {
