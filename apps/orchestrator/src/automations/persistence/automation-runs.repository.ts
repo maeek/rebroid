@@ -244,16 +244,6 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
     return this.runs.existsBy({ ownerUserId, id });
   }
 
-  findActiveByTarget(targetApplicationId: string) {
-    return this.runs.findOne({
-      where: [
-        { targetApplicationId, status: AutomationRunStatus.Queued },
-        { targetApplicationId, status: AutomationRunStatus.Running },
-      ],
-      order: { createdAt: 'DESC' },
-    });
-  }
-
   async deleteByIds(ownerUserId: string, ids: string[]) {
     if (ids.length === 0) {
       return;
