@@ -7,7 +7,6 @@ import { AutomationCommandDefinition } from './automation-command.types';
 const androidCommandOrder = [
   'android.wait',
   'android.viewerCommand',
-  'android.expandNotifications',
   'android.expandQuickSettings',
   'android.collapsePanels',
   'android.rotateDisplay',

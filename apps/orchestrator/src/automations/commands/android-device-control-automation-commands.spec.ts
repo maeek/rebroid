@@ -2,7 +2,6 @@ import { createAndroidDeviceControlAutomationCommands } from './android-device-c
 
 describe('android device control automation commands', () => {
   it.each([
-    ['android.expandNotifications', 'expand-notifications'],
     ['android.expandQuickSettings', 'expand-settings'],
     ['android.collapsePanels', 'collapse-panels'],
   ])('wraps %s as a viewer control command', async (uses, viewerCommand) => {

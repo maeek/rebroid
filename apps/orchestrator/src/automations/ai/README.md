@@ -52,7 +52,9 @@ configured controller; otherwise provider selection uses the configured role def
 
 `maxActions` bounds action attempts and defaults to 20. The timeout
 bounds the task deadline across provider requests, device commands, and observation. The final
-allowed action leaves one terminal verification turn. Controller turns have their own limit.
+allowed action leaves one terminal verification turn. Three consecutive failures also end action
+admission and leave a terminal verification turn. Controller turns and planner attempts have
+their own limits.
 Exhausting the time or turn budget without verification returns a blocked result. Cancellation and provider failures are handled through the surrounding execution path.
 
 ### Decision loop
@@ -73,8 +75,10 @@ flowchart TD
 - **Controller mode** skips initial planning.
 - **Planned mode** creates an initial plan before action decisions.
 
-The controller receives one `DeviceDecision` JSON schema, or the fallback
-`submit_device_decision` tool. It does not receive the entire command registry as callable tools.
+The controller receives one schema or the fallback `submit_device_decision` tool. Chat Completions
+carries a single `DeviceDecision` in a `decision` object property. Native Ollama receives a direct
+`DeviceDecision` through its `/api/chat` endpoint. The prompt lists the allowed built-in actions,
+routed capability input shapes, current screen candidates, and remaining action attempts.
 
 | Decision             | Meaning                                                                      |
 | -------------------- | ---------------------------------------------------------------------------- |
@@ -102,7 +106,11 @@ or capability outside the run's policy cannot execute. Taps need an observed can
 normalized coordinates; compatibility normalization may repair aliases and provider envelopes,
 but must not invent a target.
 
-After a screen-changing action, the executor observes again and records the result as evidence.
+After a screen-changing action, the executor observes again, including when dispatch fails.
+If that observation fails, the run ends with a blocked result. The next controller turn receives
+bounded feedback on recent failures and can revise inputs or choose another action. The executor
+rejects a repeat of the last failed command with identical inputs when the screen has stayed the
+same.
 The finish verifier rejects unknown evidence/subgoal IDs, completed results without evidence,
 and completion that omits planned subgoals. Failed dispatch evidence alone cannot verify
 completion. Terminal results publish the citations accepted by the verifier. Results include the final text, completed/blocked

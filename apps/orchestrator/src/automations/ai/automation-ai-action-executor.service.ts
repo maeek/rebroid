@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ZodError } from 'zod';
 import type { DeviceAgentDecision } from './core/device-decision';
 import type { AutomationAiRunInput } from '../../settings/contracts/ai-provider';
 import type { AutomationCommandResult } from '../commands/automation-command.types';
@@ -18,7 +19,10 @@ import {
   type RoutedAiCapabilities,
 } from './automation-ai-capability-policy';
 import { emitAutomationAiEvent } from './automation-ai-events';
-import { sanitizeAiText } from './automation-ai-observation.utils';
+import {
+  redactAiSecrets,
+  sanitizeAiText,
+} from './automation-ai-observation.utils';
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 import { assertTargetSession } from './automation-device-target-session';
 import type { DeviceAgentRunState } from './automation-device-agent-run-state';
@@ -112,6 +116,12 @@ export class AutomationAiActionExecutor {
         dispatch.error,
         observed,
       );
+      state.recordCommandOutcome(
+        resolved.uses,
+        resolved.input,
+        !observed ||
+          beforeFingerprint === screenFingerprint(observed.observation),
+      );
       return;
     }
     await this.recordActionResult(
@@ -169,6 +179,15 @@ export class AutomationAiActionExecutor {
       );
       return null;
     }
+    if (state.repeatsFailedCommand(resolved.uses, resolved.input)) {
+      await this.recordRejectedAction(
+        context,
+        state,
+        decision,
+        `${resolved.uses} already failed with these inputs in the current screen state. Revise the inputs or choose a different action.`,
+      );
+      return null;
+    }
     return resolved;
   }
 
@@ -204,9 +223,13 @@ export class AutomationAiActionExecutor {
       {
         kind: resolved.screenMutating ? 'action' : 'typed-result',
         command: resolved.uses,
-        summary: unchanged
-          ? `${result.summary} Screen did not change.`
-          : result.summary,
+        summary: [
+          sanitizeAiText(redactAiSecrets(result.summary), 450),
+          unchanged ? 'Screen did not change.' : '',
+          failed ? commandRecoveryHint(resolved.uses, result.data) : '',
+        ]
+          .filter(Boolean)
+          .join(' '),
         ...(observed || usesCurrentVisionSnapshot(resolved.uses)
           ? { snapshotId: observation.snapshotId }
           : {}),
@@ -216,6 +239,12 @@ export class AutomationAiActionExecutor {
       },
       failed,
       observed,
+    );
+    state.recordCommandOutcome(
+      resolved.uses,
+      resolved.input,
+      failed &&
+        (!observed || beforeFingerprint === screenFingerprint(observation)),
     );
     await emitAutomationAiEvent(
       this.events,
@@ -243,10 +272,8 @@ export class AutomationAiActionExecutor {
     error: unknown,
     observed?: AutomationObservedScreen,
   ) {
-    const message = sanitizeAiText(
-      error instanceof Error ? error.message : String(error),
-      1_000,
-    );
+    context.abortSignal?.throwIfAborted();
+    const message = commandFailureMessage(error);
     const evidence = state.recordAction(
       uses,
       {
@@ -299,20 +326,48 @@ export class AutomationAiActionExecutor {
 
     context.abortSignal?.throwIfAborted();
     assertTargetSession(state.target, context.app);
+    const uses = 'android.adbShell';
+    const commandInput = { command, timeoutMs: 10_000 };
     state.beginAction();
-    const result = await context.executeCommand({
-      uses: 'android.adbShell',
-      input: { command, timeoutMs: 10_000 },
-      signal: context.abortSignal,
-      deadline: args.deadline,
-    });
+    if (state.repeatsFailedCommand(uses, commandInput)) {
+      const reason =
+        'This read-only diagnostic already failed in the current screen state. Choose a different action.';
+      state.recordRejectedDecision('request_escalation', reason);
+      await emitAutomationAiEvent(
+        this.events,
+        context,
+        'ai.guardrail.triggered',
+        reason,
+      );
+      return;
+    }
+    let result: AutomationCommandResult;
+    try {
+      result = await context.executeCommand({
+        uses,
+        input: commandInput,
+        signal: context.abortSignal,
+        deadline: args.deadline,
+      });
+    } catch (error) {
+      await this.recordActionFailure(context, state, uses, error);
+      state.recordCommandOutcome(uses, commandInput, true);
+      return;
+    }
+    context.abortSignal?.throwIfAborted();
     const outcome = result.outcome ?? 'succeeded';
     const failed = !outcomeAllowsEvidence(outcome);
+    state.recordCommandOutcome(uses, commandInput, failed);
+    const exitCode = result.data?.exitCode;
+    const commandStatus =
+      typeof exitCode === 'number' ? ` (exit code ${exitCode})` : '';
     const evidence = state.recordAction(
       `allowlisted:${decision.program}`,
       {
         kind: 'typed-result',
-        summary: result.summary,
+        summary: failed
+          ? `Read-only diagnostic failed${commandStatus}. Review the arguments or choose another route.`
+          : `Read-only diagnostic completed${commandStatus}.`,
         data: result.data,
         outcome,
       },
@@ -322,7 +377,7 @@ export class AutomationAiActionExecutor {
       this.events,
       context,
       failed ? 'ai.tool.failed' : 'ai.tool.completed',
-      result.summary,
+      evidence.summary,
       {
         uses: 'android.adbShell',
         evidenceId: evidence.id,
@@ -351,6 +406,38 @@ export class AutomationAiActionExecutor {
     );
   }
 }
+
+const commandFailureMessage = (error: unknown) => {
+  if (error instanceof ZodError) {
+    const issues = error.issues
+      .slice(0, 4)
+      .map(({ path, message }) => `${path.join('.') || 'input'}: ${message}`);
+    return sanitizeAiText(
+      redactAiSecrets(`Invalid command input. ${issues.join('; ')}`),
+      700,
+    );
+  }
+  return sanitizeAiText(
+    redactAiSecrets(error instanceof Error ? error.message : String(error)),
+    700,
+  );
+};
+
+const commandRecoveryHint = (
+  uses: string,
+  data: Record<string, unknown> | undefined,
+) => {
+  if (uses === 'android.openSystemSettings' && data?.opened === false) {
+    return 'Choose a route through the visible device controls.';
+  }
+  if (uses === 'android.launchPackage' && data?.installed === false) {
+    return 'Find an installed package using a routed discovery capability or the visible launcher.';
+  }
+  if (uses === 'android.launchPackage' && data?.launched === false) {
+    return 'Android did not launch this package. Use the visible launcher or choose another route.';
+  }
+  return '';
+};
 
 const usesCurrentVisionSnapshot = (uses: string) =>
   uses === 'vision.locate' || uses === 'vision.observe';

@@ -57,7 +57,7 @@ export const sanitizeAiDataForEvent = (value: unknown) =>
 export const providerErrorDetailFromText = (text: string) => {
   if (!text.trim()) return '';
   const detail = providerErrorTextFromBody(text);
-  return sanitizeAiText(redactSecrets(detail), PROVIDER_ERROR_MAX_CHARS);
+  return sanitizeAiText(redactAiSecrets(detail), PROVIDER_ERROR_MAX_CHARS);
 };
 
 export const isImageInputUnsupportedProviderMessage = (message: string) => {
@@ -144,7 +144,7 @@ const providerErrorTextFromBody = (text: string) => {
   return text;
 };
 
-const redactSecrets = (text: string) =>
+export const redactAiSecrets = (text: string) =>
   text
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
     .replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, 'sk-[redacted]');

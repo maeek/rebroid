@@ -2,6 +2,7 @@ import {
   deviceControllerResponseMode,
   modelSupportsStructuredOutput,
   modelSupportsTools,
+  providerProtocol,
 } from '../../common/ai-provider-request';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
@@ -11,6 +12,7 @@ import {
 import {
   buildDeviceDecisionTool,
   deviceDecisionJsonSchema,
+  nativeDeviceDecisionJsonSchema,
   parseDeviceAgentDecision,
 } from './core/device-decision';
 import type {
@@ -19,8 +21,10 @@ import type {
   AutomationAiRunInput,
 } from '../../settings/contracts/ai-provider';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { permittedActionPrompt } from './automation-ai-action-policy';
 import {
   capabilityPrompt,
+  commandAllowedForRun,
   type RoutedAiCapabilities,
 } from './automation-ai-capability-policy';
 import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
@@ -106,7 +110,13 @@ export class AutomationAiDecisionService {
     attempt: number,
     validationError: string,
   ) {
-    const messages = this.controllerMessages(args, validationError);
+    const nativeOllama =
+      providerProtocol(args.provider) === 'ollama-native-chat';
+    const messages = this.controllerMessages(
+      args,
+      validationError,
+      nativeOllama,
+    );
     const mode = deviceControllerResponseMode(args.model);
     if (!mode) {
       throw new BadRequestException(
@@ -128,13 +138,15 @@ export class AutomationAiDecisionService {
       provider: args.provider,
       model: effectiveModel,
       messages,
-      tools: structuredOutput ? [] : [buildDeviceDecisionTool()],
+      tools: structuredOutput ? [] : [buildDeviceDecisionTool(nativeOllama)],
       ...(structuredOutput
         ? {
             responseFormat: {
               type: 'json_schema' as const,
               name: 'device_decision',
-              schema: deviceDecisionJsonSchema,
+              schema: nativeOllama
+                ? nativeDeviceDecisionJsonSchema
+                : deviceDecisionJsonSchema,
             },
           }
         : {}),
@@ -161,7 +173,9 @@ export class AutomationAiDecisionService {
     const messages = buildDevicePlannerMessages({
       goal: conversationGoal(args.input),
       snapshot: boundedAiText(args.state.plannerText, 18_000),
-      failures: args.reason,
+      failures: [args.reason, args.state.recoveryFeedback()]
+        .filter(Boolean)
+        .join('\n'),
       customSystemPrompt: boundedAiText(
         args.model.settings.systemPrompt ?? '',
         2_000,
@@ -213,25 +227,37 @@ export class AutomationAiDecisionService {
   private controllerMessages(
     { input, model, state, capabilities, terminalOnly }: ControllerTurn,
     validationError: string,
+    nativeOllama: boolean,
   ) {
     const messages = buildDeviceControllerMessages({
       goal: conversationGoal(input),
-      snapshot: boundedAiText(
-        `${state.plannerText}\n${capabilityPrompt(capabilities)}\ntargetSession=${state.target.id}`,
-        20_000,
-      ),
+      decisionEnvelope: !nativeOllama,
+      snapshot: [
+        boundedAiText(state.plannerText, 18_000),
+        `targetSession=${state.target.id}; current screen evidence=snapshot:${state.observation.snapshotId}`,
+      ].join('\n'),
+      actions: [
+        permittedActionPrompt((uses) => commandAllowedForRun(input, uses)),
+        boundedAiText(capabilityPrompt(capabilities), 8_000),
+      ].join('\n'),
       plan: devicePlanText(state.subgoals),
+      feedback: [
+        terminalOnly
+          ? '- No more actions are available. Return finish or ask_user.'
+          : `- Remaining action attempts: ${input.maxActions - state.actions}.`,
+        validationError
+          ? `- Previous decision rejected: ${boundedAiText(validationError, 700)} Return a corrected decision.`
+          : '',
+        state.recoveryFeedback(),
+      ]
+        .filter(Boolean)
+        .join('\n'),
       trajectory: boundedAiText(
         [
-          terminalOnly
-            ? '- The action budget is exhausted. Return finish or ask_user.'
-            : '',
-          validationError
-            ? `- Previous decision rejected: ${validationError}. Return a corrected decision.`
-            : '',
           ...state.controllerEvidence(),
           ...state.trajectory
             .slice(-8)
+            .filter((entry) => !entry.failed)
             .map(
               (entry) =>
                 `- ${entry.action}: ${entry.outcome} [evidence=${entry.evidenceId}${entry.snapshotId ? `, snapshot=${entry.snapshotId}` : ''}]`,

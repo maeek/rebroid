@@ -10,7 +10,6 @@ const fixedActionUses = [
   "android.key",
   "android.launchPackage",
   "android.openSystemSettings",
-  "android.expandNotifications",
   "android.expandQuickSettings",
   "android.viewerCommand",
   "android.wait",

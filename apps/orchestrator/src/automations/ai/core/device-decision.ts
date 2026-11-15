@@ -44,7 +44,7 @@ export type DeviceAgentAction =
   | { type: 'launch_app'; packageName: string }
   | {
       type: 'open_system_surface';
-      surface: 'settings' | 'notifications' | 'quick_settings' | 'home';
+      surface: 'settings' | 'quick_settings' | 'home';
     }
   | { type: 'wait'; durationMs: number }
   | { type: 'invoke_capability'; uses: string; input: Record<string, unknown> };
@@ -59,34 +59,58 @@ const pointSchema = {
   additionalProperties: false,
 };
 
-const actionSchema = {
-  oneOf: [
+const tapCandidateSchema = { type: 'string', minLength: 1, maxLength: 120 };
+const tapTypeSchema = { type: 'string', enum: ['tap'] };
+const tapVariants = [
+  {
+    type: 'object',
+    properties: { type: tapTypeSchema, candidateId: tapCandidateSchema },
+    required: ['type', 'candidateId'],
+    additionalProperties: false,
+  },
+  {
+    type: 'object',
+    properties: { type: tapTypeSchema, point: pointSchema },
+    required: ['type', 'point'],
+    additionalProperties: false,
+  },
+];
+
+const swipeDurationSchema = { type: 'integer', minimum: 50, maximum: 5000 };
+const actionSchema = (structured: boolean) => ({
+  anyOf: [
+    ...(structured
+      ? tapVariants
+      : [
+          {
+            type: 'object',
+            properties: {
+              type: tapTypeSchema,
+              candidateId: tapCandidateSchema,
+              point: pointSchema,
+            },
+            required: ['type'],
+            anyOf: [{ required: ['candidateId'] }, { required: ['point'] }],
+            additionalProperties: false,
+          },
+        ]),
     {
       type: 'object',
       properties: {
-        type: { const: 'tap' },
-        candidateId: { type: 'string', minLength: 1, maxLength: 120 },
-        point: pointSchema,
-      },
-      required: ['type'],
-      anyOf: [{ required: ['candidateId'] }, { required: ['point'] }],
-      additionalProperties: false,
-    },
-    {
-      type: 'object',
-      properties: {
-        type: { const: 'swipe' },
+        type: { type: 'string', enum: ['swipe'] },
         start: pointSchema,
         end: pointSchema,
-        durationMs: { type: 'integer', minimum: 50, maximum: 5000 },
+        durationMs: structured
+          ? { anyOf: [swipeDurationSchema, { type: 'null' }] }
+          : swipeDurationSchema,
       },
-      required: ['type', 'start', 'end'],
+      required: ['type', 'start', 'end', ...(structured ? ['durationMs'] : [])],
       additionalProperties: false,
     },
     {
       type: 'object',
       properties: {
-        type: { const: 'input_text' },
+        type: { type: 'string', enum: ['input_text'] },
         text: { type: 'string', maxLength: 4000 },
       },
       required: ['type', 'text'],
@@ -95,7 +119,7 @@ const actionSchema = {
     {
       type: 'object',
       properties: {
-        type: { const: 'key' },
+        type: { type: 'string', enum: ['key'] },
         key: { type: 'string', minLength: 1, maxLength: 80 },
       },
       required: ['type', 'key'],
@@ -104,7 +128,7 @@ const actionSchema = {
     {
       type: 'object',
       properties: {
-        type: { const: 'launch_app' },
+        type: { type: 'string', enum: ['launch_app'] },
         packageName: { type: 'string', minLength: 1, maxLength: 255 },
       },
       required: ['type', 'packageName'],
@@ -113,9 +137,10 @@ const actionSchema = {
     {
       type: 'object',
       properties: {
-        type: { const: 'open_system_surface' },
+        type: { type: 'string', enum: ['open_system_surface'] },
         surface: {
-          enum: ['settings', 'notifications', 'quick_settings', 'home'],
+          type: 'string',
+          enum: ['settings', 'quick_settings', 'home'],
         },
       },
       required: ['type', 'surface'],
@@ -124,7 +149,7 @@ const actionSchema = {
     {
       type: 'object',
       properties: {
-        type: { const: 'wait' },
+        type: { type: 'string', enum: ['wait'] },
         durationMs: { type: 'integer', minimum: 100, maximum: 30000 },
       },
       required: ['type', 'durationMs'],
@@ -133,41 +158,51 @@ const actionSchema = {
     {
       type: 'object',
       properties: {
-        type: { const: 'invoke_capability' },
+        type: { type: 'string', enum: ['invoke_capability'] },
         uses: { type: 'string', minLength: 1, maxLength: 120 },
-        input: { type: 'object' },
+        ...(structured
+          ? {
+              inputJson: {
+                type: 'string',
+                description:
+                  'A JSON object serialized as text using the listed capability input schema. Use "{}" for an empty object.',
+              },
+            }
+          : { input: { type: 'object' } }),
       },
-      required: ['type', 'uses', 'input'],
+      required: ['type', 'uses', structured ? 'inputJson' : 'input'],
       additionalProperties: false,
     },
   ],
-};
+});
 
-export const deviceDecisionJsonSchema: Record<string, unknown> = {
-  type: 'object',
-  oneOf: [
+const decisionVariants = (structured: boolean) => ({
+  anyOf: [
     {
+      type: 'object',
       properties: {
-        kind: { const: 'act' },
+        kind: { type: 'string', enum: ['act'] },
         snapshotId: { type: 'string', minLength: 1, maxLength: 160 },
         intent: { type: 'string', minLength: 1, maxLength: 160 },
         expectedOutcome: { type: 'string', minLength: 1, maxLength: 240 },
-        action: actionSchema,
+        action: actionSchema(structured),
       },
       required: ['kind', 'snapshotId', 'intent', 'expectedOutcome', 'action'],
       additionalProperties: false,
     },
     {
+      type: 'object',
       properties: {
-        kind: { const: 'needs_plan' },
+        kind: { type: 'string', enum: ['needs_plan'] },
         reason: { type: 'string', minLength: 1, maxLength: 500 },
       },
       required: ['kind', 'reason'],
       additionalProperties: false,
     },
     {
+      type: 'object',
       properties: {
-        kind: { const: 'ask_user' },
+        kind: { type: 'string', enum: ['ask_user'] },
         question: { type: 'string', minLength: 1, maxLength: 500 },
         reason: { type: 'string', minLength: 1, maxLength: 500 },
       },
@@ -175,8 +210,9 @@ export const deviceDecisionJsonSchema: Record<string, unknown> = {
       additionalProperties: false,
     },
     {
+      type: 'object',
       properties: {
-        kind: { const: 'request_escalation' },
+        kind: { type: 'string', enum: ['request_escalation'] },
         reason: { type: 'string', minLength: 1, maxLength: 500 },
         program: { type: 'string', minLength: 1, maxLength: 80 },
         args: {
@@ -189,9 +225,10 @@ export const deviceDecisionJsonSchema: Record<string, unknown> = {
       additionalProperties: false,
     },
     {
+      type: 'object',
       properties: {
-        kind: { const: 'finish' },
-        status: { enum: ['completed', 'blocked'] },
+        kind: { type: 'string', enum: ['finish'] },
+        status: { type: 'string', enum: ['completed', 'blocked'] },
         finalText: { type: 'string', minLength: 1, maxLength: 4000 },
         evidenceIds: {
           type: 'array',
@@ -203,7 +240,10 @@ export const deviceDecisionJsonSchema: Record<string, unknown> = {
           items: { type: 'string', minLength: 1, maxLength: 120 },
           maxItems: 6,
         },
-        reason: { type: 'string', maxLength: 1000 },
+        reason: {
+          type: structured ? ['string', 'null'] : 'string',
+          maxLength: 1000,
+        },
       },
       required: [
         'kind',
@@ -211,19 +251,38 @@ export const deviceDecisionJsonSchema: Record<string, unknown> = {
         'finalText',
         'evidenceIds',
         'completedSubgoalIds',
+        ...(structured ? ['reason'] : []),
       ],
       additionalProperties: false,
     },
   ],
+});
+
+// Strict structured output needs closed objects, so capability-specific
+// arguments travel as JSON text in that mode.
+const decisionEnvelope = (structured: boolean) => ({
+  type: 'object',
+  properties: { decision: decisionVariants(structured) },
+  required: ['decision'],
+  additionalProperties: false,
+});
+
+export const deviceDecisionJsonSchema = decisionEnvelope(true);
+
+export const nativeDeviceDecisionJsonSchema = {
+  type: 'object',
+  oneOf: decisionVariants(false).anyOf,
 };
 
-export const buildDeviceDecisionTool = () => ({
+export const buildDeviceDecisionTool = (nativeOllama = false) => ({
   type: 'function' as const,
   function: {
     name: DEVICE_DECISION_TOOL_NAME,
     description:
       'Submit exactly one grounded device action or one terminal/control decision.',
-    parameters: deviceDecisionJsonSchema,
+    parameters: nativeOllama
+      ? nativeDeviceDecisionJsonSchema
+      : decisionEnvelope(false),
   },
 });
 
@@ -481,11 +540,11 @@ const normalizeAction = (value: Record<string, unknown>): unknown => {
   if (type === 'wait') {
     return { type, durationMs: source.durationMs ?? source.duration_ms };
   }
-  return {
-    type,
-    uses: firstText(source.uses, source.tool) ?? '',
-    input: objectValue(source.input) ?? {},
-  };
+  const input =
+    source.inputJson === undefined
+      ? (objectValue(source.input) ?? {})
+      : objectValue(parseJsonLike(source.inputJson));
+  return { type, uses: firstText(source.uses, source.tool) ?? '', input };
 };
 
 const normalizedActionType = (value: unknown) => {
@@ -520,7 +579,14 @@ const invalidDecisionMessage = (value: unknown) => {
   const decision = objectValue(value);
   if (!decision) return 'Provider returned an invalid device decision shape.';
   if (decision.kind === 'act' && !isDeviceAction(decision.action)) {
-    return 'Provider returned an ungrounded action. A tap must include action.candidateId from the current observation or action.point with normalized x/y coordinates.';
+    const type = objectValue(decision.action)?.type;
+    if (type === 'tap') {
+      return 'Provider returned an ungrounded action. A tap must include action.candidateId from the current observation or action.point with normalized x/y coordinates.';
+    }
+    if (type === 'invoke_capability') {
+      return 'Capability invocation requires a listed action.uses and a JSON object that matches its input schema.';
+    }
+    return 'Provider returned an invalid action. Use a supported action.type and supply its required fields.';
   }
   if (decision.kind === 'act' && !nonEmptyString(decision.snapshotId)) {
     return 'Provider omitted the current snapshot ID from its action.';
@@ -612,7 +678,7 @@ const isDeviceAction = (value: unknown): value is DeviceAgentAction => {
   if (action.type === 'key') return nonEmptyString(action.key);
   if (action.type === 'launch_app') return nonEmptyString(action.packageName);
   if (action.type === 'open_system_surface') {
-    return ['settings', 'notifications', 'quick_settings', 'home'].includes(
+    return ['settings', 'quick_settings', 'home'].includes(
       String(action.surface),
     );
   }

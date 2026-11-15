@@ -1,10 +1,24 @@
 import { strict as assert } from 'node:assert';
 import {
+  buildDeviceDecisionTool,
+  deviceDecisionJsonSchema,
   DEVICE_DECISION_TOOL_NAME,
   parseDeviceAgentDecision,
 } from './device-decision';
 
 describe('automation AI device decisions', () => {
+  it.each([
+    ['tool parameters', buildDeviceDecisionTool().function.parameters],
+    ['structured response', deviceDecisionJsonSchema],
+  ])('sends an object without root combinators for %s', (_name, schema) => {
+    expect(schema.type).toBe('object');
+    for (const keyword of ['oneOf', 'anyOf', 'allOf', 'enum', 'const', 'not']) {
+      expect(schema).not.toHaveProperty(keyword);
+    }
+    expect(schema).toHaveProperty('properties.decision');
+    expect(schema).toHaveProperty('required', ['decision']);
+  });
+
   it('parses the single structured device decision tool', () => {
     assert.deepEqual(
       parseDeviceAgentDecision({
@@ -16,11 +30,13 @@ describe('automation AI device decisions', () => {
             function: {
               name: DEVICE_DECISION_TOOL_NAME,
               arguments: JSON.stringify({
-                kind: 'act',
-                snapshotId: 'screen-1',
-                intent: 'Open Settings',
-                expectedOutcome: 'Settings screen appears',
-                action: { type: 'tap', candidateId: 'ocr-1' },
+                decision: {
+                  kind: 'act',
+                  snapshotId: 'screen-1',
+                  intent: 'Open Settings',
+                  expectedOutcome: 'Settings screen appears',
+                  action: { type: 'tap', candidateId: 'ocr-1' },
+                },
               }),
             },
           },
@@ -33,6 +49,34 @@ describe('automation AI device decisions', () => {
         expectedOutcome: 'Settings screen appears',
         action: { type: 'tap', candidateId: 'ocr-1' },
       },
+    );
+  });
+
+  it('decodes structured capability arguments and rejects malformed inputs', () => {
+    const content = (inputJson: string) =>
+      JSON.stringify({
+        decision: {
+          kind: 'act',
+          snapshotId: 'screen-1',
+          action: {
+            type: 'invoke_capability',
+            uses: 'vision.locate',
+            inputJson,
+          },
+        },
+      });
+
+    expect(
+      parseDeviceAgentDecision({ content: content('{"query":"Downloads"}') }),
+    ).toMatchObject({
+      action: {
+        type: 'invoke_capability',
+        uses: 'vision.locate',
+        input: { query: 'Downloads' },
+      },
+    });
+    expect(() => parseDeviceAgentDecision({ content: content('[]') })).toThrow(
+      'Capability invocation requires',
     );
   });
 

@@ -101,7 +101,7 @@ const routingHints: Record<
   },
   'android.collapsePanels': {
     terms: ['collapse', 'dismiss', 'close', 'hide'],
-    context: ['panel', 'panels', 'notifications', 'shade'],
+    context: ['panel', 'panels', 'quick settings', 'shade'],
   },
   'android.rotateDisplay': {
     terms: [

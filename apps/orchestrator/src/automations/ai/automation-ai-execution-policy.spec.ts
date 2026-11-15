@@ -162,7 +162,6 @@ describe('automation AI execution policy', () => {
 
   it.each([
     ['settings', 'android.openSystemSettings', {}],
-    ['notifications', 'android.expandNotifications', {}],
     ['quick_settings', 'android.expandQuickSettings', {}],
     ['home', 'android.viewerCommand', { command: 'home' }],
   ] as const)(

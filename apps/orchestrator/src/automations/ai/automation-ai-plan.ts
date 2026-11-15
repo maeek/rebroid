@@ -104,10 +104,10 @@ export const conversationGoal = (input: AutomationAiRunInput) => {
     .slice(-6)
     .map((message) => `${message.role}: ${message.content}`)
     .join('\n');
-  return boundedAiText(
-    history ? `${history}\nuser: ${input.prompt}` : input.prompt,
-    8_000,
-  );
+  const goal = boundedAiText(input.prompt, 12_000);
+  return history
+    ? `${goal}\n\nEarlier conversation:\n${boundedAiText(history, 6_000)}`
+    : goal;
 };
 
 export const boundedAiText = (value: string, maxLength: number) =>

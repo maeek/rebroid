@@ -10,7 +10,6 @@ const SCREEN_MUTATING_COMMANDS = new Set([
   'android.rotateDisplay',
   'android.setClipboard',
   'android.collapsePanels',
-  'android.expandNotifications',
   'android.expandQuickSettings',
   'android.launchPackage',
   'android.swipe',
@@ -33,9 +32,28 @@ const screenAction = (
 
 const systemSurfaceCommands = {
   settings: 'android.openSystemSettings',
-  notifications: 'android.expandNotifications',
   quick_settings: 'android.expandQuickSettings',
+  home: 'android.viewerCommand',
 } as const;
+
+export const permittedActionPrompt = (allowed: (uses: string) => boolean) => {
+  const actions = [
+    ['android.tapNormalized', 'tap'],
+    ['android.swipeNormalized', 'swipe'],
+    ['android.inputText', 'input_text'],
+    ['android.key', 'key'],
+    ['android.launchPackage', 'launch_app'],
+    ['android.wait', 'wait'],
+  ]
+    .filter(([uses]) => allowed(uses))
+    .map(([, type]) => type);
+  const surfaces = Object.entries(systemSurfaceCommands)
+    .filter(([, uses]) => allowed(uses))
+    .map(([surface]) => surface);
+  if (surfaces.length)
+    actions.push(`open_system_surface (${surfaces.join(', ')})`);
+  return `Available built-in actions: ${actions.join(', ') || 'none'}.`;
+};
 
 export const resolveActionCommand = (
   action: DeviceAgentAction,
@@ -64,7 +82,7 @@ export const resolveActionCommand = (
       });
     case 'open_system_surface':
       if (action.surface === 'home') {
-        return screenAction('android.viewerCommand', { command: 'home' });
+        return screenAction(systemSurfaceCommands.home, { command: 'home' });
       }
       return screenAction(systemSurfaceCommands[action.surface]);
     case 'wait':
@@ -89,7 +107,7 @@ export const expectsScreenChange = (action: ResolvedAiAction) =>
 export const screenFingerprint = (observation: AutomationScreenObservation) =>
   createHash('sha256')
     .update(
-      observation.markedImage?.dataUrl ?? observation.aiImage?.dataUrl ?? '',
+      observation.aiImage?.dataUrl ?? observation.markedImage?.dataUrl ?? '',
     )
     .digest('hex')
     .slice(0, 16);

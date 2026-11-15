@@ -7,12 +7,20 @@ import type { AutomationRunEventInput } from '../events/automation-run-events.ty
 import { VisionAutomationCommandsService } from '../commands/vision-automation-commands.service';
 import { AutomationVisionService } from '../vision/automation-vision.service';
 import { createDetection } from '../vision/vision-observation';
+import { buildChatRequestBody } from '../../common/ai-provider-request';
+import { AutomationAiChatClientService } from './automation-ai-chat-client.service';
+import type {
+  AutomationAiProvider,
+  AutomationAiProviderModel,
+} from '../../settings/contracts/ai-provider';
+import { z } from 'zod';
 
 const provider = {
   id: 'provider',
   label: 'Provider',
   kind: 'openai-compatible' as const,
   protocol: 'openai-chat-completions' as const,
+  serverFlavor: 'auto' as const,
   baseUrl: 'http://localhost:8080/v1',
   enabled: true,
   models: [],
@@ -122,12 +130,16 @@ const createHarness = ({
   chatResponses,
   observations = [observation('screen-1')],
   commandUses = ['android.listPackages'],
+  selectedProvider = provider,
+  selectedModel = model,
 }: {
   chatResponses: Array<
     ReturnType<typeof decisionResponse> | ReturnType<typeof planResponse>
   >;
   observations?: Array<ReturnType<typeof observation> | Error>;
   commandUses?: string[];
+  selectedProvider?: AutomationAiProvider;
+  selectedModel?: AutomationAiProviderModel;
 }) => {
   const events: AutomationRunEventInput[] = [];
   const chat = jest.fn().mockResolvedValue(
@@ -164,7 +176,12 @@ const createHarness = ({
     { observe: perception } as never,
   );
   const service = new AutomationAiHarnessService(
-    { getProvider: jest.fn().mockResolvedValue({ provider, model }) } as never,
+    {
+      getProvider: jest.fn().mockResolvedValue({
+        provider: selectedProvider,
+        model: selectedModel,
+      }),
+    } as never,
     {
       listCommands: jest.fn().mockReturnValue(
         commandUses.map((uses) => ({
@@ -209,6 +226,101 @@ const input = {
 };
 
 describe('AutomationAiHarnessService', () => {
+  it.each([
+    ['openai-chat-completions', false],
+    ['openai-chat-completions', true],
+    ['ollama-native-chat', false],
+    ['ollama-native-chat', true],
+  ] as const)(
+    'uses %s for the controller with structured output=%s',
+    async (protocol, structuredOutput) => {
+      const native = protocol === 'ollama-native-chat';
+      const { service, chat } = createHarness({
+        chatResponses: [],
+        selectedProvider: {
+          ...provider,
+          kind: native ? 'ollama' : 'openai',
+          protocol,
+          baseUrl: native
+            ? 'http://localhost:11434/'
+            : 'https://api.openai.com',
+        },
+        selectedModel: { ...model, capabilities: { structuredOutput } },
+      });
+      const finish = {
+        kind: 'finish',
+        status: 'completed',
+        finalText: 'Current screen inspected.',
+        evidenceIds: ['snapshot:screen-1'],
+        completedSubgoalIds: [],
+      };
+      const result = native ? finish : { decision: finish };
+      const functionCall = {
+        name: DEVICE_DECISION_TOOL_NAME,
+        arguments: result,
+      };
+      const nativeMessage = structuredOutput
+        ? { content: JSON.stringify(result) }
+        : { tool_calls: [{ function: functionCall }] };
+      const delta = structuredOutput
+        ? { content: JSON.stringify(result) }
+        : {
+            tool_calls: [
+              {
+                index: 0,
+                id: 'decision',
+                type: 'function',
+                function: {
+                  ...functionCall,
+                  arguments: JSON.stringify(result),
+                },
+              },
+            ],
+          };
+      const fetch = jest
+        .spyOn(global, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(
+            native
+              ? `${JSON.stringify({ message: { role: 'assistant', ...nativeMessage }, done: true })}\n`
+              : `data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`,
+          ),
+        );
+      const client = new AutomationAiChatClientService();
+      chat.mockImplementationOnce(client.chat.bind(client));
+      try {
+        await expect(service.run(input, context())).resolves.toMatchObject({
+          data: { status: 'completed', finalText: finish.finalText },
+        });
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch.mock.calls[0][0]).toBe(
+          native
+            ? 'http://localhost:11434/api/chat'
+            : 'https://api.openai.com/v1/chat/completions',
+        );
+        const body = JSON.parse(String(fetch.mock.calls[0][1]?.body));
+        const schema = structuredOutput
+          ? native
+            ? body.format
+            : body.response_format.json_schema.schema
+          : body.tools[0].function.parameters;
+        expect(schema.type).toBe('object');
+        if (native) {
+          expect(schema).toHaveProperty('oneOf');
+          expect(body).not.toHaveProperty('response_format');
+          expect(body).not.toHaveProperty('tool_choice');
+        } else {
+          expect(schema).toHaveProperty('properties.decision');
+          expect(schema).not.toHaveProperty('oneOf');
+          expect(schema).not.toHaveProperty('anyOf');
+          expect(body).not.toHaveProperty('format');
+        }
+      } finally {
+        fetch.mockRestore();
+      }
+    },
+  );
+
   it('grounds an OCR lookup outside the initial shortlist and rejects its ID after a new snapshot', async () => {
     const initial = observation('screen-1');
     const current = {
@@ -716,6 +828,117 @@ describe('AutomationAiHarnessService', () => {
     expect(chat).toHaveBeenCalledTimes(2);
     expect(executeCommand).toHaveBeenCalledTimes(1);
     expect(events.some((event) => event.type === 'ai.tool.failed')).toBe(true);
+  });
+
+  it('sends a compatible controller tool and recovers with a different Android route', async () => {
+    const openSurface = (snapshotId: string, surface: string) =>
+      decisionResponse({
+        decision: {
+          kind: 'act',
+          snapshotId,
+          intent: 'Find the requested device control',
+          expectedOutcome: 'The requested control becomes visible',
+          action: { type: 'open_system_surface', surface },
+        },
+      });
+    const { service, chat, events } = createHarness({
+      observations: [
+        observation('screen-1', 'launcher'),
+        observation('screen-2', 'launcher'),
+        observation('screen-3', 'quick-settings'),
+      ],
+      chatResponses: [
+        openSurface('screen-1', 'settings'),
+        openSurface('screen-2', 'settings'),
+        openSurface('screen-2', 'quick_settings'),
+        decisionResponse({
+          kind: 'finish',
+          status: 'blocked',
+          finalText: 'The requested toggle could not be verified.',
+          evidenceIds: ['snapshot:screen-3'],
+          completedSubgoalIds: [],
+        }),
+      ],
+    });
+    const executeCommand = jest
+      .fn()
+      .mockResolvedValueOnce({
+        summary: 'Android Settings could not be opened.',
+        outcome: 'failed',
+        data: { opened: false, attempts: ['raw shell output'] },
+      })
+      .mockResolvedValueOnce({ summary: 'Expanded quick settings.' });
+
+    await service.run(
+      { ...input, prompt: 'Turn on Do Not Disturb.' },
+      context(executeCommand),
+    );
+
+    const request = buildChatRequestBody(chat.mock.calls[0][0]);
+    expect(request.tools).toHaveLength(1);
+    expect(request.tools?.[0]).toMatchObject({
+      function: {
+        name: DEVICE_DECISION_TOOL_NAME,
+        parameters: { type: 'object', required: ['decision'] },
+      },
+    });
+    expect(request.tools?.[0]).not.toHaveProperty('function.parameters.oneOf');
+    const recoveryPrompt = chat.mock.calls[1][0].messages.at(-1).content;
+    expect(recoveryPrompt).toContain('Turn on Do Not Disturb.');
+    expect(recoveryPrompt).toContain('snapshotId=screen-2');
+    expect(recoveryPrompt).toContain('Android Settings could not be opened.');
+    expect(recoveryPrompt).not.toContain('raw shell output');
+    expect(recoveryPrompt).not.toContain('evidence=action:1');
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'ai.guardrail.triggered',
+        message: expect.stringContaining('already failed with these inputs'),
+      }),
+    );
+    expect(executeCommand.mock.calls.map(([command]) => command.uses)).toEqual([
+      'android.openSystemSettings',
+      'android.expandQuickSettings',
+    ]);
+  });
+
+  it('reports invalid inputs and ends a failure streak with a final verification turn', async () => {
+    const queryPackages = (query: number) =>
+      decisionResponse({
+        kind: 'act',
+        snapshotId: 'screen-1',
+        action: {
+          type: 'invoke_capability',
+          uses: 'android.listPackages',
+          input: { query },
+        },
+      });
+    const { service, chat } = createHarness({
+      chatResponses: [1, 2, 3, 4].map(queryPackages),
+    });
+    const schema = z.object({ query: z.string() });
+    const executeCommand = jest.fn(async ({ input: commandInput }) => {
+      schema.parse(commandInput);
+      return { summary: 'Listed packages.' };
+    });
+
+    const result = await service.run(
+      { ...input, maxActions: 20 },
+      context(executeCommand),
+    );
+
+    expect(executeCommand).toHaveBeenCalledTimes(3);
+    expect(chat).toHaveBeenCalledTimes(4);
+    expect(chat.mock.calls[1][0].messages.at(-1).content).toContain(
+      'Invalid command input. query:',
+    );
+    expect(chat.mock.calls[3][0].messages.at(-1).content).toContain(
+      'No more actions are available.',
+    );
+    expect(result.data).toMatchObject({
+      status: 'blocked',
+      blockedReason:
+        'The device agent could not recover from repeated failures.',
+    });
   });
 
   it('executes only an approved allowlisted shell escalation', async () => {

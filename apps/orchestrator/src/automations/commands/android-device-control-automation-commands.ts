@@ -43,21 +43,6 @@ export const createAndroidDeviceControlAutomationCommands = () =>
       },
     },
     {
-      uses: 'android.expandNotifications',
-      label: 'Expand notifications',
-      description:
-        'Opens the Android notification shade using the native status bar/viewer control. Prefer this over swipe gestures for notification shade access.',
-      requiredPermissions: ['automations:run'],
-      schema: emptyInputSchema,
-      execute: async (
-        _input: Record<string, never>,
-        { app, display, abortSignal }: AutomationCommandContext,
-      ) => {
-        await display.viewerControl(app, 'expand-notifications', abortSignal);
-        return { summary: 'Expanded notification shade.' };
-      },
-    },
-    {
       uses: 'android.expandQuickSettings',
       label: 'Expand quick settings',
       description:
@@ -75,7 +60,7 @@ export const createAndroidDeviceControlAutomationCommands = () =>
     {
       uses: 'android.collapsePanels',
       label: 'Collapse panels',
-      description: 'Closes the Android notification or quick settings panel.',
+      description: 'Closes the open Android system panel.',
       requiredPermissions: ['automations:run'],
       schema: emptyInputSchema,
       execute: async (

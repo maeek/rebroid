@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util';
 import type {
   AutomationObservedScreen,
   AutomationScreenObservation,
@@ -30,7 +31,7 @@ export interface DeviceAgentEvidence {
 export interface DeviceAgentTrajectoryEntry {
   action: string;
   outcome: string;
-  evidenceId: string;
+  evidenceId?: string;
   snapshotId?: string;
   failed: boolean;
 }
@@ -55,6 +56,11 @@ export class DeviceAgentRunState implements DeviceAgentState {
   private failureCount = 0;
   private planningCount = 0;
   private lookupMatches: AiObservationCandidate[] = [];
+  private failedCommand?: {
+    uses: string;
+    input: Record<string, unknown>;
+    snapshotId: string;
+  };
 
   constructor(
     readonly target: DeviceTargetSession,
@@ -158,6 +164,34 @@ export class DeviceAgentRunState implements DeviceAgentState {
         }
         return item.eligibleForCompletion ? this.typedResultEvidence(item) : [];
       });
+  }
+
+  recoveryFeedback() {
+    return this.history
+      .slice(-8)
+      .filter((entry) => entry.failed)
+      .reverse()
+      .slice(0, 3)
+      .map(({ action, outcome }) => `- ${action}: ${outcome}`)
+      .join('\n');
+  }
+
+  repeatsFailedCommand(uses: string, input: Record<string, unknown>) {
+    return (
+      this.failedCommand?.snapshotId === this.observation.snapshotId &&
+      this.failedCommand.uses === uses &&
+      isDeepStrictEqual(this.failedCommand.input, input)
+    );
+  }
+
+  recordCommandOutcome(
+    uses: string,
+    input: Record<string, unknown>,
+    failed: boolean,
+  ) {
+    this.failedCommand = failed
+      ? { uses, input, snapshotId: this.observation.snapshotId }
+      : undefined;
   }
 
   private typedResultEvidence({
@@ -300,10 +334,13 @@ export class DeviceAgentRunState implements DeviceAgentState {
     };
     this.evidenceLog.push(evidence);
     this.history.push({
-      action,
-      outcome: evidence.outcome
-        ? `[${evidence.outcome}] ${evidence.summary}`
-        : evidence.summary,
+      action: sanitizeAiText(action, 240),
+      outcome: sanitizeAiText(
+        evidence.outcome
+          ? `[${evidence.outcome}] ${evidence.summary}`
+          : evidence.summary,
+        700,
+      ),
       evidenceId: evidence.id,
       snapshotId: evidence.snapshotId,
       failed,
@@ -314,9 +351,8 @@ export class DeviceAgentRunState implements DeviceAgentState {
 
   recordRejectedDecision(action: string, outcome: string, countFailure = true) {
     this.history.push({
-      action,
-      outcome,
-      evidenceId: this.evidenceLog[0].id,
+      action: sanitizeAiText(action, 120),
+      outcome: sanitizeAiText(outcome, 700),
       failed: true,
     });
     if (countFailure) this.failureCount += 1;

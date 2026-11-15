@@ -31,6 +31,7 @@ import {
 } from './automation-device-agent-run-state';
 
 const MAX_PLAN_ATTEMPTS = 2;
+const MAX_CONSECUTIVE_FAILURES = 3;
 
 type AutomationAiOutcome = {
   status: 'completed' | 'blocked';
@@ -157,7 +158,9 @@ export class AutomationAiHarnessService {
 
     const maxTurns = maxActions * 2 + MAX_PLAN_ATTEMPTS + 1;
     for (let turn = 0; turn < maxTurns && Date.now() < deadline; turn += 1) {
-      const terminalOnly = state.actions >= maxActions;
+      const terminalOnly =
+        state.actions >= maxActions ||
+        state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES;
       this.assertNotCanceled(context.abortSignal);
       const decision = await this.decisions.requestDecision({
         ...decisionContext,
@@ -180,6 +183,10 @@ export class AutomationAiHarnessService {
     }
 
     let blockedReason = 'Controller turn limit reached.';
+    if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+      blockedReason =
+        'The device agent could not recover from repeated failures.';
+    }
     if (state.actions >= maxActions) blockedReason = 'Action limit reached.';
     if (Date.now() >= deadline) blockedReason = 'Agent timeout reached.';
     return {
@@ -294,7 +301,7 @@ export class AutomationAiHarnessService {
     }
     if (
       state.actions < input.maxActions &&
-      state.consecutiveFailures >= 2 &&
+      state.consecutiveFailures === 2 &&
       state.planAttempts < MAX_PLAN_ATTEMPTS &&
       input.agentMode !== 'controller'
     ) {

@@ -7,7 +7,8 @@ export const summarizeVisionObservationForPlanner = (
     const bounds = candidate.bounds
       ? `${round(candidate.bounds.left)},${round(candidate.bounds.top)},${round(candidate.bounds.width)},${round(candidate.bounds.height)}`
       : 'none';
-    return `- ${candidate.id} | ${candidate.label} | source=${candidate.source} | confidence=${round(candidate.confidence)} | bounds=${bounds}`;
+    const role = candidate.role ? ` | role=${candidate.role}` : '';
+    return `- ${candidate.id} | ${candidate.label} | source=${candidate.source}${role} | confidence=${round(candidate.confidence)} | bounds=${bounds}`;
   });
   return [
     `snapshotId=${observation.snapshotId}`,
