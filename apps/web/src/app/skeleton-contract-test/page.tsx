@@ -21,10 +21,7 @@ import { WorkflowEditorPreview } from '@/features/automations/automations-page/e
 import { AutomationsListPage } from '@/features/automations/automations-page/list/automations-list-page'
 import { AutomationRunPreview } from '@/features/automations/automations-page/traces/automation-run-preview'
 import { AutomationTracesPage } from '@/features/automations/automations-page/traces/automation-traces-page'
-import {
-  previewTrigger,
-  AutomationTriggersPreview
-} from '@/features/automations/automations-page/triggers/automation-triggers-preview'
+import { AutomationTriggersPreview } from '@/features/automations/automations-page/triggers/automation-triggers-preview'
 import { ActiveWorkflowRunsPage } from '@/features/automations/pages/active-workflow-runs/active-workflow-runs-page'
 import { PlatformOperationsPreview } from '@/features/platform/components/platform-operations-preview'
 import { PlatformOverviewPageClient } from '@/features/platform/components/platform-overview-page-client'
@@ -240,12 +237,12 @@ export default async function SkeletonContractPage({
     return (
       <AutomationsListPage
         initialApplications={[applicationPreview]}
-        initialTriggers={[previewTrigger]}
         workflowHistoryRetention={actionOk({ retentionDays: defaultWorkflowHistoryRetentionDays, enabled: true })}
         automationsPage={{
           items: [
             {
               ...previewWorkflowGridRow,
+              targetApplicationIds: [applicationPreview.id],
               tags: [{ name: 'Inventory', color: '#2563eb' }],
               lastStatus: 'failed',
               lastRunAt: '2026-11-07T10:00:00Z',

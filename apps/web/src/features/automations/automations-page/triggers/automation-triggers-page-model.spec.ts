@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultSchedule } from '@/shared/model/automation-schedule'
 import {
-  activeTriggerFilterCount,
   applyTriggerTargetApplication,
   applyTriggerWorkflow,
   buildAutomationTriggersGridHref,
@@ -17,12 +16,15 @@ import {
 } from './automation-triggers-page-model'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation, AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
+import type { AutomationOption, AutomationTrigger } from '@/shared/contracts/automation'
 
-const automation = {
+const automation: AutomationOption = {
   id: 'automation-1',
-  name: 'Daily smoke test'
-} as unknown as Automation
+  name: 'Daily smoke test',
+  description: null,
+  tags: [],
+  topLevelStepCount: 0
+}
 
 const app = (id = 'app-1', overrides: Partial<AndroidApplication> = {}): AndroidApplication =>
   ({
@@ -150,16 +152,10 @@ describe('automation triggers page model', () => {
     expect(newTriggerFormState({ automation, app: app() }).description).toBe('')
   })
 
-  it('derives active filters and selection state', () => {
-    const query: AutomationTriggersGridQuery = {
-      q: 'smoke',
-      enabled: 'true',
-      status: 'success'
-    }
+  it('derives visible trigger selection state', () => {
     const triggers = [trigger('a'), trigger('b'), trigger('c')]
     const selectedIds = new Set(['a', 'missing', 'c'])
 
-    expect(activeTriggerFilterCount(query)).toBe(2)
     expect([...retainVisibleTriggerSelection(triggers, selectedIds)]).toEqual(['a', 'c'])
     expect(selectedTriggersFromIds(triggers, selectedIds).map(item => item.id)).toEqual(['a', 'c'])
   })

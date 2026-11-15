@@ -26,6 +26,8 @@ export interface Automation {
 
 export type AutomationGridRow = OrchestratorApiSchemas['AutomationGridRowDto']
 export type AutomationsGridPage = OrchestratorApiSchemas['AutomationsGridPageDto']
+export type AutomationOption = OrchestratorApiSchemas['AutomationOptionDto']
+export type RunnableAutomationOption = OrchestratorApiSchemas['RunnableAutomationOptionDto']
 
 export type AutomationsGridLastRunFilter = 'all' | 'never' | '7d' | '30d' | '90d'
 

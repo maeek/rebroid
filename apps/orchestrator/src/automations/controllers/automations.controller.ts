@@ -21,11 +21,13 @@ import {
 import type { FastifyReply } from 'fastify';
 import {
   AutomationDto,
+  AutomationOptionDto,
   AutomationsGridPageDto,
   AutomationValidationDto,
   CreateAutomationDto,
   DraftAutomationYamlDto,
   ListAutomationsGridQueryDto,
+  RunnableAutomationOptionDto,
   UpdateAutomationDto,
   ValidateAutomationYamlDto,
 } from '../dto/automation.dto';
@@ -192,6 +194,20 @@ export class AutomationsController {
   @ApiOkResponse({ type: AutomationDto, isArray: true })
   listRunnable(@Query('ownerUserId') ownerUserId: string) {
     return this.automations.list(ownerUserId);
+  }
+
+  @RequiresFeature('feature.workflows')
+  @Get('options')
+  @ApiOkResponse({ type: AutomationOptionDto, isArray: true })
+  listOptions(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.listOptions(ownerUserId);
+  }
+
+  @RequiresFeature('feature.workflows')
+  @Get('runnable/options')
+  @ApiOkResponse({ type: RunnableAutomationOptionDto, isArray: true })
+  listRunnableOptions(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.listRunnableOptions(ownerUserId);
   }
 
   @RequiresFeature('feature.workflows')

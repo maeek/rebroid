@@ -4,7 +4,7 @@ import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from 
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
 import type {
-  Automation,
+  AutomationOption,
   AutomationTrigger,
   AutomationTriggersGridQuery,
   SaveAutomationTriggerInput
@@ -22,16 +22,13 @@ type TriggerOperationToast = {
   variant: 'danger' | 'success'
 }
 
-export const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
+export const defaultTriggerName = (automation: AutomationOption | undefined, app: AndroidApplication | undefined) => {
   if (automation && app) {
     return `${automation.name} on ${app.name}`.slice(0, 120)
   }
 
   return 'New workflow trigger'
 }
-
-export const activeTriggerFilterCount = (query: AutomationTriggersGridQuery) =>
-  [query.tag, query.targetApplicationId, query.enabled, query.status, query.lastRun].filter(Boolean).length
 
 export const buildAutomationTriggersGridHref = ({ gridQuery, pageSize, patch }: TriggerGridHrefInput) => {
   const params = compactGridParams({
@@ -98,7 +95,7 @@ export const newTriggerFormState = ({
   automation,
   app
 }: {
-  automation: Automation
+  automation: AutomationOption
   app: AndroidApplication
 }): TriggerFormState => ({
   name: defaultTriggerName(automation, app),
@@ -137,7 +134,7 @@ export const applyTriggerTargetApplication = (
   form: TriggerFormState,
   targetApplicationId: string,
   app: AndroidApplication | undefined,
-  workflow?: Automation,
+  workflow?: AutomationOption,
   previousApp?: AndroidApplication
 ): TriggerFormState => ({
   ...form,
@@ -152,8 +149,8 @@ export const applyTriggerTargetApplication = (
 
 export const applyTriggerWorkflow = (
   form: TriggerFormState,
-  workflow: Automation | undefined,
-  previousWorkflow: Automation | undefined,
+  workflow: AutomationOption | undefined,
+  previousWorkflow: AutomationOption | undefined,
   app: AndroidApplication | undefined
 ): TriggerFormState => ({
   ...form,

@@ -19,7 +19,7 @@ export const listActiveWorkflowRuns = async (ownerUserId: string): Promise<Activ
   )
   if (runs.length === 0) return []
 
-  const workflows = await orchestratorAutomationsClient.list(ownerUserId).catch(error => {
+  const workflows = await orchestratorAutomationsClient.listRunnableOptions(ownerUserId).catch(error => {
     if (workflowCatalogIsDisabled(error)) return []
     throw error
   })

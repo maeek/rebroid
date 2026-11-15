@@ -2,6 +2,8 @@ import { AUTOMATION_DRAFT_TIMEOUT_MS } from '@rebroid/automation-core/yaml-draft
 import { emptyRequest, jsonRequest, request, responseRequest } from '../request'
 import type {
   Automation,
+  AutomationOption,
+  RunnableAutomationOption,
   AutomationsGridPage,
   AutomationsGridQuery,
   AutomationTriggersGridPage,
@@ -45,8 +47,8 @@ export const orchestratorAutomationsClient = {
     })
   },
 
-  list(ownerUserId: string) {
-    return emptyRequest<Automation[]>(`/automations?${ownerQuery(ownerUserId)}`)
+  listOptions(ownerUserId: string) {
+    return emptyRequest<AutomationOption[]>(`/automations/options?${ownerQuery(ownerUserId)}`)
   },
 
   listGrid(ownerUserId: string, input: AutomationsGridQuery = {}) {
@@ -58,8 +60,8 @@ export const orchestratorAutomationsClient = {
     return emptyRequest<AutomationsGridPage>(`/automations/grid?${query.toString()}`)
   },
 
-  listRunnable(ownerUserId: string) {
-    return emptyRequest<Automation[]>(`/automations/runnable?${ownerQuery(ownerUserId)}`)
+  listRunnableOptions(ownerUserId: string) {
+    return emptyRequest<RunnableAutomationOption[]>(`/automations/runnable/options?${ownerQuery(ownerUserId)}`)
   },
 
   get(ownerUserId: string, id: string) {
@@ -147,10 +149,6 @@ export const orchestratorAutomationsClient = {
 
   listActiveRuns(ownerUserId: string) {
     return emptyRequest<AutomationRun[]>(`/automations/runs/active?${ownerQuery(ownerUserId)}`)
-  },
-
-  listTriggers(ownerUserId: string) {
-    return emptyRequest<AutomationTrigger[]>(`/automations/triggers?${ownerQuery(ownerUserId)}`)
   },
 
   listTriggersGrid(ownerUserId: string, input: AutomationTriggersGridQuery = {}) {

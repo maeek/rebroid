@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,6 @@ import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { buildAutomationTagCatalog } from '../shared/automation-tags'
-import { sortFromSearchParam } from '../shared/grid-query-utils'
 import { AutomationTriggerFormDialog } from './automation-trigger-form-dialog'
 import {
   applyTriggerTargetApplication,
@@ -65,7 +65,7 @@ export function AutomationTriggersPage({
   const [search, setSearch] = useState(gridQuery.q ?? '')
   const [pendingDelete, setPendingDelete] = useState<AutomationTrigger | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
-  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
+  const sorting = useMemo(() => parseAutomationGridSort(gridQuery.sort, 'triggers'), [gridQuery.sort])
 
   useEffect(() => {
     setSearch(gridQuery.q ?? '')

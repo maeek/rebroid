@@ -5911,6 +5911,72 @@
           "automations"
         ]
       }
+    },
+    "/api/v1/automations/options": {
+      "get": {
+        "operationId": "AutomationsController_listOptions",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runnable/options": {
+      "get": {
+        "operationId": "AutomationsController_listRunnableOptions",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunnableAutomationOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
     }
   },
   "info": {
@@ -12217,6 +12283,12 @@
           "stepCount": {
             "type": "integer",
             "minimum": 0
+          },
+          "targetApplicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -12231,7 +12303,55 @@
           "lastError",
           "createdAt",
           "updatedAt",
-          "stepCount"
+          "stepCount",
+          "targetApplicationIds"
+        ]
+      },
+      "AutomationOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
+          "topLevelStepCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "tags",
+          "topLevelStepCount"
+        ]
+      },
+      "RunnableAutomationOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
         ]
       }
     }

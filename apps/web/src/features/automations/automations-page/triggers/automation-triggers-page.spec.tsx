@@ -6,7 +6,7 @@ import {
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { applicationPreview } from '@/shared/testing/application-preview'
-import { previewWorkflow } from '@/shared/testing/automation-preview'
+import { previewWorkflowOption } from '@/shared/testing/automation-preview'
 import { AutomationTriggersPage } from './automation-triggers-page'
 import { AutomationTriggersPreview, previewTrigger } from './automation-triggers-preview'
 
@@ -34,7 +34,7 @@ describe('Triggers editor workflow', () => {
     render(
       <AutomationTriggersPage
         initialApplications={[]}
-        initialAutomations={[previewWorkflow]}
+        initialAutomations={[previewWorkflowOption]}
         canCreateApp={canCreateApp}
         gridQuery={{}}
         triggersPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}

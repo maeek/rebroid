@@ -230,7 +230,9 @@ logs the setup failure and continues its existing ADB probe.
 
 ## Workflow execution
 
-The Workflows grid reads summaries and nested step counts from `GET /automations/grid`.
+The Workflows grid reads summaries, nested step counts, and trigger target app IDs from
+`GET /automations/grid`. The trigger picker uses `GET /automations/options` for metadata and
+top-level step counts. The Run picker uses `GET /automations/runnable/options` for IDs and names.
 Workflow detail reads include the full definition and editable YAML.
 
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,

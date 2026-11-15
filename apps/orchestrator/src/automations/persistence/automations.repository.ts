@@ -33,6 +33,14 @@ export class AutomationsRepository {
     });
   }
 
+  listNamesByOwner(ownerUserId: string) {
+    return this.automations.find({
+      where: { ownerUserId },
+      select: { id: true, name: true },
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
   findByOwnerAndId(ownerUserId: string, id: string) {
     return this.automations.findOneBy({ ownerUserId, id });
   }

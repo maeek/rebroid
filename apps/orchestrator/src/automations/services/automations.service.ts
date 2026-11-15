@@ -81,6 +81,14 @@ export class AutomationsService {
     return this.queries.listGrid(query);
   }
 
+  listOptions(ownerUserId: string) {
+    return this.queries.listOptions(ownerUserId);
+  }
+
+  listRunnableOptions(ownerUserId: string) {
+    return this.queries.listRunnableOptions(ownerUserId);
+  }
+
   async get(ownerUserId: string, id: string) {
     return this.queries.get(ownerUserId, id);
   }

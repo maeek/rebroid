@@ -225,6 +225,28 @@ export class AutomationDto extends AutomationSummaryDto {
 class AutomationGridRowDto extends AutomationSummaryDto {
   @ApiProperty({ type: 'integer', minimum: 0 })
   stepCount!: number;
+
+  @ApiProperty({ type: String, isArray: true })
+  targetApplicationIds!: string[];
+}
+
+export class RunnableAutomationOptionDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  name!: string;
+}
+
+export class AutomationOptionDto extends RunnableAutomationOptionDto {
+  @ApiProperty({ type: String, nullable: true })
+  description!: string | null;
+
+  @ApiProperty({ type: AutomationTagDto, isArray: true })
+  tags!: AutomationTagDto[];
+
+  @ApiProperty({ type: 'integer', minimum: 0 })
+  topLevelStepCount!: number;
 }
 
 export class AutomationsGridFacetsDto {

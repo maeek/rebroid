@@ -1,5 +1,5 @@
 import { applicationPreview } from '@/shared/testing/application-preview'
-import { previewWorkflow } from '@/shared/testing/automation-preview'
+import { previewWorkflowOption } from '@/shared/testing/automation-preview'
 import { AutomationTriggersPage } from './automation-triggers-page'
 import type { AutomationTrigger } from '@/shared/contracts/automation'
 
@@ -8,7 +8,7 @@ export const previewTrigger: AutomationTrigger = {
   name: 'Morning inventory',
   description: 'Check stock levels before the morning shift.',
   ownerUserId: 'preview-owner',
-  automationId: previewWorkflow.id,
+  automationId: previewWorkflowOption.id,
   targetApplicationId: applicationPreview.id,
   profileMode: 'persistent',
   profileName: 'default',
@@ -29,11 +29,15 @@ export const AutomationTriggersPreview = () => (
     initialApplications={[applicationPreview, { ...applicationPreview, id: 'reports-app', name: 'Reports worker' }]}
     initialAutomations={[
       {
-        ...previewWorkflow,
+        ...previewWorkflowOption,
         description: 'Read stock levels and report shortages.',
         tags: [{ name: 'inventory', color: '#2563eb' }]
       },
-      { ...previewWorkflow, id: 'warehouse-workflow', description: 'Reconcile warehouse inventory before opening.' }
+      {
+        ...previewWorkflowOption,
+        id: 'warehouse-workflow',
+        description: 'Reconcile warehouse inventory before opening.'
+      }
     ]}
     triggersPage={{
       items: [previewTrigger],

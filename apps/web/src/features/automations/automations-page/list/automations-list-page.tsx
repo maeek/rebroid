@@ -14,7 +14,6 @@ export function AutomationsListPage({
   initialApplications,
   automationsPage,
   gridQuery,
-  initialTriggers,
   workflowHistoryRetention,
   canManageHistoryRetention = false,
   loading = false
@@ -62,7 +61,6 @@ export function AutomationsListPage({
           applications={initialApplications}
           automationsPage={automationsPage}
           gridQuery={gridQuery}
-          triggers={initialTriggers}
         />
       </PageContent>
     </StandardPage>

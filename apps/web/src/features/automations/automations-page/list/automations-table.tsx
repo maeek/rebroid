@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort'
 import { IconActivityHeartbeat, IconTrash } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -16,10 +17,8 @@ import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { AutomationTagBadge } from '../shared/automation-tag-badge'
-import { sortFromSearchParam } from '../shared/grid-query-utils'
 import { WorkflowRunDetailsLink, WorkflowRunStatus } from '../shared/workflow-run-result'
 import {
-  automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
@@ -28,12 +27,7 @@ import {
 } from './automations-table-model'
 import { AutomationsTableToolbar } from './automations-table-toolbar'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type {
-  AutomationGridRow,
-  AutomationsGridPage,
-  AutomationsGridQuery,
-  AutomationTrigger
-} from '@/shared/contracts/automation'
+import type { AutomationGridRow, AutomationsGridPage, AutomationsGridQuery } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
@@ -60,14 +54,12 @@ export function AutomationsTable({
   applications,
   automationsPage,
   gridQuery,
-  triggers,
   loading = false
 }: {
   loading?: boolean
   applications: AndroidApplication[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
-  triggers: AutomationTrigger[]
 }) {
   const router = useRouter()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
@@ -75,7 +67,7 @@ export function AutomationsTable({
   const [pendingDelete, setPendingDelete] = useState<AutomationGridRow | null>(null)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [busy, setBusy] = useState(false)
-  const sorting = useMemo(() => sortFromSearchParam(gridQuery.sort), [gridQuery.sort])
+  const sorting = useMemo(() => parseAutomationGridSort(gridQuery.sort, 'workflows'), [gridQuery.sort])
 
   useEffect(() => {
     setSearch(gridQuery.q ?? '')
@@ -86,7 +78,6 @@ export function AutomationsTable({
   }, [automationsPage.items])
 
   const appNameById = useMemo(() => new Map(applications.map(app => [app.id, app.name])), [applications])
-  const automationAppIds = useMemo(() => automationTriggerAppIdsByAutomationId(triggers), [triggers])
   const selectedAutomations = selectedAutomationsFromIds(automationsPage.items, selectedIds)
 
   const pushGridParams = (patch: Partial<AutomationsGridQuery>) => {
@@ -148,7 +139,7 @@ export function AutomationsTable({
         enableSorting: false,
         meta: { label: 'Apps', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => {
-          const appIds = Array.from(automationAppIds.get(row.original.id) ?? [])
+          const appIds = row.original.targetApplicationIds
           return (
             <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-sm'>
               {appIds.length === 0 ? (
@@ -222,7 +213,7 @@ export function AutomationsTable({
         )
       }
     ],
-    [appNameById, automationAppIds]
+    [appNameById]
   )
 
   return (

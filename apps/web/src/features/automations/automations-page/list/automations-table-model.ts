@@ -1,5 +1,5 @@
 import { compactGridParams } from '../shared/grid-query-utils'
-import type { AutomationGridRow, AutomationsGridQuery, AutomationTrigger } from '@/shared/contracts/automation'
+import type { AutomationGridRow, AutomationsGridQuery } from '@/shared/contracts/automation'
 
 type AutomationsGridHrefInput = {
   gridQuery: AutomationsGridQuery
@@ -13,23 +13,6 @@ type AutomationOperationToast = {
   variant?: 'danger'
 }
 
-export const automationStatusLabel = (status: AutomationGridRow['lastStatus']) => {
-  if (status === 'never_run') return 'Never run'
-  return status === 'success' ? 'Success' : status === 'running' ? 'Running' : 'Failed'
-}
-
-export const automationTriggerAppIdsByAutomationId = (triggers: AutomationTrigger[]) => {
-  const map = new Map<string, Set<string>>()
-
-  for (const trigger of triggers) {
-    const set = map.get(trigger.automationId) ?? new Set<string>()
-    set.add(trigger.targetApplicationId)
-    map.set(trigger.automationId, set)
-  }
-
-  return map
-}
-
 export const retainPageAutomationSelection = (automations: AutomationGridRow[], selectedIds: Set<string>) => {
   const currentPageIds = new Set(automations.map(automation => automation.id))
 
@@ -38,18 +21,6 @@ export const retainPageAutomationSelection = (automations: AutomationGridRow[], 
 
 export const selectedAutomationsFromIds = (automations: AutomationGridRow[], selectedIds: Set<string>) =>
   automations.filter(automation => selectedIds.has(automation.id))
-
-export const countActiveAutomationFilters = ({
-  lastRun,
-  status,
-  tag,
-  targetApplicationId
-}: {
-  lastRun?: string
-  status?: string
-  tag?: string
-  targetApplicationId?: string
-}) => [tag, targetApplicationId, status, lastRun].filter(Boolean).length
 
 export const buildAutomationsGridHref = ({ gridQuery, pageSize, patch }: AutomationsGridHrefInput) => {
   const params = compactGridParams({

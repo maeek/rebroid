@@ -112,6 +112,17 @@ describe('workflow run summaries', () => {
       name: 'Inventory audit',
       definitionJson: JSON.stringify(definition),
     });
+    const trigger = {
+      ownerUserId: 'owner',
+      automationId: 'audit',
+      targetApplicationId: 'app-1',
+      triggerType: AutomationTriggerType.Schedule,
+      triggerConfigJson: '{}',
+    };
+    await db.getRepository(AutomationTrigger).insert([
+      { ...trigger, name: 'Inventory morning' },
+      { ...trigger, name: 'Inventory evening' },
+    ]);
     const toYaml = jest.spyOn(definitions, 'toYaml');
 
     const grid = await queries.listGrid({
@@ -125,11 +136,39 @@ describe('workflow run summaries', () => {
       total: 2,
       page: 2,
       pageSize: 1,
-      facets: { tags: ['nightly'] },
-      items: [{ id: 'audit', tags: [{ name: 'nightly' }], stepCount: 8 }],
+      facets: { tags: ['nightly'], targetApplicationIds: ['app-1'] },
+      items: [
+        {
+          id: 'audit',
+          tags: [{ name: 'nightly' }],
+          stepCount: 8,
+          targetApplicationIds: ['app-1'],
+        },
+      ],
     });
     expect(grid.items[0]).not.toHaveProperty('definition');
     expect(grid.items[0]).not.toHaveProperty('yaml');
+    expect(
+      (await queries.listOptions('owner')).find(({ id }) => id === 'audit'),
+    ).toEqual({
+      id: 'audit',
+      name: 'Inventory audit',
+      description: null,
+      tags: definition.metadata.tags,
+      topLevelStepCount: 3,
+    });
+    expect(
+      (await queries.listRunnableOptions('owner')).find(
+        ({ id }) => id === 'audit',
+      ),
+    ).toEqual({
+      id: 'audit',
+      name: 'Inventory audit',
+    });
+    await expect(queries.listOptions('other-owner')).resolves.toEqual([]);
+    await expect(queries.listRunnableOptions('other-owner')).resolves.toEqual(
+      [],
+    );
     expect(toYaml).not.toHaveBeenCalled();
     await expect(queries.get('owner', 'audit')).resolves.toMatchObject({
       definition,

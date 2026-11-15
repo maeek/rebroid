@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  automationStatusLabel,
-  automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
-  countActiveAutomationFilters,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
   selectedAutomationsFromIds,
   summarizeAutomationDeleteResults
 } from './automations-table-model'
-import type { AutomationGridRow, AutomationTrigger } from '@/shared/contracts/automation'
+import type { AutomationGridRow } from '@/shared/contracts/automation'
 
 const automation = (id: string): AutomationGridRow => ({ id, name: id }) as AutomationGridRow
 
@@ -25,26 +22,6 @@ describe('automations table model', () => {
     )
     expect([...url.searchParams.keys()]).toEqual(['q', 'page', 'pageSize'])
   })
-  it('labels workflow statuses for display', () => {
-    expect(automationStatusLabel('never_run')).toBe('Never run')
-    expect(automationStatusLabel('success')).toBe('Success')
-    expect(automationStatusLabel('running')).toBe('Running')
-    expect(automationStatusLabel('failed')).toBe('Failed')
-  })
-
-  it('groups trigger target app ids by automation', () => {
-    const triggers = [
-      { automationId: 'a', targetApplicationId: 'app-1' },
-      { automationId: 'a', targetApplicationId: 'app-2' },
-      { automationId: 'b', targetApplicationId: 'app-1' }
-    ] as AutomationTrigger[]
-
-    const grouped = automationTriggerAppIdsByAutomationId(triggers)
-
-    expect([...(grouped.get('a') ?? [])]).toEqual(['app-1', 'app-2'])
-    expect([...(grouped.get('b') ?? [])]).toEqual(['app-1'])
-  })
-
   it('retains and derives current page selection', () => {
     const automations = [automation('a'), automation('c')]
     const selectedIds = new Set(['a', 'b', 'c'])
@@ -53,8 +30,7 @@ describe('automations table model', () => {
     expect(selectedAutomationsFromIds(automations, selectedIds)).toEqual(automations)
   })
 
-  it('counts active filters and extracts fulfilled delete ids', () => {
-    expect(countActiveAutomationFilters({ tag: 'smoke', status: 'failed' })).toBe(2)
+  it('extracts fulfilled delete ids', () => {
     expect([
       ...deletedAutomationIdsFromResults(
         [automation('a'), automation('b')],

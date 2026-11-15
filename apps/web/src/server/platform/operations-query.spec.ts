@@ -7,7 +7,7 @@ import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { getPlatformOperations } from './operations-query'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation, AutomationRun } from '@/shared/contracts/automation'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
@@ -16,7 +16,7 @@ vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', ()
   listApplicationsAction: vi.fn()
 }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
-  orchestratorAutomationsClient: { listActiveRuns: vi.fn(), list: vi.fn() }
+  orchestratorAutomationsClient: { listActiveRuns: vi.fn(), listRunnableOptions: vi.fn() }
 }))
 const user = { ownerUserId: 'owner', permissions: {} } as Awaited<ReturnType<typeof getCurrentUserContext>>
 beforeEach(() => {
@@ -71,8 +71,8 @@ describe('getPlatformOperations', () => {
       { automationId: 'workflow', status: 'success' },
       { automationId: 'ephemeral-ai-run', status: 'running' }
     ] as AutomationRun[])
-    vi.mocked(orchestratorAutomationsClient.list).mockResolvedValue([
-      { id: 'workflow', name: 'Inventory' } as Automation
+    vi.mocked(orchestratorAutomationsClient.listRunnableOptions).mockResolvedValue([
+      { id: 'workflow', name: 'Inventory' }
     ])
 
     await expect(getPlatformOperations()).resolves.toMatchObject({
@@ -85,7 +85,7 @@ describe('getPlatformOperations', () => {
       ]
     })
     expect(orchestratorAutomationsClient.listActiveRuns).toHaveBeenCalledWith('owner')
-    expect(orchestratorAutomationsClient.list).toHaveBeenCalledWith('owner')
+    expect(orchestratorAutomationsClient.listRunnableOptions).toHaveBeenCalledWith('owner')
   })
 
   it('keeps app counts available when workflows are disabled', async () => {
@@ -98,7 +98,7 @@ describe('getPlatformOperations', () => {
       { automationId: 'ephemeral-ai-run', status: 'running' },
       { id: 'queued', automationId: 'workflow', status: 'queued' }
     ] as AutomationRun[])
-    vi.mocked(orchestratorAutomationsClient.list).mockRejectedValue(
+    vi.mocked(orchestratorAutomationsClient.listRunnableOptions).mockRejectedValue(
       new OrchestratorRequestError('Workflows are disabled', 409, 'request', { code: 'feature_disabled' })
     )
 

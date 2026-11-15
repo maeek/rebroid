@@ -1,8 +1,8 @@
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation } from '@/shared/contracts/automation'
+import type { AutomationOption } from '@/shared/contracts/automation'
 
-export function triggerWorkflowOption(workflow: Automation) {
-  const count = workflow.definition.spec.steps.length
+export function triggerWorkflowOption(workflow: AutomationOption) {
+  const count = workflow.topLevelStepCount
   const summary = `${count} ${count === 1 ? 'step' : 'steps'} · ${workflow.id}`
   return {
     value: workflow.id,

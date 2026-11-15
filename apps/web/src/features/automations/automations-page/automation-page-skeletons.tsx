@@ -21,7 +21,6 @@ export const AutomationsListPageSkeleton = ({
   return (
     <AutomationsListPage
       initialApplications={[]}
-      initialTriggers={[]}
       automationsPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
       gridQuery={{ q }}
       canManageHistoryRetention={canManageHistoryRetention}

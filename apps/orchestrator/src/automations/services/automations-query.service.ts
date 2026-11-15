@@ -4,8 +4,10 @@ import type {
   AutomationDefinitionStep,
 } from '@rebroid/automation-core/definition';
 import {
+  AutomationOptionDto,
   AutomationsGridPageDto,
   ListAutomationsGridQueryDto,
+  RunnableAutomationOptionDto,
 } from '../dto/automation.dto';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
@@ -34,6 +36,27 @@ export class AutomationsQueryService {
     return automations.map((automation) =>
       this.mapper.automation(automation, latestRuns.get(automation.id)),
     );
+  }
+
+  async listOptions(ownerUserId: string): Promise<AutomationOptionDto[]> {
+    const automations = await this.automations.listByOwner(ownerUserId);
+    return automations.map(({ id, name, description, definitionJson }) => {
+      const definition = JSON.parse(definitionJson) as AutomationDefinition;
+      return {
+        id,
+        name,
+        description,
+        tags: definition.metadata.tags ?? [],
+        topLevelStepCount: definition.spec.steps.length,
+      };
+    });
+  }
+
+  async listRunnableOptions(
+    ownerUserId: string,
+  ): Promise<RunnableAutomationOptionDto[]> {
+    const automations = await this.automations.listNamesByOwner(ownerUserId);
+    return automations.map(({ id, name }) => ({ id, name }));
   }
 
   async listGrid(
@@ -92,6 +115,9 @@ export class AutomationsQueryService {
         .map(({ steps, ...summary }) => ({
           ...summary,
           stepCount: countAutomationSteps(steps),
+          targetApplicationIds: Array.from(
+            targetApplicationIdsByAutomation.get(summary.id) ?? [],
+          ),
         })),
       total: sorted.length,
       page,

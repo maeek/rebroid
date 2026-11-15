@@ -1,12 +1,12 @@
 import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
-import { listAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { listAutomationOptionsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { listAutomationTriggersGridAction } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { firstSearchParamValue, positiveIntegerSearchParam, validatedSearchParam } from '@/shared/model/search-params'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
-  Automation,
+  AutomationOption,
   AutomationLastStatus,
   AutomationTriggersGridPage,
   AutomationTriggersGridQuery
@@ -60,9 +60,9 @@ export const loadAutomationTriggersPageData = async (searchParams: AutomationTri
       captureError(error)
       return [] as AndroidApplication[]
     }),
-    listAutomationsAction().catch(error => {
+    listAutomationOptionsAction().catch(error => {
       captureError(error)
-      return [] as Automation[]
+      return [] as AutomationOption[]
     }),
     listAutomationTriggersGridAction(gridQuery).catch(error => {
       captureError(error)
