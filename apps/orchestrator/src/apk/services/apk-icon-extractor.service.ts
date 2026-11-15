@@ -7,7 +7,10 @@ import {
   launcherIconDataUrl,
   normalizeApkDisplayName,
 } from '../utils/apk-image.utils';
-import { ApkArchiveService } from './apk-archive.service';
+import {
+  ApkArchiveService,
+  type ApkArchiveReader,
+} from './apk-archive.service';
 import { ApkIconSelectorService } from './apk-icon-selector.service';
 import { ApkManifestReaderService } from './apk-manifest-reader.service';
 import { ApkResourceReaderService } from './apk-resource-reader.service';
@@ -26,105 +29,9 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
 
   async extractMetadataFromFile(filePath: string) {
     try {
-      const entries = await this.archive.listEntries(filePath);
-      const entriesByName = new Map(
-        entries.map((entry) => [entry.name, entry]),
+      return await this.archive.withEntries(filePath, (archive) =>
+        this.extractMetadata(archive),
       );
-      const manifest = await this.archive.readEntry(
-        filePath,
-        'AndroidManifest.xml',
-        this.maxMetadataEntryBytes,
-      );
-      if (!manifest) {
-        return {
-          extractedIconDataUrl: null,
-          displayName: null,
-          packageName: null,
-        };
-      }
-
-      const packageName = this.manifestReader.readPackageName(manifest);
-      const label = this.manifestReader.readApplicationLabel(manifest);
-      const declaredIcons = this.manifestReader.readIconReferences(manifest);
-      let resources: Buffer | null | undefined;
-      const getResources = async () => {
-        if (resources === undefined) {
-          resources = entriesByName.has('resources.arsc')
-            ? await this.archive.readEntry(
-                filePath,
-                'resources.arsc',
-                this.maxMetadataEntryBytes,
-              )
-            : null;
-        }
-        return resources;
-      };
-
-      let displayName = label.value
-        ? normalizeApkDisplayName(label.value)
-        : null;
-      if (!displayName && typeof label.resourceId === 'number') {
-        const content = await getResources();
-        const resolved = content
-          ? this.resourceReader.readString(content, label.resourceId)
-          : null;
-        displayName = resolved ? normalizeApkDisplayName(resolved) : null;
-      }
-
-      let extractedIconDataUrl: string | null = null;
-      const directPaths = [
-        declaredIcons.iconPath,
-        declaredIcons.roundIconPath,
-      ].filter((value): value is string => Boolean(value));
-      for (const path of directPaths) {
-        extractedIconDataUrl = await this.readIconPathFromArchive(
-          filePath,
-          entriesByName,
-          path,
-          10_000,
-        );
-        if (extractedIconDataUrl) {
-          break;
-        }
-      }
-
-      const resourceIds = [
-        declaredIcons.iconResourceId,
-        declaredIcons.roundIconResourceId,
-      ].filter((value): value is number => typeof value === 'number');
-      if (!extractedIconDataUrl && resourceIds.length > 0) {
-        const content = await getResources();
-        const candidates = content
-          ? this.resourceReader
-              .readIconCandidates(content, resourceIds)
-              .sort((left, right) => right.score - left.score)
-          : [];
-        for (const candidate of candidates) {
-          extractedIconDataUrl = await this.readIconPathFromArchive(
-            filePath,
-            entriesByName,
-            candidate.entryName,
-            candidate.score,
-          );
-          if (extractedIconDataUrl) {
-            break;
-          }
-        }
-      }
-
-      if (!extractedIconDataUrl) {
-        extractedIconDataUrl = await this.iconSelector.selectBestIconDataUrl(
-          entries,
-          (candidate) =>
-            this.archive.readEntry(
-              filePath,
-              candidate.entry.name,
-              maxIconBytes,
-            ),
-        );
-      }
-
-      return { extractedIconDataUrl, displayName, packageName };
     } catch (error) {
       this.logger.warn(
         `Could not extract APK metadata: ${getErrorMessage(error, 'unknown error')}`,
@@ -153,8 +60,99 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
     }
   }
 
+  private async extractMetadata(archive: ApkArchiveReader) {
+    const { entries } = archive;
+    const entriesByName = new Map(entries.map((entry) => [entry.name, entry]));
+    const manifest = await archive.readEntry(
+      'AndroidManifest.xml',
+      this.maxMetadataEntryBytes,
+    );
+    if (!manifest) {
+      return {
+        extractedIconDataUrl: null,
+        displayName: null,
+        packageName: null,
+      };
+    }
+
+    const packageName = this.manifestReader.readPackageName(manifest);
+    const label = this.manifestReader.readApplicationLabel(manifest);
+    const declaredIcons = this.manifestReader.readIconReferences(manifest);
+    let resources: Buffer | null | undefined;
+    const getResources = async () => {
+      if (resources === undefined) {
+        resources = entriesByName.has('resources.arsc')
+          ? await archive.readEntry(
+              'resources.arsc',
+              this.maxMetadataEntryBytes,
+            )
+          : null;
+      }
+      return resources;
+    };
+
+    let displayName = label.value ? normalizeApkDisplayName(label.value) : null;
+    if (!displayName && typeof label.resourceId === 'number') {
+      const content = await getResources();
+      const resolved = content
+        ? this.resourceReader.readString(content, label.resourceId)
+        : null;
+      displayName = resolved ? normalizeApkDisplayName(resolved) : null;
+    }
+
+    let extractedIconDataUrl: string | null = null;
+    const directPaths = [
+      declaredIcons.iconPath,
+      declaredIcons.roundIconPath,
+    ].filter((value): value is string => Boolean(value));
+    for (const path of directPaths) {
+      extractedIconDataUrl = await this.readIconPathFromArchive(
+        archive,
+        entriesByName,
+        path,
+        10_000,
+      );
+      if (extractedIconDataUrl) {
+        break;
+      }
+    }
+
+    const resourceIds = [
+      declaredIcons.iconResourceId,
+      declaredIcons.roundIconResourceId,
+    ].filter((value): value is number => typeof value === 'number');
+    if (!extractedIconDataUrl && resourceIds.length > 0) {
+      const content = await getResources();
+      const candidates = content
+        ? this.resourceReader
+            .readIconCandidates(content, resourceIds)
+            .sort((left, right) => right.score - left.score)
+        : [];
+      for (const candidate of candidates) {
+        extractedIconDataUrl = await this.readIconPathFromArchive(
+          archive,
+          entriesByName,
+          candidate.entryName,
+          candidate.score,
+        );
+        if (extractedIconDataUrl) {
+          break;
+        }
+      }
+    }
+
+    if (!extractedIconDataUrl) {
+      extractedIconDataUrl = await this.iconSelector.selectBestIconDataUrl(
+        entries,
+        (candidate) => archive.readEntry(candidate.entry.name, maxIconBytes),
+      );
+    }
+
+    return { extractedIconDataUrl, displayName, packageName };
+  }
+
   private async readIconPathFromArchive(
-    filePath: string,
+    archive: ApkArchiveReader,
     entriesByName: Map<string, ZipEntry>,
     path: string,
     score: number,
@@ -166,11 +164,7 @@ export class ApkIconExtractorService implements ApkPackageInspectionPort {
       return null;
     }
 
-    const content = await this.archive.readEntry(
-      filePath,
-      normalizedPath,
-      maxIconBytes,
-    );
+    const content = await archive.readEntry(normalizedPath, maxIconBytes);
     if (!content || content.length === 0) {
       return null;
     }
