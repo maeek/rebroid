@@ -28,7 +28,7 @@ describe('AppContainerRuntimeSection', () => {
     expect(onContainerArgsChange).toHaveBeenCalledWith('--other')
   })
 
-  it('renders readonly image field when editability is disabled', () => {
+  it('shows a copyable image reference in readonly mode', () => {
     render(
       <AppContainerRuntimeSection
         title='Device'
@@ -38,8 +38,8 @@ describe('AppContainerRuntimeSection', () => {
       />
     )
 
-    const imageInput = screen.getByDisplayValue('image:readonly')
-    expect((imageInput as HTMLInputElement).readOnly).toBe(true)
-    expect(screen.queryByDisplayValue('--')).toBeNull()
+    expect(screen.getByText('image:readonly')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Copy Image' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).toBeNull()
   })
 })

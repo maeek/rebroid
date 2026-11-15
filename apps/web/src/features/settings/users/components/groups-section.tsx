@@ -59,7 +59,8 @@ export const GroupsSection = ({
       accessorFn: group => group.name,
       header: 'Group',
       size: 480,
-      meta: { label: 'Group', skeleton: { kind: 'stacked' } },
+      enableHiding: false,
+      meta: { compactSlot: 'title', label: 'Group', skeleton: { kind: 'stacked' } },
       cell: ({ row }) => (
         <ResourceLink href={`/security/groups/${row.original.id}`}>
           <div className='font-medium'>{row.original.name}</div>

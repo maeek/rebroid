@@ -3,7 +3,7 @@ import { Visible } from '@/components/ui/visible'
 import { AppViewerActions } from '@/features/applications/viewer/actions/app-viewer-actions'
 import { AppInfo } from '@/features/applications/viewer/app-info/app-info'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
-import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
+import { PageBreadcrumbRow } from '@/shared/ui/page/page-breadcrumbs'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppViewerStatusSection } from './app-viewer-status-section'
@@ -15,10 +15,9 @@ export const AppViewerContent = () => {
   return (
     <PageContent className='pr-2'>
       <div className='flex w-full flex-col gap-6'>
-        <AppResourceBreadcrumbs
-          className='mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) items-center'
-          appName={app.name}
-        />
+        <PageBreadcrumbRow className='mt-(--page-header-top-inset)'>
+          <AppResourceBreadcrumbs appName={app.name} />
+        </PageBreadcrumbRow>
         <AppViewerHeading
           app={app}
           showStatusBadge
@@ -35,7 +34,6 @@ export const AppViewerContent = () => {
         </Visible>
       </div>
       <AppViewerStatusSection app={app} />
-      <AndroidNotifications app={app} />
       <AppInfo
         app={app}
         permissions={permissions}

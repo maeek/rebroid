@@ -80,7 +80,7 @@ export function AutomationStepYamlEditor({
         }}
       />
       {error ? (
-        <div className='flex items-start gap-2 rounded-control border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger'>
+        <div className='flex items-start gap-2 rounded-control border border-danger/(--feedback-border-opacity) bg-danger/10 px-3 py-2 text-xs text-danger'>
           <IconAlertTriangle className='mt-0.5 size-4 shrink-0' />
           <span>{error}</span>
         </div>

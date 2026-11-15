@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import { AppManage } from '@/features/applications/manage/app-manage'
@@ -19,7 +19,7 @@ import { AppDeviceLayout } from './app-device-layout'
 import { AppNetworkPage } from './app-network-page'
 import { AppResourceBreadcrumbs } from './app-resource-breadcrumbs'
 import { AppResourceHome } from './app-resource-home'
-import { appResourcePreviewFeatures, previewApp } from './app-resource-preview-data'
+import { appResourcePreviewFeatures, dockedViewerPreviewFeatures, previewApp } from './app-resource-preview-data'
 import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent, AppWorkspaceLayout } from './app-workspace-content'
 import { ApplicationViewerContext, type ViewerStreamSample } from './application-viewer-context'
@@ -74,10 +74,28 @@ const dockedPreviewDisplay: DisplayViewerProviderValue = {
   }
 }
 
+const dockedPreviewSurfaces = (virtualDisplay: string | null): DisplayViewerProviderValue['surfaces'] => {
+  if (virtualDisplay !== 'portrait' && virtualDisplay !== 'landscape') return dockedPreviewDisplay.surfaces
+
+  return [
+    ...dockedPreviewDisplay.surfaces,
+    {
+      id: 'preview-virtual-display',
+      surfaceId: 'preview-virtual-display',
+      sessionId: 'preview-virtual-session',
+      kind: 'virtual',
+      name: 'Virtual display',
+      src: '/preview-display-frame?virtual',
+      popoutUrl: '/preview-display-frame?virtual',
+      displaySize: virtualDisplay === 'portrait' ? { width: 1080, height: 2340 } : { width: 1920, height: 1080 }
+    }
+  ]
+}
+
 type AppResourcePreviewProps = { activity?: ReactNode; agent?: boolean; docked?: boolean }
 
 export const AppResourcePreview = (props: AppResourcePreviewProps) => (
-  <FeatureFlagsProvider manifest={appResourcePreviewFeatures}>
+  <FeatureFlagsProvider manifest={props.docked ? dockedViewerPreviewFeatures : appResourcePreviewFeatures}>
     <ResourceNavigationMotionScope>
       <AppResourcePreviewContent {...props} />
     </ResourceNavigationMotionScope>
@@ -99,11 +117,19 @@ const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: 
     }
     return client
   })
-  const [app, setApp] = useState<AppDefinition | undefined>(previewApp)
+  const search = useSearchParams()
+  const [app, setApp] = useState<AppDefinition | undefined>(() => ({
+    ...previewApp,
+    name: search.get('app-name') ?? previewApp.name
+  }))
   const [viewerSettings, setViewerSettings] = useState(() => viewerSettingsFromDefaults(defaultOrchestratorUiSettings))
   const [viewerStreamMetrics, setViewerStreamMetrics] = useState<Record<string, ViewerStreamSample | undefined>>({})
-  const search = useSearchParams()
   const selected = search.get('view')
+  const virtualDisplay = search.get('virtual-display')
+  const viewer = useMemo(
+    () => (docked ? { ...dockedPreviewDisplay, surfaces: dockedPreviewSurfaces(virtualDisplay) } : previewDisplay),
+    [docked, virtualDisplay]
+  )
   const previewLiveViewer = docked || search.get('viewer') === 'preview'
   const view = selected === 'activity' || selected === 'diagnostics' ? selected : 'overview'
   const showAgent = agent && (selected === null || selected === 'ai-agent')
@@ -143,10 +169,11 @@ const AppResourcePreviewContent = ({ activity, agent = false, docked = false }: 
         >
           <AppDeviceLayout
             view={layoutView}
-            breadcrumbs={<AppResourceBreadcrumbs appName={previewApp.name} />}
+            appName={app?.name}
+            breadcrumbs={<AppResourceBreadcrumbs appName={app?.name} />}
             viewer={
               previewLiveViewer ? (
-                <DisplayViewerProvider value={docked ? dockedPreviewDisplay : previewDisplay}>
+                <DisplayViewerProvider value={viewer}>
                   <DisplayViewerShell
                     className='h-[var(--app-viewer-height)]'
                     clipboard={<ViewerClipboard appId={previewApp.id} />}

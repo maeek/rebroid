@@ -1,7 +1,7 @@
 import { IconDeviceFloppy } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { DiscardChangesButton } from '@/shared/ui/actions/discard-changes-button'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { ResourceLink } from '@/shared/ui/resource-link'
 
 export const PlatformRuntimeHeader = ({
@@ -21,7 +21,8 @@ export const PlatformRuntimeHeader = ({
   saveDisabled?: boolean
   showActions?: boolean
 }) => (
-  <PageHeader
+  <CompactPageHeader
+    inlineActions
     section={{ label: 'Administration' }}
     title='General'
     description={
@@ -33,13 +34,10 @@ export const PlatformRuntimeHeader = ({
     actions={
       showActions ? (
         <>
-          <Button
-            variant='ghost'
+          <DiscardChangesButton
             disabled={disabled || isSaving || !hasChanges}
             onClick={onDiscard}
-          >
-            Discard changes
-          </Button>
+          />
           <MutationButton
             pending={isSaving}
             pendingLabel='Saving…'

@@ -1,15 +1,14 @@
 'use client'
 
 import { useMemo, useRef } from 'react'
-import { IconPlayerPlay, IconPlayerStop } from '@tabler/icons-react'
+import { IconArrowUp, IconCheck, IconMessagePlus, IconPlayerPlay, IconPlayerStopFilled } from '@tabler/icons-react'
 import { catalogByRole, selectCatalogProviderAndModel } from '@/shared/model/ai-model-catalog'
-import { AiComposerActions } from '@/shared/ui/ai/ai-composer-actions'
+import { AiComposerAction } from '@/shared/ui/ai/ai-composer-action'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import {
   AiAgentConversationLayout,
   AiAgentConversationToolbar,
-  AiAgentPromptSuggestions,
-  AiAgentSuggestionsMenu
+  AiAgentPromptSuggestions
 } from './ai-agent-conversation-layout'
 import { aiAgentPromptPresets } from './ai-agent-prompt-presets'
 import { AiAgentSettingsPopover } from './ai-agent-settings-popover'
@@ -111,14 +110,13 @@ export const AiAgentConversation = ({
   )
 
   const suggestions = useAiAgentPromptSuggestions({
-    activeTurn,
+    visible: !isLoadingHistory && !activeTurn && turns.length === 0,
     app,
     contextualSuggestionsEnabled,
     fallbackSuggestions,
     generatePromptSuggestions,
     selectedModel: planning.model,
-    selectedProvider: planning.provider,
-    turns
+    selectedProvider: planning.provider
   })
 
   const { draftingRunId, saveTurnAsWorkflow } = useAiAgentWorkflowDraft({
@@ -164,35 +162,17 @@ export const AiAgentConversation = ({
 
   const modelBlocker = !selectedProvider || !selectedModel ? selectionMessage : null
   const deviceBlocker = !app.running ? 'The app must be running to send or run a queued task.' : null
+  const canSendMessage = app.running && canSubmit
 
-  let secondaryAction
-  if (queuedTurn && !activeTurn) {
-    secondaryAction = {
-      label: 'Run next task',
-      icon: (
-        <IconPlayerPlay
-          aria-hidden
-          className='size-4'
-        />
-      ),
-      disabled: !canRunQueuedTurn,
-      onClick: () => void runQueuedTurn()
-    }
-  }
-  if (showCancelRun) {
-    const canceling = isCanceling || activeTurn?.status === 'canceling'
-    secondaryAction = {
-      label: canceling ? 'Canceling' : 'Stop',
-      icon: (
-        <IconPlayerStop
-          aria-hidden
-          className='size-4'
-        />
-      ),
-      pending: canceling,
-      onClick: () => void cancelRun()
-    }
-  }
+  const canceling = isCanceling || activeTurn?.status === 'canceling'
+  const starting = activeTurn?.status === 'starting' && !showCancelRun
+  const sendLabel = queuedTurn ? 'Queue message' : 'Send message'
+  let actionLabel = sendLabel
+  if (activeTurn) actionLabel = 'Stop'
+  if (starting) actionLabel = 'Starting task'
+  if (canceling && activeTurn) actionLabel = 'Canceling'
+  const SendIcon = submissionFeedback && !prompt.trim() ? IconCheck : IconArrowUp
+  const ActionIcon = activeTurn ? IconPlayerStopFilled : SendIcon
 
   return (
     <AiAgentConversationLayout
@@ -248,46 +228,72 @@ export const AiAgentConversation = ({
             placeholder={app.running ? 'Describe a task for this Android device…' : 'Draft a task…'}
             status={submissionFeedback}
             leadingControl={
-              <AiAgentSuggestionsMenu
-                suggestions={suggestions}
-                onSelect={applyPreset}
-              />
+              activeTurn ? (
+                <AiComposerAction
+                  label='Queue message'
+                  shortcut='⌘+Enter / Ctrl+Enter'
+                  variant='ghost'
+                  size='icon-sm'
+                  className='text-foreground-muted'
+                  disabled={!canSendMessage}
+                  onClick={sendMessage}
+                >
+                  <IconMessagePlus
+                    aria-hidden
+                    className='size-4'
+                  />
+                </AiComposerAction>
+              ) : queuedTurn ? (
+                <AiComposerAction
+                  label='Run next task'
+                  variant='ghost'
+                  size='icon-sm'
+                  disabled={!canRunQueuedTurn}
+                  onClick={() => void runQueuedTurn()}
+                >
+                  <IconPlayerPlay
+                    aria-hidden
+                    className='size-4'
+                  />
+                </AiComposerAction>
+              ) : null
             }
             errors={[selectedProvider && selectedModel ? selectionMessage : null, error]}
             onChange={setPrompt}
             onSubmit={sendMessage}
-            submitOnEnter
+            submitOnEnter={!activeTurn}
             modelControl={
-              <div className='flex min-w-0 flex-wrap items-center gap-1'>
-                <AiAgentSettingsPopover
-                  adHocTimeoutMinutes={adHocTimeoutMinutes}
-                  catalog={primaryCatalog}
-                  health={health}
-                  isCheckingHealth={isCheckingHealth}
-                  onRecheckHealth={() => void recheckHealth()}
-                  selectedModel={selectedModel}
-                  selectedProvider={selectedProvider}
-                  selectedVisionModel={selectedVisionModel}
-                  selectedVisionProvider={selectedVisionProvider}
-                  setModelId={setModelId}
-                  setProviderId={setProviderId}
-                  setVisionModelId={setVisionModelId}
-                  setVisionProviderId={setVisionProviderId}
-                  setTimeoutMinutesInput={setTimeoutMinutesInput}
-                  timeoutMinutesInput={timeoutMinutesInput}
-                  visionCatalog={visionCatalog}
-                />
-              </div>
+              <AiAgentSettingsPopover
+                adHocTimeoutMinutes={adHocTimeoutMinutes}
+                catalog={primaryCatalog}
+                health={health}
+                isCheckingHealth={isCheckingHealth}
+                onRecheckHealth={() => void recheckHealth()}
+                selectedModel={selectedModel}
+                selectedProvider={selectedProvider}
+                selectedVisionModel={selectedVisionModel}
+                selectedVisionProvider={selectedVisionProvider}
+                setModelId={setModelId}
+                setProviderId={setProviderId}
+                setVisionModelId={setVisionModelId}
+                setVisionProviderId={setVisionProviderId}
+                setTimeoutMinutesInput={setTimeoutMinutesInput}
+                timeoutMinutesInput={timeoutMinutesInput}
+                visionCatalog={visionCatalog}
+              />
             }
             actions={
-              <AiComposerActions
-                label={activeTurn || queuedTurn ? 'Queue message' : 'Send message'}
-                disabled={!app.running || !canSubmit}
-                pending={activeTurn?.status === 'starting' && !prompt.trim()}
-                accepted={Boolean(submissionFeedback) && !prompt.trim()}
-                onSubmit={sendMessage}
-                secondaryAction={secondaryAction}
-              />
+              <AiComposerAction
+                label={actionLabel}
+                disabled={activeTurn ? !showCancelRun : !canSendMessage}
+                pending={Boolean(activeTurn && (starting || canceling))}
+                onClick={activeTurn ? () => void cancelRun() : sendMessage}
+              >
+                <ActionIcon
+                  aria-hidden
+                  className='size-4'
+                />
+              </AiComposerAction>
             }
           />
         </div>

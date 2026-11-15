@@ -32,11 +32,11 @@ describe('GroupMembershipEditor', () => {
   it('bounds large memberships with pagination and moves by global priority while filtered', () => {
     render(<Harness />)
     expect(screen.getAllByRole('row')).toHaveLength(6)
-    expect(screen.getByText('1-5 of 12')).toBeVisible()
+    expect(screen.getByText('1–5 of 12')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(screen.getByRole('link', { name: 'Group 5' })).toBeVisible()
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Purpose 11' } })
-    expect(screen.getByText('1-1 of 1')).toBeVisible()
+    expect(screen.getByText('1 group')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Move Group 11 earlier' }))
     expect(screen.getByTestId('order')).toHaveTextContent('group-9,group-11,group-10')
     fireEvent.click(screen.getByRole('button', { name: 'Remove Group 11' }))

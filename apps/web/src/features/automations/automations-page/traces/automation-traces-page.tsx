@@ -1,6 +1,3 @@
-import { IconArrowLeft } from '@tabler/icons-react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { activeWorkflowRunsHref } from '@/shared/model/active-workflow-runs-href'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
@@ -109,25 +106,6 @@ export function AutomationTracesPage({
         trail={trail}
         title={loading ? <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' /> : `${automation?.name} run history`}
         breadcrumbLabel='Run history'
-        actions={
-          <Button
-            asChild={Boolean(editorHref)}
-            variant='secondary'
-            disabled={loading}
-          >
-            {editorHref ? (
-              <Link href={editorHref}>
-                <IconArrowLeft />
-                Back to editor
-              </Link>
-            ) : (
-              <>
-                <IconArrowLeft />
-                Back to editor
-              </>
-            )}
-          </Button>
-        }
       />
       <PageContent className='grid gap-6 pt-2'>
         <AutomationTracesSection

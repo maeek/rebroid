@@ -9,7 +9,7 @@ import {
   useScheduledTasksControllerContext
 } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { ScheduledTasksTable } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { QuickGlanceCard } from '@/shared/ui/settings/quick-glance-card'
 import type { ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
@@ -30,7 +30,7 @@ const ScheduledTasksPageContent = ({ loading }: { loading: boolean }) => {
       gridToolbar
       className='gap-2'
     >
-      <PageHeader
+      <CompactPageHeader
         section={{ label: 'System' }}
         title='Maintenance tasks'
         description='Monitor scheduled jobs, run maintenance tasks, and review failures.'

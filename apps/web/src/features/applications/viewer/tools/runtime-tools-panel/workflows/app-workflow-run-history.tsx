@@ -21,6 +21,7 @@ import type {
   ApplicationWorkflowRunRow
 } from '@/shared/contracts/application-workflow-history'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const pageSizeOptions = [10, 25, 50]
 const initialPageSize = 25
@@ -33,9 +34,10 @@ const runColumns = (
     id: 'workflow',
     header: 'Workflow',
     size: 210,
-    meta: { label: 'Workflow', skeleton: { kind: 'stacked' } },
+    enableHiding: false,
+    meta: { compactSlot: 'title', label: 'Workflow', skeleton: { kind: 'stacked' } },
     cell: ({ row: { original: run } }) => (
-      <div className='grid gap-1'>
+      <div className={`grid gap-1 ${styles.settingsStack}`}>
         <ResourceLink
           href={href(run.id)}
           data-workflow-run={run.id}
@@ -56,7 +58,12 @@ const runColumns = (
     header: 'Status',
     size: 144,
     minSize: 136,
-    meta: { label: 'Status', skeleton: { kind: 'badge' }, cellContentClassName: 'whitespace-nowrap' },
+    meta: {
+      compactSlot: 'status',
+      label: 'Status',
+      skeleton: { kind: 'badge' },
+      cellContentClassName: 'whitespace-nowrap'
+    },
     cell: ({ row }) => (
       <AutomationRunStatusBadge
         runId={row.original.id}
@@ -69,21 +76,26 @@ const runColumns = (
     id: 'time',
     header: 'Time',
     size: 148,
-    meta: { label: 'Time', skeleton: { kind: 'stacked' } },
+    meta: { compactSlot: 'details', label: 'Time', skeleton: { kind: 'stacked' } },
     cell: ({ row: { original: run } }) => <DateTimeValue value={run.startedAt ?? run.createdAt} />
   },
   {
     id: 'trigger',
     header: 'Trigger',
     size: 94,
-    meta: { label: 'Trigger', skeleton: { kind: 'text', width: 'w-16' } },
+    meta: { compactSlot: 'details', label: 'Trigger', skeleton: { kind: 'text', width: 'w-16' } },
     cell: ({ row }) => workflowRunTriggerLabels[row.original.trigger]
   },
   {
     id: 'duration',
     header: 'Duration',
     size: 88,
-    meta: { label: 'Duration', skeleton: { kind: 'text', width: 'w-12' } },
+    meta: {
+      compactSlot: 'details',
+      label: 'Duration',
+      showCompactLabel: true,
+      skeleton: { kind: 'text', width: 'w-12' }
+    },
     cell: ({ row: { original: run } }) => (
       <span className='tabular-nums'>{workflowRunDuration(run.startedAt, run.completedAt)}</span>
     )

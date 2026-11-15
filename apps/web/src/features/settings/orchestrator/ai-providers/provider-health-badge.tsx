@@ -9,6 +9,7 @@ import { Surface, type SurfaceTone } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { AiHealthBadge } from '@/shared/ui/ai/ai-health-indicator'
 import type { AutomationAiProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const healthTone = (health: AutomationAiProviderHealth | null): SurfaceTone => {
   if (health?.status === 'ok') return 'success'
@@ -130,7 +131,7 @@ export const ProviderHealthBadge = ({
           type='button'
           variant='ghost'
           size='icon-md'
-          className='size-7 shrink-0'
+          className={cn('size-7 shrink-0', styles.settingsIconAction)}
           disabled={disabled || isManualChecking}
           aria-label='Check AI provider health'
           onClick={() => void checkHealth('manual')}

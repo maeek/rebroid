@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useContext, useEffect, useEffectEvent, useState } from 'react'
 import { IconAdjustments } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useStreamingDiagnosticSurfaces } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
+import {
+  MobileViewerActionRows,
+  mobileViewerActionRowClassName
+} from '@/features/applications/viewer/display/viewer-control-bar/mobile/mobile-viewer-action-rows'
 import { normalizeViewerSettings, type ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import { StreamingToolsSection } from '@/features/applications/viewer/tools/runtime-tools-panel/streaming/streaming-tools-section'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -30,7 +34,14 @@ export const AppViewerStreamingSettings = ({ streamIssue }: { streamIssue?: Obse
   const [staleSampleTime, setStaleSampleTime] = useState<number | null>(null)
   const { app, viewerSettings, setViewerSettings, viewerStreamMetrics } = useApplicationViewerApp()
   const surfaces = useStreamingDiagnosticSurfaces() ?? []
-  const showLabel = app.status !== 'running'
+  const mobileRow = useContext(MobileViewerActionRows)
+  const showLabel = mobileRow || app.status !== 'running'
+  let triggerClassName = 'size-6'
+  if (showLabel) {
+    triggerClassName = mobileRow
+      ? mobileViewerActionRowClassName
+      : 'h-6 gap-2 text-xs text-foreground-muted hover:bg-control-hover hover:text-foreground focus-visible:ring-inset dark:hover:bg-control-hover'
+  }
   const issueSurface = surfaces.find(surface => surface.id === streamIssue?.surfaceId)
   const selectedSurface = surfaces.find(surface => surface.id === selectedSurfaceId) ?? issueSurface ?? surfaces[0]
   const sample = selectedSurface ? viewerStreamMetrics[selectedSurface.id] : undefined
@@ -96,11 +107,7 @@ export const AppViewerStreamingSettings = ({ streamIssue }: { streamIssue?: Obse
                 type='button'
                 size={showLabel ? 'sm' : 'icon-sm'}
                 variant={showLabel ? 'ghost' : 'secondary'}
-                className={
-                  showLabel
-                    ? 'h-6 gap-2 text-xs text-foreground-muted hover:bg-control-hover hover:text-foreground focus-visible:ring-inset dark:hover:bg-control-hover'
-                    : 'size-6'
-                }
+                className={triggerClassName}
               />
             }
             aria-label={showLabel ? undefined : 'Streaming settings'}

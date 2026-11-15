@@ -170,7 +170,7 @@ export const variantStyles = {
       'touch-control flex size-5 shrink-0 items-center justify-center rounded-full text-foreground-muted transition hover:bg-control hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     sectionActionIcon: 'size-4 stroke-current',
     list: 'w-full pb-6 flex flex-col',
-    item: 'flex gap-2 justify-start items-center px-2 py-1 max-lg:py-2 hover:bg-control-hover rounded-control text-foreground hover:text-foreground cursor-pointer',
+    item: 'flex min-h-12 items-center justify-start gap-2 rounded-control px-2 text-foreground hover:bg-control-hover hover:text-foreground cursor-pointer',
     activeItem: 'bg-control',
     iconWrap: 'size-8 rounded-control flex shrink-0 justify-center items-center',
     icon: 'size-5 max-lg:size-5 stroke-current',

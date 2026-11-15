@@ -1,19 +1,25 @@
 import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { compactPageActionClassName, PageHeader } from '@/shared/ui/page/page-header'
 
 export const AppsListHeader = ({ canCreate = false, loading = false }: { canCreate?: boolean; loading?: boolean }) => {
   let actions = null
   if (loading) {
     actions = (
-      <Button disabled>
+      <Button
+        className={compactPageActionClassName}
+        disabled
+      >
         <IconPlus className='size-4' /> Create app
       </Button>
     )
   } else if (canCreate) {
     actions = (
-      <Button asChild>
+      <Button
+        asChild
+        className={compactPageActionClassName}
+      >
         <Link href='/apps/create'>
           <IconPlus className='size-4' /> Create app
         </Link>
@@ -24,6 +30,7 @@ export const AppsListHeader = ({ canCreate = false, loading = false }: { canCrea
     <PageHeader
       section={{ label: 'Apps' }}
       breadcrumbLabel='All apps'
+      className='max-sm:pt-(--page-header-top-inset)'
       desktopOnlyBreadcrumbRow
       title='Apps'
       actions={actions}

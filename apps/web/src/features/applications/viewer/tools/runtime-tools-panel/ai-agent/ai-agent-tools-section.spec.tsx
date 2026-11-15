@@ -118,6 +118,8 @@ describe('AiAgentToolsSection', () => {
     render(<AiAgentToolsSection app={app} />)
 
     expect(screen.getByText('Give the device agent a task')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Inspect screen' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Suggestions', exact: true })).toBeNull()
     expect(screen.getByText('No model')).toBeTruthy()
     expect(screen.queryByLabelText('Loading AI chat history')).toBeNull()
   })

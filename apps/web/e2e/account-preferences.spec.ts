@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 
-test('the account menu links directly to Preferences and Security', async ({ page }) => {
+test('the desktop account menu links directly to Preferences and Security', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const controls = page.getByRole('group', { name: 'Navigation controls', exact: true })
   const account = controls.getByRole('button', { name: /^Account(?::|$)/ })
-  await expect(controls.getByRole('button', { name: 'Notifications' })).toBeVisible()
+  await expect(controls.getByRole('button')).toHaveCount(1)
   await account.click()
   await expect(page.getByRole('menuitem', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
   await expect(page.getByRole('menuitem', { name: 'Security', exact: true })).toHaveAttribute(
@@ -14,27 +15,20 @@ test('the account menu links directly to Preferences and Security', async ({ pag
   await expect(page.getByRole('menuitem', { name: 'Account overview', exact: true })).toHaveCount(0)
 })
 
-test('the account Appearance submenu matches its parent and fits beside it on narrow screens', async ({ page }) => {
-  const mobile = page.viewportSize()!.width < 1024
-  await page.setViewportSize(mobile ? { width: 320, height: 640 } : { width: 1440, height: 900 })
+test('the desktop Appearance submenu matches its parent and opens beside the rail', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
   await page.goto('/skeleton-contract-test?editor=console-shell')
-  if (!mobile) {
-    await page.getByRole('button', { name: 'Collapse sidebar' }).click()
-    await expect(page.getByRole('complementary', { name: 'Primary navigation' })).toHaveCSS('width', '64px')
-  }
+  await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(page.getByRole('complementary', { name: 'Primary navigation' })).toHaveCSS('width', '64px')
 
   const account = page.getByRole('button', { name: /^Account(?::|$)/ })
   await account.click()
   const trigger = page.getByRole('menuitem', { name: 'Appearance', exact: true })
   await expect(trigger).toHaveCSS('column-gap', '8px')
-  await expect(trigger.locator(mobile ? '.tabler-icon-chevron-left' : '.tabler-icon-chevron-right')).toBeVisible()
+  await expect(trigger.locator('.tabler-icon-chevron-right')).toBeVisible()
   const menu = page.getByRole('menu').filter({ has: trigger })
-  if (mobile) {
-    await trigger.tap()
-  } else {
-    await trigger.press('ArrowRight')
-  }
+  await trigger.press('ArrowRight')
 
   const dark = page.getByRole('menuitemradio', { name: 'Dark', exact: true })
   const submenu = page.getByRole('menu', { name: 'Appearance', exact: true })
@@ -53,7 +47,7 @@ test('the account Appearance submenu matches its parent and fits beside it on na
   await expect
     .poll(async () => {
       const child = (await submenu.boundingBox())!
-      const besideParent = mobile ? child.x + child.width < parent.x : child.x > parent.x + parent.width
+      const besideParent = child.x > parent.x + parent.width
       const { width, height } = page.viewportSize()!
       const fitsViewport =
         child.x >= 0 && child.y >= 0 && child.x + child.width <= width && child.y + child.height <= height
@@ -63,6 +57,43 @@ test('the account Appearance submenu matches its parent and fits beside it on na
 
   await page.getByRole('menuitemradio', { name: 'OLED' }).click()
   await expect(page.locator('html')).toHaveClass(/\boled\b/)
+})
+
+test('the mobile drawer ends with direct account actions and inline Appearance choices', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 600 })
+  await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
+  await page.goto('/skeleton-contract-test?editor=console-shell')
+  const more = page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' })
+  await more.click()
+
+  const drawer = page.getByRole('dialog', { name: 'Navigation' })
+  const account = drawer.getByRole('region', { name: 'Account' })
+  const lastNavigationLink = drawer.getByRole('link', { name: 'Maintenance tasks' })
+  expect((await lastNavigationLink.boundingBox())!.y).toBeLessThan((await account.boundingBox())!.y)
+  await expect(account.getByRole('heading', { name: 'Preview operator' })).toBeAttached()
+  await expect(account.getByRole('link', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
+  await expect(account.getByRole('link', { name: 'Security' })).toHaveAttribute('href', '/preferences/security')
+  await expect(drawer.getByRole('menu')).toHaveCount(0)
+
+  const logout = account.getByRole('button', { name: 'Log out' })
+  await logout.scrollIntoViewIfNeeded()
+  await expect(logout).toBeInViewport()
+  const appearance = account.getByRole('group', { name: 'Appearance' })
+  await expect(appearance.getByRole('radio')).toHaveCount(4)
+  const dark = appearance.getByRole('radio', { name: 'Dark' })
+  const oled = appearance.getByRole('radio', { name: 'OLED' })
+  await expect(dark).toBeChecked()
+  await dark.press('ArrowRight')
+  await expect(oled).toBeChecked()
+  await expect(page.locator('html')).toHaveClass(/\boled\b/)
+  await expect(oled).toBeFocused()
+  const { x, width } = (await appearance.boundingBox())!
+  expect(x).toBeGreaterThanOrEqual(0)
+  expect(x + width).toBeLessThanOrEqual(320)
+
+  await page.keyboard.press('Escape')
+  await expect(drawer).toBeHidden()
+  await expect(more).toBeFocused()
 })
 
 test('personal preferences apply immediately or have their own save action', async ({ page }) => {

@@ -12,6 +12,7 @@ import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { PlatformContainer } from '@/shared/contracts/platform'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 export const RelatedContainersGrid = ({
   containers,
@@ -44,9 +45,10 @@ export const RelatedContainersGrid = ({
         accessorFn: container => container.names[0] ?? container.shortId,
         header: 'Container',
         size: 320,
-        meta: { label: 'Container', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'Container', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className='grid gap-1'>
+          <div className={`grid gap-1 ${styles.settingsStack}`}>
             <ResourceLink
               className='whitespace-normal break-words font-medium'
               href={`/runtime/containers/${encodeURIComponent(row.original.id)}`}
@@ -62,7 +64,7 @@ export const RelatedContainersGrid = ({
         accessorFn: container => container.state,
         header: 'State',
         size: 128,
-        meta: { label: 'State', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'status', label: 'State', skeleton: { kind: 'badge' } },
         cell: ({ row }) => <ContainerStateBadge state={row.original.state} />
       },
       {
@@ -74,6 +76,7 @@ export const RelatedContainersGrid = ({
         header: relation === 'application' ? 'Application' : 'Image',
         size: 320,
         meta: {
+          compactSlot: 'details',
           label: relation === 'application' ? 'Application' : 'Image',
           skeleton: { kind: relation === 'application' ? 'stacked' : 'text' }
         },

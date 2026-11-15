@@ -1,15 +1,54 @@
 .workspace {
+  --workflow-workspace-top: 0px;
+  --workflow-workspace-height: calc(100dvh - var(--workflow-workspace-top) - var(--console-bottom-inset));
   --workflow-toolbar-top: 0px;
   --workflow-toolbar-height: 0px;
   --workflow-toolbar-bottom: calc(var(--workflow-toolbar-top) + var(--workflow-toolbar-height));
   --workflow-workspace-gap: 0.5rem;
   --workflow-editor-height: calc(
-    100dvh - var(--workflow-toolbar-bottom) - var(--console-bottom-inset) - var(--workflow-workspace-gap) * 2
+    var(--workflow-workspace-height) - var(--workflow-toolbar-height) - var(--workflow-workspace-gap) * 2
   );
 }
 
+[data-slot='protected-shell'] .workspace {
+  --workflow-workspace-top: var(--console-top-inset);
+}
+
+.yamlWorkspace {
+  display: grid;
+  height: max(18rem, var(--workflow-workspace-height));
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+@media (width < 40rem) {
+  .toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 0.5rem;
+    reading-flow: grid-rows;
+  }
+
+  .controls {
+    display: contents;
+  }
+
+  .toolbar [data-workflow-save] {
+    grid-area: 1 / 2;
+  }
+
+  .historyControls {
+    grid-area: 2 / 1;
+  }
+
+  .toolbar [data-workflow-more] {
+    grid-area: 2 / 2;
+    justify-self: end;
+  }
+}
+
 @media (width < 64rem) {
-  [data-slot='protected-shell'] .workspace {
-    --workflow-toolbar-top: var(--console-top-inset);
+  .workspace {
+    --workflow-toolbar-top: var(--workflow-workspace-top);
   }
 }

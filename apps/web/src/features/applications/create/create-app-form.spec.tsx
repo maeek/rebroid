@@ -1,9 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { toast } from '@/hooks/use-toast'
 import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { actionError, actionOk } from '@/shared/actions/action-result'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
+import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { appResourcePreviewFeatures } from '../detail/app-resource-preview-data'
 import { CreateAppForm } from './create-app-form'
@@ -19,6 +21,7 @@ vi.mock('@/server/orchestrator/applications/actions/configuration/create-update-
 }))
 vi.mock('@/server/app-icons/actions/set-app-icon-action', () => ({ setAppIconAction: vi.fn() }))
 vi.mock('@/features/applications/apks/upload-apk-with-feedback', () => ({ uploadApkWithFeedback: vi.fn() }))
+vi.mock('@/shared/model/media/icon-metadata', () => ({ optimizeIconFile: vi.fn() }))
 vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
   useOrchestratorUiSettings: (settings: unknown) => settings
 }))
@@ -73,6 +76,63 @@ describe('Create app failure feedback', () => {
     expect(screen.getByText('Network access')).toBeVisible()
   })
 
+  it('keeps the selected APK and icon when a dropped replacement fails', async () => {
+    vi.mocked(uploadApkWithFeedback)
+      .mockResolvedValueOnce({
+        id: 'apk-1',
+        ownerUserId: null,
+        originalName: 'original.apk',
+        sha256: '',
+        sizeBytes: 10,
+        filePath: '',
+        extractedIconDataUrl: 'data:image/png;base64,AA==',
+        displayName: 'Original app',
+        packageName: null,
+        googlePlayServices: { verdict: 'not_detected', evidence: [], analysisVersion: 1 },
+        createdAt: '',
+        updatedAt: ''
+      })
+      .mockImplementationOnce(({ onError }) => {
+        onError?.('Choose a valid APK file.')
+        return Promise.resolve(null)
+      })
+    renderForm()
+    const picker = screen.getByLabelText('APK file', { exact: true })
+    fireEvent.change(picker, { target: { files: [new File(['apk'], 'original.apk')] } })
+    expect(await screen.findByText('Icon from APK')).toBeVisible()
+    expect(screen.getByRole('textbox', { name: /Name/ })).toHaveValue('Original app')
+    expect(screen.getByRole('button', { name: 'Create app' })).toBeEnabled()
+
+    const replacement = new File(['apk'], 'replacement.apk')
+    fireEvent.drop(picker, {
+      dataTransfer: { types: ['Files'], files: [replacement] }
+    })
+    expect(await screen.findByText('Choose a valid APK file.')).toBeVisible()
+    expect(screen.getByText('original.apk')).toBeVisible()
+    expect(screen.getByRole('switch', { name: 'Use icon from APK' })).toBeChecked()
+  })
+
+  it('waits for icon preparation and keeps the current icon on failure', async () => {
+    const icon = 'data:image/png;base64,AA=='
+    vi.mocked(optimizeIconFile).mockResolvedValueOnce(icon).mockRejectedValueOnce(new Error('Choose another image.'))
+    renderForm()
+    const picker = screen.getByLabelText('App icon', { exact: true })
+    const submit = screen.getByRole('button', { name: 'Create app' })
+    const file = new File(['image'], 'icon.png', { type: 'image/png' })
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
+    expect(submit).toBeEnabled()
+    fireEvent.change(picker, { target: { files: [file] } })
+    expect(submit).toBeDisabled()
+    expect(await screen.findByText('Custom icon')).toBeVisible()
+    expect(submit).toBeEnabled()
+
+    fireEvent.change(picker, { target: { files: [file] } })
+    expect(await screen.findByText('Choose another image.')).toBeVisible()
+    expect(screen.getByText('Custom icon')).toBeVisible()
+    expect(optimizeIconFile).toHaveBeenCalledTimes(2)
+  })
+
   it('includes pasted IPv4 destinations when Create app is the next action', async () => {
     vi.mocked(submitCreateApplicationAction).mockResolvedValueOnce(
       actionOk({ id: '6d8b5e09-e4bf-4568-9aa9-0572237c04d3' })
@@ -94,15 +154,48 @@ describe('Create app failure feedback', () => {
     )
   })
 
-  it('shows and links to a field error before sending an invalid draft', () => {
+  it('requires a name with at least two characters after trimming', () => {
     renderForm()
-    fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
-
+    const submit = screen.getByRole('button', { name: 'Create app' })
     const name = screen.getByRole('textbox', { name: /Name/ })
+    expect(submit).toBeDisabled()
+    expect(name).not.toHaveAttribute('aria-invalid')
+
+    for (const value of ['   ', ' A ']) {
+      fireEvent.change(name, { target: { value } })
+      expect(submit).toBeDisabled()
+      expect(name).toHaveAccessibleDescription(/Enter a name with at least 2 characters/)
+    }
+
+    fireEvent.change(name, { target: { value: ' AB ' } })
+    expect(submit).toBeEnabled()
+    expect(name).not.toHaveAttribute('aria-invalid')
+    fireEvent.change(name, { target: { value: '' } })
+    expect(submit).toBeDisabled()
+    expect(name).toHaveAccessibleDescription(/Enter a name with at least 2 characters/)
+  })
+
+  it('shows and links to a field error if an invalid draft reaches the submit handler', () => {
+    renderForm()
+    const name = screen.getByRole<HTMLInputElement>('textbox', { name: /Name/ })
+    act(() => name.form?.requestSubmit())
     expect(name).toHaveAccessibleDescription(/Enter a name with at least 2 characters/)
     fireEvent.click(screen.getByRole('button', { name: 'Go to first error' }))
     expect(name).toHaveFocus()
     expect(submitCreateApplicationAction).not.toHaveBeenCalled()
+  })
+
+  it('requires valid additional destinations when restricted network access is enabled', () => {
+    renderForm(true)
+    const submit = screen.getByRole('button', { name: 'Create app' })
+    fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
+    const destinations = screen.getByRole('textbox', { name: 'Additional IPv4 destinations' })
+
+    fireEvent.change(destinations, { target: { value: '192.0.2.999' } })
+    expect(submit).toBeDisabled()
+    expect(destinations).toHaveAccessibleDescription(/invalid IPv4 address or range/)
+    fireEvent.change(destinations, { target: { value: '192.0.2.10' } })
+    expect(submit).toBeEnabled()
   })
 
   it('keeps the outage visible with a request reference and preserves the draft for retry', async () => {
@@ -196,8 +289,10 @@ describe('Create app failure feedback', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
     fireEvent.click(screen.getByRole('button', { name: /Lifecycle and resources/ }))
     const input = screen.getByRole<HTMLInputElement>('spinbutton', { name: label })
+    const submit = screen.getByRole('button', { name: 'Create app' })
     input.focus()
     fireEvent.change(input, { target: { value } })
+    expect(submit).toBeDisabled()
 
     // Implicit submission with Enter submits the form without blurring the field first.
     act(() => input.form?.requestSubmit())
@@ -206,5 +301,7 @@ describe('Create app failure feedback', () => {
     expect(input).toHaveValue(Number(value))
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAccessibleDescription(message)
+    fireEvent.change(input, { target: { value: '' } })
+    expect(submit).toBeEnabled()
   })
 })

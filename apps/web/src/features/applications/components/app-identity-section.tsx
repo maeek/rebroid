@@ -1,20 +1,21 @@
-import type { ChangeEvent, Ref } from 'react'
+import type { ChangeEvent, ReactNode, Ref } from 'react'
+import { IconPackage } from '@tabler/icons-react'
+import { FileDropZone } from '@/components/ui/file-drop-zone'
 import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
-import { Visible } from '@/components/ui/visible'
 import { verticalSettingClassName } from './app-form-utils'
 
 type AppIdentitySectionProps = {
   valuesName: string
   onNameChange: (name: string) => void
   uploadedApkLabel?: string | null
+  pendingApkName?: string | null
   isUploadingApk: boolean
   onApkSelect: (file: File | null) => void
   iconSlot?: React.ReactNode
   nameDescription?: string
-  apkDescription?: string
   nameRequired?: boolean
   nameLabel?: string
   nameMinLength?: number
@@ -22,6 +23,8 @@ type AppIdentitySectionProps = {
   nameError?: string
   nameInputRef?: Ref<HTMLInputElement>
   apkError?: string
+  apkDescription?: ReactNode
+  disabled?: boolean
   surface?: 'plain' | 'band' | 'panel'
 }
 
@@ -29,11 +32,11 @@ export const AppIdentitySection = ({
   valuesName,
   onNameChange,
   uploadedApkLabel,
+  pendingApkName,
   isUploadingApk,
   onApkSelect,
   iconSlot,
   nameDescription = 'At least 2 characters.',
-  apkDescription = 'Optional. Upload an APK to extract its app details and icon.',
   nameRequired = true,
   nameLabel = 'Name',
   nameMinLength = 2,
@@ -41,6 +44,8 @@ export const AppIdentitySection = ({
   nameError,
   nameInputRef,
   apkError,
+  apkDescription,
+  disabled = false,
   surface = 'plain'
 }: AppIdentitySectionProps) => {
   const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -57,54 +62,68 @@ export const AppIdentitySection = ({
       title='Application'
       surface={surface}
       headingSpacing='default'
-      contentClassName='gap-5'
+      contentClassName='gap-4'
     >
-      <div className='grid'>
-        <div className='flex flex-col gap-5'>
-          <FormField
-            label={nameLabel}
-            modified={nameModified}
-            description={nameDescription}
-            layout='vertical'
-            className={verticalSettingClassName}
-            required={nameRequired}
-            error={nameError}
+      <FormField
+        label={nameLabel}
+        modified={nameModified}
+        description={nameDescription}
+        layout='vertical'
+        className={verticalSettingClassName}
+        required={nameRequired}
+        error={nameError}
+      >
+        <Input
+          ref={nameInputRef}
+          className='aria-invalid:border-danger'
+          value={valuesName}
+          required={nameRequired}
+          aria-required={nameRequired ? 'true' : 'false'}
+          minLength={nameMinLength}
+          onChange={handleNameChange}
+        />
+      </FormField>
+      <div className='@container'>
+        <div className='grid items-start gap-x-form-column gap-y-4 @min-[42rem]:grid-cols-2'>
+          <FileDropZone
+            disabled={disabled || isUploadingApk}
+            onFiles={([file]) => onApkSelect(file ?? null)}
           >
-            <Input
-              ref={nameInputRef}
-              className='aria-invalid:border-danger'
-              value={valuesName}
-              required={nameRequired}
-              aria-required={nameRequired ? 'true' : 'false'}
-              minLength={nameMinLength}
-              onChange={handleNameChange}
-            />
-          </FormField>
-          <FormField
-            label='APK file'
-            error={apkError}
-            description={apkDescription}
-            layout='vertical'
-            className={verticalSettingClassName}
-          >
-            <FileUploadField
-              accept='.apk,application/vnd.android.package-archive'
-              pending={isUploadingApk}
-              onChange={handleApkSelect}
-              aria-label='APK file'
-              buttonLabel='Upload APK'
-              filenameLabel={isUploadingApk ? undefined : uploadedApkLabel}
-            />
-          </FormField>
-          <Visible when={iconSlot}>
             <FormField
-              label='Icon'
-              description='Optional launcher artwork for this app.'
+              label='APK file'
+              error={apkError}
+              description={
+                apkDescription ?? (
+                  <>
+                    <span className='sm:hidden sm:pointer-coarse:inline'>
+                      Optional. Import the APK’s details and icon.
+                    </span>
+                    <span className='hidden sm:pointer-fine:inline'>
+                      Optional. Drop an APK to import its details and icon.
+                    </span>
+                  </>
+                )
+              }
               layout='vertical'
+              className={verticalSettingClassName}
             >
-              {iconSlot}
+              <FileUploadField
+                accept='.apk,application/vnd.android.package-archive'
+                disabled={disabled}
+                pending={isUploadingApk}
+                onChange={handleApkSelect}
+                aria-label='APK file'
+                buttonLabel={uploadedApkLabel ? 'Replace APK' : 'Upload APK'}
+                filenameLabel={isUploadingApk ? (pendingApkName ?? undefined) : (uploadedApkLabel ?? 'No APK selected')}
+                preview={
+                  <div className='grid size-12 place-items-center rounded-control bg-surface-panel text-foreground-muted'>
+                    <IconPackage className='size-6' />
+                  </div>
+                }
+              />
             </FormField>
-          </Visible>
+          </FileDropZone>
+          {iconSlot}
         </div>
       </div>
     </Section>

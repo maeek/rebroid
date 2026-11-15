@@ -147,7 +147,8 @@ test('platform subpage loaders retain their own destination and chrome', async (
     for (const [variant, title, content] of destinations) {
       await page.goto(`/skeleton-contract-test?editor=${variant}`)
       await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible()
-      await expect(page.getByText(content, { exact: true })).toBeVisible()
+      const visibleContent = variant === 'services-all-loading' && width === 390 ? 'Service' : content
+      await expect(page.getByText(visibleContent, { exact: true })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Recently opened', exact: true })).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Capacity', exact: true })).toHaveCount(0)
       for (const theme of ['light', 'dark', 'oled']) {
@@ -187,8 +188,8 @@ test('Features loader preserves its feature catalog and row geometry', async ({ 
   }
 })
 
-test('Features reserves space below the last row only when the grid scrolls horizontally', async ({ page }) => {
-  await page.setViewportSize({ width: 1200, height: 1000 })
+test('Features reserves scrollbar clearance only when the grid scrolls horizontally', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 1000 })
   await page.goto('/skeleton-contract-test?editor=features')
   const scroller = page.getByRole('table').locator('..')
   const measure = () =>
@@ -197,6 +198,8 @@ test('Features reserves space below the last row only when the grid scrolls hori
       clearance: node.clientHeight - node.querySelector('table')!.offsetHeight
     }))
 
+  await expect.poll(measure).toEqual({ overflows: false, clearance: 0 })
+  await page.setViewportSize({ width: 1200, height: 1000 })
   await expect.poll(measure).toEqual({ overflows: true, clearance: 16 })
   expect(
     await scroller.evaluate(node => {
@@ -226,7 +229,7 @@ test('nested Services loaders show their own sections and remain inert', async (
       await expect(page.getByRole('searchbox', { name: 'Search services' })).toHaveCount(0)
       if (service === 'docker') {
         await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
-          'Docker',
+          width < 1024 ? '' : 'Docker',
           'Overview'
         ])
         await expect(page.getByRole('heading', { name: 'Operation limits', exact: true })).toBeVisible()

@@ -80,8 +80,8 @@ describe('app resource navigation', () => {
   it('links to Apps and ends the breadcrumb at the current app', () => {
     render(<AppResourceBreadcrumbs appName='Example' />)
     expect(screen.getByRole('link', { name: 'Apps' })).toHaveAttribute('href', '/apps')
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('Example', { selector: '[aria-current="page"] *' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByText('Example')).toHaveAttribute('aria-current', 'page')
     expect(screen.queryByRole('link', { name: 'Example' })).toBeNull()
   })
 })

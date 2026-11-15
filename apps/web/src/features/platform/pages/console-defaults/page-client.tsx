@@ -11,7 +11,7 @@ import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { pickGeneralUiSettings, type GeneralUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { resetGeneralUiSettings, saveGeneralUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { ConsoleDefaultsFields } from './ui/console-defaults-fields'
@@ -78,20 +78,25 @@ export const ConsoleDefaultsPageClient = ({
       baseline={loading ? undefined : committed}
     >
       <EditorPage className='gap-2'>
-        <PageHeader
+        <CompactPageHeader
+          inlineActions
           section={{ label: 'Administration' }}
           trail={[{ label: 'General', href: '/platform/runtime' }]}
           title='Console defaults'
           description='Default list refresh and streaming settings for all users.'
           actions={
-            <div className='flex flex-wrap gap-2'>
+            <>
               <Button
                 variant='ghost'
+                aria-label='Restore defaults'
+                className='max-sm:px-2'
                 disabled={loading || isSaving}
                 ref={resetTrigger}
                 onClick={() => setResetOpen(true)}
               >
-                Restore defaults
+                <span>
+                  Restore<span className='max-sm:hidden'> defaults</span>
+                </span>
               </Button>
               <MutationButton
                 disabled={loading || !dirty}
@@ -100,9 +105,11 @@ export const ConsoleDefaultsPageClient = ({
                 success={saveFeedback.saved}
                 onClick={() => void saveSettings()}
               >
-                Save defaults
+                <span>
+                  Save<span className='max-sm:sr-only'> defaults</span>
+                </span>
               </MutationButton>
-            </div>
+            </>
           }
         />
         <PageContent>

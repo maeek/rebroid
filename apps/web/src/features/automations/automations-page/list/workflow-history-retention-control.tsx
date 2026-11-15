@@ -20,6 +20,7 @@ import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { toast } from '@/hooks/use-toast'
 import { saveWorkflowHistoryRetentionAction } from '@/server/orchestrator/scheduled-tasks/actions'
 import { defaultWorkflowHistoryRetentionDays } from '@/shared/contracts/scheduled-task'
+import { SettingsActionButton } from '@/shared/ui/actions/settings-action-button'
 import type { ActionResult } from '@/shared/actions/action-result'
 import type { WorkflowHistoryRetention } from '@/shared/contracts/scheduled-task'
 
@@ -60,10 +61,11 @@ export const WorkflowHistoryRetentionControl = ({ initial }: { initial: ActionRe
       }}
     >
       <DialogTrigger asChild>
-        <Button variant='secondary'>
-          <IconHistory className='size-4' />
-          Run history retention
-        </Button>
+        <SettingsActionButton
+          label='Run history retention'
+          desktopIcon={IconHistory}
+          size='md'
+        />
       </DialogTrigger>
       <DialogContent
         className='sm:max-w-md'

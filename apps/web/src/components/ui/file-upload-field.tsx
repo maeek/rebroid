@@ -2,9 +2,10 @@
 
 /* eslint-disable jsx-a11y/no-noninteractive-tabindex -- Keyboard users need to reveal truncated filenames. */
 
-import { useId, useRef, useState, type ComponentProps } from 'react'
+import { useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { Surface } from '@/components/ui/surface'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +15,7 @@ type FileUploadFieldProps = ComponentProps<'input'> & {
   filenameLabel?: string | null
   buttonLabel?: string
   emptyLabel?: string
+  preview?: ReactNode
 }
 
 export const FileUploadField = ({
@@ -26,6 +28,7 @@ export const FileUploadField = ({
   filenameLabel,
   buttonLabel = 'Choose file',
   emptyLabel = 'No file selected',
+  preview,
   ...props
 }: FileUploadFieldProps) => {
   const generatedId = useId()
@@ -33,14 +36,53 @@ export const FileUploadField = ({
   const input = useRef<HTMLInputElement>(null)
   const [filename, setFilename] = useState('')
   const displayFilename = filenameLabel ?? (filename || emptyLabel)
-  let accessibleLabel = props['aria-label'] ? `Choose ${props['aria-label']}` : undefined
-  if (pending) accessibleLabel = pendingLabel
-  const statusText = pending ? `${pendingLabel} ${displayFilename}` : displayFilename
+  let accessibleLabel = !preview && props['aria-label'] ? `Choose ${props['aria-label']}` : undefined
+  if (pending && !preview) accessibleLabel = pendingLabel
+  const statusText = pending ? [pendingLabel, displayFilename].filter(Boolean).join(' ') : displayFilename
+  const status = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          data-slot='file-name'
+          role='status'
+          className={cn(
+            'min-w-0 flex-1 truncate text-xs text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring',
+            preview && 'text-foreground touch:text-sm/5 max-[379px]:self-end'
+          )}
+          tabIndex={0}
+        >
+          {statusText}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className='max-w-sm break-all'>{statusText}</TooltipContent>
+    </Tooltip>
+  )
+  const picker = (
+    <MutationButton
+      type='button'
+      variant={preview ? 'ghost' : 'outline'}
+      className={preview ? 'max-[379px]:w-fit' : undefined}
+      pending={pending}
+      pendingLabel={buttonLabel}
+      disabled={disabled}
+      aria-controls={inputId}
+      aria-label={accessibleLabel}
+      aria-describedby={props['aria-describedby']}
+      aria-invalid={props['aria-invalid']}
+      onClick={() => input.current?.click()}
+    >
+      <IconUpload
+        aria-hidden
+        className='size-4'
+      />
+      {buttonLabel}
+    </MutationButton>
+  )
   return (
     <div
       data-slot='file-upload-field'
-      className={cn('flex min-w-0 w-full items-center gap-3', className)}
-      aria-busy={pending}
+      className={cn('w-full min-w-0', !preview && 'flex items-center gap-3', className)}
+      aria-busy={preview ? undefined : pending}
     >
       <input
         {...props}
@@ -55,37 +97,27 @@ export const FileUploadField = ({
           onChange?.(event)
         }}
       />
-      <MutationButton
-        type='button'
-        variant='outline'
-        pending={pending}
-        pendingLabel={buttonLabel}
-        disabled={disabled}
-        aria-controls={inputId}
-        aria-label={accessibleLabel}
-        aria-describedby={props['aria-describedby']}
-        aria-invalid={props['aria-invalid']}
-        onClick={() => input.current?.click()}
-      >
-        <IconUpload
-          aria-hidden
-          className='size-4'
-        />
-        {buttonLabel}
-      </MutationButton>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            data-slot='file-name'
-            role='status'
-            className='min-w-0 flex-1 truncate text-xs text-foreground-muted focus-visible:outline-2 focus-visible:outline-ring'
-            tabIndex={0}
+      {preview ? (
+        <Surface
+          level='control'
+          className='grid min-h-20 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 p-2 max-[379px]:grid-cols-[auto_minmax(0,1fr)] max-[379px]:gap-y-0 sm:gap-3 sm:px-3'
+        >
+          <div
+            data-slot='file-upload-preview'
+            className='max-[379px]:row-span-2'
+            aria-hidden='true'
           >
-            {statusText}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent className='max-w-sm break-all'>{statusText}</TooltipContent>
-      </Tooltip>
+            {preview}
+          </div>
+          {status}
+          {picker}
+        </Surface>
+      ) : (
+        <>
+          {picker}
+          {status}
+        </>
+      )}
     </div>
   )
 }

@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react'
 import {
+  IconAdjustmentsHorizontal,
+  IconChevronUp,
   IconHome,
   IconLayoutSidebarRight,
   IconLoader2,
@@ -39,13 +41,9 @@ export const navigationControls: IconControl[] = [
   }
 ]
 
-export const panelControls: Array<{
-  command: ApplicationViewerControlCommand
-  label: string
-}> = [
-  { command: 'expand-notifications', label: 'Notifications' },
-  { command: 'expand-settings', label: 'Quick settings' },
-  { command: 'collapse-panels', label: 'Collapse panels' }
+export const panelControls: IconControl[] = [
+  { command: 'expand-settings', label: 'Quick settings', icon: <IconAdjustmentsHorizontal aria-hidden /> },
+  { command: 'collapse-panels', label: 'Collapse panels', icon: <IconChevronUp aria-hidden /> }
 ]
 
 export const volumeControls: IconControl[] = [

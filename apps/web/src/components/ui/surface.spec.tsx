@@ -16,6 +16,6 @@ describe('Surface', () => {
     const surface = screen.getByText('Ready')
     expect(surface).toHaveAttribute('data-tone', 'success')
     expect(surface).toHaveClass('data-[tone=success]:!bg-success/14')
-    expect(surface).toHaveClass('data-[tone=success]:!border-success/45')
+    expect(surface).toHaveClass('data-[tone=success]:!border-success/(--feedback-border-opacity)')
   })
 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { IconChevronDown, IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
+import { IconDots, IconLoader2, IconPlayerPlayFilled, IconPlayerStopFilled } from '@tabler/icons-react'
 import { ActionStateContent } from '@/components/ui/action-state-content'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -22,12 +22,12 @@ export const RuntimePowerControls = () => {
   } = useRuntimePowerActionContext()
 
   return (
-    <div className='inline-flex items-center'>
+    <div className='inline-flex items-center gap-1.5'>
       <Button
         aria-busy={isBusy || isRunningAction || undefined}
         variant={primaryVariant}
         disabled={!app || !canRunPrimary || isBusy || isRunningAction}
-        className={`${motion.control} rounded-r-none border-r-0`}
+        className={motion.control}
         onClick={onPrimaryAction}
       >
         <ActionStateContent
@@ -68,13 +68,16 @@ export const RuntimePowerControls = () => {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant={primaryVariant}
+            variant='outline'
             size='icon-md'
             disabled={menuDisabled}
-            className='rounded-l-none px-2'
+            className='aria-expanded:bg-control-border aria-expanded:hover:bg-control-border'
             aria-label='Runtime actions'
           >
-            <IconChevronDown className='size-4' />
+            <IconDots
+              aria-hidden
+              className='size-4'
+            />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

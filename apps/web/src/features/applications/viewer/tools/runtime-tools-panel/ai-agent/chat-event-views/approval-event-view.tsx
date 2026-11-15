@@ -26,7 +26,7 @@ export const ApprovalEventView = ({
   return (
     <section
       aria-label='Approval required'
-      className='overflow-hidden rounded-panel border border-warning/35 bg-warning/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1'
+      className='overflow-hidden rounded-panel border border-warning/(--feedback-border-opacity) bg-warning/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1'
     >
       <div className='flex items-start gap-3 p-3'>
         <span className='flex size-8 shrink-0 items-center justify-center rounded-panel border border-warning/25 bg-warning/12 text-warning'>

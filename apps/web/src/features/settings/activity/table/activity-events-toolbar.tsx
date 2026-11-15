@@ -1,4 +1,4 @@
-import { IconCalendarStats, IconDotsVertical, IconDownload, IconRefresh, IconTrash } from '@tabler/icons-react'
+import { IconCalendarStats, IconDotsVertical, IconDownload, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -7,17 +7,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { MutationButton } from '@/components/ui/mutation-button'
+import { cn } from '@/lib/utils'
 import { auditExportLimit } from '@/shared/model/audit-export'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { useActivityController, useActivityData } from '../activity-context'
+import styles from '../activity-events.module.css'
 
 export const ActivityEventsRefresh = () => {
   const controller = useActivityController()
-  const { loading, result } = useActivityData()
+  const { application, loading, result } = useActivityData()
 
   return (
     <PlatformPageRefreshButton
+      variant={application ? 'secondary' : undefined}
+      className={application ? styles.appRefresh : undefined}
       refreshResult={{ version: result, succeeded: !loading }}
       disabled={loading || controller.isNavigating || controller.isPurging || controller.isSavingRetention}
       isRefreshing={controller.isRefreshing}
@@ -31,38 +34,30 @@ export const ActivityEventsActions = () => {
   const { application, loading, result } = useActivityData()
 
   const busy = loading || controller.isNavigating || controller.isPurging || controller.isSavingRetention
-  const exportLabel =
-    result.total > auditExportLimit ? `Export first ${auditExportLimit.toLocaleString('en-US')}` : 'Export CSV'
+  const limitedExport = result.total > auditExportLimit
+  const iconOnNarrow = application && !limitedExport
+  const exportLabel = limitedExport ? `Export first ${auditExportLimit.toLocaleString('en-US')}` : 'Export CSV'
+  const exportContent = (
+    <>
+      <IconDownload
+        className='size-4'
+        aria-hidden
+      />
+      <span className={iconOnNarrow ? styles.appExportLabel : undefined}>{exportLabel}</span>
+    </>
+  )
   return (
     <>
-      {application ? (
-        <MutationButton
-          variant='ghost'
-          disabled={busy}
-          pending={controller.isRefreshing}
-          pendingLabel='Refreshing…'
-          onClick={controller.refresh}
-        >
-          <IconRefresh className='size-4' /> Refresh
-        </MutationButton>
-      ) : null}
+      {application ? <ActivityEventsRefresh /> : null}
       <Button
+        aria-label={exportLabel}
+        className={cn(iconOnNarrow && styles.appExport)}
         title={`Export up to ${auditExportLimit.toLocaleString('en-US')} matching events in the current sort order`}
         variant='secondary'
         asChild={!busy}
         disabled={busy}
       >
-        {busy ? (
-          <>
-            <IconDownload className='size-4' />
-            {exportLabel}
-          </>
-        ) : (
-          <a href={controller.exportHref}>
-            <IconDownload className='size-4' />
-            {exportLabel}
-          </a>
-        )}
+        {busy ? exportContent : <a href={controller.exportHref}>{exportContent}</a>}
       </Button>
       {!application ? (
         <DropdownMenu>

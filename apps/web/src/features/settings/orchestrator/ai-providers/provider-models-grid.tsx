@@ -23,6 +23,7 @@ import type {
   AutomationAiProviderRemoteModel
 } from '@/shared/contracts/ai-provider'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 export type ProviderModelsGridProps = {
   initialProvider: AutomationAiProvider
@@ -76,9 +77,10 @@ export const ProviderModelsGrid = ({
         accessorKey: 'label',
         header: 'Model',
         size: 320,
-        meta: { label: 'Model', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'Model', skeleton: { kind: 'stacked' } },
         cell: ({ row: { original: model } }) => (
-          <div className='grid min-w-0 gap-1'>
+          <div className={`grid min-w-0 gap-1 ${styles.settingsStack}`}>
             <Button
               type='button'
               variant='link'
@@ -110,14 +112,14 @@ export const ProviderModelsGrid = ({
         id: 'purposes',
         header: 'Used for',
         size: 260,
-        meta: { label: 'Used for', skeleton: { kind: 'text', width: 'w-44' } },
+        meta: { compactSlot: 'details', label: 'Used for', skeleton: { kind: 'text', width: 'w-44' } },
         cell: ({ row }) => <span className='text-sm'>{modelPurposeText(row.original.roles)}</span>
       },
       {
         accessorKey: 'enabled',
         header: 'Enabled',
         size: 88,
-        meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-10' } },
+        meta: { compactSlot: 'control', label: 'Enabled', skeleton: { kind: 'text', width: 'w-10' } },
         cell: ({ row }) => (
           <Switch
             checked={row.original.enabled}
@@ -131,7 +133,7 @@ export const ProviderModelsGrid = ({
         id: 'health',
         header: 'Health',
         size: 180,
-        meta: { label: 'Health', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'details', label: 'Health', skeleton: { kind: 'badge' } },
         cell: ({ row }) =>
           modelDownloads[row.original.id] ? (
             <ProviderModelDownloadStatus download={modelDownloads[row.original.id]} />

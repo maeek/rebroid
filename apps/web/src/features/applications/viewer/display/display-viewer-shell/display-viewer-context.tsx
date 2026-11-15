@@ -5,10 +5,10 @@ import type { ReactNode } from 'react'
 import { openViewerPopout } from '@/features/applications/viewer/display/display-viewer-shell/actions/viewer-popout'
 import { useDisplayViewerShellState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-shell-state'
 import {
-  getDisplayViewportSize,
   fitAspectRatio,
   fallbackDisplayViewportHeight
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
+import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
 import type {
   DisplayViewerStreamMetrics,
   ViewerFrameObservation,
@@ -26,6 +26,7 @@ type DisplayViewerContextValue = {
   dockedSession?: Pick<DockedViewer, 'name' | 'runtime' | 'session'>
   canControl: boolean
   controlsEnabled: boolean
+  compact: boolean
 } & DisplayViewerShellState
 
 export type DisplayViewerProviderValue = {
@@ -54,9 +55,12 @@ export const DisplayViewerProvider = ({
   children: ReactNode
   value: DisplayViewerProviderValue
 }) => {
+  const compact = useDesktopViewport() === false
   const shell = useDisplayViewerShellState({
     applicationId: value.applicationId,
     surfaces: value.surfaces,
+    controlsEnabled: value.controlsEnabled,
+    compact,
     surfaceRefreshVersion: value.surfaceRefreshVersion,
     initialKeyboardCaptureEnabled: value.initialKeyboardCaptureEnabled,
     onSurfacesChanged: value.onSurfacesChanged,
@@ -75,6 +79,7 @@ export const DisplayViewerProvider = ({
         dockedSession: value.dockedSession,
         canControl: value.canControl,
         controlsEnabled: value.controlsEnabled,
+        compact,
         ...shell
       }}
     >
@@ -104,6 +109,9 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     dockedSession,
     canControl,
     controlsEnabled,
+    compact,
+    compactSwitcher,
+    multipleDisplays,
     fullscreen,
     fullscreenSurfaceId,
     keyboardCaptureEnabled,
@@ -119,12 +127,13 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     viewerRetry,
     windowSize,
     workspaceSize,
+    viewportSizes,
     streamSizes
   } = useDisplayViewerContext()
   const fullscreenSurface = fullscreenSurfaceId === surface.id
   const displaySize = streamSizes[surface.id] ?? surface.displaySize
   const ratio = displaySize.width / displaySize.height
-  const viewportSize = getDisplayViewportSize({ ratio, workspaceSize, controlsEnabled })
+  const viewportSize = viewportSizes[surface.id]
   const mediaSize = fullscreenSurface
     ? fitAspectRatio(ratio, windowSize.width || viewportSize.width, windowSize.height || fallbackDisplayViewportHeight)
     : null
@@ -141,6 +150,9 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     dockedSession,
     canControl,
     controlsEnabled,
+    compact,
+    compactSwitcher,
+    multipleDisplays,
     fullscreen,
     fullscreenSurface,
     isActive: surface.id === activeSurface?.id,
@@ -155,6 +167,7 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     retryError: viewerRetry.retryError?.surfaceId === surface.id ? viewerRetry.retryError.message : null,
     onRetry: () => viewerRetry.retrySurface(surface.id),
     viewportSize,
+    displayHeaderSpace: multipleDisplays ? workspaceSize.headerSpace : 0,
     workspaceHeight: workspaceSize.height,
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onClose: () => viewerActions.closeDisplay(surface),

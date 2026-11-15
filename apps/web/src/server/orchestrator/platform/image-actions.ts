@@ -1,5 +1,6 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { requireFeature } from '../features'
@@ -39,19 +40,20 @@ export const pullPlatformImageAction = async (registry: string, draft: string) =
     async () => {
       const image = resolveManualImageReference(registry, draft)
       if (!image) {
-        const message =
-          registry === 'custom'
-            ? 'Enter a full image reference such as ghcr.io/owner/image:tag.'
-            : 'Enter a Docker Hub image such as alpine:3 or redroid/redroid:latest.'
+        let message = 'Enter a Docker Hub image such as alpine:3 or redroid/redroid:latest.'
+        if (registry === 'custom') message = 'Enter a full image reference such as ghcr.io/owner/image:tag.'
+        if (registry === 'from-reference') message = 'This image does not have a valid registry reference.'
         throw new PublicActionError(message, { code: 'validation', status: 400, fieldErrors: { image: [message] } })
       }
 
-      return runAuditedPlatformAction({
+      const result = await runAuditedPlatformAction({
         action: 'docker.image.pull',
         operation: () => orchestratorPlatformClient.pullPlatformImage({ image }),
         resourceType: 'docker_image',
         resourceId: image
       })
+      revalidatePath('/(protected)/(standard)/runtime/images/[id]', 'page')
+      return result
     },
     {
       fallbackMessage: 'Could not pull the image. Check the image reference and registry access, then try again.',

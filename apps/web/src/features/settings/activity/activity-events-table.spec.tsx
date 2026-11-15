@@ -13,7 +13,7 @@ describe('audit log workspace', () => {
   it('shows concise rows and opens the complete immutable event with the keyboard', async () => {
     render(<ActivityEventsTable {...previewActivityProps} />)
     const row = screen.getByRole('row', { name: 'Inspect Update trigger by Alex Morgan' })
-    expect(within(row).getAllByText('Alex Morgan')).toHaveLength(1)
+    expect(within(row).getByRole('cell', { name: /^Alex Morgan$/ })).toBeVisible()
     expect(within(row).queryByText('alex')).not.toBeInTheDocument()
     expect(within(row).queryByText('automation')).not.toBeInTheDocument()
     expect(within(row).queryByText('2026-11-08T09:17:19.369Z')).not.toBeInTheDocument()

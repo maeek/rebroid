@@ -4,6 +4,7 @@ import { formatTimestamp } from './casting-sidecar-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { DisplaySidecarSession } from '@/shared/contracts/diagnostics'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 type CastingApp = Pick<AndroidApplication, 'id' | 'name' | 'ownerUserId' | 'runtime'>
 
@@ -19,7 +20,8 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.applicationId ?? '',
     header: 'Application and user',
     size: 352,
-    meta: { label: 'Application and user', skeleton: { kind: 'stacked' } },
+    enableHiding: false,
+    meta: { compactSlot: 'title', label: 'Application and user', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => (
       <CastingSessionIdentity
         session={row.original}
@@ -41,7 +43,7 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.status,
     header: 'Status',
     size: 112,
-    meta: { label: 'Status', skeleton: { kind: 'badge' } },
+    meta: { compactSlot: 'status', label: 'Status', skeleton: { kind: 'badge' } },
     cell: ({ row }) => <CastingSessionStatusBadge status={row.original.status} />
   },
   {
@@ -49,7 +51,7 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.lastActivityAt,
     header: 'Last activity',
     size: 192,
-    meta: { label: 'Last activity' },
+    meta: { compactSlot: 'details', label: 'Last activity', showCompactLabel: true },
     cell: ({ row }) => (
       <span className='text-sm text-foreground-muted'>{formatTimestamp(row.original.lastActivityAt)}</span>
     )
@@ -59,7 +61,7 @@ export const createCastingSessionColumns = ({
     accessorFn: session => session.expiresAt,
     header: 'Expires',
     size: 192,
-    meta: { label: 'Expires' },
+    meta: { compactSlot: 'details', label: 'Expires', showCompactLabel: true },
     cell: ({ row }) => <span className='text-sm text-foreground-muted'>{formatTimestamp(row.original.expiresAt)}</span>
   }
 ]
@@ -79,7 +81,7 @@ const CastingSessionIdentity = ({
   const ownerId = session.ownerUserId ?? app?.ownerUserId
 
   return (
-    <div className={className ?? 'flex min-w-0 flex-col gap-1'}>
+    <div className={`${className ?? 'flex min-w-0 flex-col gap-1'} ${styles.settingsStack}`}>
       {session.applicationId ? (
         <ResourceLink
           className='block truncate font-medium'

@@ -1,14 +1,14 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { IconPlayerStop } from '@tabler/icons-react'
+import { IconArrowUp, IconPlayerStopFilled } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { Section } from '@/components/ui/section'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useImmediateSave } from '@/hooks/use-immediate-save'
 import { toast } from '@/hooks/use-toast'
-import { AiComposerActions } from '@/shared/ui/ai/ai-composer-actions'
+import { AiComposerAction } from '@/shared/ui/ai/ai-composer-action'
 import { AiPromptComposer } from '@/shared/ui/ai/ai-prompt-composer'
 import { PageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
@@ -24,6 +24,7 @@ export const ImmediateFeedbackPreview = () => {
   const [error, setError] = useState('')
   const textarea = useRef<HTMLTextAreaElement>(null)
   const submit = () => {
+    if (!prompt.trim()) return
     setPrompt('')
     setStatus(running ? 'Queued for your next run' : 'Message sent')
     setRunning(true)
@@ -75,26 +76,18 @@ export const ImmediateFeedbackPreview = () => {
               status={status}
               errors={[error]}
               onChange={setPrompt}
-              onSubmit={submit}
-              submitOnEnter
+              onSubmit={prompt.trim() ? submit : undefined}
+              submitOnEnter={!running}
               modelControl={<span className='text-xs text-foreground-muted'>Local model</span>}
               actions={
-                <AiComposerActions
-                  label={running ? 'Queue message' : 'Send message'}
-                  disabled={!prompt.trim()}
-                  accepted={Boolean(status) && !prompt.trim()}
-                  onSubmit={submit}
-                  secondaryAction={
-                    running
-                      ? {
-                          label: canceling ? 'Canceling' : 'Stop',
-                          pending: canceling,
-                          icon: <IconPlayerStop className='size-4' />,
-                          onClick: () => setCanceling(true)
-                        }
-                      : undefined
-                  }
-                />
+                <AiComposerAction
+                  label={canceling ? 'Canceling' : running ? 'Stop' : 'Send message'}
+                  disabled={!running && !prompt.trim()}
+                  pending={canceling}
+                  onClick={running ? () => setCanceling(true) : submit}
+                >
+                  {running ? <IconPlayerStopFilled aria-hidden /> : <IconArrowUp aria-hidden />}
+                </AiComposerAction>
               }
             />
             <div className='flex flex-wrap gap-2'>

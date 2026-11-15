@@ -29,6 +29,11 @@ export const appResourcePreviewFeatures: FeatureFlagManifest = {
   ]
 }
 
+export const dockedViewerPreviewFeatures: FeatureFlagManifest = {
+  ...appResourcePreviewFeatures,
+  features: [...appResourcePreviewFeatures.features, enabledPreviewFeature('feature.display-virtual', 'display')]
+}
+
 export const previewApp: AppDefinition = {
   id: 'preview-app',
   name: 'Inventory worker',

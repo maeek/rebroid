@@ -30,12 +30,13 @@ export const selectableItemClassName = cn(
 
 export const semanticToneClassNames = {
   neutral: '',
-  info: 'data-[tone=info]:!border-info/45 data-[tone=info]:!bg-info/14 data-[tone=info]:text-foreground',
+  info: 'data-[tone=info]:!border-info/(--feedback-border-opacity) data-[tone=info]:!bg-info/14 data-[tone=info]:text-foreground',
   success:
-    'data-[tone=success]:!border-success/45 data-[tone=success]:!bg-success/14 data-[tone=success]:text-foreground',
+    'data-[tone=success]:!border-success/(--feedback-border-opacity) data-[tone=success]:!bg-success/14 data-[tone=success]:text-foreground',
   warning:
-    'data-[tone=warning]:!border-warning/45 data-[tone=warning]:!bg-warning/14 data-[tone=warning]:text-foreground',
-  danger: 'data-[tone=danger]:!border-danger/45 data-[tone=danger]:!bg-danger/14 data-[tone=danger]:text-danger'
+    'data-[tone=warning]:!border-warning/(--feedback-border-opacity) data-[tone=warning]:!bg-warning/14 data-[tone=warning]:text-foreground',
+  danger:
+    'data-[tone=danger]:!border-danger/(--feedback-border-opacity) data-[tone=danger]:!bg-danger/14 data-[tone=danger]:text-danger'
 } as const
 
 export const surfaceVariants = cva('border text-foreground', {

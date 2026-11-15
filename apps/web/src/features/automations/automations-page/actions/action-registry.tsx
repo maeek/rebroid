@@ -3,7 +3,6 @@ import { aiRunAction } from './ai/ai-run.action'
 import { adbShellAction } from './android/adb-shell.action'
 import {
   collapsePanelsAction,
-  expandNotificationsAction,
   expandQuickSettingsAction,
   getSettingAction,
   openSystemSettingsAction
@@ -66,7 +65,6 @@ const actionCategories: AutomationActionCategory[] = [
 const actionDefinitions = [
   waitAction,
   viewerCommandAction,
-  expandNotificationsAction,
   expandQuickSettingsAction,
   collapsePanelsAction,
   rotateDisplayAction,

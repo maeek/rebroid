@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useContext, useState, useTransition } from 'react'
 import { IconClipboard } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
@@ -22,8 +22,13 @@ import {
   getApplicationClipboardAction,
   setApplicationClipboardAction
 } from '@/server/orchestrator/applications/actions/runtime/clipboard-actions'
+import {
+  MobileViewerActionRows,
+  mobileViewerActionRowClassName
+} from '../../viewer-control-bar/mobile/mobile-viewer-action-rows'
 
 export const ViewerClipboard = ({ appId }: { appId: string }) => {
+  const mobileRow = useContext(MobileViewerActionRows)
   const [text, setText] = useState('')
   const [operation, setOperation] = useState<'read' | 'send'>('read')
   const [pending, startTransition] = useTransition()
@@ -52,13 +57,14 @@ export const ViewerClipboard = ({ appId }: { appId: string }) => {
       <DialogTrigger asChild>
         <Button
           type='button'
-          size='icon-md'
-          variant='secondary'
-          className='size-6'
+          size={mobileRow ? 'md' : 'icon-md'}
+          variant={mobileRow ? 'ghost' : 'secondary'}
+          className={mobileRow ? mobileViewerActionRowClassName : 'size-6'}
           aria-label='Device clipboard'
           title='Device clipboard'
         >
           <IconClipboard className='size-3.5' />
+          {mobileRow ? 'Device clipboard' : null}
         </Button>
       </DialogTrigger>
       <DialogContent>

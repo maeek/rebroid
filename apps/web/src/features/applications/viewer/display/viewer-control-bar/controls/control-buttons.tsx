@@ -2,9 +2,9 @@
 
 import type { ReactNode } from 'react'
 import {
+  IconAdjustmentsHorizontal,
   IconArrowsMaximize,
   IconArrowsMinimize,
-  IconBell,
   IconExternalLink,
   IconKeyboard,
   IconLoader2,
@@ -149,7 +149,7 @@ export const AndroidPanelsMenu = ({
             aria-label='Android panels'
             className={buttonClassName}
           >
-            <IconBell className='size-4' />
+            <IconAdjustmentsHorizontal className='size-4' />
           </Button>
         </TooltipTrigger>
       </DropdownMenuTrigger>

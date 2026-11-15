@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
-import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
+import { AppIconField } from '@/features/applications/components/app-icon-field'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { removeAppIconAction } from '@/server/app-icons/actions/remove-app-icon-action'
 import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
@@ -14,99 +15,77 @@ import {
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 type AppManageIconPanelProps = {
-  id?: string
-  'aria-describedby'?: string
-  'aria-invalid'?: boolean
   appId: string
   appName: string
   icon: string | null
   initialSettings: OrchestratorUiSettings
-  compact?: boolean
   onIconChange: (icon: string | null, isDirty: boolean) => void
 }
 
 export const AppManageIconPanel = ({
-  id,
-  'aria-describedby': ariaDescribedBy,
-  'aria-invalid': ariaInvalid,
   appId,
   appName,
   icon,
   initialSettings,
-  compact = false,
   onIconChange
 }: AppManageIconPanelProps) => {
-  const [isUploadingIcon, setIsUploadingIcon] = useState(false)
+  const [pending, setPending] = useState<'upload' | 'remove' | null>(null)
+  const [error, setError] = useState<string>()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
 
   const handleIconUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    event.target.value = ''
+    if (!file || pending) return
 
     if (!isFileWithinApkLimit(file, settings.maxApkUploadSizeMb)) {
-      toast({
-        title: 'File is too large',
-        description: `The configured upload limit is ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`,
-        variant: 'danger'
-      })
-      event.target.value = ''
+      setError(`Choose an image under ${apkSizeLabel(settings.maxApkUploadSizeMb)}.`)
       return
     }
 
-    setIsUploadingIcon(true)
+    setError(undefined)
+    setPending('upload')
     try {
       const optimizedIcon = await optimizeIconFile(file)
       const storedIcon = unwrapActionResult(await setAppIconAction(appId, optimizedIcon))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: storedIcon, openedAt: Date.now() }])
       onIconChange(storedIcon, true)
       toast({ title: 'Icon updated', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not update icon',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
+    } catch (cause) {
+      setError(getDisplayErrorMessage(cause, 'Could not update the icon.'))
     } finally {
-      setIsUploadingIcon(false)
-      event.target.value = ''
+      setPending(null)
     }
   }
 
   const handleClearIcon = async () => {
-    setIsUploadingIcon(true)
+    if (pending) return
+    setError(undefined)
+    setPending('remove')
     try {
       unwrapActionResult(await removeAppIconAction(appId))
       notifyRecentAppsUpdated([{ id: appId, name: appName, icon: null, openedAt: Date.now() }])
       onIconChange(null, true)
-      toast({ title: 'Icon cleared', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not clear icon',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
+      toast({ title: 'Icon removed', variant: 'success' })
+    } catch (cause) {
+      setError(getDisplayErrorMessage(cause, 'Could not remove the icon.'))
     } finally {
-      setIsUploadingIcon(false)
+      setPending(null)
     }
   }
 
   return (
-    <AppFormIconSection
-      id={id}
-      aria-describedby={ariaDescribedBy}
-      aria-invalid={ariaInvalid}
-      showDescription={!compact}
-      pending={isUploadingIcon}
+    <AppIconField
+      description='Icon changes save immediately.'
+      pending={pending === 'upload'}
+      pendingLabel='Updating icon…'
+      removing={pending === 'remove'}
+      error={error}
       appId={appId}
       appName={appName}
       iconPreview={icon}
-      autoExtractIcon={false}
-      hasExtractedIcon={false}
-      disabled={isUploadingIcon}
-      showAutoExtract={false}
       onIconChange={event => void handleIconUpload(event)}
       onClearIcon={() => void handleClearIcon()}
-      onAutoExtractIconChange={() => undefined}
     />
   )
 }

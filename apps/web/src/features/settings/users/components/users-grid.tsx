@@ -15,6 +15,7 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
 import type { PublicUser, UserGroup } from '@/shared/contracts/auth-user'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const groupLabel = (groups: UserGroup[], groupId: string) => groups.find(group => group.id === groupId)?.name ?? groupId
 
@@ -82,7 +83,7 @@ const GroupBadges = ({ user, groups }: { user: PublicUser; groups: UserGroup[] }
 const UserStatus = ({ user, busy }: { user: PublicUser; busy: boolean }) => (
   <div
     aria-busy={busy}
-    className='flex flex-wrap items-center gap-2'
+    className={`flex flex-wrap items-center gap-2 ${styles.settingsStack}`}
   >
     {busy ? (
       <Badge variant='neutral'>Updating…</Badge>
@@ -151,7 +152,8 @@ export const UsersGrid = ({
         accessorFn: user => user.name,
         header: 'User',
         size: 320,
-        meta: { label: 'User', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'User', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => <UserIdentity user={row.original} />
       },
       {
@@ -159,7 +161,7 @@ export const UsersGrid = ({
         accessorFn: user => user.groupIds.map(groupId => groupLabel(groups, groupId)).join(', '),
         header: 'Groups',
         size: 288,
-        meta: { label: 'Groups', skeleton: { kind: 'text', width: 'w-36' } },
+        meta: { compactSlot: 'details', label: 'Groups', skeleton: { kind: 'text', width: 'w-36' } },
         cell: ({ row }) => (
           <GroupBadges
             user={row.original}
@@ -172,7 +174,7 @@ export const UsersGrid = ({
         accessorFn: user => user.disabled,
         header: 'Status',
         size: 220,
-        meta: { label: 'Status', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'status', label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <UserStatus
             user={row.original}

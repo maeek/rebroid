@@ -123,6 +123,7 @@ export const GroupMembershipEditor = ({
           }
         />
         <DataGridPagination
+          itemLabels={{ singular: 'group', plural: 'groups' }}
           pageIndex={currentPage}
           pageSize={pageSize}
           pageSizeOptions={[5, 10, 20, 50, 100]}

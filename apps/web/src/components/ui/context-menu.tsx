@@ -6,7 +6,7 @@ import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { handleMenuSelect, type MenuSelectEvent } from '@/components/ui/menu-select-event'
 import { actionMenuItemClassName, actionMenuSurfaceClassName, floatingLayerClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import menuMotion from './menu-motion.module.css'
+import { popupFadeClassName } from './feedback-motion'
 
 function ContextMenu({ ...props }: React.ComponentProps<typeof ContextMenuPrimitive.Root>) {
   return (
@@ -54,7 +54,7 @@ function ContextMenuContent({
           data-slot='context-menu-content'
           className={cn(
             'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto',
-            menuMotion.popup,
+            popupFadeClassName,
             actionMenuSurfaceClassName,
             className
           )}

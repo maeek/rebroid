@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { AppRuntimeSection } from './app-runtime-section'
+import { AppInactivityTimeoutField } from './app-inactivity-timeout-field'
 
-describe('AppRuntimeSection', () => {
+describe('AppInactivityTimeoutField', () => {
   it('emits inactivity timeout patch when changed', () => {
     const onChange = vi.fn()
 
     render(
-      <AppRuntimeSection
+      <AppInactivityTimeoutField
         values={{ inactivityTimeoutSeconds: 120 }}
         onChange={onChange}
       />

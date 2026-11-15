@@ -33,7 +33,7 @@ export function AutomationYamlEditorSection({
     <section
       aria-label='Workflow YAML'
       className={cn(
-        'grid h-[28rem] min-w-0 grid-rows-[minmax(0,1fr)] gap-2 has-[>footer]:grid-rows-[minmax(0,1fr)_auto] lg:h-(--workflow-editor-height)',
+        'grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)] gap-2 has-[>footer]:grid-rows-[minmax(0,1fr)_auto]',
         className
       )}
     >

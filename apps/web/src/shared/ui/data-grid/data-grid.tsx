@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import {
   type ColumnDef,
   type OnChangeFn,
@@ -9,9 +9,11 @@ import {
   type SortingState,
   type VisibilityState
 } from '@tanstack/react-table'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { DataGridColumnVisibilityMenu } from './data-grid-column-visibility'
 import { DataGridTable } from './data-grid-table'
+import { DataGridColumnToolbarContext } from './data-grid-toolbar-context'
 import { useDataGridTable } from './use-data-grid-table'
 
 declare module '@tanstack/react-table' {
@@ -19,6 +21,9 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string
     cellContentClassName?: string
+    /** A title opts the grid into a settings layout at narrow content widths. */
+    compactSlot?: 'title' | 'control' | 'details' | 'sort' | 'status'
+    showCompactLabel?: boolean
     skeleton?: DataGridCellSkeleton
     rowQuickAction?: (row: Row<TData>) => ReactNode
   }
@@ -101,10 +106,15 @@ export function DataGrid<TData>({
   className,
   loading = false
 }: DataGridProps<TData>) {
+  'use no memo'
+
+  const columnToolbarTarget = useContext(DataGridColumnToolbarContext)
+  const columnsInToolbar = columnToolbarTarget !== undefined
   const loadingState = loading === true ? {} : loading || undefined
   const {
     getColumnPixelWidth,
-    hasHorizontalOverflow,
+    scrollStart,
+    scrollEnd,
     lastVisibleColumnId,
     renderedTableWidth,
     selectRowForContextMenu,
@@ -128,22 +138,29 @@ export function DataGrid<TData>({
     loadingState
   })
   const columnVisibilityMenu =
-    showColumnVisibilityControl && !loading ? <DataGridColumnVisibilityMenu table={table} /> : null
+    showColumnVisibilityControl && (!loading || columnsInToolbar) ? (
+      <DataGridColumnVisibilityMenu
+        table={table}
+        disabled={Boolean(loading)}
+      />
+    ) : null
 
   return (
     <div
       aria-busy={Boolean(loading)}
       className={cn('grid min-w-0 gap-3', className)}
     >
+      {columnToolbarTarget && columnVisibilityMenu ? createPortal(columnVisibilityMenu, columnToolbarTarget) : null}
       <DataGridTable
         table={table}
         tableContainerRef={tableContainerRef}
-        hasHorizontalOverflow={hasHorizontalOverflow}
+        scrollStart={scrollStart}
+        scrollEnd={scrollEnd}
         renderedTableWidth={renderedTableWidth}
         minWidth={minWidth}
         getColumnPixelWidth={getColumnPixelWidth}
         lastVisibleColumnId={lastVisibleColumnId}
-        columnVisibilityMenu={columnVisibilityMenu}
+        columnVisibilityMenu={columnsInToolbar ? null : columnVisibilityMenu}
         selection={selection}
         getRowId={getRowId}
         getRowGroupLabel={getRowGroupLabel}

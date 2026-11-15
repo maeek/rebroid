@@ -58,6 +58,7 @@ export const DockerOperationLimitsDialog = ({
             <NumericUnitInput
               type='number'
               unit={field.unit}
+              className='w-[calc(100%-6rem)]'
               min={field.min}
               max={field.max}
               step={1}

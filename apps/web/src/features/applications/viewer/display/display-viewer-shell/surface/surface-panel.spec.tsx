@@ -12,6 +12,7 @@ vi.mock('../hooks/use-fullscreen-state', () => ({
 }))
 vi.mock('./surface-chrome', () => ({ SurfaceChrome: () => null }))
 vi.mock('../../viewer-control-bar/viewer-control-bar', () => ({ ViewerControlBar: () => null }))
+vi.mock('@/hooks/use-desktop-viewport', () => ({ useDesktopViewport: () => true }))
 vi.mock('../../display-viewer-frame', () => ({
   DisplayViewerFrame: ({ onStreamStatus }: { onStreamStatus: (status: DisplayViewerStreamStatus) => void }) => (
     <button

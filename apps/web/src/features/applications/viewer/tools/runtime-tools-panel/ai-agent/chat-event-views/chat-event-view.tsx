@@ -60,7 +60,7 @@ export const ChatEventView = ({
   }
   if (event.type === 'ai.tool.failed' || event.type === 'ai.guardrail.triggered' || event.type === 'run.failed') {
     return (
-      <div className='flex items-start gap-2 rounded-panel border border-danger/20 bg-danger/5 px-3 py-2 text-xs text-danger'>
+      <div className='flex items-start gap-2 rounded-panel border border-danger/(--feedback-border-opacity) bg-danger/5 px-3 py-2 text-xs text-danger'>
         <IconAlertTriangle className='mt-0.5 size-3.5 shrink-0' />
         <span className='leading-5'>{event.message}</span>
       </div>

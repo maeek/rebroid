@@ -31,7 +31,7 @@ test('Firewall shows the connection above network policies and saves connection 
   await page.goto('/skeleton-contract-test?editor=service-firewall')
   await expect(page.getByRole('heading', { level: 1, name: 'Firewall' })).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
-    'Administration',
+    page.viewportSize()!.width < 1024 ? '' : 'Administration',
     'Firewall'
   ])
   await expect(page.getByRole('alert').filter({ hasText: 'Offline' })).toContainText(
@@ -116,6 +116,7 @@ test('Docker diagnostics retain timestamped data when a refresh fails', async ({
   let samples = 0
   let unavailable = false
   const snapshotAt = '2026-11-14T12:00:05.000Z'
+  const failureDetail = `No such container: ${'a'.repeat(128)}`
   const limits = {
     maxConcurrentReads: 8,
     maxConcurrentLongOperations: 4,
@@ -167,15 +168,16 @@ test('Docker diagnostics retain timestamped data when a refresh fails', async ({
               timestamp: snapshotAt,
               class: 'read',
               operation: 'inspect',
-              outcome: 'timeout',
-              durationMs: 30_000,
-              error: null
+              outcome: 'error',
+              durationMs: 2,
+              error: failureDetail
             }
           ]
         }
       }
     })
   })
+  await page.setViewportSize({ width: 320, height: 915 })
   await page.goto('/skeleton-contract-test?editor=service-docker')
   const chart = page.getByRole('region', { name: 'Operation events between samples' })
   await expect(chart.getByText('Collecting samples…')).toBeVisible()
@@ -186,6 +188,38 @@ test('Docker diagnostics retain timestamped data when a refresh fails', async ({
   const aggregates = page.getByRole('region', { name: 'Per-operation aggregates' })
   await expect(aggregates.getByRole('columnheader', { name: 'Timeouts' })).toBeVisible()
   await expect(aggregates.getByRole('cell', { name: '4', exact: true })).toBeVisible()
+
+  const diagnostics = page.getByRole('region', { name: 'Infrastructure diagnostics', exact: true })
+  const recent = diagnostics.getByRole('region', { name: 'Recent failures, timeouts, and slow operations' })
+  await expect(recent.getByRole('cell', { name: failureDetail })).toHaveText(failureDetail)
+  for (const width of [320, 412, 768, 1440]) {
+    await page.setViewportSize({ width, height: 915 })
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth), `${width}px`).toBe(width)
+    const charts = diagnostics.locator('[data-chart]')
+    await expect(charts).toHaveCount(2)
+    for (const plot of await charts.all()) {
+      await expect
+        .poll(
+          () =>
+            plot.evaluate(node => {
+              const plotBox = node.getBoundingClientRect()
+              const canvas = node.querySelector('svg.recharts-surface')?.getBoundingClientRect()
+              return plotBox.right <= innerWidth && canvas !== undefined && canvas.right <= plotBox.right
+            }),
+          `${width}px chart fits its panel`
+        )
+        .toBe(true)
+    }
+  }
+  await page.setViewportSize({ width: 320, height: 915 })
+  const scrollPosition = await recent.getByRole('table').evaluate(table => {
+    const scroller = table.parentElement!
+    scroller.scrollLeft = scroller.scrollWidth
+    return { table: scroller.scrollLeft, page: scrollX }
+  })
+  expect(scrollPosition.table).toBeGreaterThan(0)
+  expect(scrollPosition.page).toBe(0)
+
   unavailable = true
   await refresh.click()
   await expect(page.getByText('Docker metrics could not be refreshed')).toBeVisible()
@@ -285,7 +319,7 @@ test('Docker service edits real limits, retains failed drafts, and leaves connec
   await page.getByRole('button', { name: 'Save limits', exact: true }).click()
   await expect(page.getByText('Docker unavailable.', { exact: true })).toBeVisible()
   await expect(reads).toHaveValue('12')
-  for (const width of [390, 768, 1440]) {
+  for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 800 })
     const inputs = await dialog.getByRole('spinbutton').all()
     const boxes = await Promise.all(inputs.map(input => input.boundingBox()))

@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Section } from '@/components/ui/section'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
 import { getInitialCreateAppFormValues } from '@/features/applications/create/create-app-form-model'
-import { AppFormIconSection } from '@/features/applications/create/create-app-icon-section'
 import { AppConfigurationMenu } from '@/features/applications/manage/app-configuration-menu'
+import { AppManageGeneralSettings } from '@/features/applications/manage/app-manage-general-settings'
 import { AppNetworkPolicySettingsLoading } from '@/features/applications/manage/app-manage-network-policy-settings'
 import { AppProfilesSection } from '@/features/applications/manage/app-manage-profiles'
 import { AppManageRuntimeSettings } from '@/features/applications/manage/app-manage-runtime-settings'
@@ -147,26 +146,13 @@ export const AppManagePageSkeleton = () => {
     <LoadingAppLayout view='configuration'>
       <FormLoadingBoundary>
         <EditorPage className='gap-6 pb-16'>
-          <AppIdentitySection
-            valuesName=''
-            onNameChange={noop}
-            nameDescription='Display name shown in the UI for this app. Minimum 2 characters.'
-            isUploadingApk={false}
-            onApkSelect={noop}
-            iconSlot={
-              <AppFormIconSection
-                appName=''
-                iconPreview={null}
-                autoExtractIcon={false}
-                hasExtractedIcon={false}
-                disabled
-                showDescription={false}
-                showAutoExtract={false}
-                onIconChange={noop}
-                onClearIcon={noop}
-                onAutoExtractIconChange={noop}
-              />
-            }
+          <AppManageGeneralSettings
+            appId=''
+            values={values}
+            initialSettings={defaultOrchestratorUiSettings}
+            icon={null}
+            onIconChange={noop}
+            onAppNameChange={noop}
           />
           <AppManageRuntimeSettings
             values={values}

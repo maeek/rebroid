@@ -3,9 +3,10 @@
 import { Suspense } from 'react'
 import { IconDeviceFloppy } from '@tabler/icons-react'
 import { useSearchParams } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DiscardChangesButton } from '@/shared/ui/actions/discard-changes-button'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
@@ -71,16 +72,15 @@ export const ProviderEditorSkeleton = ({ view }: { view: ProviderEditorView }) =
     loading
     actions={
       <>
-        <Button
-          variant='ghost'
+        <DiscardChangesButton disabled />
+        <MutationButton
           disabled
+          pendingLabel='Saving…'
+          success={false}
         >
-          Discard changes
-        </Button>
-        <Button disabled>
           <IconDeviceFloppy className='size-4' />
           Save
-        </Button>
+        </MutationButton>
       </>
     }
     health={<ProviderHealthBannerContent loading />}

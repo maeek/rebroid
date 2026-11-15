@@ -23,7 +23,6 @@ export type AndroidApplicationError = NonNullable<AndroidApplication['errors']['
 export type AndroidImagePullProgress = NonNullable<AndroidApplication['status']['progress']>
 export type AndroidNetworkPolicyResult = NonNullable<AndroidApplication['network']['policy']['result']>
 export type ApplicationProfileMode = AndroidApplication['storage']['profileMode']
-export type AndroidNotification = OrchestratorApiSchemas['AndroidNotificationDto']
 export type ScrcpyTransport = AndroidApplication['runtime']['scrcpyTransport']
 export type UploadedApk = OrchestratorApiSchemas['UploadedApkResponseDto']
 export type ApplicationLog = OrchestratorApiSchemas['ApplicationLogDto']
@@ -46,14 +45,6 @@ export type CleanupUploadedApksResponse = OrchestratorApiSchemas['CleanupUploade
 export interface ApplicationRuntimeFilesProfileInput {
   profileMode?: ApplicationProfileMode
   profileName?: string
-}
-
-export interface RunningApplicationNotifications {
-  appId: string
-  appName: string
-  appIcon: string | null
-  appPackageName: string | null
-  notifications: AndroidNotification[]
 }
 
 export interface CreateAndroidApplicationInput {

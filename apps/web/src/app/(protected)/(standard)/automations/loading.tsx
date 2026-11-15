@@ -1,1 +1,1 @@
-export { AutomationsListPageSkeleton as default } from '@/features/automations/automations-page/automation-page-skeletons'
+export { AutomationsListPageLoading as default } from '@/features/automations/pages/automations-list/page-loading'

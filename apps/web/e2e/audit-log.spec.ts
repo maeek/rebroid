@@ -11,7 +11,7 @@ test('audit rows stay concise across widths and themes', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Audit log', exact: true })).toBeVisible()
     const row = page.getByRole('row', { name: 'Inspect Update trigger by Alex Morgan' })
     await expect(row.getByRole('button', { name: 'Inspect Update trigger', exact: true })).toBeVisible()
-    await expect(row.getByText('Alex Morgan', { exact: true })).toHaveCount(1)
+    await expect(row.getByText('Alex Morgan', { exact: true }).filter({ visible: true })).toHaveCount(1)
     await expect(row).not.toContainText('trigger-8646')
     await expect(page.getByText('none', { exact: true })).toHaveCount(0)
     await expect(page.getByRole('columnheader').first()).toContainText('Time')

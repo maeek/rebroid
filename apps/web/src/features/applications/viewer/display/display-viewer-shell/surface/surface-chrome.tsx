@@ -31,7 +31,7 @@ const streamStatusLabel = (status: DisplayViewerStreamStatus) => {
   return 'Stream issue'
 }
 
-const StreamStatusIndicator = ({ status }: { status: DisplayViewerStreamStatus }) => {
+export const StreamStatusIndicator = ({ status }: { status: DisplayViewerStreamStatus }) => {
   const isInfo = status.severity === 'info'
   const Icon = isInfo ? IconInfoCircle : IconAlertTriangle
 

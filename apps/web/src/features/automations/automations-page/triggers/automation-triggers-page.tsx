@@ -17,7 +17,7 @@ import {
 import { successfulBulkIds } from '@/shared/actions/bulk-action-results'
 import { serializeSortParam } from '@/shared/model/search-params'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { buildAutomationTagCatalog } from '../shared/automation-tags'
 import { sortFromSearchParam } from '../shared/grid-query-utils'
@@ -290,7 +290,7 @@ export function AutomationTriggersPage({
       gridToolbar
       className='gap-2'
     >
-      <PageHeader
+      <CompactPageHeader
         section={{ label: 'Automations' }}
         title='Triggers'
         description='Run workflows on a schedule for a specific app and profile.'

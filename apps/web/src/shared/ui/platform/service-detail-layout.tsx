@@ -51,6 +51,7 @@ export const ServiceDetailLayout = ({
     >
       <PageHeader
         {...navigation}
+        compact={false}
         title={title}
         titleBadge={titleBadge}
         breadcrumbRefresh={refresh}

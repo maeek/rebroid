@@ -1,0 +1,247 @@
+.scrollFrame {
+  position: relative;
+  min-inline-size: 0;
+}
+
+.scrollFrame::before,
+.scrollFrame::after {
+  position: absolute;
+  z-index: 1;
+  inset-block: 0 1rem;
+  inline-size: 0.875rem;
+  pointer-events: none;
+}
+
+.scrollFrame[data-scroll-start]::before {
+  content: '';
+  inset-inline-start: 0;
+  background: linear-gradient(90deg, var(--color-background), transparent);
+}
+
+.scrollFrame[data-scroll-end]::after {
+  content: '';
+  inset-inline-end: 0;
+  background: linear-gradient(270deg, var(--color-background), transparent);
+}
+
+.scrollFrame:dir(rtl)::before,
+.scrollFrame:dir(rtl)::after {
+  transform: scaleX(-1);
+}
+
+.settingsFrame {
+  container: settings-grid / inline-size;
+}
+
+.settingsOnly {
+  display: none;
+}
+
+@container settings-grid (width < 44rem) {
+  .settings,
+  .settings thead,
+  .settings tbody {
+    display: block;
+  }
+
+  .settings {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .settings tr {
+    display: grid;
+    grid-template-columns: [main] minmax(0, 1fr) [end] fit-content(40cqi) [actions] auto;
+  }
+
+  .settings tr:has(> [data-column-id='__select']) {
+    grid-template-columns: [select] 3rem [main] minmax(0, 1fr) [end] fit-content(40cqi) [actions] auto;
+  }
+
+  .settings tbody tr:not(:has(> th[scope='rowgroup'])) {
+    position: relative;
+    grid-template-rows: minmax(var(--touch-target-size), auto);
+    align-items: center;
+    row-gap: 0.25rem;
+    padding-block: 0.5rem;
+  }
+
+  .settings :is(th, td) {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+
+  .settings td {
+    padding-block: 0;
+  }
+
+  .settings :is(th, td):not([data-compact-slot], [data-column-id='__select'], [data-column-id='__row_menu']),
+  .settings th:is([data-compact-slot='details'], [data-compact-slot='status']),
+  .settings th[data-column-id='__row_menu'],
+  .settings td[data-compact-slot='sort'],
+  .settings td:has([data-compact-empty]),
+  .settings .desktopControl,
+  .settings [data-slot='data-grid-quick-action'],
+  .settingsWideOnly {
+    display: none;
+  }
+
+  .settingsOnly {
+    display: inline;
+  }
+
+  .settings th[scope='rowgroup'] {
+    display: block;
+    grid-column: 1 / -1;
+  }
+
+  .settings [data-compact-slot='title'] {
+    grid-column: main;
+    grid-row: 1;
+  }
+
+  /* Share the heading track with the trailing controls even when a cell has a second line. */
+  .settings td:is([data-compact-slot='title'], [data-compact-slot='status']):has(> div > .settingsStack),
+  .settings td > div:has(> .settingsStack),
+  .settings .settingsStack {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    row-gap: normal;
+  }
+
+  .settings .settingsStack > :first-child {
+    align-self: center;
+  }
+
+  .settings .settingsStack > :is(a, button):first-child {
+    min-block-size: var(--touch-target-size);
+    align-content: center;
+  }
+
+  .settings td[data-compact-slot='title'] {
+    overflow-wrap: anywhere;
+  }
+
+  .settings th[data-compact-slot='sort'] {
+    grid-area: 1 / end;
+  }
+
+  .settings [data-compact-slot='control'] {
+    grid-column: end;
+    grid-row: 1;
+  }
+
+  .settings td[data-compact-slot='status'] {
+    grid-column: end;
+    grid-row-start: 1;
+    justify-self: end;
+    padding-inline-start: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .settings
+    tr:has(> td[data-column-id='__row_menu'])
+    > td:is([data-compact-slot='status'], [data-compact-slot='control']) {
+    padding-inline: 0 0.25rem;
+  }
+
+  .settings td[data-compact-slot='status'] .settingsStack {
+    justify-items: end;
+    text-align: end;
+  }
+
+  .settings td[data-compact-slot='control'],
+  .settings td[data-compact-slot='control'] > div,
+  .settings td[data-column-id='__select'] {
+    overflow: visible;
+  }
+
+  .settings td[data-compact-slot='control'] > div {
+    display: flex;
+    align-items: center;
+  }
+
+  .settings th[data-compact-slot] > div {
+    padding-inline-end: 0;
+  }
+
+  .settings thead th {
+    align-content: center;
+  }
+
+  .settings [data-compact-slot='details'] {
+    grid-column: main / -1;
+  }
+
+  .settings [data-column-id='__select'] {
+    grid-area: 1 / select;
+    padding-inline: 0;
+  }
+
+  .settings td[data-column-id='__select'] > div {
+    min-block-size: 1.5rem;
+  }
+
+  .settings td[data-column-id='__select'] [role='checkbox']::after {
+    content: '';
+    position: absolute;
+    inset: -0.875rem;
+  }
+
+  .settings td[data-column-id='__row_menu'] {
+    grid-area: 1 / actions;
+    justify-self: end;
+    padding-inline: 0 0.375rem;
+  }
+
+  .settings td[data-column-id='__row_menu'] > div {
+    min-block-size: 0;
+  }
+
+  .settings [data-row-actions] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .settings td[data-column-id='__row_menu'] [data-slot='button'],
+  .settings td[data-column-id='__row_menu'] > div > [aria-hidden='true'],
+  .settings .settingsIconAction {
+    inline-size: var(--touch-target-size);
+    block-size: var(--touch-target-size);
+  }
+
+  .settings [data-slot='mutation-switch'] {
+    min-block-size: 1.5rem;
+  }
+
+  .settings [role='switch'] {
+    position: relative;
+  }
+
+  .settings [role='switch']::after {
+    content: '';
+    position: absolute;
+    inset: -0.75rem -0.25rem;
+  }
+
+  .settingsTouchTarget {
+    min-block-size: var(--touch-target-size);
+    align-content: center;
+  }
+
+  .settingsInline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.5rem;
+  }
+
+  .settings td:is([data-compact-slot='details'], [data-compact-slot='title']) :global(.truncate) {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

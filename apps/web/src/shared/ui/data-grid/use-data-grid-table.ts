@@ -54,7 +54,8 @@ export const useDataGridTable = <TData>({
   const [internalColumnVisibility, setInternalColumnVisibility] = useState<VisibilityState>(columnVisibility ?? {})
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({})
   const [containerWidth, setContainerWidth] = useState(0)
-  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false)
+  const [scrollStart, setScrollStart] = useState(false)
+  const [scrollEnd, setScrollEnd] = useState(false)
   const resolvedSorting = onSortingChange ? sorting : internalSorting
   const resolvedColumnVisibility = onColumnVisibilityChange ? (columnVisibility ?? {}) : internalColumnVisibility
   const resolvedColumns = useMemo(
@@ -81,19 +82,25 @@ export const useDataGridTable = <TData>({
     const node = tableContainerRef.current
     if (!node) return
 
-    const updateContainerLayout = () => {
-      const width = node.clientWidth
-      setContainerWidth(width)
-      setHasHorizontalOverflow(node.scrollWidth > width)
+    const updateScrollEdges = () => {
+      const offset = Math.abs(node.scrollLeft)
+      setScrollStart(offset > 1)
+      setScrollEnd(node.scrollWidth - node.clientWidth - offset > 1)
     }
+    const updateContainerLayout = () => {
+      setContainerWidth(node.clientWidth)
+      updateScrollEdges()
+    }
+    node.addEventListener('scroll', updateScrollEdges, { passive: true })
     updateContainerLayout()
 
-    if (typeof ResizeObserver === 'undefined') return
-
-    const resizeObserver = new ResizeObserver(updateContainerLayout)
-    resizeObserver.observe(node)
-    if (node.firstElementChild) resizeObserver.observe(node.firstElementChild)
-    return () => resizeObserver.disconnect()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(updateContainerLayout)
+    resizeObserver?.observe(node)
+    if (node.firstElementChild) resizeObserver?.observe(node.firstElementChild)
+    return () => {
+      resizeObserver?.disconnect()
+      node.removeEventListener('scroll', updateScrollEdges)
+    }
   }, [])
 
   const handleSortingChange: OnChangeFn<SortingState> = updater => {
@@ -158,7 +165,8 @@ export const useDataGridTable = <TData>({
 
   return {
     getColumnPixelWidth,
-    hasHorizontalOverflow,
+    scrollStart,
+    scrollEnd,
     lastVisibleColumnId,
     renderedTableWidth,
     selectRowForContextMenu,

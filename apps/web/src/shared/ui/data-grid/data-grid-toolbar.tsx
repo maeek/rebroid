@@ -8,6 +8,7 @@ import styles from '@/shared/ui/page/page-toolbar.module.css'
 export type DataGridToolbarProps = {
   search: string
   searchPlaceholder: string
+  searchLabel?: string
   onSearchChange: (value: string) => void
   onSearchSubmit: (value: string) => void | Promise<void>
   filterControl?: ReactNode
@@ -22,6 +23,7 @@ export type DataGridToolbarProps = {
 export function DataGridToolbar({
   search,
   searchPlaceholder,
+  searchLabel,
   onSearchChange,
   onSearchSubmit,
   filterControl,
@@ -55,6 +57,7 @@ export function DataGridToolbar({
           <SearchField
             value={search}
             placeholder={searchPlaceholder}
+            ariaLabel={searchLabel}
             className={cn('min-w-0 max-w-lg flex-1', layout === 'compact' && 'sm:w-96 sm:flex-initial')}
             disabled={disabled}
             onValueChange={onSearchChange}

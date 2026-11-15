@@ -1,8 +1,7 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { IconDownload, IconDots, IconPlus, IconTrash } from '@tabler/icons-react'
+import type { ReactNode } from 'react'
+import { IconDownload, IconDots, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 export const AiAgentConversationLayout = ({
@@ -102,60 +101,3 @@ export const AiAgentPromptSuggestions = ({
     ))}
   </div>
 )
-
-export const AiAgentSuggestionsMenu = ({
-  suggestions,
-  onSelect
-}: {
-  suggestions: Array<{ id: string; label: string; prompt: string }>
-  onSelect: (prompt: string) => void
-}) => {
-  const [open, setOpen] = useState(false)
-  const selectedRef = useRef(false)
-  return (
-    <Popover
-      open={open}
-      onOpenChange={next => {
-        if (next) selectedRef.current = false
-        setOpen(next)
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          variant='ghost'
-          size='icon-sm'
-          aria-label='Suggestions'
-          title='Suggested requests'
-          className='rounded-full text-foreground-muted'
-        >
-          <IconPlus className='size-5' />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        finalFocus={() => !selectedRef.current}
-        side='top'
-        align='start'
-        className='w-64'
-      >
-        <p className='mb-2 text-xs font-medium text-foreground-muted'>Suggested requests</p>
-        <div className='grid gap-1'>
-          {suggestions.map(suggestion => (
-            <Button
-              key={suggestion.id}
-              variant='ghost'
-              size='sm'
-              className='h-auto justify-start whitespace-normal py-2 text-left font-normal'
-              onClick={() => {
-                selectedRef.current = true
-                setOpen(false)
-                onSelect(suggestion.prompt)
-              }}
-            >
-              {suggestion.label}
-            </Button>
-          ))}
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
-}

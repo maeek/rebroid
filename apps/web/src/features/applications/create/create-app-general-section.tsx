@@ -8,7 +8,9 @@ type AppFormGeneralSectionProps = {
   onChange: (patch: Partial<AppFormValues>) => void
   uploadedApk?: UploadedApk | null
   apkLabel?: string | null
+  pendingApkName?: string | null
   isUploadingApk: boolean
+  disabled?: boolean
   iconSlot?: ReactNode
   nameError?: string
   nameInputRef?: Ref<HTMLInputElement>
@@ -21,23 +23,25 @@ export const AppFormGeneralSection = ({
   onChange,
   uploadedApk,
   apkLabel,
+  pendingApkName,
   isUploadingApk,
+  disabled,
   iconSlot,
   nameError,
   nameInputRef,
   apkError,
   onApkSelect
 }: AppFormGeneralSectionProps) => {
-  const uploadedApkLabel = uploadedApk
-    ? `Uploaded ${uploadedApk.originalName} · ${(uploadedApk.sizeBytes / 1024 / 1024).toFixed(2)} MB`
-    : apkLabel
+  const uploadedApkLabel = uploadedApk ? uploadedApk.originalName : apkLabel
 
   return (
     <AppIdentitySection
       valuesName={values.name}
       onNameChange={value => onChange({ name: value })}
       uploadedApkLabel={uploadedApkLabel}
+      pendingApkName={pendingApkName}
       isUploadingApk={isUploadingApk}
+      disabled={disabled}
       onApkSelect={file => onApkSelect(file)}
       iconSlot={iconSlot}
       nameError={nameError}

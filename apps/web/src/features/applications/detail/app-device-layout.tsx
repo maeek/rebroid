@@ -1,19 +1,22 @@
 'use client'
 
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { IconDeviceMobile } from '@tabler/icons-react'
+import { IconChevronLeft, IconDeviceMobile } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { MobileViewerHeaderSlot } from '@/features/applications/viewer/display/display-viewer-shell/mobile-viewer-header-slot'
 import { DisplayViewerVisibility } from '@/features/applications/viewer/display/display-viewer-visibility'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
 import { cn } from '@/lib/utils'
 import { appResourceLabels, type AppResourceView } from '@/shared/model/applications/app-resource-links'
 import { useViewerPlacement } from '@/shared/model/settings/viewer-placement-context'
+import { PageBreadcrumbRow, PageHomeLink, pageBackButtonClassName } from '@/shared/ui/page/page-breadcrumbs'
 import { AppViewerPlacementButton } from './app-viewer-placement-button'
 
 type MobilePane = 'device' | 'section'
 
 export const AppDeviceLayout = ({
   breadcrumbs,
+  appName,
   children,
   viewer,
   view,
@@ -21,6 +24,7 @@ export const AppDeviceLayout = ({
   loading = false
 }: {
   breadcrumbs: ReactNode
+  appName?: string
   children: ReactNode
   viewer: ReactNode
   view: AppResourceView
@@ -36,6 +40,9 @@ export const AppDeviceLayout = ({
   const sectionScroll = useRef<Partial<Record<AppResourceView, number>>>({})
   const deviceScroll = useRef(0)
   const restoreScroll = useRef<number | null>(null)
+  const deviceButton = useRef<HTMLButtonElement>(null)
+  const exitButton = useRef<HTMLButtonElement>(null)
+  const [headerSlot, setHeaderSlot] = useState<HTMLDivElement | null>(null)
   const stacked = placement === 'top'
 
   const selectPane = (next: MobilePane) => {
@@ -50,64 +57,86 @@ export const AppDeviceLayout = ({
     if (restoreScroll.current === null) return
     window.scrollTo({ top: restoreScroll.current, behavior: 'instant' })
     restoreScroll.current = null
+    const focusTarget = pane === 'device' ? exitButton : deviceButton
+    focusTarget.current?.focus({ preventScroll: true })
   }, [pane])
 
   // Grid placement keeps the viewer in the same DOM position across layout changes.
   return (
     <div
+      data-mobile-pane={pane}
       className={cn(
         'app-device-layout grid w-full min-w-0 grid-cols-[minmax(0,1fr)] items-start gap-(--app-device-gap) [overflow-anchor:none] [reading-flow:grid-rows]',
         !stacked &&
           'lg:grid-cols-[minmax(0,1fr)_minmax(16rem,40%)] lg:grid-rows-[auto_minmax(0,1fr)] lg:[reading-flow:normal]',
         contained && pane === 'section' && 'max-lg:min-h-(--console-content-height)',
-        contained && pane === 'section' && 'max-lg:grid-rows-[auto_auto_minmax(0,1fr)]',
+        contained && pane === 'section' && 'max-lg:grid-rows-[auto_minmax(0,1fr)]',
         contained && !stacked && 'lg:h-(--console-content-height)'
       )}
     >
-      <div className='col-start-1 row-start-1 mt-(--page-header-top-inset) flex min-h-(--page-header-control-size) min-w-0 items-center gap-2 px-6 max-sm:px-4'>
-        <div className='min-w-0 flex-1'>{breadcrumbs}</div>
-        <AppViewerPlacementButton
-          placement={placement}
-          onPlacementChange={setPlacement}
-          disabled={loading}
-        />
-      </div>
-      <div
+      <PageBreadcrumbRow
         role='group'
         aria-label='App workspace view'
-        className='sticky top-(--console-top-inset) z-20 col-start-1 row-start-2 flex min-w-0 flex-wrap gap-1 bg-background px-6 py-1 max-sm:px-4 lg:hidden'
+        className={cn(
+          'col-start-1 row-start-1 mt-(--page-header-top-inset) px-(--page-inline-gutter)',
+          pane === 'device' && 'max-lg:hidden'
+        )}
       >
+        <div className='flex min-w-0 flex-1'>
+          <PageHomeLink className='lg:hidden' />
+          <div className='hidden min-w-0 flex-1 lg:flex'>{breadcrumbs}</div>
+        </div>
+        <div className='hidden min-h-(--page-header-control-size) shrink-0 items-center lg:flex'>
+          <AppViewerPlacementButton
+            placement={placement}
+            onPlacementChange={setPlacement}
+            disabled={loading}
+          />
+        </div>
         <Button
+          ref={deviceButton}
           type='button'
           size='sm'
-          variant={pane === 'section' ? 'secondary' : 'ghost'}
-          aria-controls={`${panelId}-section`}
-          aria-pressed={pane === 'section'}
-          disabled={loading}
-          onClick={() => selectPane('section')}
-        >
-          {appResourceLabels[view]}
-        </Button>
-        <Button
-          type='button'
-          size='sm'
-          variant={pane === 'device' ? 'secondary' : 'ghost'}
+          variant='ghost'
+          className='min-h-11 lg:hidden'
           aria-controls={`${panelId}-device`}
-          aria-pressed={pane === 'device'}
           disabled={loading}
           onClick={() => selectPane('device')}
         >
           <IconDeviceMobile aria-hidden />
           Device
         </Button>
-      </div>
+      </PageBreadcrumbRow>
+      {pane === 'device' ? (
+        <div className='col-start-1 row-start-1 h-(--mobile-device-header-height) min-w-0 px-(--page-inline-gutter) pt-(--page-header-top-inset) lg:hidden'>
+          <PageBreadcrumbRow className='items-center'>
+            <div className='flex min-w-0 flex-1 items-center gap-0.5'>
+              <Button
+                ref={exitButton}
+                type='button'
+                variant='ghost'
+                size='icon-md'
+                className={pageBackButtonClassName}
+                aria-label={`Back to ${appResourceLabels[view]}`}
+                onClick={() => selectPane('section')}
+              >
+                <IconChevronLeft aria-hidden />
+              </Button>
+              <h1 className='min-w-0 flex-1 truncate text-sm font-medium'>{appName ?? 'Device'}</h1>
+            </div>
+            <div
+              ref={setHeaderSlot}
+              className='min-w-0 max-w-[60%]'
+            />
+          </PageBreadcrumbRow>
+        </div>
+      ) : null}
       <div
-        id={`${panelId}-section`}
         className={cn(
-          'col-start-1 row-start-3 min-w-0',
+          'col-start-1 row-start-2 min-w-0',
           pane === 'device' && 'max-lg:hidden',
           contained && 'max-lg:flex max-lg:min-h-0 max-lg:self-stretch max-lg:flex-col',
-          !stacked && 'lg:row-start-2',
+          stacked && 'lg:row-start-3',
           contained && (stacked ? 'lg:h-(--console-content-height) lg:min-h-0' : 'lg:h-full lg:min-h-0')
         )}
       >
@@ -123,9 +152,11 @@ export const AppDeviceLayout = ({
         )}
         data-viewer-placement={stacked ? 'top' : undefined}
       >
-        <DisplayViewerVisibility.Provider value={isDesktop === true || pane === 'device'}>
-          {viewer}
-        </DisplayViewerVisibility.Provider>
+        <MobileViewerHeaderSlot.Provider value={headerSlot}>
+          <DisplayViewerVisibility.Provider value={isDesktop === true || pane === 'device'}>
+            {viewer}
+          </DisplayViewerVisibility.Provider>
+        </MobileViewerHeaderSlot.Provider>
       </aside>
     </div>
   )

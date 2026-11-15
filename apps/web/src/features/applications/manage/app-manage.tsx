@@ -13,7 +13,6 @@ import { useApplicationViewerApp } from '@/features/applications/detail/applicat
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
-import { AndroidNotifications } from '@/features/applications/viewer/notifications/android-notifications'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
@@ -28,7 +27,6 @@ import { PageContent } from '@/shared/ui/page/page-layout'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
-import { AppManageIconPanel } from './app-manage-icon-panel'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
 import { buildAppManageUpdateInput, mergeAppPreservingDraftAssets, useAppManageDraft } from './use-app-manage-draft'
 
@@ -159,24 +157,13 @@ export const AppManage = () => {
             canDiagnose={canViewBackendDetails || (canViewLogs && !isForeignOwnedApp)}
             showErrorDetails={canViewBackendDetails}
           />
-          <div className='[&:empty]:hidden'>
-            <AndroidNotifications app={currentApp} />
-          </div>
           <AppManageGeneralSettings
             app={currentApp}
             appId={currentApp.id}
             values={formValues}
             initialSettings={initialSettings}
-            iconSlot={
-              <AppManageIconPanel
-                appId={currentApp.id}
-                appName={draft.appName}
-                icon={draft.icon}
-                initialSettings={initialSettings}
-                compact
-                onIconChange={updateIcon}
-              />
-            }
+            icon={draft.icon}
+            onIconChange={updateIcon}
             nameError={nameError}
             nameInputRef={nameInput}
             onAppNameChange={value => {

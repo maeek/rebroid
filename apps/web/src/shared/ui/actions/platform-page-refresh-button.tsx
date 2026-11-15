@@ -13,13 +13,17 @@ export const PlatformPageRefreshButton = ({
   onRefresh,
   label = 'Refresh',
   disabled,
-  refreshResult
+  refreshResult,
+  variant = 'ghost',
+  className
 }: {
   isRefreshing?: boolean
   onRefresh: () => void
   label?: string
   disabled?: boolean
   refreshResult?: RefreshResult
+  variant?: 'ghost' | 'secondary'
+  className?: string
 }) => {
   const { confirmation, confirm, reset } = useConfirmedFeedback<boolean>()
   const [attempt, setAttempt] = useState<{ version: unknown } | null>(null)
@@ -46,8 +50,9 @@ export const PlatformPageRefreshButton = ({
         <TooltipTrigger asChild>
           <Button
             type='button'
-            variant='ghost'
+            variant={variant}
             size='icon-md'
+            className={className}
             aria-label={label}
             aria-busy={isRefreshing || undefined}
             disabled={disabled || isRefreshing}

@@ -18,6 +18,7 @@ export interface AutomationsListPageProps {
   gridQuery: AutomationsGridQuery
   initialTriggers: AutomationTrigger[]
   workflowHistoryRetention?: ActionResult<WorkflowHistoryRetention> | null
+  canManageHistoryRetention?: boolean
 }
 
 export interface AutomationEditorPageProps {

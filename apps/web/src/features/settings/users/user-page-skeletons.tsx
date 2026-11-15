@@ -1,11 +1,11 @@
 'use client'
 
 import { IconDeviceFloppy } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { AccountSessionsSection } from '../security/ui/account-sessions-section'
 import { AccessEditorLayout } from './components/access-editor-layout'
@@ -26,22 +26,29 @@ const UsersHeaderSkeleton = ({
   description: string
   trail?: Array<{ label: string; href?: string }>
   withAvatar?: boolean
-}) => (
-  <PageHeader
-    section={{ label: 'Users & groups' }}
-    trail={trail}
-    title={<Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' />}
-    breadcrumbLabel={title}
-    actions={
-      <Button disabled>
-        <IconDeviceFloppy className='size-4' />
-        Save {withAvatar ? 'User' : 'Group'}
-      </Button>
-    }
-    description={description}
-    leading={withAvatar ? <Skeleton className='size-12 rounded-full max-sm:size-10' /> : undefined}
-  />
-)
+}) => {
+  return (
+    <CompactPageHeader
+      inlineActions
+      section={{ label: 'Users & groups' }}
+      trail={trail}
+      title={<Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' />}
+      breadcrumbLabel={title}
+      actions={
+        <MutationButton
+          pendingLabel='Saving…'
+          success={false}
+          disabled
+        >
+          <IconDeviceFloppy className='size-4' />
+          Save {withAvatar ? 'User' : 'Group'}
+        </MutationButton>
+      }
+      description={description}
+      leading={withAvatar ? <Skeleton className='size-12 rounded-full max-sm:size-10' /> : undefined}
+    />
+  )
+}
 
 export const UsersPageSkeleton = () => (
   <UsersSettings

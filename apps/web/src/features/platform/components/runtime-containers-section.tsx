@@ -141,7 +141,7 @@ export const RuntimeContainersSection = ({
         contentClassName='gap-4'
       >
         <Visible when={containersPage.orphanedCount > 0}>
-          <div className='flex flex-wrap items-center justify-between gap-3 rounded-control border border-danger/35 bg-danger/10 p-3 text-sm'>
+          <div className='flex flex-wrap items-center justify-between gap-3 rounded-control border border-danger/(--feedback-border-opacity) bg-danger/10 p-3 text-sm'>
             <span className='text-danger'>
               {containersPage.orphanedCount} managed Rebroid container
               {containersPage.orphanedCount === 1 ? '' : 's'} no longer have an app record.
@@ -158,6 +158,7 @@ export const RuntimeContainersSection = ({
         </Visible>
 
         <DataGridWorkspace
+          columnsInToolbar
           search={search}
           appliedSearch={gridQuery.q ?? ''}
           searchPlaceholder='Search containers'

@@ -96,7 +96,7 @@ export function DockerMetricsDashboard({
     ) : null
 
   return data ? (
-    <div className='grid min-w-0 gap-4'>
+    <div className='flex min-w-0 flex-col gap-4'>
       {refreshNotice}
       <DockerMetricsContent
         data={data}
@@ -119,7 +119,7 @@ export const DockerMetricsContent = ({
 }) => {
   return (
     <section
-      className='flex w-full flex-col gap-6'
+      className='flex w-full min-w-0 flex-col gap-6'
       aria-busy={loading}
     >
       {data ? (
@@ -166,7 +166,7 @@ export const DockerMetricsContent = ({
           ]}
         />
       </Section>
-      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-5'>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5'>
         {summaryCards(data).map(([label, value, hint, tone]) => (
           <QuickGlanceCard
             key={label}
@@ -178,7 +178,7 @@ export const DockerMetricsContent = ({
           />
         ))}
       </div>
-      <div className='grid gap-6 xl:grid-cols-2'>
+      <div className='grid grid-cols-1 gap-6 xl:grid-cols-2'>
         <MetricsChart
           loading={loading}
           title='In-flight and queued operations'
@@ -278,7 +278,7 @@ const RecentDockerOperations = ({ data, loading }: { data: DockerMetricsSnapshot
                     {event.outcome === 'error' ? 'Error' : event.outcome === 'timeout' ? 'Timeout' : 'Slow'}
                   </TableCell>
                   <TableCell>{event.durationMs}ms</TableCell>
-                  <TableCell>{event.error ?? '-'}</TableCell>
+                  <TableCell className='min-w-48 [overflow-wrap:anywhere]'>{event.error ?? '-'}</TableCell>
                 </TableRow>
               ))
             )}
@@ -330,7 +330,7 @@ function MetricsChart({
         ) : (
           <ChartContainer
             config={chartSeries}
-            className='h-full w-full'
+            className='aspect-auto h-full w-full min-w-0'
           >
             <LineChart data={data}>
               <CartesianGrid vertical={false} />

@@ -61,6 +61,7 @@ import { ScheduledTasksPageSkeleton } from '@/features/settings/scheduled-tasks/
 import { ScheduledTasksPreview } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-preview'
 import { SystemResourcesContent } from '@/features/settings/system/system-resources-content'
 import { SystemResourcesPageSkeleton } from '@/features/settings/system/system-resources-page-skeleton'
+import { GroupsSettings } from '@/features/settings/users/groups-settings'
 import { UserEditorPreview } from '@/features/settings/users/user-editor-preview'
 import {
   UsersPageSkeleton,
@@ -69,6 +70,8 @@ import {
   GroupEditPageSkeleton
 } from '@/features/settings/users/user-page-skeletons'
 import { ConsoleShellPreview } from '@/features/shell/components/console-shell-preview'
+import { actionOk } from '@/shared/actions/action-result'
+import { defaultWorkflowHistoryRetentionDays } from '@/shared/contracts/scheduled-task'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
@@ -98,11 +101,17 @@ export const dynamic = 'force-dynamic'
 export default async function SkeletonContractPage({
   searchParams
 }: {
-  searchParams: Promise<{ editor?: string; workflows?: string; recentApps?: string; display?: string }>
+  searchParams: Promise<{
+    editor?: string
+    workflows?: string
+    recentApps?: string
+    display?: string
+    workflowName?: string
+  }>
 }) {
   if (process.env.ENABLE_SKELETON_CONTRACT_ROUTE !== '1') notFound()
 
-  const { editor, workflows, recentApps, display } = await searchParams
+  const { editor, workflows, recentApps, display, workflowName } = await searchParams
   if (editor === 'action-feedback') return <ActionFeedbackPreview />
   if (editor === 'resource-navigation') return <ResourceNavigationPreview />
   if (editor === 'search-menu-log') return <SearchMenuLogPreview />
@@ -215,6 +224,12 @@ export default async function SkeletonContractPage({
       />
     )
   if (editor === 'workflow') return <WorkflowEditorPreview />
+  if (editor === 'workflow-shell')
+    return (
+      <ConsoleShellPreview manifest={appResourcePreviewFeatures}>
+        <WorkflowEditorPreview canDraftFromPrompt />
+      </ConsoleShellPreview>
+    )
   if (editor === 'workflow-long') return <WorkflowEditorPreview long />
   if (editor === 'workflow-references') return <WorkflowEditorPreview withReferences />
   if (editor === 'agent') return <AppResourcePreview agent />
@@ -226,6 +241,7 @@ export default async function SkeletonContractPage({
       <AutomationsListPage
         initialApplications={[applicationPreview]}
         initialTriggers={[previewTrigger]}
+        workflowHistoryRetention={actionOk({ retentionDays: defaultWorkflowHistoryRetentionDays, enabled: true })}
         automationsPage={{
           items: [
             {
@@ -248,11 +264,11 @@ export default async function SkeletonContractPage({
     return (
       <AutomationTracesPage
         applications={[applicationPreview]}
-        automation={previewWorkflow}
+        automation={workflowName ? { ...previewWorkflow, name: workflowName } : previewWorkflow}
         runs={[]}
       />
     )
-  if (editor === 'workflows-loading') return <AutomationsListPageSkeleton />
+  if (editor === 'workflows-loading') return <AutomationsListPageSkeleton canManageHistoryRetention />
   if (editor === 'triggers-loading') return <AutomationTriggersPageSkeleton />
   if (editor === 'run-history-loading') return <AutomationTracesPageSkeleton />
   if (editor === 'overview-loading') return <PlatformOverviewPageSkeleton />
@@ -357,6 +373,7 @@ export default async function SkeletonContractPage({
   if (editor === 'ai-list-loading') return <AiProvidersPageSkeleton />
   if (editor === 'ai-models-loading') return <AiProviderEditPageSkeleton />
   if (editor === 'users-list') return <UsersListPreview />
+  if (editor === 'groups-list') return <GroupsSettings initialGroups={[]} />
   if (editor === 'general' || editor === 'general-loading' || editor === 'general-member')
     return <GeneralSettingsPreview loading={editor === 'general-loading'} />
   if (editor === 'security' || editor === 'security-loading')

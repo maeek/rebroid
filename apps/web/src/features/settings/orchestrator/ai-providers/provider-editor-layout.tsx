@@ -3,7 +3,7 @@ import { IconCube, IconPlugConnected } from '@tabler/icons-react'
 import { GradientSparklesIcon } from '@/components/icons/gradient-sparkles-icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
 import type { AutomationAiProvider } from '@/shared/contracts/ai-provider'
@@ -29,14 +29,12 @@ export const ProviderEditorLayout = ({
   const href = `/platform/ai/${encodeURIComponent(provider.id)}`
   return (
     <EditorPage className='gap-2'>
-      <PageHeader
+      <CompactPageHeader
+        inlineActions
         section={{ label: 'Administration' }}
-        trail={[
-          { label: 'AI', href: '/platform/ai' },
-          { label: provider.label, href }
-        ]}
+        trail={[{ label: 'AI', href: '/platform/ai' }]}
         title={loading ? <Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' /> : provider.label}
-        breadcrumbLabel={view === 'models' ? 'Models' : 'Connection'}
+        breadcrumbLabel={provider.label}
         leading={<GradientSparklesIcon className='size-8 max-sm:size-5' />}
         meta={loading ? <Skeleton className='h-4 w-40' /> : availability}
         actions={actions}

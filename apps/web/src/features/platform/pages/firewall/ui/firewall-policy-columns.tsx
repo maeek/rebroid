@@ -12,6 +12,7 @@ import {
 } from '../model/firewall-settings-model'
 import type { FirewallPolicyApplication } from '@/shared/contracts/application'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const AllowlistBadges = ({ cidrs }: { cidrs: string[] }) => {
   const { empty, hiddenCidrs, visibleCidrs } = firewallAllowlistDisplay(cidrs)
@@ -52,14 +53,16 @@ export const firewallPolicyColumns: ColumnDef<FirewallPolicyApplication>[] = [
     id: 'name',
     accessorFn: application => application.name,
     header: 'Application',
+    enableHiding: false,
     size: 288,
-    meta: { label: 'Application', skeleton: { kind: 'stacked' } },
+    meta: { label: 'Application', compactSlot: 'title', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => (
       <ApplicationReference
         id={row.original.id}
         name={row.original.name}
         ownerUsername={row.original.ownerUsername}
         href={appResourceHref(row.original.id, 'network')}
+        className={styles.settingsStack}
       />
     )
   },
@@ -78,14 +81,14 @@ export const firewallPolicyColumns: ColumnDef<FirewallPolicyApplication>[] = [
     accessorFn: firewallAccessLabel,
     header: 'Outbound access',
     size: 228,
-    meta: { label: 'Outbound access', skeleton: { kind: 'text', width: 'w-32' } }
+    meta: { label: 'Outbound access', compactSlot: 'details', skeleton: { kind: 'text', width: 'w-32' } }
   },
   {
     id: 'destinations',
     header: 'Destinations',
     size: 340,
     enableSorting: false,
-    meta: { label: 'Destinations', skeleton: { kind: 'badge' } },
+    meta: { label: 'Destinations', compactSlot: 'details', showCompactLabel: true, skeleton: { kind: 'badge' } },
     cell: ({ row }) =>
       row.original.network.policy.enabled ? (
         <AllowlistBadges cidrs={row.original.network.policy.allowCidrs} />
@@ -98,7 +101,7 @@ export const firewallPolicyColumns: ColumnDef<FirewallPolicyApplication>[] = [
     accessorFn: application => firewallPolicyEnforcement(application).label,
     header: 'Firewall enforcement',
     size: 190,
-    meta: { label: 'Firewall enforcement', skeleton: { kind: 'badge' } },
+    meta: { label: 'Firewall enforcement', compactSlot: 'status', skeleton: { kind: 'badge' } },
     cell: ({ row }) => {
       const state = firewallPolicyEnforcement(row.original)
       return (

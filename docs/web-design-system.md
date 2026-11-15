@@ -12,6 +12,7 @@ Palette variables are private to `apps/web/src/app/globals.css`. Feature code us
 | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
 | Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-menu`, `surface-border`, `surface-navigation`. |
+| Floating controls | `surface-floating-control`, `shadow-floating-control`. |
 | Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
 | Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                   |
 | Feedback        | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.              |
@@ -71,18 +72,24 @@ The protected layout owns sidebar offset, `main`, width, and outer gutters. Stan
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
 The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
-brand and collapse control above the scrollable links. Place the account and notifications together at the bottom.
+brand and collapse control above the scrollable links. Place the account control at the bottom.
 For platform administrators, the Services navigation item shows overall platform health with a right-aligned dot.
 Collapsing the System section moves this dot to the System item.
 Casting, Firewall, Docker, and OCR perception show their own health in the same way. Each dot has a text description.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
-is a 64 px icon rail with service health dots on the corresponding icons or flyout links. Footer popups open beside the rail and align
-with the bottom edge of their trigger. In the expanded sidebar they open upward. The account Theme submenu uses
-the same floating surface and opens toward the center of the viewport from the mobile account menu.
-On mobile, the compact top bar contains the brand, notifications, and account controls.
-The bottom bar links to Apps and, when enabled, Workflows. More opens the navigation drawer, where service health dots appear.
-The shell reserves space for the bottom bar and the device safe area. The drawer has a swipe-to-dismiss grip above its fixed header,
-an explicit close button, and a scrollable list.
+is a 64 px icon rail with service health dots on the corresponding icons or flyout links. The account menu opens beside the rail and aligns
+with the bottom edge of its trigger. In the expanded sidebar it opens upward. The Appearance submenu uses
+the same floating surface as the desktop account menu.
+On mobile, page headers identify the current resource. The shell reserves the top safe area.
+The bottom dock links to Apps and, when enabled, Workflows. Use `surface-floating-control` and
+`shadow-floating-control` to keep it distinct over content panels. Leave at least 12 px on either side
+and a gap above the bottom safe area. Tint the active icon and label with the accent and give
+the icon a small tinted surface. Keep the dock free of dividers and use 44 px touch targets.
+More opens the navigation drawer, with the Rebroid wordmark above the scrollable navigation links and service
+health dots. Place the account section after the last navigation group, with the avatar and name above direct
+Preferences and Security links, inline Appearance choices, and Log out. The drawer has a swipe-to-dismiss
+grip and an explicit close button.
+The shell reserves space for the bottom bar and the bottom safe area.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
 The Docker and System labels open their overview pages. Each has a separate chevron for expanding or collapsing its child links.
@@ -94,8 +101,24 @@ repeat the page title or active tab. Put page-wide context in `PageHeader.descri
 keep useful section-specific copy in `Section.description` without adding a heading.
 
 `PageHeader` owns breadcrumbs and the single page title, with one action slot. Breadcrumbs share the
-same top inset and row height with the viewer, including during loading. The top-level Overview
-omits `section` to render without breadcrumbs or an empty breadcrumb gap. Keep `PageContent`
+same top inset and control height with the viewer, including during loading. Below 640 px, the
+top inset is 12 px in addition to the safe area. On mobile, start the
+single-line trail with an outlined Home link to Apps. Give the current page label priority, then show
+as many linked ancestors as fit, starting with the nearest. Shorten the nearest link if there is room
+left for a readable label and put the other links in the ellipsis menu. Omit non-link group labels.
+On tabbed pages, end the breadcrumb at the resource or workspace. The tab switcher identifies the active view.
+When a grid toolbar shares the row, reserve its measured width.
+Reserve the height of a standard control for the title so adding actions keeps its position.
+Secondary settings actions use a square 44 px cog button below 640 px, with an accessible name
+that identifies the settings. Wider layouts show the action label.
+Below 640 px, the breadcrumb supplies the only visible title when it repeats a plain page heading.
+Use the compact settings header to keep Save at the end of the breadcrumb row. Place Discard
+immediately before it with the short label on phones.
+Keep the accessible page heading and place the page actions at the end of the breadcrumb row
+when they fit. Move the group together to the next line when it needs more room. Loading uses
+the same header, with known actions disabled, and search and Filters stay above the grid.
+Align the leading back icon in the app, device, and workflow editor headers to the page gutter.
+The top-level Overview omits `section` to render without breadcrumbs or an empty breadcrumb gap. Keep `PageContent`
 a vertical stack; responsive columns belong to a child grid with explicit `minmax()` tracks.
 Do not repeat outer padding or use fractional flex sizing for primary columns.
 
@@ -114,6 +137,7 @@ Use `Surface` levels `panel`, `band`, `floating`, or `control` with semantic ton
   covers loading, empty, unavailable, not-found, and error states.
 - `Surface` `data-tone` styling is authoritative. Success keeps its visible semantic tint in light,
   dark, and OLED themes. Do not override a toned surface with a neutral background.
+- Use `--feedback-border-opacity` for subtle outlines on notices, banners, and toasts.
 - Successful mutations use the success toast variant. Informational toasts are for facts, not completion.
 - Page notices and service banners span the content width; badges remain intrinsic.
 
@@ -186,8 +210,8 @@ control on touch and keyboard. Identical plain-text notices update the existing 
 Reduced motion removes toast movement, switch transitions, and spinner rotation.
 
 The AI composer keeps routine status in the existing toolbar, with the full text available on focus
-or hover. `AiComposerActions` keeps fixed Send/Queue and Stop/Run next icon slots; action changes
-never resize the composer. Acknowledgements reflect accepted submissions or explicitly queued prompts.
+or hover. Send and Stop share a circular button beside the model selector. Starting and canceling use
+the same button position. Acknowledgements reflect accepted submissions or explicitly queued prompts.
 Failed submissions restore an empty composer without overwriting a newer draft. Validation errors may
 expand naturally; do not add empty message rows to forms or composers.
 
@@ -208,8 +232,10 @@ tooltips, and a 120 ms opacity fade. Reduced motion removes copy, row-action, an
 `SearchField` keeps typing and clearing available while a search transition is pending. Show its
 spinner in the existing icon slot only after 200 ms; do not infer request completion from the
 search debounce. Keep existing results while the transition is pending. Filterable workspaces
-reserve a single-line, horizontally scrollable summary strip and a fixed count slot. Search-only
-workspaces do not reserve filter chrome. Removing a chip returns focus to the Filters control.
+show compact active chips in a single horizontally scrollable strip aligned to the grid's leading
+edge. The whole chip can be removed with a 44 px touch target. The count takes the place of the
+filter icon in labeled triggers, keeping the button width fixed. Compact icon-only triggers use a
+dot. Removing a chip returns focus to the Filters control.
 
 Menus, submenus, selects, and combobox popups share a 120 ms opacity transition using Base UI
 starting/ending states. Keep popup geometry and keyboard highlighting immediate, with no zoom
@@ -283,10 +309,26 @@ and the header on a quiet semantic editor surface with the shared control radius
 Keep that radius consistent with inputs and buttons rather than introducing square header bands.
 Keep the rounded header free of rules. Use subtle separators between body rows
 and above pagination, with no perimeter frame, vertical rules, or shadow. Shared cells use compact vertical spacing, including
-loading placeholders; hover and selection supply row emphasis. Keep pagination unboxed and table
-utilities as ghost actions. Apply this composition to both page-level and embedded grids rather than
-adding feature-specific wrappers.
-Horizontally overflowing grids reserve space below the table for overlay scrollbars.
+loading placeholders. Use hover and selection for row emphasis. Empty grids finish without a bottom rule.
+Keep pagination unboxed and table utilities as ghost actions. Apply this composition to page-level
+and embedded grids.
+Horizontally overflowing grids reserve space below the table for overlay scrollbars. Fade each
+edge only while columns remain in that direction. Docker inventories and Audit log place column
+visibility in the workspace toolbar. Focused column resize handles support arrow keys, Shift for
+larger steps, Home and End for width limits, and Enter to restore the default.
+
+Feature management, Maintenance tasks, and Services use stacked rows when their grid container
+is narrower than 44 rem. Keep the settings switch beside the name with a 44 px hit area.
+Feature availability and applicable management links follow the title. Scheduled task rows show
+the schedule and last result, with selection and row actions still available. Service rows show
+health alongside the link to the service detail. Use the same layout for ready and loading rows.
+
+Use the container-driven layout for record browsing, including runs, accounts, permissions,
+provider models, and casting sessions. Keep record names, status, and actions within reach
+and place supporting fields beneath the name. Align status chips, switches, and overflow menus
+with the record heading. Give overflow buttons a 44 px hit area within compact grids.
+Docker inventories retain scrollable comparison columns and column controls in the toolbar.
+File browsing already adapts to its own pane.
 
 Selection replaces the search/action toolbar in the same measured grid track; it never inserts a
 new bar above the table. Keep both toolbar modes mounted for stable responsive geometry, with the
@@ -299,8 +341,11 @@ for confirmation. Active filter chips remain visible in both modes.
 
 Filter sheets start closed and overlay the page without narrowing the table. Sheet backdrops and panels
 use coordinated 200ms transitions driven by Base UI starting/ending states; preserve the ending opacity
-until unmount so the mask cannot flash back. Respect reduced motion. Keep the filter button, active count/chips, reset, and keyboard focus restoration usable while the sheet is closed. Search is debounced without a submit button; filters apply
-immediately. Page filters use validated URL state. Do not add column-header filters or separate filter popovers.
+until unmount so the mask cannot flash back. Respect reduced motion. Keep the filter fields scrollable
+with Reset filters and Done visible in the footer. Closing the sheet returns keyboard focus to the
+Filters button. Keep active counts and removable chips visible with the sheet closed. Search is debounced
+without a submit button. Filters apply immediately. Page filters use validated URL state.
+Do not add column-header filters or separate filter popovers.
 Explicitly cleared URL fields must be removed rather than restored from the previous query. Give every
 filter an accessible label and show resource names in active chips, with identifiers as secondary metadata.
 Keep whole-dataset actions available without selection. Lock conflicting row and bulk mutations while
@@ -404,11 +449,27 @@ slightly raised charcoal in dark, and near-black in OLED) with the heading insid
 16px between stacked fields. Use `gap-x-form-column` (32px) between side-by-side fields or field groups within a section.
 FormField groups the label and description above the control, with a 4px label-to-description gap and a 12px gap before the control. Use its shared 20px label line height rather than feature-specific margins. Validation errors remain below vertical controls; preserve their ARIA associations.
 
+On phones, Create app uses the breadcrumb as its visible title and places the submit action at
+the end of the row when it fits. The Apps index and Create app share the mobile top inset and
+use a 40 px primary button with a 44 px touch target. The loading view keeps the same header
+with submission disabled.
+Create app enables submission once the name has at least two characters after trimming and the draft
+passes client-side validation. Show corrections beside the affected fields as the user edits.
 Create app keeps the draft on submission failure and focuses a persistent notice above the form.
 The notice explains the next step and shows the request ID for server failures. Use structured
 validation fields to show corrections at their controls and expand any collapsed group containing an error.
 Service outages belong in the notice. An unconfirmed create request stays on the form and directs
 the user to All apps before retrying. Only a confirmed app ID opens the resource page.
+
+Application identity places the APK and icon pickers in matching preview rows. Stack them in
+narrow sections and put them side by side when both have room. Support dropping an APK and
+keep the picker available for touch and keyboard. On Create app, keep the selected APK and icon
+when a replacement fails, and show the error by the affected control. The ReDroid display preview
+uses the selected screen's aspect ratio and shows dimensions and density beside it. It sits
+below the controls in narrow sections and grows into its own column beside the Runtime settings
+when space allows. Runtime arguments place editable overrides before the effective shell preview.
+Network access pairs its outbound policy with additional destinations on wide screens. Keep
+session and resource limits in one collapsible panel, with numeric inputs sized for their units.
 
 App resource errors use an illustrated page state with a short explanation and a path back to All apps.
 Explain invalid links separately from missing or inaccessible apps. A load failure offers a retry and
@@ -424,8 +485,8 @@ for streaming adjustments. Inline compound controls may explicitly opt out of ed
 
 ### Personal preferences
 
-The expanded sidebar footer places notifications beside the compact account control.
-The account menu offers Preferences, Security, Appearance, and Log out.
+The desktop account menu and the account section in the mobile drawer offer Preferences, Security, Appearance,
+and Log out.
 Edit your profile in Preferences and manage sign-in in Security.
 
 Theme, accent, and viewer placement apply immediately. Profile photo and sign-in
@@ -443,10 +504,13 @@ Typing a tag search never commits it on blur. Preserve selected tag colors and t
 Profile selectors use a labeled control and the shared destructive confirmation, including the profile name.
 Pending saves disable draft controls and prevent dismissal; failures retain the draft for correction or retry.
 
-Page titles and breadcrumb names wrap at narrow widths, including unbroken resource identifiers. Keep header
-actions available instead of truncating the resource identity. The standard shell provides a keyboard skip link
-and a scrollable sidebar so every navigation destination remains reachable.
-Pagination controls wrap within the page on mobile rather than widening the document.
+Standard page titles wrap at narrow widths, including unbroken resource identifiers.
+The app workspace title uses a single line with an ellipsis to give its actions stable space and keeps its position
+when the status chip appears or disappears.
+The standard shell provides a keyboard skip link and a scrollable sidebar so every navigation destination remains reachable.
+Single-page grids show a result count and offer page size when a smaller supported size would
+create another page. On phones keep the result range and page arrows on one line at ordinary
+counts. Label the compact page-size selector for assistive technology.
 Changing the page size returns to the first page in the same update.
 
 Advanced groups use collapsible Section with optional summary, controlled open/onOpenChange,
@@ -457,12 +521,15 @@ the section automatically. Keep essentials and permissions visible.
 
 The workflow editor uses a compact, borderless toolbar that sticks below the app navigation. Match
 the opaque page background so scrolling steps stay hidden behind it. Keep the workflow name and back
-link alongside Visual editor, YAML, Undo, Redo, and Save. Put Workflow details, Run history, import, export,
-and deletion in the workflow action menu. Workflow details opens a centered dialog with Name, Tags,
-and Description in Visual editor mode. Closing the dialog returns focus to the menu button. Run
-history has a Back to editor link. Preserve unsaved-change guards when leaving the editor and compare
-the draft with the last confirmed save. In Visual editor mode, the workflow heading supports inline
-renaming and keeps heading typography. Apply the rename to the draft on Enter or blur. Escape cancels.
+link beside Save on phones, with Undo, Redo, and the workflow action menu on the next row.
+On tablets, the title sits above the action row. The menu
+also holds Visual editor, YAML, and Draft with AI at widths below 1024 px. Put Workflow details, Run history,
+import, export, and deletion in the workflow action menu at every width. Workflow details opens a
+centered dialog with Name, Tags, and Description in Visual editor mode. Closing the dialog returns
+focus to the menu button. In Run history, the workflow breadcrumb links to the editor. Preserve
+unsaved-change guards when leaving the editor and compare the draft with the last confirmed save.
+In Visual editor mode, the workflow heading supports inline renaming and keeps heading typography.
+Apply the rename to the draft on Enter or blur. Escape cancels.
 
 Align the step sequence and selected-step inspector on desktop. The sequence sits on the page canvas
 with no outer padding or rounding. The inspector fills the available viewport below the toolbar and
@@ -470,8 +537,8 @@ uses a semantic panel surface. On smaller screens, open the inspector only after
 explicit step selection and restore focus on dismissal. Allow moves that break step references, mark
 each affected step, and identify the unavailable outputs in its inspector. Disable saving until the
 references are fixed. Use the same editor header and workspace for loading states. Workflow YAML
-fills the available desktop workspace below the toolbar and uses the page background without a
-wrapper panel or border.
+fills the available width and viewport height below the toolbar, accounting for the mobile navigation
+and safe areas. It uses the page background without a wrapper panel or border.
 
 Show the action's effect or the first condition with its comparison in the outline. Give each
 branch one Add step control and show its drop cue during a valid drag. In the inspector, lead
@@ -487,6 +554,8 @@ Trigger dialogs group identity, workflow/target/profile, and schedule without ne
 groups on wide screens and stack them on narrow screens. Keep footer actions visible while the form scrolls, and
 retain disabled/pending behavior. Workflow and trigger grids show tags with the name.
 The Workflows grid uses separate Run status and Last run columns, with the trace link beside the timestamp.
+On phones, show workflow names with step count and run status underneath. Keep selection and row actions
+visible, and show the failure link beside the status when available.
 A recorded failure links directly to its full-page trace with Summary, Steps, and Events.
 Lead the trace with the workflow and target app. Identify the failed step by its action label and
 provide a control that opens Steps and focuses the matching result.
@@ -548,6 +617,16 @@ without another panel background or outer padding. Ready and loading states shar
 
 App resource views share one device pane in AppDeviceLayout, including configuration and profiles. Fit the live display to the available width and height using the stream's observed dimensions. Put streaming settings in the display chrome and device controls in a rail just outside the right edge. The streaming settings sheet uses the dialog surface so controls remain distinct in each theme.
 
+On desktop, when multiple displays fit in the viewer, align their headers across the top and mark the active display in its header.
+Selecting a visible display moves the device controls and keyboard capture to it. When the displays would overflow,
+show one compact switcher that brings the selected display into view. Keep all streams mounted during selection and resizing.
+When only the main display is open, offer **Add virtual display** to users who can create one.
+In the mobile Device view, replace the global header and navigation with a compact app header,
+a display selector, and a single bottom control bar. Show only the selected display and keep
+the other stream mounted and inert. Keep Android navigation and fullscreen in the bar, with
+secondary actions in the device controls drawer. Fit the display and controls within the small
+viewport and safe-area insets. Returning from Device restores the app section and its scroll.
+
 Keep the embedded device frame and streaming settings visible when a session fails to open. Show
 the error and a retry action inside the frame.
 
@@ -558,7 +637,7 @@ authorized app lookup resolves. Show a neutral pane placeholder while the dimens
 
 The desktop mini player keeps the same live display mounted when the viewer scrolls above the viewport.
 The compact display keeps all four corners rounded. Hover or keyboard focus reveals a separate toolbar above it
-without moving or resizing the display.
+without moving or resizing the display. The toolbar shares the mobile dock's fill and soft shadow.
 Disable input while the preview floats. Closing docks the player, preserves the page scroll position,
 and keeps the preview dismissed until the inline viewer returns.
 The authorized clipboard dialog belongs in the display toolbar, with explicit read, copy, and send actions.
@@ -568,17 +647,25 @@ breadcrumbs, current-folder search, and column sorting. Upload and New folder ac
 The upload queue uses a collapsible panel with flat rows and shows progress only during an upload.
 File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
-App Configuration keeps Runtime settings visible as an ordinary section container. Technical Details and Logs belong only in Diagnostics.
+App Configuration uses the same APK and icon rows as Create app. File changes save immediately,
+with pending and failure feedback next to the picker. Runtime settings shows the saved image as a
+copyable reference and places the ReDroid mockup and dimensions below its Configured display label.
+The image reference and device preview sit directly on the runtime panel. Container arguments expand
+to the full panel width. The lifecycle panel groups the timeout, RAM, and CPU fields under one heading.
+The panels stack fields at narrow widths and reuse the same layouts while loading. Technical Details
+and Logs belong only in Diagnostics.
 
 The device agent is a viewport-contained workspace on desktop. Its header and resource navigation stay in
 normal flow. The transcript owns vertical scrolling and the composer occupies the pane footer.
 Keep one viewport-height calculation for the workspace. On narrow screens, show the conversation
 first and use the **Device** switch to reach the mounted viewer. Ready and loading states reuse AppResourceLayout, RuntimeToolPanelLayout,
 and AiAgentConversationLayout. Keep one quiet conversation toolbar, readable neutral message bubbles, and
-compact tool/observation disclosures. The empty state shows at most three quiet suggested requests; all
-requests remain in the composer’s Suggestions control. Keep conversation export/clear in one action menu.
-The composer groups device/setup guidance inside its surface, Suggestions at the left, and a compact model
-selector beside the circular send action. Avoid a second row of routine keyboard/timeout metadata. Model
+compact tool/observation disclosures. The empty state shows at most three quiet suggested requests.
+Keep conversation export/clear in one action menu.
+The composer groups device/setup guidance inside its surface and keeps a compact model
+selector beside the circular primary action. While a task is active, Cmd+Enter or Ctrl+Enter queues the draft
+and plain Enter inserts a newline. Queue message is also available at the left, where Run next task
+appears when the queue is ready. Avoid a second row of routine keyboard/timeout metadata. Model
 choices open directly as named rows grouped by provider, with a check on the selected model. Keep optional
 vision selection and the run time limit in More options, and connection health as a flat footer without
 nested cards or duplicate provider badges. Long catalogs offer search. Preserve model and provider IDs
@@ -589,7 +676,7 @@ bottom, with an explicit Latest messages action after scrolling up; do not anima
 Show the completed result and its verified observation links before routine activity. Distinguish prompts
 waiting behind an active task from the prompt ready for **Run next task**.
 
-App and container resource navigation share `ResourceNavigation` under `shared/ui`. Feature wrappers own destinations and permissions. Resource navigation uses a single overflow-safe row of routed links with aria-current, a quiet semantic background, and a compact active indicator. App breadcrumbs end at the app name. The resource navigation identifies the current section. Keep device-specific controls next to the device, outside resource navigation.
+App and container resource navigation share `ResourceNavigation` under `shared/ui`. Feature wrappers own destinations and permissions. Resource navigation uses a single overflow-safe row of routed links with aria-current, a quiet semantic background, and a compact active indicator. Desktop app breadcrumbs end at the app name. On mobile, Home and Device share the top row and the app name appears in the page title. The resource navigation identifies the current section. Keep device-specific controls next to the device, outside resource navigation.
 
 Resource references in tables and detail content use shared `ResourceLink`: accent color at rest, underline on hover/focus, and a visible keyboard focus ring. Keep secondary metadata muted. Link only values with a known destination; context menus and section navigation retain their own interaction styling.
 
@@ -697,7 +784,10 @@ dialog discards an unsaved preview. Loading renders the same field geometry.
 
 ## Audit activity
 
-Audit log and app activity share one time-first grid and event inspector. Keep the matching-event
+Audit log and app activity share a grid and event inspector. Use time-first columns on wide
+screens. In narrow containers lead with the event and outcome, followed by the timestamp and
+actor, and keep time sorting in the header. The audit log also shows the target, while app activity
+uses the app already identified by the page. Keep the matching-event
 count, failure count, and latest timestamp in a compact summary. On the global audit page, show
 the current retention period beside the latest timestamp and provide a separate Configure retention action.
 Do not repeat these as dashboard tiles or add a redundant grid

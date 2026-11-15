@@ -41,6 +41,7 @@ describe('effective runtime argument preview', () => {
     expect(preview.textContent).toContain('androidboot.redroid_width=720 \\\n')
     expect(preview.textContent).toContain('androidboot.redroid_height=1280 \\\n')
     expect(preview.textContent).toContain('androidboot.redroid_dpi=320 \\\n')
+    expect(preview.textContent).toContain('androidboot.redroid_fps=30')
     expect(preview.textContent).not.toMatch(/\\\s*$/)
     expect(screen.getByRole('textbox', { name: 'Additional ReDroid arguments' })).toHaveValue(
       'androidboot.redroid_fps=30'

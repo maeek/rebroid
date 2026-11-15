@@ -2,7 +2,8 @@
 
 import { useContext, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { IconPictureInPicture, IconX } from '@tabler/icons-react'
+import { IconDeviceDesktop, IconDeviceMobile, IconPictureInPicture, IconX } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
 import { Visible } from '@/components/ui/visible'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
@@ -32,6 +33,10 @@ export const SurfacePanel = ({
     dockedSession,
     canControl,
     controlsEnabled,
+    compact,
+    compactSwitcher,
+    multipleDisplays,
+    displayHeaderSpace,
     fullscreenSurface,
     isActive,
     isClosing,
@@ -56,6 +61,7 @@ export const SurfacePanel = ({
   } = useDisplayViewerSurface(surface)
   const viewerVisible = useContext(DisplayViewerVisibility)
   const active = viewerVisible && isActive
+  const hidden = compact && !isActive
   const pinnedViewer = usePinnedViewer()
   const register = pinnedViewer?.register
   const unregister = pinnedViewer?.unregister
@@ -83,7 +89,7 @@ export const SurfacePanel = ({
       onStreamMetrics: metrics => dockRef.current.onStreamMetrics(metrics),
       onStreamStatus: status => dockRef.current.onStreamStatus(status),
       onRetry: () => dockRef.current.onRetry(),
-      onFocus: () => dockRef.current.onSelect(),
+      onFocus: compact ? undefined : () => dockRef.current.onSelect(),
       retrying: isRetrying,
       retryError
     })
@@ -97,6 +103,7 @@ export const SurfacePanel = ({
     surface,
     frameGeneration,
     displaySize,
+    compact,
     canControl,
     canClipboard,
     active,
@@ -109,19 +116,49 @@ export const SurfacePanel = ({
   const miniPlayer = !fullscreenSurface && onDockMiniPlayer
   const aspectRatio = viewportSize.width / Math.max(viewportSize.height, 1)
   const frameStyle = mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined
+  const DisplayIcon = surface.kind === 'main' ? IconDeviceMobile : IconDeviceDesktop
 
   return (
     <section
       ref={onSurfaceElement}
-      onFocus={onSelect}
-      onPointerDown={onSelect}
+      onPointerDown={compact ? undefined : onSelect}
       aria-label={surface.name}
-      className='flex shrink-0 snap-center items-start gap-2'
+      inert={hidden}
+      className={cn(
+        'flex shrink-0 snap-center items-start gap-2',
+        compactSwitcher && 'pt-(--viewer-display-header-space)',
+        hidden && 'hidden'
+      )}
     >
       <div
         className='flex min-w-0 flex-col gap-(--viewer-chrome-gap)'
         style={{ width: viewportSize.width }}
       >
+        {multipleDisplays && !compactSwitcher && !compact ? (
+          <Button
+            type='button'
+            variant='ghost'
+            size='sm'
+            aria-pressed={isActive}
+            onClick={onSelect}
+            className={cn(
+              'mb-0.5 w-full min-w-0 justify-start px-1.5 text-xs',
+              isActive ? 'text-foreground' : 'text-foreground-muted'
+            )}
+          >
+            <DisplayIcon aria-hidden />
+            <span className='truncate'>{surface.name}</span>
+            <span
+              aria-hidden='true'
+              className={cn(
+                'shrink-0 rounded-control bg-primary/10 px-1.5 py-0.5 text-primary',
+                !isActive && 'invisible'
+              )}
+            >
+              Active
+            </span>
+          </Button>
+        ) : null}
         <div
           ref={element => {
             onViewportElement(element)
@@ -179,6 +216,7 @@ export const SurfacePanel = ({
                       viewerVisible && !miniPlayer && !streamStatus?.blocking && canControl && keyboardCaptureEnabled
                     }
                     isActive={!miniPlayer && !streamStatus?.blocking && active}
+                    onActivate={compact || miniPlayer || streamStatus?.blocking ? undefined : onSelect}
                     onStreamMetrics={onStreamMetrics}
                     onStreamStatus={onStreamStatus}
                     surfaceId={surface.id}
@@ -225,24 +263,29 @@ export const SurfacePanel = ({
             />
           </Visible>
         </div>
-        <SurfaceChrome
-          showName={showName}
-          actions={chromeActions}
-          surface={surface}
-          isClosing={isClosing}
-          isFullscreen={fullscreenSurface}
-          streamStatus={streamStatus}
-          onClose={onClose}
-          onOpenPopout={onOpenPopout}
-          onToggleFullscreen={() => {
-            if (!managed || !pinnedViewer?.requestFullscreen(applicationId)) onToggleFullscreen()
-          }}
-        />
+        {!compact && (
+          <SurfaceChrome
+            showName={showName}
+            actions={chromeActions}
+            surface={surface}
+            isClosing={isClosing}
+            isFullscreen={fullscreenSurface}
+            streamStatus={streamStatus}
+            onClose={onClose}
+            onOpenPopout={onOpenPopout}
+            onToggleFullscreen={() => {
+              if (!managed || !pinnedViewer?.requestFullscreen(applicationId)) onToggleFullscreen()
+            }}
+          />
+        )}
       </div>
-      {controlsEnabled ? (
+      {controlsEnabled && !compact ? (
         <div
-          className='w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto scrollbar-none'
-          style={{ maxHeight: Math.max(32, workspaceHeight - 16) }}
+          className={cn(
+            'w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto scrollbar-none',
+            multipleDisplays && !compactSwitcher && 'mt-(--viewer-display-header-space)'
+          )}
+          style={{ maxHeight: Math.max(32, workspaceHeight - 16 - displayHeaderSpace) }}
         >
           {isActive && !isFloating ? <ViewerControlBar surfaceId={surface.id} /> : null}
         </div>

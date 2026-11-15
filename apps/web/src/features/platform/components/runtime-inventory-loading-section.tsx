@@ -28,6 +28,7 @@ export const RuntimeInventoryLoadingSection = <TData,>({
       contentClassName='gap-4'
     >
       <DataGridWorkspace
+        columnsInToolbar
         disabled
         search={search}
         searchPlaceholder={searchPlaceholder}

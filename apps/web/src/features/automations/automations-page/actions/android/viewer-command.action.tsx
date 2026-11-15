@@ -14,7 +14,6 @@ const controls = {
   'volume-up': 'Volume up',
   'volume-down': 'Volume down',
   mute: 'Mute',
-  'expand-notifications': 'Show notifications',
   'expand-settings': 'Show quick settings',
   'collapse-panels': 'Close Android panels'
 } satisfies Record<ViewerCommand, string>

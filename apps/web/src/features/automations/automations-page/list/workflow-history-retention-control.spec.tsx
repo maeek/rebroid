@@ -25,6 +25,7 @@ describe('workflow run history retention control', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Request ID save-123')
     expect(days).toHaveValue(14)
 
+    await waitFor(() => expect(save).toBeEnabled())
     fireEvent.click(save)
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(saveWorkflowHistoryRetentionAction).toHaveBeenCalledWith(14)

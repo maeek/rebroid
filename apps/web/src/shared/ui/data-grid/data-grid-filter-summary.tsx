@@ -18,34 +18,34 @@ export const DataGridFilterSummary = ({
     data-slot='filter-summary'
     role='group'
     aria-label='Active filters'
-    className='scrollbar-thin flex h-10 min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden px-1 touch:h-14'
+    className='scrollbar-thin flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden'
   >
     {filters.map(filter => (
-      <Badge
+      <div
         key={filter.id}
-        variant='neutral'
-        className='shrink-0 gap-1 py-1 font-normal touch:relative touch:min-h-11 touch:pr-7'
+        className='touch-control relative flex shrink-0 items-center'
       >
-        <span className='text-foreground-muted'>{filter.label}</span>
-        <span
-          className='max-w-64 truncate'
-          title={filter.value}
-        >
-          {filter.value}
-        </span>
         <button
           type='button'
           disabled={disabled}
-          className='ml-1 rounded-control hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring touch:absolute touch:inset-0 touch:ml-0 touch:flex touch:items-center touch:justify-end touch:pr-2'
+          className='peer absolute inset-0 cursor-pointer rounded-control focus-visible:outline-none disabled:cursor-default'
           aria-label={`Remove ${filter.label} filter`}
+          title={filter.value}
           onClick={() => {
             onBeforeRemove()
             filter.onRemove()
           }}
+        />
+        <Badge
+          aria-hidden
+          variant='neutral'
+          className='pointer-events-none gap-1 font-normal peer-enabled:peer-hover:bg-surface-band peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-inset'
         >
-          <IconX className='size-3' />
-        </button>
-      </Badge>
+          <span className='text-foreground-muted'>{filter.label}</span>
+          <span className='max-w-64 truncate'>{filter.value}</span>
+          <IconX className='ml-1 size-3' />
+        </Badge>
+      </div>
     ))}
     {onReset && filters.length > 1 ? (
       <Button

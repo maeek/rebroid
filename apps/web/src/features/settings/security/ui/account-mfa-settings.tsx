@@ -80,7 +80,7 @@ export const AccountMfaSettings = ({
       description='Use an authenticator app. Each recovery code works once.'
     >
       {recoveryCodes.length > 0 ? (
-        <div className='grid gap-2 rounded-panel border border-warning/30 bg-warning/10 p-3 text-sm'>
+        <div className='grid gap-2 rounded-panel border border-warning/(--feedback-border-opacity) bg-warning/10 p-3 text-sm'>
           <p>Save these recovery codes now. They will not be shown again.</p>
           <code className='grid gap-1'>
             {recoveryCodes.map(code => (

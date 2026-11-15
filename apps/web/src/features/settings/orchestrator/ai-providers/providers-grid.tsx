@@ -13,6 +13,7 @@ import { ProviderHealthBadge } from './provider-health-badge'
 import { ProviderStatusBadge } from './provider-status-badge'
 import type { AutomationAiProvider, OpenAiBillingIssue } from '@/shared/contracts/ai-provider'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 export const ProvidersGrid = ({
   providers,
@@ -47,9 +48,10 @@ export const ProvidersGrid = ({
         accessorKey: 'label',
         header: 'Provider',
         size: 260,
-        meta: { label: 'Provider', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'Provider', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className='flex min-h-10 min-w-0 flex-col justify-center'>
+          <div className={`flex min-h-10 min-w-0 flex-col justify-center ${styles.settingsStack}`}>
             <ResourceLink
               href={`/platform/ai/${encodeURIComponent(row.original.id)}`}
               className='block truncate font-medium'
@@ -86,7 +88,7 @@ export const ProvidersGrid = ({
         id: 'models',
         header: 'Models',
         size: 220,
-        meta: { label: 'Models', skeleton: { kind: 'stacked' } },
+        meta: { compactSlot: 'details', label: 'Models', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
           <div className='grid gap-1'>
             <span className='text-sm'>{row.original.models.length} configured</span>
@@ -100,7 +102,7 @@ export const ProvidersGrid = ({
         accessorKey: 'enabled',
         header: 'Status',
         size: 140,
-        meta: { label: 'Status', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'status', label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
             <ProviderStatusBadge enabled={row.original.enabled} />
@@ -111,7 +113,7 @@ export const ProvidersGrid = ({
         id: 'health',
         header: 'Health',
         size: 150,
-        meta: { label: 'Health', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'details', label: 'Health', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='flex min-h-10 items-center'>
             <ProviderHealthBadge provider={row.original} />

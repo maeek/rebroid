@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { IconBrandGooglePlay, IconHammer } from '@tabler/icons-react'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { ResourceNavigation } from '@/shared/ui/resource-navigation'
 
@@ -14,9 +14,11 @@ export const ImageBuilderLayout = ({
   children: ReactNode
 }) => (
   <StandardPage className='min-w-0'>
-    <PageHeader
+    <CompactPageHeader
+      inlineActions
       section={{ label: 'Docker' }}
       trail={[{ label: 'Images', href: '/runtime/images' }]}
+      breadcrumbLabel='Image builder'
       title={mode === 'gapps' ? 'Build Google Play image' : 'Build custom image'}
       description={
         mode === 'gapps'

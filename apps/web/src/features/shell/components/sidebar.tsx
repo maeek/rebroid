@@ -109,7 +109,6 @@ export default function Sidebar({
       <NavigationControls
         user={initialUser}
         placement={collapsed ? 'rail' : 'sidebar'}
-        polling={pollNavigation}
       />
     </aside>
   )

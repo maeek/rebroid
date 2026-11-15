@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 
 export const ServicesPageLayout = ({
@@ -13,7 +13,7 @@ export const ServicesPageLayout = ({
     gridToolbar
     className='gap-2'
   >
-    <PageHeader
+    <CompactPageHeader
       section={{ label: 'System' }}
       title='Services'
       description='Review service health, manage connections, and inspect infrastructure.'

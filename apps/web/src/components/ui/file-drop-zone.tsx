@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { IconUpload } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
-import styles from './field-feedback.module.css'
+import { fieldFeedbackClassName } from './feedback-motion'
 
 export const FileDropZone = ({
   children,
@@ -74,7 +74,7 @@ export const FileDropZone = ({
         aria-hidden={!active}
         className={cn(
           'pointer-events-none absolute inset-2 z-40 flex items-center justify-center rounded-panel border-2 border-dashed border-primary bg-surface-elevated/95 text-center',
-          styles.message
+          fieldFeedbackClassName
         )}
       >
         <div className='grid min-w-0 gap-2 px-6'>

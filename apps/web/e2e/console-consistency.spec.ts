@@ -25,8 +25,30 @@ test('app shortcuts keep equal row heights with a status dot or Start action', a
 
   await checkRows()
   await page.setViewportSize({ width: 390, height: 800 })
-  await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' }).click()
+  const more = page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' })
+  await more.click()
   await checkRows()
+
+  const drawer = page.getByRole('dialog', { name: 'Navigation' })
+  const allApps = drawer.getByRole('link', { name: 'All apps', exact: true })
+  const recentApp = drawer.getByRole('link', { name: 'Stopped app', exact: true })
+  const recentRow = drawer.getByRole('listitem').filter({
+    has: page.getByRole('link', { name: 'Stopped app', exact: true })
+  })
+  const rowHeight = '48px'
+  await expect(allApps).toHaveCSS('height', rowHeight)
+  await expect(recentRow).toHaveCSS('height', rowHeight)
+  await expect(recentApp).toHaveCSS('height', rowHeight)
+
+  await page.evaluate(() => history.replaceState(null, '', '/app/stopped-app'))
+  await expect(drawer).toBeHidden()
+  await more.click()
+  await expect(recentApp).toHaveAttribute('aria-current', 'page')
+  await expect(recentRow).toHaveCSS('height', rowHeight)
+  const start = recentRow.getByRole('button', { name: 'Start Stopped app' })
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    expect((await start.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
 })
 
 test('the mobile navigation drawer follows a touch drag and dismisses', async ({ page, hasTouch, browserName }) => {
@@ -37,11 +59,15 @@ test('the mobile navigation drawer follows a touch drag and dismisses', async ({
   await expect(navigation.getByRole('link', { name: 'Apps', exact: true })).toHaveAttribute('href', '/apps')
   await expect(navigation.getByRole('link', { name: 'Workflows', exact: true })).toHaveAttribute('href', '/automations')
   const navBox = (await navigation.boundingBox())!
-  expect(navBox.y + navBox.height).toBe(800)
+  expect(navBox.x).toBe(12)
+  expect(navBox.x + navBox.width).toBe(390 - 12)
+  expect(navBox.y + navBox.height).toBe(800 - 8)
+  await expect(navigation).toHaveCSS('border-top-width', '0px')
+  const reservedSpace = 800 - navBox.y + 8
   expect(await page.getByRole('main').evaluate(element => getComputedStyle(element.parentElement!).paddingBottom)).toBe(
-    `${navBox.height}px`
+    `${reservedSpace}px`
   )
-  await expect(page.getByRole('region', { name: 'Notifications' })).toHaveCSS('bottom', `${navBox.height}px`)
+  await expect(page.getByRole('region', { name: 'Notifications' })).toHaveCSS('bottom', `${reservedSpace}px`)
   const more = navigation.getByRole('button', { name: 'More', exact: true })
   await more.tap()
 
@@ -319,46 +345,28 @@ test('resource titles wrap and the expanded sidebar remains scrollable to its la
   }
 })
 
-test('sidebar footer popups clear the rail and open below the mobile header controls', async ({ page }) => {
+test('the account menu clears the sidebar rail', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
   await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
   await expect(sidebar).toHaveCSS('width', '64px')
   const rail = (await sidebar.boundingBox())!
-  const popups = [
-    { trigger: 'Notifications', content: page.getByRole('dialog', { name: 'Notifications' }) },
-    { trigger: 'Account', content: page.getByRole('menu') }
-  ]
-
-  for (const { trigger, content } of popups) {
-    const button = sidebar.getByRole('button', { name: trigger })
-    await button.click()
-    await expect(content).toHaveAttribute('data-side', 'right')
-    await expect(content).toHaveAttribute('data-align', 'end')
-    const anchor = (await button.boundingBox())!
-    await expect
-      .poll(async () => {
-        const box = (await content.boundingBox())!
-        return box.x >= rail.x + rail.width + 7 && Math.abs(box.y + box.height - anchor.y - anchor.height) <= 1
-      })
-      .toBe(true)
-    await page.keyboard.press('Escape')
-    await expect(content).toBeHidden()
-    await expect(button).toBeFocused()
-  }
-
-  await page.setViewportSize({ width: 360, height: 740 })
-  const header = page.getByRole('banner')
-  for (const { trigger, content } of popups) {
-    await header.getByRole('button', { name: trigger }).click()
-    await expect(content).toHaveAttribute('data-side', 'bottom')
-    const box = (await content.boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width).toBeLessThanOrEqual(361)
-    await page.keyboard.press('Escape')
-    await expect(content).toBeHidden()
-  }
+  const menu = page.getByRole('menu')
+  const railAccount = sidebar.getByRole('button', { name: 'Account' })
+  await railAccount.click()
+  await expect(menu).toHaveAttribute('data-side', 'right')
+  await expect(menu).toHaveAttribute('data-align', 'end')
+  const anchor = (await railAccount.boundingBox())!
+  await expect
+    .poll(async () => {
+      const box = (await menu.boundingBox())!
+      return box.x >= rail.x + rail.width + 7 && Math.abs(box.y + box.height - anchor.y - anchor.height) <= 1
+    })
+    .toBe(true)
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(railAccount).toBeFocused()
 })
 
 test('service health dots stay with navigation in the sidebar, rail, and drawer', async ({ page }) => {
@@ -367,11 +375,7 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
   const footer = sidebar.getByRole('group', { name: 'Navigation controls' })
   await expect(footer.getByRole('button', { name: /^Service status:/ })).toHaveCount(0)
-  const bell = footer.getByRole('button', { name: 'Notifications' })
-  const bellBox = (await bell.boundingBox())!
-  const accountBox = (await footer.getByRole('button', { name: /^Account:/ }).boundingBox())!
-  expect(accountBox.y + accountBox.height / 2).toBe(bellBox.y + bellBox.height / 2)
-  expect(bellBox.x).toBeGreaterThan(accountBox.x + accountBox.width)
+  await expect(footer.getByRole('button', { name: /^Account:/ })).toBeVisible()
 
   const dot = '[data-slot="navigation-health-dot"]'
   for (const name of ['Casting', 'Docker', 'Services']) {
@@ -420,12 +424,11 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   await expect(system.locator(dot)).toBeVisible()
 
   await page.setViewportSize({ width: 320, height: 640 })
-  const mobileControls = page.getByRole('banner').getByRole('group', { name: 'Navigation controls' })
-  await expect(mobileControls.getByRole('button', { name: /^Service status:/ })).toHaveCount(0)
-  await expect(mobileControls.getByRole('button', { name: 'Notifications' })).toBeVisible()
+  await expect(page.getByRole('banner')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320)
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' }).click()
   const drawer = page.getByRole('dialog', { name: 'Navigation' })
+  await expect(drawer.getByRole('region', { name: 'Account' })).toBeAttached()
   await expect(drawer.getByRole('link', { name: 'Services' }).locator(dot)).toBeVisible()
   const drawerSystem = drawer.getByRole('link', { name: 'System', exact: true })
   await expect(drawerSystem).toHaveAttribute('href', '/system/resources')
@@ -569,14 +572,13 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   expect(await expandedResponse.text()).toContain('data-sidebar-collapsed="false"')
   await page.setViewportSize({ width: 390, height: 900 })
   await expect(sidebar).toBeHidden()
-  const mobileHeader = page.getByRole('banner')
-  await expect(mobileHeader.getByRole('link', { name: 'Rebroid' })).toBeVisible()
-  await expect(mobileHeader.getByRole('button', { name: 'Account' })).toBeVisible()
-  await expect(mobileHeader.getByRole('button', { name: 'More', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('banner')).toHaveCount(0)
   const mobileNavigation = page.getByRole('navigation', { name: 'Mobile navigation' })
   await expect(mobileNavigation.getByRole('link', { name: 'Workflows', exact: true })).toHaveCount(0)
   await mobileNavigation.getByRole('button', { name: 'More' }).click()
   const drawer = page.getByRole('dialog', { name: 'Navigation', exact: true })
+  await expect(drawer.getByText('Rebroid', { exact: true })).toBeVisible()
+  await expect(drawer.getByRole('region', { name: 'Account' })).toBeAttached()
   await expect(drawer.getByRole('link', { name: 'All apps' })).toBeVisible()
   await page.setViewportSize({ width: 1024, height: 900 })
   await expect(drawer).toBeHidden()
@@ -597,7 +599,7 @@ test('a saved sidebar preference is visible before hydration', async ({ page, ba
   await expect(page.getByRole('main')).toHaveCSS('padding-left', '72px')
 })
 
-test('console anchors only clear the top bar when it is visible', async ({ page }) => {
+test('console anchor offsets account for the preview inset', async ({ page }) => {
   for (const { editor, anchors, mobileOffset, desktopOffset } of [
     {
       editor: 'general',

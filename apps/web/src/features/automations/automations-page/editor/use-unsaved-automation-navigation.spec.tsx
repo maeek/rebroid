@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { useUnsavedNavigation } from '@/hooks/use-unsaved-navigation'
 import { AutomationEditorActions } from './automation-editor-actions'
 
+vi.mock('@/hooks/use-desktop-viewport', () => ({ useDesktopViewport: () => true }))
+
 const push = vi.fn()
 const noop = () => undefined
 
@@ -23,6 +25,7 @@ function Navigation({ dirty = true }: { dirty?: boolean }) {
         onImport={noop}
         onRunHistory={() => navigation.requestNavigation('/automations/workflow-1/traces')}
         onSave={noop}
+        onToggleYaml={noop}
       />
       {navigation.pendingNavigationHref ? (
         <button onClick={navigation.confirmPendingNavigation}>Discard and leave</button>

@@ -11,6 +11,7 @@ import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { ActiveWorkflowRun } from '@/shared/contracts/active-workflow-run'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 export const ActiveWorkflowRunsGrid = ({
   runs,
@@ -31,9 +32,10 @@ export const ActiveWorkflowRunsGrid = ({
         id: 'workflow',
         header: 'Workflow run',
         size: 260,
-        meta: { skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { label: 'Workflow run', compactSlot: 'title', skeleton: { kind: 'stacked' } },
         cell: ({ row: { original: run } }) => (
-          <div className='grid justify-items-start gap-1'>
+          <div className={`grid justify-items-start gap-1 ${styles.settingsStack}`}>
             <ResourceLink href={workflowTraceHref(run.automationId, run.id)}>
               {run.workflowName ?? 'View run'}
             </ResourceLink>
@@ -45,7 +47,7 @@ export const ActiveWorkflowRunsGrid = ({
         id: 'target',
         header: 'Target app',
         size: 200,
-        meta: { skeleton: { kind: 'text' } },
+        meta: { label: 'Target app', compactSlot: 'details', skeleton: { kind: 'text' } },
         cell: ({ row: { original: run } }) => (
           <ResourceLink href={`/app/${encodeURIComponent(run.targetApplicationId)}`}>
             {targets[run.targetApplicationId] ?? 'Open app'}
@@ -56,7 +58,7 @@ export const ActiveWorkflowRunsGrid = ({
         id: 'status',
         header: 'Status',
         size: 136,
-        meta: { skeleton: { kind: 'badge' } },
+        meta: { label: 'Status', compactSlot: 'status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <AutomationRunStatusBadge
             runId={row.original.id}
@@ -68,7 +70,7 @@ export const ActiveWorkflowRunsGrid = ({
         id: 'createdAt',
         header: 'Queued at',
         size: 176,
-        meta: { skeleton: { kind: 'text' } },
+        meta: { label: 'Queued at', compactSlot: 'details', skeleton: { kind: 'text' } },
         cell: ({ row }) => (
           <DateTimeValue
             value={row.original.createdAt}

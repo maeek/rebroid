@@ -7,7 +7,10 @@ describe('resolveManualImageReference', () => {
     ['docker-hub', 'redroid/redroid:latest', 'docker.io/redroid/redroid:latest'],
     ['custom', 'registry.example:5000/team/image', 'registry.example:5000/team/image'],
     ['custom', 'localhost:5000/image:v1', 'localhost:5000/image:v1'],
-    ['custom', `ghcr.io/team/image@sha256:${'a'.repeat(64)}`, `ghcr.io/team/image@sha256:${'a'.repeat(64)}`]
+    ['custom', `ghcr.io/team/image@sha256:${'a'.repeat(64)}`, `ghcr.io/team/image@sha256:${'a'.repeat(64)}`],
+    ['from-reference', 'redroid/redroid:16.0.0-latest', 'docker.io/redroid/redroid:16.0.0-latest'],
+    ['from-reference', 'ghcr.io/team/image:v1', 'ghcr.io/team/image:v1'],
+    ['from-reference', `team/image@sha256:${'b'.repeat(64)}`, `docker.io/team/image@sha256:${'b'.repeat(64)}`]
   ])('resolves %s image %s', (registry, draft, expected) => {
     expect(resolveManualImageReference(registry, draft)).toBe(expected)
   })
@@ -19,6 +22,7 @@ describe('resolveManualImageReference', () => {
     ['custom', 'https://ghcr.io/owner/image'],
     ['custom', 'user:token@registry.example/image'],
     ['custom', 'ghcr.io/team//image'],
+    ['from-reference', 'user:token@registry.example/image'],
     ['unknown', 'alpine']
   ])('rejects %s image %s', (registry, draft) => {
     expect(resolveManualImageReference(registry, draft)).toBeNull()

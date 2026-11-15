@@ -127,6 +127,7 @@ export const RuntimeImagesSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          columnsInToolbar
           search={search}
           appliedSearch={gridQuery.q ?? ''}
           searchPlaceholder='Search images'

@@ -14,6 +14,7 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const statusVariant = (status: AutomationRunStatus) =>
   status === 'failed' || status === 'canceled' ? 'danger' : status === 'success' ? 'success' : 'neutral'
@@ -108,9 +109,10 @@ export function AutomationTracesSection({
         accessorFn: run => run.startedAt ?? run.createdAt,
         header: 'Run',
         size: 176,
-        meta: { label: 'Run', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'Run', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className='grid justify-items-start gap-1'>
+          <div className={`grid justify-items-start gap-1 ${styles.settingsStack}`}>
             <ResourceLink href={workflowTraceHref(workflowId ?? row.original.automationId, row.original.id)}>
               Run {row.original.id.slice(0, 8)}
             </ResourceLink>
@@ -126,7 +128,7 @@ export function AutomationTracesSection({
         accessorFn: triggerLabel,
         header: 'Source',
         size: 144,
-        meta: { label: 'Source', skeleton: { kind: 'text', width: 'w-24' } },
+        meta: { compactSlot: 'details', label: 'Source', skeleton: { kind: 'text', width: 'w-24' } },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{triggerLabel(row.original)}</span>
       },
       {
@@ -134,7 +136,7 @@ export function AutomationTracesSection({
         accessorFn: run => applicationById.get(run.targetApplicationId)?.name ?? run.targetApplicationId,
         header: 'Target',
         size: 320,
-        meta: { label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
+        meta: { compactSlot: 'details', label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const application = applicationById.get(row.original.targetApplicationId)
           return (
@@ -162,7 +164,12 @@ export function AutomationTracesSection({
         accessorFn: run => durationMs(run) ?? -1,
         header: 'Duration',
         size: 112,
-        meta: { label: 'Duration', skeleton: { kind: 'text', width: 'w-20' } },
+        meta: {
+          compactSlot: 'details',
+          label: 'Duration',
+          showCompactLabel: true,
+          skeleton: { kind: 'text', width: 'w-20' }
+        },
         cell: ({ row }) => <span className='text-sm text-foreground-muted'>{durationLabel(row.original)}</span>
       },
       {
@@ -170,7 +177,7 @@ export function AutomationTracesSection({
         accessorFn: run => run.status,
         header: 'Status',
         size: 144,
-        meta: { label: 'Status', skeleton: { kind: 'badge' } },
+        meta: { compactSlot: 'status', label: 'Status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => (
           <div className='grid gap-1'>
             <Badge

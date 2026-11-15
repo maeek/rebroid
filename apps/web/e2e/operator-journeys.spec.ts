@@ -1,6 +1,50 @@
 import { expect, test } from '@playwright/test'
 import { viewerPlacementCookie } from '../src/shared/model/settings/viewer-placement'
 
+test('long app names ellipsize without shifting Start or Save', async ({ page }) => {
+  const path = '/skeleton-contract-test?editor=app-resource'
+  const name = 'Żappka with a long name and an unbroken ' + 'identifier'.repeat(8)
+  const heading = page.getByRole('heading', { level: 1 })
+  const expectEllipsis = async () => {
+    await expect(heading).toHaveText(name)
+    await expect(heading).toHaveCSS('text-overflow', 'ellipsis')
+    await expect(heading).toHaveCSS('white-space', 'nowrap')
+    expect(await heading.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true)
+    const { chipGap, titleShift } = await heading.evaluate(element => {
+      const chip = element.nextElementSibling as HTMLElement
+      const title = element.getBoundingClientRect()
+      const gap = chip.getBoundingClientRect().top - title.bottom
+      chip.style.display = 'none'
+      const shift = element.getBoundingClientRect().top - title.top
+      chip.style.removeProperty('display')
+      return { chipGap: gap, titleShift: shift }
+    })
+    expect(chipGap).toBe(4)
+    expect(titleShift).toBe(0)
+  }
+
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto(path)
+    const start = page.getByRole('button', { name: 'Start', exact: true })
+    const startPosition = await start.boundingBox()
+    expect(startPosition).not.toBeNull()
+    await page.goto(`${path}&app-name=${encodeURIComponent(name)}`)
+    await expectEllipsis()
+    expect(await start.boundingBox()).toEqual(startPosition)
+
+    await page.goto(`${path}&view=configuration`)
+    const save = page.getByRole('button', { name: 'Save', exact: true })
+    const savePosition = await save.boundingBox()
+    expect(savePosition).not.toBeNull()
+    await page.getByRole('textbox', { name: /^Name\b/ }).fill(name)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expectEllipsis()
+    expect(await save.boundingBox()).toEqual(savePosition)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+  }
+})
+
 test('users separate account status from explicit access actions', async ({ page }) => {
   for (const width of [390, 768, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1000 })
@@ -226,7 +270,7 @@ test('app activity reuses the audit grid with scoped export and event inspection
   const activity = page.getByRole('region', { name: 'App activity', exact: true })
   await expect(activity).toBeVisible()
   await expect(activity.getByRole('heading', { name: 'App activity', exact: true })).toHaveCount(0)
-  await expect(activity.getByText('Audit events for this app.')).toBeVisible()
+  await expect(activity.getByPlaceholder('Search activity')).toBeVisible()
   await expect(page.getByRole('columnheader', { name: /Event/ })).toBeVisible()
   const row = page.getByRole('row').filter({ hasText: 'Start application' })
   await expect(row).toContainText('Operator')
@@ -305,7 +349,8 @@ test('resource navigation stays flat and streaming controls open beside the view
   await expect(navigation.getByRole('link', { name: 'Diagnostics' })).toBeVisible()
   await expect(page.getByRole('tablist', { name: 'Runtime tools' })).toHaveCount(0)
   const switcher = page.getByRole('group', { name: 'App workspace view' })
-  if (await switcher.isVisible()) await switcher.getByRole('button', { name: 'Device' }).click()
+  const device = switcher.getByRole('button', { name: 'Device', exact: true })
+  if (await device.isVisible()) await device.click()
   const settings = page
     .getByRole('complementary', { name: 'Android device' })
     .getByRole('button', { name: 'Streaming settings' })
@@ -399,7 +444,7 @@ test('scheduler matches shared panels and keeps task interactions stable', async
     const rowHeights = await table
       .locator('tbody tr')
       .evaluateAll(rows => rows.map(row => row.getBoundingClientRect().height))
-    expect(Math.max(...rowHeights) - Math.min(...rowHeights)).toBeLessThanOrEqual(1)
+    if (width >= 768) expect(Math.max(...rowHeights) - Math.min(...rowHeights)).toBeLessThanOrEqual(1)
     const before = await table.boundingBox()
     await page.getByRole('checkbox', { name: 'Select current page' }).check()
     await expect(page.getByText('5 selected', { exact: true })).toBeVisible()
@@ -457,11 +502,13 @@ test('services keep navigation actions readable and unclipped', async ({ page })
       await page.setViewportSize({ width, height: 1000 })
       await page.goto(`/skeleton-contract-test?editor=${editor}`)
       await expect(page.getByRole('heading', { name: 'Services', exact: true })).toBeVisible()
-      await expect(page.getByRole('columnheader', { name: /^Connection/ })).toBeVisible()
+      const connection = page.getByRole('columnheader', { name: /^Connection/ })
+      if (width === 390) await expect(connection).toHaveCount(0)
+      else await expect(connection).toBeVisible()
       await expect(page.getByRole('columnheader', { name: 'Timeout', exact: true })).toHaveCount(0)
       await expect(page.getByRole('columnheader', { name: 'Settings', exact: true })).toHaveCount(0)
       const link = page.getByRole('row', { name: 'View details for Display service' }).getByRole('link', {
-        name: 'View details',
+        name: width === 390 ? 'Display service' : 'View details',
         exact: true
       })
       await link.scrollIntoViewIfNeeded()
@@ -641,9 +688,11 @@ test('services hides disabled entries and Features keeps their settings discover
       await page.getByRole('switch', { name: 'Enable OCR perception' }).evaluate(node => getComputedStyle(node).opacity)
     ).toBe('0.5')
     await expect(page.getByRole('columnheader', { name: /^Enabled/ })).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: /^Availability/ })).toBeAttached()
+    const availability = page.getByRole('columnheader', { name: /^Availability/ })
+    if (width === 390) await expect(availability).toHaveCount(0)
+    else await expect(availability).toBeVisible()
     const builder = page.getByRole('row').filter({ hasText: 'Image builder' })
-    await expect(builder.getByText('The configured state is active.')).toBeVisible()
+    await expect(builder.getByText('Active', { exact: true })).toBeVisible()
     await expect(builder.getByRole('link', { name: 'Open image builder' })).toHaveAttribute(
       'href',
       '/runtime/images/build'
@@ -679,7 +728,7 @@ test('Casting shows connection details and links to the Docker Logs tab', async 
     const heading = page.getByRole('heading', { level: 1, name: 'Casting', exact: true })
     await expect(heading).toBeVisible()
     await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
-      'Administration',
+      width < 1024 ? '' : 'Administration',
       'Casting'
     ])
 
@@ -750,7 +799,7 @@ test('Service detail pages show linked container names and footer logs', async (
     ]) {
       await page.goto(`/skeleton-contract-test?editor=service-${service}`)
       await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('listitem')).toHaveText([
-        'Administration',
+        width < 1024 ? '' : 'Administration',
         title
       ])
       const container = connection.getByRole('link', { name, exact: true })

@@ -13,7 +13,7 @@ import {
   selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import menuMotion from './menu-motion.module.css'
+import { popupFadeClassName } from './feedback-motion'
 
 type SelectLabelRegistry = {
   labels: Map<string, string>
@@ -259,7 +259,7 @@ function SelectContent({
             {
               'min-w-[var(--anchor-width)]': position === 'popper'
             },
-            menuMotion.popup,
+            popupFadeClassName,
             menuSurfaceClassName,
             className
           )}

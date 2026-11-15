@@ -1,0 +1,38 @@
+.activity {
+  container: activity / inline-size;
+}
+
+.eventHeading {
+  display: grid;
+}
+
+@container activity (width < 44rem) {
+  .activity [data-slot='data-grid-column-controls'] {
+    display: none;
+  }
+
+  .activity td[data-column-id='__row_menu'] {
+    display: none;
+  }
+
+  .eventHeading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .appActivity [data-slot='search-field'] input {
+    min-block-size: 2.75rem;
+  }
+
+  .appExport,
+  .appRefresh {
+    width: 2.75rem;
+    min-height: 2.75rem;
+    padding-inline: 0;
+  }
+
+  .appExportLabel {
+    display: none;
+  }
+}

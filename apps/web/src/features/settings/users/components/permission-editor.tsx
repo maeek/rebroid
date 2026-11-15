@@ -56,7 +56,7 @@ export const PermissionEditor = ({
         minSize: 260,
         enableSorting: false,
         enableHiding: false,
-        meta: { cellContentClassName: 'lg:ps-3', skeleton: { kind: 'stacked' } },
+        meta: { compactSlot: 'title', cellContentClassName: 'lg:ps-3', skeleton: { kind: 'stacked' } },
         cell: PermissionIdentityCell
       },
       ...(!editable
@@ -68,7 +68,11 @@ export const PermissionEditor = ({
               minSize: 160,
               enableSorting: false,
               enableHiding: false,
-              meta: { skeleton: { kind: 'stacked' as const } },
+              meta: {
+                label: 'Effective access',
+                compactSlot: 'details' as const,
+                skeleton: { kind: 'stacked' as const }
+              },
               cell: PermissionEffectiveCell
             }
           ]
@@ -83,7 +87,7 @@ export const PermissionEditor = ({
               enableResizing: false,
               enableSorting: false,
               enableHiding: false,
-              meta: { skeleton: { kind: 'text' as const } },
+              meta: { label: 'Group setting', compactSlot: 'details' as const, skeleton: { kind: 'text' as const } },
               cell: PermissionSettingCell
             }
           ]

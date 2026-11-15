@@ -1,9 +1,9 @@
 'use client'
 
 import { IconDeviceFloppy } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { DiscardChangesButton } from '@/shared/ui/actions/discard-changes-button'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
 import { ProviderEditorLayout, type ProviderEditorView } from './provider-editor-layout'
@@ -52,20 +52,16 @@ export const OrchestratorAiProviderEditPageClient = ({
           <>
             {isDirty ? (
               <span
-                className='self-center text-xs text-foreground-muted'
+                className='self-center text-xs text-foreground-muted max-sm:sr-only'
                 role='status'
               >
                 Unsaved changes
               </span>
             ) : null}
-            <Button
-              type='button'
-              variant='ghost'
+            <DiscardChangesButton
               disabled={!isDirty || busy}
               onClick={controller.discardChanges}
-            >
-              Discard changes
-            </Button>
+            />
             <MutationButton
               type='button'
               pending={isSaving}

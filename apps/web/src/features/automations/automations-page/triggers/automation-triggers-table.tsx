@@ -4,6 +4,7 @@ import { createContext, useContext, useMemo } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { MutationSwitch } from '@/components/ui/mutation-switch'
+import { cn } from '@/lib/utils'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -17,6 +18,7 @@ import type { Automation, AutomationTrigger } from '@/shared/contracts/automatio
 import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { CellContext, ColumnDef, SortingState } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const triggerEmptyState = (missingApps: boolean, missingWorkflows: boolean, canCreateApp: boolean) => {
   let action: StateViewAction | undefined
@@ -129,32 +131,39 @@ export function AutomationTriggersTable({
         accessorFn: trigger => trigger.name,
         header: 'Trigger',
         size: 352,
-        meta: { label: 'Trigger', skeleton: { kind: 'stacked' } },
+        enableHiding: false,
+        meta: { compactSlot: 'title', label: 'Trigger', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => {
           const trigger = row.original
           const automation = automationById.get(trigger.automationId)
           return (
-            <div className='grid gap-1'>
+            <div className={`grid gap-1 ${styles.settingsStack}`}>
               <div className='flex flex-wrap items-center gap-2'>
                 <button
                   type='button'
                   disabled={disabled}
                   onClick={() => onEdit(trigger)}
-                  className='text-left font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50'
+                  className={cn(
+                    'text-left font-medium text-primary hover:underline',
+                    'focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50',
+                    styles.settingsTouchTarget
+                  )}
                 >
                   {trigger.name}
                 </button>
               </div>
-              {trigger.description ? (
-                <p className='line-clamp-2 text-xs text-foreground-muted'>{trigger.description}</p>
-              ) : null}
-              <ResourceLink
-                href={`/automations/${encodeURIComponent(trigger.automationId)}`}
-                className='truncate text-xs'
-              >
-                {automation?.name ?? trigger.automationId}
-              </ResourceLink>
-              <TriggerTags tags={trigger.tags} />
+              <div className='grid gap-1'>
+                {trigger.description ? (
+                  <p className='line-clamp-2 text-xs text-foreground-muted'>{trigger.description}</p>
+                ) : null}
+                <ResourceLink
+                  href={`/automations/${encodeURIComponent(trigger.automationId)}`}
+                  className='truncate text-xs'
+                >
+                  {automation?.name ?? trigger.automationId}
+                </ResourceLink>
+                <TriggerTags tags={trigger.tags} />
+              </div>
             </div>
           )
         }
@@ -164,7 +173,7 @@ export function AutomationTriggersTable({
         header: 'Target',
         size: 288,
         enableSorting: false,
-        meta: { label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
+        meta: { compactSlot: 'details', label: 'Target', skeleton: { kind: 'stacked', secondaryHeight: 'h-5' } },
         cell: ({ row }) => {
           const trigger = row.original
           const application = applicationById.get(trigger.targetApplicationId)
@@ -188,7 +197,7 @@ export function AutomationTriggersTable({
         header: 'Schedule',
         size: 176,
         enableSorting: false,
-        meta: { label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
+        meta: { compactSlot: 'details', label: 'Schedule', skeleton: { kind: 'text', width: 'w-32' } },
         cell: ({ row }) => <ScheduleValue expression={getScheduleCron(row.original)} />
       },
       {
@@ -209,7 +218,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => trigger.lastRunAt ?? '',
         header: 'Last run',
         size: 176,
-        meta: { label: 'Last run', skeleton: { kind: 'stacked' } },
+        meta: { compactSlot: 'details', label: 'Last run', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
           <WorkflowRunResult
             status={row.original.lastStatus}
@@ -225,7 +234,7 @@ export function AutomationTriggersTable({
         accessorFn: trigger => String(trigger.enabled),
         header: 'Enabled',
         size: 128,
-        meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
+        meta: { compactSlot: 'control', label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
         cell: TriggerEnabledCell
       }
     ],

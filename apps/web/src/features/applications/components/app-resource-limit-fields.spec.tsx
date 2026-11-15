@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { AppResourceLimitsSection } from './app-resource-limits-section'
+import { AppResourceLimitFields } from './app-resource-limit-fields'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 vi.mock('@/components/ui/number-slider-field', () => ({
@@ -12,7 +12,7 @@ vi.mock('@/components/ui/number-slider-field', () => ({
   )
 }))
 
-describe('AppResourceLimitsSection', () => {
+describe('AppResourceLimitFields', () => {
   it('forwards memory and cpu updates', () => {
     const onChange = vi.fn()
     const resourceLimits: ResourceLimitBounds = {
@@ -21,7 +21,7 @@ describe('AppResourceLimitsSection', () => {
     }
 
     render(
-      <AppResourceLimitsSection
+      <AppResourceLimitFields
         values={{ memoryLimitMb: '256', cpuLimitCpus: '1' }}
         resourceLimits={resourceLimits}
         onChange={onChange}

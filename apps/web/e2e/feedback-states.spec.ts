@@ -45,6 +45,8 @@ test('section and grid feedback stays compact, readable, and actionable at every
     expect((await limits.boundingBox())!.height).toBeLessThan(300)
     const filtered = page.getByRole('status').filter({ hasText: 'No matching results' })
     await expect(filtered.getByRole('button', { name: 'Clear search' })).toBeInViewport()
+    await expect(filtered.locator('..')).toHaveCSS('border-bottom-width', '0px')
+    await expect(page.getByRole('table').locator('..')).toHaveCSS('border-bottom-width', '0px')
     const bounds = await filtered.boundingBox()
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width)
     for (const theme of ['light', 'dark', 'oled']) {

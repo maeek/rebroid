@@ -19,7 +19,7 @@ const FeaturesPageLayout = ({ children }: { children: ReactNode }) => (
     <PageHeader
       section={{ label: 'Administration' }}
       title='Feature management'
-      description='Manage platform capabilities and their availability. Changes are saved immediately.'
+      description='Changes save immediately. Availability shows what the service has applied.'
     />
     <PageContent>{children}</PageContent>
   </StandardPage>

@@ -63,7 +63,7 @@ export const CreateAppGooglePlayGuidance = ({
       className={cn(
         'rounded-panel border p-4 text-sm',
         needsGapps && !selectedHasGapps
-          ? 'border-warning/45 bg-warning/8'
+          ? 'border-warning/(--feedback-border-opacity) bg-warning/8'
           : 'border-surface-border/70 bg-surface-panel/35'
       )}
     >

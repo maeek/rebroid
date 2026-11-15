@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 export const CodeViewer = ({
   output,
   title,
+  headingLevel,
   formatLabel,
   description,
   children,
@@ -21,6 +22,7 @@ export const CodeViewer = ({
 }: {
   output: string
   title: string
+  headingLevel?: 2 | 3
   formatLabel: string
   description?: ReactNode
   children?: ReactNode
@@ -33,6 +35,7 @@ export const CodeViewer = ({
     <Section
       surface='plain'
       title={title}
+      headingLevel={headingLevel}
       titleClassName='max-sm:flex-col max-sm:gap-3'
       className={className}
       description={description}

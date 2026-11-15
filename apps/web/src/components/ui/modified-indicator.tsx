@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { fieldFeedbackClassName } from './feedback-motion'
 import { useFieldModified, type FieldPath } from './field-changes'
-import styles from './field-feedback.module.css'
 
 export const ModifiedIndicator = ({ modified }: { modified: boolean }) => (
   <Tooltip disabled={!modified}>
@@ -16,7 +16,7 @@ export const ModifiedIndicator = ({ modified }: { modified: boolean }) => (
       >
         <span
           data-visible={modified}
-          className={cn('size-1.5 rounded-full bg-primary', styles.message)}
+          className={cn('size-1.5 rounded-full bg-primary', fieldFeedbackClassName)}
         />
       </span>
     </TooltipTrigger>

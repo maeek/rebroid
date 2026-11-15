@@ -141,7 +141,7 @@ export const DesktopMiniPlayer = ({
         hidden={Boolean(inlineStyle)}
         className={cn(
           'gap-0.5 px-0.5 transition-opacity duration-150 motion-reduce:transition-none',
-          compact && 'order-first bg-surface-elevated',
+          compact && 'order-first bg-surface-floating-control shadow-floating-control',
           compact &&
             !dragging &&
             'pointer-events-none opacity-0 group-hover/mini:pointer-events-auto group-hover/mini:opacity-100 group-has-[:focus-visible]/mini:pointer-events-auto group-has-[:focus-visible]/mini:opacity-100',

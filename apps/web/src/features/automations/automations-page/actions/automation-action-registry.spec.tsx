@@ -13,7 +13,6 @@ const knownV1Uses = [
   'ai.run',
   'android.wait',
   'android.viewerCommand',
-  'android.expandNotifications',
   'android.expandQuickSettings',
   'android.collapsePanels',
   'android.openSystemSettings',

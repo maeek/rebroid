@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import { cronToSchedule, scheduleLabel, scheduleToCron, weekdays } from '@/shared/model/schedule/schedule-format'
 
 const scheduleParts = (expression: string) => {
@@ -20,11 +21,11 @@ const scheduleParts = (expression: string) => {
   return { frequency: 'Every day', time: schedule.time }
 }
 
-export const ScheduleValue = ({ expression }: { expression: string }) => {
+export const ScheduleValue = ({ expression, className }: { expression: string; className?: string }) => {
   const { frequency, time } = scheduleParts(expression)
   return (
     <div
-      className='grid gap-1'
+      className={cn('grid gap-1', className)}
       title={expression}
     >
       <span className='truncate'>{frequency}</span>

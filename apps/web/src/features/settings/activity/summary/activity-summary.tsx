@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SettingsActionButton } from '@/shared/ui/actions/settings-action-button'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { useActivityController, useActivityData } from '../activity-context'
 import { metricNumber } from '../activity-format'
@@ -68,14 +68,11 @@ export const ActivitySummary = () => {
         ) : null}
       </div>
       {!application ? (
-        <Button
-          variant='secondary'
-          size='sm'
+        <SettingsActionButton
+          label='Configure retention'
           disabled={loading || controller.isNavigating || controller.isSavingRetention || controller.isPurging}
           onClick={() => controller.setRetentionOpen(true)}
-        >
-          Configure retention
-        </Button>
+        />
       ) : null}
     </div>
   )

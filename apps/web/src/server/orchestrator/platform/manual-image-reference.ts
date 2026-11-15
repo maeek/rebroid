@@ -11,10 +11,18 @@ export const resolveManualImageReference = (registry: string, draft: string) => 
   const slash = reference.indexOf('/')
   const host = slash === -1 ? '' : reference.slice(0, slash)
   const hasRegistry = host === 'localhost' || host.includes('.') || host.includes(':')
+  const fromReference = registry === 'from-reference'
 
-  if (registry === 'docker-hub' && !hasRegistry && imageName.test(reference)) return `docker.io/${reference}`
+  if ((registry === 'docker-hub' || fromReference) && !hasRegistry && imageName.test(reference)) {
+    return `docker.io/${reference}`
+  }
 
-  if (registry === 'custom' && hasRegistry && registryHost.test(host) && imageName.test(reference.slice(slash + 1))) {
+  if (
+    (registry === 'custom' || fromReference) &&
+    hasRegistry &&
+    registryHost.test(host) &&
+    imageName.test(reference.slice(slash + 1))
+  ) {
     return reference
   }
 

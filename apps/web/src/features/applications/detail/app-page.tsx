@@ -80,6 +80,7 @@ const AppViewerPageContent = ({
     return (
       <AppDeviceLayout
         view={view}
+        appName={app.name}
         breadcrumbs={<AppResourceBreadcrumbs appName={app.name} />}
         viewer={<AppViewerPane placement='top' />}
         contained={view === 'ai-agent'}

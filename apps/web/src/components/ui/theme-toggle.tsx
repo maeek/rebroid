@@ -41,12 +41,12 @@ export const ThemeMenuItems = () => {
   )
 }
 
-export function ThemeToggle({ side }: { side?: 'left' | 'right' }) {
+export function ThemeToggle() {
   const { theme } = useTheme()
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger indicatorSide={side}>
+      <DropdownMenuSubTrigger>
         <Visible when={theme === 'light'}>
           <IconSun className='size-3.5' />
         </Visible>
@@ -63,7 +63,6 @@ export function ThemeToggle({ side }: { side?: 'left' | 'right' }) {
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>
         <DropdownMenuSubContent
-          side={side}
           sideOffset={12}
           collisionPadding={8}
         >

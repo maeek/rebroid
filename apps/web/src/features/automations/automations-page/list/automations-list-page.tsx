@@ -3,7 +3,8 @@
 import { IconPlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { SettingsActionButton } from '@/shared/ui/actions/settings-action-button'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { AutomationsTable } from './automations-table'
 import { WorkflowHistoryRetentionControl } from './workflow-history-retention-control'
@@ -15,36 +16,42 @@ export function AutomationsListPage({
   gridQuery,
   initialTriggers,
   workflowHistoryRetention,
+  canManageHistoryRetention = false,
   loading = false
 }: AutomationsListPageProps) {
+  const createLabel = (
+    <>
+      <IconPlus className='size-4' />
+      New workflow
+    </>
+  )
+
   return (
     <StandardPage
       gridToolbar
       className='gap-2'
     >
-      <PageHeader
+      <CompactPageHeader
         section={{ label: 'Automations' }}
         title='Workflows'
         description='Create reusable workflows and review their latest execution.'
         actions={
           <>
             {workflowHistoryRetention ? <WorkflowHistoryRetentionControl initial={workflowHistoryRetention} /> : null}
-            <Button
-              asChild={!loading}
-              disabled={loading}
-            >
-              {loading ? (
-                <span>
-                  <IconPlus className='size-4' />
-                  New workflow
-                </span>
-              ) : (
-                <Link href='/automations/create'>
-                  <IconPlus className='size-4' />
-                  New workflow
-                </Link>
-              )}
-            </Button>
+            {loading && canManageHistoryRetention ? (
+              <SettingsActionButton
+                label='Run history retention'
+                className='sm:hidden'
+                disabled
+              />
+            ) : null}
+            {loading ? (
+              <Button disabled>{createLabel}</Button>
+            ) : (
+              <Button asChild>
+                <Link href='/automations/create'>{createLabel}</Link>
+              </Button>
+            )}
           </>
         }
       />

@@ -89,5 +89,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     )
     await page.getByRole('button', { name: 'Copy ID', exact: true }).hover()
     await expect(page.getByText('Copy ID', { exact: true })).toBeVisible({ timeout: 250 })
+    await page.getByRole('heading', { name: 'Interaction polish preview' }).hover()
+    await expect(page.getByText('Copy ID', { exact: true })).toBeHidden()
+
+    await page.getByRole('button', { name: 'Copy image', exact: true }).focus()
+    const focusedTooltip = page.getByText('Copy image', { exact: true })
+    await expect(focusedTooltip).toHaveAttribute('data-instant', /.+/)
+    await expect(focusedTooltip).toHaveCSS('transition-property', 'none')
   })
 }

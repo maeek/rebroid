@@ -8,7 +8,7 @@ import { deleteUserAction } from '@/server/users/actions/delete-user-action'
 import { setUserDisabledAction } from '@/server/users/actions/set-user-disabled-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { successfulBulkIds, summarizeBulkResults } from '@/shared/actions/bulk-action-results'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateUserDialog } from './components/create-user-dialog'
 import { PasswordPolicyDialog } from './components/password-policy-dialog'
@@ -117,7 +117,7 @@ export const UsersSettings = ({
       gridToolbar
       className='gap-2'
     >
-      <PageHeader
+      <CompactPageHeader
         section={{ label: 'Users & groups' }}
         title='Users'
         actions={

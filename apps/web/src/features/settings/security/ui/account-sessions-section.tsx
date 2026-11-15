@@ -28,7 +28,8 @@ const sessionColumns: ColumnDef<AccountSession>[] = [
     accessorFn: sessionLabel,
     header: 'Browser',
     size: 280,
-    meta: { label: 'Browser' },
+    enableHiding: false,
+    meta: { compactSlot: 'title', label: 'Browser' },
     cell: ({ row }) => (
       <div className='flex min-w-0 flex-wrap items-center gap-2'>
         <span className='font-medium'>{sessionLabel(row.original)}</span>
@@ -40,7 +41,7 @@ const sessionColumns: ColumnDef<AccountSession>[] = [
     accessorKey: 'signedInAt',
     header: 'Signed in',
     size: 176,
-    meta: { label: 'Signed in' },
+    meta: { compactSlot: 'details', label: 'Signed in', showCompactLabel: true },
     cell: ({ row }) => (
       <DateTimeValue
         value={row.original.signedInAt}
@@ -52,7 +53,7 @@ const sessionColumns: ColumnDef<AccountSession>[] = [
     accessorKey: 'lastActiveAt',
     header: 'Last active',
     size: 176,
-    meta: { label: 'Last active' },
+    meta: { compactSlot: 'details', label: 'Last active', showCompactLabel: true },
     cell: ({ row }) => (
       <DateTimeValue
         value={row.original.lastActiveAt}

@@ -142,7 +142,8 @@ export const RecentAppLink = ({
           'touch:select-none touch:[-webkit-touch-callout:none]',
           rail
             ? cn(styles.item, 'relative', highlighted && styles.activeItem)
-            : 'flex min-h-7 min-w-0 flex-1 items-center gap-2 touch:min-h-(--touch-target-size)'
+            : 'flex min-h-7 min-w-0 flex-1 items-center gap-2 touch:min-h-(--touch-target-size)',
+          variant === 'drawer' && 'self-stretch'
         )}
       >
         {rail ? icon : <span className={styles.iconWrap}>{icon}</span>}

@@ -6,7 +6,6 @@ import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { floatingSurfaceClassName, semanticToneClassNames } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import styles from './toast-motion.module.css'
 
 const ToastProvider = ToastPrimitives.Provider
 
@@ -24,6 +23,12 @@ const ToastViewport = React.forwardRef<
   />
 ))
 ToastViewport.displayName = 'ToastViewport'
+
+const toastMotionClassName = cn(
+  'opacity-100 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0',
+  'motion-safe:[transform:translateY(0)] motion-safe:data-[starting-style]:[transform:translateY(4px)] motion-safe:data-[ending-style]:[transform:translateY(4px)]',
+  '[transition:opacity_140ms_ease-out,transform_140ms_ease-out] motion-reduce:[transition:none]'
+)
 
 const toastVariants = cva(
   'group pointer-events-auto relative isolate flex w-full items-start justify-between gap-3 overflow-hidden rounded-panel p-4 pr-10 shadow-emphasis',
@@ -51,7 +56,7 @@ const Toast = React.forwardRef<
     <ToastPrimitives.Root
       ref={ref}
       data-tone={variant ?? 'neutral'}
-      className={cn(toastVariants({ variant }), styles.toast, className)}
+      className={cn(toastVariants({ variant }), toastMotionClassName, className)}
       {...props}
     />
   )

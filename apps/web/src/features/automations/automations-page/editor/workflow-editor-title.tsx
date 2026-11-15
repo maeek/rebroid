@@ -15,7 +15,7 @@ export function WorkflowEditorTitle({ title, onRename }: { title: ReactNode; onR
   }
 
   return (
-    <h1 className={cn('min-w-0 text-lg font-medium [overflow-wrap:anywhere]', editing && 'flex-1')}>
+    <h1 className={cn('min-w-0 text-lg font-medium [overflow-wrap:anywhere]', editing ? 'flex-1' : 'max-sm:truncate')}>
       {editing ? (
         <input
           ref={input => {
@@ -41,7 +41,7 @@ export function WorkflowEditorTitle({ title, onRename }: { title: ReactNode; onR
           }}
           type='button'
           title='Rename workflow'
-          className={cn('cursor-text text-start', focusClassName)}
+          className={cn('cursor-text text-start max-sm:max-w-full max-sm:truncate', focusClassName)}
           onClick={() => setDraft(title)}
         >
           {title}

@@ -79,13 +79,14 @@ const columns: ColumnDef<Membership>[] = [
     minSize: 240,
     enableSorting: false,
     enableHiding: false,
-    meta: { skeleton: { kind: 'stacked' } },
+    meta: { label: 'Group', compactSlot: 'title', skeleton: { kind: 'stacked' } },
     cell: MembershipIdentityCell
   },
   {
     id: 'priority',
     header: 'Priority',
     size: 96,
+    meta: { label: 'Priority', compactSlot: 'details', showCompactLabel: true },
     enableSorting: false,
     enableHiding: false,
     cell: ({ row }) => <span className='tabular-nums text-foreground-muted'>{row.original.priority}</span>
@@ -98,7 +99,7 @@ const columns: ColumnDef<Membership>[] = [
     enableResizing: false,
     enableSorting: false,
     enableHiding: false,
-    meta: { skeleton: { kind: 'text' } },
+    meta: { label: 'Membership actions', compactSlot: 'details', skeleton: { kind: 'text' } },
     cell: MembershipActionsCell
   }
 ]

@@ -10,6 +10,7 @@ export const useDockedViewerPosition = (element: HTMLDivElement, floating: boole
   useLayoutEffect(() => {
     if (floating || fullscreen) return
     const workspace = element.closest('[data-display-workspace]')
+    const track = element.closest('[data-display-track]')
     let frame = 0
     const update = () => {
       const rect = element.getBoundingClientRect()
@@ -47,6 +48,8 @@ export const useDockedViewerPosition = (element: HTMLDivElement, floating: boole
     const resize = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule)
     resize?.observe(element)
     if (workspace) resize?.observe(workspace)
+    // Other displays can move the dock without resizing it or the workspace.
+    if (track) resize?.observe(track)
     // The sidebar animates main's padding, moving a width-capped workspace without resizing it.
     const main = element.closest('main')
     if (main) resize?.observe(main, { box: 'content-box' })

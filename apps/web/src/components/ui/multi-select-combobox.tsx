@@ -10,7 +10,7 @@ import {
   selectableItemClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import menuMotion from './menu-motion.module.css'
+import { popupFadeClassName } from './feedback-motion'
 
 export type MultiSelectComboboxOption = {
   value: string
@@ -157,7 +157,7 @@ export const MultiSelectCombobox = ({
           <Combobox.Popup
             className={cn(
               'w-[var(--anchor-width)] min-w-64 max-w-[calc(100vw-2rem)] overflow-hidden',
-              menuMotion.popup,
+              popupFadeClassName,
               menuSurfaceClassName
             )}
           >

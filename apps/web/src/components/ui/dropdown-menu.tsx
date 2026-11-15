@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
-import { IconCheck, IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { IconCheck, IconChevronRight } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { handleMenuSelect, type MenuSelectEvent } from '@/components/ui/menu-select-event'
 import {
@@ -13,7 +13,7 @@ import {
   triggerResetClassName
 } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import menuMotion from './menu-motion.module.css'
+import { popupFadeClassName } from './feedback-motion'
 
 type WithAsChild = {
   asChild?: boolean
@@ -58,12 +58,9 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubmenuTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> &
-    WithInset &
-    WithAsChild & { indicatorSide?: 'left' | 'right' }
->(({ className, inset, children, asChild, indicatorSide = 'right', ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> & WithInset & WithAsChild
+>(({ className, inset, children, asChild, ...props }, ref) => {
   const view = getBaseRender(asChild, children)
-  const Chevron = indicatorSide === 'left' ? IconChevronLeft : IconChevronRight
 
   return (
     <DropdownMenuPrimitive.SubmenuTrigger
@@ -80,7 +77,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
       {...props}
     >
       {getBaseChildren(asChild, children)}
-      <Chevron
+      <IconChevronRight
         aria-hidden='true'
         className='ml-auto size-3.5'
       />
@@ -106,7 +103,7 @@ const DropdownMenuSubContent = React.forwardRef<
       ref={ref}
       className={cn(
         'scrollbar-thin z-50 max-h-(--available-height) overflow-x-hidden overflow-y-auto overscroll-contain origin-(--transform-origin)',
-        menuMotion.popup,
+        popupFadeClassName,
         actionMenuSurfaceClassName,
         'min-w-32',
         className
@@ -130,7 +127,7 @@ const DropdownMenuContent = React.forwardRef<
     >
       <DropdownMenuPrimitive.Popup
         ref={ref}
-        className={cn('z-50 overflow-hidden', menuMotion.popup, actionMenuSurfaceClassName, className)}
+        className={cn('z-50 overflow-hidden', popupFadeClassName, actionMenuSurfaceClassName, className)}
         {...props}
       />
     </DropdownMenuPrimitive.Positioner>

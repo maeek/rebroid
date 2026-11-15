@@ -1,8 +1,8 @@
 import { Suspense } from 'react'
-import { AutomationsListPageSkeleton } from '../../automations-page/automation-page-skeletons'
 import { AutomationsListPage } from '../../automations-page/list/automations-list-page'
 import { AutomationPageUnavailable } from '../../automations-page/shared/automation-page-unavailable'
 import { loadAutomationsListPageData, type AutomationsSearchParams } from './page-data.server'
+import { AutomationsListPageLoading } from './page-loading'
 
 const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) => {
   const { applications, automationsPage, gridQuery, orchestratorError, triggers, workflowHistoryRetention } =
@@ -25,7 +25,7 @@ const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Pro
 
 export function AutomationsListPageEntry({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) {
   return (
-    <Suspense fallback={<AutomationsListPageSkeleton />}>
+    <Suspense fallback={<AutomationsListPageLoading />}>
       <AutomationsListPageContent searchParams={searchParams} />
     </Suspense>
   )

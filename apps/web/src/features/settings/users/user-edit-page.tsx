@@ -14,7 +14,7 @@ import { updateUserAction } from '@/server/users/actions/update-user-action'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { getHslColorFromCharCode, getHslColorFromCharCodeForeground } from '@/utils/hsl-from-text'
@@ -78,7 +78,8 @@ export const UserEditPage = ({
       baseline={savedDraft}
     >
       <EditorPage className='gap-2'>
-        <PageHeader
+        <CompactPageHeader
+          inlineActions
           section={{ label: 'Users & groups' }}
           trail={[{ label: 'Users', href: '/security/users' }]}
           breadcrumbLabel={user.username}
@@ -96,10 +97,24 @@ export const UserEditPage = ({
               </AvatarFallback>
             </Avatar>
           }
-          description='Account settings, quotas, groups, and permissions.'
+          description={
+            <>
+              Account settings, quotas, groups, and permissions.
+              {user.passwordChangeRequired ? (
+                <span className='mt-2 block text-warning sm:hidden'>Password change required</span>
+              ) : null}
+            </>
+          }
           actions={
             <>
-              {user.passwordChangeRequired ? <Badge variant='warning'>Password change required</Badge> : null}
+              {user.passwordChangeRequired ? (
+                <Badge
+                  variant='warning'
+                  className='max-sm:hidden'
+                >
+                  Password change required
+                </Badge>
+              ) : null}
               <MutationButton
                 pending={isSaving}
                 pendingLabel='Saving…'

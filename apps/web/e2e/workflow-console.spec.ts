@@ -63,12 +63,14 @@ test('workflow workspace remains readable across widths and themes', async ({ pa
 test('workflow toolbar stays visible and covers steps during scroll', async ({ page, isMobile }) => {
   await page.goto('/skeleton-contract-test?editor=workflow-long')
   const toolbar = page.locator('[data-workflow-toolbar]')
+  const safeAreaInset = isMobile ? 20 : 0
   if (isMobile) {
-    await toolbar.evaluate(element => {
+    await toolbar.evaluate((element, inset) => {
       const shell = element.parentElement!.parentElement!
       shell.dataset.slot = 'protected-shell'
+      shell.style.setProperty('--console-top-inset', `${inset}px`)
       shell.style.paddingTop = 'var(--console-top-inset)'
-    })
+    }, safeAreaInset)
   }
 
   const sequence = page.getByRole('region', { name: 'Step sequence' })
@@ -97,10 +99,11 @@ test('workflow toolbar stays visible and covers steps during scroll', async ({ p
     )
     .toBe(true)
   const top = (await toolbar.boundingBox())!.y
-  if (isMobile) expect(top).toBeGreaterThan(0)
-  else expect(top).toBe(0)
+  expect(top).toBe(safeAreaInset)
 
-  for (const name of ['Save', 'Undo', 'Redo', 'Visual editor', 'YAML']) {
+  const visibleActions = ['Save', 'Undo', 'Redo', 'More workflow actions']
+  if (!isMobile) visibleActions.push('Visual editor', 'YAML')
+  for (const name of visibleActions) {
     await expect(toolbar.getByRole('button', { name, exact: true })).toBeInViewport()
   }
   if (!isMobile) {
@@ -212,6 +215,74 @@ test('workflow YAML fills the desktop workspace and validates edits in Monaco', 
   expect(workerErrors).toEqual([])
 })
 
+test('mobile workflow keeps core actions visible and fits YAML above the dock', async ({ page }) => {
+  for (const { width, height } of [
+    { width: 320, height: 568 },
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 }
+  ]) {
+    await page.setViewportSize({ width, height })
+    await page.goto('/skeleton-contract-test?editor=workflow-shell')
+    const toolbar = page.locator('[data-workflow-toolbar]')
+    const more = toolbar.getByRole('button', { name: 'More workflow actions' })
+    const actionRow = (await more.boundingBox())!
+    for (const name of ['Undo', 'Redo']) {
+      const button = toolbar.getByRole('button', { name, exact: true })
+      await expect(button).toBeInViewport({ ratio: 1 })
+      const box = (await button.boundingBox())!
+      expect(box.y).toBe(actionRow.y)
+      expect(box.height).toBeGreaterThanOrEqual(44)
+    }
+    const save = toolbar.getByRole('button', { name: 'Save', exact: true })
+    await expect(save).toBeInViewport({ ratio: 1 })
+    const saveBox = (await save.boundingBox())!
+    if (width < 640) {
+      const heading = (await toolbar.getByRole('heading', { level: 1 }).boundingBox())!
+      expect(saveBox.y + saveBox.height / 2).toBeCloseTo(heading.y + heading.height / 2)
+      expect(saveBox.x + saveBox.width).toBe(width - 16)
+      expect(saveBox.y).toBeLessThan(actionRow.y)
+    } else {
+      expect(saveBox.y).toBe(actionRow.y)
+    }
+    await expect(toolbar.getByRole('group', { name: 'Editor mode' })).toBeHidden()
+    await expect(toolbar.getByRole('button', { name: 'Draft workflow from prompt' })).toBeHidden()
+
+    await more.press('Enter')
+    await expect(page.getByRole('menuitem', { name: 'Draft with AI' })).toBeVisible()
+    const visual = page.getByRole('menuitemradio', { name: 'Visual editor' })
+    const yaml = page.getByRole('menuitemradio', { name: 'YAML' })
+    await expect(visual).toBeChecked()
+    await expect(visual).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await expect(yaml).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(more).toBeFocused()
+
+    const editor = page.getByLabel('Automation YAML editor', { exact: true })
+    await expect(editor.locator('.monaco-editor')).toBeVisible()
+    const dock = page.getByRole('navigation', { name: 'Mobile navigation' })
+    const dockBox = (await dock.boundingBox())!
+    const toolbarBox = (await toolbar.boundingBox())!
+    const gutter = width < 640 ? 16 : 24
+    const box = (await editor.boundingBox())!
+    expect(box.x).toBe(toolbarBox.x + gutter)
+    expect(box.width).toBe(toolbarBox.width - gutter * 2)
+    expect(box.y).toBe(toolbarBox.y + toolbarBox.height + 8)
+    expect(dockBox.y - (box.y + box.height)).toBe(16)
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(height)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+
+    await more.click()
+    await expect(yaml).toBeChecked()
+    await visual.click()
+    await expect(page.getByRole('region', { name: 'Step sequence' })).toBeVisible()
+    await more.click()
+    await expect(visual).toBeChecked()
+    await visual.click()
+    await expect(page.getByRole('region', { name: 'Step sequence' })).toBeVisible()
+  }
+})
+
 test('workflow details opens from the keyboard and closes back to the menu button', async ({ page }) => {
   await page.goto('/skeleton-contract-test?editor=workflow-create')
   const actions = page.getByRole('button', { name: 'More workflow actions' })
@@ -225,13 +296,44 @@ test('workflow details opens from the keyboard and closes back to the menu butto
   await expect(actions).toBeFocused()
 })
 
-test('run history has a direct return link to the workflow editor', async ({ page }) => {
-  await page.goto('/skeleton-contract-test?editor=run-history')
-  await expect(page.getByRole('link', { name: 'Back to editor' })).toHaveAttribute(
-    'href',
-    '/automations/preview-workflow'
-  )
-  await expect(page.getByRole('navigation', { name: 'Workflow navigation' })).toHaveCount(0)
+test('run history uses breadcrumbs and keeps filter chips compact and aligned', async ({ page }) => {
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/skeleton-contract-test?editor=run-history')
+    const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' })
+    await expect(breadcrumb.getByRole('link', { name: 'Daily inventory check' })).toHaveAttribute(
+      'href',
+      '/automations/preview-workflow'
+    )
+    await expect(page.getByRole('link', { name: 'Back to editor' })).toHaveCount(0)
+    await expect(page.getByRole('navigation', { name: 'Workflow navigation' })).toHaveCount(0)
+
+    const filters = page.getByRole('button', { name: /^Filters/ })
+    await filters.click()
+    const dialog = page.getByRole('dialog', { name: 'Filters' })
+    await dialog.getByRole('combobox', { name: 'Status', exact: true }).click()
+    await page.getByRole('option', { name: 'queued' }).click()
+    await dialog.getByRole('button', { name: 'Done' }).click()
+    const summary = page.getByRole('group', { name: 'Active filters' })
+    const chip = summary.getByRole('button', { name: 'Remove Status filter' })
+    await expect(chip).toHaveAccessibleDescription('queued')
+    const target = (await chip.boundingBox())!
+    const badge = summary.getByText('queued', { exact: true }).locator('..')
+    const surface = (await badge.boundingBox())!
+    const table = (await page.getByRole('table').boundingBox())!
+    expect(surface.x).toBe(table.x)
+    expect(surface.height).toBeLessThanOrEqual(24)
+    if (width === 390) {
+      const search = (await page.getByRole('searchbox').boundingBox())!
+      expect(surface.x).toBe(search.x)
+    }
+    if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+      expect(target.height).toBeGreaterThanOrEqual(44)
+    }
+    await chip.press('Enter')
+    await expect(summary).toHaveCount(0)
+    await expect(filters).toBeFocused()
+  }
 })
 
 test('step actions preserve selection, ordering and keyboard catalog choice', async ({ page }) => {
@@ -556,8 +658,9 @@ test('new workflow loader shares the current ready layout', async ({ page }) => 
     const boxes = []
     for (const editor of ['workflow-create-loading', 'workflow-create']) {
       await page.goto(`/skeleton-contract-test?editor=${editor}`)
-      const toolbar = page.getByRole('button', { name: 'Visual editor', exact: true })
+      const toolbar = page.getByRole('button', { name: 'Save', exact: true })
       await expect(toolbar).toBeVisible()
+      if (editor === 'workflow-create-loading') await expect(toolbar).toBeDisabled()
       await expect(page.getByRole('button', { name: 'More workflow actions' })).toBeVisible()
       const sequence = page.getByRole('region', { name: 'Step sequence' })
       await expect(sequence).toBeVisible()

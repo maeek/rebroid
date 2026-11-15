@@ -1,9 +1,8 @@
 'use client'
 
-import { IconChevronDown, IconLogout, IconSettings, IconShield } from '@tabler/icons-react'
+import { IconChevronDown, IconLogout } from '@tabler/icons-react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +13,7 @@ import {
 import { focusRingClassName } from '@/components/ui/surface'
 import { ThemeToggle } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
+import { AccountAvatar, accountDestinations } from './account-details'
 import type { NavigationPopupPosition } from './popup-position'
 import type { ShellUser } from '../shell-user'
 
@@ -35,15 +35,7 @@ export const NavigationAccount = ({
         focusRingClassName
       )}
     >
-      <Avatar
-        className='size-7'
-        aria-hidden='true'
-      >
-        <AvatarImage src={initialUser.avatarDataUrl ?? ''} />
-        <AvatarFallback className='text-xs text-foreground-muted'>
-          {initialUser.name.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <AccountAvatar user={initialUser} />
       {showName ? (
         <>
           <span className='min-w-0 flex-1 truncate'>{initialUser.name || 'Account'}</span>
@@ -58,17 +50,17 @@ export const NavigationAccount = ({
       {...popupPosition}
       className='w-48 max-[359px]:w-40 max-[359px]:min-w-40'
     >
-      <DropdownMenuItem asChild>
-        <Link href='/preferences/general'>
-          <IconSettings className='size-3.5' /> Preferences
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link href='/preferences/security'>
-          <IconShield className='size-3.5' /> Security
-        </Link>
-      </DropdownMenuItem>
-      <ThemeToggle side={popupPosition.side === 'bottom' ? 'left' : undefined} />
+      {accountDestinations.map(({ href, label, Icon }) => (
+        <DropdownMenuItem
+          asChild
+          key={href}
+        >
+          <Link href={href}>
+            <Icon className='size-3.5' /> {label}
+          </Link>
+        </DropdownMenuItem>
+      ))}
+      <ThemeToggle />
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={() => void signOut({ redirect: true })}>
         <IconLogout className='size-3.5' /> Log out

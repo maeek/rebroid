@@ -265,6 +265,7 @@ export function AutomationEditorPage({
             onRunHistory={workflowId ? () => navigation.requestNavigation(workflowTraceHref(workflowId)) : undefined}
             onImport={importWorkflow}
             onSave={() => void save()}
+            onToggleYaml={toggleYamlEditor}
           />
         }
         yamlOpen={yamlOpen}

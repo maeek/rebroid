@@ -168,16 +168,126 @@ test('real create form starts with name and uses a normal page header', async ({
   await page.screenshot({ path: '/tmp/rebroid-create-scrolled.png' })
 })
 
+test('create app aligns with the Apps action on mobile in ready and loading states', async ({ page }) => {
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    const layouts = []
+    for (const loading of [false, true]) {
+      await page.goto(`/skeleton-contract-test?editor=apps-gallery${loading ? '-loading' : ''}`)
+      const appsAction = page.getByRole(loading ? 'button' : 'link', { name: 'Create app', exact: true })
+      const appsActionBox = (await appsAction.boundingBox())!
+      const appsHeader = (await appsAction.locator('xpath=ancestor::header').boundingBox())!
+
+      await page.goto(`/skeleton-contract-test?editor=app${loading ? '-loading' : ''}`)
+      const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' })
+      await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText('Create app')
+      const heading = page.getByRole('heading', { level: 1, name: 'Create app', exact: true })
+      await expect(heading).toHaveCount(1)
+      expect((await heading.boundingBox())!.width).toBeLessThanOrEqual(1)
+
+      const submit = page.getByRole('button', { name: 'Create app', exact: true })
+      const action = (await submit.boundingBox())!
+      const nav = (await breadcrumb.boundingBox())!
+      const header = (await submit.locator('xpath=ancestor::header').boundingBox())!
+      expect(action.y + action.height / 2).toBe(nav.y + nav.height / 2)
+      expect(action.x).toBeGreaterThanOrEqual(nav.x + nav.width)
+      expect(width - action.x - action.width).toBe(16)
+      expect(nav.y - header.y).toBe(12)
+      expect(action.x - header.x).toBe(appsActionBox.x - appsHeader.x)
+      expect(action.y - header.y).toBe(appsActionBox.y - appsHeader.y)
+      expect(action.width).toBe(appsActionBox.width)
+      expect(action.height).toBe(44)
+      expect(action.height).toBe(appsActionBox.height)
+      for (const [property, value] of [
+        ['border-block-start-width', '2px'],
+        ['border-block-end-width', '2px'],
+        ['background-clip', 'padding-box']
+      ])
+        await expect(submit).toHaveCSS(property, value)
+      expect(await submit.evaluate(button => (button as HTMLButtonElement).form instanceof HTMLFormElement)).toBe(true)
+      if (loading) {
+        await expect(submit).toBeDisabled()
+      } else {
+        await page.getByRole('textbox', { name: /Name/ }).fill('Tablet')
+        await expect(submit).toBeEnabled()
+      }
+      layouts.push({ action, nav })
+    }
+    expect(layouts[1]).toEqual(layouts[0])
+  }
+})
+
+test('phone editors reserve the top-right primary action while loading', async ({ page }) => {
+  for (const [editor, label] of [
+    ['user', 'Save User'],
+    ['group', 'Save Group'],
+    ['ai-connection', 'Save'],
+    ['runtime', 'Save'],
+    ['console-defaults', 'Save defaults'],
+    ['builder-gapps', 'Build image'],
+    ['builder-custom', 'Build image']
+  ]) {
+    for (const width of [320, 390, 1440]) {
+      await page.setViewportSize({ width, height: 900 })
+      const boxes = []
+      for (const loading of [false, true]) {
+        const query = editor === 'ai-connection' ? '&view=connection' : ''
+        await page.goto(`/skeleton-contract-test?editor=${editor}${loading ? '-loading' : ''}${query}`)
+        const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' })
+        await expect(breadcrumb.locator('[aria-current="page"]')).toBeVisible()
+        const heading = page.getByRole('heading', { level: 1 })
+        await expect(heading).toHaveCount(1)
+        const action = page.getByRole('button', { name: label, exact: true })
+        await expect(action).toBeVisible()
+        if (loading) await expect(action).toBeDisabled()
+        const nav = (await breadcrumb.boundingBox())!
+        const save = (await action.boundingBox())!
+        const title = (await heading.boundingBox())!
+        if (width < 640) {
+          expect(title.width).toBeLessThanOrEqual(1)
+          expect(save.y + save.height / 2).toBeCloseTo(nav.y + nav.height / 2)
+          expect(save.x + save.width).toBeCloseTo(width - 16)
+          expect(save.height).toBe(44)
+          boxes.push({ top: save.y - nav.y, width: save.width })
+        } else {
+          expect(title.width).toBeGreaterThan(1)
+          expect(save.y).toBeGreaterThan(nav.y)
+        }
+      }
+      if (width < 640) {
+        expect(boxes[0].top, editor).toBeCloseTo(boxes[1].top)
+        expect(Math.abs(boxes[0].width - boxes[1].width), editor).toBeLessThanOrEqual(1)
+      }
+    }
+  }
+})
+
 test('create editor stacks fields inside rounded sections', async ({ page }) => {
-  for (const width of [390, 768, 1440, 2048]) {
+  for (const width of [320, 390, 768, 1024, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=app')
     const name = await page.getByRole('textbox', { name: /Name/ }).boundingBox()
-    for (const label of ['Runtime image', 'Display size', 'Mode']) {
-      const control = page.getByRole('combobox', { name: label, exact: true })
-      const bounds = await control.boundingBox()
-      expect(bounds!.x).toBe(name!.x)
-      expect(bounds!.width).toBe(name!.width)
+    const apk = (await page.getByRole('button', { name: 'Upload APK', exact: true }).boundingBox())!
+    const icon = (await page.getByRole('button', { name: 'Upload icon', exact: true }).boundingBox())!
+    if (width < 768) expect(icon.y).toBeGreaterThan(apk.y + apk.height)
+    else expect(icon.y).toBe(apk.y)
+    const runtimeImage = (await page.getByRole('combobox', { name: 'Runtime image', exact: true }).boundingBox())!
+    const display = (await page.getByRole('combobox', { name: 'Display size', exact: true }).boundingBox())!
+    const network = (await page.getByRole('combobox', { name: 'Outbound access', exact: true }).boundingBox())!
+    const preview = (await page.locator('[data-slot="display-preview"]').boundingBox())!
+    const device = (await page.locator('[data-slot="device-preview-screen"]').boundingBox())!
+    for (const bounds of [runtimeImage, display, network]) {
+      expect(bounds.x).toBe(name!.x)
+      expect(bounds.width).toBe(runtimeImage.width)
+    }
+    if (width >= 768) {
+      expect(preview.x).toBeGreaterThan(runtimeImage.x + runtimeImage.width)
+      expect(preview.y).toBeLessThan(runtimeImage.y)
+      expect(device.height).toBeGreaterThan(120)
+    } else {
+      expect(runtimeImage.width).toBe(name!.width)
+      expect(preview.y).toBeGreaterThan(display.y + display.height)
+      expect(device.height).toBeLessThan(100)
     }
     for (const theme of ['light', 'dark', 'oled']) {
       await page.evaluate(value => {
@@ -192,7 +302,8 @@ test('create editor stacks fields inside rounded sections', async ({ page }) => 
     await page.goto('/skeleton-contract-test?editor=app-loading')
     const loadingRuntime = await page.locator('input[role="combobox"]').first().boundingBox()
     expect(loadingRuntime!.x).toBe(name!.x)
-    expect(loadingRuntime!.width).toBe(name!.width)
+    expect(loadingRuntime!.width).toBe(runtimeImage.width)
+    expect(await page.locator('[data-slot="display-preview"]').boundingBox()).toEqual(preview)
   }
 })
 
@@ -278,8 +389,10 @@ test('runtime settings separate defaults, hardware acceleration, and maintenance
 test('icon preview and upload share a row below the field label', async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 1184 })
   await page.goto('/skeleton-contract-test?editor=app')
-  const icon = await page.getByText('APP', { exact: true }).boundingBox()
-  const upload = await page.getByRole('button', { name: 'Choose App icon' }).boundingBox()
+  const uploadButton = page.getByRole('button', { name: 'Upload icon', exact: true })
+  const uploadField = page.locator('[data-slot="file-upload-field"]').filter({ has: uploadButton })
+  const icon = await uploadField.locator('[data-slot="file-upload-preview"]').boundingBox()
+  const upload = await uploadButton.boundingBox()
   expect(upload!.x).toBeGreaterThan(icon!.x + icon!.width)
   expect(upload!.y + upload!.height / 2).toBeGreaterThanOrEqual(icon!.y)
   expect(upload!.y + upload!.height / 2).toBeLessThanOrEqual(icon!.y + icon!.height)
@@ -296,13 +409,22 @@ test('display and network selects keep readable labels after selection and closi
   await page.goto('/skeleton-contract-test?editor=app')
   const display = page.getByRole('combobox', { name: 'Display size', exact: true })
   await expect(display).toContainText('Modern phone')
+  const deviceScreen = page.locator('[data-slot="device-preview-screen"]')
+  const portrait = (await deviceScreen.boundingBox())!
+  expect(portrait.width / portrait.height).toBeCloseTo(1080 / 2340, 2)
   await display.click()
   await page.getByRole('option', { name: /Tall phone/ }).click()
   await expect(display).toContainText('Tall phone')
   await display.click()
   await page.getByRole('option', { name: 'Custom dimensions' }).click()
   await expect(display).toContainText('Custom dimensions')
-  await expect(page.getByRole('spinbutton', { name: 'Width', exact: true })).toBeVisible()
+  const customWidth = page.getByRole('spinbutton', { name: 'Width', exact: true })
+  await customWidth.fill('3000')
+  await expect(page.getByText('3000 × 2160 px')).toBeVisible()
+  const landscape = (await deviceScreen.boundingBox())!
+  expect(landscape.width / landscape.height).toBeCloseTo(3000 / 2160, 2)
+  await customWidth.clear()
+  await expect(page.getByText('Enter valid dimensions and DPI.')).toBeVisible()
   const mode = page.getByRole('combobox', { name: 'Outbound access', exact: true })
   const destinations = page.getByRole('textbox', { name: 'Additional IPv4 destinations' })
   await destinations.fill('203.0.113.10')

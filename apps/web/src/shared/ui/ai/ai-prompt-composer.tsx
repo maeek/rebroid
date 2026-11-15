@@ -63,6 +63,9 @@ export const AiPromptComposer = ({
         ref={textareaRef}
         value={value}
         aria-label={ariaLabel}
+        aria-keyshortcuts={
+          onSubmit && !disabled ? `${submitOnEnter ? 'Enter ' : ''}Meta+Enter Control+Enter` : undefined
+        }
         aria-describedby={visibleErrors.length > 0 ? errorId : undefined}
         aria-invalid={visibleErrors.length > 0 || undefined}
         rows={rows}
@@ -70,14 +73,10 @@ export const AiPromptComposer = ({
         placeholder={placeholder}
         onChange={event => onChange(event.target.value)}
         onKeyDown={event => {
-          if (!onSubmit || disabled) return
-          const keyboardEvent = event.nativeEvent
-          const submitWithEnter = submitOnEnter && event.key === 'Enter' && !event.shiftKey
-          const submitWithShortcut = (event.metaKey || event.ctrlKey) && event.key === 'Enter'
-          if ((submitWithEnter || submitWithShortcut) && !keyboardEvent.isComposing) {
-            event.preventDefault()
-            onSubmit()
-          }
+          if (!onSubmit || disabled || event.key !== 'Enter' || event.shiftKey || event.altKey) return
+          if (event.nativeEvent.isComposing || (!submitOnEnter && !event.metaKey && !event.ctrlKey)) return
+          event.preventDefault()
+          if (!event.repeat) onSubmit()
         }}
         className={cn(
           variant === 'panel'
@@ -117,8 +116,12 @@ export const AiPromptComposer = ({
           </TooltipTrigger>
           <TooltipContent className='max-w-72 break-words'>{status}</TooltipContent>
         </Tooltip>
-        <div className='min-w-0 max-w-[45%]'>{modelControl}</div>
-        {actions ? <div className='flex shrink-0 items-center justify-end gap-2'>{actions}</div> : null}
+        {modelControl || actions ? (
+          <div className='flex min-w-0 max-w-[70%] items-center justify-end gap-1'>
+            {modelControl ? <div className='min-w-0'>{modelControl}</div> : null}
+            {actions ? <div className='flex shrink-0 items-center'>{actions}</div> : null}
+          </div>
+        ) : null}
       </div>
       {metadata ? <div className='mt-2 text-xs leading-5 text-foreground-muted'>{metadata}</div> : null}
     </div>

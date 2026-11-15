@@ -41,10 +41,12 @@ const noop = () => undefined
 
 export const WorkflowEditorPreview = ({
   creating = false,
+  canDraftFromPrompt = false,
   withReferences = false,
   long = false
 }: {
   creating?: boolean
+  canDraftFromPrompt?: boolean
   withReferences?: boolean
   long?: boolean
 }) => {
@@ -84,6 +86,8 @@ export const WorkflowEditorPreview = ({
     commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, ...patch } }))
   const workflowId = form.id
   const selection = useAutomationEditorSelection(form.steps)
+  const toggleYaml = () =>
+    changeEditorView(snapshot => ({ ...snapshot, yamlOpen: !snapshot.yamlOpen, yamlDraft: visualYaml ?? '' }))
   return (
     <WorkflowEditorWorkspace
       title={form.name.trim() || 'New workflow'}
@@ -98,7 +102,7 @@ export const WorkflowEditorPreview = ({
           }
           busy={false}
           hasBrokenReferences={hasBrokenReferences}
-          canDraftFromPrompt={false}
+          canDraftFromPrompt={canDraftFromPrompt}
           canDelete={!creating}
           yamlOpen={yamlOpen}
           yamlValid
@@ -108,13 +112,12 @@ export const WorkflowEditorPreview = ({
           onRunHistory={workflowId ? () => router.push(workflowTraceHref(workflowId)) : undefined}
           onImport={noop}
           onExport={noop}
+          onToggleYaml={toggleYaml}
         />
       }
       yamlOpen={yamlOpen}
       history={history}
-      onToggleYaml={() =>
-        changeEditorView(snapshot => ({ ...snapshot, yamlOpen: !yamlOpen, yamlDraft: visualYaml ?? '' }))
-      }
+      onToggleYaml={toggleYaml}
     >
       {yamlOpen ? (
         <AutomationYamlEditorSection

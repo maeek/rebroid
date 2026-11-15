@@ -1,7 +1,60 @@
+@reference 'tailwindcss';
+
+@media (width < 40rem) {
+  .compactHeader .headerLayout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .compactHeader .breadcrumbRow {
+    flex: 1 1 max-content;
+    max-inline-size: 100%;
+  }
+
+  .inlineHeaderActions .breadcrumbRow {
+    flex-basis: 0;
+    min-inline-size: 6rem;
+  }
+
+  .compactHeader .headerDetails,
+  .compactHeader .headingRow {
+    display: contents;
+  }
+
+  .compactHeader .headingTitle {
+    @apply sr-only;
+  }
+
+  .compactHeader .headingActions {
+    flex: none;
+    margin-inline-start: auto;
+    justify-content: flex-end;
+  }
+
+  .compactHeader .headingActions > :is(button, a) {
+    min-block-size: var(--page-header-control-size);
+  }
+
+  .compactPageAction,
+  .inlineHeaderActions .headingActions > :is(a, button):last-child {
+    min-block-size: var(--page-header-control-size);
+    /* Inset the fill while retaining the full button's touch target. */
+    border-block: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .compactHeader :is(.headerDescription, .headerMeta) {
+    flex-basis: 100%;
+  }
+}
+
 .page {
   position: relative;
   container: page-toolbar / inline-size;
   --breadcrumb-refresh-space: 0rem;
+  --page-toolbar-width: initial;
 }
 
 .page:has(> header .breadcrumbRefresh) {
@@ -9,8 +62,8 @@
 }
 
 @container page-toolbar (min-width: 52rem) {
-  .breadcrumbRow > nav {
-    max-inline-size: 38%;
+  .page:has(.toolbar) > header .breadcrumbRow > nav {
+    max-inline-size: calc(100% - var(--page-toolbar-width, 60%) - var(--breadcrumb-refresh-space) - 0.5rem);
   }
 
   .toolbarArea {
@@ -20,7 +73,7 @@
   .toolbar {
     position: absolute;
     inset-block-start: var(--page-header-top-inset);
-    inset-inline-end: calc(1.5rem + var(--breadcrumb-refresh-space));
+    inset-inline-end: calc(var(--page-inline-gutter) + var(--breadcrumb-refresh-space));
     inline-size: max-content;
     max-inline-size: calc(60% - var(--breadcrumb-refresh-space));
     min-block-size: var(--page-header-control-size);

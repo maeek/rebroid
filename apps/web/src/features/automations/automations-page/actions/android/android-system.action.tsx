@@ -5,12 +5,6 @@ import { DurationField } from '../shared/duration-field'
 import { stringInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
 
-export const expandNotificationsAction = createNoInputAction({
-  uses: 'android.expandNotifications',
-  category: 'Device',
-  iconKey: 'device',
-  noInputMessage: 'Opens the Android notification shade.'
-})
 export const expandQuickSettingsAction = createNoInputAction({
   uses: 'android.expandQuickSettings',
   category: 'Device',
@@ -21,7 +15,7 @@ export const collapsePanelsAction = createNoInputAction({
   uses: 'android.collapsePanels',
   category: 'Device',
   iconKey: 'device',
-  noInputMessage: 'Closes notifications or Quick Settings.'
+  noInputMessage: 'Closes the open Android system panel.'
 })
 
 export const openSystemSettingsAction: AutomationActionDefinition = {

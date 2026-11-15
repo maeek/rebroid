@@ -73,7 +73,8 @@ test('narrow screens open the current section first and switch to a mounted devi
 
   await page.goto('/skeleton-contract-test?editor=app-resource-loading')
   const switcher = page.getByRole('group', { name: 'App workspace view' })
-  await expect(switcher.getByRole('button', { name: 'Overview' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(switcher.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/apps')
+  await expect(switcher.getByRole('button')).toHaveCount(1)
   await expect(switcher.getByRole('button', { name: 'Device' })).toBeDisabled()
 
   await page.route('**/preview-display-frame', route =>
@@ -86,14 +87,14 @@ test('narrow screens open the current section first and switch to a mounted devi
   await expect(pane).toBeHidden()
   await composer.fill('Open Downloads')
   const device = switcher.getByRole('button', { name: 'Device' })
-  const tool = switcher.getByRole('button', { name: 'AI agent' })
+  const exit = page.getByRole('button', { name: 'Back to AI agent' })
   await device.press('Enter')
   await expect(pane).toBeVisible()
-  await expect(device).toBeFocused()
+  await expect(exit).toBeFocused()
   const frame = page.locator('iframe[title="display viewer"]')
   await frame.evaluate(node => node.setAttribute('data-retained', 'true'))
-  await tool.click()
-  await expect(tool).toBeFocused()
+  await exit.click()
+  await expect(device).toBeFocused()
   await expect(composer).toHaveValue('Open Downloads')
   await expect(frame).toHaveAttribute('data-retained', 'true')
   await expect(frame).toBeHidden()
@@ -239,9 +240,7 @@ test('long conversations scroll independently and can return to latest', async (
   await composer.press('Enter')
   await expect(transcript.locator('article')).toHaveCount(16)
   await expect(composer).toHaveValue('')
-  await page.getByRole('button', { name: 'Suggestions', exact: true }).click()
-  await page.getByRole('button', { name: 'Inspect screen', exact: true }).click()
-  await expect(composer).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Suggestions', exact: true })).toHaveCount(0)
   await expect(page.getByText('Suggested requests', { exact: true })).toBeHidden()
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('agent-history.png') })
 })
@@ -322,6 +321,49 @@ test('stacked viewer floats without reconnecting and the chat passes wheel scrol
   await expect(inertFrame).toHaveCount(1)
   await expectStreamPacket('floating again')
   expect(errors).toEqual([])
+})
+
+test('Stop replaces Send and keyboard shortcuts queue drafts during a run', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  const input = page.getByRole('textbox', { name: 'Message the device agent' })
+  const model = page.getByRole('button', { name: 'Agent settings: Device agent' })
+  const composer = page.locator('[data-slot=ai-prompt-composer]')
+  const checkActionSpacing = async (actionName: string) => {
+    const action = await page.getByRole('button', { name: actionName, exact: true }).boundingBox()
+    const selector = await model.boundingBox()
+    expect(action!.x - (selector!.x + selector!.width)).toBeCloseTo(4, 0)
+    const bounds = (await composer.boundingBox())!
+    return { width: action!.width, height: action!.height, x: action!.x - bounds.x, y: action!.y - bounds.y }
+  }
+
+  await page.goto('/skeleton-contract-test?editor=agent')
+  await input.fill('Inspect the device')
+  const send = await checkActionSpacing('Send message')
+  await page.goto('/skeleton-contract-test?editor=agent&conversation=working')
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
+  expect(await checkActionSpacing('Stop')).toEqual(send)
+
+  await input.fill('Open Settings')
+  await input.press('Enter')
+  await expect(input).toHaveValue('Open Settings\n')
+  await input.press('Meta+Enter')
+  await expect(input).toHaveValue('')
+  await expect(page.getByText('Queued behind the current task.')).toBeVisible()
+  await input.fill('Check brightness')
+  await input.press('Control+Enter')
+  await expect(input).toHaveValue('')
+  await expect(page.getByText('Queued behind earlier tasks.')).toBeVisible()
+
+  await input.fill('Open Display')
+  await page.getByRole('button', { name: 'Queue message', exact: true }).click()
+  await expect(input).toHaveValue('')
+  await expect(page.getByText('Queued behind earlier tasks.')).toHaveCount(2)
+  await page.getByRole('button', { name: 'Stop', exact: true }).click()
+  const next = page.getByRole('button', { name: 'Run next task', exact: true })
+  await expect(next).toBeEnabled()
+  await expect(page.getByText(/Ready to run/)).toBeVisible()
+  await next.click()
+  await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
 })
 
 test('stopped devices retain drafts and model settings fit short screens', async ({ page }, testInfo) => {

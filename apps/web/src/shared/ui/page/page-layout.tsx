@@ -24,7 +24,9 @@ export const StandardPageSplit = ({ children, className }: { children: ReactNode
 )
 
 export const PageContent = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <div className={cn('flex w-full flex-col items-stretch gap-6 px-6 pb-16 max-sm:px-4', className)}>{children}</div>
+  <div className={cn('flex w-full flex-col items-stretch gap-6 px-(--page-inline-gutter) pb-16', className)}>
+    {children}
+  </div>
 )
 
 export const PageAside = ({ children, className }: { children: ReactNode; className?: string }) => (

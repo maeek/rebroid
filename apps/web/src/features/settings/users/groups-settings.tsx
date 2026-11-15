@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent, StandardPage } from '@/shared/ui/page/page-layout'
 import { CreateGroupDialog } from './components/create-group-dialog'
 import { GroupsSection } from './components/groups-section'
@@ -21,7 +21,7 @@ export const GroupsSettings = ({
       gridToolbar
       className='gap-2'
     >
-      <PageHeader
+      <CompactPageHeader
         section={{ label: 'Users & groups' }}
         title='Groups'
         description='Groups provide the permissions and quotas that members inherit.'

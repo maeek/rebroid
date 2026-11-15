@@ -25,10 +25,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
+import { cn } from '@/lib/utils'
+import { compactPageActionClassName } from '@/shared/ui/page/page-header'
 
 export const AutomationEditorActions = ({
   busy,
@@ -45,7 +50,8 @@ export const AutomationEditorActions = ({
   onExport,
   onImport,
   onRunHistory,
-  onSave
+  onSave,
+  onToggleYaml
 }: {
   busy: boolean
   details?: ReactNode
@@ -62,7 +68,10 @@ export const AutomationEditorActions = ({
   onImport: () => void
   onRunHistory?: () => void
   onSave: () => void
+  onToggleYaml: () => void
 }) => {
+  const isDesktop = useDesktopViewport()
+  const editorMode = yamlOpen ? 'yaml' : 'visual'
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const pendingMenuAction = useRef<(() => void) | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -73,6 +82,7 @@ export const AutomationEditorActions = ({
         <Button
           type='button'
           variant='secondary'
+          className='max-lg:hidden'
           disabled={busy}
           aria-label='Draft workflow from prompt'
           onClick={onDraftFromPrompt}
@@ -82,13 +92,18 @@ export const AutomationEditorActions = ({
         </Button>
       ) : null}
       <MutationButton
+        data-workflow-save=''
+        className={cn('max-lg:h-11', compactPageActionClassName)}
         pending={saving}
         pendingLabel='Saving…'
         success={saved}
         disabled={busy || hasBrokenReferences || (yamlOpen && !yamlValid)}
         onClick={onSave}
       >
-        <IconDeviceFloppy className='size-4' />
+        <IconDeviceFloppy
+          aria-hidden
+          className='size-4'
+        />
         Save
       </MutationButton>
       <DropdownMenu
@@ -103,18 +118,63 @@ export const AutomationEditorActions = ({
           <Button
             ref={menuTriggerRef}
             type='button'
+            data-workflow-more=''
             variant='secondary'
             size='icon-md'
+            className='max-lg:size-11'
             disabled={busy}
             aria-label='More workflow actions'
           >
-            <IconDotsVertical className='size-4' />
+            <IconDotsVertical
+              aria-hidden
+              className='size-4'
+            />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align='end'
-          className='min-w-44 p-2'
+          className='scrollbar-thin max-h-(--available-height) min-w-44 overflow-y-auto overscroll-contain p-2'
         >
+          {isDesktop === false ? (
+            <>
+              <DropdownMenuRadioGroup
+                aria-label='Editor mode'
+                value={editorMode}
+                onValueChange={value => {
+                  pendingMenuAction.current = () => {
+                    menuTriggerRef.current?.focus({ preventScroll: true })
+                    if (value !== editorMode) onToggleYaml()
+                  }
+                }}
+              >
+                <DropdownMenuRadioItem
+                  className='gap-2 px-3 py-2'
+                  value='visual'
+                >
+                  Visual editor
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem
+                  className='gap-2 px-3 py-2'
+                  value='yaml'
+                >
+                  YAML
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              {canDraftFromPrompt ? (
+                <DropdownMenuItem
+                  disabled={busy}
+                  className='gap-2 px-3 py-2'
+                  onSelect={() => {
+                    pendingMenuAction.current = onDraftFromPrompt
+                  }}
+                >
+                  <GradientSparklesIcon className='size-4' />
+                  Draft with AI
+                </DropdownMenuItem>
+              ) : null}
+            </>
+          ) : null}
           <DropdownMenuItem
             disabled={busy || yamlOpen}
             className='gap-2 px-3 py-2'

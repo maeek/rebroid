@@ -36,7 +36,6 @@ const FeatureEnabledCell = ({ row: { original: feature } }: CellContext<FeatureF
           onCheckedChange={enabled => void onUpdate(feature.key, enabled)}
         />
       </div>
-      {!feature.mutable ? <span className='text-xs text-foreground-muted'>Deployment managed</span> : null}
     </div>
   )
 }
@@ -64,8 +63,10 @@ export const FeaturesGrid = ({
         accessorFn: feature => featureLabel(feature.key),
         header: 'Feature',
         size: 440,
+        enableHiding: false,
         meta: {
           label: 'Feature',
+          compactSlot: 'title',
           skeleton: {
             kind: 'custom',
             render: index => (
@@ -87,14 +88,12 @@ export const FeaturesGrid = ({
         enableHiding: false,
         meta: {
           label: 'Enabled',
+          compactSlot: 'control',
           skeleton: {
             kind: 'custom',
-            render: index => (
+            render: () => (
               <div className='grid gap-1'>
                 <Skeleton className='h-5 w-9 rounded-full' />
-                {features[index]?.mutable === false ? (
-                  <span className='text-xs text-foreground-muted'>Deployment managed</span>
-                ) : null}
               </div>
             )
           }
@@ -105,6 +104,7 @@ export const FeaturesGrid = ({
         id: 'effectiveStatus',
         accessorFn: feature => getEffectiveFeatureStatus(feature).label,
         enableSorting: false,
+        enableHiding: false,
         size: 512,
         header: () => (
           <span className='inline-flex items-center gap-1.5'>
@@ -122,6 +122,7 @@ export const FeaturesGrid = ({
         ),
         meta: {
           label: 'Availability',
+          compactSlot: 'details',
           skeleton: {
             kind: 'custom',
             render: index => (
@@ -144,6 +145,7 @@ export const FeaturesGrid = ({
         enableSorting: false,
         meta: {
           label: 'Manage',
+          compactSlot: 'details',
           skeleton: {
             kind: 'custom',
             render: index => {

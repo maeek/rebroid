@@ -27,34 +27,50 @@ export const AppViewerHeading = ({
     <PageHeadingRow
       actions={children}
       className={cn('w-full shrink-0 py-4 max-sm:pb-0', className)}
+      titleClassName='flex-[1_1_5rem]'
     >
-      <div className='flex min-w-0 items-center gap-2.5 sm:gap-4'>
-        {loading ? <AppIconSkeleton className='size-10 shrink-0' /> : null}
+      <div className='flex min-h-12 w-full min-w-0 items-start gap-2.5 sm:min-h-12.5 sm:gap-4'>
+        {loading ? <AppIconSkeleton className='size-12 shrink-0' /> : null}
         {app && !loading ? (
           <AppIcon
             appId={app.id}
             appName={app.name}
             icon={app.icon}
-            className='shrink-0 size-10'
+            className='size-12 shrink-0'
           />
         ) : null}
-        <h1 className='min-w-0 text-3xl font-medium [overflow-wrap:anywhere] max-sm:text-2xl'>
-          {loading ? <Skeleton className='h-9 w-48 max-w-[50vw] max-sm:h-7' /> : app?.name || '<App Name>'}
-        </h1>
-        {loading && showStatusBadge ? <Skeleton className='h-5 w-16 shrink-0' /> : null}
-        {showStatusBadge && app && !loading ? (
-          <StatusBadge
-            tone={getAppStatusTone(app.status, statusLabel)}
-            className='max-w-[45%] shrink-0 whitespace-normal'
+        <div className='flex min-w-0 flex-1 flex-col items-start gap-1'>
+          <h1
+            className='max-w-full truncate text-xl/6 font-semibold'
+            title={loading ? undefined : app?.name}
           >
-            <StateTransition
-              identity={app.id}
-              state={statusLabel ?? app.status}
+            {loading ? (
+              <Skeleton
+                as='span'
+                className='block h-6 w-36 max-w-full'
+              />
+            ) : (
+              app?.name || '<App Name>'
+            )}
+          </h1>
+          {loading && showStatusBadge ? <Skeleton className='h-5.5 w-16 max-sm:h-4 max-sm:w-14' /> : null}
+          {showStatusBadge && app && !loading ? (
+            <StatusBadge
+              tone={getAppStatusTone(app.status, statusLabel)}
+              className={cn(
+                'max-w-full whitespace-normal max-sm:px-2 max-sm:py-0 max-sm:text-[0.6875rem]/3.5',
+                app.status === 'error' && 'border-danger/40 bg-danger/22 text-foreground shadow-none hover:bg-danger/22'
+              )}
             >
-              {statusLabel}
-            </StateTransition>
-          </StatusBadge>
-        ) : null}
+              <StateTransition
+                identity={app.id}
+                state={statusLabel ?? app.status}
+              >
+                {statusLabel}
+              </StateTransition>
+            </StatusBadge>
+          ) : null}
+        </div>
       </div>
     </PageHeadingRow>
   )

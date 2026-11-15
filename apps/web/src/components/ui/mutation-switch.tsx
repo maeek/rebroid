@@ -4,7 +4,7 @@ import { useId, type ComponentProps } from 'react'
 import { IconCheck, IconLoader2 } from '@tabler/icons-react'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import styles from './field-feedback.module.css'
+import { fieldFeedbackClassName } from './feedback-motion'
 
 export const MutationSwitch = ({
   pending = false,
@@ -36,13 +36,13 @@ export const MutationSwitch = ({
       >
         <span
           data-visible={pending}
-          className={cn('absolute inset-0 text-foreground-muted', styles.message)}
+          className={cn('absolute inset-0 text-foreground-muted', fieldFeedbackClassName)}
         >
           <IconLoader2 className={cn('size-4', pending && 'motion-safe:animate-spin')} />
         </span>
         <span
           data-visible={success && !pending}
-          className={cn('absolute inset-0 text-success', styles.message)}
+          className={cn('absolute inset-0 text-success', fieldFeedbackClassName)}
         >
           <IconCheck className='size-4' />
         </span>

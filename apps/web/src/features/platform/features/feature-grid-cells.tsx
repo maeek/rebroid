@@ -6,22 +6,27 @@ import { ResourceLink } from '@/shared/ui/resource-link'
 import { featureDestination, featureLabel } from './feature-presentation'
 import { getEffectiveFeatureStatus } from './feature-status'
 import type { FeatureFlagState } from '@/shared/contracts/feature-flags'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 export const FeatureIdentity = ({ feature, loading = false }: { feature?: FeatureFlagState; loading?: boolean }) => (
   <div
     id={feature?.key}
-    className='flex min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)] items-center gap-3'
+    className={cn(
+      'flex min-w-0 scroll-mt-[calc(var(--console-top-inset)+2rem)] items-center gap-3',
+      styles.settingsStack
+    )}
   >
     <div
       aria-hidden='true'
       className={cn(
         'flex size-9 shrink-0 items-center justify-center rounded-control',
-        loading ? 'bg-control/60 text-foreground-muted' : 'bg-primary/10 text-primary'
+        loading ? 'bg-control/60 text-foreground-muted' : 'bg-primary/10 text-primary',
+        styles.settingsWideOnly
       )}
     >
       <IconAdjustments className='size-5' />
     </div>
-    <div className='grid min-w-0 flex-1 gap-1'>
+    <div className={cn('grid min-w-0 flex-1 gap-1', styles.settingsStack)}>
       {feature ? (
         <>
           <span
@@ -70,23 +75,34 @@ export const FeatureAvailability = ({
           {status.label}
         </StatusBadge>
       </SkeletonMask>
-      <SkeletonMask
-        visible={loading}
-        className='w-full'
-      >
-        <span className='block text-xs leading-5 text-foreground-muted'>{status.description}</span>
-      </SkeletonMask>
+      {!feature.mutable ? <span className='text-xs text-foreground-muted'>Deployment managed</span> : null}
+      <div className={cn((status.kind === 'active' || status.kind === 'off') && styles.settingsWideOnly)}>
+        <SkeletonMask
+          visible={loading}
+          className='w-full'
+        >
+          <span className='block text-xs leading-5 text-foreground-muted'>{status.description}</span>
+        </SkeletonMask>
+      </div>
     </div>
   )
 }
 
 export const FeatureManageLink = ({ feature }: { feature: FeatureFlagState }) => {
   const destination = featureDestination(feature)
-  if (!destination) return <span className='text-foreground-muted'>—</span>
+  if (!destination)
+    return (
+      <span
+        data-compact-empty
+        className='text-foreground-muted'
+      >
+        —
+      </span>
+    )
   return (
     <ResourceLink
       href={destination.href}
-      className='inline-flex min-h-8 items-center gap-2 whitespace-nowrap px-1 focus-visible:ring-inset'
+      className={cn('inline-flex min-h-8 items-center gap-2 px-1 focus-visible:ring-inset', styles.settingsTouchTarget)}
     >
       {destination.label}
       <IconArrowRight

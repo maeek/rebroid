@@ -5,7 +5,7 @@ import { Tooltip as TooltipPrimitive } from '@base-ui/react/tooltip'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { floatingLayerClassName, floatingSurfaceClassName, triggerResetClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
-import styles from './tooltip.module.css'
+import { popupFadeClassName } from './feedback-motion'
 
 const TooltipProvider = ({
   delayDuration = 350,
@@ -64,7 +64,8 @@ const TooltipContent = React.forwardRef<
         ref={ref}
         className={cn(
           'z-50 overflow-hidden rounded-control px-3 py-1.5 text-xs',
-          styles.popup,
+          popupFadeClassName,
+          'data-[instant]:[transition:none]',
           floatingSurfaceClassName,
           className
         )}

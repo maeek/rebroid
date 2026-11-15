@@ -53,6 +53,7 @@ export const MiniPlayerDisplay = ({
   const [fullscreen, setFullscreen] = useState(false)
   const position = useDockedViewerPosition(viewer.element, floating, fullscreen)
   const inlineStyle = fullscreen ? { zIndex: 10 } : position
+  const hidden = !floating && !fullscreen && position.display === 'none'
 
   const setHostElement = useCallback(
     (element: HTMLDivElement | null) => {
@@ -152,14 +153,15 @@ export const MiniPlayerDisplay = ({
       {floating && !blocked && <ViewerActivityKeepalive applicationId={viewer.appId} />}
       <div
         className='h-full w-full'
-        inert={blocked}
-        onFocus={floating ? undefined : viewer.onFocus}
+        inert={blocked || hidden}
+        onFocus={floating || hidden ? undefined : viewer.onFocus}
       >
         <DisplayViewerFrame
           key={frameKey}
           src={viewer.surface.src}
           compact={compact}
           isActive={!floating && viewer.isActive && !blocked}
+          onActivate={!floating && !blocked && !hidden ? viewer.onFocus : undefined}
           surfaceId={blocked ? undefined : controlSurface}
           keyboardCaptureEnabled={!floating && viewer.canControl && viewer.keyboardCaptureEnabled}
           onMinimizeShortcut={canMinimize ? onMinimize : undefined}

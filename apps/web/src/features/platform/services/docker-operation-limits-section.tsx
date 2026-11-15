@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { IconPencil } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { MutationButton } from '@/components/ui/mutation-button'
@@ -12,6 +11,7 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { dockerOperationLimitsSchema, type DockerOperationLimits } from '@/shared/contracts/docker-operation-limits'
+import { SettingsActionButton } from '@/shared/ui/actions/settings-action-button'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { dockerOperationLimitFields, formatOperationLimitDuration } from './docker-operation-limit-fields'
 import { DockerOperationLimitsDialog, type OperationLimitsDraft } from './docker-operation-limits-dialog'
@@ -83,15 +83,11 @@ export const DockerOperationLimitsSection = ({
           description='Control Docker concurrency and operation timing.'
           actions={
             <DialogTrigger asChild>
-              <Button
-                type='button'
-                variant='secondary'
-                size='sm'
+              <SettingsActionButton
+                label='Edit limits'
+                desktopIcon={IconPencil}
                 disabled={!data || loading || isLoading}
-              >
-                <IconPencil className='size-4' />
-                Edit limits
-              </Button>
+              />
             </DialogTrigger>
           }
         >

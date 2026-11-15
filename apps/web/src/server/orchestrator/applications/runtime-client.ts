@@ -3,7 +3,6 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { emptyRequest, formRequest, jsonRequest, responseRequest, streamRequest } from '../request'
 import { applicationPath, encodeApplicationPathSegment } from './application-path'
 import type {
-  AndroidNotification,
   ApplicationClipboard,
   ApplicationLog,
   ApplicationRuntimeFile,
@@ -20,10 +19,6 @@ const logSourceSchema = z.enum(['orchestrator', 'container', 'adb'])
 export type ApplicationLogSource = z.infer<typeof logSourceSchema>
 
 export const orchestratorAppRuntimeClient = {
-  getNotifications(id: string) {
-    return emptyRequest<AndroidNotification[]>(`${applicationPath(id)}/runtime/notifications`)
-  },
-
   getApplicationLogs(id: string, source: ApplicationLogSource, tail = 300) {
     const parsedSource = logSourceSchema.safeParse(source)
     if (!parsedSource.success) {

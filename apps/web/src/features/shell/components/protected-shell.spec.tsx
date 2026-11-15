@@ -25,7 +25,6 @@ describe('protected shell service health', () => {
       </TooltipProvider>
     )
 
-    expect(screen.getAllByRole('button', { name: 'Notifications' })).toHaveLength(2)
     expect(screen.queryByRole('link', { name: 'Services' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }))
     expect(screen.queryByRole('button', { name: 'System' })).toBeNull()

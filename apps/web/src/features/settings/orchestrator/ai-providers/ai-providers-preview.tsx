@@ -5,7 +5,9 @@ import { IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { FieldChangesProvider } from '@/components/ui/field-changes'
 import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Switch } from '@/components/ui/switch'
+import { DiscardChangesButton } from '@/shared/ui/actions/discard-changes-button'
 import { AiProvidersPageLayout } from './ai-providers-page-layout'
 import { ProviderDialog } from './provider-dialog'
 import { ProviderConnectionSection } from './provider-edit-form-sections'
@@ -102,20 +104,19 @@ export const AiProvidersPreview = ({ view }: { view: 'list' | 'models' | 'connec
         health={<ProviderHealthBanner provider={provider} />}
         actions={
           <>
-            <Button
-              variant='ghost'
+            <DiscardChangesButton
               disabled={!dirty}
               onClick={() => setProvider(savedProvider)}
-            >
-              Discard changes
-            </Button>
-            <Button
+            />
+            <MutationButton
               disabled={!dirty}
+              pendingLabel='Saving…'
+              success={false}
               onClick={() => setSavedProvider(provider)}
             >
               <IconDeviceFloppy className='size-4' />
               Save
-            </Button>
+            </MutationButton>
           </>
         }
       >

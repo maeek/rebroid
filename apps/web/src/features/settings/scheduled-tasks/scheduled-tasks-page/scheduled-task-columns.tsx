@@ -1,5 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { MutationSwitch } from '@/components/ui/mutation-switch'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ScheduleValue } from '@/shared/ui/schedule/schedule-value'
 import { actionKeepsHistory, defaultRetentionDaysFor } from './schedule-utils'
@@ -7,6 +9,7 @@ import { ScheduledTaskLastRun } from './scheduled-task-last-run'
 import { useScheduledTasksControllerContext } from './scheduled-tasks-context'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 import type { CellContext, ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const ScheduledTaskEnabledCell = ({ row }: CellContext<ScheduledTask, unknown>) => {
   const { busyTaskId, toggleEnabled, toggleFeedback } = useScheduledTasksControllerContext()
@@ -34,21 +37,22 @@ export const scheduledTaskColumns = ({
     accessorFn: task => task.name,
     header: 'Task',
     size: 288,
-    meta: { label: 'Task', skeleton: { kind: 'stacked' } },
+    enableHiding: false,
+    meta: { label: 'Task', compactSlot: 'title', skeleton: { kind: 'stacked' } },
     cell: ({ row: { original: task } }) => {
       const action = actionLabel(task)
       const showAction = task.kind === 'custom' && action.trim().toLowerCase() !== task.name.trim().toLowerCase()
       return (
-        <div className='grid min-w-0 gap-1'>
+        <div className={cn('grid min-w-0 gap-1', styles.settingsStack)}>
           <Button
             type='button'
             variant='link'
-            className='h-auto justify-start whitespace-normal p-0 text-left'
+            className='h-auto justify-start whitespace-normal p-0 text-left wrap-anywhere'
             onClick={() => openEditForm(task)}
           >
             {task.name}
           </Button>
-          <span className='text-xs text-foreground-muted'>
+          <span className={cn('text-xs text-foreground-muted', styles.settingsWideOnly)}>
             {task.kind === 'predefined' ? 'Built-in' : 'Custom'}
             {showAction ? ` · ${action}` : null}
             {actionKeepsHistory(task.actionType)
@@ -64,7 +68,12 @@ export const scheduledTaskColumns = ({
     accessorFn: task => task.enabled,
     header: 'Enabled',
     size: 88,
-    meta: { label: 'Enabled', skeleton: { kind: 'text', width: 'w-12' } },
+    enableHiding: false,
+    meta: {
+      label: 'Enabled',
+      compactSlot: 'control',
+      skeleton: { kind: 'custom', render: () => <Skeleton className='h-5 w-9 rounded-full' /> }
+    },
     cell: ScheduledTaskEnabledCell
   },
   {
@@ -72,8 +81,13 @@ export const scheduledTaskColumns = ({
     accessorFn: task => task.cronExpression,
     header: 'Schedule',
     size: 192,
-    meta: { label: 'Schedule', skeleton: { kind: 'stacked' } },
-    cell: ({ row }) => <ScheduleValue expression={row.original.cronExpression} />
+    meta: { label: 'Schedule', compactSlot: 'details', skeleton: { kind: 'stacked' } },
+    cell: ({ row }) => (
+      <ScheduleValue
+        expression={row.original.cronExpression}
+        className={styles.settingsInline}
+      />
+    )
   },
   {
     id: 'nextRunAt',
@@ -93,7 +107,7 @@ export const scheduledTaskColumns = ({
     accessorFn: task => task.lastRunAt ?? '',
     header: 'Last run',
     size: 208,
-    meta: { label: 'Last run', skeleton: { kind: 'stacked' } },
+    meta: { label: 'Last run', compactSlot: 'details', skeleton: { kind: 'stacked' } },
     cell: ({ row }) => <ScheduledTaskLastRun task={row.original} />
   }
 ]

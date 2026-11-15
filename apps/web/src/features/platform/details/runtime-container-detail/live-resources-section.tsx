@@ -45,7 +45,9 @@ export const LiveResourcesSection = () => {
         </Button>
       </div>
       <Visible when={statsError}>
-        <div className='rounded-panel border border-danger/35 bg-danger/10 p-3 text-sm text-danger'>{statsError}</div>
+        <div className='rounded-panel border border-danger/(--feedback-border-opacity) bg-danger/10 p-3 text-sm text-danger'>
+          {statsError}
+        </div>
       </Visible>
       <div className='grid grid-cols-4 gap-3 max-xl:grid-cols-2 max-sm:grid-cols-1'>
         <QuickGlanceCard

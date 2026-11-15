@@ -6,18 +6,16 @@ import { FormField } from '@/components/ui/form-field'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
-import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { pullPlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { RuntimeImagePullNotice, unconfirmedImagePull } from './runtime-image-pull-notice'
 import type { ActionError } from '@/shared/actions/action-result'
 
 type Registry = 'docker-hub' | 'custom'
-
-const unconfirmedPullMessage = 'Refresh the image list before retrying. The pull may still be running.'
 
 export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: boolean; onPulled?: () => void }) => {
   const [registry, setRegistry] = useState<Registry>('docker-hub')
@@ -47,7 +45,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
         pullFeedback.confirmSaved(`${registry}:`)
         onPulled?.()
       } catch {
-        setFailure({ message: unconfirmedPullMessage, code: 'upstream_unavailable', requestId: '' })
+        setFailure(unconfirmedImagePull)
       }
     })
   }
@@ -61,15 +59,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
         pull()
       }}
     >
-      {failure && !imageError ? (
-        <Notice
-          title={failure.code === 'upstream_unavailable' ? 'Image pull could not be confirmed' : 'Could not pull image'}
-          tone='danger'
-          description={failure.code === 'upstream_unavailable' ? unconfirmedPullMessage : failure.message}
-        >
-          {failure.requestId ? <p>Request ID {failure.requestId}</p> : null}
-        </Notice>
-      ) : null}
+      {failure && !imageError ? <RuntimeImagePullNotice failure={failure} /> : null}
       <div className='grid gap-x-form-column gap-y-4 md:grid-cols-[minmax(13rem,1fr)_minmax(0,3fr)]'>
         <FormField
           label='Registry'

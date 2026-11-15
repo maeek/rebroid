@@ -37,11 +37,12 @@ import type {
 } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { ColumnDef } from '@tanstack/react-table'
+import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => {
   if (tags.length === 0) return null
   return (
-    <div className='flex flex-wrap gap-1'>
+    <div className={`flex flex-wrap gap-1 ${styles.settingsWideOnly}`}>
       {tags.map(tag => (
         <AutomationTagBadge
           key={tag.name}
@@ -50,6 +51,11 @@ const WorkflowTags = ({ tags }: { tags: AutomationTag[] }) => {
       ))}
     </div>
   )
+}
+
+const workflowStepLabel = (workflow: Automation) => {
+  const count = countAutomationSteps(workflow.definition.spec.steps)
+  return `${count} ${count === 1 ? 'step' : 'steps'}`
 }
 
 export function AutomationsTable({
@@ -108,15 +114,20 @@ export function AutomationsTable({
         accessorFn: automation => automation.name,
         header: 'Workflow',
         size: 304,
-        meta: { label: 'Workflow', skeleton: { kind: 'text' } },
+        enableHiding: false,
+        meta: {
+          label: 'Workflow',
+          compactSlot: 'title',
+          skeleton: { kind: 'text', width: 'w-3/4' }
+        },
         cell: ({ row }) => {
           const href = `/automations/${row.original.id}`
           return (
             <div className='grid gap-1'>
-              <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+              <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
                 <ResourceLink
                   href={href}
-                  className='max-w-full truncate font-medium'
+                  className={`max-w-full truncate font-medium ${styles.settingsTouchTarget}`}
                   title={row.original.name}
                 >
                   {row.original.name}
@@ -124,7 +135,9 @@ export function AutomationsTable({
                 <WorkflowTags tags={row.original.tags} />
               </div>
               {row.original.description ? (
-                <span className='line-clamp-1 text-xs text-foreground-muted'>{row.original.description}</span>
+                <span className={`line-clamp-1 text-xs text-foreground-muted ${styles.settingsWideOnly}`}>
+                  {row.original.description}
+                </span>
               ) : null}
             </div>
           )
@@ -163,22 +176,27 @@ export function AutomationsTable({
         header: 'Steps',
         size: 96,
         enableSorting: false,
-        meta: { label: 'Steps', skeleton: { kind: 'text', width: 'w-20' } },
-        cell: ({ row }) => {
-          const count = countAutomationSteps(row.original.definition.spec.steps)
-          return (
-            <span className='text-sm text-foreground-muted'>
-              {count} {count === 1 ? 'step' : 'steps'}
-            </span>
-          )
-        }
+        meta: { label: 'Steps', compactSlot: 'details', skeleton: { kind: 'text', width: 'w-20' } },
+        cell: ({ row }) => (
+          <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
+            <span className='text-sm tabular-nums text-foreground-muted'>{workflowStepLabel(row.original)}</span>
+            <div className={styles.settingsOnly}>
+              <WorkflowRunDetailsLink
+                status={row.original.lastStatus}
+                error={row.original.lastError}
+                workflowId={row.original.id}
+                runId={row.original.lastRunId}
+              />
+            </div>
+          </div>
+        )
       },
       {
         id: 'runStatus',
         header: 'Run status',
         size: 104,
         enableSorting: false,
-        meta: { label: 'Run status', skeleton: { kind: 'badge' } },
+        meta: { label: 'Run status', compactSlot: 'status', skeleton: { kind: 'badge' } },
         cell: ({ row }) => <WorkflowRunStatus status={row.original.lastStatus} />
       },
       {
@@ -186,7 +204,7 @@ export function AutomationsTable({
         accessorFn: automation => automation.lastRunAt ?? '',
         header: 'Last run',
         size: 272,
-        meta: { label: 'Last run', skeleton: { kind: 'text', width: 'w-28' } },
+        meta: { label: 'Last run', compactSlot: 'sort', skeleton: { kind: 'text', width: 'w-28' } },
         cell: ({ row }) => (
           <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
             <DateTimeValue
@@ -292,6 +310,7 @@ export function AutomationsTable({
         />
         <DataGridPagination
           loading={loading}
+          itemLabels={{ singular: 'workflow', plural: 'workflows' }}
           totalItems={automationsPage.total}
           pageIndex={automationsPage.page - 1}
           pageSize={automationsPage.pageSize}

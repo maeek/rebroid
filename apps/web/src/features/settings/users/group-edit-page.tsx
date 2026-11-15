@@ -13,7 +13,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useResourceLimitBounds } from '@/shared/model/settings/use-resource-limit-bounds'
 import { administratorsGroupId, resolveEffectiveAccess } from '@/shared/permissions/effective-access'
 import { EditorPage } from '@/shared/ui/page/editor-page'
-import { PageHeader } from '@/shared/ui/page/page-header'
+import { CompactPageHeader } from '@/shared/ui/page/page-header'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { StateView } from '@/shared/ui/state-view'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
@@ -64,7 +64,8 @@ export const GroupEditPage = ({ group }: { group: UserGroup }) => {
       baseline={savedDraft}
     >
       <EditorPage className='gap-2'>
-        <PageHeader
+        <CompactPageHeader
+          inlineActions
           section={{ label: 'Users & groups' }}
           trail={[{ label: 'Groups', href: '/security/groups' }]}
           breadcrumbLabel={group.name}

@@ -76,9 +76,13 @@ export const AiAgentPreview = () => {
   const model = state === 'no-model' ? undefined : provider.models[0]
   const selectedProvider = model ? provider : undefined
   const activeTurn = turns.find(turn => turn.status === 'running') ?? null
+  const queuedTurn = turns.find(turn => turn.status === 'queued')
   const submit = () => {
     if (!app.running || !model || !prompt.trim()) return Promise.resolve()
-    setTurns(current => [...current, completedTurn(current.length, prompt)])
+    setTurns(current => {
+      const next = completedTurn(current.length, prompt.trim())
+      return [...current, activeTurn || queuedTurn ? { ...next, status: 'queued', events: [] } : next]
+    })
     setPrompt('')
     return Promise.resolve()
   }
@@ -93,9 +97,14 @@ export const AiAgentPreview = () => {
         adHocTimeoutMinutes: Number(timeout) || 5,
         adHocTimeoutMs: (Number(timeout) || 5) * 60_000,
         submissionFeedback: null,
-        canSubmit: Boolean(model && prompt.trim()),
-        canRunQueuedTurn: false,
-        cancelRun: () => Promise.resolve(setTurns(current => current.map(turn => ({ ...turn, status: 'canceled' })))),
+        canSubmit: Boolean(app.running && model && prompt.trim()),
+        canRunQueuedTurn: Boolean(app.running && model && queuedTurn && !activeTurn),
+        cancelRun: () =>
+          Promise.resolve(
+            setTurns(current =>
+              current.map(turn => (turn.status === 'running' ? { ...turn, status: 'canceled' } : turn))
+            )
+          ),
         catalog: model ? [provider] : [],
         clearConversation: () => Promise.resolve(setTurns([])),
         error: null,
@@ -106,7 +115,7 @@ export const AiAgentPreview = () => {
         isLoadingHistory: state === 'loading',
         primaryCatalog: model ? [provider] : [],
         prompt,
-        queuedTurn: undefined,
+        queuedTurn,
         recheckHealth: () => Promise.resolve(),
         selectedModel: model,
         selectedProvider,
@@ -125,7 +134,12 @@ export const AiAgentPreview = () => {
         timeoutMinutesInput: timeout,
         turns,
         visionCatalog: [],
-        runQueuedTurn: () => Promise.resolve()
+        runQueuedTurn: () =>
+          Promise.resolve(
+            setTurns(current =>
+              current.map(turn => (turn.id === queuedTurn?.id ? { ...turn, status: 'running' } : turn))
+            )
+          )
       }}
     />
   )

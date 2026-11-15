@@ -14,20 +14,20 @@ type UploadApkWithFeedbackOptions = {
   file: File
   maxApkUploadSizeMb: number
   topLoader: TopLoader
+  onError?: (message: string) => void
 }
 
 export const uploadApkWithFeedback = async ({
   errorTitle,
   file,
   maxApkUploadSizeMb,
-  topLoader
+  topLoader,
+  onError
 }: UploadApkWithFeedbackOptions): Promise<UploadedApk | null> => {
   if (!isFileWithinApkLimit(file, maxApkUploadSizeMb)) {
-    toast({
-      title: 'APK is too large',
-      description: `The configured upload limit is ${apkSizeLabel(maxApkUploadSizeMb)}.`,
-      variant: 'danger'
-    })
+    const description = `The configured upload limit is ${apkSizeLabel(maxApkUploadSizeMb)}.`
+    if (onError) onError(`APK is too large. ${description}`)
+    else toast({ title: 'APK is too large', description, variant: 'danger' })
     return null
   }
 
@@ -44,11 +44,9 @@ export const uploadApkWithFeedback = async ({
     topLoader.setProgress(1)
     return uploaded
   } catch (error) {
-    toast({
-      title: errorTitle,
-      description: error instanceof Error ? error.message : 'Unknown error',
-      variant: 'danger'
-    })
+    const description = error instanceof Error ? error.message : 'Try uploading the APK again.'
+    if (onError) onError(description)
+    else toast({ title: errorTitle, description, variant: 'danger' })
     return null
   } finally {
     topLoader.done(true)

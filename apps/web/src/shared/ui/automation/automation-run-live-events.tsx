@@ -396,7 +396,7 @@ export function AutomationRunLiveEvents({
           />
         ) : null}
         {streamError && !flat ? (
-          <div className='rounded-panel border border-warning/25 bg-warning/8 px-3 py-2 text-xs text-warning'>
+          <div className='rounded-panel border border-warning/(--feedback-border-opacity) bg-warning/8 px-3 py-2 text-xs text-warning'>
             {streamError}
           </div>
         ) : null}

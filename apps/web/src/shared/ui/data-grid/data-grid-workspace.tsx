@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { DataGridEmptyContext } from './data-grid-empty-state'
 import { DataGridFilterSummary } from './data-grid-filter-summary'
 import { DataGridToolbar } from './data-grid-toolbar'
+import { DataGridColumnToolbarContext } from './data-grid-toolbar-context'
 import styles from '@/shared/ui/page/page-toolbar.module.css'
 
 export type DataGridFilterEntry = {
@@ -21,6 +22,7 @@ export type DataGridWorkspaceProps = {
   search: string
   appliedSearch?: string
   searchPlaceholder: string
+  searchLabel?: string
   onSearchChange: (value: string) => void
   onSearch: (value: string) => void | Promise<void>
   filters?: ReactNode
@@ -38,14 +40,32 @@ export type DataGridWorkspaceProps = {
   notice?: ReactNode
   disabled?: boolean
   toolbarLayout?: 'spread' | 'compact'
+  columnsInToolbar?: boolean
   children: ReactNode
   className?: string
+}
+
+const reservePageToolbarSpace = (toolbar: HTMLDivElement | null) => {
+  const page = toolbar?.closest<HTMLElement>(`.${styles.page}`)
+  if (!toolbar || !page) return
+
+  const measure = () => {
+    page.style.setProperty('--page-toolbar-width', `${toolbar.getBoundingClientRect().width}px`)
+  }
+  measure()
+  const observer = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(measure)
+  observer?.observe(toolbar, { box: 'border-box' })
+  return () => {
+    observer?.disconnect()
+    page.style.removeProperty('--page-toolbar-width')
+  }
 }
 
 export const DataGridWorkspace = ({
   search,
   appliedSearch = search,
   searchPlaceholder,
+  searchLabel,
   onSearchChange,
   onSearch,
   filters,
@@ -63,12 +83,16 @@ export const DataGridWorkspace = ({
   notice,
   disabled = false,
   toolbarLayout = 'spread',
+  columnsInToolbar = false,
   children,
   className
 }: DataGridWorkspaceProps) => {
   const filterTriggerRef = useRef<HTMLButtonElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [columnToolbarTarget, setColumnToolbarTarget] = useState<HTMLDivElement | null>(null)
   const hasFilters = Boolean(filters)
+  const filterCount = activeFilters.length
+  const hasActiveFilters = filterCount > 0
   const hasSelection = selectionMode || selectedCount > 0
   const compact = toolbarLayout === 'compact'
 
@@ -79,8 +103,9 @@ export const DataGridWorkspace = ({
     >
       <div className={cn('grid min-w-0 gap-3', className)}>
         {notice}
-        <div className={cn('grid min-w-0 gap-2', styles.toolbarArea)}>
+        <div className={cn('grid min-w-0 gap-1', styles.toolbarArea)}>
           <div
+            ref={reservePageToolbarSpace}
             data-slot='data-grid-toolbar'
             className={cn(
               'grid min-w-0 items-center [&_button]:transition-none',
@@ -97,6 +122,7 @@ export const DataGridWorkspace = ({
               <DataGridToolbar
                 search={search}
                 searchPlaceholder={searchPlaceholder}
+                searchLabel={searchLabel}
                 onSearchChange={onSearchChange}
                 onSearchSubmit={onSearch}
                 filterControl={
@@ -106,35 +132,56 @@ export const DataGridWorkspace = ({
                         <Button
                           ref={filterTriggerRef}
                           type='button'
-                          aria-label={activeFilters.length ? `Filters (${activeFilters.length})` : 'Filters'}
+                          aria-label={hasActiveFilters ? `Filters (${filterCount})` : 'Filters'}
                           variant='ghost'
-                          className={compact ? 'relative max-sm:size-9 max-sm:px-0' : undefined}
+                          className={cn(
+                            'px-3 data-[popup-open]:bg-accent data-[popup-open]:text-accent-foreground',
+                            compact && 'relative max-sm:size-9 max-sm:px-0'
+                          )}
                           disabled={disabled}
                         />
                       }
                     >
-                      <IconFilter className={cn('size-4', compact && activeFilters.length > 0 && 'text-primary')} />
-                      <span className={compact ? 'max-sm:sr-only' : undefined}>Filters</span>
                       <span
                         aria-hidden
-                        className={cn(
-                          'w-[3ch] text-center tabular-nums',
-                          compact && 'max-sm:hidden',
-                          !activeFilters.length && 'invisible'
-                        )}
+                        className='flex size-4 shrink-0 items-center justify-center'
                       >
-                        {activeFilters.length > 99 ? '99+' : activeFilters.length}
+                        <IconFilter
+                          className={cn('size-4', hasActiveFilters && (compact ? 'hidden max-sm:block' : 'hidden'))}
+                        />
+                        {hasActiveFilters ? (
+                          <span
+                            className={cn(
+                              'min-w-5 rounded-full bg-accent px-1 text-center text-xs leading-5 tabular-nums text-accent-foreground',
+                              compact && 'max-sm:hidden'
+                            )}
+                          >
+                            {filterCount > 99 ? '99+' : filterCount}
+                          </span>
+                        ) : null}
                       </span>
-                      {compact && activeFilters.length > 0 ? (
+                      <span className={compact ? 'max-sm:sr-only' : undefined}>Filters</span>
+                      {compact && hasActiveFilters ? (
                         <span
                           aria-hidden
-                          className='absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary sm:hidden'
+                          className='absolute end-1.5 top-1.5 size-1.5 rounded-full bg-primary sm:hidden'
                         />
                       ) : null}
                     </SheetTrigger>
                   ) : undefined
                 }
-                searchActions={searchActions}
+                searchActions={
+                  <>
+                    {searchActions}
+                    {columnsInToolbar ? (
+                      <div
+                        ref={setColumnToolbarTarget}
+                        data-slot='data-grid-column-controls'
+                        className='flex h-9 w-9 shrink-0 touch:size-11'
+                      />
+                    ) : null}
+                  </>
+                }
                 actions={actions}
                 refresh={refresh}
                 disabled={disabled}
@@ -172,7 +219,7 @@ export const DataGridWorkspace = ({
             ) : null}
           </div>
 
-          {hasFilters && activeFilters.length > 0 ? (
+          {hasFilters && hasActiveFilters ? (
             <DataGridFilterSummary
               filters={activeFilters}
               disabled={disabled}
@@ -185,7 +232,7 @@ export const DataGridWorkspace = ({
         <DataGridEmptyContext.Provider
           value={{
             hasSearch: Boolean(appliedSearch.trim()),
-            hasFilters: activeFilters.length > 0,
+            hasFilters: hasActiveFilters,
             disabled,
             clearSearch: () => {
               onSearchChange('')
@@ -194,29 +241,33 @@ export const DataGridWorkspace = ({
             clearFilters: onResetFilters
           }}
         >
-          <div className='grid min-w-0 gap-3'>{children}</div>
+          <DataGridColumnToolbarContext.Provider value={columnsInToolbar ? columnToolbarTarget : undefined}>
+            <div className='grid min-w-0 gap-3'>{children}</div>
+          </DataGridColumnToolbarContext.Provider>
         </DataGridEmptyContext.Provider>
 
         {hasFilters ? (
-          <SheetContent className='flex w-full flex-col overflow-y-auto sm:max-w-md'>
-            <SheetHeader className='pr-6 text-left'>
+          <SheetContent className='flex w-full flex-col gap-0 p-0 sm:max-w-md'>
+            <SheetHeader className='shrink-0 px-6 pt-6 pr-16 pb-4 text-left'>
               <SheetTitle>{filterTitle}</SheetTitle>
-              <SheetDescription>{filterDescription ?? 'Refine the rows shown in this grid.'}</SheetDescription>
+              <SheetDescription>{filterDescription ?? 'Filters apply as you change them.'}</SheetDescription>
             </SheetHeader>
-            <fieldset
-              disabled={disabled}
-              className='mt-4 grid min-w-0 gap-5'
-            >
-              {filters}
-            </fieldset>
-            <div className='mt-auto flex items-center justify-between gap-3 border-t border-surface-border/50 pt-4'>
+            <div className='scrollbar-thin min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6'>
+              <fieldset
+                disabled={disabled}
+                className='grid min-w-0 gap-5'
+              >
+                {filters}
+              </fieldset>
+            </div>
+            <div className='mx-6 flex shrink-0 items-center justify-between gap-3 border-t border-surface-border/50 pt-4 pb-6'>
               <Button
                 type='button'
                 variant='ghost'
-                disabled={disabled || !activeFilters.length || !onResetFilters}
+                disabled={disabled || !hasActiveFilters || !onResetFilters}
                 onClick={onResetFilters}
               >
-                <IconRestore className='size-4' /> Reset
+                <IconRestore className='size-4' /> Reset filters
               </Button>
               <Button
                 type='button'

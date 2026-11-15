@@ -1,8 +1,10 @@
 'use client'
 
 import { Section } from '@/components/ui/section'
+import { cn } from '@/lib/utils'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { ActivityProvider, useActivityController, useActivityData } from './activity-context'
+import styles from './activity-events.module.css'
 import { ActivityEventDetailSheet } from './details/activity-event-detail-sheet'
 import { ActivityPurgeDialog } from './dialogs/activity-purge-dialog'
 import { ActivityRetentionDialog } from './dialogs/activity-retention-dialog'
@@ -24,16 +26,18 @@ const ActivityEventsContent = () => {
       <ActivitySummary />
       <Section
         surface='plain'
+        className={cn(styles.activity, application && styles.appActivity)}
         aria-label={application ? 'App activity' : undefined}
-        description={application ? 'Audit events for this app.' : undefined}
         headingSpacing='default'
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          columnsInToolbar
           disabled={loading}
           search={controller.localFilters.search ?? ''}
           appliedSearch={filters.search ?? ''}
-          searchPlaceholder='Search actor, action, resource, or details'
+          searchPlaceholder={application ? 'Search activity' : 'Search audit log'}
+          searchLabel='Search actor, action, resource, or details'
           onSearchChange={controller.setSearchDraft}
           onSearch={value => controller.setFilterValue('search', value.trim() || undefined)}
           filters={application ? undefined : <ActivityFilterPanel />}
@@ -45,7 +49,8 @@ const ActivityEventsContent = () => {
             onRemove: () => controller.removeFilter(filter.key)
           }))}
           onResetFilters={controller.resetFilters}
-          actions={<ActivityEventsActions />}
+          searchActions={application ? <ActivityEventsActions /> : undefined}
+          actions={application ? undefined : <ActivityEventsActions />}
           refresh={application ? undefined : <ActivityEventsRefresh />}
         >
           <ActivityEventsDataTable />

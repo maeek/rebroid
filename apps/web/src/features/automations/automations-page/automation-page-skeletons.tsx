@@ -11,7 +11,11 @@ import { AutomationStepsList } from './steps/list/automation-steps-list'
 import { AutomationTracesPage } from './traces/automation-traces-page'
 import { AutomationTriggersPage } from './triggers/automation-triggers-page'
 
-export const AutomationsListPageSkeleton = () => {
+export const AutomationsListPageSkeleton = ({
+  canManageHistoryRetention = false
+}: {
+  canManageHistoryRetention?: boolean
+}) => {
   const q = useSearchParams()?.get('q')?.trim() || undefined
 
   return (
@@ -20,6 +24,7 @@ export const AutomationsListPageSkeleton = () => {
       initialTriggers={[]}
       automationsPage={{ items: [], total: 0, page: 1, pageSize: 20, facets: { tags: [], targetApplicationIds: [] } }}
       gridQuery={{ q }}
+      canManageHistoryRetention={canManageHistoryRetention}
       loading
     />
   )
@@ -45,7 +50,16 @@ export const AutomationCreatePageSkeleton = () => <AutomationEditorPageSkeleton 
 
 export const AutomationEditorPageSkeleton = ({ creating = false }: { creating?: boolean }) => (
   <WorkflowEditorWorkspace
-    title={creating ? 'New workflow' : <Skeleton className='h-6 w-48 max-w-full' />}
+    title={
+      creating ? (
+        'New workflow'
+      ) : (
+        <>
+          <span className='sm:hidden'>Workflow</span>
+          <Skeleton className='hidden h-6 w-48 max-w-full sm:block' />
+        </>
+      )
+    }
     actions={
       <AutomationEditorActions
         busy
@@ -58,6 +72,7 @@ export const AutomationEditorPageSkeleton = ({ creating = false }: { creating?: 
         onExport={noop}
         onImport={noop}
         onSave={noop}
+        onToggleYaml={noop}
       />
     }
     yamlOpen={false}

@@ -1,11 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DisplaySessionRecovery } from '@/features/applications/viewer/display/display-session-recovery'
 import { useDisplayViewerActions } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions'
 import { useDisplayViewerRetry } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-retry'
 import { useFullscreenState } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-fullscreen-state'
-import { viewerControlRailWidth } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
+import {
+  controlRailGap,
+  getDisplayViewportSize,
+  surfaceChromeHeight,
+  viewerControlRailWidth,
+  workspacePadding
+} from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import type {
   DisplayViewerStreamMetrics,
   ViewerFrameObservation,
@@ -21,9 +27,20 @@ const transientStreamStatusCodes = new Set<DisplayViewerStreamStatus['code']>([
 ])
 const transientStreamStatusTtlMs = 6_000
 
+const getSurfaceScrollLeft = (workspace: HTMLDivElement, surface: HTMLElement) =>
+  Math.max(
+    0,
+    Math.min(
+      workspace.scrollWidth - workspace.clientWidth,
+      surface.offsetLeft + (surface.offsetWidth - workspace.clientWidth) / 2
+    )
+  )
+
 export const useDisplayViewerShellState = ({
   applicationId,
   surfaces,
+  controlsEnabled = false,
+  compact = false,
   surfaceRefreshVersion,
   initialKeyboardCaptureEnabled,
   onSurfacesChanged,
@@ -34,6 +51,8 @@ export const useDisplayViewerShellState = ({
 }: {
   applicationId: string
   surfaces: DisplayViewerSurface[]
+  controlsEnabled?: boolean
+  compact?: boolean
   surfaceRefreshVersion?: number
   initialKeyboardCaptureEnabled: boolean
   onSurfacesChanged?: () => void
@@ -55,7 +74,10 @@ export const useDisplayViewerShellState = ({
   const [workspaceSize, setWorkspaceSize] = useState({
     width: 0,
     height: 0,
-    railWidth: viewerControlRailWidth
+    railWidth: viewerControlRailWidth,
+    chromeHeight: surfaceChromeHeight,
+    headerSpace: 40,
+    gap: 0
   })
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [fullscreenSurfaceId, setFullscreenSurfaceId] = useState<string | null>(null)
@@ -64,6 +86,36 @@ export const useDisplayViewerShellState = ({
     () => [...surfaces].sort((left, right) => (left.kind === right.kind ? 0 : left.kind === 'main' ? -1 : 1)),
     [surfaces]
   )
+  const multipleDisplays = orderedSurfaces.length > 1
+  const viewportSizes = useMemo(
+    () =>
+      Object.fromEntries(
+        orderedSurfaces.map(surface => {
+          const { width, height } = streamSizes[surface.id] ?? surface.displaySize
+          return [
+            surface.id,
+            getDisplayViewportSize({
+              ratio: width / height,
+              workspaceSize: { ...workspaceSize, headerSpace: multipleDisplays ? workspaceSize.headerSpace : 0 },
+              compact,
+              controlsEnabled
+            })
+          ]
+        })
+      ),
+    [compact, controlsEnabled, multipleDisplays, orderedSurfaces, streamSizes, workspaceSize]
+  )
+  const workspaceContentWidth = workspaceSize.width - workspacePadding
+  const railSpace = controlsEnabled ? workspaceSize.railWidth + controlRailGap : 0
+  const displaysWidth = orderedSurfaces.reduce(
+    (width, surface) => width + viewportSizes[surface.id].width + railSpace,
+    0
+  )
+  const compactSwitcher =
+    !compact &&
+    multipleDisplays &&
+    workspaceContentWidth > 0 &&
+    displaysWidth + (orderedSurfaces.length - 1) * workspaceSize.gap > workspaceContentWidth
   const [activeSurfaceId, setActiveSurfaceId] = useState(() => orderedSurfaces[0]?.id ?? 'main')
   const activeSurface = orderedSurfaces.find(surface => surface.id === activeSurfaceId) ?? orderedSurfaces[0]
   const viewerActions = useDisplayViewerActions({
@@ -137,18 +189,22 @@ export const useDisplayViewerShellState = ({
     []
   )
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = scrollContainerRef.current
     if (!container || typeof ResizeObserver === 'undefined') {
       return
     }
 
+    const track = container.querySelector('[data-display-track]')
     const updateSize = () => {
       const style = getComputedStyle(container)
       setWorkspaceSize({
         width: container.clientWidth,
         height: container.clientHeight,
-        railWidth: Number.parseFloat(style.getPropertyValue('--viewer-rail-width')) || viewerControlRailWidth
+        railWidth: Number.parseFloat(style.getPropertyValue('--viewer-rail-width')) || viewerControlRailWidth,
+        chromeHeight: Number.parseFloat(style.getPropertyValue('--viewer-chrome-height')) || surfaceChromeHeight,
+        headerSpace: Number.parseFloat(style.getPropertyValue('--viewer-display-header-space')) || 40,
+        gap: track ? Number.parseFloat(getComputedStyle(track).columnGap) || 0 : 0
       })
     }
     const observer = new ResizeObserver(updateSize)
@@ -188,38 +244,53 @@ export const useDisplayViewerShellState = ({
 
   const syncActiveSurfaceFromScroll = () => {
     const container = scrollContainerRef.current
-    if (!container) {
+    if (!compactSwitcher || !container) {
       return
     }
 
-    const viewportCenter = container.scrollLeft + container.clientWidth / 2
-    const nearestSurface = orderedSurfaces
-      .map(surface => {
-        const element = surfaceElementsRef.current[surface.id]
-        if (!element) {
-          return null
-        }
-
-        return {
-          distance: Math.abs(element.offsetLeft + element.offsetWidth / 2 - viewportCenter),
-          surface
-        }
-      })
-      .filter((item): item is { distance: number; surface: DisplayViewerSurface } => Boolean(item))
-      .sort((left, right) => left.distance - right.distance)[0]?.surface
-
-    if (nearestSurface) {
-      setActiveSurfaceId(nearestSurface.id)
+    // Compare reachable snap positions. With slight overflow neither display may be able to center.
+    let nearestSurfaceId = activeSurface?.id
+    let nearestDistance = Infinity
+    for (const surface of orderedSurfaces) {
+      const element = surfaceElementsRef.current[surface.id]
+      if (!element) continue
+      const distance = Math.abs(getSurfaceScrollLeft(container, element) - container.scrollLeft)
+      if (distance < nearestDistance || (distance === nearestDistance && surface.id === activeSurface?.id)) {
+        nearestDistance = distance
+        nearestSurfaceId = surface.id
+      }
     }
+    if (nearestSurfaceId) setActiveSurfaceId(nearestSurfaceId)
   }
 
   const handleWorkspaceScroll = () => {
+    if (!compactSwitcher) return
     if (scrollSettleTimerRef.current !== null) {
       window.clearTimeout(scrollSettleTimerRef.current)
     }
 
     scrollSettleTimerRef.current = window.setTimeout(syncActiveSurfaceFromScroll, 120)
   }
+
+  const activeDisplayId = activeSurface?.id
+  useLayoutEffect(() => {
+    if (!compactSwitcher) {
+      if (scrollSettleTimerRef.current !== null) {
+        window.clearTimeout(scrollSettleTimerRef.current)
+        scrollSettleTimerRef.current = null
+      }
+      return
+    }
+    if (!activeDisplayId) return
+    const workspace = scrollContainerRef.current
+    const surface = surfaceElementsRef.current[activeDisplayId]
+    if (!workspace || !surface) return
+
+    workspace.scrollTo({
+      left: getSurfaceScrollLeft(workspace, surface),
+      behavior: 'instant'
+    })
+  }, [activeDisplayId, compactSwitcher, viewportSizes, workspaceContentWidth])
 
   const toggleKeyboardCapture = () => {
     setKeyboardCaptureEnabled(current => {
@@ -286,16 +357,11 @@ export const useDisplayViewerShellState = ({
     onStreamMetrics?.(surfaceId, metrics)
   }
 
-  const scrollSurfaceIntoView = (surfaceId: string) => {
-    surfaceElementsRef.current[surfaceId]?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center'
-    })
-  }
-
   return {
     activeSurface,
+    compactSwitcher,
+    multipleDisplays,
+    viewportSizes,
     fullscreen,
     fullscreenSurfaceId,
     keyboardCaptureEnabled,
@@ -311,7 +377,6 @@ export const useDisplayViewerShellState = ({
     windowSize,
     workspaceSize,
     handleWorkspaceScroll,
-    scrollSurfaceIntoView,
     setActiveSurfaceId,
     surfaceElementsRef,
     toggleFullscreen,

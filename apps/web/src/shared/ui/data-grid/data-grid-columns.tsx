@@ -43,6 +43,7 @@ export const selectionColumn = <TData,>({
     return (
       <div className='flex min-h-5 items-center justify-center'>
         <Checkbox
+          className='relative touch:after:absolute touch:after:-inset-3.5'
           checked={allSelected}
           disabled={selection.disabled || ids.length === 0}
           aria-label='Select current page'
@@ -65,6 +66,7 @@ export const selectionColumn = <TData,>({
     return (
       <div className='flex min-h-10 items-center justify-center'>
         <Checkbox
+          className='relative touch:after:absolute touch:after:-inset-3.5'
           checked={selection.selectedIds.has(id)}
           disabled={selection.disabled}
           aria-label='Select row'
@@ -124,7 +126,14 @@ const RowMenuCell = <TData,>({ row, column }: CellContext<TData, unknown>) => {
   return (
     <div className='flex min-h-10 items-center justify-end'>
       <RowActions visible={!contextual}>
-        {contextual ? <span className='touch-control inline-flex size-8 shrink-0'>{quickAction?.(row)}</span> : null}
+        {contextual ? (
+          <span
+            data-slot='data-grid-quick-action'
+            className='touch-control inline-flex size-8 shrink-0'
+          >
+            {quickAction?.(row)}
+          </span>
+        ) : null}
         <RowActionButton
           label='Open row actions'
           onClick={openContextMenuFromButton}

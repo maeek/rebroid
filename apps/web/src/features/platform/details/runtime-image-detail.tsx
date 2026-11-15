@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
-import { IconTrash } from '@tabler/icons-react'
+import { useState, useTransition, type ReactNode } from 'react'
+import { IconDownload, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,14 +13,16 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { RuntimeImageBadges } from '@/features/platform/components/runtime-image-badges'
+import { RuntimeImagePullNotice, unconfirmedImagePull } from '@/features/platform/components/runtime-image-pull-notice'
 import { RelatedContainersGrid } from '@/features/platform/details/related-containers-grid'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
-import { unwrapActionResult } from '@/shared/actions/action-result'
+import { pullPlatformImageAction, removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { unwrapActionResult, type ActionError } from '@/shared/actions/action-result'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { JsonViewer } from '@/shared/ui/json-viewer'
@@ -31,11 +33,73 @@ import { PlatformLabelsSection } from '@/shared/ui/platform/platform-labels-sect
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import type { PlatformImageDetails } from '@/shared/contracts/platform'
 
+const RuntimeImageActions = ({
+  onPull,
+  onRemove,
+  isPulling = false,
+  isRemoving = false
+}: {
+  onPull?: () => void
+  onRemove?: () => void
+  isPulling?: boolean
+  isRemoving?: boolean
+}) => (
+  <>
+    <MutationButton
+      type='button'
+      variant='secondary'
+      disabled={!onPull || isRemoving}
+      pending={isPulling}
+      pendingLabel='Pulling image…'
+      animate
+      onClick={onPull}
+    >
+      <IconDownload className='size-4' />
+      Pull again
+    </MutationButton>
+    <Button
+      type='button'
+      variant='danger'
+      disabled={!onRemove || isRemoving || isPulling}
+      onClick={onRemove}
+    >
+      <IconTrash className='size-4' />
+      Remove
+    </Button>
+  </>
+)
+
 export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails }) => {
   const router = useRouter()
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
+  const [isPulling, startPull] = useTransition()
+  const [pullFailure, setPullFailure] = useState<ActionError | null>(null)
   const image = details.image
+  const pullReference = image.repoTags[0] ?? image.repoDigests[0]
+
+  const pullImage = () => {
+    if (!pullReference || isPulling || isRemoving) return
+
+    const sourcePath = window.location.pathname
+    setPullFailure(null)
+    startPull(async () => {
+      try {
+        const result = await pullPlatformImageAction('from-reference', pullReference)
+        if (!result.ok) {
+          setPullFailure(result.error)
+          return
+        }
+
+        toast({ title: 'Image pulled', description: pullReference, variant: 'success' })
+        if (window.location.pathname === sourcePath) {
+          router.replace(`/runtime/images/${encodeURIComponent(pullReference)}`)
+        }
+      } catch {
+        setPullFailure(unconfirmedImagePull)
+      }
+    })
+  }
 
   const removeImage = async () => {
     setIsRemoving(true)
@@ -58,16 +122,25 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
     <>
       <RuntimeImagePageContent
         details={details}
+        description={pullReference ? undefined : 'This image has no registry tag or digest.'}
         actions={
-          <Button
-            type='button'
-            variant='danger'
-            disabled={isRemoving}
-            onClick={() => setRemoveDialogOpen(true)}
-          >
-            <IconTrash className='size-4' />
-            Remove
-          </Button>
+          <RuntimeImageActions
+            onPull={pullReference ? pullImage : undefined}
+            onRemove={() => setRemoveDialogOpen(true)}
+            isPulling={isPulling}
+            isRemoving={isRemoving}
+          />
+        }
+        feedback={
+          <>
+            <span
+              role='status'
+              className='sr-only'
+            >
+              {isPulling ? 'Pulling image…' : null}
+            </span>
+            {pullFailure ? <RuntimeImagePullNotice failure={pullFailure} /> : null}
+          </>
         }
       />
 
@@ -101,11 +174,15 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
 
 export const RuntimeImagePageContent = ({
   details,
+  description,
   actions,
+  feedback,
   loading = false
 }: {
   details?: PlatformImageDetails
+  description?: string
   actions?: ReactNode
+  feedback?: ReactNode
   loading?: boolean
 }) => {
   const image = details?.image
@@ -118,20 +195,11 @@ export const RuntimeImagePageContent = ({
         title={image ? imageDisplayName(image) : <Skeleton className='h-9 w-64 max-w-full max-sm:h-7' />}
         badges={image ? <RuntimeImageBadges image={image} /> : <Skeleton className='h-5 w-24' />}
         meta={<span className='font-mono'>{image?.shortId}</span>}
-        actions={
-          actions ?? (
-            <Button
-              type='button'
-              variant='danger'
-              disabled
-            >
-              <IconTrash className='size-4' />
-              Remove
-            </Button>
-          )
-        }
+        description={description}
+        actions={actions ?? <RuntimeImageActions />}
       />
       <PageContent>
+        {feedback}
         <PlatformResourceSection
           title='Overview'
           surface='plain'

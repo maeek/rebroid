@@ -8,13 +8,15 @@ vi.mock('./use-fullscreen-state', () => ({
   useFullscreenState: () => ({ fullscreen: false, fullscreenElement: null })
 }))
 
+const displaySize = { width: 1080, height: 2340 }
+
 it.each(['webrtc', 'websocket'] as const)(
   'records presentation only for the current main display over %s',
   transport => {
     const onFirstFrame = vi.fn()
     const surfaces = [
-      { id: 'main', sessionId: 'current', kind: 'main' },
-      { id: 'virtual', sessionId: 'virtual-session', kind: 'virtual' }
+      { id: 'main', sessionId: 'current', kind: 'main', displaySize },
+      { id: 'virtual', sessionId: 'virtual-session', kind: 'virtual', displaySize }
     ] as DisplayViewerSurface[]
     const { result } = renderHook(() =>
       useDisplayViewerShellState({
@@ -46,7 +48,7 @@ it.each(['webrtc', 'websocket'] as const)(
   transport => {
     vi.useFakeTimers()
     try {
-      const surfaces = [{ id: 'main', sessionId: 'current', kind: 'main' }] as DisplayViewerSurface[]
+      const surfaces = [{ id: 'main', sessionId: 'current', kind: 'main', displaySize }] as DisplayViewerSurface[]
       const { result, unmount } = renderHook(() =>
         useDisplayViewerShellState({ applicationId: 'app', surfaces, initialKeyboardCaptureEnabled: false })
       )
@@ -85,7 +87,7 @@ it('reports a current nonblocking transport failure even after the transient sta
   vi.useFakeTimers()
   try {
     const onStreamIssue = vi.fn()
-    const surfaces = [{ id: 'main', sessionId: 'current', kind: 'main' }] as DisplayViewerSurface[]
+    const surfaces = [{ id: 'main', sessionId: 'current', kind: 'main', displaySize }] as DisplayViewerSurface[]
     const { result } = renderHook(() =>
       useDisplayViewerShellState({
         applicationId: 'app',

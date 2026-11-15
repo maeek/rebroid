@@ -22,17 +22,19 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(switchArea.getByRole('status')).toBeEmpty()
     const composer = page.locator('[data-slot=ai-prompt-composer]')
     const input = page.getByRole('textbox', { name: 'Message' })
-    const actions = page.locator('[data-slot=ai-composer-actions]')
+    const send = page.getByRole('button', { name: 'Send message', exact: true })
+    const stop = page.getByRole('button', { name: 'Stop', exact: true })
+    const canceling = page.getByRole('button', { name: 'Canceling', exact: true })
     const composerBounds = await composer.boundingBox()
-    const actionBounds = await actions.boundingBox()
-    await page.getByRole('button', { name: 'Send message', exact: true }).click()
+    const actionBounds = await send.boundingBox()
+    await send.click()
     await expect(input).toBeFocused()
-    await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
+    await expect(stop).toBeVisible()
     expect(await composer.boundingBox()).toEqual(composerBounds)
-    expect(await actions.boundingBox()).toEqual(actionBounds)
-    await page.getByRole('button', { name: 'Stop', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Canceling', exact: true })).toBeDisabled()
-    expect(await actions.boundingBox()).toEqual(actionBounds)
+    expect(await stop.boundingBox()).toEqual(actionBounds)
+    await stop.click()
+    await expect(canceling).toBeDisabled()
+    expect(await canceling.boundingBox()).toEqual(actionBounds)
     await page.getByRole('button', { name: 'Show status' }).click()
     expect(await composer.boundingBox()).toEqual(composerBounds)
     const status = page.locator('[data-slot=composer-status]')
@@ -51,6 +53,18 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
 
   test(`toasts coalesce and use quiet motion (${reducedMotion})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion })
+    await page.addInitScript(() => {
+      document.addEventListener('transitionrun', event => {
+        const toast = event.target
+        if (
+          toast instanceof HTMLElement &&
+          toast.dataset.testid === 'toast-success' &&
+          event.propertyName === 'transform'
+        ) {
+          toast.dataset.slideStarted = 'true'
+        }
+      })
+    })
     await page.goto('/skeleton-contract-test?editor=immediate-feedback')
     const button = page.getByRole('button', { name: 'Show toast' })
     const original = await button.boundingBox()
@@ -60,6 +74,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await expect(notice).toHaveCount(1)
     await expect(notice).toHaveCSS('opacity', '1')
     await expect(notice).toHaveCSS('transition-duration', reducedMotion === 'reduce' ? '0s' : '0.14s, 0.14s')
+    if (reducedMotion === 'reduce') {
+      await expect(notice).toHaveCSS('transform', 'none')
+      await expect(notice).not.toHaveAttribute('data-slide-started')
+    } else {
+      await expect(notice).toHaveAttribute('data-slide-started', 'true')
+    }
     expect(await button.boundingBox()).toEqual(original)
     await expect(notice.getByRole('button', { name: 'Close' })).toHaveCSS('opacity', '0.7')
     await notice.getByRole('button', { name: 'Close' }).click()

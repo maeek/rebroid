@@ -24,6 +24,7 @@ import {
   passwordMinimumLengthError,
   passwordMinimumLengthLimits
 } from '@/shared/model/settings/password-minimum-length'
+import { SettingsActionButton } from '@/shared/ui/actions/settings-action-button'
 
 export const PasswordPolicyDialog = ({
   initialPasswordMinimumLength,
@@ -76,14 +77,11 @@ export const PasswordPolicyDialog = ({
       onOpenChange={setDialogOpen}
     >
       <DialogTrigger asChild>
-        <Button
+        <SettingsActionButton
+          label='Password policy'
+          desktopIcon={IconKey}
           disabled={disabled}
-          size='sm'
-          variant='secondary'
-        >
-          <IconKey className='size-4' />
-          Password policy
-        </Button>
+        />
       </DialogTrigger>
       <DialogContent
         data-editor-dialog=''

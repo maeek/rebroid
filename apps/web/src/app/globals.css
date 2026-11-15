@@ -14,18 +14,32 @@
   --console-bottom-inset: 0rem;
   --console-content-height: calc(100dvh - var(--console-top-inset) - var(--console-bottom-inset));
   --touch-target-size: 44px;
+  --feedback-border-opacity: 12%;
+  --page-inline-gutter: 1.5rem;
   --page-header-top-inset: 0.25rem;
   --page-header-control-size: 2.25rem;
   --app-viewer-height: calc(100svh - 6rem);
   --viewer-chrome-height: 32px;
   --viewer-chrome-gap: 6px;
   --viewer-rail-width: 32px;
+  --viewer-display-header-space: 40px;
+}
+
+@media (width < 40rem) {
+  :root {
+    --page-inline-gutter: 1rem;
+    --page-header-top-inset: 0.75rem;
+  }
 }
 
 @media (width < 64rem) {
+  :root {
+    --page-header-control-size: var(--touch-target-size);
+  }
+
   :root:has([data-slot='protected-shell']) {
-    --console-top-inset: calc(3.5rem + env(safe-area-inset-top));
-    --console-bottom-inset: calc(3.5rem + env(safe-area-inset-bottom));
+    --console-top-inset: env(safe-area-inset-top, 0px);
+    --console-bottom-inset: calc(4.25rem + env(safe-area-inset-bottom));
     scroll-padding-block-end: var(--console-bottom-inset);
   }
 }
@@ -35,6 +49,7 @@
     --page-header-control-size: var(--touch-target-size);
     --viewer-rail-width: var(--touch-target-size);
     --viewer-chrome-height: var(--touch-target-size);
+    --viewer-display-header-space: 52px;
   }
 
   .viewer-chrome [data-slot='button'] {
@@ -77,6 +92,7 @@
   --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-0);
+  --surface-floating-control: var(--palette-neutral-0);
   --surface-menu: var(--palette-neutral-0);
   --surface-dialog: var(--palette-neutral-100);
   --surface-navigation: var(--palette-neutral-50);
@@ -110,6 +126,7 @@
   --elevation-control: 0 1px 2px rgb(15 23 42 / 0.08);
   --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.03);
   --elevation-floating: 0 18px 48px -24px rgb(15 23 42 / 0.3);
+  --elevation-floating-control: 0 2px 8px rgb(15 23 42 / 0.13);
   --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.45);
 }
 
@@ -140,6 +157,7 @@
   --surface-editor: var(--palette-neutral-100);
   --surface-band: var(--palette-neutral-125);
   --surface-elevated: var(--palette-neutral-125);
+  --surface-floating-control: 220 10% 5%;
   --surface-menu: 0 0% 0%;
   --surface-dialog: var(--palette-neutral-50);
   --surface-navigation: var(--palette-neutral-90);
@@ -173,6 +191,7 @@
   --elevation-control: 0 1px 2px rgb(0 0 0 / 0.24);
   --elevation-panel: inset 0 1px 0 rgb(255 255 255 / 0.035);
   --elevation-floating: 0 20px 52px -24px rgb(0 0 0 / 0.65);
+  --elevation-floating-control: 0 2px 8px rgb(0 0 0 / 0.24);
   --elevation-emphasis: 0 12px 36px -20px hsl(var(--primary) / 0.5);
 }
 
@@ -204,6 +223,7 @@
   --surface-editor: var(--palette-neutral-75);
   --surface-band: var(--palette-neutral-100);
   --surface-elevated: var(--palette-neutral-100);
+  --surface-floating-control: var(--palette-neutral-180);
   --surface-menu: var(--palette-neutral-10);
   --surface-dialog: var(--palette-neutral-50);
   --surface-navigation: var(--palette-neutral-25);
@@ -237,6 +257,7 @@
   --elevation-control: none;
   --elevation-panel: none;
   --elevation-floating: none;
+  --elevation-floating-control: none;
   --elevation-emphasis: none;
 }
 
@@ -400,6 +421,7 @@
   --color-surface-editor: hsl(var(--surface-editor));
   --color-surface-band: hsl(var(--surface-band));
   --color-surface-elevated: hsl(var(--surface-elevated));
+  --color-surface-floating-control: hsl(var(--surface-floating-control));
   --color-surface-menu: hsl(var(--surface-menu));
   --color-surface-dialog: hsl(var(--surface-dialog));
   --color-surface-navigation: hsl(var(--surface-navigation));
@@ -434,6 +456,7 @@
   --shadow-control: var(--elevation-control);
   --shadow-panel: var(--elevation-panel);
   --shadow-floating: var(--elevation-floating);
+  --shadow-floating-control: var(--elevation-floating-control);
   --shadow-emphasis: var(--elevation-emphasis);
   --spacing-form-column: 2rem;
 }
@@ -532,7 +555,36 @@
   .app-device-layout .app-device-pane {
     --app-viewer-height: calc(100svh - var(--console-top-inset) - var(--console-bottom-inset) - 7.5rem);
   }
+
+  :root:has(.app-device-layout[data-mobile-pane='device']) {
+    --console-top-inset: 0rem;
+    --console-bottom-inset: 0rem;
+  }
+
+  body:has(.app-device-layout[data-mobile-pane='device']) [data-mobile-shell-chrome] {
+    display: none;
+  }
+
+  .app-device-layout[data-mobile-pane='device'] {
+    --mobile-device-header-height: 3.5rem;
+    height: 100svh;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
+    padding-block: env(safe-area-inset-top) env(safe-area-inset-bottom);
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
+
+  .app-device-layout[data-mobile-pane='device'] .app-device-pane {
+    --app-viewer-height: calc(
+      100svh - var(--mobile-device-header-height) - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+    grid-row: 2;
+    align-self: stretch;
+    align-items: center;
+    padding-inline: 0;
+  }
 }
+
 @media (min-width: 64rem) {
   :root {
     --console-top-inset: 0.5rem;

@@ -21,13 +21,21 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     expect(await results.boundingBox()).toEqual(resultBounds)
     const filter = page.getByRole('button', { name: /^Filters/ })
     const filterBounds = await filter.boundingBox()
+    const filterIcon = await filter.locator('svg').boundingBox()
+    const filterLabel = await filter.getByText('Filters', { exact: true }).boundingBox()
+    expect(filterIcon!.x - filterBounds!.x).toBeCloseTo(
+      filterBounds!.x + filterBounds!.width - filterLabel!.x - filterLabel!.width,
+      0
+    )
     await filter.click()
     await page.getByRole('checkbox', { name: 'Running resources' }).check()
     await page.getByRole('button', { name: 'Done', exact: true }).click()
     await expect(filter).toBeFocused()
     await expect(filter).toHaveAccessibleName('Filters (3)')
     expect(await filter.boundingBox()).toEqual(filterBounds)
-    expect(await results.boundingBox()).toEqual(resultBounds)
+    const summary = page.getByRole('group', { name: 'Active filters' })
+    await expect(summary).toBeVisible()
+    expect((await results.boundingBox())!.y).toBeGreaterThan((await summary.boundingBox())!.y)
     await page.getByRole('button', { name: 'Remove State filter' }).click()
     await expect(filter).toBeFocused()
     await expect(filter).toHaveAccessibleName('Filters')
