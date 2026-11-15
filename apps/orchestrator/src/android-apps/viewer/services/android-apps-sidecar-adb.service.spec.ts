@@ -23,8 +23,8 @@ describe('AndroidAppsSidecarAdbService UI text deadline', () => {
   const createService = (prepareNetwork: () => Promise<void>) =>
     new AndroidAppsSidecarAdbService(
       {
-        getOrThrow: () => 'http://sidecar.test',
-        get: () => undefined,
+        getOrThrow: () => 'http://sidecar.test/',
+        get: () => 'test-sidecar-secret',
       } as never,
       {
         requireViewerTarget: async (_app: unknown, signal?: AbortSignal) => {
@@ -124,6 +124,12 @@ describe('AndroidAppsSidecarAdbService UI text deadline', () => {
       controller.signal,
     );
     const init = await dispatched.promise;
+    expect(fetch.mock.calls[0][0]).toBe(
+      'http://sidecar.test/rebroid/adb/10.0.0.2%3A5555/ui-text',
+    );
+    const headers = new Headers(init.headers);
+    expect(headers.get('x-rebroid-sidecar-secret')).toBe('test-sidecar-secret');
+    expect(headers.get('content-type')).toBe('application/json');
     const payload = JSON.parse(init.body as string);
     expect(payload).toMatchObject({
       text: 'Żappka',

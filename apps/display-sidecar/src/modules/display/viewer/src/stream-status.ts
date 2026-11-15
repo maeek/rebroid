@@ -1,8 +1,13 @@
+import type {
+  ViewerStreamMetricsMessage,
+  ViewerStreamMetricsV4,
+  ViewerStreamStatus,
+  ViewerStreamStatusMessage,
+} from "@rebroid/android-application-core/viewer-stream";
 import {
   viewerStreamMetricsMessageType,
   viewerStreamStatusMessageType,
 } from "./config.js";
-import type { ViewerStreamMetricsV4, ViewerStreamStatus } from "./types.js";
 
 export type CompatibilityStatusInput = {
   mode?: unknown;
@@ -54,7 +59,7 @@ export function emitViewerStreamStatus(status: ViewerStreamStatus): void {
     {
       type: viewerStreamStatusMessageType,
       ...status,
-    },
+    } satisfies ViewerStreamStatusMessage,
     window.location.origin,
   );
 }
@@ -101,7 +106,7 @@ export function emitViewerStreamMetrics(metrics: ViewerStreamMetricsV4): void {
     {
       type: viewerStreamMetricsMessageType,
       ...metrics,
-    },
+    } satisfies ViewerStreamMetricsMessage,
     window.location.origin,
   );
 }

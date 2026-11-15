@@ -9,13 +9,13 @@ import {
   fallbackDisplayViewportHeight
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
-import type {
-  DisplayViewerStreamMetrics,
-  ViewerFrameObservation,
-  DisplayViewerStreamStatus
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import type { DockedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
+import type {
+  ViewerStreamMetricsV4,
+  ViewerFrameObservation,
+  ViewerStreamStatus
+} from '@rebroid/android-application-core/viewer-stream'
 
 type DisplayViewerShellState = ReturnType<typeof useDisplayViewerShellState>
 
@@ -38,8 +38,8 @@ export type DisplayViewerProviderValue = {
   controlsEnabled: boolean
   initialKeyboardCaptureEnabled: boolean
   onKeyboardCaptureChange?: (enabled: boolean) => void
-  onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
-  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
+  onStreamMetrics?: (surfaceId: string, metrics: ViewerStreamMetricsV4) => void
+  onStreamIssue?: (surfaceId: string, status: ViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation) => void
   onSurfacesChanged?: () => void
   surfaces: DisplayViewerSurface[]
@@ -175,8 +175,8 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
     onClose: () => viewerActions.closeDisplay(surface),
     onOpenPopout: () => openViewerPopout(applicationId, surface),
     onSelect: () => setActiveSurfaceId(surface.id),
-    onStreamMetrics: (metrics: DisplayViewerStreamMetrics) => setSurfaceStreamMetrics(surface.id, metrics),
-    onStreamStatus: (status: DisplayViewerStreamStatus) => setSurfaceStreamStatus(surface.id, status),
+    onStreamMetrics: (metrics: ViewerStreamMetricsV4) => setSurfaceStreamMetrics(surface.id, metrics),
+    onStreamStatus: (status: ViewerStreamStatus) => setSurfaceStreamStatus(surface.id, status),
     onSurfaceElement: (element: HTMLElement | null) => {
       surfaceElementsRef.current[surface.id] = element
     },

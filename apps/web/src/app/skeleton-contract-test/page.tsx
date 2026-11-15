@@ -77,7 +77,7 @@ import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestra
 import { parseSidebarCollapsed, sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { ActionFeedbackPreview } from '@/shared/testing/action-feedback-preview'
 import { applicationPreview } from '@/shared/testing/application-preview'
-import { previewWorkflow } from '@/shared/testing/automation-preview'
+import { previewWorkflow, previewWorkflowGridRow } from '@/shared/testing/automation-preview'
 import { FeedbackPreview } from '@/shared/testing/feedback-preview'
 import { FieldFeedbackPreview } from '@/shared/testing/field-feedback-preview'
 import { ImmediateFeedbackPreview } from '@/shared/testing/immediate-feedback-preview'
@@ -245,7 +245,7 @@ export default async function SkeletonContractPage({
         automationsPage={{
           items: [
             {
-              ...previewWorkflow,
+              ...previewWorkflowGridRow,
               tags: [{ name: 'Inventory', color: '#2563eb' }],
               lastStatus: 'failed',
               lastRunAt: '2026-11-07T10:00:00Z',

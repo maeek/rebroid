@@ -8,8 +8,8 @@ import { AppViewerStreamingSettings } from './app-viewer-streaming-settings'
 import { useApplicationViewerApp } from './application-viewer-context'
 import type { ViewerStreamSample } from './application-viewer-context'
 import type { ObservedStreamIssue } from './viewer-stream-issue'
-import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import type { ViewerStreamMetricsV4 } from '@rebroid/android-application-core/viewer-stream'
 
 vi.mock('./application-viewer-context', () => ({ useApplicationViewerApp: vi.fn() }))
 vi.mock('@/features/applications/viewer/display/display-viewer-shell/display-viewer-context', () => ({
@@ -163,7 +163,7 @@ it('shows the WebRTC attempt ID even if the peer never produced a frame', () => 
 it('defaults to the display with the issue and tracks first, fresh, and stale samples independently', () => {
   vi.useFakeTimers()
   const now = Date.now()
-  const sample: DisplayViewerStreamMetrics = {
+  const sample: ViewerStreamMetricsV4 = {
     version: 4,
     transport: 'websocket',
     renderer: 'chromium-webcodecs',

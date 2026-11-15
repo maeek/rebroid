@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { DisplayViewerProvider } from '../display-viewer-context'
 import { SurfacePanel } from './surface-panel'
-import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import type { ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
 const { refreshSurfaces } = vi.hoisted(() => ({ refreshSurfaces: vi.fn() }))
 vi.mock('../hooks/use-display-viewer-actions', () => ({ useDisplayViewerActions: () => ({ refreshSurfaces }) }))
@@ -14,7 +14,7 @@ vi.mock('./surface-chrome', () => ({ SurfaceChrome: () => null }))
 vi.mock('../../viewer-control-bar/viewer-control-bar', () => ({ ViewerControlBar: () => null }))
 vi.mock('@/hooks/use-desktop-viewport', () => ({ useDesktopViewport: () => true }))
 vi.mock('../../display-viewer-frame', () => ({
-  DisplayViewerFrame: ({ onStreamStatus }: { onStreamStatus: (status: DisplayViewerStreamStatus) => void }) => (
+  DisplayViewerFrame: ({ onStreamStatus }: { onStreamStatus: (status: ViewerStreamStatus) => void }) => (
     <button
       type='button'
       onClick={() =>

@@ -1,18 +1,9 @@
+import type { FrameAcknowledgementStatus } from "@rebroid/android-application-core/viewer-stream";
+
 type PresentationChannel = Pick<
   RTCDataChannel,
   "readyState" | "bufferedAmount" | "send"
 >;
-
-export type FrameAcknowledgementStatus =
-  | "callback-unavailable"
-  | "waiting-for-frame"
-  | "timestamp-unavailable"
-  | "waiting-for-quiet"
-  | "window-expired"
-  | "channel-unavailable"
-  | "channel-buffered"
-  | "send-failed"
-  | "sent";
 
 /** One acknowledgement per quiet picture, scoped to the current peer attempt. */
 export class WebrtcIdlePresentation {

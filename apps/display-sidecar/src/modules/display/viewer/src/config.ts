@@ -1,8 +1,5 @@
-import type {
-  ViewerConfig,
-  ViewerEffectiveProfile,
-  ViewerElements,
-} from "./types.js";
+import type { ViewerEffectiveProfile } from "@rebroid/android-application-core/viewer-stream";
+import type { ViewerConfig, ViewerElements } from "./types.js";
 
 export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";

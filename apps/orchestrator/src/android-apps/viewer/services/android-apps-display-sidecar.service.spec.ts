@@ -14,7 +14,10 @@ describe('AndroidAppsDisplaySidecarService viewer control', () => {
 
   beforeEach(() => {
     const config = new ConfigService({
-      app: { displaySidecar: { internalBaseUrl: 'http://sidecar.test' } },
+      app: {
+        displaySidecar: { internalBaseUrl: 'http://sidecar.test/' },
+        sharedSecret: 'test-sidecar-secret',
+      },
     });
     const network = {
       requireViewerTarget: jest
@@ -55,6 +58,11 @@ describe('AndroidAppsDisplaySidecarService viewer control', () => {
         actionUrl,
         expect.objectContaining({ method: 'POST', body: '{"command":"home"}' }),
       );
+      const headers = new Headers(fetchDisplay.mock.calls[1][1].headers);
+      expect(headers.get('x-rebroid-sidecar-secret')).toBe(
+        'test-sidecar-secret',
+      );
+      expect(headers.get('content-type')).toBe('application/json');
       expect(fetchDisplay).toHaveBeenCalledTimes(2);
     },
   );

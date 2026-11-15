@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import {
   isDisplayViewerStreamMetrics,
-  isDisplayViewerStreamStatus,
-  type DisplayViewerStreamMetrics,
-  type DisplayViewerStreamStatus
+  isDisplayViewerStreamStatus
 } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import {
   addViewerKeyboardRelay,
@@ -16,6 +14,7 @@ import {
   viewerControlResultMessageType
 } from '@/features/applications/viewer/player/viewer-keyboard-relay'
 import type { ViewerControlCommandEventDetail } from '@/features/applications/viewer/player/viewer-keyboard-relay'
+import type { ViewerStreamMetricsV4, ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
 const presentationMessageType = 'rebroid-viewer-presentation'
 const minimizeShortcutMessageType = 'rebroid-viewer-minimize-shortcut'
@@ -85,8 +84,8 @@ export const DisplayViewerFrame = ({
 }: {
   src: string
   keyboardCaptureEnabled: boolean
-  onStreamStatus?: (status: DisplayViewerStreamStatus) => void
-  onStreamMetrics?: (metrics: DisplayViewerStreamMetrics) => void
+  onStreamStatus?: (status: ViewerStreamStatus) => void
+  onStreamMetrics?: (metrics: ViewerStreamMetricsV4) => void
   surfaceId?: string
   isActive?: boolean
   compact?: boolean

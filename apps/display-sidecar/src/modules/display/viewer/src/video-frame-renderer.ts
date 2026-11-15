@@ -1,4 +1,4 @@
-import type { ViewerRendererBackend } from "./types.js";
+import type { ViewerRendererBackend } from "@rebroid/android-application-core/viewer-stream";
 
 export interface VideoFrameRenderer {
   readonly backend: ViewerRendererBackend;

@@ -1,6 +1,10 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
+import {
+  displaySidecarJsonHeaders,
+  displaySidecarUrl,
+} from '../../../common/display-sidecar-request';
 import { getErrorMessage } from '../../../common/error-message';
 import { AndroidApplication } from '../../android-application.entity';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
@@ -309,26 +313,10 @@ export class AndroidAppsDisplaySidecarService {
   }
 
   private async fetchDisplay(path: string, init: RequestInit = {}) {
-    const baseUrl = this.config
-      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
-      .replace(/\/$/, '');
-    const secret = this.config.get<string>('app.sharedSecret');
-    const hasBody =
-      init.body !== undefined &&
-      init.body !== null &&
-      `${init.body}`.length > 0;
-    const headers = new Headers(init.headers);
-    if (hasBody && !headers.has('content-type')) {
-      headers.set('content-type', 'application/json');
-    }
-    if (secret) {
-      headers.set('x-rebroid-sidecar-secret', secret);
-    }
-    const normalizedPath = path.startsWith('/rebroid/display')
-      ? path
-      : `/rebroid/display${path}`;
+    const url = displaySidecarUrl(this.config, `/rebroid/display${path}`);
+    const headers = displaySidecarJsonHeaders(this.config, init);
     const timeout = AbortSignal.timeout(20_000);
-    return fetch(`${baseUrl}${normalizedPath}`, {
+    return fetch(url, {
       ...init,
       headers,
       signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
