@@ -1,28 +1,30 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { DataGrid } from './data-grid'
-import { createDataGridLoadingProps } from './data-grid-loading-state'
 
 describe('DataGrid loading state', () => {
-  it('renders data-grid chrome with selectable rows and row menu by default', () => {
+  it('renders loading rows beneath the real column headers', () => {
     render(
       <DataGrid
-        {...createDataGridLoadingProps({
-          rows: 3,
-          minWidth: '40rem',
-          columns: [
-            { width: '12rem', headerWidth: 'w-20', kind: 'stacked' },
-            { width: '8rem', headerWidth: 'w-12', kind: 'badge' },
-            { width: '10rem', headerWidth: 'w-16', kind: 'action' }
-          ]
-        })}
+        columns={[
+          { id: 'name', header: 'Name', meta: { skeleton: { kind: 'stacked' } } },
+          { id: 'status', header: 'Status', meta: { skeleton: { kind: 'badge' } } }
+        ]}
+        data={[]}
+        totalItems={0}
+        pageIndex={0}
+        pageSize={20}
+        getRowId={() => ''}
+        loading={{ rowCount: 3 }}
       />
     )
 
+    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeVisible()
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toBeVisible()
     expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(3)
   })
 
-  it('passes the placeholder row index to feature-owned cell renderers', () => {
+  it('renders embedded grids and passes the placeholder row index to feature-owned cell renderers', () => {
     render(
       <DataGrid
         columns={[
@@ -40,22 +42,8 @@ describe('DataGrid loading state', () => {
         loading={{ rowCount: 2, selectable: false, rowMenu: false }}
       />
     )
+    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(2)
     expect(screen.getByText('Known row 1')).toBeVisible()
     expect(screen.getByText('Known row 2')).toBeVisible()
-  })
-
-  it('can render embedded grids without selection or row menus', () => {
-    render(
-      <DataGrid
-        {...createDataGridLoadingProps({
-          rows: 2,
-          selectable: false,
-          rowMenu: false,
-          columns: [{ width: '12rem', headerWidth: 'w-20' }]
-        })}
-      />
-    )
-
-    expect(screen.getAllByTestId('data-grid-skeleton-row')).toHaveLength(2)
   })
 })
