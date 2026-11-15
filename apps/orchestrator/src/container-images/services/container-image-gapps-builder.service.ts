@@ -33,13 +33,9 @@ import { ContainerImageGappsPresetService } from './container-image-gapps-preset
 import { ContainerImageGappsSourceService } from './container-image-gapps-source.service';
 import { ContainerImageGappsWorkerService } from './container-image-gapps-worker.service';
 
-const entrypoint = Buffer.from(`#!/system/bin/sh
-(
-  until [ "$(getprop sys.boot_completed)" = "1" ]; do sleep 2; done
-  pm disable-user --user 0 com.google.android.setupwizard >/dev/null 2>&1 || true
-) &
-exec "$@"
-`);
+type GappsImageStartup = { entrypoint: string[]; cmd: string[] };
+
+const setupWizardProperty = 'ro.setupwizard.mode=';
 
 @Injectable()
 export class ContainerImageGappsBuilderService implements OnModuleInit {
@@ -172,9 +168,25 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
       });
       const baseInspect = await this.images.inspectImage(job.baseImage);
       const resolvedBaseDigest = baseInspect.RepoDigests?.[0] ?? baseInspect.Id;
+      const baseEntrypoint = baseInspect.Config?.Entrypoint;
+      if (!Array.isArray(baseEntrypoint) || baseEntrypoint[0] !== '/init') {
+        throw new Error(
+          `Base image ${job.baseImage} must start ReDroid /init.`,
+        );
+      }
+      const startup: GappsImageStartup = {
+        entrypoint: [
+          ...baseEntrypoint.filter(
+            (arg) => !arg.startsWith(setupWizardProperty),
+          ),
+          `${setupWizardProperty}DISABLED`,
+        ],
+        cmd: baseInspect.Config?.Cmd ?? [],
+      };
       const pinnedDockerfile = this.dockerfile(
         resolvedBaseDigest,
         androidVersion,
+        startup,
       );
       await this.jobs.updateGappsDetails(job, {
         resolvedBaseDigest,
@@ -250,6 +262,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
         job.targetImage,
         androidVersion,
         inspect,
+        startup,
       );
       const current = await this.jobs.getJob(id);
       await this.jobs.updateGappsDetails(current, {
@@ -305,12 +318,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     workDirectory: string,
     signal: AbortSignal,
   ) {
-    const context = this.archive.createDirectoryTar(dockerfile, workDirectory, {
-      'rebroid-gapps-entrypoint': {
-        content: entrypoint,
-        mode: 0o755,
-      },
-    });
+    const context = this.archive.createDirectoryTar(dockerfile, workDirectory);
     await this.images.buildImage({
       context,
       targetImage,
@@ -328,9 +336,19 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     targetImage: string,
     androidVersion: SupportedGappsAndroidVersion,
     inspect: Awaited<ReturnType<DockerImageRuntimePort['inspectImage']>>,
+    startup: GappsImageStartup,
   ) {
     if (!inspect.RepoTags?.includes(targetImage)) {
       throw new Error(`Built image is missing expected tag ${targetImage}.`);
+    }
+    if (
+      JSON.stringify(inspect.Config?.Entrypoint) !==
+        JSON.stringify(startup.entrypoint) ||
+      JSON.stringify(inspect.Config?.Cmd ?? []) !== JSON.stringify(startup.cmd)
+    ) {
+      throw new Error(
+        `Built image ${targetImage} has an unexpected startup command.`,
+      );
     }
     const labels = inspect.Config?.Labels ?? {};
     const expected = requiredRuntimeImageLabels({
@@ -352,7 +370,11 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     };
   }
 
-  private dockerfile(baseImage: string, androidVersion: string) {
+  private dockerfile(
+    baseImage: string,
+    androidVersion: string,
+    startup?: GappsImageStartup,
+  ) {
     const metadata = {
       runtimeKind: 'redroid' as const,
       androidVersion,
@@ -360,13 +382,20 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
       gmsMode: 'gapps' as const,
       signatureSpoofing: 'not_applicable' as const,
     };
+    const instructions = [
+      `FROM ${baseImage}`,
+      'USER 0:0',
+      'COPY system/ /system/',
+    ];
+    if (startup) {
+      instructions.push(`ENTRYPOINT ${JSON.stringify(startup.entrypoint)}`);
+      // Setting ENTRYPOINT clears any CMD inherited from the base image.
+      if (startup.cmd.length > 0) {
+        instructions.push(`CMD ${JSON.stringify(startup.cmd)}`);
+      }
+    }
     return dockerfileWithRequiredLabels(
-      `FROM ${baseImage}
-USER 0:0
-COPY system/ /system/
-COPY rebroid-gapps-entrypoint /usr/local/bin/rebroid-gapps-entrypoint
-ENTRYPOINT ["/usr/local/bin/rebroid-gapps-entrypoint"]
-CMD ["/init"]`,
+      instructions.join('\n'),
       requiredRuntimeImageLabels(metadata),
     );
   }
