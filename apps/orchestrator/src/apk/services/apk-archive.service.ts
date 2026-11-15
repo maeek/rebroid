@@ -18,10 +18,7 @@ export class ApkArchiveService {
           if (!entry.fileName.endsWith('/')) {
             entries.push({
               name: entry.fileName,
-              compressionMethod: entry.compressionMethod,
-              compressedSize: entry.compressedSize,
               uncompressedSize: entry.uncompressedSize,
-              localHeaderOffset: entry.relativeOffsetOfLocalHeader,
             });
           }
           archive.readEntry();
