@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createAutomationYamlCompletionProvider } from './automation-yaml-completions'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
@@ -328,13 +328,16 @@ describe('automation YAML completions', () => {
 
 const complete = (value: string, lineNumber: number, column: number) => {
   const provider = createAutomationYamlCompletionProvider({ monaco, commands, schema: {} })
+  const model = new TextModelStub(value)
+  const readSource = vi.spyOn(model, 'getValue')
   const result = provider.provideCompletionItems(
-    new TextModelStub(value) as unknown as Monaco.editor.ITextModel,
+    model as unknown as Monaco.editor.ITextModel,
     { lineNumber, column } as Monaco.Position,
     {} as Monaco.languages.CompletionContext,
     {} as Monaco.CancellationToken
   )
 
+  expect(readSource).toHaveBeenCalledTimes(1)
   if (!result || 'then' in result) throw new Error('Expected synchronous completion results.')
   return result.suggestions
 }

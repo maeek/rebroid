@@ -1,4 +1,4 @@
-import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
+import { isMap, isScalar, type ParsedNode } from 'yaml'
 import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
 import { indentation } from './automation-yaml-language-utils'
 import type * as Monaco from 'monaco-editor'
@@ -33,23 +33,23 @@ export type AutomationYamlCompletionContext =
 
 export const automationYamlCompletionContext = (
   model: Monaco.editor.ITextModel,
-  position: Monaco.Position
+  position: Monaco.Position,
+  root: ParsedNode | null
 ): AutomationYamlCompletionContext => {
   const line = model.getLineContent(position.lineNumber)
   const linePrefix = line.slice(0, position.column - 1)
   const offset = offsetAt(model, position)
-  const document = parseDocument(model.getValue(), { prettyErrors: false })
 
   const usesContext = usesValueContext(model, position, linePrefix)
   if (usesContext) return usesContext
 
-  const listItemContext = stepListItemContext(model, position, linePrefix, document.contents, offset)
+  const listItemContext = stepListItemContext(model, position, linePrefix, root, offset)
   if (listItemContext) return listItemContext
 
-  const tagItemContext = tagListItemContext(model, position, linePrefix, document.contents, offset)
+  const tagItemContext = tagListItemContext(model, position, linePrefix, root, offset)
   if (tagItemContext) return tagItemContext
 
-  const withContext = withPropertyContext(model, position, document.contents, offset)
+  const withContext = withPropertyContext(model, position, root, offset)
   if (withContext) return withContext
 
   return { kind: 'schema' }

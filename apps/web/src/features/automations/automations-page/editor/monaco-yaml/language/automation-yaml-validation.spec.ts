@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { validateAutomationYamlModel } from './automation-yaml-validation'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
@@ -150,6 +150,28 @@ const commands: AutomationCommand[] = [
 ]
 
 describe('automation YAML validation markers', () => {
+  it('reads the source once while validating many command inputs', () => {
+    const steps = Array.from(
+      { length: 100 },
+      (_, index) => `    - id: step-${index}
+      uses: ai.run
+      with:
+        prompt: Inspect`
+    )
+    const model = new TextModelStub(`spec:
+  steps:
+${steps.join('\n')}`)
+    const readSource = vi.spyOn(model, 'getValue')
+    validateAutomationYamlModel({
+      monaco,
+      model: model as unknown as Monaco.editor.ITextModel,
+      commands,
+      schema: {}
+    })
+
+    expect(readSource).toHaveBeenCalledTimes(1)
+  })
+
   it('accepts nested android.swipeNormalized point fields', () => {
     const messages = validate(
       workflowYaml('android.swipeNormalized', [
