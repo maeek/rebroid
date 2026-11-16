@@ -88,7 +88,6 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   async update(id: string, dto: UpdateScheduledTaskDto) {
-    const task = await this.getEntity(id);
     if (
       dto.payload !== undefined &&
       dto.name === undefined &&
@@ -96,6 +95,7 @@ export class ScheduledTasksService implements OnModuleInit {
       dto.cronExpression === undefined &&
       dto.actionType === undefined
     ) {
+      const task = await this.getEntity(id);
       const payload = this.actions.normalizePayload(
         task.actionType,
         dto.payload ? { ...dto.payload } : null,
@@ -111,37 +111,35 @@ export class ScheduledTasksService implements OnModuleInit {
       }
       return this.toDto(current);
     }
-    if (dto.name !== undefined) {
-      task.name = dto.name.trim();
-    }
-    if (dto.enabled !== undefined) {
-      task.enabled = dto.enabled;
-    }
-    if (dto.cronExpression !== undefined) {
-      task.cronExpression = normalizeCronExpression(dto.cronExpression);
-    }
-    if (dto.actionType !== undefined) {
-      task.actionType = dto.actionType;
-    }
-    const includePayload =
-      dto.payload !== undefined || dto.actionType !== undefined;
-    if (includePayload) {
-      const payload = this.actions.normalizePayload(
-        task.actionType,
-        dto.payload !== undefined
-          ? dto.payload
-            ? { ...dto.payload }
-            : dto.payload
-          : this.runner.parsePayload(task),
-      );
-      task.payloadJson = payload ? JSON.stringify(payload) : null;
-    }
-    task.nextRunAt = task.enabled ? nextCronRun(task.cronExpression) : null;
+    const updated = await this.tasks.updateConfiguration(id, (current) => {
+      const cronExpression =
+        dto.cronExpression === undefined
+          ? current.cronExpression
+          : normalizeCronExpression(dto.cronExpression);
+      const actionType = dto.actionType ?? current.actionType;
+      const enabled = dto.enabled ?? current.enabled;
+      let payloadJson: string | null | undefined;
+      if (dto.payload !== undefined || dto.actionType !== undefined) {
+        const payload = this.actions.normalizePayload(
+          actionType,
+          dto.payload === undefined
+            ? this.runner.parsePayload(current)
+            : dto.payload && { ...dto.payload },
+        );
+        payloadJson = payload ? JSON.stringify(payload) : null;
+      }
 
-    const updated = await this.tasks.updateConfiguration(task, {
-      includePayload,
+      return {
+        name: dto.name?.trim(),
+        enabled: dto.enabled,
+        cronExpression:
+          dto.cronExpression === undefined ? undefined : cronExpression,
+        actionType: dto.actionType,
+        payloadJson,
+        nextRunAt: enabled ? nextCronRun(cronExpression) : null,
+      };
     });
-    if (!updated.affected) {
+    if (!updated?.affected) {
       throw new NotFoundException(`Scheduled task "${id}" was not found.`);
     }
     const saved = await this.getEntity(id);

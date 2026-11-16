@@ -6,6 +6,18 @@ import {
   type ScheduledTaskActionType,
 } from '../entities/scheduled-task.entity';
 
+type ScheduledTaskConfigurationPatch = Partial<
+  Pick<
+    ScheduledTask,
+    | 'name'
+    | 'enabled'
+    | 'cronExpression'
+    | 'actionType'
+    | 'payloadJson'
+    | 'nextRunAt'
+  >
+>;
+
 @Injectable()
 export class ScheduledTasksRepository {
   constructor(
@@ -22,16 +34,13 @@ export class ScheduledTasksRepository {
   }
 
   updateConfiguration(
-    task: ScheduledTask,
-    { includePayload = true }: { includePayload?: boolean } = {},
+    id: string,
+    prepare: (current: ScheduledTask) => ScheduledTaskConfigurationPatch,
   ) {
-    return this.tasks.update(task.id, {
-      name: task.name,
-      enabled: task.enabled,
-      cronExpression: task.cronExpression,
-      actionType: task.actionType,
-      ...(includePayload ? { payloadJson: task.payloadJson } : {}),
-      nextRunAt: task.nextRunAt,
+    return this.tasks.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(ScheduledTask);
+      const current = await repository.findOneBy({ id });
+      return current ? repository.update(id, prepare(current)) : null;
     });
   }
 
