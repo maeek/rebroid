@@ -68,6 +68,7 @@ const setup = (timeoutMs = 60_000) => {
   const request: DockerGappsWorkerRequest = {
     image: 'worker:test',
     jobId: 'job-1',
+    androidVersion: '16',
     sourceRepository: 'repo',
     sourceRevision: 'revision',
     signal: cancellation.signal,

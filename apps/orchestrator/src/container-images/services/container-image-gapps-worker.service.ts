@@ -21,7 +21,7 @@ import { ContainerImageBuildJobService } from './container-image-build-job.servi
 import { ContainerImageGappsCacheService } from './container-image-gapps-cache.service';
 
 const maxPackageBytes = 2 * 1024 ** 3;
-const workerImageVersion = '1';
+const workerImageVersion = '2';
 
 @Injectable()
 export class ContainerImageGappsWorkerService {
@@ -58,6 +58,7 @@ export class ContainerImageGappsWorkerService {
       await this.worker.run({
         image: this.config.getOrThrow<string>('app.gappsPatcher.image'),
         jobId,
+        androidVersion: preset.androidVersion,
         sourceRepository: preset.sourceRepository,
         sourceRevision: revision,
         signal,

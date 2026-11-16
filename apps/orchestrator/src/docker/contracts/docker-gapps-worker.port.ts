@@ -5,6 +5,7 @@ export const DOCKER_GAPPS_WORKER = Symbol('DOCKER_GAPPS_WORKER');
 export interface DockerGappsWorkerRequest {
   image: string;
   jobId: string;
+  androidVersion: string;
   sourceRepository: string;
   sourceRevision: string;
   signal: AbortSignal;

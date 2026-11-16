@@ -1,12 +1,12 @@
 import type { ConfigService } from '@nestjs/config';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { ApkPackageInspectionPort } from '../../apk/contracts/apk-package-inspection.port';
 import { ContainerImageGappsPackageService } from './container-image-gapps-package.service';
 
 describe('ContainerImageGappsPackageService', () => {
-  it('requires Play Services, Play Store, and privileged permissions', async () => {
+  it('requires Play Services, Play Store, Google Services Framework, and privileged permissions', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'rebroid-gapps-payload-'));
     try {
       const appDirectory = join(directory, 'system', 'product', 'priv-app');
@@ -24,11 +24,14 @@ describe('ContainerImageGappsPackageService', () => {
         join(permissionDirectory, 'privapp-permissions-google.xml'),
         '<permissions package="com.google.android.gms" />',
       );
+      const packageByFile: Record<string, string> = {
+        'GmsCore.apk': 'com.google.android.gms',
+        'Phonesky.apk': 'com.android.vending',
+        'GoogleServicesFramework.apk': 'com.google.android.gsf',
+      };
       const inspection = {
-        extractPackageNameFromFile: jest.fn(async (path: string) =>
-          path.endsWith('GmsCore.apk')
-            ? 'com.google.android.gms'
-            : 'com.android.vending',
+        extractPackageNameFromFile: jest.fn(
+          async (path: string) => packageByFile[basename(path)] ?? null,
         ),
       } satisfies ApkPackageInspectionPort;
       const service = new ContainerImageGappsPackageService(
@@ -36,8 +39,16 @@ describe('ContainerImageGappsPackageService', () => {
         inspection,
       );
 
+      await expect(service.validate(directory)).rejects.toThrow(
+        /missing com\.google\.android\.gsf/,
+      );
+      await writeFile(join(appDirectory, 'GoogleServicesFramework.apk'), 'gsf');
       await expect(service.validate(directory)).resolves.toMatchObject({
-        packageNames: ['com.google.android.gms', 'com.android.vending'],
+        packageNames: [
+          'com.google.android.gms',
+          'com.android.vending',
+          'com.google.android.gsf',
+        ],
         privilegedPermissionXml: 'privapp-permissions-google.xml',
       });
     } finally {
