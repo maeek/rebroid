@@ -26,7 +26,6 @@ export interface DockerImageRuntimePort {
     onProgress?: (message: string) => void,
   ): Promise<void>;
   buildImage(request: DockerImageBuildRequest): Promise<void>;
-  listImages(): Promise<Dockerode.ImageInfo[]>;
   removeImage(
     image: string,
     force?: boolean,

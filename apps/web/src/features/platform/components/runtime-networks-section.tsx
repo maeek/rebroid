@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
+import { parsePlatformInventorySort } from '@/shared/model/platform-inventory-sort'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -14,7 +15,6 @@ import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { useRuntimeNetworkActions } from '../hooks/use-runtime-network-actions'
 import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import { RuntimeNetworkFilters } from './runtime-grid-filter-controls'
-import { platformSortFromSearchParam } from './runtime-grid-query-utils'
 import {
   buildNetworksGridHref,
   canRemoveSelectedNetworks,
@@ -52,7 +52,7 @@ export const RuntimeNetworksSection = ({
     gridQuery,
     pageSize: networksPage.pageSize,
     getItemId: networkId,
-    parseSort: platformSortFromSearchParam,
+    parseSort: sort => parsePlatformInventorySort('networks', sort),
     buildHref: buildNetworksGridHref
   })
   const { pendingRemove, setPendingRemove, busyId, removeNetworks } = useRuntimeNetworkActions({
