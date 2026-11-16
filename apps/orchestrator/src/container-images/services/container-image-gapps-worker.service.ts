@@ -6,7 +6,6 @@ import { posix } from 'node:path';
 import type { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
-import { getErrorMessage } from '../../common/error-message';
 import {
   DOCKER_GAPPS_WORKER,
   type DockerGappsWorkerPort,
@@ -62,13 +61,7 @@ export class ContainerImageGappsWorkerService {
         sourceRepository: preset.sourceRepository,
         sourceRevision: revision,
         signal,
-        onLog: (message) => {
-          void this.jobs.appendLog(jobId, message).catch((error) => {
-            this.logger.warn(
-              `Could not save GApps worker log: ${getErrorMessage(error)}`,
-            );
-          });
-        },
+        onLog: (message) => this.jobs.recordProgress(jobId, message),
         consumeArchive: (source, signal) =>
           this.extractPackageFromDockerArchive(
             source,

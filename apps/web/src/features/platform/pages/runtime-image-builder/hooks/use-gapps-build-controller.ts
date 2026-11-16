@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { sendBff } from '@/lib/http/bff'
-import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { gappsBuildPhases } from '../model/gapps-build'
 import { useActiveImageBuild } from './use-active-image-build'
 import type {
@@ -14,7 +13,7 @@ import type {
 
 interface GappsBuildControllerInput {
   presetResponse: GappsBuildPresetsResponse
-  jobs: ContainerImageBuildJob[]
+  initialJob: ContainerImageBuildJob | null
   uploadedApkId?: string
 }
 
@@ -41,7 +40,7 @@ export interface GappsBuildController {
 
 export const useGappsBuildController = ({
   presetResponse,
-  jobs,
+  initialJob,
   uploadedApkId
 }: GappsBuildControllerInput): GappsBuildController => {
   const [androidVersion, setAndroidVersion] = useState<SupportedGappsAndroidVersion>('14')
@@ -57,9 +56,10 @@ export const useGappsBuildController = ({
     isStarting,
     isCancelling,
     startBuild: startActiveBuild,
-    cancelBuild
-  } = useActiveImageBuild(jobs.find(job => job.buildKind === 'redroid_gapps_patch') ?? null)
-  const [isSettingDefault, setIsSettingDefault] = useState(false)
+    cancelBuild,
+    isSettingDefault,
+    setAsDefault
+  } = useActiveImageBuild(initialJob)
   const [isClearing, setIsClearing] = useState(false)
   const clearing = useRef(false)
   const currentPhaseIndex = gappsBuildPhases.findIndex(phase => phase.id === (activeJob?.phase ?? 'queued'))
@@ -76,23 +76,6 @@ export const useGappsBuildController = ({
       () => sendBff<ContainerImageBuildJob>('/api/bff/platform/image-builds/gapps', { androidVersion, targetImage }),
       'Google Play image queued'
     )
-  }
-
-  const setAsDefault = async () => {
-    if (!activeJob || activeJob.status !== 'succeeded' || isSettingDefault) return
-    setIsSettingDefault(true)
-    try {
-      await saveOrchestratorUiSettings({ defaultContainerImage: activeJob.targetImage })
-      toast({ title: 'Default image updated', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not update default image',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSettingDefault(false)
-    }
   }
 
   const clearCache = async () => {
