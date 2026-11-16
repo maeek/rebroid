@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest'
 import {
-  isDisplayViewerStreamMetrics,
-  isDisplayViewerStreamStatus,
+  optionalViewerStreamMetricFields,
   viewerStreamMetricsMessageType,
   viewerStreamStatusMessageType
-} from './display-viewer-stream-status'
+} from '@rebroid/android-application-core/viewer-stream'
+import { describe, expect, it } from 'vitest'
+import { isDisplayViewerStreamMetrics, isDisplayViewerStreamStatus } from './display-viewer-stream-status'
 
 describe('display viewer stream status messages', () => {
   it('accepts a valid stream status message', () => {
@@ -121,19 +121,7 @@ describe('display viewer stream metrics messages', () => {
       collectedAt: 1000
     }
     expect(isDisplayViewerStreamMetrics(message)).toBe(true)
-    for (const field of [
-      'sourceCodecGeneration',
-      'videoResetGeneration',
-      'videoResetCompletedGeneration',
-      'videoResetElapsedMs',
-      'receivedFrames',
-      'decodedFrames',
-      'presentedFrames',
-      'receiverPacketsLost',
-      'receiverNackCount',
-      'receiverPliCount',
-      'frameAcknowledgementsSent'
-    ]) {
+    for (const field of optionalViewerStreamMetricFields) {
       expect(isDisplayViewerStreamMetrics({ ...message, [field]: Infinity })).toBe(false)
     }
     expect(isDisplayViewerStreamMetrics({ ...message, consumerAttemptId: 4 })).toBe(false)

@@ -77,7 +77,3 @@ func streamH264(
 		}
 	}
 }
-
-func rtpTimestampForPTS(originPTS uint64, originRTP uint32, pts uint64) uint32 {
-	return rtpTimestampForSharedPTS(originPTS, originRTP, pts, videoClockRate)
-}

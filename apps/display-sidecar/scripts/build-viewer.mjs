@@ -1,6 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  viewerStreamMetricsMessageType,
+  viewerStreamStatusMessageType,
+} from "@rebroid/android-application-core/viewer-stream";
 
 const root = process.cwd();
 const viewerOutput = join(root, "dist/modules/display/viewer");
@@ -21,4 +25,12 @@ await mkdir(viewerOutput, { recursive: true });
 await copyFile(
   join(root, "src/modules/display/viewer/index.html"),
   join(viewerOutput, "index.html"),
+);
+
+// The viewer loads native browser modules directly from the assets route.
+await writeFile(
+  join(viewerOutput, "assets", "stream-message-types.js"),
+  `export const viewerStreamMetricsMessageType = ${JSON.stringify(viewerStreamMetricsMessageType)};
+export const viewerStreamStatusMessageType = ${JSON.stringify(viewerStreamStatusMessageType)};
+`,
 );

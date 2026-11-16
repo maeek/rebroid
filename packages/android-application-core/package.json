@@ -19,7 +19,8 @@
       "default": "./dist/viewer-control.js"
     },
     "./viewer-stream": {
-      "types": "./dist/viewer-stream.d.ts"
+      "types": "./dist/viewer-stream.d.ts",
+      "default": "./dist/viewer-stream.js"
     }
   },
   "typesVersions": {

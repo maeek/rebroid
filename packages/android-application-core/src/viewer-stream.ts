@@ -70,97 +70,106 @@ export type ViewerRendererBackend =
   | "firefox-mse"
   | "webcodecs-webgl2-fallback";
 
-export type ViewerStreamMetricsV4 = {
+export const optionalViewerStreamMetricFields = [
+  "sourceFps",
+  "relayIngressFps",
+  "bridgeInputFps",
+  "rtpSentFps",
+  "receivedFps",
+  "receivedFrames",
+  "decodedFrames",
+  "presentedFrames",
+  "receiverPacketsLost",
+  "receiverNackCount",
+  "receiverPliCount",
+  "frameAcknowledgementsSent",
+  "decodedFps",
+  "drawnFps",
+  "presentedFps",
+  "wireBitrateMbps",
+  "sourceBitrateMbps",
+  "sourceFrameSizeP95Bytes",
+  "keyFrameSizeBytes",
+  "frameGapP50Ms",
+  "frameGapP95Ms",
+  "frameGapP99Ms",
+  "frameGapMaxMs",
+  "sourceInterFrameP95Ms",
+  "networkInterArrivalJitterP95Ms",
+  "decodeP95Ms",
+  "decodeToDrawP95Ms",
+  "liveEdgeAgeP95Ms",
+  "relayQueueDepthMs",
+  "relayP95Ms",
+  "relayP99Ms",
+  "rtpPacketizationP95Ms",
+  "rtpWriteP95Ms",
+  "rtpSendErrors",
+  "eventLoopUtilization",
+  "gcPauseP95Ms",
+  "decoderQueueDepth",
+  "pendingRenderFrames",
+  "audioQueueDepthMs",
+  "webrtcJitterBufferDepthMs",
+  "jitterBufferTargetMs",
+  "mseBufferedLeadMs",
+  "relayDroppedFrames",
+  "decodeDroppedFrames",
+  "presentationDroppedFrames",
+  "audioDroppedFrames",
+  "freezeCount",
+  "reconnectCount",
+  "resyncCount",
+  "videoResetCount",
+  "sourceRestartCount",
+  "roundTripTimeMs",
+  "packetsLost",
+  "nackCount",
+  "pliCount",
+  "retransmittedPackets",
+  "retransmittedBytes",
+  "packetsDiscardedOnSend",
+  "rtpSendDelayMs",
+  "mainThreadLongTaskCount",
+  "highestReceivedSequence",
+  "highestDecodedSequence",
+  "highestPresentedSequence",
+  "presentationSequenceLag",
+  "width",
+  "height",
+  "sourceCodecGeneration",
+  "videoResetGeneration",
+  "videoResetCompletedGeneration",
+  "videoResetElapsedMs",
+  "consumerGeneration",
+] as const;
+
+export type ViewerStreamMetricsV4 = Partial<
+  Record<(typeof optionalViewerStreamMetricFields)[number], number>
+> & {
   version: 4;
   transport: ViewerTransport;
   displaySizePresentation?: DisplaySizePresentation;
-  sourceFps?: number;
-  relayIngressFps?: number;
-  bridgeInputFps?: number;
-  rtpSentFps?: number;
-  receivedFps?: number;
-  receivedFrames?: number;
-  decodedFrames?: number;
-  presentedFrames?: number;
-  receiverPacketsLost?: number;
-  receiverNackCount?: number;
-  receiverPliCount?: number;
   frameAcknowledgement?: FrameAcknowledgementStatus;
-  frameAcknowledgementsSent?: number;
-  decodedFps?: number;
-  drawnFps?: number;
-  presentedFps?: number;
-  wireBitrateMbps?: number;
-  sourceBitrateMbps?: number;
-  sourceFrameSizeP95Bytes?: number;
-  keyFrameSizeBytes?: number;
-  frameGapP50Ms?: number;
-  frameGapP95Ms?: number;
-  frameGapP99Ms?: number;
-  frameGapMaxMs?: number;
-  sourceInterFrameP95Ms?: number;
-  networkInterArrivalJitterP95Ms?: number;
-  decodeP95Ms?: number;
-  decodeToDrawP95Ms?: number;
-  liveEdgeAgeP95Ms?: number;
-  relayQueueDepthMs?: number;
-  relayP95Ms?: number;
-  relayP99Ms?: number;
-  rtpPacketizationP95Ms?: number;
-  rtpWriteP95Ms?: number;
-  rtpSendErrors?: number;
-  eventLoopUtilization?: number;
-  gcPauseP95Ms?: number;
-  decoderQueueDepth?: number;
-  pendingRenderFrames?: number;
-  audioQueueDepthMs?: number;
-  webrtcJitterBufferDepthMs?: number;
-  jitterBufferTargetMs?: number;
-  mseBufferedLeadMs?: number;
-  relayDroppedFrames?: number;
-  decodeDroppedFrames?: number;
-  presentationDroppedFrames?: number;
-  audioDroppedFrames?: number;
-  freezeCount?: number;
-  reconnectCount?: number;
-  resyncCount?: number;
-  videoResetCount?: number;
-  sourceRestartCount?: number;
-  roundTripTimeMs?: number;
-  packetsLost?: number;
-  nackCount?: number;
-  pliCount?: number;
-  retransmittedPackets?: number;
-  retransmittedBytes?: number;
-  packetsDiscardedOnSend?: number;
-  rtpSendDelayMs?: number;
-  mainThreadLongTaskCount?: number;
-  highestReceivedSequence?: number;
-  highestDecodedSequence?: number;
-  highestPresentedSequence?: number;
-  presentationSequenceLag?: number;
-  width?: number;
-  height?: number;
   renderer: ViewerRendererBackend;
   decoderPreference?: "hardware" | "software" | "native";
   h264ProfileLevelId?: string;
   negotiatedH264ProfileLevelId?: string;
   sourceAttemptId?: string;
   consumerAttemptId?: string;
-  sourceCodecGeneration?: number;
-  videoResetGeneration?: number;
-  videoResetCompletedGeneration?: number;
-  videoResetElapsedMs?: number;
-
-  consumerGeneration?: number;
   effectiveProfile: ViewerEffectiveProfile;
   collectedAt: number;
 };
 
+export const viewerStreamStatusMessageType = "rebroid-viewer-stream-status";
+
 export type ViewerStreamStatusMessage = ViewerStreamStatus & {
-  type: "rebroid-viewer-stream-status";
+  type: typeof viewerStreamStatusMessageType;
 };
 
+export const viewerStreamMetricsMessageType =
+  "rebroid-viewer-stream-metrics-v4";
+
 export type ViewerStreamMetricsMessage = ViewerStreamMetricsV4 & {
-  type: "rebroid-viewer-stream-metrics-v4";
+  type: typeof viewerStreamMetricsMessageType;
 };
