@@ -1,10 +1,8 @@
 import { strict as assert } from 'node:assert';
 import {
   correctScreenStateHypothesis,
-  isSettingsOpenClaimConfirmed,
   rankObservationCandidates,
   reconcileScreenStateHypothesis,
-  summarizeObservationCandidates,
   summarizeVisualAffordances,
 } from './screen-state-policy';
 
@@ -110,7 +108,7 @@ describe('automation AI screen-state policy', () => {
     assert.match(reconciled.correctionReason ?? '', /App-drawer/);
   });
 
-  it('ranks and summarizes actionable visual candidates', () => {
+  it('ranks actionable visual candidates', () => {
     const candidates = rankObservationCandidates({
       goal: 'Open Android system Settings',
       candidates: [
@@ -134,34 +132,6 @@ describe('automation AI screen-state policy', () => {
     });
 
     assert.equal(candidates[0]?.id, 'gear');
-    assert.match(
-      summarizeObservationCandidates({
-        candidates,
-        goal: 'Open Android system Settings',
-      }),
-      /#1 Settings access gear/,
-    );
-  });
-
-  it('does not treat quick settings as confirmed Settings app completion', () => {
-    assert.equal(
-      isSettingsOpenClaimConfirmed({
-        screenKind: 'quick_settings',
-        confirmedFacts: [],
-        visibleText: ['Internet', 'Bluetooth'],
-      }),
-      false,
-    );
-    assert.equal(
-      isSettingsOpenClaimConfirmed({
-        screenKind: 'settings_app',
-        confirmedFacts: [
-          'android.openSystemSettings opened the Android Settings main screen.',
-        ],
-        visibleText: [],
-      }),
-      true,
-    );
   });
 
   it('summarizes visual affordances for planner recovery', () => {

@@ -289,38 +289,6 @@ export const reconcileScreenStateHypothesis = ({
   };
 };
 
-export const isSettingsOpenClaimConfirmed = ({
-  screenKind,
-  confirmedFacts,
-  visibleText,
-}: {
-  screenKind: AiScreenKind | null;
-  confirmedFacts: string[];
-  visibleText?: string[];
-}) => {
-  if (screenKind === 'quick_settings' || screenKind === 'notification_shade') {
-    return false;
-  }
-  if (
-    confirmedFacts.some((fact) =>
-      /android\.(openSystemSettings|launchPackage).*opened|opened the android settings|launched com\.android\.settings/i.test(
-        fact,
-      ),
-    )
-  ) {
-    return true;
-  }
-  const text = (visibleText ?? []).join('\n').toLowerCase();
-  return (
-    screenKind === 'settings_app' &&
-    (text.includes('settings') ||
-      text.includes('network') ||
-      text.includes('display') ||
-      text.includes('apps') ||
-      text.includes('system'))
-  );
-};
-
 export const rankObservationCandidates = ({
   candidates,
   goal,
@@ -351,36 +319,6 @@ export const rankObservationCandidates = ({
       id: candidate.id || `candidate-${index + 1}`,
     }))
     .slice(0, maxCandidates);
-};
-
-export const summarizeObservationCandidates = ({
-  candidates,
-  goal,
-  maxCandidates = 10,
-}: {
-  candidates: AiObservationCandidate[];
-  goal?: string;
-  maxCandidates?: number;
-}) => {
-  const ranked = rankObservationCandidates({
-    candidates,
-    goal,
-    maxCandidates,
-  });
-  if (ranked.length === 0) return '';
-  return [
-    'Parsed clickable candidates use numbered IDs. Prefer a candidate ID/center over guessed raw coordinates when it directly advances the goal.',
-    ...ranked.map((candidate, index) => {
-      const bounds = candidate.bounds
-        ? ` center x=${center(candidate.bounds.left, candidate.bounds.width)}, y=${center(candidate.bounds.top, candidate.bounds.height)}`
-        : '';
-      const evidence =
-        candidate.evidence && candidate.evidence.length > 0
-          ? ` evidence: ${candidate.evidence.slice(0, 2).join('; ')}`
-          : '';
-      return `#${index + 1} ${candidate.label}${candidate.role ? ` (${candidate.role})` : ''}${bounds} confidence ${Math.round(candidate.confidence * 100)}% source ${candidate.source}.${evidence}`;
-    }),
-  ].join('\n');
 };
 
 export const summarizeVisualAffordances = ({
