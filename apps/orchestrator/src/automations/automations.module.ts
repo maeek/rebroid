@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AndroidAppsModule } from '../android-apps/android-apps.module';
+import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 import { AutomationAiModule } from './ai/automation-ai.module';
 import { AutomationCommandsModule } from './commands/automation-commands.module';
 import { AutomationsController } from './controllers/automations.controller';
@@ -17,6 +18,7 @@ import { AutomationsService } from './services/automations.service';
 @Module({
   imports: [
     AndroidAppsModule,
+    FeatureFlagsModule,
     AutomationsPersistenceModule,
     AutomationCommandsModule,
     AutomationEventsModule,

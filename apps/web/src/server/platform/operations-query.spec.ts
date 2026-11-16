@@ -4,10 +4,8 @@ import { listApplicationsAction } from '@/server/orchestrator/applications/actio
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { loadFeatureFlags } from '@/server/orchestrator/features'
-import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { getPlatformOperations } from './operations-query'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { AutomationRun } from '@/shared/contracts/automation'
 
 vi.mock('@/server/auth/authorization', () => ({ requireAdmin: vi.fn() }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
@@ -16,9 +14,10 @@ vi.mock('@/server/orchestrator/applications/actions/queries/listing-actions', ()
   listApplicationsAction: vi.fn()
 }))
 vi.mock('@/server/orchestrator/automations/client', () => ({
-  orchestratorAutomationsClient: { listActiveRuns: vi.fn(), listRunnableOptions: vi.fn() }
+  orchestratorAutomationsClient: { listActiveRuns: vi.fn() }
 }))
 const user = { ownerUserId: 'owner', permissions: {} } as Awaited<ReturnType<typeof getCurrentUserContext>>
+const runFields = { targetApplicationId: 'app', createdAt: '2026-01-01T00:00:00.000Z' }
 beforeEach(() => {
   vi.mocked(requireAdmin).mockResolvedValue(undefined as never)
   vi.mocked(getCurrentUserContext).mockResolvedValue(user)
@@ -66,13 +65,9 @@ describe('getPlatformOperations', () => {
     })
     vi.mocked(listApplicationsAction).mockResolvedValue([])
     vi.mocked(orchestratorAutomationsClient.listActiveRuns).mockResolvedValue([
-      { id: 'queued', automationId: 'workflow', status: 'queued' },
-      { id: 'running', automationId: 'workflow', status: 'running' },
-      { automationId: 'workflow', status: 'success' },
-      { automationId: 'ephemeral-ai-run', status: 'running' }
-    ] as AutomationRun[])
-    vi.mocked(orchestratorAutomationsClient.listRunnableOptions).mockResolvedValue([
-      { id: 'workflow', name: 'Inventory' }
+      { ...runFields, id: 'queued', automationId: 'workflow', status: 'queued', workflowName: 'Inventory' },
+      { ...runFields, id: 'running', automationId: 'workflow', status: 'running', workflowName: 'Inventory' },
+      { ...runFields, id: 'ai-run', automationId: 'ephemeral-ai-run', status: 'running', workflowName: null }
     ])
 
     await expect(getPlatformOperations()).resolves.toMatchObject({
@@ -85,7 +80,6 @@ describe('getPlatformOperations', () => {
       ]
     })
     expect(orchestratorAutomationsClient.listActiveRuns).toHaveBeenCalledWith('owner')
-    expect(orchestratorAutomationsClient.listRunnableOptions).toHaveBeenCalledWith('owner')
   })
 
   it('keeps app counts available when workflows are disabled', async () => {
@@ -95,17 +89,15 @@ describe('getPlatformOperations', () => {
     })
     vi.mocked(listApplicationsAction).mockResolvedValue([])
     vi.mocked(orchestratorAutomationsClient.listActiveRuns).mockResolvedValue([
-      { automationId: 'ephemeral-ai-run', status: 'running' },
-      { id: 'queued', automationId: 'workflow', status: 'queued' }
-    ] as AutomationRun[])
-    vi.mocked(orchestratorAutomationsClient.listRunnableOptions).mockRejectedValue(
-      new OrchestratorRequestError('Workflows are disabled', 409, 'request', { code: 'feature_disabled' })
-    )
+      { ...runFields, id: 'ai-run', automationId: 'ephemeral-ai-run', status: 'running', workflowName: null },
+      { ...runFields, id: 'queued', automationId: 'workflow', status: 'queued', workflowName: null }
+    ])
 
     await expect(getPlatformOperations()).resolves.toMatchObject({
       failedCount: 0,
       pendingCount: 0,
       activeRunCount: 1,
+      activeRuns: [{ name: 'Workflow run' }],
       workflowCatalogAvailable: false
     })
   })

@@ -5,7 +5,6 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
   Query,
   Req,
@@ -27,11 +26,11 @@ import {
 import { SettingsService } from '../settings/settings.service';
 import {
   CreateContainerImageRecipeDto,
+  LatestContainerImageBuildDto,
+  LatestContainerImageBuildQueryDto,
   StartContainerImageBuildDto,
-  UpdateContainerImageRecipeDto,
 } from './dto/container-image-build.dto';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
-import { RemoveContainerImageDto } from './dto/remove-container-image.dto';
 import { UploadContainerImageContextFileDto } from './dto/upload-container-image-context-file.dto';
 import { ContainerImageBuildContextFile } from './entities/container-image-build-context-file.entity';
 import { ContainerImageBuildJob } from './entities/container-image-build-job.entity';
@@ -62,13 +61,6 @@ export class ContainerImagesController {
     private readonly gappsBuilder: ContainerImageGappsBuilderService,
     private readonly gappsPresets: ContainerImageGappsPresetService,
   ) {}
-
-  @Get()
-  @ApiOperation({ summary: 'List images available in the container engine.' })
-  @ApiOkResponse({ description: 'Container engine image summaries.' })
-  list() {
-    return this.images.listImages();
-  }
 
   @Post('pull')
   @ApiOperation({ summary: 'Pull or update an image.' })
@@ -145,32 +137,6 @@ export class ContainerImagesController {
     return this.recipes.create(dto);
   }
 
-  @Get('recipes/:id')
-  @RequiresFeature('feature.image-builder')
-  @ApiOperation({ summary: 'Read an image build recipe.' })
-  @ApiOkResponse({ type: ContainerImageBuildRecipe })
-  getRecipe(@Param('id') id: string) {
-    return this.recipes.get(id);
-  }
-
-  @Patch('recipes/:id')
-  @RequiresFeature('feature.image-builder')
-  @ApiOperation({ summary: 'Update an image build recipe.' })
-  @ApiOkResponse({ type: ContainerImageBuildRecipe })
-  updateRecipe(
-    @Param('id') id: string,
-    @Body() dto: UpdateContainerImageRecipeDto,
-  ) {
-    return this.recipes.update(id, dto);
-  }
-
-  @Delete('recipes/:id')
-  @RequiresFeature('feature.image-builder')
-  @ApiOperation({ summary: 'Remove an image build recipe.' })
-  removeRecipe(@Param('id') id: string) {
-    return this.recipes.remove(id);
-  }
-
   @Get('builds')
   @ApiOperation({ summary: 'List recent image build jobs.' })
   @ApiOkResponse({ type: ContainerImageBuildJob, isArray: true })
@@ -210,6 +176,15 @@ export class ContainerImagesController {
     return this.builder.startBuild(dto);
   }
 
+  @Get('builds/latest')
+  @ApiOperation({ summary: 'Read the latest image build of one kind.' })
+  @ApiOkResponse({ type: LatestContainerImageBuildDto })
+  async getLatestBuild(
+    @Query() query: LatestContainerImageBuildQueryDto,
+  ): Promise<LatestContainerImageBuildDto> {
+    return { job: await this.builder.findLatestJob(query.buildKind) };
+  }
+
   @Get('builds/:id')
   @ApiOperation({ summary: 'Read an image build job.' })
   @ApiOkResponse({ type: ContainerImageBuildJob })
@@ -228,22 +203,5 @@ export class ContainerImagesController {
           ? this.gappsBuilder.cancelBuild(id)
           : this.builder.cancelBuild(id),
       );
-  }
-
-  @Delete(':image')
-  @ApiOperation({ summary: 'Remove an image by name or id.' })
-  @ApiParam({
-    name: 'image',
-    description:
-      'URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest',
-  })
-  remove(
-    @Param('image') image: string,
-    @Query() query: RemoveContainerImageDto,
-  ) {
-    return this.images.removeImage(
-      decodeURIComponent(image),
-      query.force ?? false,
-    );
   }
 }

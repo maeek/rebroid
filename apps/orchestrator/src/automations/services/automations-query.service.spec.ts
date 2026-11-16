@@ -234,8 +234,11 @@ describe('workflow run summaries', () => {
     const triggers = new AutomationTriggersRepository(
       db.getRepository(AutomationTrigger),
     );
+    const automations = new AutomationsRepository(db.getRepository(Automation));
+    const listDefinitions = jest.spyOn(automations, 'listByOwner');
+    const listNames = jest.spyOn(automations, 'listNamesByOwner');
     const service = new AutomationTriggersService(
-      new AutomationsRepository(db.getRepository(Automation)),
+      automations,
       triggers,
       {} as never,
       new AutomationsDtoMapper(new AutomationDefinitionService({} as never)),
@@ -254,6 +257,16 @@ describe('workflow run summaries', () => {
         triggerConfigJson: '{}',
       }),
     );
+    await expect(
+      service.listGrid({ ownerUserId: 'owner', q: '  ' }),
+    ).resolves.toMatchObject({ total: 1 });
+    expect(listNames).not.toHaveBeenCalled();
+    await expect(
+      service.listGrid({ ownerUserId: 'owner', q: 'Check inventory' }),
+    ).resolves.toMatchObject({ total: 1 });
+    expect(listNames).toHaveBeenCalledWith('owner');
+    expect(listDefinitions).not.toHaveBeenCalled();
+
     const enqueue = (createdAt: string) =>
       runs.save(
         runs.create({

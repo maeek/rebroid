@@ -1,6 +1,56 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/api/v1/platform/docker/operation-limits": {
+      "get": {
+        "operationId": "DockerOperationSettingsController_getLimits",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "docker"
+        ]
+      },
+      "put": {
+        "operationId": "DockerOperationSettingsController_updateLimits",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockerOperationLimitsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "docker"
+        ]
+      }
+    },
     "/api/v1/metrics": {
       "get": {
         "operationId": "MetricsController_read",
@@ -33,221 +83,6 @@
         },
         "tags": [
           "Metrics"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/health": {
-      "get": {
-        "operationId": "DockerSidecarController_health",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServiceHealthDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Read display sidecar health.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/logs": {
-      "get": {
-        "operationId": "DockerSidecarController_logs",
-        "parameters": [
-          {
-            "name": "expanded",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerSidecarLogTailDto"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "The container log tail exceeds the read limit."
-          }
-        },
-        "summary": "Read a bounded tail of the display sidecar container logs.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/repair": {
-      "post": {
-        "operationId": "DockerSidecarController_repair",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServiceHealthDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Restart or create the display sidecar.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/sessions": {
-      "get": {
-        "operationId": "DockerSidecarController_listSessions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/DockerSidecarAdminSessionDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "summary": "List display sidecar sessions for administration.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/sessions/{id}": {
-      "delete": {
-        "operationId": "DockerSidecarController_releaseSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerSidecarAdminSessionDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Release one display sidecar session.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/features": {
-      "get": {
-        "operationId": "FeatureFlagsController_getManifest",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "features"
-        ]
-      },
-      "patch": {
-        "operationId": "FeatureFlagsController_update",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateFeatureFlagsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "features"
-        ]
-      }
-    },
-    "/api/v1/features/reset": {
-      "post": {
-        "operationId": "FeatureFlagsController_reset",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResetFeatureFlagsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "features"
         ]
       }
     },
@@ -312,6 +147,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrchestratorSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/android-rendering": {
+      "get": {
+        "operationId": "SettingsController_readAndroidRendering",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "SettingsController_updateAndroidRendering",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
                 }
               }
             }
@@ -762,6 +647,253 @@
         },
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/health": {
+      "get": {
+        "operationId": "DockerSidecarController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read display sidecar health.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/logs": {
+      "get": {
+        "operationId": "DockerSidecarController_logs",
+        "parameters": [
+          {
+            "name": "expanded",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerSidecarLogTailDto"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The container log tail exceeds the read limit."
+          }
+        },
+        "summary": "Read a bounded tail of the display sidecar container logs.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/repair": {
+      "post": {
+        "operationId": "DockerSidecarController_repair",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceHealthDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restart or create the display sidecar.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/sessions": {
+      "get": {
+        "operationId": "DockerSidecarController_listSessions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DockerSidecarAdminSessionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List display sidecar sessions for administration.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/sessions/revoke": {
+      "post": {
+        "operationId": "DockerSidecarController_revokeSessions",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeDockerSidecarSessionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerSidecarSessionRevocationDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Revoke display sessions for the supplied accounts.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/platform/display-sidecar/sessions/{id}": {
+      "delete": {
+        "operationId": "DockerSidecarController_releaseSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockerSidecarAdminSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Release one display sidecar session.",
+        "tags": [
+          "platform-display-sidecar"
+        ]
+      }
+    },
+    "/api/v1/features": {
+      "get": {
+        "operationId": "FeatureFlagsController_getManifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      },
+      "patch": {
+        "operationId": "FeatureFlagsController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
+        ]
+      }
+    },
+    "/api/v1/features/reset": {
+      "post": {
+        "operationId": "FeatureFlagsController_reset",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetFeatureFlagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeatureFlagManifestDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "features"
         ]
       }
     },
@@ -1361,6 +1493,36 @@
           }
         },
         "summary": "Refresh one application state from Docker.",
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/viewer-runtime": {
+      "get": {
+        "operationId": "AndroidAppsController_getViewerRuntime",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidApplicationViewerRuntimeDto"
+                }
+              }
+            }
+          }
+        },
         "tags": [
           "apps"
         ]
@@ -2810,49 +2972,6 @@
         ]
       }
     },
-    "/api/v1/apps/{id}/runtime/snapshot": {
-      "get": {
-        "operationId": "AndroidAppsRuntimeSnapshotController_read",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "x-rebroid-snapshot-owner",
-            "in": "header",
-            "description": "Authenticated account ID supplied by the trusted web service.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplicationRuntimeSnapshotDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "The application snapshot is unavailable."
-          }
-        },
-        "summary": "Read the latest thumbnail for an owned running application.",
-        "tags": [
-          "app-runtime"
-        ]
-      }
-    },
     "/api/v1/apps/{id}/runtime/logs/container": {
       "get": {
         "operationId": "AndroidAppsRuntimeController_containerLogs",
@@ -2965,6 +3084,49 @@
           }
         },
         "summary": "Read recent Android logcat output for a running application.",
+        "tags": [
+          "app-runtime"
+        ]
+      }
+    },
+    "/api/v1/apps/{id}/runtime/snapshot": {
+      "get": {
+        "operationId": "AndroidAppsRuntimeSnapshotController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-snapshot-owner",
+            "in": "header",
+            "description": "Authenticated account ID supplied by the trusted web service.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRuntimeSnapshotDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The application snapshot is unavailable."
+          }
+        },
+        "summary": "Read the latest thumbnail for an owned running application.",
         "tags": [
           "app-runtime"
         ]
@@ -3187,6 +3349,55 @@
         ]
       }
     },
+    "/api/v1/automations/ai/run-history": {
+      "get": {
+        "operationId": "AutomationsController_listAdHocAiRunHistory",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiRunHistoryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
     "/api/v1/automations": {
       "get": {
         "operationId": "AutomationsController_list",
@@ -3366,9 +3577,9 @@
         ]
       }
     },
-    "/api/v1/automations/runnable": {
+    "/api/v1/automations/options": {
       "get": {
-        "operationId": "AutomationsController_listRunnable",
+        "operationId": "AutomationsController_listOptions",
         "parameters": [
           {
             "name": "ownerUserId",
@@ -3387,7 +3598,40 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AutomationDto"
+                    "$ref": "#/components/schemas/AutomationOptionDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runnable/options": {
+      "get": {
+        "operationId": "AutomationsController_listRunnableOptions",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunnableAutomationOptionDto"
                   }
                 }
               }
@@ -3421,8 +3665,123 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/AutomationRunDto"
+                    "$ref": "#/components/schemas/ActiveAutomationRunDto"
                   }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/history": {
+      "get": {
+        "operationId": "AutomationsController_listApplicationWorkflowRuns",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 100000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationWorkflowRunPageDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/history/{runId}": {
+      "get": {
+        "operationId": "AutomationsController_getApplicationWorkflowRun",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "targetApplicationId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationWorkflowRunDto"
                 }
               }
             }
@@ -3509,9 +3868,50 @@
         ]
       }
     },
-    "/api/v1/automations/runs/{runId}/events": {
+    "/api/v1/automations/runs/{runId}/events/conversation": {
       "get": {
-        "operationId": "AutomationsController_listRunEvents",
+        "operationId": "AutomationsController_listRunConversationEvents",
+        "parameters": [
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunEventDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/api/v1/automations/runs/{runId}/events/page": {
+      "get": {
+        "operationId": "AutomationsController_listRunEventPage",
         "parameters": [
           {
             "name": "runId",
@@ -3531,20 +3931,9 @@
           },
           {
             "name": "after",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "view",
             "required": false,
             "in": "query",
             "schema": {
-              "enum": [
-                "conversation"
-              ],
               "type": "string"
             }
           }
@@ -3555,10 +3944,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AutomationRunEventDto"
-                  }
+                  "$ref": "#/components/schemas/AutomationRunEventPageDto"
                 }
               }
             }
@@ -4161,21 +4547,6 @@
         ]
       }
     },
-    "/api/v1/platform/container-images": {
-      "get": {
-        "operationId": "ContainerImagesController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Container engine image summaries."
-          }
-        },
-        "summary": "List images available in the container engine.",
-        "tags": [
-          "platform-container-images"
-        ]
-      }
-    },
     "/api/v1/platform/container-images/pull": {
       "post": {
         "operationId": "ContainerImagesController_pull",
@@ -4364,98 +4735,6 @@
         ]
       }
     },
-    "/api/v1/platform/container-images/recipes/{id}": {
-      "get": {
-        "operationId": "ContainerImagesController_getRecipe",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContainerImageBuildRecipe"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Read an image build recipe.",
-        "tags": [
-          "platform-container-images"
-        ]
-      },
-      "patch": {
-        "operationId": "ContainerImagesController_updateRecipe",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateContainerImageRecipeDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ContainerImageBuildRecipe"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Update an image build recipe.",
-        "tags": [
-          "platform-container-images"
-        ]
-      },
-      "delete": {
-        "operationId": "ContainerImagesController_removeRecipe",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Remove an image build recipe.",
-        "tags": [
-          "platform-container-images"
-        ]
-      }
-    },
     "/api/v1/platform/container-images/builds": {
       "get": {
         "operationId": "ContainerImagesController_listBuilds",
@@ -4595,6 +4874,41 @@
         ]
       }
     },
+    "/api/v1/platform/container-images/builds/latest": {
+      "get": {
+        "operationId": "ContainerImagesController_getLatestBuild",
+        "parameters": [
+          {
+            "name": "buildKind",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "dockerfile_overlay",
+                "redroid_gapps_patch"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LatestContainerImageBuildDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read the latest image build of one kind.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
     "/api/v1/platform/container-images/builds/{id}": {
       "get": {
         "operationId": "ContainerImagesController_getBuild",
@@ -4652,40 +4966,6 @@
           }
         },
         "summary": "Cancel an image build job.",
-        "tags": [
-          "platform-container-images"
-        ]
-      }
-    },
-    "/api/v1/platform/container-images/{image}": {
-      "delete": {
-        "operationId": "ContainerImagesController_remove",
-        "parameters": [
-          {
-            "name": "image",
-            "required": true,
-            "in": "path",
-            "description": "URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "force",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "default": false,
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "summary": "Remove an image by name or id.",
         "tags": [
           "platform-container-images"
         ]
@@ -5539,444 +5819,6 @@
           "health"
         ]
       }
-    },
-    "/api/v1/platform/docker/operation-limits": {
-      "get": {
-        "operationId": "DockerOperationSettingsController_getLimits",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "docker"
-        ]
-      },
-      "put": {
-        "operationId": "DockerOperationSettingsController_updateLimits",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DockerOperationLimitsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerOperationLimitsDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "docker"
-        ]
-      }
-    },
-    "/api/v1/automations/ai/run-history": {
-      "get": {
-        "operationId": "AutomationsController_listAdHocAiRunHistory",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "targetApplicationId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AutomationAiRunHistoryDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
-    "/api/v1/automations/runs/history": {
-      "get": {
-        "operationId": "AutomationsController_listApplicationWorkflowRuns",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "example": "user_123",
-              "type": "string"
-            }
-          },
-          {
-            "name": "targetApplicationId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 0,
-              "maximum": 100000,
-              "type": "number"
-            }
-          },
-          {
-            "name": "pageSize",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "maximum": 100,
-              "type": "number"
-            }
-          },
-          {
-            "name": "q",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "maxLength": 200,
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplicationWorkflowRunPageDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
-    "/api/v1/automations/runs/history/{runId}": {
-      "get": {
-        "operationId": "AutomationsController_getApplicationWorkflowRun",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "example": "user_123",
-              "type": "string"
-            }
-          },
-          {
-            "name": "targetApplicationId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "runId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplicationWorkflowRunDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
-    "/api/v1/settings/android-rendering": {
-      "get": {
-        "operationId": "SettingsController_readAndroidRendering",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ]
-      },
-      "put": {
-        "operationId": "SettingsController_updateAndroidRendering",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AndroidRenderingSettingsDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "settings"
-        ]
-      }
-    },
-    "/api/v1/platform/display-sidecar/sessions/revoke": {
-      "post": {
-        "operationId": "DockerSidecarController_revokeSessions",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RevokeDockerSidecarSessionsDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DockerSidecarSessionRevocationDto"
-                }
-              }
-            }
-          }
-        },
-        "summary": "Revoke display sessions for the supplied accounts.",
-        "tags": [
-          "platform-display-sidecar"
-        ]
-      }
-    },
-    "/api/v1/apps/{id}/viewer-runtime": {
-      "get": {
-        "operationId": "AndroidAppsController_getViewerRuntime",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AndroidApplicationViewerRuntimeDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apps"
-        ]
-      }
-    },
-    "/api/v1/automations/runs/{runId}/events/page": {
-      "get": {
-        "operationId": "AutomationsController_listRunEventPage",
-        "parameters": [
-          {
-            "name": "runId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "after",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AutomationRunEventPageDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
-    "/api/v1/automations/options": {
-      "get": {
-        "operationId": "AutomationsController_listOptions",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AutomationOptionDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
-    },
-    "/api/v1/automations/runnable/options": {
-      "get": {
-        "operationId": "AutomationsController_listRunnableOptions",
-        "parameters": [
-          {
-            "name": "ownerUserId",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RunnableAutomationOptionDto"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "automations"
-        ]
-      }
     }
   },
   "info": {
@@ -6050,6 +5892,37 @@
       }
     },
     "schemas": {
+      "DockerOperationLimitsDto": {
+        "type": "object",
+        "properties": {
+          "maxConcurrentReads": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 64
+          },
+          "maxConcurrentLongOperations": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "slowRequestWarningMs": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 300000
+          },
+          "longOperationTimeoutMs": {
+            "type": "number",
+            "minimum": 1000,
+            "maximum": 3600000
+          }
+        },
+        "required": [
+          "maxConcurrentReads",
+          "maxConcurrentLongOperations",
+          "slowRequestWarningMs",
+          "longOperationTimeoutMs"
+        ]
+      },
       "DockerMetricsLimitsDto": {
         "type": "object",
         "properties": {
@@ -6267,323 +6140,25 @@
           "events"
         ]
       },
-      "ServiceHealthDto": {
+      "AndroidRenderingSettingsDto": {
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean"
-          },
-          "status": {
+          "mode": {
             "type": "string",
             "enum": [
-              "healthy",
-              "unhealthy",
-              "offline",
-              "disabled"
+              "software",
+              "host"
             ]
           },
-          "message": {
-            "type": "string"
-          },
-          "details": {
-            "type": "object",
-            "additionalProperties": true
+          "renderDevice": {
+            "type": "string",
+            "nullable": true,
+            "example": "/dev/dri/renderD128"
           }
         },
         "required": [
-          "ok",
-          "status",
-          "message"
-        ]
-      },
-      "DockerSidecarLogTailDto": {
-        "type": "object",
-        "properties": {
-          "output": {
-            "type": "string"
-          },
-          "lineLimit": {
-            "type": "number"
-          },
-          "truncated": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "output",
-          "lineLimit",
-          "truncated"
-        ]
-      },
-      "DockerSidecarAdminSessionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "applicationId": {
-            "type": "string",
-            "nullable": true
-          },
-          "ownerUserId": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "created",
-              "active",
-              "released",
-              "expired"
-            ]
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "lastActivityAt": {
-            "type": "string"
-          },
-          "expiresAt": {
-            "type": "string"
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "applicationId",
-          "ownerUserId",
-          "status",
-          "createdAt",
-          "lastActivityAt",
-          "expiresAt",
-          "capabilities"
-        ]
-      },
-      "FeatureFlagStateDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "enum": [
-              "feature.ocr",
-              "feature.firewall",
-              "feature.image-builder",
-              "feature.display-virtual",
-              "feature.ai",
-              "feature.workflows",
-              "feature.resource-quota",
-              "feature.display-webrtc"
-            ],
-            "example": "feature.ocr"
-          },
-          "owner": {
-            "type": "string",
-            "enum": [
-              "automations",
-              "network-policy",
-              "container-images",
-              "display",
-              "android-apps"
-            ]
-          },
-          "revision": {
-            "type": "number",
-            "example": 3,
-            "minimum": 0
-          },
-          "description": {
-            "type": "string",
-            "example": "OCR-backed automation perception."
-          },
-          "control": {
-            "type": "string",
-            "enum": [
-              "runtime",
-              "deployment"
-            ]
-          },
-          "mutable": {
-            "type": "boolean",
-            "example": true
-          },
-          "enabled": {
-            "type": "boolean",
-            "example": true
-          },
-          "supported": {
-            "type": "boolean",
-            "example": true
-          },
-          "effective": {
-            "type": "boolean",
-            "example": true
-          },
-          "syncStatus": {
-            "type": "string",
-            "enum": [
-              "applied",
-              "pending",
-              "restart_required",
-              "failed"
-            ]
-          },
-          "disablePolicy": {
-            "type": "string",
-            "enum": [
-              "block_new",
-              "drain_active",
-              "stop_active",
-              "restart_required"
-            ]
-          },
-          "lifecycle": {
-            "type": "string",
-            "enum": [
-              "permanent",
-              "rollout"
-            ]
-          },
-          "removalCondition": {
-            "type": "string",
-            "nullable": true
-          },
-          "dependencies": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "feature.ocr",
-                "feature.firewall",
-                "feature.image-builder",
-                "feature.display-virtual",
-                "feature.ai",
-                "feature.workflows",
-                "feature.resource-quota",
-                "feature.display-webrtc"
-              ]
-            }
-          },
-          "conflicts": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "feature.ocr",
-                "feature.firewall",
-                "feature.image-builder",
-                "feature.display-virtual",
-                "feature.ai",
-                "feature.workflows",
-                "feature.resource-quota",
-                "feature.display-webrtc"
-              ]
-            }
-          }
-        },
-        "required": [
-          "key",
-          "owner",
-          "revision",
-          "description",
-          "control",
-          "mutable",
-          "enabled",
-          "supported",
-          "effective",
-          "syncStatus",
-          "disablePolicy",
-          "lifecycle",
-          "removalCondition",
-          "dependencies",
-          "conflicts"
-        ]
-      },
-      "FeatureFlagManifestDto": {
-        "type": "object",
-        "properties": {
-          "revision": {
-            "type": "number",
-            "example": 3,
-            "minimum": 0
-          },
-          "features": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FeatureFlagStateDto"
-            }
-          }
-        },
-        "required": [
-          "revision",
-          "features"
-        ]
-      },
-      "FeatureFlagChangeDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "enum": [
-              "feature.ocr",
-              "feature.firewall",
-              "feature.image-builder",
-              "feature.display-virtual",
-              "feature.ai",
-              "feature.workflows",
-              "feature.resource-quota",
-              "feature.display-webrtc"
-            ],
-            "example": "feature.ocr"
-          },
-          "enabled": {
-            "type": "boolean",
-            "example": false
-          }
-        },
-        "required": [
-          "key",
-          "enabled"
-        ]
-      },
-      "UpdateFeatureFlagsDto": {
-        "type": "object",
-        "properties": {
-          "revision": {
-            "type": "number",
-            "example": 3,
-            "minimum": 0,
-            "maximum": 9007199254740991
-          },
-          "changes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FeatureFlagChangeDto"
-            }
-          }
-        },
-        "required": [
-          "revision",
-          "changes"
-        ]
-      },
-      "ResetFeatureFlagsDto": {
-        "type": "object",
-        "properties": {
-          "revision": {
-            "type": "number",
-            "example": 3,
-            "minimum": 0,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "revision"
+          "mode",
+          "renderDevice"
         ]
       },
       "OcrServiceSettingsDto": {
@@ -7468,6 +7043,355 @@
           "label",
           "kind",
           "models"
+        ]
+      },
+      "ServiceHealthDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "healthy",
+              "unhealthy",
+              "offline",
+              "disabled"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "ok",
+          "status",
+          "message"
+        ]
+      },
+      "DockerSidecarLogTailDto": {
+        "type": "object",
+        "properties": {
+          "output": {
+            "type": "string"
+          },
+          "lineLimit": {
+            "type": "number"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "output",
+          "lineLimit",
+          "truncated"
+        ]
+      },
+      "DockerSidecarAdminSessionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "applicationId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "created",
+              "active",
+              "released",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastActivityAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "applicationId",
+          "ownerUserId",
+          "status",
+          "createdAt",
+          "lastActivityAt",
+          "expiresAt",
+          "capabilities"
+        ]
+      },
+      "RevokeDockerSidecarSessionsDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 256,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "ownerUserIds"
+        ]
+      },
+      "DockerSidecarSessionRevocationDto": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "released"
+        ]
+      },
+      "FeatureFlagStateDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "feature.ocr",
+              "feature.firewall",
+              "feature.image-builder",
+              "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
+            ],
+            "example": "feature.ocr"
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "automations",
+              "network-policy",
+              "container-images",
+              "display",
+              "android-apps"
+            ]
+          },
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          },
+          "description": {
+            "type": "string",
+            "example": "OCR-backed automation perception."
+          },
+          "control": {
+            "type": "string",
+            "enum": [
+              "runtime",
+              "deployment"
+            ]
+          },
+          "mutable": {
+            "type": "boolean",
+            "example": true
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "supported": {
+            "type": "boolean",
+            "example": true
+          },
+          "effective": {
+            "type": "boolean",
+            "example": true
+          },
+          "syncStatus": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "pending",
+              "restart_required",
+              "failed"
+            ]
+          },
+          "disablePolicy": {
+            "type": "string",
+            "enum": [
+              "block_new",
+              "drain_active",
+              "stop_active",
+              "restart_required"
+            ]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "permanent",
+              "rollout"
+            ]
+          },
+          "removalCondition": {
+            "type": "string",
+            "nullable": true
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "feature.ocr",
+                "feature.firewall",
+                "feature.image-builder",
+                "feature.display-virtual",
+                "feature.ai",
+                "feature.workflows",
+                "feature.resource-quota",
+                "feature.display-webrtc"
+              ]
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "feature.ocr",
+                "feature.firewall",
+                "feature.image-builder",
+                "feature.display-virtual",
+                "feature.ai",
+                "feature.workflows",
+                "feature.resource-quota",
+                "feature.display-webrtc"
+              ]
+            }
+          }
+        },
+        "required": [
+          "key",
+          "owner",
+          "revision",
+          "description",
+          "control",
+          "mutable",
+          "enabled",
+          "supported",
+          "effective",
+          "syncStatus",
+          "disablePolicy",
+          "lifecycle",
+          "removalCondition",
+          "dependencies",
+          "conflicts"
+        ]
+      },
+      "FeatureFlagManifestDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagStateDto"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "features"
+        ]
+      },
+      "FeatureFlagChangeDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "enum": [
+              "feature.ocr",
+              "feature.firewall",
+              "feature.image-builder",
+              "feature.display-virtual",
+              "feature.ai",
+              "feature.workflows",
+              "feature.resource-quota",
+              "feature.display-webrtc"
+            ],
+            "example": "feature.ocr"
+          },
+          "enabled": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "key",
+          "enabled"
+        ]
+      },
+      "UpdateFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeatureFlagChangeDto"
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "changes"
+        ]
+      },
+      "ResetFeatureFlagsDto": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "number",
+            "example": 3,
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "revision"
         ]
       },
       "GooglePlayServicesAnalysisDto": {
@@ -8397,6 +8321,35 @@
           "outcome"
         ]
       },
+      "AndroidApplicationViewerRuntimeDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "containerId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "status",
+          "containerId"
+        ]
+      },
       "UpdateAndroidApplicationDto": {
         "type": "object",
         "properties": {
@@ -9130,6 +9083,30 @@
           "output"
         ]
       },
+      "ApplicationRuntimeSnapshotDto": {
+        "type": "object",
+        "properties": {
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/webp"
+            ]
+          },
+          "dataUrl": {
+            "type": "string",
+            "example": "data:image/webp;base64,UklGRg=="
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "mimeType",
+          "dataUrl",
+          "capturedAt"
+        ]
+      },
       "AutomationCommandDto": {
         "type": "object",
         "properties": {
@@ -9608,12 +9585,12 @@
             "type": "string",
             "description": "Request ID recorded for a failed service request."
           },
-          "updatedAt": {
-            "type": "string"
-          },
           "failureCode": {
             "type": "string",
             "description": "Code recorded for a failed run."
+          },
+          "updatedAt": {
+            "type": "string"
           }
         },
         "required": [
@@ -9751,6 +9728,73 @@
           "suggestions"
         ]
       },
+      "AutomationRunEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "runId": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "sequence": {
+            "type": "number"
+          },
+          "type": {
+            "type": "string"
+          },
+          "stepId": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentStepId": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "ownerUserId",
+          "sequence",
+          "type",
+          "stepId",
+          "parentStepId",
+          "message",
+          "data",
+          "createdAt"
+        ]
+      },
+      "AutomationAiRunHistoryDto": {
+        "type": "object",
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/AutomationRunDto"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationRunEventDto"
+            }
+          }
+        },
+        "required": [
+          "run",
+          "events"
+        ]
+      },
       "AutomationDto": {
         "type": "object",
         "properties": {
@@ -9772,12 +9816,6 @@
             "items": {
               "$ref": "#/components/schemas/AutomationTagDto"
             }
-          },
-          "definition": {
-            "$ref": "#/components/schemas/AutomationDefinitionDto"
-          },
-          "yaml": {
-            "type": "string"
           },
           "lastRunAt": {
             "type": "string",
@@ -9805,6 +9843,12 @@
           },
           "updatedAt": {
             "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/AutomationDefinitionDto"
+          },
+          "yaml": {
+            "type": "string"
           }
         },
         "required": [
@@ -9821,6 +9865,82 @@
           "updatedAt",
           "definition",
           "yaml"
+        ]
+      },
+      "AutomationGridRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
+          "lastRunAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastRunId": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastStatus": {
+            "type": "string",
+            "enum": [
+              "never_run",
+              "success",
+              "failed",
+              "running"
+            ]
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "stepCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "targetApplicationIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "ownerUserId",
+          "name",
+          "description",
+          "tags",
+          "lastRunAt",
+          "lastRunId",
+          "lastStatus",
+          "lastError",
+          "createdAt",
+          "updatedAt",
+          "stepCount",
+          "targetApplicationIds"
         ]
       },
       "AutomationsGridFacetsDto": {
@@ -9874,6 +9994,53 @@
           "facets"
         ]
       },
+      "AutomationOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationTagDto"
+            }
+          },
+          "topLevelStepCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "tags",
+          "topLevelStepCount"
+        ]
+      },
+      "RunnableAutomationOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
       "CreateAutomationDto": {
         "type": "object",
         "properties": {
@@ -9893,53 +10060,234 @@
           "ownerUserId"
         ]
       },
-      "AutomationRunEventDto": {
+      "ActiveAutomationRunDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string"
           },
-          "runId": {
+          "automationId": {
             "type": "string"
           },
-          "ownerUserId": {
+          "targetApplicationId": {
             "type": "string"
           },
-          "sequence": {
-            "type": "number"
-          },
-          "type": {
-            "type": "string"
-          },
-          "stepId": {
+          "status": {
             "type": "string",
-            "nullable": true
-          },
-          "parentStepId": {
-            "type": "string",
-            "nullable": true
-          },
-          "message": {
-            "type": "string"
-          },
-          "data": {
-            "type": "object"
+            "enum": [
+              "queued",
+              "running"
+            ]
           },
           "createdAt": {
             "type": "string"
+          },
+          "workflowName": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
           "id",
-          "runId",
+          "automationId",
+          "targetApplicationId",
+          "status",
+          "createdAt",
+          "workflowName"
+        ]
+      },
+      "ApplicationWorkflowRunRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "automationName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "createdAt",
+          "automationName"
+        ]
+      },
+      "ApplicationWorkflowRunPageDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationWorkflowRunRowDto"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "pageSize"
+        ]
+      },
+      "ApplicationWorkflowRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "automationTriggerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "ownerUserId": {
+            "type": "string"
+          },
+          "targetApplicationId": {
+            "type": "string"
+          },
+          "targetProfileMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetProfileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "stepResults": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationStepResultDto"
+            }
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "failureRequestId": {
+            "type": "string",
+            "description": "Request ID recorded for a failed service request."
+          },
+          "failureCode": {
+            "type": "string",
+            "description": "Code recorded for a failed run."
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "automationName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "automationTriggerId",
           "ownerUserId",
-          "sequence",
-          "type",
-          "stepId",
-          "parentStepId",
-          "message",
-          "data",
-          "createdAt"
+          "targetApplicationId",
+          "targetProfileMode",
+          "targetProfileName",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "stepResults",
+          "error",
+          "createdAt",
+          "updatedAt",
+          "automationName"
+        ]
+      },
+      "AutomationRunEventPageDto": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AutomationRunEventDto"
+            }
+          },
+          "nextAfter": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "events",
+          "nextAfter"
         ]
       },
       "AutomationRunEventStreamTokenDto": {
@@ -10193,6 +10541,22 @@
           "triggerConfig"
         ]
       },
+      "UpdateAutomationScheduleTriggerConfigDto": {
+        "type": "object",
+        "properties": {
+          "cronExpression": {
+            "type": "string",
+            "example": "0 9 * * *"
+          },
+          "startPolicy": {
+            "type": "string",
+            "enum": [
+              "require-running",
+              "start-if-needed"
+            ]
+          }
+        }
+      },
       "UpdateAutomationTriggerDto": {
         "type": "object",
         "properties": {
@@ -10244,7 +10608,12 @@
             ]
           },
           "triggerConfig": {
-            "$ref": "#/components/schemas/AutomationScheduleTriggerConfigDto"
+            "description": "Omitted schedule settings retain their current values.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateAutomationScheduleTriggerConfigDto"
+              }
+            ]
           }
         }
       },
@@ -10500,66 +10869,6 @@
           "baseImage",
           "dockerfile"
         ]
-      },
-      "UpdateContainerImageRecipeDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "Redroid 14 microG overlay"
-          },
-          "targetImage": {
-            "type": "string",
-            "example": "local/redroid-microg:14"
-          },
-          "baseImage": {
-            "type": "string",
-            "example": "redroid/redroid:14.0.0-latest"
-          },
-          "runtimeKind": {
-            "type": "string",
-            "enum": [
-              "redroid",
-              "generic"
-            ]
-          },
-          "androidVersion": {
-            "type": "string",
-            "example": "14",
-            "nullable": true
-          },
-          "architecture": {
-            "type": "string",
-            "example": "amd64",
-            "nullable": true
-          },
-          "gmsMode": {
-            "type": "string",
-            "enum": [
-              "none",
-              "microg",
-              "gapps"
-            ]
-          },
-          "signatureSpoofing": {
-            "type": "string",
-            "enum": [
-              "not_applicable",
-              "external_required",
-              "present_unverified",
-              "verified"
-            ]
-          },
-          "dockerfile": {
-            "type": "string"
-          },
-          "contextFileIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
       },
       "ContainerImageBuildJob": {
         "type": "object",
@@ -10912,6 +11221,23 @@
           "targetImage",
           "baseImage",
           "dockerfile"
+        ]
+      },
+      "LatestContainerImageBuildDto": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ContainerImageBuildJob"
+              }
+            ]
+          }
+        },
+        "required": [
+          "job"
         ]
       },
       "DockerPlatformContainerPortDto": {
@@ -11882,476 +12208,6 @@
           "firewall",
           "ocr",
           "services"
-        ]
-      },
-      "DockerOperationLimitsDto": {
-        "type": "object",
-        "properties": {
-          "maxConcurrentReads": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 64
-          },
-          "maxConcurrentLongOperations": {
-            "type": "number",
-            "minimum": 1,
-            "maximum": 16
-          },
-          "slowRequestWarningMs": {
-            "type": "number",
-            "minimum": 100,
-            "maximum": 300000
-          },
-          "longOperationTimeoutMs": {
-            "type": "number",
-            "minimum": 1000,
-            "maximum": 3600000
-          }
-        },
-        "required": [
-          "maxConcurrentReads",
-          "maxConcurrentLongOperations",
-          "slowRequestWarningMs",
-          "longOperationTimeoutMs"
-        ]
-      },
-      "AutomationAiRunHistoryDto": {
-        "type": "object",
-        "properties": {
-          "run": {
-            "$ref": "#/components/schemas/AutomationRunDto"
-          },
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AutomationRunEventDto"
-            }
-          }
-        },
-        "required": [
-          "run",
-          "events"
-        ]
-      },
-      "ApplicationWorkflowRunDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "automationId": {
-            "type": "string"
-          },
-          "automationTriggerId": {
-            "type": "string",
-            "nullable": true
-          },
-          "ownerUserId": {
-            "type": "string"
-          },
-          "targetApplicationId": {
-            "type": "string"
-          },
-          "targetProfileMode": {
-            "type": "string",
-            "nullable": true
-          },
-          "targetProfileName": {
-            "type": "string",
-            "nullable": true
-          },
-          "trigger": {
-            "type": "string",
-            "enum": [
-              "manual",
-              "schedule"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "success",
-              "failed",
-              "canceled"
-            ]
-          },
-          "startedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "completedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "stepResults": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AutomationStepResultDto"
-            }
-          },
-          "error": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "failureRequestId": {
-            "type": "string",
-            "description": "Request ID recorded for a failed service request."
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "automationName": {
-            "type": "string",
-            "nullable": true
-          },
-          "failureCode": {
-            "type": "string",
-            "description": "Code recorded for a failed run."
-          }
-        },
-        "required": [
-          "id",
-          "automationId",
-          "automationTriggerId",
-          "ownerUserId",
-          "targetApplicationId",
-          "targetProfileMode",
-          "targetProfileName",
-          "trigger",
-          "status",
-          "startedAt",
-          "completedAt",
-          "stepResults",
-          "error",
-          "createdAt",
-          "updatedAt",
-          "automationName"
-        ]
-      },
-      "ApplicationWorkflowRunRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "automationId": {
-            "type": "string"
-          },
-          "trigger": {
-            "type": "string",
-            "enum": [
-              "manual",
-              "schedule"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "running",
-              "success",
-              "failed",
-              "canceled"
-            ]
-          },
-          "startedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "completedAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "automationName": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "id",
-          "automationId",
-          "trigger",
-          "status",
-          "startedAt",
-          "completedAt",
-          "createdAt",
-          "automationName"
-        ]
-      },
-      "ApplicationWorkflowRunPageDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ApplicationWorkflowRunRowDto"
-            }
-          },
-          "total": {
-            "type": "number"
-          },
-          "pageSize": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "pageSize"
-        ]
-      },
-      "AndroidRenderingSettingsDto": {
-        "type": "object",
-        "properties": {
-          "mode": {
-            "type": "string",
-            "enum": [
-              "software",
-              "host"
-            ]
-          },
-          "renderDevice": {
-            "type": "string",
-            "nullable": true,
-            "example": "/dev/dri/renderD128"
-          }
-        },
-        "required": [
-          "mode",
-          "renderDevice"
-        ]
-      },
-      "RevokeDockerSidecarSessionsDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserIds": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 256,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 200
-            }
-          }
-        },
-        "required": [
-          "ownerUserIds"
-        ]
-      },
-      "DockerSidecarSessionRevocationDto": {
-        "type": "object",
-        "properties": {
-          "released": {
-            "type": "number",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "released"
-        ]
-      },
-      "AndroidApplicationViewerRuntimeDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "provisioning",
-              "running",
-              "stopped",
-              "error",
-              "removing",
-              "removed"
-            ]
-          },
-          "containerId": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "required": [
-          "ownerUserId",
-          "status",
-          "containerId"
-        ]
-      },
-      "ApplicationRuntimeSnapshotDto": {
-        "type": "object",
-        "properties": {
-          "mimeType": {
-            "type": "string",
-            "enum": [
-              "image/webp"
-            ]
-          },
-          "dataUrl": {
-            "type": "string",
-            "example": "data:image/webp;base64,UklGRg=="
-          },
-          "capturedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "mimeType",
-          "dataUrl",
-          "capturedAt"
-        ]
-      },
-      "AutomationRunEventPageDto": {
-        "type": "object",
-        "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AutomationRunEventDto"
-            }
-          },
-          "nextAfter": {
-            "type": "number",
-            "nullable": true
-          }
-        },
-        "required": [
-          "events",
-          "nextAfter"
-        ]
-      },
-      "AutomationGridRowDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "ownerUserId": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AutomationTagDto"
-            }
-          },
-          "lastRunAt": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastRunId": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastStatus": {
-            "type": "string",
-            "enum": [
-              "never_run",
-              "success",
-              "failed",
-              "running"
-            ]
-          },
-          "lastError": {
-            "type": "string",
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "stepCount": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "targetApplicationIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "ownerUserId",
-          "name",
-          "description",
-          "tags",
-          "lastRunAt",
-          "lastRunId",
-          "lastStatus",
-          "lastError",
-          "createdAt",
-          "updatedAt",
-          "stepCount",
-          "targetApplicationIds"
-        ]
-      },
-      "AutomationOptionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AutomationTagDto"
-            }
-          },
-          "topLevelStepCount": {
-            "type": "integer",
-            "minimum": 0
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "description",
-          "tags",
-          "topLevelStepCount"
-        ]
-      },
-      "RunnableAutomationOptionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
         ]
       }
     }

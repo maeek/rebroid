@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  AutomationDefinition,
-  AutomationDefinitionStep,
+import {
+  visitAutomationSteps,
+  type AutomationDefinition,
+  type AutomationDefinitionStep,
 } from '@rebroid/automation-core/definition';
 import {
   AutomationOptionDto,
@@ -143,26 +144,10 @@ export class AutomationsQueryService {
   }
 }
 
-const countAutomationSteps = (steps: AutomationDefinitionStep[]): number =>
-  steps.reduce((count, step) => {
-    if ('uses' in step) return count + 1;
-    if (step.type === 'condition')
-      return (
-        count +
-        1 +
-        countAutomationSteps(step.then) +
-        countAutomationSteps(step.else ?? [])
-      );
-    if (step.type === 'switch') {
-      return (
-        count +
-        1 +
-        step.cases.reduce(
-          (sum, item) => sum + countAutomationSteps(item.steps),
-          0,
-        ) +
-        countAutomationSteps(step.default ?? [])
-      );
-    }
-    return count + 1 + countAutomationSteps(step.steps);
-  }, 0);
+const countAutomationSteps = (steps: AutomationDefinitionStep[]) => {
+  let count = 0;
+  visitAutomationSteps(steps, () => {
+    count += 1;
+  });
+  return count;
+};

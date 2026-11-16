@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Automation } from '../entities/automation.entity';
 
 @Injectable()
@@ -22,10 +22,6 @@ export class AutomationsRepository {
     return this.automations.remove(automation);
   }
 
-  findAll() {
-    return this.automations.find();
-  }
-
   listByOwner(ownerUserId: string) {
     return this.automations.find({
       where: { ownerUserId },
@@ -45,7 +41,7 @@ export class AutomationsRepository {
     return this.automations.findOneBy({ ownerUserId, id });
   }
 
-  findByIds(ids: string[]) {
-    return this.automations.find({ where: { id: In(ids) } });
+  findById(id: string) {
+    return this.automations.findOneBy({ id });
   }
 }

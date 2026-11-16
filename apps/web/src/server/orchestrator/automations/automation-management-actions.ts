@@ -121,7 +121,7 @@ export const draftWorkflowFromAdHocRunAction = async ({
   if (run.status !== 'success') {
     throw new Error('Only successful AI runs can be saved as workflow drafts.')
   }
-  const events = await orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, 0, 'conversation')
+  const events = await orchestratorAutomationsClient.listRunConversationEvents(user.ownerUserId, runId)
   if (!adHocAiRunPrompt(events)) {
     throw new Error('This run does not contain an ad-hoc AI prompt.')
   }

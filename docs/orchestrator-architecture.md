@@ -260,6 +260,9 @@ These are correctness guarantees:
   buffered live events in order and skips duplicates.
 - Step results commit with their events, in execution order, and are assembled for run reads.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
+- The web app reads replay pages through `GET /api/v1/automations/runs/:runId/events/page`. Drafting
+  from an AI run reads the owner-scoped conversation through
+  `GET /api/v1/automations/runs/:runId/events/conversation`.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
 

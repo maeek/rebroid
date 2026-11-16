@@ -176,9 +176,14 @@ it('publishes workflow history after an unrelated SQLite rollback and preserves 
     await expect(event).resolves.toMatchObject({ sequence: 1 });
     await ordinary;
     expect(received).toHaveBeenCalledTimes(1);
-    expect(await events.listForRun(run.ownerUserId, run.id)).toMatchObject([
-      { sequence: 1 },
-    ]);
+    expect(
+      await events.listReplayPage(
+        run.ownerUserId,
+        run.id,
+        0,
+        Number.MAX_SAFE_INTEGER,
+      ),
+    ).toMatchObject([{ sequence: 1 }]);
     expect(await db.query('SELECT state FROM lifecycle_fixture')).toEqual([
       { state: 'committed' },
     ]);
@@ -299,7 +304,12 @@ it('rolls back a terminal status and sequence when event insertion fails, then p
       lastEventSequence: 1,
     });
     expect(loser).toBeNull();
-    const replay = await events.listForRun('owner', run.id);
+    const replay = await events.listReplayPage(
+      'owner',
+      run.id,
+      0,
+      Number.MAX_SAFE_INTEGER,
+    );
     expect(replay).toMatchObject([{ type: 'run.canceled', sequence: 1 }]);
     expect(received).toHaveBeenCalledTimes(1);
     expect(received).toHaveBeenCalledWith(replay[0]);

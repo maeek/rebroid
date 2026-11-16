@@ -23,6 +23,7 @@ import type {
   SaveAutomationTriggerInput,
   SuggestAdHocAiPromptsInput
 } from '@/shared/contracts/automation'
+import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
 
 const ownerQuery = (ownerUserId: string) => {
   const query = new URLSearchParams({ ownerUserId })
@@ -106,10 +107,10 @@ export const orchestratorAutomationsClient = {
     )
   },
 
-  listRunEvents(ownerUserId: string, runId: string, after = 0, view?: 'conversation') {
-    const query = new URLSearchParams({ ownerUserId, after: String(after) })
-    if (view) query.set('view', view)
-    return emptyRequest<AutomationRunEvent[]>(`/automations/runs/${encodeURIComponent(runId)}/events?${query}`)
+  listRunConversationEvents(ownerUserId: string, runId: string) {
+    return emptyRequest<AutomationRunEvent[]>(
+      `/automations/runs/${encodeURIComponent(runId)}/events/conversation?${ownerQuery(ownerUserId)}`
+    )
   },
 
   listRunEventPage(ownerUserId: string, runId: string, after: number) {
@@ -148,7 +149,9 @@ export const orchestratorAutomationsClient = {
   },
 
   listActiveRuns(ownerUserId: string) {
-    return emptyRequest<AutomationRun[]>(`/automations/runs/active?${ownerQuery(ownerUserId)}`)
+    return emptyRequest<OrchestratorApiSchemas['ActiveAutomationRunDto'][]>(
+      `/automations/runs/active?${ownerQuery(ownerUserId)}`
+    )
   },
 
   listTriggersGrid(ownerUserId: string, input: AutomationTriggersGridQuery = {}) {

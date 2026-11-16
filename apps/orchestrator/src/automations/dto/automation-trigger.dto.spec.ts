@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import {
   AutomationTriggerDto,
   CreateAutomationTriggerDto,
+  UpdateAutomationScheduleTriggerConfigDto,
   UpdateAutomationTriggerDto,
 } from './automation-trigger.dto';
 
@@ -50,6 +51,11 @@ it('publishes the persisted trigger description in create, update, and response 
         committed.components.schemas[name].properties.triggerType.enum,
       ).toEqual(['schedule']);
     }
+    const name = UpdateAutomationScheduleTriggerConfigDto.name;
+    const patch = committed.components.schemas[name];
+    expect(patch).toEqual(generated.components?.schemas?.[name]);
+    expect(patch.required).toBeUndefined();
+    expect(patch.properties.startPolicy.default).toBeUndefined();
   } finally {
     await app.close();
   }
