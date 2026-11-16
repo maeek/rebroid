@@ -8,7 +8,7 @@ export type StepLocation = {
   index: number
 }
 
-const nestedListsForStep = (step: AutomationStepForm): Array<{ id: string; steps: AutomationStepForm[] }> => {
+export const nestedListsForStep = (step: AutomationStepForm): Array<{ id: string; steps: AutomationStepForm[] }> => {
   if (step.kind === 'condition') {
     return [
       { id: `${step.clientKey}:then`, steps: step.thenSteps },
@@ -103,10 +103,13 @@ const collectListRefs = (steps: AutomationStepForm[], map = new Map<string, Auto
   return map
 }
 
-export const findStepLocation = (steps: AutomationStepForm[], stepId: string): StepLocation | null => {
-  const visit = (list: AutomationStepForm[], listId: string): StepLocation | null => {
+const findStep = (steps: AutomationStepForm[], stepId: string) => {
+  const visit = (
+    list: AutomationStepForm[],
+    listId: string
+  ): { step: AutomationStepForm; location: StepLocation } | null => {
     const index = list.findIndex(step => step.clientKey === stepId)
-    if (index !== -1) return { listId, index }
+    if (index !== -1) return { step: list[index], location: { listId, index } }
 
     for (const step of list) {
       for (const nested of nestedListsForStep(step)) {
@@ -121,11 +124,10 @@ export const findStepLocation = (steps: AutomationStepForm[], stepId: string): S
   return visit(steps, ROOT_STEP_LIST_ID)
 }
 
-export const findStepById = (steps: AutomationStepForm[], stepId: string): AutomationStepForm | null => {
-  const location = findStepLocation(steps, stepId)
-  if (!location) return null
-  return collectListRefs(steps).get(location.listId)?.[location.index] ?? null
-}
+export const findStepLocation = (steps: AutomationStepForm[], stepId: string) =>
+  findStep(steps, stepId)?.location ?? null
+
+export const findStepById = (steps: AutomationStepForm[], stepId: string) => findStep(steps, stepId)?.step ?? null
 
 const nestedListIdsForStep = (step: AutomationStepForm) => {
   const listIds = new Set<string>()
@@ -186,12 +188,11 @@ export const replaceStepInList = (
 ) => updateStepList(steps, listId, list => list.map((step, itemIndex) => (itemIndex === index ? nextStep : step)))
 
 export const getStepMove = (steps: AutomationStepForm[], stepId: string, target: StepLocation) => {
-  const source = findStepLocation(steps, stepId)
-  if (!source) return null
-  const lists = collectListRefs(steps)
-  const step = lists.get(source.listId)?.[source.index]
-  const destination = lists.get(target.listId)
-  if (!step || !destination || nestedListIdsForStep(step).has(target.listId)) return null
+  const found = findStep(steps, stepId)
+  if (!found) return null
+  const { step, location: source } = found
+  const destination = collectListRefs(steps).get(target.listId)
+  if (!destination || nestedListIdsForStep(step).has(target.listId)) return null
   if (!Number.isInteger(target.index) || target.index < 0 || target.index > destination.length) return null
 
   // The drop marker describes a gap in the original list, before removing the source.

@@ -161,18 +161,43 @@ export const applyTriggerWorkflow = (
       : form.name
 })
 
-export const triggerFormSavePayload = (form: TriggerFormState): SaveAutomationTriggerInput => ({
-  name: form.name.trim(),
-  description: form.description.trim() || null,
-  automationId: form.automationId,
-  targetApplicationId: form.targetApplicationId,
-  profileMode: form.profileMode,
-  profileName: form.profileName.trim() || 'default',
-  enabled: form.enabled,
-  tags: form.tags,
-  triggerType: 'schedule',
-  triggerConfig: {
-    cronExpression: scheduleToCron(form.schedule),
-    startPolicy: form.startPolicy
+export const triggerFormSavePayload = (form: TriggerFormState) =>
+  ({
+    name: form.name.trim(),
+    description: form.description.trim() || null,
+    automationId: form.automationId,
+    targetApplicationId: form.targetApplicationId,
+    profileMode: form.profileMode,
+    profileName: form.profileName.trim() || 'default',
+    enabled: form.enabled,
+    tags: form.tags,
+    triggerType: 'schedule',
+    triggerConfig: {
+      cronExpression: scheduleToCron(form.schedule),
+      startPolicy: form.startPolicy
+    }
+  }) satisfies SaveAutomationTriggerInput
+
+export const triggerFormUpdatePayload = (
+  form: TriggerFormState,
+  baseline: TriggerFormState
+): Partial<SaveAutomationTriggerInput> => {
+  const next = triggerFormSavePayload(form)
+  const previous = triggerFormSavePayload(baseline)
+  const { cronExpression, startPolicy } = next.triggerConfig
+  const triggerConfig = {
+    ...(cronExpression !== previous.triggerConfig.cronExpression && { cronExpression }),
+    ...(startPolicy !== previous.triggerConfig.startPolicy && { startPolicy })
   }
-})
+  return {
+    ...(next.name !== previous.name && { name: next.name }),
+    ...(next.description !== previous.description && { description: next.description }),
+    ...(next.automationId !== previous.automationId && { automationId: next.automationId }),
+    ...(next.targetApplicationId !== previous.targetApplicationId && { targetApplicationId: next.targetApplicationId }),
+    ...(next.profileMode !== previous.profileMode && { profileMode: next.profileMode }),
+    ...(next.profileName !== previous.profileName && { profileName: next.profileName }),
+    ...(next.enabled !== previous.enabled && { enabled: next.enabled }),
+    ...(JSON.stringify(next.tags) !== JSON.stringify(previous.tags) && { tags: next.tags }),
+    ...(Object.keys(triggerConfig).length > 0 && { triggerConfig })
+  }
+}

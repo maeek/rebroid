@@ -1,25 +1,25 @@
 import { useEffect, useState } from 'react'
-import { collectBlockKeys, collectStepKeys, firstStepKey } from '../steps/shared/automation-step-selection'
+import { collectSelectionKeys, firstStepKey } from '../steps/shared/automation-step-selection'
 import type { AutomationStepForm } from './builder-utils'
 
 export const useAutomationEditorSelection = (initialSteps: AutomationStepForm[]) => {
   const [selectedStepKey, setSelectedStepKey] = useState<string | null>(() => firstStepKey(initialSteps))
-  const [openBlockKeys, setOpenBlockKeys] = useState<string[]>(() => collectBlockKeys(initialSteps))
+  const [openBlockKeys, setOpenBlockKeys] = useState<string[]>(() => collectSelectionKeys(initialSteps).blockKeys)
   const [yamlStepKey, setYamlStepKey] = useState<string | null>(null)
 
   const pruneSelectionForSteps = (steps: AutomationStepForm[]) => {
-    const currentStepKeys = collectStepKeys(steps)
-    const currentStepKeySet = new Set(currentStepKeys)
-    const currentBlockKeySet = new Set(collectBlockKeys(steps))
+    const { stepKeys, blockKeys } = collectSelectionKeys(steps)
+    const currentStepKeySet = new Set(stepKeys)
+    const currentBlockKeySet = new Set(blockKeys)
 
-    setSelectedStepKey(current => (current && currentStepKeySet.has(current) ? current : (currentStepKeys[0] ?? null)))
+    setSelectedStepKey(current => (current && currentStepKeySet.has(current) ? current : firstStepKey(steps)))
     setYamlStepKey(current => (current && currentStepKeySet.has(current) ? current : null))
     setOpenBlockKeys(current => current.filter(key => currentBlockKeySet.has(key)))
   }
 
   const resetSelectionForSteps = (steps: AutomationStepForm[]) => {
     setSelectedStepKey(firstStepKey(steps))
-    setOpenBlockKeys(collectBlockKeys(steps))
+    setOpenBlockKeys(collectSelectionKeys(steps).blockKeys)
     setYamlStepKey(null)
   }
 

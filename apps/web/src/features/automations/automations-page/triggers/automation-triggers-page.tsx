@@ -33,7 +33,8 @@ import {
   selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
-  triggerFormSavePayload
+  triggerFormSavePayload,
+  triggerFormUpdatePayload
 } from './automation-triggers-page-model'
 import { AutomationTriggersTable } from './automation-triggers-table'
 import { AutomationTriggersToolbar } from './automation-triggers-toolbar'
@@ -159,12 +160,16 @@ export function AutomationTriggersPage({
 
   const save = async () => {
     if (!form || mutationPending.current) return
+    if (form.id && !baselineForm) return
     if (!automationById.has(form.automationId) || !applicationById.has(form.targetApplicationId)) return
     mutationPending.current = true
     setSaving(true)
     try {
-      const payload = triggerFormSavePayload(form)
-      await (form.id ? updateAutomationTriggerAction(form.id, payload) : createAutomationTriggerAction(payload))
+      if (form.id && baselineForm) {
+        await updateAutomationTriggerAction(form.id, triggerFormUpdatePayload(form, baselineForm))
+      } else {
+        await createAutomationTriggerAction(triggerFormSavePayload(form))
+      }
       setFormOpen(false)
       router.refresh()
       toast({ title: form.id ? 'Trigger updated' : 'Trigger created', variant: 'success' })

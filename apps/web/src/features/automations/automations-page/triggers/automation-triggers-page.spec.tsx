@@ -142,10 +142,7 @@ describe('Triggers editor workflow', () => {
     fireEvent.change(description, { target: { value: '' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
     await waitFor(() =>
-      expect(updateAutomationTriggerAction).toHaveBeenCalledWith(
-        previewTrigger.id,
-        expect.objectContaining({ description: null })
-      )
+      expect(updateAutomationTriggerAction).toHaveBeenCalledWith(previewTrigger.id, { description: null })
     )
   })
 

@@ -12,7 +12,8 @@ import {
   selectedTriggersFromIds,
   summarizeTriggerBulkDeleteResults,
   summarizeTriggerBulkUpdateResults,
-  triggerFormSavePayload
+  triggerFormSavePayload,
+  triggerFormUpdatePayload
 } from './automation-triggers-page-model'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication } from '@/shared/contracts/application'
@@ -141,6 +142,16 @@ describe('automation triggers page model', () => {
       triggerConfig: {
         startPolicy: 'start-if-needed'
       }
+    })
+  })
+
+  it('sends only the edited schedule setting', () => {
+    const baseline = editTriggerFormState({ trigger: trigger(), app: app() })
+    expect(triggerFormUpdatePayload({ ...baseline, startPolicy: 'start-if-needed' }, baseline)).toEqual({
+      triggerConfig: { startPolicy: 'start-if-needed' }
+    })
+    expect(triggerFormUpdatePayload({ ...baseline, schedule: defaultSchedule }, baseline)).toEqual({
+      triggerConfig: { cronExpression: '0 3 * * *' }
     })
   })
 
