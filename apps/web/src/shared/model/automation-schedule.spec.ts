@@ -11,7 +11,7 @@ describe('automation schedule conversion', () => {
     expect(scheduleToCron(schedule)).toBe(cron)
   })
 
-  it('parses supported cron shapes and falls back for unrelated expressions', () => {
+  it('parses supported cron shapes', () => {
     expect(cronToSchedule('0 */4 * * *')).toMatchObject({
       frequency: 'hourly',
       intervalHours: 4
@@ -26,7 +26,22 @@ describe('automation schedule conversion', () => {
       time: '06:10',
       monthDay: 21
     })
-    expect(cronToSchedule('invalid')).toEqual(defaultSchedule)
+  })
+
+  it.each(['15 9 * * MON-FRI', '0 5 31 * *', '30 15 9 * * 1', '*/10 0-4 * * *', '0 */0 * * *'])(
+    'retains expressions the schedule controls cannot represent (%s)',
+    expression => {
+      const schedule = cronToSchedule(expression)
+      expect(schedule.frequency).toBe('custom')
+      expect(scheduleToCron(schedule)).toBe(expression)
+    }
+  )
+
+  it('keeps the original spelling of a supported expression until edited', () => {
+    const expression = '05 09 * * 02'
+    const schedule = cronToSchedule(expression)
+    expect(schedule).toMatchObject({ frequency: 'weekly', time: '09:05', weekday: '2' })
+    expect(scheduleToCron(schedule)).toBe(expression)
   })
 
   it('bounds user-editable numeric fields', () => {

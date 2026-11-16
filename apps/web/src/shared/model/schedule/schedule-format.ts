@@ -12,6 +12,7 @@ export type { ScheduleDraft }
 
 export const scheduleLabel = (cronExpression: string) => {
   const schedule = cronToSchedule(cronExpression)
+  if (schedule.frequency === 'custom') return cronExpression
   if (schedule.frequency === 'hourly') {
     return `Every ${schedule.intervalHours} ${schedule.intervalHours === 1 ? 'hour' : 'hours'}`
   }
