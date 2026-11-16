@@ -1,8 +1,10 @@
 import { setImmediate } from 'node:timers/promises';
+import { ConfigService } from '@nestjs/config';
 import { maximumProviderJsonBytes } from '../common/ai-provider-http';
 import { providerStreamLimits } from '../common/ai-provider-stream';
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { AiProviderModelDownloadService } from './ai-provider-model-download.service';
+import { normalizeAiProvider } from './ai-provider-normalization';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 
 const setup = (response: Response) => {
@@ -58,6 +60,73 @@ describe('AiProviderModelDownloadService', () => {
       percent: 100,
     });
     expect(store.updateSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves the existing default model roles on a repeated download', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(new Response('{"status":"success"}\n'));
+    const store = new OrchestratorSettingsStore(
+      new ConfigService({
+        app: {
+          container: { image: 'rebroid:test' },
+          redroid: {
+            defaultInactivityTimeoutSeconds: 900,
+            maxApkUploadSizeMb: 64,
+          },
+        },
+      }),
+    );
+    jest.spyOn(store, 'readStoredSettings').mockResolvedValue({
+      aiProviders: [
+        normalizeAiProvider({
+          id: 'local',
+          label: 'Local',
+          kind: 'ollama',
+          baseUrl: 'http://ollama.test',
+          models: [
+            {
+              id: 'first',
+              label: 'First',
+              enabled: true,
+              roles: ['controller', 'planner', 'vision'],
+              defaultFor: [],
+              settings: {},
+            },
+            {
+              id: 'preferred',
+              label: 'Preferred',
+              enabled: true,
+              roles: ['controller', 'planner', 'vision'],
+              defaultFor: ['controller', 'planner', 'vision'],
+              settings: {},
+            },
+          ],
+        }),
+      ],
+    });
+    let settings = await store.getStoredSettings();
+    jest.spyOn(store, 'updateSettings').mockImplementation(async (update) => {
+      settings = await update(settings);
+      return settings;
+    });
+    const service = new AiProviderModelDownloadService(
+      store,
+      new AiProviderHealthService(),
+    );
+
+    const job = await service.download('local', 'preferred');
+    await setImmediate();
+    expect(service.get('local', job.id).status).toBe('completed');
+    expect(
+      settings.aiProviders[0].models.map(({ id, defaultFor }) => [
+        id,
+        defaultFor,
+      ]),
+    ).toEqual([
+      ['first', []],
+      ['preferred', ['controller', 'planner', 'vision']],
+    ]);
   });
 
   it.each([
