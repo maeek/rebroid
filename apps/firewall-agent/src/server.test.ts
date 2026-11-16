@@ -13,9 +13,6 @@ import { createFirewallAgentServer } from "./server";
 
 const adapter: FirewallAdapter = {
   name: "test",
-  initialize() {},
-  apply() {},
-  remove() {},
   reconcile() {},
 };
 
@@ -209,17 +206,13 @@ test("server restores saved rules before the generated shared secret is availabl
 test("viewer refreshes only the installed revision of the same enabled runtime", async (context) => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));
-  const installed: FirewallPolicy[] = [];
-  const removals: string[] = [];
+  const installed: FirewallPolicy[][] = [];
   const server = startTestServer(
     new FirewallPolicyStore(join(directory, "policies.json")),
     {
       ...adapter,
-      apply(policy) {
-        installed.push(policy);
-      },
-      remove(id) {
-        removals.push(id);
+      reconcile(policies) {
+        installed.push([...policies.values()]);
       },
     },
   );
@@ -250,8 +243,7 @@ test("viewer refreshes only the installed revision of the same enabled runtime",
     );
   }
   assert.equal(await requestPolicy(server, "DELETE", `${path}/refresh`), 405);
-  assert.deepEqual(installed, [policy]);
-  assert.deepEqual(removals, []);
+  assert.deepEqual(installed, [[], [policy]]);
 
   const refreshed = {
     ...policy,
@@ -262,7 +254,7 @@ test("viewer refreshes only the installed revision of the same enabled runtime",
     await requestPolicy(server, "PUT", `${path}/refresh`, refreshed),
     200,
   );
-  assert.deepEqual(installed, [policy, refreshed]);
+  assert.deepEqual(installed, [[], [policy], [refreshed]]);
 });
 
 test("older policy revisions cannot replace or remove newer rules across restart", async (context) => {
@@ -344,9 +336,6 @@ test("an unrelated firewall write uses the last committed policies after a rejec
   let installed = new Map<string, FirewallPolicy>();
   const backend: FirewallAdapter = {
     ...adapter,
-    apply(_policy, policies) {
-      installed = new Map(policies);
-    },
     reconcile(policies) {
       if (installed.size && !policies.size) throw new Error("restore rejected");
       installed = new Map(policies);
@@ -410,9 +399,6 @@ test("policy persistence failure with successful rollback keeps health ready", a
   let installed = new Map<string, FirewallPolicy>();
   const server = startTestServer(store, {
     ...adapter,
-    apply(_policy, policies) {
-      installed = new Map(policies);
-    },
     reconcile(policies) {
       installed = new Map(policies);
     },
@@ -445,15 +431,15 @@ test("failed policy rollback degrades health until committed rules can be restor
   const store = new FirewallPolicyStore(statePath);
   let installed = new Map<string, FirewallPolicy>();
   let recoveryAvailable = true;
-  const recoveryAttempts: Map<string, FirewallPolicy>[] = [];
+  const installAttempts: Array<FirewallPolicy | undefined> = [];
   const server = startTestServer(store, {
     ...adapter,
-    apply(_policy, policies) {
-      installed = new Map(policies);
-    },
     reconcile(policies) {
-      recoveryAttempts.push(new Map(policies));
-      if (!recoveryAvailable) throw new Error("host rejected recovery");
+      const policy = policies.get("app-1");
+      installAttempts.push(policy);
+      if (!recoveryAvailable && policy?.generation === 10) {
+        throw new Error("host rejected recovery");
+      }
       installed = new Map(policies);
     },
   });
@@ -491,7 +477,12 @@ test("failed policy rollback degrades health until committed rules can be restor
         "Firewall rules could not be restored from committed policy state.",
     },
   });
-  assert.equal(recoveryAttempts.length, 2);
+  assert.deepEqual(installAttempts, [
+    undefined,
+    committed,
+    candidate,
+    committed,
+  ]);
 
   const retry = { ...committed, generation: 15 };
   assert.equal(await requestPolicy(server, "PUT", path, retry), 503);
@@ -500,10 +491,15 @@ test("failed policy rollback degrades health until committed rules can be restor
 
   recoveryAvailable = true;
   assert.equal(await requestPolicy(server, "PUT", path, retry), 200);
-  assert.equal(recoveryAttempts.length, 4);
-  for (const policies of recoveryAttempts.slice(1)) {
-    assert.deepEqual(policies.get("app-1"), committed);
-  }
+  assert.deepEqual(installAttempts, [
+    undefined,
+    committed,
+    candidate,
+    committed,
+    committed,
+    committed,
+    retry,
+  ]);
   assert.deepEqual(installed.get("app-1"), retry);
   assert.deepEqual(store.snapshot().policies.get("app-1"), retry);
   assert.equal((await requestAgent(server, "GET", "/v1/health")).status, 200);
@@ -516,8 +512,8 @@ test("a viewer refresh cannot use a rejected individual firewall write", async (
   const statePath = join(directory, "policies.json");
   const backend: FirewallAdapter = {
     ...adapter,
-    apply() {
-      throw new Error("restore rejected");
+    reconcile(policies) {
+      if (policies.size) throw new Error("restore rejected");
     },
   };
   const policy: FirewallPolicy = {
@@ -657,12 +653,6 @@ test("a stale reconciliation cannot restore a deleted policy after restart", asy
   const installed = new Map<string, FirewallPolicy>();
   const backend: FirewallAdapter = {
     ...adapter,
-    apply(next) {
-      installed.set(next.applicationId, next);
-    },
-    remove(id) {
-      installed.delete(id);
-    },
     reconcile(policies) {
       installed.clear();
       for (const [id, desired] of policies) installed.set(id, desired);
@@ -744,15 +734,19 @@ test("a failed guarded removal preserves startup protection for restart", async 
     startup: true,
   };
   const store = new FirewallPolicyStore(statePath);
+  let rejectRemoval = false;
   const server = startTestServer(store, {
     ...adapter,
-    remove() {
-      throw new Error("host rejected guard removal");
+    reconcile(policies) {
+      if (rejectRemoval && !policies.has(policy.applicationId)) {
+        throw new Error("host rejected guard removal");
+      }
     },
   });
   context.mock.method(console, "error", () => undefined);
   try {
     assert.equal(await requestPolicy(server, "PUT", path, policy), 200);
+    rejectRemoval = true;
     assert.equal(
       await requestPolicy(server, "DELETE", `${path}?containerId=old-token`),
       200,
@@ -814,8 +808,8 @@ test("server reports invalid bodies and adapter failures distinctly", async () =
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   const failingAdapter: FirewallAdapter = {
     ...adapter,
-    apply() {
-      throw new Error("iptables failed");
+    reconcile(policies) {
+      if (policies.size) throw new Error("iptables failed");
     },
   };
   const server = startTestServer(
@@ -861,11 +855,11 @@ test("server reports invalid bodies and adapter failures distinctly", async () =
 test("removing a stale runtime policy preserves the replacement policy", async () => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   const store = new FirewallPolicyStore(join(directory, "policies.json"));
-  let removals = 0;
+  let installs = 0;
   const server = startTestServer(store, {
     ...adapter,
-    remove: () => {
-      removals += 1;
+    reconcile: () => {
+      installs += 1;
     },
   });
   try {
@@ -897,15 +891,15 @@ test("removing a stale runtime policy preserves the replacement policy", async (
       store.snapshot().policies.get("app-1")?.containerId,
       "new-runtime",
     );
-    assert.equal(removals, 0);
+    assert.equal(installs, 1);
 
     assert.equal((await remove("new-runtime", 0)).status, 200);
     assert.equal(store.snapshot().policies.get("app-1")?.generation, 1);
-    assert.equal(removals, 0);
+    assert.equal(installs, 1);
 
     assert.equal((await remove("new-runtime", 2)).status, 200);
     assert.equal(store.snapshot().policies.get("app-1"), undefined);
-    assert.equal(removals, 1);
+    assert.equal(installs, 2);
   } finally {
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve())),

@@ -93,7 +93,7 @@ test("a failed iptables restore leaves the previously committed rules alone", ()
   });
 
   assert.throws(
-    () => adapter.apply(policy, new Map([[policy.applicationId, policy]])),
+    () => adapter.reconcile(new Map([[policy.applicationId, policy]])),
     /restore rejected/,
   );
   assert.equal(installed, previous);
@@ -187,7 +187,7 @@ test("startup guards precede runtime allowlists when policies are committed", ()
     [guard.applicationId, guard],
   ]);
 
-  adapter.apply(guard, policies);
+  adapter.reconcile(policies);
 
   assert.equal(batches.length, 1);
   const { rules } = batches[0];
