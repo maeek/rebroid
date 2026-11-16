@@ -33,7 +33,8 @@ const ubuntu = localFont({
       path: '../styles/fonts/Ubuntu-Bold.ttf',
       weight: '700'
     }
-  ]
+  ],
+  fallback: ['system-ui', 'sans-serif']
 })
 
 export const metadata: Metadata = {
