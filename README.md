@@ -2,7 +2,9 @@
 
 **Run Android apps on your own Linux host and control them from your browser.**
 
-Rebroid manages ReDroid containers for remote Android workspaces and app testing. Open a live display, keep app data in persistent profiles, and turn repeatable device tasks into workflows.
+Rebroid is a self-hosted Android workspace for remote access, app testing, and device automation. Upload an APK, open its live display, and turn repeatable tasks into workflows.
+
+![Rebroid workspace with a live Android tablet beside a running workflow’s summary](docs/images/viewer.webp)
 
 [Quick start](#quick-start) · [Console tour](#console-tour) · [Documentation](#documentation) · [Contributing](#contributing)
 
@@ -47,8 +49,6 @@ The viewer accepts ReDroid 13 through 16. Check the [display and audio compatibi
 ### Control a live Android display
 
 Use touch, keyboard, and clipboard controls over WebRTC or WebSocket. The live viewer sits beside the app’s details, so you can watch Android while checking workflow activity. On desktop, the mini-player keeps the display visible as you move between pages.
-
-![Live Android home screen and device controls beside the summary of a running workflow](docs/images/viewer.webp)
 
 ### Automate a task and inspect each run
 
