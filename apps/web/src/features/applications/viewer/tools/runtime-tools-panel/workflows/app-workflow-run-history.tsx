@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { IconRefresh } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { getBff } from '@/lib/http/bff'
+import { PlatformPageRefreshButton, type RefreshResult } from '@/shared/ui/actions/platform-page-refresh-button'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
@@ -121,6 +120,8 @@ export function AppWorkflowRunHistory({
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(initialPageSize)
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshResult, setRefreshResult] = useState<RefreshResult>()
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), q: search })
   const query = useQuery({
     queryKey: ['application-workflow-runs', endpoint, page, pageSize, search],
@@ -138,6 +139,16 @@ export function AppWorkflowRunHistory({
   const total = query.data?.total ?? 0
   const error = query.error
 
+  const refresh = async () => {
+    setRefreshing(true)
+    try {
+      const result = await query.refetch()
+      setRefreshResult({ version: result.dataUpdatedAt, succeeded: result.isSuccess })
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <Section
       title='Run history'
@@ -154,17 +165,15 @@ export function AppWorkflowRunHistory({
           setPage(0)
         }}
         disabled={loading}
-        actions={
-          <MutationButton
-            variant='ghost'
-            pending={query.isFetching && !query.isLoading}
-            pendingLabel='Refreshing…'
-            disabled={loading || query.isLoading}
-            onClick={() => void query.refetch()}
-          >
-            <IconRefresh />
-            Refresh
-          </MutationButton>
+        searchActions={
+          <PlatformPageRefreshButton
+            variant='secondary'
+            className='max-sm:size-11'
+            isRefreshing={refreshing || query.isRefetching}
+            refreshResult={refreshResult}
+            disabled={pending}
+            onRefresh={() => void refresh()}
+          />
         }
         notice={
           error && query.data ? (

@@ -22,6 +22,50 @@ const run = {
   stepResults: []
 }
 
+test('app run history refresh stays beside search while the request is pending', async ({ page }) => {
+  const history = '**/api/bff/applications/preview-app/workflow-runs?*'
+  let holdRefresh: Promise<void> | undefined
+  await page.route(history, async route => {
+    await holdRefresh
+    await route.fulfill({ json: { ok: true, data: { items: [], total: 0, pageSize: 25 }, requestId: 'test' } })
+  })
+
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 960 })
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/skeleton-contract-test?editor=app-resource&view=workflows')
+    await expect(page.getByText('No workflow runs yet')).toBeVisible()
+    const search = page.getByRole('searchbox', { name: 'Search workflows or run IDs' })
+    const refresh = page.getByRole('button', { name: 'Refresh', exact: true })
+    await expect(refresh).toBeEnabled()
+    const searchBox = (await search.boundingBox())!
+    const refreshBox = (await refresh.boundingBox())!
+    expect(refreshBox).toMatchObject({ width: 44, height: 44 })
+    expect(refreshBox.x).toBeGreaterThanOrEqual(searchBox.x + searchBox.width)
+    expect(refreshBox.y + refreshBox.height / 2).toBeCloseTo(searchBox.y + searchBox.height / 2)
+    await expect(refresh).toHaveText('')
+
+    const request = Promise.withResolvers<void>()
+    holdRefresh = request.promise
+    try {
+      await refresh.click()
+      await expect(refresh).toHaveAttribute('aria-busy', 'true')
+      await expect(refresh).toBeDisabled()
+      expect(await refresh.boundingBox()).toEqual(refreshBox)
+      expect(await search.boundingBox()).toEqual(searchBox)
+      await expect(refresh.locator('svg')).toHaveCSS('animation-name', 'spin')
+      await page.emulateMedia({ reducedMotion: 'reduce' })
+      await expect(refresh.locator('svg')).toHaveCSS('animation-name', 'none')
+    } finally {
+      request.resolve()
+      holdRefresh = undefined
+    }
+    await expect(refresh).toBeEnabled()
+    await expect(refresh.locator('svg')).toHaveAttribute('data-refresh-state', 'confirmed')
+    expect(await refresh.boundingBox()).toEqual(refreshBox)
+  }
+})
+
 test('app run history survives reload and opens summary and events beside the same device', async ({ page }, info) => {
   const narrow = info.project.name === 'mobile-chromium'
   await page.setViewportSize({ width: narrow ? 390 : 1440, height: 960 })
