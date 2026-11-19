@@ -74,7 +74,7 @@ describe('provider editor persistence', () => {
       expect(mocks.push).not.toHaveBeenCalled()
 
       leave()
-      fireEvent.click(await screen.findByRole('button', { name: 'Leave without saving' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Leave page' }))
       expect(mocks.push).toHaveBeenCalledExactlyOnceWith('/platform/ai')
       expect(screen.getByLabelText('Base URL')).toHaveValue(provider.baseUrl)
     } finally {
