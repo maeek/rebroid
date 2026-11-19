@@ -284,15 +284,11 @@ export const RuntimeContainersSection = ({
 
       <ConfirmMutationDialog
         open={Boolean(pendingAction)}
-        title={pendingAction?.type === 'stop' ? 'Stop container?' : 'Remove container?'}
+        title={`${pendingAction?.type === 'stop' ? 'Stop' : 'Remove'} “${pendingAction?.container.names[0] ?? pendingAction?.container.shortId}”?`}
         description={
           pendingAction?.type === 'stop'
-            ? 'This stops the selected Docker container without deleting it.'
-            : 'This permanently removes the selected Docker container.'
-        }
-        summary={pendingAction?.container.names[0] ?? pendingAction?.container.shortId}
-        consequence={
-          pendingAction?.type === 'remove' ? 'Persistent volumes are not removed by this action.' : undefined
+            ? 'The Docker container stops and remains available to start again.'
+            : 'Permanently delete the Docker container and its writable data. Persistent volumes are kept.'
         }
         tone={pendingAction?.type === 'stop' ? 'warning' : 'danger'}
         confirmLabel={pendingAction?.type === 'stop' ? 'Stop container' : 'Remove container'}
@@ -308,10 +304,9 @@ export const RuntimeContainersSection = ({
         title={`${pendingBulkAction === 'stop' ? 'Stop' : 'Remove'} ${selectedContainers.length} containers?`}
         description={
           pendingBulkAction === 'stop'
-            ? 'This stops every running container in the current selection.'
-            : 'This permanently removes every eligible container in the current selection.'
+            ? 'Stop every running container in the selection.'
+            : 'Permanently delete eligible containers in the selection and their writable data. Persistent volumes are kept.'
         }
-        consequence={pendingBulkAction === 'remove' ? 'Persistent volumes are not removed by this action.' : undefined}
         tone={pendingBulkAction === 'stop' ? 'warning' : 'danger'}
         confirmLabel={pendingBulkAction === 'stop' ? 'Stop containers' : 'Remove containers'}
         pendingLabel={pendingBulkAction === 'stop' ? 'Stopping…' : 'Removing…'}

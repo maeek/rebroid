@@ -82,6 +82,15 @@ test('compact record headings align with status chips and row actions', async ({
       const heading = page.getByRole('link', { name })
       const row = page.getByRole('table').getByRole('row').filter({ has: heading })
       await expectAligned(heading, row.getByText(status, { exact: true }))
+      if (fixture === 'ai-list') {
+        const [nameBox, idBox, modelsBox] = await Promise.all([
+          heading.boundingBox(),
+          row.getByText('local-models', { exact: true }).boundingBox(),
+          row.getByText('2 configured', { exact: true }).boundingBox()
+        ])
+        expect(nameBox!.x).toBeCloseTo(modelsBox!.x)
+        expect(idBox!.x).toBeCloseTo(modelsBox!.x)
+      }
       if (hasMenu) {
         const menu = row.getByRole('button', { name: 'Open row actions' })
         await expectAligned(heading, menu)

@@ -39,7 +39,7 @@ beforeEach(() => {
 describe('Runtime maintenance', () => {
   it('blocks an already open confirmation when the runtime becomes unavailable', async () => {
     const { rerender } = render(<PlatformRuntimeMaintenanceSection />)
-    fireEvent.click(screen.getByRole('button', { name: 'Clean up stopped containers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove stopped containers' }))
     const dialog = await screen.findByRole('dialog')
     rerender(<PlatformRuntimeMaintenanceSection disabled />)
     const confirm = within(dialog).getByRole('button', { name: 'Clean up' })
@@ -50,23 +50,23 @@ describe('Runtime maintenance', () => {
   })
 
   it.each([
-    ['unused apk uploads', cleanupUploadedApksAction],
-    ['dangling images', pruneImagesAction],
-    ['stopped containers', pruneContainersAction],
-    ['unused networks', pruneNetworksAction],
-    ['unused volumes', pruneVolumesAction],
-    ['full docker cleanup', pruneAllDockerResourcesAction]
+    ['Delete unused APK uploads', cleanupUploadedApksAction],
+    ['Remove dangling images', pruneImagesAction],
+    ['Remove stopped containers', pruneContainersAction],
+    ['Remove unused networks', pruneNetworksAction],
+    ['Remove unused volumes', pruneVolumesAction],
+    ['Run full Docker cleanup', pruneAllDockerResourcesAction]
   ] as const)('confirms %s and calls only the selected operation', async (label, action) => {
     const completed = vi.fn()
     render(<PlatformRuntimeMaintenanceSection onMaintenanceComplete={completed} />)
-    fireEvent.click(screen.getByRole('button', { name: `Clean up ${label}` }))
-    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    const dialog = await screen.findByRole('dialog', { name: `${label}?` })
     expect(action).not.toHaveBeenCalled()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Clean up' }))
     await waitFor(() => expect(completed).toHaveBeenCalledOnce())
     expect(action).toHaveBeenCalledOnce()
     expect(screen.getByRole('status')).toHaveTextContent('cleanup complete')
-    if (label === 'dangling images') expect(pruneImagesAction).toHaveBeenCalledWith(true)
+    if (action === pruneImagesAction) expect(pruneImagesAction).toHaveBeenCalledWith(true)
     const calls = [
       pruneAllDockerResourcesAction,
       pruneContainersAction,
@@ -80,9 +80,9 @@ describe('Runtime maintenance', () => {
 
   it('canceling volume cleanup never performs a deletion', async () => {
     render(<PlatformRuntimeMaintenanceSection />)
-    fireEvent.click(screen.getByRole('button', { name: 'Clean up unused volumes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove unused volumes' }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/cannot be recovered/)).toBeVisible()
+    expect(dialog).toHaveAccessibleDescription(/Permanently delete Docker volumes.*saved app data/)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(pruneVolumesAction).not.toHaveBeenCalled()
   })
@@ -96,7 +96,7 @@ describe('Runtime maintenance', () => {
         })
     )
     render(<PlatformRuntimeMaintenanceSection />)
-    fireEvent.click(screen.getByRole('button', { name: 'Clean up stopped containers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove stopped containers' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Clean up' }))
     const pendingButton = within(dialog).getByRole('button', { name: 'Cleaning up…' })
@@ -113,7 +113,7 @@ describe('Runtime maintenance', () => {
   it('reports failed operations without success feedback', async () => {
     vi.mocked(pruneContainersAction).mockRejectedValueOnce(new Error('Docker unavailable'))
     render(<PlatformRuntimeMaintenanceSection />)
-    fireEvent.click(screen.getByRole('button', { name: 'Clean up stopped containers' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove stopped containers' }))
     const dialog = await screen.findByRole('dialog')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Clean up' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Docker unavailable'))

@@ -343,11 +343,11 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
       <ConfirmMutationDialog
         open={pendingDelete.length > 0}
         title={
-          pendingDelete.length === 1 ? 'Delete scheduled task?' : `Delete ${pendingDelete.length} scheduled tasks?`
+          pendingDelete.length === 1
+            ? `Delete “${pendingDelete[0]?.name}”?`
+            : `Delete ${pendingDelete.length} scheduled tasks?`
         }
-        description='This permanently removes the selected custom task configuration.'
-        summary={pendingDelete.length === 1 ? pendingDelete[0]?.name : undefined}
-        consequence='The task will no longer run on its schedule. Existing run history is retained.'
+        description='Rebroid deletes the schedule and task settings and keeps past runs.'
         confirmLabel={pendingDelete.length === 1 ? 'Delete task' : 'Delete tasks'}
         pendingLabel='Deleting…'
         pending={bulkPending || busyTaskId !== null}

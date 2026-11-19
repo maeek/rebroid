@@ -4,15 +4,7 @@ import { useState, useTransition, type ReactNode } from 'react'
 import { IconDownload, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
@@ -144,30 +136,16 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
         }
       />
 
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={removeDialogOpen}
+        title={`Remove “${imageDisplayName(image)}”?`}
+        description='Permanently remove this image from Docker. Images used by containers may require additional cleanup.'
+        confirmLabel='Remove image'
+        pending={isRemoving}
+        pendingLabel='Removing…'
+        onConfirm={() => void removeImage()}
         onOpenChange={setRemoveDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove image?</DialogTitle>
-            <DialogDescription>This removes the selected image from the container engine.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={isRemoving}
-              onClick={() => void removeImage()}
-            >
-              Remove image
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </>
   )
 }

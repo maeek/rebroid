@@ -265,8 +265,7 @@ export const CastingSessionsSection = ({
             ? 'End display session?'
             : `End ${pendingEndSessions.length} display sessions?`
         }
-        description='This disconnects the selected live viewer session.'
-        consequence='The application keeps running. A new viewer session can be opened later.'
+        description='Selected viewers disconnect. Their apps keep running and viewers can reconnect.'
         tone='warning'
         confirmLabel={pendingEndSessions.length === 1 ? 'End session' : 'End sessions'}
         pendingLabel='Ending…'

@@ -2,14 +2,7 @@
 
 import { IconPlayerPlayFilled } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { useRuntimePowerActionContext } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime-power-action-context'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
@@ -44,7 +37,6 @@ export const StartProfileDialog = () => {
       >
         <DialogHeader>
           <DialogTitle>Start app</DialogTitle>
-          <DialogDescription>Choose the saved profile for this session before the app starts.</DialogDescription>
         </DialogHeader>
         <ApplicationProfileSelect
           mode={profileMode}

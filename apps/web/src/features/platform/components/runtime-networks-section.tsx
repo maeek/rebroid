@@ -223,10 +223,12 @@ export const RuntimeNetworksSection = ({
 
       <ConfirmMutationDialog
         open={Boolean(pendingRemove)}
-        title={pendingRemove?.length === 1 ? 'Remove network?' : `Remove ${pendingRemove?.length ?? 0} networks?`}
-        description='This permanently removes the selected network configuration from Docker.'
-        summary={pendingRemove?.length === 1 ? pendingRemove[0]?.name : undefined}
-        consequence='Networks with attached containers cannot be removed.'
+        title={
+          pendingRemove?.length === 1
+            ? `Remove “${pendingRemove[0]?.name}”?`
+            : `Remove ${pendingRemove?.length ?? 0} networks?`
+        }
+        description='Permanently remove these network settings from Docker. Docker requires you to detach any containers first.'
         confirmLabel={pendingRemove?.length === 1 ? 'Remove network' : 'Remove networks'}
         pendingLabel='Removing…'
         pending={busyId !== null}

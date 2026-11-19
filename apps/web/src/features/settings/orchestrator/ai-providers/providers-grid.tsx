@@ -51,7 +51,7 @@ export const ProvidersGrid = ({
         enableHiding: false,
         meta: { compactSlot: 'title', label: 'Provider', skeleton: { kind: 'stacked' } },
         cell: ({ row }) => (
-          <div className={`flex min-h-10 min-w-0 flex-col justify-center ${styles.settingsStack}`}>
+          <div className={`grid min-h-10 min-w-0 content-center ${styles.settingsStack}`}>
             <ResourceLink
               href={`/platform/ai/${encodeURIComponent(row.original.id)}`}
               className='block truncate font-medium'

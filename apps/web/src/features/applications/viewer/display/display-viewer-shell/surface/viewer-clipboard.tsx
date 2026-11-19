@@ -4,15 +4,7 @@ import { useContext, useState, useTransition } from 'react'
 import { IconClipboard } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { CopyButton } from '@/components/ui/copy-button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Textarea } from '@/components/ui/textarea'
@@ -70,7 +62,6 @@ export const ViewerClipboard = ({ appId }: { appId: string }) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Device clipboard</DialogTitle>
-          <DialogDescription>Read text from Android or send text to its clipboard.</DialogDescription>
         </DialogHeader>
         <FormField
           label='Clipboard text'
@@ -83,7 +74,7 @@ export const ViewerClipboard = ({ appId }: { appId: string }) => {
             onChange={event => setText(event.target.value)}
           />
         </FormField>
-        <DialogFooter className='flex-wrap'>
+        <DialogFooter>
           <MutationButton
             variant='secondary'
             disabled={pending}

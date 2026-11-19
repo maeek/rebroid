@@ -64,7 +64,7 @@ describe('runtime resource header actions', () => {
       within(screen.getByRole('region', { name: 'Overview' })).queryByRole('button', { name: 'Remove' })
     ).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('Remove image?')
+    expect(screen.getByRole('dialog', { name: 'Remove “runtime:latest”?' })).toBeVisible()
     expect(removePlatformImageAction).not.toHaveBeenCalled()
   })
 
@@ -109,7 +109,7 @@ describe('runtime resource header actions', () => {
       within(screen.getByRole('region', { name: 'Overview' })).queryByRole('button', { name: 'Remove' })
     ).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('Remove network?')
+    expect(screen.getByRole('dialog', { name: 'Remove “Private network”?' })).toBeVisible()
     expect(removePlatformNetworkAction).not.toHaveBeenCalled()
   })
 

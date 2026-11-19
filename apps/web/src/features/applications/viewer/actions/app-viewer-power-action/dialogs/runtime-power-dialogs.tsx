@@ -12,8 +12,7 @@ const RecreateRuntimeDialog = () => {
     <ConfirmMutationDialog
       open={context.recreateDialogOpen}
       title={`Recreate the runtime for ${context.appName || 'this app'}?`}
-      description='Use this if Start or Restart cannot recover the app. Rebroid replaces the app container and network, then starts Android with the active profile.'
-      consequence='Saved settings and persistent profiles are kept. Any data stored only in the old container is lost.'
+      description='Rebroid replaces the container and network, then starts Android with the active profile. Data stored only in the old container is lost. Saved settings and persistent profiles are kept.'
       tone='danger'
       confirmLabel='Recreate runtime'
       confirmDisabled={context.dialogDisabled}

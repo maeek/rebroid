@@ -81,7 +81,7 @@ export const PlatformRuntimeMaintenanceSection = ({
                 variant={operation.key === 'all' ? 'danger-ghost' : 'secondary'}
                 size='sm'
                 disabled={loading || disabled || pending}
-                aria-label={`Clean up ${operation.title.toLowerCase()}`}
+                aria-label={operation.actionLabel}
                 onClick={() => setSelected(operation)}
               >
                 Clean up…
@@ -108,9 +108,8 @@ export const PlatformRuntimeMaintenanceSection = ({
       </Section>
       <ConfirmMutationDialog
         open={selected !== null}
-        title={selected ? `Clean up ${selected.title.toLowerCase()}?` : 'Clean up resources?'}
-        description={selected?.description}
-        consequence={selected?.consequence}
+        title={selected ? `${selected.actionLabel}?` : 'Clean up resources?'}
+        description={selected?.confirmation}
         confirmLabel='Clean up'
         confirmDisabled={disabled || loading}
         pending={pending}

@@ -5,15 +5,7 @@ import { IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { RelatedContainersGrid } from '@/features/platform/details/related-containers-grid'
@@ -76,32 +68,16 @@ export const RuntimeNetworkDetail = ({ details }: RuntimeNetworkDetailProps) => 
         }
       />
 
-      <Dialog
-        modal
+      <ConfirmMutationDialog
         open={removeDialogOpen}
+        title={`Remove “${network.name}”?`}
+        description='Permanently remove this network from Docker. Docker requires you to detach any containers first.'
+        confirmLabel='Remove network'
+        pending={isRemoving}
+        pendingLabel='Removing…'
+        onConfirm={() => void removeNetwork()}
         onOpenChange={setRemoveDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remove network?</DialogTitle>
-            <DialogDescription>
-              This removes the selected network. Docker will reject the action while containers are attached.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant='danger'
-              disabled={isRemoving}
-              onClick={() => void removeNetwork()}
-            >
-              Remove network
-            </Button>
-            <DialogClose asChild>
-              <Button variant='secondary'>Cancel</Button>
-            </DialogClose>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </>
   )
 }

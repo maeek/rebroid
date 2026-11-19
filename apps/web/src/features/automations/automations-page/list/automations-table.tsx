@@ -313,8 +313,7 @@ export function AutomationsTable({
       <ConfirmMutationDialog
         open={Boolean(pendingDelete)}
         title={`Delete ${pendingDelete?.name ?? 'workflow'}?`}
-        description='This removes the workflow and its triggers.'
-        consequence='Existing run history is retained.'
+        description='Rebroid deletes the workflow and its triggers and keeps past runs.'
         confirmLabel='Delete workflow'
         pendingLabel='Deleting…'
         pending={busy}
@@ -326,8 +325,7 @@ export function AutomationsTable({
       <ConfirmMutationDialog
         open={bulkDeleteOpen}
         title={`Delete ${selectedAutomations.length} selected workflows?`}
-        description='This removes the selected workflows and their triggers.'
-        consequence='Existing run history is retained.'
+        description='Rebroid deletes the selected workflows and their triggers and keeps past runs.'
         confirmLabel='Delete workflows'
         pendingLabel='Deleting…'
         pending={busy}

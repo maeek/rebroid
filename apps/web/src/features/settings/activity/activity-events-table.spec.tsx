@@ -86,7 +86,7 @@ describe('audit log workspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Activity actions' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Purge all logs' }))
     const confirm = await screen.findByRole('dialog', { name: 'Purge all activity logs?' })
-    expect(confirm).toHaveTextContent('This includes events outside the current filters.')
+    expect(confirm).toHaveAccessibleDescription(/Permanently delete all audit events.*outside the current filters/)
     expect(purgeAllAuditEventsAction).not.toHaveBeenCalled()
     const purge = within(confirm).getByRole('button', { name: 'Purge all logs' })
     const confirmation = within(confirm).getByRole('textbox', { name: 'Confirmation text' })

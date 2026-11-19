@@ -15,21 +15,23 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
+import { focusRingClassName } from '@/components/ui/surface'
 import { useDialogPayload } from '@/hooks/use-dialog-payload'
+import { cn } from '@/lib/utils'
 
 export const ConfirmMutationDialog = ({
   cancelLabel = 'Cancel',
+  children,
   confirmationText,
   confirmDisabled = false,
   confirmLabel,
-  consequence,
   description,
+  details,
   error,
   finalFocus,
   open,
   pending = false,
   pendingLabel,
-  summary,
   tone = 'danger',
   title,
   onConfirm,
@@ -37,17 +39,17 @@ export const ConfirmMutationDialog = ({
   onOpenChange
 }: {
   cancelLabel?: string
+  children?: ReactNode
   confirmationText?: string
   confirmDisabled?: boolean
   confirmLabel: string
-  consequence?: ReactNode
   description: ReactNode
+  details?: { label: string; content: string }
   error?: ReactNode
   finalFocus?: ComponentProps<typeof DialogContent>['finalFocus']
   open: boolean
   pending?: boolean
   pendingLabel?: string
-  summary?: ReactNode
   tone?: 'warning' | 'danger'
   title: ReactNode
   onConfirm: () => void
@@ -58,8 +60,8 @@ export const ConfirmMutationDialog = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const [enteredText, setEnteredText] = useState('')
   const content = useMemo(
-    () => ({ title, description, consequence, summary, error, confirmLabel, confirmationText, tone }),
-    [title, description, consequence, summary, error, confirmLabel, confirmationText, tone]
+    () => ({ title, description, details, children, error, confirmLabel, confirmationText, tone }),
+    [title, description, details, children, error, confirmLabel, confirmationText, tone]
   )
   const { payload, onOpenChangeComplete } = useDialogPayload(open ? content : null)
   const displayed = payload ?? content
@@ -86,28 +88,30 @@ export const ConfirmMutationDialog = ({
       }}
     >
       <DialogContent
-        className='max-w-full grid-rows-[minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 shadow-floating sm:max-w-[30rem]'
+        className='grid-rows-[minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 shadow-floating sm:max-w-[30rem] sm:p-0'
         showCloseButton={false}
         initialFocus={displayed.confirmationText ? inputRef : cancelRef}
         finalFocus={finalFocus}
       >
-        <div className='scrollbar-thin grid min-h-0 gap-4 overflow-y-auto p-6 pb-4 max-sm:px-5'>
-          <DialogHeader className='gap-3'>
-            <DialogTitle className='text-xl leading-snug [overflow-wrap:anywhere]'>{displayed.title}</DialogTitle>
-            <DialogDescription
-              render={<div />}
-              className='grid gap-2 text-sm leading-relaxed [overflow-wrap:anywhere]'
-            >
-              <div className='text-foreground'>{displayed.description}</div>
-              {displayed.consequence ? <div>{displayed.consequence}</div> : null}
-            </DialogDescription>
+        <div className='scrollbar-thin grid min-h-0 gap-4 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 sm:px-6 sm:pt-6'>
+          <DialogHeader>
+            <DialogTitle className='text-xl'>{displayed.title}</DialogTitle>
+            <DialogDescription>{displayed.description}</DialogDescription>
           </DialogHeader>
-          {displayed.summary ? (
-            <div className='grid gap-1 border-s-2 border-surface-border ps-3 text-sm leading-relaxed [overflow-wrap:anywhere]'>
-              <div className='text-xs font-medium text-foreground-muted'>Affected resources</div>
-              <div>{displayed.summary}</div>
-            </div>
+          {displayed.details ? (
+            <details className='text-sm leading-relaxed text-foreground-muted [overflow-wrap:anywhere]'>
+              <summary
+                className={cn(
+                  focusRingClassName,
+                  'w-fit max-w-full cursor-pointer rounded-xs py-1 touch-manipulation hover:text-foreground touch:min-h-[var(--touch-target-size)] touch:content-center'
+                )}
+              >
+                {displayed.details.label}
+              </summary>
+              <p className='mt-1'>{displayed.details.content}</p>
+            </details>
           ) : null}
+          {displayed.children}
           {displayed.confirmationText ? (
             <FormField
               layout='vertical'
@@ -131,7 +135,7 @@ export const ConfirmMutationDialog = ({
           ) : null}
           {displayed.error ? <Notice tone='danger'>{displayed.error}</Notice> : null}
         </div>
-        <DialogFooter className='flex-row flex-wrap items-center justify-end gap-2 px-6 pt-1 pb-6 max-sm:px-5 [&_button]:max-w-full [&_button]:whitespace-normal'>
+        <DialogFooter className='px-5 pt-1 pb-5 sm:px-6 sm:pb-6'>
           <DialogClose asChild>
             <Button
               ref={cancelRef}

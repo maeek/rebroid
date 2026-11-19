@@ -46,12 +46,15 @@ Use a checkmark and a quiet accent tint
 for the selected option, and a separate highlight for keyboard navigation or hover. Combobox empty-state
 live regions stay mounted; put spacing on the message content so populated menus have no blank row.
 
-Confirmation dialogs put the action and target in the title, state the immediate impact in the first
-sentence, and keep supplemental consequences and resource lists flat. Use a quiet Cancel action and
-a specific primary action. Reserve the danger button for destructive operations and typed
-confirmation for broad irreversible operations such as purging the audit log. Focus Cancel for
-ordinary confirmations, restore trigger focus on dismissal, and keep the footer available when the
-body scrolls. While an operation is pending, keep its label visible and block dismissal.
+Dialog headers use a title and one body text style. Use a description when it adds information
+needed for the decision or form. Confirmation dialogs identify the action and target and keep
+material consequences in the description. Offer a labeled disclosure for optional content such as
+long target lists or recovery instructions. Keep footer actions in reading and tab order, side by
+side on mobile when they fit. Use a quiet Cancel action and a specific primary action. Reserve the
+danger button for destructive operations and typed confirmation for broad irreversible operations
+such as purging the audit log. Focus Cancel for ordinary confirmations, restore trigger focus on
+dismissal, and keep the footer available when the body scrolls. While an operation is pending,
+keep its label visible and block dismissal.
 Ubuntu supports weights 300, 400, 500, and 700; do not synthesize semibold or black. Supporting
 UI text is at least `text-xs`.
 
@@ -264,6 +267,11 @@ failure, and hide during loading. For saved settings forms, wrap the editor in
 `FormField` with `field` (a key or nested path). Use `DraftFieldLabel` for editable row or group
 labels. Scope nested editors to their own baseline and match collection entries by stable ID.
 Keep search filters, creation forms, and immediate-save controls outside this feedback.
+
+Use the `FormField` reset icon beside the label while an override is active. Its tooltip names the
+setting and the result of resetting it. After reset, focus returns to the field's available control.
+Saving a cleared app RAM or CPU limit uses the enforced quota when configured and the runtime
+default otherwise. Clearing an individual group quota sets it to Unlimited.
 
 Page editors with a saved baseline use the shared unsaved-changes dialog for links that leave the
 editor. Preserve the AI provider draft when switching between Models and Connection. Confirmed

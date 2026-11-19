@@ -167,8 +167,12 @@ export const PlatformRuntimeForm = ({
         open={renderingSaveOpen}
         onOpenChange={setRenderingSaveOpen}
         title='Save Android rendering changes?'
-        description='Stop and start affected Redroid apps to apply the new rendering setting. Persistent profiles are kept, but replacing a container can clear temporary data.'
-        consequence='If an app still cannot connect to ADB after starting, use Restart sidecar in Administration → Casting, then retry the app. Restarting the sidecar interrupts active display sessions.'
+        description='Stop and start affected Redroid apps to apply the new setting. Replacing a container can clear temporary data. Persistent profiles are kept.'
+        details={{
+          label: 'ADB recovery steps',
+          content:
+            'If an app cannot connect to ADB after starting, use Restart sidecar in Administration → Casting, then retry the app. Restarting the sidecar interrupts active display sessions.'
+        }}
         confirmLabel='Save changes'
         confirmDisabled={isBusy || !patch.androidRendering || !renderingValid}
         tone='warning'
@@ -180,8 +184,7 @@ export const PlatformRuntimeForm = ({
         open={restoreOpen}
         onOpenChange={setRestoreOpen}
         title='Restore runtime defaults?'
-        description='Reset the default image, registry, inactivity timeout, APK upload limit, and optional service connection settings.'
-        consequence='This replaces unsaved edits and saves immediately. The app data deletion policy and existing app definitions are unchanged.'
+        description='Replace unsaved edits and immediately restore defaults for new apps, APK uploads, and service connections. Existing app definitions and the app data deletion policy are kept.'
         confirmLabel='Restore defaults'
         confirmDisabled={unavailable}
         tone='warning'

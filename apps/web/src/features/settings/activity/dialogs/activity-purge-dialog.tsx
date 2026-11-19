@@ -8,8 +8,7 @@ export const ActivityPurgeDialog = () => {
       open={controller.purgeOpen}
       onOpenChange={controller.setPurgeOpen}
       title='Purge all activity logs?'
-      description='Permanently delete every existing audit event. This includes events outside the current filters.'
-      consequence='This cannot be undone. A new purge event will be recorded after deletion.'
+      description='Permanently delete all audit events, including those outside the current filters. Rebroid records a new event for the purge.'
       confirmationText='PURGE'
       confirmLabel='Purge all logs'
       pendingLabel='Purging…'

@@ -3,15 +3,7 @@
 import { useState } from 'react'
 import { IconKey, IconDeviceFloppy } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { MutationButton } from '@/components/ui/mutation-button'
@@ -89,9 +81,6 @@ export const PasswordPolicyDialog = ({
       >
         <DialogHeader>
           <DialogTitle>Password policy</DialogTitle>
-          <DialogDescription>
-            Configure the minimum length used for new credentials and password resets.
-          </DialogDescription>
         </DialogHeader>
         <FormField
           modified={passwordMinimumLength !== savedPasswordMinimumLength}

@@ -167,14 +167,13 @@ export const UsersSettings = ({
             : `Disable ${pendingDisableUsers.length} users?`
         }
         description='Disabling access signs users out and prevents new sign-ins. You can enable them again later.'
-        summary={
-          <span>
-            {pendingDisableUsers
-              .slice(0, 5)
-              .map(user => user.username)
-              .join(', ')}
-            {pendingDisableUsers.length > 5 ? ` and ${pendingDisableUsers.length - 5} more` : null}
-          </span>
+        details={
+          pendingDisableUsers.length > 0
+            ? {
+                label: pendingDisableUsers.length === 1 ? 'Show username' : 'Show usernames',
+                content: pendingDisableUsers.map(user => user.username).join(', ')
+              }
+            : undefined
         }
         confirmLabel={pendingDisableUsers.length === 1 ? 'Disable user' : 'Disable users'}
         tone='warning'
@@ -189,8 +188,7 @@ export const UsersSettings = ({
       <ConfirmMutationDialog
         open={Boolean(pendingDeleteUser)}
         title={`Delete ${pendingDeleteUser?.username ?? 'user'}?`}
-        description='This removes the user account from the web app user store.'
-        consequence='Existing orchestrator deployments are not deleted by this action.'
+        description='Rebroid removes the account and keeps its existing deployments.'
         confirmLabel='Delete user'
         pending={Boolean(pendingDeleteUser && busyUserId === pendingDeleteUser.id)}
         pendingLabel='Deleting…'
@@ -205,8 +203,7 @@ export const UsersSettings = ({
       <ConfirmMutationDialog
         open={pendingDeleteUsers.length > 0}
         title={`Delete ${pendingDeleteUsers.length} selected users?`}
-        description='This removes the selected user accounts from the web app user store.'
-        consequence='Existing orchestrator deployments are not deleted by this action.'
+        description='Rebroid removes the selected accounts and keeps their existing deployments.'
         confirmLabel='Delete users'
         pending={busyUserId === 'bulk'}
         pendingLabel='Deleting…'

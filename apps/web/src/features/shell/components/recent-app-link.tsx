@@ -244,8 +244,7 @@ export const RecentAppLink = ({
       <ConfirmMutationDialog
         open={stopDialogOpen}
         title={`Stop ${app.name}?`}
-        description='This stops Android and disconnects active viewers.'
-        consequence='You can start the app again with its saved profiles.'
+        description='Android stops and active viewers disconnect.'
         tone='warning'
         confirmLabel='Stop app'
         confirmDisabled={!canStop}

@@ -28,6 +28,12 @@ export const AppViewerDeleteAction = ({
   const router = useRouter()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const isProvisioning = app?.status === 'provisioning'
+  const deleteImpact = isProvisioning
+    ? 'Rebroid stops setup and removes the partially created app.'
+    : 'Rebroid permanently removes the app and its runtime resources.'
+  const profileImpact = settings.removeDataOnDelete
+    ? 'This also deletes saved profile data.'
+    : 'Rebroid keeps saved profile data where possible.'
   const trigger = {
     disabled: !app || app.status === 'removing' || isDeleting,
     label: isProvisioning ? 'Cancel provisioning' : 'Delete app',
@@ -71,17 +77,8 @@ export const AppViewerDeleteAction = ({
       )}
       <ConfirmMutationDialog
         open={open}
-        title={isProvisioning ? `Cancel provisioning for ${app?.name}?` : `Delete ${app?.name}?`}
-        description={
-          isProvisioning
-            ? 'Setup will stop and the partially created app will be removed.'
-            : 'The app and its runtime resources will be permanently removed from Rebroid.'
-        }
-        consequence={
-          settings.removeDataOnDelete
-            ? 'Saved profile data will also be deleted.'
-            : 'Saved profile data is preserved when possible.'
-        }
+        title={isProvisioning ? `Cancel provisioning for ${app?.name}?` : `Delete ${app?.name ?? 'app'}?`}
+        description={`${deleteImpact} ${profileImpact}`}
         confirmLabel={isProvisioning ? 'Cancel and delete' : 'Delete app'}
         pendingLabel={isProvisioning ? 'Cancelling…' : 'Deleting…'}
         pending={isDeleting}

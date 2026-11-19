@@ -103,7 +103,7 @@ function DialogContent({
           data-slot='dialog-content'
           data-editor-dialog={editorDialog}
           className={cn(
-            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] gap-4 overflow-x-hidden overflow-y-auto rounded-panel p-6 opacity-100 shadow-emphasis shadow-black/45 transition-[opacity,scale] duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none sm:max-w-lg',
+            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-full grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto overscroll-contain rounded-panel p-5 opacity-100 shadow-emphasis shadow-black/45 transition-[opacity,scale] duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none sm:max-w-lg sm:p-6',
             dialogSurfaceClassName,
             className
           )}
@@ -115,9 +115,9 @@ function DialogContent({
           <Visible when={showCloseButton}>
             <DialogPrimitive.Close
               data-slot='dialog-close'
-              className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs p-1 text-foreground-muted opacity-80 transition-[background-color,color,opacity] hover:bg-surface-band/80 hover:text-foreground hover:opacity-100 focus:bg-surface-band/80 focus:text-foreground focus:ring-2 focus:ring-offset-2 focus:outline-hidden data-[open]:bg-surface-band/65 data-[open]:text-foreground disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+              className="touch-control touch-manipulation ring-offset-background focus-visible:ring-ring absolute end-2 top-2 inline-flex size-8 items-center justify-center rounded-control text-foreground-muted transition-colors hover:bg-surface-band/80 hover:text-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
             >
-              <IconX />
+              <IconX aria-hidden />
               <span className='sr-only'>Close</span>
             </DialogPrimitive.Close>
           </Visible>
@@ -141,7 +141,10 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='dialog-footer'
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+      className={cn(
+        'flex flex-wrap items-center justify-end gap-2 [&_button]:max-w-full [&_button]:touch-manipulation',
+        className
+      )}
       {...props}
     />
   )
@@ -151,7 +154,10 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot='dialog-title'
-      className={cn('text-lg leading-none font-medium', className)}
+      className={cn(
+        'text-lg leading-snug font-medium text-balance [overflow-wrap:anywhere] [[data-slot=dialog-content]:has(>[data-slot=dialog-close])_&]:pe-8',
+        className
+      )}
       {...props}
     />
   )
@@ -161,7 +167,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
   return (
     <DialogPrimitive.Description
       data-slot='dialog-description'
-      className={cn('text-foreground-muted text-sm', className)}
+      className={cn('text-sm leading-relaxed text-foreground-muted [overflow-wrap:anywhere]', className)}
       {...props}
     />
   )

@@ -201,7 +201,7 @@ export const CreateGroupDialog = ({
           ) : null}
         </div>
 
-        <DialogFooter className='border-t border-surface-border/55 pt-4 sm:justify-between'>
+        <DialogFooter className='justify-between border-t border-surface-border/55 pt-4'>
           <Button
             type='button'
             variant='secondary'
@@ -210,27 +210,25 @@ export const CreateGroupDialog = ({
           >
             Back
           </Button>
-          <div className='flex justify-end gap-2'>
-            {step < steps.length - 1 ? (
-              <Button
-                type='button'
-                disabled={!draft.name.trim()}
-                onClick={() => setStep(current => Math.min(steps.length - 1, current + 1))}
-              >
-                Next
-              </Button>
-            ) : (
-              <MutationButton
-                type='button'
-                pending={isSaving}
-                pendingLabel='Creating…'
-                disabled={!draft.name.trim()}
-                onClick={() => void createGroup()}
-              >
-                Create group
-              </MutationButton>
-            )}
-          </div>
+          {step < steps.length - 1 ? (
+            <Button
+              type='button'
+              disabled={!draft.name.trim()}
+              onClick={() => setStep(current => Math.min(steps.length - 1, current + 1))}
+            >
+              Next
+            </Button>
+          ) : (
+            <MutationButton
+              type='button'
+              pending={isSaving}
+              pendingLabel='Creating…'
+              disabled={!draft.name.trim()}
+              onClick={() => void createGroup()}
+            >
+              Create group
+            </MutationButton>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

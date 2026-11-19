@@ -178,8 +178,7 @@ export const GroupsSection = ({
             ? `Delete ${pendingDeleteGroups[0]?.name}?`
             : `Delete ${pendingDeleteGroups.length} selected groups?`
         }
-        description='This removes the selected groups from the user store.'
-        consequence='Members lose the permissions and quotas inherited from these groups.'
+        description='Members lose the permissions and quotas they inherit from the deleted groups.'
         confirmLabel={pendingDeleteGroups.length === 1 ? 'Delete group' : 'Delete groups'}
         pending={isSaving}
         pendingLabel='Deleting…'

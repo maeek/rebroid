@@ -244,8 +244,7 @@ export const ApplicationProfileSelect = ({
         open={Boolean(profileToDelete)}
         onOpenChange={open => !open && setProfileToDelete(null)}
         title='Remove profile?'
-        description='Delete the saved profile and its persistent data. This cannot be undone.'
-        summary={profileToDelete}
+        description={`Permanently delete “${profileToDelete}” and its saved data.`}
         error={deleteError}
         confirmLabel='Remove profile'
         pendingLabel='Removing…'

@@ -175,12 +175,10 @@ export const RuntimeFileDialogs = ({
       <ConfirmMutationDialog
         open={deleteEntry !== null}
         title={`Delete ${deleteEntry?.type === 'directory' ? 'folder' : 'file'}?`}
-        description='This action cannot be undone.'
-        summary={deleteEntry?.path}
-        consequence={
+        description={
           deleteEntry?.type === 'directory'
-            ? 'The folder and everything inside it will be permanently deleted.'
-            : 'The file will be permanently deleted.'
+            ? `Permanently delete “${deleteEntry.path}” and everything inside it.`
+            : `Permanently delete “${deleteEntry?.path}”.`
         }
         confirmLabel='Delete permanently'
         pendingLabel='Deleting…'

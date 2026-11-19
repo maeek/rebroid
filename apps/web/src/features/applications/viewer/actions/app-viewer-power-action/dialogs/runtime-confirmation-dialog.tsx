@@ -18,13 +18,8 @@ export const RuntimeConfirmationDialog = ({ kind }: { kind: 'stop' | 'restart' }
       title={isStop ? `Stop ${appName}?` : `Restart ${appName}?`}
       description={
         isStop
-          ? 'This stops Android and disconnects active viewers.'
-          : 'This briefly disconnects viewers while the Android runtime restarts.'
-      }
-      consequence={
-        isStop
-          ? 'You can start the app again with its saved profiles.'
-          : 'The app starts again using its active profile.'
+          ? 'Android stops and active viewers disconnect.'
+          : 'Viewers briefly disconnect while Android restarts with the active profile.'
       }
       tone='warning'
       confirmLabel={isStop ? 'Stop app' : 'Restart app'}

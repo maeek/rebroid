@@ -337,8 +337,7 @@ export function AutomationEditorPage({
       <ConfirmMutationDialog
         open={deleteOpen}
         title={`Delete ${automation?.name ?? 'workflow'}?`}
-        description='This removes the workflow and its triggers.'
-        consequence='Existing run history is retained.'
+        description='Rebroid deletes the workflow and its triggers and keeps past runs.'
         confirmLabel='Delete workflow'
         pendingLabel='Deleting…'
         pending={busy}

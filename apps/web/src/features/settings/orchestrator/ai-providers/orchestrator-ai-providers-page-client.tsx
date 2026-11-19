@@ -239,12 +239,10 @@ export const OrchestratorAiProvidersPageClient = ({
         open={pendingDeleteProviders.length > 0}
         title={
           pendingDeleteProviders.length === 1
-            ? 'Delete AI provider?'
+            ? `Delete “${pendingDeleteProviders[0]?.label}”?`
             : `Delete ${pendingDeleteProviders.length} AI providers?`
         }
-        description='This permanently removes the selected provider configuration and its model assignments.'
-        summary={pendingDeleteProviders.length === 1 ? pendingDeleteProviders[0]?.label : undefined}
-        consequence='Automations that depend on these providers may stop working until another provider is configured.'
+        description='Rebroid deletes the provider settings and model assignments. Dependent automations may stop working until you configure another provider.'
         confirmLabel={pendingDeleteProviders.length === 1 ? 'Delete provider' : 'Delete providers'}
         pendingLabel='Deleting…'
         pending={busyId !== null}

@@ -1,17 +1,8 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog'
-import { Visible } from '@/components/ui/visible'
+import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
+import { FormField } from '@/components/ui/form-field'
 import {
   useContainerDetailContext,
   useContainerDetailControllerContext
@@ -25,58 +16,40 @@ export const ContainerActionDialog = () => {
   const { details } = useContainerDetailContext()
   const { closeActionDialog, forceRemove, isActing, pendingAction, runAction, setForceRemove } =
     useContainerDetailControllerContext()
-  const containerState = details.container.state
-  const copy = pendingAction ? actionDialogCopy[pendingAction] : actionDialogCopy.remove
+  const container = details.container
+  const action = pendingAction ?? 'remove'
+  const copy = actionDialogCopy[action]
 
   return (
-    <Dialog
-      modal
+    <ConfirmMutationDialog
       open={Boolean(pendingAction)}
+      title={`${copy.verb} “${container.names[0] ?? container.shortId}”?`}
+      description={copy.description}
+      tone={action === 'stop' ? 'warning' : 'danger'}
+      confirmLabel={getActionButtonLabel(action, forceRemove)}
+      pending={isActing}
+      pendingLabel={action === 'stop' ? 'Stopping…' : 'Removing…'}
+      onConfirm={() => void runAction()}
       onOpenChange={open => {
         closeActionDialog(open)
         if (!open) {
-          setForceRemove(containerState === 'removing')
+          setForceRemove(container.state === 'removing')
         }
       }}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{copy.title}</DialogTitle>
-          <DialogDescription>{copy.description}</DialogDescription>
-        </DialogHeader>
-        <Visible when={pendingAction === 'remove'}>
-          <label
-            htmlFor='force-container-removal'
-            className='flex items-start gap-3 rounded-panel border border-surface-border/60 bg-surface-band/45 px-3 py-3'
-          >
-            <Checkbox
-              id='force-container-removal'
-              checked={forceRemove}
-              onCheckedChange={checked => setForceRemove(checked === true)}
-              disabled={isActing}
-            />
-            <div className='space-y-1 text-sm'>
-              <div className='font-medium'>Force removal</div>
-              <p className='text-foreground-muted'>
-                Sends Docker a forced delete request and retries briefly if removal is already in progress. Persistent
-                volumes are not removed by this action.
-              </p>
-            </div>
-          </label>
-        </Visible>
-        <DialogFooter>
-          <Button
-            variant={copy.buttonVariant}
-            disabled={!pendingAction || isActing}
-            onClick={() => void runAction()}
-          >
-            {pendingAction ? getActionButtonLabel(pendingAction, forceRemove) : 'Remove container'}
-          </Button>
-          <DialogClose asChild>
-            <Button variant='secondary'>Cancel</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      {pendingAction === 'remove' ? (
+        <FormField
+          layout='horizontal'
+          label='Force removal'
+          description='Use if normal removal fails or Docker is stuck removing the container.'
+        >
+          <Checkbox
+            checked={forceRemove}
+            onCheckedChange={checked => setForceRemove(checked === true)}
+            disabled={isActing}
+          />
+        </FormField>
+      ) : null}
+    </ConfirmMutationDialog>
   )
 }

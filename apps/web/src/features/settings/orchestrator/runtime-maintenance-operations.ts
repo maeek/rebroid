@@ -13,7 +13,8 @@ export type RuntimeMaintenanceOperation = {
   key: string
   title: string
   description: string
-  consequence: string
+  actionLabel: string
+  confirmation: string
   run: () => Promise<string>
 }
 
@@ -36,7 +37,8 @@ export const runtimeMaintenanceOperations: RuntimeMaintenanceOperation[] = [
     key: 'apks',
     title: 'Unused APK uploads',
     description: 'Remove uploaded files and records that no app references.',
-    consequence: 'Unreferenced APK uploads will be permanently deleted.',
+    actionLabel: 'Delete unused APK uploads',
+    confirmation: 'Permanently delete uploaded APK files and records that no app references.',
     run: async () => {
       const result = await cleanupUploadedApksAction()
       return `Removed ${result.deletedRecords} upload records and ${result.removedFiles} files.`
@@ -46,37 +48,42 @@ export const runtimeMaintenanceOperations: RuntimeMaintenanceOperation[] = [
     key: 'images',
     title: 'Dangling images',
     description: 'Remove untagged Docker images that are no longer in use.',
-    consequence: 'Dangling images will be removed from the Docker host.',
+    actionLabel: 'Remove dangling images',
+    confirmation: 'Remove untagged images that are no longer in use from the Docker host.',
     run: async () => summarizePruneResult(unwrapActionResult(await pruneImagesAction(true)))
   },
   {
     key: 'containers',
     title: 'Stopped containers',
     description: 'Remove stopped Docker containers from the host.',
-    consequence:
-      'All stopped containers on the Docker host are eligible, including containers outside managed apps. Their writable data will be deleted.',
+    actionLabel: 'Remove stopped containers',
+    confirmation:
+      'Remove all stopped containers on the Docker host, including those outside Rebroid. This deletes their writable data.',
     run: async () => summarizePruneResult(unwrapActionResult(await pruneContainersAction()))
   },
   {
     key: 'networks',
     title: 'Unused networks',
     description: 'Remove Docker networks with no attached containers.',
-    consequence: 'Unused networks will be removed from the Docker host.',
+    actionLabel: 'Remove unused networks',
+    confirmation: 'Remove networks with no attached containers from the Docker host.',
     run: async () => summarizePruneResult(unwrapActionResult(await pruneNetworksAction()))
   },
   {
     key: 'volumes',
     title: 'Unused volumes',
     description: 'Remove Docker volumes not referenced by any container.',
-    consequence: 'Unused volumes can contain persistent app data. Removed data cannot be recovered.',
+    actionLabel: 'Remove unused volumes',
+    confirmation: 'Permanently delete Docker volumes with no container references. They can still hold saved app data.',
     run: async () => summarizePruneResult(unwrapActionResult(await pruneVolumesAction()))
   },
   {
     key: 'all',
     title: 'Full Docker cleanup',
-    description: 'Clean up stopped containers, dangling images, unused networks, and volumes.',
-    consequence:
-      'This applies to the Docker host, including resources outside managed apps. Stopped containers and unused volumes can contain data that cannot be recovered. APK uploads are not included.',
+    description: 'Remove stopped containers, dangling images, unused networks, and unused volumes.',
+    actionLabel: 'Run full Docker cleanup',
+    confirmation:
+      'Remove stopped containers, dangling images, unused networks, and unused volumes across the Docker host, including outside Rebroid. Data in removed containers and volumes is lost. APK uploads are kept.',
     run: async () => {
       unwrapActionResult(await pruneAllDockerResourcesAction())
       return 'Stopped containers, dangling images, unused networks, and unused volumes were cleaned up.'

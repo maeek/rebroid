@@ -9,24 +9,20 @@ export type ContainerPendingAction = 'stop' | 'remove'
 export const actionDialogCopy: Record<
   ContainerPendingAction,
   {
-    title: string
+    verb: string
     description: string
     errorTitle: string
-    buttonVariant: 'secondary' | 'danger'
   }
 > = {
   stop: {
-    title: 'Stop container?',
-    description: 'This stops the selected Docker container without deleting it.',
-    errorTitle: 'Could not stop container',
-    buttonVariant: 'secondary'
+    verb: 'Stop',
+    description: 'The Docker container stops and remains available to start again.',
+    errorTitle: 'Could not stop container'
   },
   remove: {
-    title: 'Remove container?',
-    description:
-      'Remove the selected Docker container. Enable force removal when Docker reports the container as stuck in removing or when a normal removal does not complete.',
-    errorTitle: 'Could not remove container',
-    buttonVariant: 'danger'
+    verb: 'Remove',
+    description: 'Permanently delete the Docker container and its writable data. Persistent volumes are kept.',
+    errorTitle: 'Could not remove container'
   }
 }
 

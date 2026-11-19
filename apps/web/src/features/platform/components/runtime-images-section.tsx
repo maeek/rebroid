@@ -228,10 +228,12 @@ export const RuntimeImagesSection = ({
 
       <ConfirmMutationDialog
         open={Boolean(pendingRemove)}
-        title={pendingRemove?.length === 1 ? 'Remove image?' : `Remove ${pendingRemove?.length ?? 0} images?`}
-        description='This permanently removes the selected image data from the container engine.'
-        summary={pendingRemove?.length === 1 ? getImageRemoveDialogLabel(pendingRemove[0]) : undefined}
-        consequence='Images used by containers may require additional Docker cleanup.'
+        title={
+          pendingRemove?.length === 1
+            ? `Remove “${getImageRemoveDialogLabel(pendingRemove[0])}”?`
+            : `Remove ${pendingRemove?.length ?? 0} images?`
+        }
+        description='Permanently remove image data from Docker. Images used by containers may require additional cleanup.'
         confirmLabel={pendingRemove?.length === 1 ? 'Remove image' : 'Remove images'}
         pendingLabel='Removing…'
         pending={busyId !== null}

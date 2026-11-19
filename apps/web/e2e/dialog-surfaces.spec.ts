@@ -1,7 +1,19 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
+
+const expectActionsSideBySide = async (first: Locator, second: Locator) => {
+  await expect(first).toBeInViewport({ ratio: 1 })
+  await expect(second).toBeInViewport({ ratio: 1 })
+  await expect
+    .poll(async () => {
+      const [left, right] = await Promise.all([first.boundingBox(), second.boundingBox()])
+      if (!left || !right) return false
+      return left.x + left.width <= right.x && Math.abs(left.y + left.height / 2 - right.y - right.height / 2) <= 1
+    })
+    .toBe(true)
+}
 
 test('model picker has no blank empty-state row and dialogs separate controls from their surface', async ({ page }) => {
-  for (const width of [390, 1440]) {
+  for (const width of [320, 390, 1440]) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=ai-models')
     const models = page.getByRole('region', { name: 'Models', exact: true })
@@ -9,6 +21,8 @@ test('model picker has no blank empty-state row and dialogs separate controls fr
       await models.getByRole('button', { name: 'Add model', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Add model', exact: true })
       const input = dialog.getByRole('combobox', { name: 'Available model', exact: true })
+      const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+      await expectActionsSideBySide(cancel, dialog.getByRole('button', { name: 'Add model', exact: true }))
       await page.evaluate(value => {
         document.documentElement.className = value
       }, theme)
@@ -43,7 +57,7 @@ test('model picker has no blank empty-state row and dialogs separate controls fr
       expect((await liveRegion.boundingBox())!.height).toBeGreaterThan(0)
       await input.fill('Another')
       await page.getByRole('option', { name: /Another model/ }).click()
-      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await cancel.click()
     }
   }
 })
@@ -116,12 +130,54 @@ test('confirmation keeps the safe action focused and the footer reachable in a s
   const confirm = dialog.getByRole('button', { name: 'Disable user', exact: true })
   await expect(cancel).toBeFocused()
   await expect(dialog).toHaveAccessibleDescription(/signs users out and prevents new sign-ins/)
-  for (const action of [cancel, confirm]) {
-    await expect(action).toBeInViewport({ ratio: 1 })
-  }
+  await expectActionsSideBySide(cancel, confirm)
+  const disclosure = dialog.locator('summary')
+  await expect(dialog.getByText('ada', { exact: true })).toBeHidden()
+  await page.keyboard.press('Shift+Tab')
+  await expect(disclosure).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(disclosure.locator('..')).toHaveAttribute('open', '')
+  await expectActionsSideBySide(cancel, confirm)
   await page.mouse.click(2, 2)
   await expect(dialog).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await expect(trigger).toBeFocused()
+})
+
+test('full Docker cleanup shows the host scope and data loss in one description', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/skeleton-contract-test?editor=runtime')
+  await page.getByRole('button', { name: 'Run full Docker cleanup' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Run full Docker cleanup?' })
+  await expect(dialog).toHaveAccessibleDescription(
+    /across the Docker host.*Data in removed containers and volumes is lost/
+  )
+  await expect(dialog.locator('[data-slot="dialog-description"]')).toHaveCount(1)
+  await expect(dialog.locator('details')).toHaveCount(0)
+  const cancel = dialog.getByRole('button', { name: 'Cancel' })
+  await expectActionsSideBySide(cancel, dialog.getByRole('button', { name: 'Clean up', exact: true }))
+  await cancel.click()
+  await expect(dialog).toHaveCount(0)
+})
+
+test('app stop and delete confirmations fit a narrow screen with a long app name', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.goto('/skeleton-contract-test?editor=apps-gallery-snapshot')
+  const appName = 'Warehouse scanner with a very long application name'
+  const trigger = page.getByRole('button', { name: `Actions for ${appName}`, exact: false })
+
+  for (const [verb, impact] of [
+    ['Stop', /Android stops and active viewers disconnect/],
+    ['Delete', /Permanently delete the app and saved profile data/]
+  ] as const) {
+    await trigger.press('Enter')
+    await page.getByRole('menuitem', { name: `${verb} app…`, exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: `${verb} ${appName}?` })
+    await expect(dialog).toHaveAccessibleDescription(impact)
+    const cancel = dialog.getByRole('button', { name: 'Cancel' })
+    await expectActionsSideBySide(cancel, dialog.getByRole('button', { name: `${verb} app` }))
+    await cancel.click()
+    await expect(dialog).toHaveCount(0)
+  }
 })

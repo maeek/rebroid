@@ -20,7 +20,7 @@ export const UnsavedChangesDialog = ({
     description={description}
     tone='warning'
     cancelLabel='Keep editing'
-    confirmLabel='Leave without saving'
+    confirmLabel='Leave page'
     onConfirm={navigation.confirmPendingNavigation}
     onOpenChange={open => {
       if (!open) navigation.setPendingNavigationHref(null)
