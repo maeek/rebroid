@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Visible } from '@/components/ui/visible'
 import { safeVibrate } from '@/lib/safe-vibrate'
@@ -22,7 +21,6 @@ type NumberFieldBaseProps = {
   suffix?: string
   inputSuffix?: string
   allowEmpty?: boolean
-  clearLabel?: string
   className?: string
   loading?: boolean
 }
@@ -55,7 +53,6 @@ export const NumberSliderField = ({
   rangeLabel,
   showSlider = true,
   allowEmpty,
-  clearLabel = 'Default',
   className,
   loading = false
 }: NumberSliderFieldProps) => {
@@ -104,18 +101,6 @@ export const NumberSliderField = ({
         )}
         <Visible when={inputSuffix}>
           <span className='shrink-0 whitespace-nowrap text-sm text-foreground-muted'>{inputSuffix}</span>
-        </Visible>
-        <Visible when={allowEmpty}>
-          <Button
-            type='button'
-            variant='outline'
-            size='sm'
-            className='h-9'
-            disabled={loading}
-            onClick={() => onValueChange('')}
-          >
-            {clearLabel}
-          </Button>
         </Visible>
       </div>
       {showSlider && sliderMax !== undefined ? (

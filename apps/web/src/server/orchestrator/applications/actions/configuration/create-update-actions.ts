@@ -116,9 +116,12 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
       assertCanChangeSessionLimit(user, input)
       assertCanChangeContainerArgs(user, input)
       const quotas = await getEnforcedResourceQuota(user.quotas)
-      enforceResourceQuotas(input, quotas)
+      const update = { ...input }
+      if (update.memoryLimitMb === null) update.memoryLimitMb = quotas.maxMemoryMb
+      if (update.cpuLimitCpus === null) update.cpuLimitCpus = quotas.maxCpuCpus
+      enforceResourceQuotas(update, quotas)
       enforceSessionQuota(input, quotas)
-      const command = await orchestratorAppCatalogClient.updateApplication(id, input).catch((error: unknown) => {
+      const command = await orchestratorAppCatalogClient.updateApplication(id, update).catch((error: unknown) => {
         throw toApplicationNameError(error) ?? error
       })
       recordAuditEvent({

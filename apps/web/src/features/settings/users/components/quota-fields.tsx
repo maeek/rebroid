@@ -96,6 +96,11 @@ export const QuotaFields = ({
           field={['quotas', field.key]}
           key={field.key}
           label={field.label}
+          resetAction={
+            quotas[field.key] == null
+              ? undefined
+              : { label: `Set ${field.label} to unlimited`, onReset: () => setQuota(field.key, '') }
+          }
           description={field.description}
           layout='vertical'
         >
@@ -109,7 +114,6 @@ export const QuotaFields = ({
             suffix={field.suffix}
             inputSuffix={field.inputSuffix}
             allowEmpty
-            clearLabel='Unlimited'
             onValueChange={value => setQuota(field.key, value)}
           />
         </FormField>

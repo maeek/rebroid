@@ -6,7 +6,7 @@ import { OrchestratorRequestError } from '../../../request'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppNetworkPolicyClient } from '../../network-policy-client'
 import { enforceResourceQuotas } from '../../safety'
-import { submitCreateApplicationAction } from './create-update-actions'
+import { submitCreateApplicationAction, updateApplicationAction } from './create-update-actions'
 import {
   applyNetworkPolicyAction,
   reconcileNetworkPoliciesAction,
@@ -23,7 +23,12 @@ vi.mock('../../../current-user', () => ({
 vi.mock('../../../features', () => ({ loadFeatureFlags: vi.fn().mockResolvedValue(null), requireFeature: vi.fn() }))
 vi.mock('../../../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
 vi.mock('../../catalog-client', () => ({
-  orchestratorAppCatalogClient: { getApplication: vi.fn(), createApplication: vi.fn(), listApplications: vi.fn() }
+  orchestratorAppCatalogClient: {
+    getApplication: vi.fn(),
+    createApplication: vi.fn(),
+    listApplications: vi.fn(),
+    updateApplication: vi.fn()
+  }
 }))
 vi.mock('../../lifecycle-client', () => ({ orchestratorAppLifecycleClient: {} }))
 vi.mock('../../network-policy-client', () => ({
@@ -98,6 +103,23 @@ describe('network policy actions', () => {
       name: 'Test app'
     } as Awaited<ReturnType<typeof orchestratorAppNetworkPolicyClient.applyNetworkPolicy>>)
     vi.mocked(requireFeature).mockRejectedValue(new Error('feature.firewall is disabled.'))
+  })
+
+  it('resolves resource resets using the enforced quotas', async () => {
+    const quotas = { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: 512, maxCpuCpus: null }
+    vi.mocked(getCurrentUserContext).mockResolvedValue(user({ 'applications:change-resources': true }, false, quotas))
+    vi.mocked(orchestratorAppCatalogClient.updateApplication).mockResolvedValue({
+      id: networkPolicyAppId,
+      name: 'Test app'
+    } as Awaited<ReturnType<typeof orchestratorAppCatalogClient.updateApplication>>)
+
+    const result = await updateApplicationAction(networkPolicyAppId, { memoryLimitMb: null, cpuLimitCpus: null })
+
+    expect(result.ok).toBe(true)
+    expect(orchestratorAppCatalogClient.updateApplication).toHaveBeenCalledWith(networkPolicyAppId, {
+      memoryLimitMb: 512,
+      cpuLimitCpus: null
+    })
   })
 
   it('allows disabling and applying a policy without a web feature gate', async () => {

@@ -73,6 +73,7 @@ export const AppManage = () => {
           canChangeContainerArgs,
           canChangeResources,
           canChangeSessionLimit,
+          currentApp,
           draft
         })
       )

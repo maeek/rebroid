@@ -26,21 +26,28 @@ export const mergeAppPreservingDraftAssets = (nextApp: AppDefinition, currentApp
   ownerDisplayName: currentApp?.ownerDisplayName ?? nextApp.ownerDisplayName
 })
 
+const resourceLimitUpdate = (value: string, savedValue: number | null) => {
+  if (value !== '') return Number(value)
+  return savedValue === null ? undefined : null
+}
+
 export const buildAppManageUpdateInput = ({
   canChangeContainerArgs,
   canChangeResources,
   canChangeSessionLimit,
+  currentApp,
   draft
 }: {
   canChangeContainerArgs: boolean
   canChangeResources: boolean
   canChangeSessionLimit: boolean
+  currentApp: Pick<AppDefinition, 'memoryLimitMb' | 'cpuLimitCpus'>
   draft: AppManageDraft
 }) => ({
   name: draft.appName,
   inactivityTimeoutSeconds: canChangeSessionLimit ? draft.inactivityTimeoutSeconds : undefined,
-  memoryLimitMb: canChangeResources && draft.memoryLimitMb ? Number(draft.memoryLimitMb) : undefined,
-  cpuLimitCpus: canChangeResources && draft.cpuLimitCpus ? Number(draft.cpuLimitCpus) : undefined,
+  memoryLimitMb: canChangeResources ? resourceLimitUpdate(draft.memoryLimitMb, currentApp.memoryLimitMb) : undefined,
+  cpuLimitCpus: canChangeResources ? resourceLimitUpdate(draft.cpuLimitCpus, currentApp.cpuLimitCpus) : undefined,
   containerArgs: canChangeContainerArgs ? draft.containerArgs.trim() || null : undefined
 })
 

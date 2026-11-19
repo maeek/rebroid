@@ -29,6 +29,7 @@ describe('app manage draft helpers', () => {
         canChangeContainerArgs: false,
         canChangeResources: true,
         canChangeSessionLimit: false,
+        currentApp: { memoryLimitMb: null, cpuLimitCpus: null },
         draft: {
           appName: 'Demo',
           containerArgs: '  --foo  ',
@@ -45,5 +46,25 @@ describe('app manage draft helpers', () => {
       cpuLimitCpus: 2,
       containerArgs: undefined
     })
+  })
+
+  it('clears saved limits while omitting fields that already use the default', () => {
+    const input = {
+      canChangeContainerArgs: false,
+      canChangeResources: true,
+      canChangeSessionLimit: false,
+      currentApp: { memoryLimitMb: 2048, cpuLimitCpus: null },
+      draft: {
+        appName: 'Demo',
+        containerArgs: '',
+        cpuLimitCpus: '',
+        icon: null,
+        inactivityTimeoutSeconds: 60,
+        memoryLimitMb: ''
+      }
+    }
+
+    expect(buildAppManageUpdateInput(input)).toMatchObject({ memoryLimitMb: null, cpuLimitCpus: undefined })
+    expect(buildAppManageUpdateInput({ ...input, canChangeResources: false }).memoryLimitMb).toBeUndefined()
   })
 })

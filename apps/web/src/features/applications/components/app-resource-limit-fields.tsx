@@ -26,6 +26,11 @@ export const AppResourceLimitFields = ({
   <>
     <FormField
       label='RAM limit'
+      resetAction={
+        values.memoryLimitMb.trim()
+          ? { label: 'Reset RAM limit to default', onReset: () => onChange({ memoryLimitMb: '' }) }
+          : undefined
+      }
       modified={modified?.memoryLimitMb}
       error={memoryError}
       description='In MB. Blank uses the default.'
@@ -45,9 +50,14 @@ export const AppResourceLimitFields = ({
     </FormField>
     <FormField
       label='CPU limit'
+      resetAction={
+        values.cpuLimitCpus.trim()
+          ? { label: 'Reset CPU limit to default', onReset: () => onChange({ cpuLimitCpus: '' }) }
+          : undefined
+      }
       modified={modified?.cpuLimitCpus}
       error={cpuError}
-      description='In cores. Decimals are allowed.'
+      description='Cores can be fractional. Blank for default.'
       layout='vertical'
       className={verticalSettingClassName}
     >

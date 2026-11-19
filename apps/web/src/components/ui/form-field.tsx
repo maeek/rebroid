@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { IconRestore } from '@tabler/icons-react'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -9,6 +10,7 @@ import { useFieldModified, type FieldPath } from './field-changes'
 import { FieldValidation } from './field-validation'
 import { FormLoadingContext } from './form-loading-boundary'
 import { ModifiedIndicator } from './modified-indicator'
+import { RowActionButton } from './row-actions'
 
 interface FormFieldProps {
   children: React.ReactNode
@@ -24,6 +26,7 @@ interface FormFieldProps {
   /** Field in the nearest saved-draft comparison, including nested paths. */
   field?: FieldPath
   required?: boolean
+  resetAction?: { label: string; onReset: () => void }
   surface?: 'plain' | 'band'
 }
 
@@ -44,6 +47,7 @@ export const FormField = (props: FormFieldProps) => {
     label,
     layout = 'horizontal',
     required,
+    resetAction,
     surface = 'plain',
     modified: explicitModified,
     field
@@ -56,6 +60,14 @@ export const FormField = (props: FormFieldProps) => {
   const generatedId = React.useId()
   const child = React.isValidElement<FieldControlProps>(children) ? children : null
   const id = controlId ?? child?.props.id ?? generatedId
+  const resetDocument = React.useRef<Document | null>(null)
+  const showReset = !loading && Boolean(resetAction)
+  React.useLayoutEffect(() => {
+    if (showReset || !resetDocument.current) return
+    const ownerDocument = resetDocument.current
+    resetDocument.current = null
+    if (!loading) ownerDocument.getElementById(id)?.focus()
+  }, [id, loading, showReset])
   const descriptionId = description ? `${id}-description` : undefined
   const visibleError = loading ? undefined : error
   const modifiedId = modified && !loading ? `${id}-modified` : undefined
@@ -87,14 +99,28 @@ export const FormField = (props: FormFieldProps) => {
       )}
     >
       <div className={cn('grid min-w-0 gap-1', fieldLayout === 'horizontal' ? 'flex-1' : 'w-full')}>
-        <Label
-          htmlFor={id}
-          className='relative leading-5 touch:text-base/6'
-        >
-          {modified !== undefined ? <ModifiedIndicator modified={Boolean(modified && !loading)} /> : null}
-          {label}
-          {required ? <span className='ml-1 text-xs font-medium text-foreground-muted'>*</span> : null}
-        </Label>
+        <div className='flex min-w-0 items-center gap-1'>
+          <Label
+            htmlFor={id}
+            className='relative min-w-0 only:flex-1 leading-5 touch:text-base/6'
+          >
+            {modified !== undefined ? <ModifiedIndicator modified={Boolean(modified && !loading)} /> : null}
+            {label}
+            {required ? <span className='ml-1 text-xs font-medium text-foreground-muted'>*</span> : null}
+          </Label>
+          {showReset && resetAction ? (
+            <RowActionButton
+              label={resetAction.label}
+              className='-my-1.5 text-foreground-muted touch:-my-2.5'
+              onClick={event => {
+                resetDocument.current = event.currentTarget.ownerDocument
+                resetAction.onReset()
+              }}
+            >
+              <IconRestore aria-hidden />
+            </RowActionButton>
+          ) : null}
+        </div>
         {modifiedId ? (
           <span
             id={modifiedId}

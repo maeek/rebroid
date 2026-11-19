@@ -93,63 +93,54 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
       <p className='text-sm text-foreground-muted'>
         Device control model: {modelSelection.selectedModel?.id ?? (modelId || 'Workflow default')}
       </p>
-      <div className='grid gap-2'>
-        <div className='flex items-center justify-between gap-2'>
-          <div className='text-sm font-medium'>Allowed capabilities</div>
-          {capabilities !== undefined && (
-            <Button
-              type='button'
-              size='sm'
-              variant='ghost'
-              onClick={() => patchInput({ capabilities: undefined })}
-            >
-              Use defaults
-            </Button>
-          )}
-        </div>
+      <FormField
+        label='Allowed capabilities'
+        description='Defaults follow your permissions. The agent receives up to five relevant routed capabilities per run.'
+        layout='vertical'
+        resetAction={
+          capabilities === undefined
+            ? undefined
+            : {
+                label: 'Reset allowed capabilities to defaults',
+                onReset: () => patchInput({ capabilities: undefined })
+              }
+        }
+      >
         {capabilities === undefined ? (
           <Button
             type='button'
             variant='secondary'
             size='sm'
-            className='justify-self-start'
+            aria-label='Customize capabilities'
             onClick={() => patchInput({ capabilities: selectedCapabilities })}
           >
             Customize capabilities
           </Button>
         ) : (
-          <FormField
-            label='Capability overrides'
-            layout='vertical'
-          >
-            <MultiSelectCombobox
-              value={selectedCapabilities}
-              options={selectableCommands
-                .map(command => ({
-                  value: command.uses,
-                  label: automationActionPresentation[command.uses]?.[1] ?? command.label,
-                  description: command.description,
-                  keywords: [command.uses]
-                }))
-                .concat(
-                  selectedCapabilities
-                    .filter(uses => !selectableCommands.some(command => command.uses === uses))
-                    .map(uses => ({
-                      value: uses,
-                      label: uses,
-                      description: 'Unavailable to this account.',
-                      keywords: [uses]
-                    }))
-                )}
-              placeholder='Search capabilities'
-              onValueChange={next => patchInput({ capabilities: next })}
-            />
-          </FormField>
+          <MultiSelectCombobox
+            value={selectedCapabilities}
+            options={selectableCommands
+              .map(command => ({
+                value: command.uses,
+                label: automationActionPresentation[command.uses]?.[1] ?? command.label,
+                description: command.description,
+                keywords: [command.uses]
+              }))
+              .concat(
+                selectedCapabilities
+                  .filter(uses => !selectableCommands.some(command => command.uses === uses))
+                  .map(uses => ({
+                    value: uses,
+                    label: uses,
+                    description: 'Unavailable to this account.',
+                    keywords: [uses]
+                  }))
+              )}
+            placeholder='Search capabilities'
+            onValueChange={next => patchInput({ capabilities: next })}
+          />
         )}
-        <p className='text-xs text-foreground-muted'>
-          Defaults follow your permissions. The agent receives up to five relevant routed capabilities per run.
-        </p>
-      </div>
+      </FormField>
       <AdvancedActionFields
         label='Models and execution limits'
         summary={providerId || modelId || visionProviderId || visionModelId ? 'Model overrides' : undefined}

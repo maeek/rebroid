@@ -163,6 +163,25 @@ describe('access editors', () => {
     expect(screen.queryByRole('spinbutton')).toBeNull()
   })
 
+  it('clears a group quota to unlimited and saves it without changing the other quotas', async () => {
+    const group = groups[0]
+    const quotas = { ...group.quotas, maxOpenApps: null }
+    mocks.updateGroup.mockResolvedValue({ ok: true, data: { ...group, quotas }, requestId: 'saved' })
+    render(<GroupEditPage group={group} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Quotas' }))
+
+    const limit = screen.getByRole('spinbutton', { name: 'Max Open Apps' })
+    const resetName = 'Set Max Open Apps to unlimited'
+    fireEvent.click(screen.getByRole('button', { name: resetName }))
+
+    expect(limit).toHaveDisplayValue('')
+    expect(limit).toHaveFocus()
+    expect(screen.queryByRole('button', { name: resetName })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save Group' }))
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+    expect(mocks.updateGroup).toHaveBeenCalledWith(group.id, expect.objectContaining({ quotas }))
+  })
+
   it('retains edited group permissions after save failure and blocks duplicate saves while pending', async () => {
     let resolve: (value: unknown) => void = () => undefined
     mocks.updateGroup.mockImplementation(
