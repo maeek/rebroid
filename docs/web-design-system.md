@@ -78,11 +78,11 @@ Set `surface-navigation` between the page background and editor panels, without 
 brand and sidebar toggle in a single row above the scrollable links. In the icon rail, use a right
 chevron beside the logo at the top-right edge. Reveal it when the pointer enters the rail or the
 toggle gains keyboard focus. Keep it visible on touch screens. Place the account control at the bottom.
-For platform administrators, the Services navigation item shows overall platform health with a right-aligned dot.
-Collapsing the System section moves this dot to the System item.
-Casting, Firewall, Docker, and OCR perception show their own health in the same way. Each dot has a text description.
+For platform administrators, the Services navigation item shows overall platform health with a right-aligned symbol and a short text label.
+Collapsing the System section moves this status to the System item.
+Casting, Firewall, Docker, and OCR perception show their own health in the same way. Reserve sidebar dots for notifications.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
-is a 64 px icon rail with service health dots on the corresponding icons or flyout links. The account menu opens beside the rail and aligns
+is a 64 px icon rail with a health symbol beside each service icon and the full state in its hint or flyout. The account menu opens beside the rail and aligns
 with the bottom edge of its trigger. In the expanded sidebar it opens 8 px above the borderless
 account row and matches its width. Use a neutral hover and open state on the row and a borderless
 floating menu. Show the current theme on the Theme row. Theme opens a list in the same menu, with
@@ -93,7 +93,7 @@ The bottom dock links to Apps and, when enabled, Workflows. Use `surface-floatin
 and a gap above the bottom safe area. Tint the active icon and label with the accent and give
 the icon a small tinted surface. Keep the dock free of dividers and use 44 px touch targets.
 More opens the navigation drawer, with the Rebroid wordmark above the scrollable navigation links and service
-health dots. Place the Account entry at the top, before the navigation links. Open the account view
+health labels. Place the Account entry at the top, before the navigation links. Open the account view
 in the same drawer with a Back button, the signed-in identity, direct Preferences and Security links,
 and a two-column Theme picker with touch targets at least 44 px tall. Keep Log out below the theme
 choices. The drawer has a swipe-to-dismiss grip and an explicit close button.
@@ -480,11 +480,15 @@ the user to All apps before retrying. Only a confirmed app ID opens the resource
 Application identity places the APK and icon pickers in matching preview rows. Stack them in
 narrow sections and put them side by side when both have room. Support dropping an APK and
 keep the picker available for touch and keyboard. On Create app, keep the selected APK and icon
-when a replacement fails, and show the error by the affected control. **Choose saved APK** opens
-the account's saved APKs in a searchable dialog. Confirm the choice before applying it. The ReDroid display preview
-uses the selected screen's aspect ratio and shows dimensions and density beside it. It sits
-below the controls in narrow sections and grows into its own column beside the Runtime settings
-when space allows. Runtime arguments place editable overrides before the effective shell preview.
+when a replacement fails, and show the error by the affected control. Keep upload and reuse actions
+at the trailing edge of the APK preview and move them below the preview when space is limited.
+**Saved APKs** opens the account's saved APKs in a searchable dialog. Confirm the choice before
+applying it.
+
+The ReDroid display preview uses the selected screen's aspect ratio and shows dimensions and density
+beside it. It sits below the controls in narrow sections and grows into its own column beside the
+Runtime settings when space allows. Runtime arguments place editable overrides before the effective
+shell preview.
 Network access pairs its outbound policy with additional destinations on wide screens. Keep
 session and resource limits in one collapsible panel, with numeric inputs sized for their units.
 In Create app and App Configuration, stack the inactivity timeout, RAM, and CPU fields. Pair each
@@ -867,5 +871,5 @@ access to All apps.
 Sidebar app shortcuts keep their highlight while the context menu is open. Right-click or long-press
 to open app actions or remove a shortcut from recent history. Removing a running shortcut hides it
 until the user opens the app again.
-Sidebar app shortcuts show a status indicator only while the app is running or a lifecycle operation is in progress.
+Sidebar app shortcuts show an activity symbol while the app is running and a clock during lifecycle operations.
 Keep shortcut row height consistent across statuses and Start action availability.
