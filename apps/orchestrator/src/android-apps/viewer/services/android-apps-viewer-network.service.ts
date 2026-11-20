@@ -28,6 +28,11 @@ import { AndroidAppsStateWriter } from '../../common/services/android-apps-state
 import { runtimeIdentityKey } from '../../common/utils/android-runtime-identity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { isRedroidRuntime } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  isPreparedViewerTargetExpired,
+  selectPreparedViewerTarget,
+  type PreparedViewerTargetEntry,
+} from '../utils/prepared-viewer-target-reuse';
 
 export class ViewerRuntimeChangedError extends Error {
   constructor() {
@@ -91,13 +96,7 @@ export class AndroidAppsViewerNetworkService {
   private readonly pendingTargets = new Map<string, TargetPreparation>();
   private readonly preparedTargets = new Map<
     string,
-    {
-      appId: string;
-      runtime: string;
-      target: PreparedViewerTarget;
-      generation: number;
-      expiresAt: number;
-    }
+    PreparedViewerTargetEntry<PreparedViewerTarget>
   >();
 
   constructor(
@@ -205,32 +204,22 @@ export class AndroidAppsViewerNetworkService {
       this.features.assertEnabled('feature.firewall');
     }
     const runtime = readinessFingerprint(app);
-    const targetKey = (kind: AdbTargetPreparation, host?: string) =>
-      JSON.stringify([runtime, expected.containerStartedAt, kind, host]);
-    const key = targetKey(purpose, observedHost);
-    this.expirePreparedTargets();
-    for (const [cachedKey, entry] of this.preparedTargets) {
-      if (entry.appId !== app.id) continue;
-      if (
-        entry.runtime !== runtime ||
-        (observedHost !== undefined && entry.target.adbHost !== observedHost)
-      ) {
-        this.preparedTargets.delete(cachedKey);
-      }
+    const { key, obsoleteKeys, target } = selectPreparedViewerTarget(
+      this.preparedTargets,
+      {
+        appId: app.id,
+        runtime,
+        containerStartedAt: expected.containerStartedAt,
+        purpose,
+        observedHost,
+        now: performance.now(),
+        generation: this.sidecar.adbTargetGeneration,
+      },
+    );
+    for (const obsoleteKey of obsoleteKeys) {
+      this.preparedTargets.delete(obsoleteKey);
     }
-    const cached = this.preparedTargets.get(key);
-    if (cached) return cached.target;
-    if (purpose === 'transport') {
-      for (const kind of ['transport', 'interactive'] as const) {
-        const ready = this.preparedTargets.get(targetKey(kind));
-        if (
-          ready &&
-          (observedHost === undefined || ready.target.adbHost === observedHost)
-        ) {
-          return ready.target;
-        }
-      }
-    }
+    if (target) return target;
 
     const existing = this.pendingTargets.get(key);
     if (existing) {
@@ -412,7 +401,7 @@ export class AndroidAppsViewerNetworkService {
     const now = performance.now();
     const generation = this.sidecar.adbTargetGeneration;
     for (const [key, entry] of this.preparedTargets) {
-      if (entry.expiresAt <= now || entry.generation !== generation)
+      if (isPreparedViewerTargetExpired(entry, now, generation))
         this.preparedTargets.delete(key);
     }
   }

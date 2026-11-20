@@ -239,6 +239,45 @@ describe('shared viewer target preparation', () => {
     ]);
   });
 
+  it('reuses an interactive target for an observed read only at the same host and start time', async () => {
+    const { viewer, sidecar, policy } = setup();
+    const expected = { ...runtime, containerStartedAt };
+    const signal = new AbortController().signal;
+    const interactive = await viewer.prepareViewerTarget(expected);
+
+    await expect(
+      viewer.requireObservedAdbTransport(expected, adbHost, signal),
+    ).resolves.toBe(interactive);
+    expect(policy.refreshViewerPolicy).toHaveBeenCalledTimes(1);
+
+    const restarted = {
+      ...expected,
+      containerStartedAt: '2026-11-12T22:53:50.818Z',
+    };
+    const afterRestart = await viewer.requireObservedAdbTransport(
+      restarted,
+      adbHost,
+      signal,
+    );
+    expect(afterRestart).not.toBe(interactive);
+
+    const newHost = '172.18.0.3';
+    await expect(
+      viewer.requireObservedAdbTransport(expected, newHost, signal),
+    ).resolves.toMatchObject({ adbHost: newHost });
+
+    await expect(viewer.prepareViewerTarget(expected)).resolves.not.toBe(
+      interactive,
+    );
+    expect(policy.refreshViewerPolicy).toHaveBeenCalledTimes(4);
+    expect(sidecar.connectAdb.mock.calls).toEqual([
+      [adbHost, runtime.adbPort],
+      [adbHost, runtime.adbPort, undefined, undefined, 'transport'],
+      [newHost, runtime.adbPort, undefined, undefined, 'transport'],
+      [adbHost, runtime.adbPort],
+    ]);
+  });
+
   it('reuses interactive provisioning readiness after verifying the live target and applying viewer policy', async () => {
     const { viewer, policy, sidecar, lifecycle } = setup();
     const target = { ...connected, message: 'verified during provisioning' };
