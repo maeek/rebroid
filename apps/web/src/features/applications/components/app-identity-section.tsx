@@ -95,7 +95,7 @@ export const AppIdentitySection = ({
         />
       </FormField>
       <div className='@container'>
-        <div className='grid items-start gap-x-form-column gap-y-4 @min-[42rem]:grid-cols-2'>
+        <div className='grid items-start gap-x-form-column gap-y-4 @min-[50rem]:grid-cols-2'>
           <div className='grid gap-2'>
             <FileDropZone
               disabled={disabled || isUploadingApk || uploadDisabled}
@@ -104,7 +104,7 @@ export const AppIdentitySection = ({
               <FormField
                 label='APK file'
                 error={apkError}
-                description={apkDescription ?? <>Optional. Upload an APK or choose one from your saved files.</>}
+                description={apkDescription ?? 'Optional Android package for this app.'}
                 layout='vertical'
                 className={verticalSettingClassName}
               >
@@ -116,40 +116,36 @@ export const AppIdentitySection = ({
                   progress={apkUploadProgress}
                   onChange={handleApkSelect}
                   aria-label='APK file'
-                  buttonLabel={uploadedApkLabel ? 'Upload replacement' : 'Upload APK'}
-                  filenameLabel={
-                    isUploadingApk ? (pendingApkName ?? undefined) : (uploadedApkLabel ?? 'No APK selected')
-                  }
+                  buttonLabel={uploadedApkLabel ? 'Replace APK' : 'Upload APK'}
+                  filenameLabel={isUploadingApk ? (pendingApkName ?? undefined) : (uploadedApkLabel ?? 'No APK')}
                   preview={
                     <div className='grid size-12 place-items-center rounded-control bg-surface-panel text-foreground-muted'>
                       <IconPackage className='size-6' />
                     </div>
                   }
                   previewActions={
-                    onSavedApkSelect || onClearApk ? (
-                      <>
-                        {onSavedApkSelect ? (
-                          <SavedApkPicker
-                            disabled={disabled || isUploadingApk}
-                            onChoose={onSavedApkSelect}
-                          />
-                        ) : null}
-                        {onClearApk ? (
-                          <Button
-                            type='button'
-                            variant='ghost'
-                            disabled={disabled || isUploadingApk}
-                            onClick={onClearApk}
-                          >
-                            Clear APK
-                          </Button>
-                        ) : null}
-                      </>
+                    onSavedApkSelect ? (
+                      <SavedApkPicker
+                        disabled={disabled || isUploadingApk}
+                        onChoose={onSavedApkSelect}
+                      />
                     ) : undefined
                   }
                 />
               </FormField>
             </FileDropZone>
+            {onClearApk ? (
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                className='justify-self-start'
+                disabled={disabled || isUploadingApk}
+                onClick={onClearApk}
+              >
+                Clear APK
+              </Button>
+            ) : null}
           </div>
           {iconSlot}
         </div>

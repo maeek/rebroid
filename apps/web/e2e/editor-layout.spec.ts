@@ -262,15 +262,34 @@ test('phone editors reserve the top-right primary action while loading', async (
   }
 })
 
-test('create editor stacks fields inside rounded sections', async ({ page }) => {
+test('create editor stacks fields inside rounded sections', async ({ page, isMobile }) => {
   for (const width of [320, 390, 768, 1024, 1440, 2048]) {
     await page.setViewportSize({ width, height: 1100 })
     await page.goto('/skeleton-contract-test?editor=app')
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     const name = await page.getByRole('textbox', { name: /Name/ }).boundingBox()
-    const apk = (await page.getByRole('button', { name: 'Upload APK', exact: true }).boundingBox())!
-    const icon = (await page.getByRole('button', { name: 'Upload icon', exact: true }).boundingBox())!
-    if (width < 768) expect(icon.y).toBeGreaterThan(apk.y + apk.height)
-    else expect(icon.y).toBe(apk.y)
+    const uploadApk = page.getByRole('button', { name: 'Upload APK', exact: true })
+    const uploadIcon = page.getByRole('button', { name: 'Upload icon', exact: true })
+    const savedApkButton = page.getByRole('button', { name: 'Saved APKs', exact: true })
+    const savedApk = (await savedApkButton.boundingBox())!
+    const apk = (await uploadApk.boundingBox())!
+    const icon = (await uploadIcon.boundingBox())!
+    expect(savedApk.y).toBe(apk.y)
+    expect(savedApk.x).toBeGreaterThan(apk.x + apk.width)
+    if (isMobile) {
+      expect(apk.height).toBeGreaterThanOrEqual(44)
+      expect(savedApk.height).toBeGreaterThanOrEqual(44)
+    }
+    if (width >= 1024) {
+      const uploads = page.locator('[data-slot="file-upload-field"]')
+      const apkField = (await uploads.filter({ has: uploadApk }).boundingBox())!
+      const iconField = (await uploads.filter({ has: uploadIcon }).boundingBox())!
+      expect(apkField.y).toBe(iconField.y)
+      expect(apkField.height).toBe(iconField.height)
+      expect(apk.y).toBe(icon.y)
+    } else {
+      expect(icon.y).toBeGreaterThan(Math.max(apk.y + apk.height, savedApk.y + savedApk.height))
+    }
     const runtimeImage = (await page.getByRole('combobox', { name: 'Runtime image', exact: true }).boundingBox())!
     const display = (await page.getByRole('combobox', { name: 'Display size', exact: true }).boundingBox())!
     const network = (await page.getByRole('combobox', { name: 'Outbound access', exact: true }).boundingBox())!
@@ -294,6 +313,7 @@ test('create editor stacks fields inside rounded sections', async ({ page }) => 
         document.documentElement.className = value
       }, theme)
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
+      expect((await savedApkButton.boundingBox())!.y).toBe((await uploadApk.boundingBox())!.y)
       await page.screenshot({
         path: `/tmp/rebroid-editor-widths-${width}-${theme}-${test.info().project.name}.png`,
         animations: 'disabled'

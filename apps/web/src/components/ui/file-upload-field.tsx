@@ -45,7 +45,7 @@ export const FileUploadField = ({
   if (pending && !preview) accessibleLabel = pendingLabel
   const statusText = pending ? [pendingLabel, displayFilename].filter(Boolean).join(' ') : displayFilename
   const status = (
-    <div className={cn('min-w-0 flex-1', preview && 'max-[379px]:self-end')}>
+    <div className={cn('min-w-0 flex-1', preview && !previewActions && 'max-[379px]:self-end')}>
       <Tooltip>
         <TooltipTrigger asChild>
           <span
@@ -103,7 +103,12 @@ export const FileUploadField = ({
   return (
     <div
       data-slot='file-upload-field'
-      className={cn('w-full min-w-0', !preview && 'flex items-center gap-3', className)}
+      className={cn(
+        'w-full min-w-0',
+        !preview && 'flex items-center gap-3',
+        previewActions && '@container/upload',
+        className
+      )}
       aria-busy={preview ? undefined : pending}
     >
       <input
@@ -125,7 +130,7 @@ export const FileUploadField = ({
           className={cn(
             'grid min-h-20 min-w-0 items-center gap-2 p-2 sm:gap-3 sm:px-3',
             previewActions
-              ? 'grid-cols-[auto_minmax(0,1fr)]'
+              ? 'grid-cols-[auto_minmax(0,1fr)] @min-[24rem]/upload:grid-cols-[auto_minmax(0,1fr)_auto]'
               : 'grid-cols-[auto_minmax(0,1fr)_auto] max-[379px]:grid-cols-[auto_minmax(0,1fr)] max-[379px]:gap-y-0'
           )}
         >
@@ -138,7 +143,7 @@ export const FileUploadField = ({
           </div>
           {status}
           {previewActions ? (
-            <div className='col-span-full flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5'>
+            <div className='col-span-full flex flex-wrap items-center justify-end gap-1 @min-[24rem]/upload:col-span-1 [&>button]:gap-1.5 [&>button]:px-2'>
               {picker}
               {previewActions}
             </div>

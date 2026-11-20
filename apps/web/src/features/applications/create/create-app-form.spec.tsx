@@ -338,7 +338,7 @@ describe('Create app failure feedback', () => {
     vi.mocked(setAppIconAction).mockResolvedValueOnce(actionOk(customIcon))
 
     renderForm()
-    fireEvent.click(screen.getByRole('button', { name: 'Choose saved APK' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Saved APKs' }))
     const dialog = within(screen.getByRole('dialog', { name: 'Choose a saved APK' }))
     fireEvent.click(await dialog.findByRole('option', { name: /Stockroom/ }))
     fireEvent.click(dialog.getByRole('button', { name: 'Use APK' }))

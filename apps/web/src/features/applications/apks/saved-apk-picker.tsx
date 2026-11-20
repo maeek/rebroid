@@ -97,7 +97,7 @@ export const SavedApkPicker = ({
           variant='ghost'
           disabled={disabled}
         >
-          Choose saved APK
+          Saved APKs
         </Button>
       </DialogTrigger>
       <DialogContent
