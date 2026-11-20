@@ -3,7 +3,6 @@ export const registerAutomationMonacoWorkers = () => {
 
   globalThis.MonacoEnvironment = {
     ...globalThis.MonacoEnvironment,
-    getWorker: () =>
-      new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker', import.meta.url), { type: 'module' })
+    getWorker: () => new Worker(new URL('monaco-editor/editor/editor.worker.js', import.meta.url), { type: 'module' })
   }
 }

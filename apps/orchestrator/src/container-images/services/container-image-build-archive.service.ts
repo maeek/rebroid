@@ -2,6 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { createReadStream } from 'node:fs';
 import { lstat, readdir, readlink, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import tar from 'tar-stream';
 import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
@@ -20,9 +21,10 @@ export class ContainerImageBuildArchiveService {
   ) {
     const files = await this.prepareTarFiles(contextFiles);
     const pack = tar.pack();
+    const archive = Readable.from(pack, { objectMode: false });
 
     void this.writeTarEntries(pack, dockerfile, files);
-    return pack;
+    return archive;
   }
 
   createDirectoryTar(
@@ -31,19 +33,21 @@ export class ContainerImageBuildArchiveService {
     extraFiles: Record<string, ContainerImageBuildArchiveExtraFile> = {},
   ) {
     const pack = tar.pack();
+    const archive = Readable.from(pack, { objectMode: false });
     void this.writeDirectoryEntries(
       pack,
       dockerfile,
       rootDirectory,
       extraFiles,
     );
-    return pack;
+    return archive;
   }
 
   createFilesystemTar(rootDirectory: string) {
     const pack = tar.pack();
+    const archive = Readable.from(pack, { objectMode: false });
     void this.writeFilesystemEntries(pack, rootDirectory);
-    return pack;
+    return archive;
   }
 
   private async prepareTarFiles(
@@ -214,7 +218,7 @@ export class ContainerImageBuildArchiveService {
     }
   }
 
-  private addHeader(pack: tar.Pack, header: tar.Headers) {
+  private addHeader(pack: tar.Pack, header: Parameters<tar.Pack['entry']>[0]) {
     return new Promise<void>((resolve, reject) => {
       pack.entry(header, (error) => (error ? reject(error) : resolve()));
     });

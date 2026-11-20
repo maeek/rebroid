@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { DockerEngineService } from '../../docker-engine.service';
@@ -43,6 +43,7 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
       async (docker, signal) => {
         const container = docker.getContainer(containerId);
         const pack = tar.pack();
+        const archive = Readable.from(pack, { objectMode: false });
         const abort = () =>
           pack.destroy(new Error('Docker archive upload aborted.'));
         signal.addEventListener('abort', abort, { once: true });
@@ -67,7 +68,7 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
             );
           });
 
-          await container.putArchive(pack, {
+          await container.putArchive(archive, {
             path: targetDirectory,
             abortSignal: signal,
           });
@@ -91,6 +92,7 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
       async (docker, signal) => {
         const container = docker.getContainer(containerId);
         const pack = tar.pack();
+        const archive = Readable.from(pack, { objectMode: false });
         const abort = () => {
           const error = new Error('Docker archive upload aborted.');
           content.destroy(error);
@@ -98,7 +100,7 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
         };
         signal.addEventListener('abort', abort, { once: true });
         const archiveUpload = container
-          .putArchive(pack, {
+          .putArchive(archive, {
             path: targetDirectory,
             abortSignal: signal,
           })
@@ -160,11 +162,17 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
               const chunks: Buffer[] = [];
               let totalBytes = 0;
 
-              stream.on('data', (chunk: Buffer) => {
+              stream.on('data', (chunk) => {
                 if (header.type !== 'file') {
                   return;
                 }
-                totalBytes += chunk.length;
+                if (!(chunk instanceof Uint8Array)) {
+                  extract.destroy(
+                    new Error('Expected bytes in Docker archive.'),
+                  );
+                  return;
+                }
+                totalBytes += chunk.byteLength;
                 if (
                   options.maximumBytes !== undefined &&
                   totalBytes > options.maximumBytes
