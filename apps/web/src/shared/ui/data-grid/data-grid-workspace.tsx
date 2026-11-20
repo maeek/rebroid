@@ -1,11 +1,10 @@
 'use client'
 
 import { useRef, useState, type ReactNode } from 'react'
-import { IconFilter, IconRestore } from '@tabler/icons-react'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { DataGridEmptyContext } from './data-grid-empty-state'
+import { DataGridFilterSheetContent, DataGridFilterTrigger } from './data-grid-filter-controls'
 import { DataGridFilterSummary } from './data-grid-filter-summary'
 import { DataGridToolbar } from './data-grid-toolbar'
 import { DataGridColumnToolbarContext } from './data-grid-toolbar-context'
@@ -32,6 +31,7 @@ export type DataGridWorkspaceProps = {
   onResetFilters?: () => void
   selectedCount?: number
   selectionMode?: boolean
+  stickyMobileSelection?: boolean
   bulkActions?: ReactNode
   searchActions?: ReactNode
   toolbarAction?: ReactNode
@@ -75,6 +75,7 @@ export const DataGridWorkspace = ({
   onResetFilters,
   selectedCount = 0,
   selectionMode = false,
+  stickyMobileSelection = false,
   bulkActions,
   searchActions,
   toolbarAction,
@@ -103,7 +104,13 @@ export const DataGridWorkspace = ({
     >
       <div className={cn('grid min-w-0 gap-3', className)}>
         {notice}
-        <div className={cn('grid min-w-0 gap-1', styles.toolbarArea)}>
+        <div
+          className={cn(
+            'grid min-w-0 gap-1',
+            styles.toolbarArea,
+            stickyMobileSelection && hasSelection && 'max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:bg-background'
+          )}
+        >
           <div
             ref={reservePageToolbarSpace}
             data-slot='data-grid-toolbar'
@@ -127,47 +134,12 @@ export const DataGridWorkspace = ({
                 onSearchSubmit={onSearch}
                 filterControl={
                   hasFilters ? (
-                    <SheetTrigger
-                      render={
-                        <Button
-                          ref={filterTriggerRef}
-                          type='button'
-                          aria-label={hasActiveFilters ? `Filters (${filterCount})` : 'Filters'}
-                          variant='ghost'
-                          className={cn(
-                            'px-3 data-[popup-open]:bg-accent data-[popup-open]:text-accent-foreground',
-                            compact && 'relative max-sm:size-9 max-sm:px-0'
-                          )}
-                          disabled={disabled}
-                        />
-                      }
-                    >
-                      <span
-                        aria-hidden
-                        className='flex size-4 shrink-0 items-center justify-center'
-                      >
-                        <IconFilter
-                          className={cn('size-4', hasActiveFilters && (compact ? 'hidden max-sm:block' : 'hidden'))}
-                        />
-                        {hasActiveFilters ? (
-                          <span
-                            className={cn(
-                              'min-w-5 rounded-full bg-accent px-1 text-center text-xs leading-5 tabular-nums text-accent-foreground',
-                              compact && 'max-sm:hidden'
-                            )}
-                          >
-                            {filterCount > 99 ? '99+' : filterCount}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className={compact ? 'max-sm:sr-only' : undefined}>Filters</span>
-                      {compact && hasActiveFilters ? (
-                        <span
-                          aria-hidden
-                          className='absolute end-1.5 top-1.5 size-1.5 rounded-full bg-primary sm:hidden'
-                        />
-                      ) : null}
-                    </SheetTrigger>
+                    <DataGridFilterTrigger
+                      filterCount={filterCount}
+                      compact={compact}
+                      disabled={disabled}
+                      triggerRef={filterTriggerRef}
+                    />
                   ) : undefined
                 }
                 searchActions={
@@ -247,36 +219,16 @@ export const DataGridWorkspace = ({
         </DataGridEmptyContext.Provider>
 
         {hasFilters ? (
-          <SheetContent className='flex w-full flex-col gap-0 p-0 sm:max-w-md'>
-            <SheetHeader className='shrink-0 px-6 pt-6 pr-16 pb-4 text-left'>
-              <SheetTitle>{filterTitle}</SheetTitle>
-              <SheetDescription>{filterDescription ?? 'Filters apply as you change them.'}</SheetDescription>
-            </SheetHeader>
-            <div className='scrollbar-thin min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6'>
-              <fieldset
-                disabled={disabled}
-                className='grid min-w-0 gap-5'
-              >
-                {filters}
-              </fieldset>
-            </div>
-            <div className='mx-6 flex shrink-0 items-center justify-between gap-3 border-t border-surface-border/50 pt-4 pb-6'>
-              <Button
-                type='button'
-                variant='ghost'
-                disabled={disabled || !hasActiveFilters || !onResetFilters}
-                onClick={onResetFilters}
-              >
-                <IconRestore className='size-4' /> Reset filters
-              </Button>
-              <Button
-                type='button'
-                onClick={() => setFiltersOpen(false)}
-              >
-                Done
-              </Button>
-            </div>
-          </SheetContent>
+          <DataGridFilterSheetContent
+            title={filterTitle}
+            description={filterDescription}
+            disabled={disabled}
+            hasActiveFilters={hasActiveFilters}
+            onResetFilters={onResetFilters}
+            onClose={() => setFiltersOpen(false)}
+          >
+            {filters}
+          </DataGridFilterSheetContent>
         ) : null}
       </div>
     </Sheet>

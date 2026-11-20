@@ -68,9 +68,11 @@ export const SingleSelectCombobox = ({
         value={itemValue}
         className={cn('relative grid gap-0.5 px-3 py-2 pr-9 text-sm touch:text-base/6', selectableItemClassName)}
       >
-        <span className='break-words'>{option?.label ?? itemValue}</span>
+        <span className='[overflow-wrap:anywhere]'>{option?.label ?? itemValue}</span>
         {option?.description ? (
-          <span className='text-xs text-foreground-muted touch:text-sm/5'>{option.description}</span>
+          <span className='text-xs text-foreground-muted [overflow-wrap:anywhere] touch:text-sm/5'>
+            {option.description}
+          </span>
         ) : null}
         <Combobox.ItemIndicator className='absolute right-3 top-3 text-primary'>
           <IconCheck className='size-4' />

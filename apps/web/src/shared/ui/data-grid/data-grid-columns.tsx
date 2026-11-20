@@ -45,6 +45,7 @@ export const selectionColumn = <TData,>({
         <Checkbox
           className='relative touch:after:absolute touch:after:-inset-3.5'
           checked={allSelected}
+          indeterminate={!allSelected && ids.some(id => selection.selectedIds.has(id))}
           disabled={selection.disabled || ids.length === 0}
           aria-label='Select current page'
           onCheckedChange={checked => {
