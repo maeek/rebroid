@@ -4,56 +4,33 @@ import { useCallback, type RefObject } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { validateAutomationYamlAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { workflowFileName } from './automation-editor-utils'
-import { definitionToForm, type AutomationFormState, type AutomationStepForm } from './builder-utils'
+import { definitionToForm, type AutomationStepForm } from './builder-utils'
 import type { EditorSnapshot } from './use-automation-editor-history'
 
+export const downloadWorkflowYaml = (name: string, yaml: string) => {
+  const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml;charset=utf-8' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `${workflowFileName(name)}.yaml`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 export const useAutomationWorkflowFiles = ({
-  automationId,
   commitEditorChange,
-  currentYaml,
-  form,
+  workflowId,
   importInputRef,
   resetSelectionForSteps,
   setBusy,
-  title,
-  yamlDraft,
-  yamlError,
-  yamlOpen,
-  yamlValid
+  yamlOpen
 }: {
-  automationId?: string
   commitEditorChange: (update: () => EditorSnapshot) => void
-  currentYaml: string
-  form: AutomationFormState
+  workflowId: string | null
   importInputRef: RefObject<HTMLInputElement | null>
   resetSelectionForSteps: (steps: AutomationStepForm[]) => void
   setBusy: (busy: boolean) => void
-  title: string
-  yamlDraft: string
-  yamlError: string | null
   yamlOpen: boolean
-  yamlValid: boolean
 }) => {
-  const exportWorkflow = useCallback(() => {
-    if (yamlOpen && !yamlValid) {
-      toast({
-        title: 'YAML is invalid',
-        description: yamlError ?? 'Fix the YAML before exporting.',
-        variant: 'danger'
-      })
-      return
-    }
-
-    const yaml = yamlOpen ? yamlDraft : currentYaml
-    const blob = new Blob([`${yaml.trimEnd()}\n`], { type: 'text/yaml;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `${workflowFileName(form.name || title)}.yaml`
-    anchor.click()
-    URL.revokeObjectURL(url)
-  }, [currentYaml, form.name, title, yamlDraft, yamlError, yamlOpen, yamlValid])
-
   const importWorkflow = useCallback(() => {
     importInputRef.current?.click()
   }, [importInputRef])
@@ -69,7 +46,7 @@ export const useAutomationWorkflowFiles = ({
           throw new Error(validation.errors[0] ?? 'Workflow YAML is invalid.')
         }
 
-        const nextForm = definitionToForm(validation.definition, automationId ?? form.id)
+        const nextForm = definitionToForm(validation.definition, workflowId)
         commitEditorChange(() => ({
           form: nextForm,
           yamlOpen,
@@ -88,11 +65,10 @@ export const useAutomationWorkflowFiles = ({
         if (importInputRef.current) importInputRef.current.value = ''
       }
     },
-    [automationId, commitEditorChange, form.id, importInputRef, resetSelectionForSteps, setBusy, yamlOpen]
+    [commitEditorChange, workflowId, importInputRef, resetSelectionForSteps, setBusy, yamlOpen]
   )
 
   return {
-    exportWorkflow,
     handleWorkflowImport,
     importWorkflow
   }

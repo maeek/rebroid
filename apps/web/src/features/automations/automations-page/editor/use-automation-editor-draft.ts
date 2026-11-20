@@ -10,36 +10,42 @@ import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 type YamlValidation = { draft: string } & ({ error: string } | { error: null; definition: AutomationDefinition })
 
-export const useAutomationEditorYaml = ({
+export const useAutomationEditorDraft = ({
   form,
   yamlOpen,
   yamlDraft,
-  currentYaml,
+  visualYaml,
+  hasBrokenReferences,
   changeEditorView
 }: EditorSnapshot & {
-  currentYaml: string | null
+  visualYaml: string | null
+  hasBrokenReferences: boolean
   changeEditorView: ReturnType<typeof useAutomationEditorHistory>['changeEditorView']
 }) => {
   const [validation, setValidation] = useState<YamlValidation | null>(null)
   const currentValidation = validation?.draft === yamlDraft ? validation : null
   const yamlPending = yamlOpen && !currentValidation
   const yamlError = currentValidation?.error ?? null
-  const yamlValid = !yamlPending && !yamlError
+  const currentYaml = yamlOpen ? yamlDraft : visualYaml
+  const visualError =
+    !yamlOpen && visualYaml === null ? 'Fix invalid step inputs before saving, exporting, or opening YAML.' : null
+  const canSaveOrExport = yamlOpen ? currentValidation?.error === null : !hasBrokenReferences
+  const yamlForSaveOrExport = canSaveOrExport ? currentYaml : null
 
   const openYamlEditor = () => {
-    if (currentYaml === null) {
+    if (visualYaml === null) {
       toast({ title: 'Could not open workflow YAML', description: 'Fix invalid step inputs first.', variant: 'danger' })
       return
     }
-    changeEditorView(snapshot => ({ ...snapshot, yamlDraft: currentYaml, yamlOpen: true }))
+    changeEditorView(snapshot => ({ ...snapshot, yamlDraft: visualYaml, yamlOpen: true }))
   }
 
   const openVisualEditor = () => {
-    if (yamlDraft === currentYaml) {
+    if (yamlDraft === visualYaml) {
       changeEditorView(snapshot => ({ ...snapshot, yamlOpen: false }))
       return
     }
-    if (!yamlValid) {
+    if (currentValidation?.error !== null) {
       toast({
         title: yamlPending ? 'Checking workflow YAML' : 'YAML is invalid',
         description: yamlError ?? undefined,
@@ -47,10 +53,8 @@ export const useAutomationEditorYaml = ({
       })
       return
     }
-    if (currentValidation?.error === null) {
-      const nextForm = definitionToForm(currentValidation.definition, form.id, form.steps)
-      changeEditorView(snapshot => ({ ...snapshot, form: nextForm, yamlOpen: false }))
-    }
+    const nextForm = definitionToForm(currentValidation.definition, form.id, form.steps)
+    changeEditorView(snapshot => ({ ...snapshot, form: nextForm, yamlOpen: false }))
   }
 
   const toggleYamlEditor = () => {
@@ -83,5 +87,5 @@ export const useAutomationEditorYaml = ({
     }
   }, [yamlDraft, yamlOpen])
 
-  return { toggleYamlEditor, yamlError, yamlPending, yamlValid }
+  return { currentYaml, yamlForSaveOrExport, toggleYamlEditor, visualError, yamlError, yamlPending }
 }

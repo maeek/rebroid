@@ -5,7 +5,7 @@ import {
   getDefaultActionInput,
   normalizeActionInput
 } from '../actions/action-registry'
-import type { Automation, AutomationCommand, SaveAutomationInput } from '@/shared/contracts/automation'
+import type { Automation, AutomationCommand } from '@/shared/contracts/automation'
 import type {
   AutomationActionStep,
   AutomationConditionStep,
@@ -347,7 +347,3 @@ const stepFormToDefinition = (step: AutomationStepForm, index: number): Automati
     steps: step.steps.map(stepFormToDefinition)
   } satisfies AutomationRepeatStep
 }
-
-export const formToSaveInput = (form: AutomationFormState): SaveAutomationInput => ({
-  yaml: buildYaml(form)
-})

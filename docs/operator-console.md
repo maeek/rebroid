@@ -127,6 +127,9 @@ row, or use **Sync all rules** to refresh host rules and remove stale entries.
 Open **Workflows** and select **New workflow**. In **Visual editor**, select **Add step** and
 search or browse the catalog. Select a step in **Step sequence** to configure it. Use the move
 controls or drag to reorder steps. Switch to **YAML** to edit the same draft as text.
+**Save** and **Export workflow** use the draft in the active editor. Fix invalid step inputs or
+broken references before saving or exporting from Visual. You can open YAML to repair broken
+references. In YAML, wait for validation before saving, exporting, or applying edited text to Visual.
 
 To run a saved workflow on a device, open the app's **Workflows** view and select **Run workflow**.
 For recurring runs, open **Triggers → New trigger**, then choose a workflow, target app, profile,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { FieldChangesProvider } from '@/components/ui/field-changes'
+import { Notice } from '@/components/ui/notice'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { useUnsavedNavigation } from '@/hooks/use-unsaved-navigation'
@@ -29,15 +30,14 @@ import {
   defaultForm,
   preferredWorkflowAction,
   definitionToForm,
-  formToSaveInput,
   type AutomationFormState,
   type AutomationStepForm
 } from './builder-utils'
 import { useAutomationAiDraft } from './use-automation-ai-draft'
+import { useAutomationEditorDraft } from './use-automation-editor-draft'
 import { useAutomationEditorHistory } from './use-automation-editor-history'
 import { useAutomationEditorSelection } from './use-automation-editor-selection'
-import { useAutomationEditorYaml } from './use-automation-editor-yaml'
-import { useAutomationWorkflowFiles } from './use-automation-workflow-files'
+import { downloadWorkflowYaml, useAutomationWorkflowFiles } from './use-automation-workflow-files'
 import { WorkflowEditorWorkspace } from './workflow-editor-workspace'
 import type { AutomationEditorPageProps } from './types'
 import type { Automation } from '@/shared/contracts/automation'
@@ -61,7 +61,6 @@ export function AutomationEditorPage({
     () => collectStepReferenceIssues(form.steps, initialCommands),
     [form.steps, initialCommands]
   )
-  const hasBrokenReferences = !yamlOpen && referenceIssues.size > 0
   const {
     openBlock,
     openBlockKeys,
@@ -79,15 +78,16 @@ export function AutomationEditorPage({
   const workflowId = automation?.id
   const isNew = !automation
   const title = form.name.trim() || automation?.name || 'New workflow'
-  const currentYaml = visualYaml ?? automation?.yaml ?? ''
-  const { toggleYamlEditor, yamlError, yamlPending, yamlValid } = useAutomationEditorYaml({
-    form,
-    yamlOpen,
-    yamlDraft,
-    currentYaml: visualYaml,
-    changeEditorView: history.changeEditorView
-  })
-  const saveFeedback = useSaveFeedback(yamlOpen ? yamlDraft : currentYaml)
+  const { currentYaml, yamlForSaveOrExport, toggleYamlEditor, visualError, yamlError, yamlPending } =
+    useAutomationEditorDraft({
+      form,
+      yamlOpen,
+      yamlDraft,
+      visualYaml,
+      hasBrokenReferences: referenceIssues.size > 0,
+      changeEditorView: history.changeEditorView
+    })
+  const saveFeedback = useSaveFeedback(currentYaml)
   const navigation = useUnsavedNavigation({
     hasUnsavedChanges,
     push: router.push,
@@ -122,20 +122,19 @@ export function AutomationEditorPage({
     setBusy,
     workflowId: automation?.id ?? form.id
   })
-  const { exportWorkflow, handleWorkflowImport, importWorkflow } = useAutomationWorkflowFiles({
-    automationId: automation?.id,
+  const { handleWorkflowImport, importWorkflow } = useAutomationWorkflowFiles({
     commitEditorChange,
-    currentYaml,
-    form,
+    workflowId: automation?.id ?? form.id,
     importInputRef,
     resetSelectionForSteps,
     setBusy,
-    title,
-    yamlDraft,
-    yamlError,
-    yamlOpen,
-    yamlValid
+    yamlOpen
   })
+
+  const exportWorkflow = () => {
+    if (busy || yamlForSaveOrExport === null) return
+    downloadWorkflowYaml(form.name || title, yamlForSaveOrExport)
+  }
 
   useEffect(() => {
     if (!isNew) return
@@ -198,12 +197,12 @@ export function AutomationEditorPage({
   }
 
   const save = async () => {
-    if (hasBrokenReferences || (yamlOpen && !yamlValid)) return
+    if (busy || yamlForSaveOrExport === null) return
     setBusy(true)
     saveFeedback.resetSaveFeedback()
     setSaving(true)
     try {
-      await persistAutomation(yamlOpen ? { yaml: yamlDraft } : formToSaveInput(form))
+      await persistAutomation({ yaml: yamlForSaveOrExport })
     } catch (error) {
       toast({
         title: 'Could not save workflow',
@@ -254,11 +253,10 @@ export function AutomationEditorPage({
             busy={busy}
             saving={saving}
             saved={saveFeedback.saved}
-            hasBrokenReferences={hasBrokenReferences}
+            canSaveOrExport={yamlForSaveOrExport !== null}
             canDraftFromPrompt={canDraftFromPrompt}
             canDelete={Boolean(automation)}
             yamlOpen={yamlOpen}
-            yamlValid={yamlValid}
             onDelete={() => setDeleteOpen(true)}
             onDraftFromPrompt={() => setAiDraftOpen(true)}
             onExport={exportWorkflow}
@@ -282,21 +280,31 @@ export function AutomationEditorPage({
             pending={yamlPending}
           />
         ) : (
-          <AutomationStepsList
-            steps={form.steps}
-            referenceIssues={referenceIssues}
-            commands={initialCommands}
-            selectedStepKey={selectedStepKey}
-            openBlockKeys={openBlockKeys}
-            yamlStepKey={yamlStepKey}
-            onSelectStep={setSelectedStepKey}
-            onToggleBlock={toggleBlock}
-            onOpenBlock={openBlock}
-            onYamlStepKeyChange={setYamlStepKey}
-            onChange={updateSteps}
-            onStepChange={updateStepAt}
-            className='w-full'
-          />
+          <>
+            {visualError ? (
+              <Notice
+                tone='danger'
+                className='mb-3'
+              >
+                {visualError}
+              </Notice>
+            ) : null}
+            <AutomationStepsList
+              steps={form.steps}
+              referenceIssues={referenceIssues}
+              commands={initialCommands}
+              selectedStepKey={selectedStepKey}
+              openBlockKeys={openBlockKeys}
+              yamlStepKey={yamlStepKey}
+              onSelectStep={setSelectedStepKey}
+              onToggleBlock={toggleBlock}
+              onOpenBlock={openBlock}
+              onYamlStepKeyChange={setYamlStepKey}
+              onChange={updateSteps}
+              onStepChange={updateStepAt}
+              className='w-full'
+            />
+          </>
         )}
       </WorkflowEditorWorkspace>
 

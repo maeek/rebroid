@@ -40,11 +40,10 @@ export const AutomationEditorActions = ({
   details,
   saving = false,
   saved = false,
-  hasBrokenReferences = false,
+  canSaveOrExport,
   canDraftFromPrompt,
   canDelete,
   yamlOpen,
-  yamlValid,
   onDelete,
   onDraftFromPrompt,
   onExport,
@@ -57,11 +56,10 @@ export const AutomationEditorActions = ({
   details?: ReactNode
   saving?: boolean
   saved?: boolean
-  hasBrokenReferences?: boolean
+  canSaveOrExport: boolean
   canDraftFromPrompt: boolean
   canDelete: boolean
   yamlOpen: boolean
-  yamlValid: boolean
   onDelete: () => void
   onDraftFromPrompt: () => void
   onExport: () => void
@@ -97,7 +95,7 @@ export const AutomationEditorActions = ({
         pending={saving}
         pendingLabel='Saving…'
         success={saved}
-        disabled={busy || hasBrokenReferences || (yamlOpen && !yamlValid)}
+        disabled={busy || !canSaveOrExport}
         onClick={onSave}
       >
         <IconDeviceFloppy
@@ -206,7 +204,7 @@ export const AutomationEditorActions = ({
             Import workflow
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={busy || (yamlOpen && !yamlValid)}
+            disabled={busy || !canSaveOrExport}
             className='gap-2 px-3 py-2'
             onSelect={onExport}
           >

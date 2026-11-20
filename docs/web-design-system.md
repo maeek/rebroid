@@ -556,8 +556,8 @@ Align the step sequence and selected-step inspector on desktop. The sequence sit
 with no outer padding or rounding. The inspector fills the available viewport below the toolbar and
 uses a semantic panel surface. On smaller screens, open the inspector only after an
 explicit step selection and restore focus on dismissal. Allow moves that break step references, mark
-each affected step, and identify the unavailable outputs in its inspector. Disable saving until the
-references are fixed. Use the same editor header and workspace for loading states. Workflow YAML
+each affected step, and identify the unavailable outputs in its inspector. Disable Save and Export
+until the references are fixed. Use the same editor header and workspace for loading states. Workflow YAML
 fills the available width and viewport height below the toolbar, accounting for the mobile navigation
 and safe areas. It uses the page background without a wrapper panel or border.
 

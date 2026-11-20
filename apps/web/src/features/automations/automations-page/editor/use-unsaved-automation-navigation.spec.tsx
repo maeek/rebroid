@@ -18,7 +18,7 @@ function Navigation({ dirty = true }: { dirty?: boolean }) {
         canDraftFromPrompt={false}
         canDelete
         yamlOpen={false}
-        yamlValid
+        canSaveOrExport
         onDelete={noop}
         onDraftFromPrompt={noop}
         onExport={noop}

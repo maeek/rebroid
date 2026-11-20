@@ -101,11 +101,10 @@ export const WorkflowEditorPreview = ({
             />
           }
           busy={false}
-          hasBrokenReferences={hasBrokenReferences}
+          canSaveOrExport={!hasBrokenReferences && (yamlOpen || visualYaml !== null)}
           canDraftFromPrompt={canDraftFromPrompt}
           canDelete={!creating}
           yamlOpen={yamlOpen}
-          yamlValid
           onSave={noop}
           onDelete={noop}
           onDraftFromPrompt={noop}

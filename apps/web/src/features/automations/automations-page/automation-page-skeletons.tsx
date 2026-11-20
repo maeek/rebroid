@@ -65,7 +65,7 @@ export const AutomationEditorPageSkeleton = ({ creating = false }: { creating?: 
         canDraftFromPrompt={false}
         canDelete={!creating}
         yamlOpen={false}
-        yamlValid={false}
+        canSaveOrExport={false}
         onDelete={noop}
         onDraftFromPrompt={noop}
         onExport={noop}
