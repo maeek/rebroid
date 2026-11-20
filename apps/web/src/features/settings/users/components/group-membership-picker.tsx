@@ -35,7 +35,7 @@ export const GroupMembershipPicker = ({
   return (
     <div className={cn('grid w-full min-w-0 gap-3', className)}>
       <MultiSelectCombobox
-        className='max-h-40 overflow-y-auto'
+        className='max-h-40 overflow-y-auto transform-gpu'
         id={id}
         aria-describedby={describedBy}
         aria-invalid={invalid}

@@ -333,7 +333,9 @@ export function AutomationRunLiveEvents({
         aria-label={`Events for run ${runId.slice(0, 8)}`}
         aria-live='polite'
         className={
-          flat ? 'grid min-w-0' : cn('grid gap-1.5 overflow-auto p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')
+          flat
+            ? 'grid min-w-0'
+            : cn('grid gap-1.5 overflow-auto transform-gpu p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')
         }
       >
         {flat && !streamError && visibleEvents.length === 0 ? (

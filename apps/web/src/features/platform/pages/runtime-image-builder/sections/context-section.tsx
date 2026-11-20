@@ -128,7 +128,7 @@ export const ContextSection = ({
       {resolvedContextReferences.length > 0 ? (
         <ul
           aria-label='Dockerfile context sources'
-          className='grid max-h-72 gap-4 overflow-y-auto'
+          className='grid max-h-72 gap-4 overflow-y-auto transform-gpu'
         >
           {resolvedContextReferences.map(reference => {
             let label: string = reference.status

@@ -165,7 +165,7 @@ function AutomationStepInspectorContent({
         onToggleYaml={step.kind === 'action' ? () => onYamlStepKeyChange(yamlMode ? null : step.clientKey) : undefined}
         onClose={onClose}
       />
-      <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto px-6 pb-6 max-sm:px-4 max-sm:pb-4'>
+      <div className='scrollbar-thin min-h-0 overflow-x-hidden overflow-y-auto transform-gpu px-6 pb-6 max-sm:px-4 max-sm:pb-4'>
         <div className='min-w-0'>
           {emptyRequiredBranch ? (
             <Notice

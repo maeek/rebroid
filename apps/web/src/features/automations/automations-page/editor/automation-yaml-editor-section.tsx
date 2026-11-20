@@ -58,7 +58,7 @@ export function AutomationYamlEditorSection({
           {error && (
             <Notice
               tone='danger'
-              className='max-h-32 overflow-y-auto'
+              className='max-h-32 overflow-y-auto transform-gpu'
             >
               {error}
             </Notice>

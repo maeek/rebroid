@@ -89,7 +89,7 @@ export function AutomationTriggerFormDialog({
                 if (!saving) onSave()
               }}
             >
-              <div className='scrollbar-thin -mx-3 min-h-0 grow overflow-y-auto px-3 py-1'>
+              <div className='scrollbar-thin -mx-3 min-h-0 grow overflow-y-auto transform-gpu px-3 py-1'>
                 <fieldset
                   disabled={saving}
                   className='grid min-w-0 items-start gap-x-form-column gap-y-6 lg:grid-cols-2 xl:grid-cols-3'

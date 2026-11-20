@@ -90,7 +90,7 @@ export const AiModelPicker = ({
         side='top'
         align='end'
         aria-label='Choose AI model'
-        className='max-h-[var(--available-height)] w-[min(calc(100vw-2rem),22rem)] overflow-y-auto overscroll-contain p-2'
+        className='max-h-[var(--available-height)] w-[min(calc(100vw-2rem),22rem)] overflow-y-auto transform-gpu overscroll-contain p-2'
       >
         <div className='grid gap-3'>
           <AiModelMenu

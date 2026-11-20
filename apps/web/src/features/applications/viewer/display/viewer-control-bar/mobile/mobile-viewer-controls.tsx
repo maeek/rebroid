@@ -139,7 +139,7 @@ const MobileControlDrawer = ({ controlsEnabled, children }: { controlsEnabled: b
             <IconX aria-hidden />
           </Button>
         </div>
-        <div className='min-h-0 overflow-y-auto overscroll-contain px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]'>
+        <div className='min-h-0 overflow-y-auto transform-gpu overscroll-contain px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]'>
           {controlsEnabled && canControl ? (
             <>
               {[...volumeControls, ...displayControls, ...panelControls].map(control => (

@@ -85,7 +85,7 @@ export const SingleSelectCombobox = ({
       <Combobox.Empty className='text-sm text-foreground-muted'>
         <span className='block p-4'>No options found.</span>
       </Combobox.Empty>
-      <Combobox.List className='scrollbar-thin max-h-[min(22rem,50dvh)] overflow-y-auto overscroll-contain p-1'>
+      <Combobox.List className='scrollbar-thin max-h-[min(22rem,50dvh)] overflow-y-auto transform-gpu overscroll-contain p-1'>
         {groups
           ? (group: OptionGroup) => (
               <Combobox.Group

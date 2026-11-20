@@ -89,7 +89,7 @@ export const ProviderModelSettingsDialog = ({
             </DialogDescription>
           </DialogHeader>
           {model ? (
-            <div className='scrollbar-thin -mx-2 grid min-h-0 min-w-0 content-start gap-6 overflow-y-auto px-3 py-1'>
+            <div className='scrollbar-thin -mx-2 grid min-h-0 min-w-0 content-start gap-6 overflow-y-auto transform-gpu px-3 py-1'>
               <div className='grid items-start gap-4'>
                 <FormField
                   controlId='provider-model-display-name'

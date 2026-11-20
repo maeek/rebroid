@@ -108,7 +108,7 @@ export const SavedApkPicker = ({
           <DialogTitle>Choose a saved APK</DialogTitle>
           <DialogDescription>Search by app name, filename, or package name.</DialogDescription>
         </DialogHeader>
-        <div className='scrollbar-thin grid min-h-0 content-start gap-3 overflow-y-auto overscroll-contain p-1 -m-1'>
+        <div className='scrollbar-thin grid min-h-0 content-start gap-3 overflow-y-auto transform-gpu overscroll-contain p-1 -m-1'>
           {error ? <Notice tone='danger'>{error}</Notice> : null}
           {loading ? (
             <p

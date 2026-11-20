@@ -93,7 +93,7 @@ export const ConfirmMutationDialog = ({
         initialFocus={displayed.confirmationText ? inputRef : cancelRef}
         finalFocus={finalFocus}
       >
-        <div className='scrollbar-thin grid min-h-0 gap-4 overflow-y-auto overscroll-contain px-5 pt-5 pb-4 sm:px-6 sm:pt-6'>
+        <div className='scrollbar-thin grid min-h-0 gap-4 overflow-y-auto transform-gpu overscroll-contain px-5 pt-5 pb-4 sm:px-6 sm:pt-6'>
           <DialogHeader>
             <DialogTitle className='text-xl'>{displayed.title}</DialogTitle>
             <DialogDescription>{displayed.description}</DialogDescription>

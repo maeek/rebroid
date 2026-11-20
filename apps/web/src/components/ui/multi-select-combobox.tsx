@@ -164,7 +164,7 @@ export const MultiSelectCombobox = ({
             <Combobox.Empty className='text-center text-sm text-foreground-muted'>
               <span className='block px-3 py-6'>{emptyLabel}</span>
             </Combobox.Empty>
-            <Combobox.List className='scrollbar-thin max-h-[min(var(--available-height),20rem)] overflow-y-auto p-1'>
+            <Combobox.List className='scrollbar-thin max-h-[min(var(--available-height),20rem)] overflow-y-auto transform-gpu p-1'>
               {(optionValue: string, index: number) => {
                 const option = optionsByValue.get(optionValue)
 

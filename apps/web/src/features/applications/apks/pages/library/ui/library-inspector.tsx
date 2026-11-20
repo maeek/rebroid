@@ -69,7 +69,7 @@ export const ApkLibraryInspector = ({
                 {displayed.sizeBytes === null ? 'File removed' : formatBytes(displayed.sizeBytes)}
               </SheetDescription>
             </SheetHeader>
-            <div className='scrollbar-thin grid content-start gap-5 overflow-y-auto overscroll-contain px-5 pb-5 sm:px-6'>
+            <div className='scrollbar-thin grid content-start gap-5 overflow-y-auto transform-gpu overscroll-contain px-5 pb-5 sm:px-6'>
               <DetailFields
                 title='File details'
                 fields={[

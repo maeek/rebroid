@@ -276,7 +276,7 @@ export const DesktopMiniPlayer = ({
           data-toolbar-side={toolbarSide}
           style={{ width: miniPlayerToolbarWidth * (viewport.rem / 16), maxHeight: size.height }}
           className={cn(
-            'absolute top-0 max-h-full overflow-y-auto scrollbar-none',
+            'absolute top-0 max-h-full overflow-y-auto transform-gpu scrollbar-none',
             toolbarSide === 'left' ? 'right-full mr-2' : 'left-full ml-2'
           )}
         >

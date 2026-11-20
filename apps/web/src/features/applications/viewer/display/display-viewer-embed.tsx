@@ -91,7 +91,7 @@ const EmbeddedViewerFallback = ({
         className={getViewerFrameClassName(false)}
         style={getViewerFrameStyle(layout, false)}
       >
-        <div className='flex min-h-0 w-full flex-1 flex-col overflow-auto rounded-overlay bg-surface-panel'>
+        <div className='flex min-h-0 w-full flex-1 flex-col overflow-auto transform-gpu rounded-overlay bg-surface-panel'>
           {error ? (
             <StateView
               kind='error'

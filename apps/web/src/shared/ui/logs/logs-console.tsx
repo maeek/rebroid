@@ -87,7 +87,7 @@ export const LogsConsole = ({
           aria-label={outputLabel}
           tabIndex={loading ? undefined : 0}
           className={cn(
-            'min-h-0 overflow-auto rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
+            'min-h-0 overflow-auto transform-gpu rounded-control border border-surface-border/45 bg-surface-band/55 p-4 font-mono text-xs leading-5 text-foreground-muted supports-[backdrop-filter]:bg-background/34',
             outputClassName
           )}
         >

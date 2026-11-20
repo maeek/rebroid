@@ -53,7 +53,7 @@ function ContextMenuContent({
         <ContextMenuPrimitive.Popup
           data-slot='context-menu-content'
           className={cn(
-            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto',
+            'scrollbar-thin z-50 max-h-[min(var(--available-height),24rem)] overflow-x-hidden overflow-y-auto transform-gpu',
             popupFadeClassName,
             actionMenuSurfaceClassName,
             className

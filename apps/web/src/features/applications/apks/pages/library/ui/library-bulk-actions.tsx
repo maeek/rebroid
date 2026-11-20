@@ -84,7 +84,7 @@ export const ApkLibraryBulkActions = ({
             </SheetTrigger>
             <SheetContent
               side='bottom'
-              className='grid max-h-[100dvh] gap-3 overflow-y-auto overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom))]'
+              className='grid max-h-[100dvh] gap-3 overflow-y-auto transform-gpu overscroll-contain pb-[max(1.5rem,env(safe-area-inset-bottom))]'
             >
               <SheetHeader className='pr-10 text-left'>
                 <SheetTitle>APK actions</SheetTitle>

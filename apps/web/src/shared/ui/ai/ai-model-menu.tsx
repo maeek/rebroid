@@ -38,7 +38,7 @@ export const AiModelMenu = ({
         />
       ) : null}
       <div
-        className='grid max-h-60 gap-3 overflow-y-auto overscroll-contain'
+        className='grid max-h-60 gap-3 overflow-y-auto transform-gpu overscroll-contain'
         aria-label='Available models'
       >
         {groups.map(provider => (

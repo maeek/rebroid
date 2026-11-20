@@ -178,7 +178,7 @@ export const DataGridWorkspace = ({
                 </span>
                 <div
                   className={cn(
-                    'ml-auto flex min-w-0 items-center gap-2 overflow-x-auto',
+                    'ml-auto flex min-w-0 items-center gap-2 overflow-x-auto transform-gpu',
                     compact ? 'max-sm:gap-1' : 'py-1'
                   )}
                 >

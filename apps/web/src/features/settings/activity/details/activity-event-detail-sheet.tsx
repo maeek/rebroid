@@ -99,7 +99,7 @@ export const ActivityEventDetailSheet = () => {
         if (!open) setSelectedEvent(null)
       }}
     >
-      <SheetContent className='w-full overflow-y-auto sm:w-[42rem] sm:max-w-[calc(100vw-2rem)]'>
+      <SheetContent className='w-full overflow-y-auto transform-gpu sm:w-[42rem] sm:max-w-[calc(100vw-2rem)]'>
         <SheetHeader className='pr-6 text-left'>
           <SheetTitle>{selectedEvent ? auditActionLabel(selectedEvent.action) : 'Activity details'}</SheetTitle>
           <SheetDescription>Audit event metadata and recorded request data.</SheetDescription>

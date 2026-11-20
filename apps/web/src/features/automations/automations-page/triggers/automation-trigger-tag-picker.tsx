@@ -38,7 +38,7 @@ export function AutomationTriggerTagPicker({
         disabled={disabled}
         placeholder='Search or create tags'
         emptyLabel='No matching tags. Enter up to 48 characters to create one.'
-        className='max-h-28 overflow-y-auto'
+        className='max-h-28 overflow-y-auto transform-gpu'
         onValueChange={names => onChange(names.map(name => byName.get(name) ?? createAutomationTag(name)))}
       />
     </FormField>

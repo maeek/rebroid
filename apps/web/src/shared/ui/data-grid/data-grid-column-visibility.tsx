@@ -29,7 +29,7 @@ export const DataGridColumnVisibilityMenu = <TData,>({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align='end'
-        className='scrollbar-thin max-h-(--available-height) overflow-y-auto overscroll-contain'
+        className='scrollbar-thin max-h-(--available-height) overflow-y-auto transform-gpu overscroll-contain'
       >
         {table
           .getAllLeafColumns()

@@ -103,7 +103,7 @@ function DialogContent({
           data-slot='dialog-content'
           data-editor-dialog={editorDialog}
           className={cn(
-            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-full grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto overscroll-contain rounded-panel p-5 opacity-100 shadow-emphasis shadow-black/45 transition-[opacity,scale] duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none sm:max-w-lg sm:p-6',
+            'scrollbar-thin pointer-events-auto relative grid w-full max-h-[calc(100dvh-2rem)] max-w-full grid-cols-[minmax(0,1fr)] gap-4 overflow-x-hidden overflow-y-auto transform-gpu overscroll-contain rounded-panel p-5 opacity-100 shadow-emphasis shadow-black/45 transition-[opacity,scale] duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none sm:max-w-lg sm:p-6',
             dialogSurfaceClassName,
             className
           )}

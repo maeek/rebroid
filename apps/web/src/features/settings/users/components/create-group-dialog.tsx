@@ -147,7 +147,7 @@ export const CreateGroupDialog = ({
           ))}
         </ol>
 
-        <div className='min-h-0 flex-1 overflow-y-auto px-0.5 py-1'>
+        <div className='min-h-0 flex-1 overflow-y-auto transform-gpu px-0.5 py-1'>
           {step === 0 ? (
             <div className='grid gap-5'>
               <div className='grid gap-x-form-column gap-y-4 md:grid-cols-2'>

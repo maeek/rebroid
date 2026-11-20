@@ -11,6 +11,24 @@
         ],
         "createdAt": "2026-11-15T20:21:12.594Z",
         "reason": "Agent: this pre-existing glow depicts the green indicator light on the decorative device illustration shown during viewer startup."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "apps/web/src/features/applications/viewer/mini-player/desktop-mini-player.tsx"
+        ],
+        "createdAt": "2026-11-20T22:04:35.907Z",
+        "reason": "Agent review: the neutral corner stroke marks the keyboard-accessible resize handle."
+      },
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": [
+          "apps/web/src/features/applications/viewer/mini-player/desktop-mini-player.tsx"
+        ],
+        "createdAt": "2026-11-20T22:04:35.932Z",
+        "reason": "Agent review: the rounded stroke draws the resize grip itself and uses the handle text color."
       }
     ]
   }

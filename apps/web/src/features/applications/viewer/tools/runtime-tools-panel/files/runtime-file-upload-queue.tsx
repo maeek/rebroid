@@ -52,7 +52,7 @@ export const RuntimeFileUploadQueue = ({
       className='sticky bottom-0 z-20'
     >
       <ul
-        className='scrollbar-thin max-h-56 min-w-0 divide-y divide-surface-border/60 overflow-y-auto'
+        className='scrollbar-thin max-h-56 min-w-0 divide-y divide-surface-border/60 overflow-y-auto transform-gpu'
         aria-live='polite'
       >
         {items.map(item => (

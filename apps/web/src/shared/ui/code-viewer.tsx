@@ -62,7 +62,7 @@ export const CodeViewer = ({
         tabIndex={0}
         role='region'
         aria-label={`${title} ${formatLabel}`}
-        className='max-h-[40rem] min-w-0 overflow-auto rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        className='max-h-[40rem] min-w-0 overflow-auto transform-gpu rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
       >
         <pre
           className={cn(

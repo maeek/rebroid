@@ -18,7 +18,7 @@ export const DataGridFilterSummary = ({
     data-slot='filter-summary'
     role='group'
     aria-label='Active filters'
-    className='scrollbar-thin flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden'
+    className='scrollbar-thin flex min-w-0 items-center gap-2 overflow-x-auto overflow-y-hidden transform-gpu'
   >
     {filters.map(filter => (
       <div

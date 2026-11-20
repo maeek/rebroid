@@ -103,7 +103,7 @@ export const AppViewer = ({
           />
         </Visible>
         {unavailableContent ? (
-          <div className='absolute inset-0 flex items-center-safe overflow-y-auto bg-background'>
+          <div className='absolute inset-0 flex items-center-safe overflow-y-auto transform-gpu bg-background'>
             {unavailableContent}
           </div>
         ) : null}

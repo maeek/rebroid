@@ -131,7 +131,7 @@ export const AutomationEditorActions = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align='end'
-          className='scrollbar-thin max-h-(--available-height) min-w-44 overflow-y-auto overscroll-contain p-2'
+          className='scrollbar-thin max-h-(--available-height) min-w-44 overflow-y-auto transform-gpu overscroll-contain p-2'
         >
           {isDesktop === false ? (
             <>

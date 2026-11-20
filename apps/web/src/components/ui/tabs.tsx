@@ -81,9 +81,9 @@ export const TabsList = ({
           className={cn('min-w-0 flex-1', {
             [resourceNavigationListClassName]: variant === 'resource',
             'flex rounded-control border border-surface-border/70 bg-surface-band/35 p-1': variant === 'segmented',
-            'scrollbar-thin flex gap-1 overflow-x-auto rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
+            'scrollbar-thin flex gap-1 overflow-x-auto transform-gpu rounded-panel border border-surface-border/60 bg-surface-band/28 p-1.5':
               variant === 'scrollable',
-            'scrollbar-thin flex gap-1 overflow-x-auto': variant === 'immersive'
+            'scrollbar-thin flex gap-1 overflow-x-auto transform-gpu': variant === 'immersive'
           })}
         >
           {children}

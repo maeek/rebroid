@@ -189,7 +189,7 @@ export const AiDraftDialog = ({
                 headingSpacing='compact'
                 collapsible
               >
-                <div className='grid max-h-32 gap-1 overflow-y-auto break-words text-xs text-foreground-muted'>
+                <div className='grid max-h-32 gap-1 overflow-y-auto transform-gpu break-words text-xs text-foreground-muted'>
                   {draftLog.map(item => (
                     <div key={item.id}>{item.message}</div>
                   ))}

@@ -153,7 +153,7 @@ export const MiniPlayerDisplay = ({
         />
       </div>
       {status && blocked && (
-        <div className='absolute inset-0 overflow-auto bg-surface-panel'>
+        <div className='absolute inset-0 overflow-auto transform-gpu bg-surface-panel'>
           <StateView
             kind='error'
             scope='immersive'

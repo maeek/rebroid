@@ -255,7 +255,7 @@ function SelectContent({
         <SelectPrimitive.Popup
           data-slot='select-content'
           className={cn(
-            'scrollbar-thin relative z-50 max-h-[min(var(--available-height),24rem)] min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-control',
+            'scrollbar-thin relative z-50 max-h-[min(var(--available-height),24rem)] min-w-[8rem] overflow-x-hidden overflow-y-auto transform-gpu rounded-control',
             {
               'min-w-[var(--anchor-width)]': position === 'popper'
             },

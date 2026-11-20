@@ -10,7 +10,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
   ({ className, containerClassName, containerRef, ...props }, ref) => (
     <div
       ref={containerRef}
-      className={cn('relative w-full overflow-auto', containerClassName)}
+      className={cn('relative w-full overflow-auto transform-gpu', containerClassName)}
     >
       <table
         ref={ref}

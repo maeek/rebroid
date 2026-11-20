@@ -139,7 +139,7 @@ export const PageBreadcrumbs = ({ items, className }: { items: PageBreadcrumbIte
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   aria-label='Earlier pages'
-                  className='scrollbar-thin max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto lg:hidden'
+                  className='scrollbar-thin max-h-(--available-height) max-w-[calc(100vw-2rem)] overflow-y-auto transform-gpu lg:hidden'
                 >
                   {earlierLinks.map(({ label, href }) => (
                     <DropdownMenuItem

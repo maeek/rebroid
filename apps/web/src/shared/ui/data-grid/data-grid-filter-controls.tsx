@@ -82,7 +82,7 @@ export const DataGridFilterSheetContent = ({
       <SheetTitle>{title}</SheetTitle>
       <SheetDescription>{description ?? 'Filters apply as you change them.'}</SheetDescription>
     </SheetHeader>
-    <div className='scrollbar-thin min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6'>
+    <div className='scrollbar-thin min-h-0 flex-1 overflow-y-auto transform-gpu px-6 pt-2 pb-6'>
       <fieldset
         disabled={disabled}
         className='grid min-w-0 gap-5'

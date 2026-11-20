@@ -32,7 +32,7 @@ export const FloatingPrimaryControls = ({ buttonClassName }: { buttonClassName: 
   } = useViewerControlContext()
 
   return (
-    <div className='scrollbar-none grid min-h-0 grid-cols-3 gap-1 overflow-y-auto overscroll-contain border-t border-surface-border/60 p-1'>
+    <div className='scrollbar-none grid min-h-0 grid-cols-3 gap-1 overflow-y-auto transform-gpu overscroll-contain border-t border-surface-border/60 p-1'>
       {runtimeAvailable && canControl && (
         <>
           <IconCommandGroup

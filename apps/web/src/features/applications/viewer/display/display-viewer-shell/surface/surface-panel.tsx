@@ -176,7 +176,7 @@ export const SurfacePanel = ({
                 )}
               </div>
               {!managed && streamStatus?.blocking ? (
-                <div className='absolute inset-0 overflow-auto bg-background'>
+                <div className='absolute inset-0 overflow-auto transform-gpu bg-background'>
                   <StateView
                     className='py-4'
                     kind='error'
@@ -228,7 +228,7 @@ export const SurfacePanel = ({
       {controlsEnabled && !compact ? (
         <div
           className={cn(
-            'w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto scrollbar-none',
+            'w-[var(--viewer-rail-width)] shrink-0 overflow-y-auto transform-gpu scrollbar-none',
             multipleDisplays && !compactSwitcher && 'mt-(--viewer-display-header-space)'
           )}
           style={{ maxHeight: Math.max(32, workspaceHeight - 16 - displayHeaderSpace) }}

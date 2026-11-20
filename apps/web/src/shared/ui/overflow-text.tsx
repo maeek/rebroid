@@ -65,7 +65,7 @@ export const OverflowText = ({ value }: { value: string }) => {
             align='start'
             className={cn(
               'max-h-[min(50dvh,var(--available-height))] max-w-[min(32rem,var(--available-width))]',
-              'overflow-auto overscroll-contain whitespace-normal [overflow-wrap:anywhere]'
+              'overflow-auto transform-gpu overscroll-contain whitespace-normal [overflow-wrap:anywhere]'
             )}
           >
             {value}
