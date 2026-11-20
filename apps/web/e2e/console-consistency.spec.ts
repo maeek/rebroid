@@ -451,6 +451,7 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   const main = page.getByRole('main')
   const toggle = sidebar.getByRole('button', { name: 'Collapse sidebar' })
   const brand = sidebar.getByRole('link', { name: 'Rebroid', exact: true })
+  const overview = sidebar.getByRole('link', { name: 'Overview', exact: true })
   await expect(brand).toHaveText('Rebroid')
   await expect(page.getByRole('banner')).toHaveCount(0)
   await expect(sidebar).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
@@ -464,7 +465,9 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   const footer = (await controls.boundingBox())!
   expect(footer.y + footer.height).toBe(expanded.y + expanded.height)
 
-  expect((await toggle.boundingBox())!.x).toBeGreaterThan((await brand.boundingBox())!.x)
+  const expandedToggle = (await toggle.boundingBox())!
+  const expandedOverview = (await overview.boundingBox())!
+  expect(expandedToggle.x).toBeGreaterThan((await brand.boundingBox())!.x)
   if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
     await expect(toggle).not.toHaveAttribute('title', /.+/)
     await toggle.hover()
@@ -504,9 +507,28 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   expect(start.x - (await heading.boundingBox())!.x).toBe(224)
   await expect(brand).toBeVisible()
   await expect(brand.getByText('Rebroid')).toHaveCSS('opacity', '0')
-  await expect(sidebar.getByRole('button', { name: 'Expand sidebar' })).toBeFocused()
+  const expandToggle = sidebar.getByRole('button', { name: 'Expand sidebar' })
+  await expect(expandToggle).toBeFocused()
+  await expect(expandToggle).toHaveAttribute('aria-expanded', 'false')
+  const collapsedToggle = (await expandToggle.boundingBox())!
+  const collapsedBrand = (await brand.boundingBox())!
+  expect(collapsedToggle.y).toBe(expandedToggle.y)
+  expect(collapsedToggle.x).toBeGreaterThanOrEqual(collapsedBrand.x + collapsedBrand.width)
+  expect(collapsedToggle.x + collapsedToggle.width).toBeLessThanOrEqual((await heading.boundingBox())!.x)
+  expect((await overview.boundingBox())!.y).toBe(expandedOverview.y)
   await page.mouse.move(450, 20)
+  const canHover = await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)
+  await expect(expandToggle).toHaveCSS('opacity', canHover ? '0' : '1')
   await page.screenshot({ path: test.info().outputPath('sidebar-rail.png'), animations: 'disabled' })
+  if (canHover) {
+    await brand.hover()
+    await expect(expandToggle).toHaveCSS('opacity', '1')
+    await expandToggle.hover()
+    await expect(page.getByText('Expand sidebar', { exact: true })).toBeVisible()
+    await page.screenshot({ path: test.info().outputPath('sidebar-rail-hover.png'), animations: 'disabled' })
+    await page.mouse.move(450, 20)
+    await expect(expandToggle).toHaveCSS('opacity', '0')
+  }
   const apps = sidebar.getByRole('link', { name: 'All apps', exact: true })
   await expect(apps).toHaveAttribute('href', '/apps')
   await expect(sidebar.getByRole('link', { name: 'Create app', exact: true })).toHaveAttribute('href', '/apps/create')
@@ -569,8 +591,14 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
   await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
   await expect(sidebar).toHaveCSS('width', '64px')
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.getByRole('button', { name: 'Expand sidebar' }).click()
+  await brand.focus()
+  await page.keyboard.press('Tab')
+  await expect(expandToggle).toBeFocused()
+  await expect(expandToggle).toHaveCSS('opacity', '1')
+  await page.keyboard.press('Enter')
   await expect(sidebar).toHaveCSS('width', '288px')
+  await expect(toggle).toBeFocused()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(sidebar).toHaveCSS('transition-property', 'none')
   await expect(main).toHaveCSS('transition-property', 'none')
   const expandedResponse = await page.request.get(page.url())

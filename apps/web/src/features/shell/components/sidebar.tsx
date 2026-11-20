@@ -1,6 +1,6 @@
 'use client'
 
-import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from '@tabler/icons-react'
+import { IconChevronRight, IconLayoutSidebarLeftCollapse } from '@tabler/icons-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { focusRingClassName } from '@/components/ui/surface'
@@ -27,7 +27,7 @@ export default function Sidebar({
   pollNavigation: boolean
 }) {
   const toggleLabel = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
-  const ToggleIcon = collapsed ? IconLayoutSidebarLeftExpand : IconLayoutSidebarLeftCollapse
+  const ToggleIcon = collapsed ? IconChevronRight : IconLayoutSidebarLeftCollapse
   const home = (
     <Link
       href='/'
@@ -35,7 +35,7 @@ export default function Sidebar({
       className={cn(
         'touch-control inline-flex h-9 min-w-0 items-center rounded-control px-1.5',
         focusRingClassName,
-        collapsed ? 'w-9 touch:min-w-0' : 'max-w-44'
+        collapsed ? 'w-9 touch:min-w-0 touch:pl-3' : 'max-w-44'
       )}
     >
       <RebroidIcon />
@@ -56,16 +56,20 @@ export default function Sidebar({
     <aside
       id={sidebarId}
       aria-label='Primary navigation'
-      className='fixed inset-y-[var(--shell-sidebar-inset)] left-[var(--shell-sidebar-inset)] z-40 hidden w-(--shell-sidebar-width) flex-col overflow-hidden rounded-panel bg-surface-navigation transition-[width] duration-[var(--shell-sidebar-duration)] ease-out lg:flex motion-reduce:transition-none'
+      className='group/sidebar fixed inset-y-[var(--shell-sidebar-inset)] left-[var(--shell-sidebar-inset)] z-40 hidden w-(--shell-sidebar-width) flex-col rounded-panel bg-surface-navigation transition-[width] duration-[var(--shell-sidebar-duration)] ease-out lg:flex motion-reduce:transition-none'
     >
-      <div
-        className={cn(
-          'relative shrink-0 transition-[height] duration-[var(--shell-sidebar-duration)] ease-out motion-reduce:transition-none',
-          collapsed ? 'h-20' : 'h-12'
-        )}
-      >
-        <div className={cn('absolute top-1.5 flex items-center', collapsed ? 'left-3.5' : 'left-[13px]')}>
-          {collapsed ? <NavigationHint label='Rebroid'>{home}</NavigationHint> : home}
+      <div className='relative h-12 shrink-0'>
+        <div className={cn('absolute top-1.5 flex items-center', collapsed ? 'left-3.5 touch:left-2' : 'left-[13px]')}>
+          {collapsed ? (
+            <NavigationHint
+              label='Rebroid'
+              side='bottom'
+            >
+              {home}
+            </NavigationHint>
+          ) : (
+            home
+          )}
         </div>
         <Tooltip>
           <TooltipTrigger
@@ -77,39 +81,45 @@ export default function Sidebar({
               variant='ghost'
               size='icon-md'
               className={cn(
-                'absolute right-[13px] transition-[top] duration-[var(--shell-sidebar-duration)] ease-out motion-reduce:transition-none',
-                collapsed ? 'top-11' : 'top-1.5'
+                'absolute top-1.5 right-[13px] transition-[translate,background-color,color,opacity] ease-out [transition-duration:var(--shell-sidebar-duration),150ms,150ms,120ms] motion-reduce:transition-none',
+                collapsed &&
+                  'translate-x-[35px] text-foreground-muted group-hover/sidebar:opacity-100 focus-visible:opacity-100 touch:translate-x-[37px] [@media(hover:hover)_and_(pointer:fine)]:opacity-0'
               )}
               aria-label={toggleLabel}
               aria-controls={sidebarId}
               aria-expanded={!collapsed}
               onClick={onToggle}
             >
-              <ToggleIcon className='size-5' />
+              <ToggleIcon
+                aria-hidden='true'
+                className={collapsed ? 'size-4' : 'size-5'}
+              />
             </Button>
           </TooltipTrigger>
           <TooltipContent
-            side={collapsed ? 'right' : 'bottom'}
-            align={collapsed ? 'center' : 'end'}
+            side='bottom'
+            align='end'
             sideOffset={8}
           >
             {toggleLabel}
           </TooltipContent>
         </Tooltip>
       </div>
-      <div className='scrollbar-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain'>
-        <div className={collapsed ? 'w-16' : 'w-72'}>
-          <ProtectedNavigation
-            variant={collapsed ? 'rail' : 'sidebar'}
-            initialUser={initialUser}
-            pollRecentApps={pollNavigation}
-          />
+      <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-panel'>
+        <div className='scrollbar-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain'>
+          <div className={collapsed ? 'w-16' : 'w-72'}>
+            <ProtectedNavigation
+              variant={collapsed ? 'rail' : 'sidebar'}
+              initialUser={initialUser}
+              pollRecentApps={pollNavigation}
+            />
+          </div>
         </div>
+        <NavigationControls
+          user={initialUser}
+          placement={collapsed ? 'rail' : 'sidebar'}
+        />
       </div>
-      <NavigationControls
-        user={initialUser}
-        placement={collapsed ? 'rail' : 'sidebar'}
-      />
     </aside>
   )
 }
