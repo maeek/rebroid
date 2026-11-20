@@ -134,7 +134,8 @@ describe('platform health navigation', () => {
 
     mockPoll(summary)
     rerender(sidebar())
-    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('System degraded')
+    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('Degraded')
+    expect(within(screen.getByRole('link', { name: 'Casting' })).getByText('Healthy')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Casting' })).toHaveAccessibleDescription('Healthy')
     expect(screen.getByRole('link', { name: 'Firewall' })).toHaveAccessibleDescription('Offline')
     expect(screen.getByRole('link', { name: 'Docker' })).toHaveAccessibleDescription('Degraded')
@@ -146,7 +147,7 @@ describe('platform health navigation', () => {
     mockPoll(summary, new Error('Orchestrator unavailable'))
     render(sidebar(false))
 
-    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('System offline')
+    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('Offline')
     expect(screen.getByRole('link', { name: 'Docker' })).toHaveAccessibleDescription('Unknown')
     expect(screen.getByRole('link', { name: 'Casting' })).toHaveAccessibleDescription('Unknown')
     expect(screen.queryByRole('link', { name: 'OCR perception' })).toBeNull()
@@ -166,12 +167,12 @@ describe('platform health navigation', () => {
     expect(system).not.toHaveAccessibleDescription()
     fireEvent.click(toggle)
     expect(toggle).toHaveAccessibleName('Expand System menu')
-    expect(system).toHaveAccessibleDescription('System degraded')
+    expect(system).toHaveAccessibleDescription('Degraded')
     expect(screen.queryByRole('link', { name: 'Services' })).toBeNull()
 
     fireEvent.click(toggle)
     expect(system).not.toHaveAccessibleDescription()
-    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('System degraded')
+    expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('Degraded')
   })
 
   it('marks the standalone OCR page as current', () => {

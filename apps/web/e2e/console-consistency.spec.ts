@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const widths = [390, 768, 1440, 2048]
 
-test('app shortcuts keep equal row heights with a status dot or Start action', async ({ page }) => {
+test('app shortcuts keep equal row heights with a status symbol or Start action', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell&recentApps=1')
 
@@ -374,7 +374,9 @@ test('the account menu clears the sidebar rail', async ({ page }) => {
   await expect(railAccount).toBeFocused()
 })
 
-test('service health dots stay with navigation in the sidebar, rail, and drawer', async ({ page }) => {
+test('service health labels and rail symbols stay with navigation in the sidebar, rail, and drawer', async ({
+  page
+}) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
@@ -382,19 +384,19 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   await expect(footer.getByRole('button', { name: /^Service status:/ })).toHaveCount(0)
   await expect(footer.getByRole('button', { name: /^Account:/ })).toBeVisible()
 
-  const dot = '[data-slot="navigation-health-dot"]'
+  const health = '[data-slot="navigation-health"]'
   for (const name of ['Casting', 'Docker', 'Services']) {
     const link = sidebar.getByRole('link', { name, exact: true })
     await expect(link).toHaveAccessibleDescription('Checking')
     await link.scrollIntoViewIfNeeded()
     const linkBox = (await link.boundingBox())!
-    const dotBox = (await link.locator(dot).boundingBox())!
-    expect(dotBox.width).toBe(8)
-    expect(dotBox.height).toBe(8)
-    expect(linkBox.x + linkBox.width - dotBox.x - dotBox.width).toBe(12)
+    const healthBox = (await link.locator(health).boundingBox())!
+    await expect(link.locator(health)).toHaveText('Checking')
+    expect(healthBox.x).toBeGreaterThan(linkBox.x)
+    expect(healthBox.x + healthBox.width).toBeLessThanOrEqual(linkBox.x + linkBox.width)
     if (name === 'Docker') {
       const toggleBox = (await sidebar.getByRole('button', { name: 'Collapse Docker menu' }).boundingBox())!
-      expect(dotBox.x + dotBox.width).toBeLessThan(toggleBox.x)
+      expect(healthBox.x + healthBox.width).toBeLessThan(toggleBox.x)
     }
   }
 
@@ -402,31 +404,33 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   const systemLink = sidebar.getByRole('link', { name: 'System', exact: true })
   await expect(systemLink).toHaveAttribute('href', '/system/resources')
   await expect(sidebar.getByRole('link', { name: 'Resource usage' })).toHaveCount(0)
-  await expect(systemSection.locator(dot)).toHaveCount(0)
-  await expect(systemLink.locator(dot)).toHaveCount(0)
+  await expect(systemSection.locator(health)).toHaveCount(0)
+  await expect(systemLink.locator(health)).toHaveCount(0)
   await systemSection.click()
-  await expect(systemLink.locator(dot)).toBeVisible()
+  await expect(systemLink.locator(health)).toBeVisible()
   await expect(sidebar.getByRole('link', { name: 'Services' })).toHaveCount(0)
   await systemSection.click()
-  await expect(systemLink.locator(dot)).toHaveCount(0)
-  await expect(sidebar.getByRole('link', { name: 'Services' }).locator(dot)).toBeVisible()
+  await expect(systemLink.locator(health)).toHaveCount(0)
+  await expect(sidebar.getByRole('link', { name: 'Services' }).locator(health)).toBeVisible()
 
   await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
   await expect(sidebar).toHaveCSS('width', '64px')
-  await expect(sidebar.getByRole('link', { name: 'Casting' }).locator(dot)).toBeVisible()
-  await expect(sidebar.getByRole('button', { name: 'Docker' }).locator(dot)).toBeVisible()
+  const railHealth = sidebar.getByRole('link', { name: 'Casting' }).locator(health)
+  await expect(railHealth.locator('svg')).toBeVisible()
+  await expect(railHealth).toHaveText('')
+  await expect(sidebar.getByRole('button', { name: 'Docker' }).locator(health)).toBeVisible()
   const system = sidebar.getByRole('button', { name: 'System' })
-  await expect(system.locator(dot)).toBeVisible()
+  await expect(system.locator(health)).toBeVisible()
   await system.press('Enter')
   const systemMenu = page.getByRole('menu', { name: 'System' })
   const overview = systemMenu.getByRole('menuitem', { name: 'Overview' })
   await expect(overview).toHaveAttribute('href', '/system/resources')
-  await expect(overview.locator(dot)).toHaveCount(0)
-  await expect(systemMenu.getByRole('menuitem', { name: 'Services' }).locator(dot)).toBeVisible()
-  await expect(system.locator(dot)).toBeHidden()
+  await expect(overview.locator(health)).toHaveCount(0)
+  await expect(systemMenu.getByRole('menuitem', { name: 'Services' }).locator(health)).toBeVisible()
+  await expect(system.locator(health)).toBeHidden()
   await page.keyboard.press('Escape')
   await expect(system).toBeFocused()
-  await expect(system.locator(dot)).toBeVisible()
+  await expect(system.locator(health)).toBeVisible()
 
   await page.setViewportSize({ width: 320, height: 640 })
   await expect(page.getByRole('banner')).toHaveCount(0)
@@ -434,11 +438,11 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' }).click()
   const drawer = page.getByRole('dialog', { name: 'Navigation' })
   await expect(drawer.getByRole('button', { name: /^Account:/ })).toBeInViewport()
-  await expect(drawer.getByRole('link', { name: 'Services' }).locator(dot)).toBeVisible()
+  await expect(drawer.getByRole('link', { name: 'Services' }).locator(health)).toBeVisible()
   const drawerSystem = drawer.getByRole('link', { name: 'System', exact: true })
   await expect(drawerSystem).toHaveAttribute('href', '/system/resources')
   await drawer.getByRole('button', { name: 'Collapse System menu' }).click()
-  await expect(drawerSystem.locator(dot)).toBeVisible()
+  await expect(drawerSystem.locator(health)).toBeVisible()
   await expect(drawer.getByRole('link', { name: 'Services' })).toHaveCount(0)
 })
 

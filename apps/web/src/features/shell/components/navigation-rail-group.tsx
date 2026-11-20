@@ -15,7 +15,8 @@ import {
   type NavigationGroup,
   type NavigationItem
 } from './protected-navigation-config'
-import { NavigationHealthDot, NavLink } from './protected-navigation-parts'
+import { NavigationHealth, NavigationHealthDetails } from './navigation-health'
+import { NavLink } from './protected-navigation-parts'
 
 export const NavigationRail = ({
   entries,
@@ -63,18 +64,18 @@ export const NavigationRail = ({
                     <button
                       type='button'
                       aria-label={entry.label}
-                      title={status?.label}
+                      aria-description={status?.label}
                       className={cn(
                         styles.item,
+                        'relative',
                         containsActive && styles.activeItem,
-                        status && 'relative',
                         status &&
                           hasChildWithSameHealth(entry.healthId, entry.items) &&
-                          'aria-expanded:[&>[data-slot=navigation-health-dot]]:hidden'
+                          'aria-expanded:[&>[data-slot=navigation-health]]:hidden'
                       )}
                     >
                       <Icon className={styles.icon} />
-                      <NavigationHealthDot
+                      <NavigationHealth
                         status={status}
                         compact
                       />
@@ -111,14 +112,20 @@ const NavigationRailItems = ({
   isActivePath: (href: string) => boolean
 }) => {
   const styles = variantStyles.rail
+  const statuses = usePlatformHealth()
+  const issue = group.healthId ? statuses[group.healthId] : undefined
   const overviewHealthId = hasChildWithSameHealth(group.healthId, group.items) ? undefined : group.healthId
   const items = group.href
     ? [{ name: 'Overview', href: group.href, Icon: group.Icon, healthId: overviewHealthId }, ...group.items]
     : group.items
   const shortcuts = items.flatMap(item => (item.shortcut ? [item.shortcut] : []))
-  const statuses = usePlatformHealth()
   return (
     <>
+      {issue ? (
+        <div className="border-b border-surface-border/60 px-2.5 py-2 touch:hidden">
+          <NavigationHealthDetails label={group.label} status={issue} />
+        </div>
+      ) : null}
       {items.map(({ name, href, Icon: ItemIcon, healthId }) => {
         const active = isActivePath(href)
         const status = healthId ? statuses[healthId] : undefined
@@ -131,11 +138,11 @@ const NavigationRailItems = ({
             <Link
               href={href}
               aria-current={active ? 'page' : undefined}
-              title={status?.label}
+              aria-description={status?.label}
             >
               <ItemIcon className={styles.icon} />
               {name}
-              <NavigationHealthDot status={status} />
+              <NavigationHealth status={status} />
             </Link>
           </DropdownMenuItem>
         )

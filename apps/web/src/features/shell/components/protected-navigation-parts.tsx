@@ -5,7 +5,8 @@ import { DisclosureChevron } from '@/components/ui/disclosure'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
 import { NavigationHint } from './navigation-hint'
-import { usePlatformHealth, type NavigationHealthStatus } from './platform-health-context'
+import { NavigationHealth, NavigationHealthHint } from './navigation-health'
+import { usePlatformHealth } from './platform-health-context'
 import {
   hasChildWithSameHealth,
   variantStyles,
@@ -80,25 +81,6 @@ export const SectionHeader = ({ title, variant, actionHref, actionLabel, onNavig
   )
 }
 
-export const NavigationHealthDot = ({
-  status,
-  compact = false
-}: {
-  status?: NavigationHealthStatus
-  compact?: boolean
-}) =>
-  status ? (
-    <span
-      aria-hidden='true'
-      data-slot='navigation-health-dot'
-      className={cn(
-        'size-2 shrink-0 rounded-full',
-        compact ? 'absolute right-0.5 top-0.5' : 'ml-auto mr-1',
-        status.dot
-      )}
-    />
-  ) : null
-
 export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, variant, onNavigate }: NavLinkProps) => {
   const styles = variantStyles[variant]
   const statuses = usePlatformHealth()
@@ -109,19 +91,19 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, varia
       href={href}
       className={cn(
         styles.item,
+        compact && 'relative',
         isActive && styles.activeItem,
-        compact && status && 'relative',
         shortcut && !compact && 'min-w-0 flex-1 pr-9 touch:pr-2'
       )}
       onClick={onNavigate}
       aria-current={isActive ? 'page' : undefined}
-      title={status?.label}
+      aria-description={status?.label}
     >
       <div className={styles.iconWrap}>
         <Icon className={styles.icon} />
       </div>
       <span className={cn(styles.label, shortcut && !compact && 'truncate')}>{label}</span>
-      <NavigationHealthDot
+      <NavigationHealth
         status={status}
         compact={compact}
       />
@@ -130,7 +112,7 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, varia
 
   return (
     <li className={shortcut ? cn('relative flex items-center', compact && 'flex-col') : undefined}>
-      {compact ? <NavigationHint label={status ? `${label} · ${status.label}` : label}>{link}</NavigationHint> : link}
+      <NavigationHealthHint label={label} status={status} variant={variant}>{link}</NavigationHealthHint>
       {shortcut ? (
         <NavigationAddLink
           href={shortcut.href}
@@ -201,16 +183,18 @@ export const NestedNavigationMenu = ({
     <li>
       {href ? (
         <div className='flex min-w-0'>
+          <NavigationHealthHint label={label} status={status} variant={variant}>
           <Link
             href={href}
             className={cn(styles.item, 'min-w-0 flex-1', linkActive && styles.activeItem)}
             onClick={onNavigate}
             aria-current={linkActive ? 'page' : undefined}
-            title={status?.label}
+            aria-description={status?.label}
           >
             {labelContent}
-            <NavigationHealthDot status={status} />
+            <NavigationHealth status={status} />
           </Link>
+          </NavigationHealthHint>
           <button
             {...toggleProps}
             className={cn(styles.toggleButton, toggleActive)}
@@ -239,6 +223,7 @@ export const NestedNavigationMenu = ({
                 key={itemHref}
                 className='relative flex items-center'
               >
+                <NavigationHealthHint label={name} status={itemStatus} variant={variant}>
                 <Link
                   href={itemHref}
                   className={cn(
@@ -249,14 +234,15 @@ export const NestedNavigationMenu = ({
                   )}
                   onClick={onNavigate}
                   aria-current={isActivePath(itemHref) ? 'page' : undefined}
-                  title={itemStatus?.label}
+                  aria-description={itemStatus?.label}
                 >
                   <div className={styles.nestedIconWrap}>
                     <Icon className={styles.nestedIcon} />
                   </div>
                   <span className='truncate'>{name}</span>
-                  <NavigationHealthDot status={itemStatus} />
+                  <NavigationHealth status={itemStatus} />
                 </Link>
+                </NavigationHealthHint>
                 {shortcut ? (
                   <NavigationAddLink
                     href={shortcut.href}

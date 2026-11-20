@@ -70,7 +70,7 @@ export const RecentAppLink = ({
       appId={app.id}
       appName={app.name}
       icon={app.icon}
-      className='size-6 text-[0.6rem]'
+      className={cn('size-6 text-[0.6rem]', rail && showStatus && 'size-5 shrink-0')}
     />
   )
 
@@ -152,7 +152,7 @@ export const RecentAppLink = ({
             status={status}
             label={statusLabel}
             compact
-            className='absolute right-1 top-1'
+            className='ml-0.5'
           />
         ) : null}
         {!rail ? (
