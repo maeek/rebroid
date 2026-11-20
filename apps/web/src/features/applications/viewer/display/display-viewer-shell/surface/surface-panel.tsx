@@ -1,17 +1,17 @@
 'use client'
 
-import { useContext, useLayoutEffect, useRef, useState } from 'react'
+import { useContext } from 'react'
 import type { ReactNode } from 'react'
 import { IconDeviceDesktop, IconDeviceMobile, IconPictureInPicture, IconX } from '@tabler/icons-react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
 import { useDisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-shell/display-viewer-context'
+import { usePinnedViewerRegistration } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-pinned-viewer-registration'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { DisplayViewerVisibility } from '@/features/applications/viewer/display/display-viewer-visibility'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
-import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import { cn } from '@/lib/utils'
 import { StateView } from '@/shared/ui/state-view'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
@@ -27,10 +27,9 @@ export const SurfacePanel = ({
   chromeActions?: ReactNode
   onDockMiniPlayer?: () => void
 }) => {
+  const viewer = useDisplayViewerSurface(surface)
   const {
     applicationId,
-    canClipboard,
-    dockedSession,
     canControl,
     controlsEnabled,
     compact,
@@ -46,7 +45,6 @@ export const SurfacePanel = ({
     retryError,
     keyboardCaptureEnabled,
     mediaSize,
-    displaySize,
     onClose,
     onOpenPopout,
     onRetry,
@@ -55,18 +53,14 @@ export const SurfacePanel = ({
     onStreamStatus,
     onSurfaceElement,
     onToggleFullscreen,
-    onViewportElement,
     streamStatus,
     viewportSize,
     workspaceHeight
-  } = useDisplayViewerSurface(surface)
+  } = viewer
   const viewerVisible = useContext(DisplayViewerVisibility)
   const active = viewerVisible && isActive
   const hidden = compact && !isActive
-  const pinnedViewer = usePinnedViewer()
-  const register = pinnedViewer?.register
-  const unregister = pinnedViewer?.unregister
-  const managed = surface.kind === 'main' && Boolean(register && dockedSession)
+  const { managed, pinnedViewer, attachViewport } = usePinnedViewerRegistration(surface, viewer, viewerVisible)
   const isFloating = pinnedViewer?.pinnedAppId === applicationId && managed
   // Native fullscreen shows only the host and its DOM descendants, including when the main frame is docked.
   const fullscreenHost =
@@ -74,52 +68,6 @@ export const SurfacePanel = ({
     (fullscreenSurface || (managed && pinnedViewer?.isFullscreenHost(applicationId, fullscreenElement)))
       ? fullscreenElement
       : null
-  const [registration] = useState(() => Symbol('viewer dock'))
-  const [viewport, setViewport] = useState<HTMLDivElement | null>(null)
-  const dockRef = useRef({ onStreamStatus, onStreamMetrics, onRetry, onSelect })
-  useLayoutEffect(() => {
-    dockRef.current = { onStreamStatus, onStreamMetrics, onRetry, onSelect }
-  })
-  useLayoutEffect(() => {
-    if (!managed || !viewport || !dockedSession) return
-    register?.(registration, {
-      appId: applicationId,
-      ...dockedSession,
-      element: viewport,
-      surface,
-      frameGeneration,
-      displaySize,
-      canControl,
-      canClipboard: canClipboard === true,
-      isActive: active,
-      keyboardCaptureEnabled: viewerVisible && keyboardCaptureEnabled,
-      onStreamMetrics: metrics => dockRef.current.onStreamMetrics(metrics),
-      onStreamStatus: status => dockRef.current.onStreamStatus(status),
-      onRetry: () => dockRef.current.onRetry(),
-      onFocus: compact ? undefined : () => dockRef.current.onSelect(),
-      retrying: isRetrying,
-      retryError
-    })
-  }, [
-    managed,
-    viewport,
-    register,
-    registration,
-    applicationId,
-    dockedSession,
-    surface,
-    frameGeneration,
-    displaySize,
-    compact,
-    canControl,
-    canClipboard,
-    active,
-    viewerVisible,
-    keyboardCaptureEnabled,
-    isRetrying,
-    retryError
-  ])
-  useLayoutEffect(() => () => unregister?.(registration), [unregister, registration])
   const miniPlayer = !fullscreenSurface && onDockMiniPlayer
   const aspectRatio = viewportSize.width / Math.max(viewportSize.height, 1)
   const frameStyle = mediaSize ? { width: mediaSize.width, height: mediaSize.height } : undefined
@@ -167,10 +115,7 @@ export const SurfacePanel = ({
           </Button>
         ) : null}
         <div
-          ref={element => {
-            onViewportElement(element)
-            if (managed && element) setViewport(element)
-          }}
+          ref={attachViewport}
           className={cn(
             'relative overflow-hidden bg-black',
             fullscreenSurface ? 'flex h-screen w-screen items-center justify-center' : 'rounded-overlay'

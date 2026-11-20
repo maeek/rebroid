@@ -1,14 +1,19 @@
 import { useLayoutEffect, useState } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { expect, it, onTestFinished, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
+import { DisplayViewerProvider } from '../display/display-viewer-shell/display-viewer-context'
+import { SurfacePanel } from '../display/display-viewer-shell/surface/surface-panel'
 import { usePinnedViewer, type DockedViewer } from './pinned-viewer-context'
 import { PinnedViewerProvider } from './pinned-viewer-provider'
 
 vi.mock('@/hooks/use-desktop-viewport', () => ({ useDesktopViewport: vi.fn() }))
 vi.mock('@/features/applications/viewer/display/viewer-activity-keepalive', () => ({
   ViewerActivityKeepalive: () => null
+}))
+vi.mock('@/features/applications/viewer/display/display-viewer-shell/hooks/use-display-viewer-actions', () => ({
+  useDisplayViewerActions: () => ({ refreshSurfaces: vi.fn() })
 }))
 vi.mock('@/server/orchestrator/applications/actions/runtime/viewer-actions', () => ({
   sendApplicationViewerControlAction: vi.fn()
@@ -93,6 +98,97 @@ const Console = ({ route = 'viewer', captures = false }: { route?: 'viewer' | 'o
     </PinnedViewerProvider>
   </TooltipProvider>
 )
+
+it('keeps the SurfacePanel iframe and window through docking, restore, and fullscreen', () => {
+  vi.mocked(useDesktopViewport).mockReturnValue(true)
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    }
+  )
+  const rect = vi
+    .spyOn(HTMLDivElement.prototype, 'getBoundingClientRect')
+    .mockReturnValue(new DOMRect(30, 60, 240, 520))
+  const changeFullscreen = (element: Element | null) => {
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, value: element })
+    fireEvent(document, new Event('fullscreenchange'))
+  }
+  const exitFullscreen = vi.fn(() => {
+    changeFullscreen(null)
+    return Promise.resolve()
+  })
+  Object.defineProperty(document, 'exitFullscreen', { configurable: true, value: exitFullscreen })
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+    rect.mockRestore()
+    Reflect.deleteProperty(document, 'exitFullscreen')
+    Reflect.deleteProperty(document, 'fullscreenElement')
+  })
+  const layout = (showViewer: boolean) => (
+    <TooltipProvider>
+      <PinnedViewerProvider>
+        {showViewer ? (
+          <DisplayViewerProvider
+            value={{
+              applicationId: 'app-1',
+              surfaces: [surface],
+              dockedSession: {
+                name: 'Android app',
+                runtime: 'runtime-1',
+                session: { value: { applicationId: 'app-1' } as DockedViewer['session']['value'], requestAt: 1 }
+              },
+              canCaptureScreenshot: false,
+              canControl: false,
+              controlsEnabled: false,
+              initialKeyboardCaptureEnabled: false
+            }}
+          >
+            <SurfacePanel
+              surface={surface}
+              showName={false}
+            />
+          </DisplayViewerProvider>
+        ) : null}
+      </PinnedViewerProvider>
+    </TooltipProvider>
+  )
+  const view = render(layout(true))
+  const iframe = screen.getByTitle<HTMLIFrameElement>('display viewer')
+  const frameWindow = iframe.contentWindow
+  const host = screen.getByRole('region', { name: 'Android app display' })
+  const requestFullscreen = vi.fn(() => {
+    changeFullscreen(host)
+    return Promise.resolve()
+  })
+  host.requestFullscreen = requestFullscreen
+  const expectSameFrame = () => {
+    expect(screen.getByTitle('display viewer')).toBe(iframe)
+    expect(iframe.contentWindow).toBe(frameWindow)
+    expect(iframe).toHaveAttribute('src', surface.src)
+  }
+
+  fireEvent.keyDown(window, { key: 'i' })
+  expect(screen.getByRole('region', { name: 'Android app mini-player' })).toBe(host)
+  expectSameFrame()
+  view.rerender(layout(false))
+  expectSameFrame()
+  view.rerender(layout(true))
+  fireEvent.click(screen.getByRole('button', { name: 'Restore viewer' }))
+  expect(screen.getByRole('region', { name: 'Android app display' })).toBe(host)
+  expectSameFrame()
+
+  const fullscreen = screen.getByRole('button', { name: 'Enter fullscreen' })
+  fireEvent.click(fullscreen)
+  expect(requestFullscreen).toHaveBeenCalledOnce()
+  expect(within(host).getByRole('group', { name: 'Fullscreen viewer controls' })).toBeVisible()
+  expectSameFrame()
+  fireEvent.click(fullscreen)
+  expect(exitFullscreen).toHaveBeenCalledOnce()
+  expect(within(host).queryByRole('group', { name: 'Fullscreen viewer controls' })).not.toBeInTheDocument()
+  expectSameFrame()
+})
 
 it('keeps the same iframe through minimize, expand, collapse, navigation and return', () => {
   vi.mocked(useDesktopViewport).mockReturnValue(true)
