@@ -1,9 +1,9 @@
 import { type ChangeEvent } from 'react'
 import { IconApps } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
 import { EditorFormContext } from '@/components/ui/editor-form-context'
 import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
-import { MutationButton } from '@/components/ui/mutation-button'
 import { Switch } from '@/components/ui/switch'
 import { AppIcon } from '@/shared/ui/app-icon/app-icon'
 
@@ -15,9 +15,10 @@ type AppIconFieldProps = {
   onAutoExtractIconChange?: (checked: boolean) => void
   disabled?: boolean
   pending?: boolean
-  removing?: boolean
   description?: string
-  pendingLabel?: string
+  modified?: boolean
+  statusLabel?: string
+  onResetIcon?: () => void
   error?: string
   onIconChange: (event: ChangeEvent<HTMLInputElement>) => void
   onClearIcon?: () => void
@@ -31,9 +32,10 @@ export const AppIconField = ({
   onAutoExtractIconChange,
   disabled = false,
   pending = false,
-  removing = false,
   description = 'Optional launcher artwork for this app.',
-  pendingLabel = 'Preparing icon…',
+  modified,
+  statusLabel,
+  onResetIcon,
   error,
   onIconChange,
   onClearIcon
@@ -47,6 +49,8 @@ export const AppIconField = ({
       <FormField
         label='Icon'
         description={description}
+        modified={modified}
+        resetAction={onResetIcon ? { label: 'Undo icon change', onReset: onResetIcon } : undefined}
         error={error}
         layout='vertical'
       >
@@ -54,11 +58,11 @@ export const AppIconField = ({
           aria-label='App icon'
           accept='image/*'
           pending={pending}
-          pendingLabel={pendingLabel}
-          disabled={disabled || removing}
+          pendingLabel='Preparing icon…'
+          disabled={disabled}
           onChange={onIconChange}
           buttonLabel={iconPreview ? 'Replace icon' : 'Upload icon'}
-          filenameLabel={pending ? '' : status}
+          filenameLabel={pending ? '' : (statusLabel ?? status)}
           preview={
             appName || iconPreview ? (
               <AppIcon
@@ -92,18 +96,16 @@ export const AppIconField = ({
         </EditorFormContext.Provider>
       ) : null}
       {onClearIcon && iconPreview ? (
-        <MutationButton
+        <Button
           type='button'
           variant='ghost'
           size='sm'
           className='justify-self-start'
           disabled={disabled || pending}
-          pending={removing}
-          pendingLabel='Removing icon…'
           onClick={onClearIcon}
         >
           Remove icon
-        </MutationButton>
+        </Button>
       ) : null}
     </div>
   )

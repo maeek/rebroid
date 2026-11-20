@@ -20,6 +20,8 @@ export const buildResourceLimitBounds = (
   resources: SystemResourceCapacity | null,
   quotas: ResourceQuota
 ): ResourceLimitBounds => ({
+  hostMemoryBytes: resources?.hostMemoryBytes ?? null,
+  hostCpuCores: resources?.hostCpuCores ?? null,
   maxMemoryMb: boundedMax(quotas.maxMemoryMb, bytesToWholeMb(resources?.hostMemoryBytes)),
   maxCpuCpus: boundedMax(quotas.maxCpuCpus, resources?.hostCpuCores ?? null)
 })

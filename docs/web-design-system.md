@@ -75,7 +75,9 @@ The protected layout owns sidebar offset, `main`, width, and outer gutters. Stan
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
 The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
-brand and collapse control above the scrollable links. Place the account control at the bottom.
+brand and sidebar toggle in a single row above the scrollable links. In the icon rail, use a right
+chevron beside the logo at the top-right edge. Reveal it when the pointer enters the rail or the
+toggle gains keyboard focus. Keep it visible on touch screens. Place the account control at the bottom.
 For platform administrators, the Services navigation item shows overall platform health with a right-aligned dot.
 Collapsing the System section moves this dot to the System item.
 Casting, Firewall, Docker, and OCR perception show their own health in the same way. Each dot has a text description.
@@ -290,7 +292,8 @@ Use shared controls, including their focus and keyboard behavior:
 - `ConfirmMutationDialog`: destructive row/bulk actions. Name the target/count and consequence,
   keep Cancel before Confirm, and prevent dismissal while pending.
 - `FormField`: every labeled control, with explicit `vertical` or `horizontal` layout. It owns
-  label association, description, required/error state, and ARIA relationships. Use `band` for standalone toggle rows.
+  label association, description, below-control hints, required/error state, and ARIA relationships.
+  Use `band` for standalone toggle rows.
 - `MultiSelectCombobox`: searchable multiple relationships, preserving removable chips, option descriptions,
   keyboard behavior, anchored scrolling, and empty state. Do not replace it with an expanded checkbox list.
 - `TabsRoot`, `TabsList`, `TabsTrigger`, `TabsPanel`: tabs without feature-local focus/role implementations.
@@ -480,6 +483,10 @@ below the controls in narrow sections and grows into its own column beside the R
 when space allows. Runtime arguments place editable overrides before the effective shell preview.
 Network access pairs its outbound policy with additional destinations on wide screens. Keep
 session and resource limits in one collapsible panel, with numeric inputs sized for their units.
+In Create app and App Configuration, stack the inactivity timeout, RAM, and CPU fields. Pair each
+resource slider with its numeric input and show the Docker host total to the right of the number.
+Use the effective limit for each slider's maximum and reserve space with neutral placeholders
+while capacity loads. Editable group quotas show the totals below their numeric inputs.
 
 App resource errors use an illustrated page state with a short explanation and a path back to All apps.
 Explain invalid links separately from missing or inaccessible apps. A load failure offers a retry and
@@ -660,12 +667,13 @@ breadcrumbs, current-folder search, and column sorting. Upload and New folder ac
 The upload queue uses a collapsible panel with flat rows and shows progress only during an upload.
 File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
-App Configuration uses the same APK and icon rows as Create app. File changes save immediately,
-with pending and failure feedback next to the picker. Runtime settings shows the saved image as a
-copyable reference and places the ReDroid mockup and dimensions below its Configured display label.
-The image reference and device preview sit directly on the runtime panel. Container arguments expand
-to the full panel width. The lifecycle panel groups the timeout, RAM, and CPU fields under one heading.
-The panels stack fields at narrow widths and reuse the same layouts while loading. Technical Details
+App Configuration uses the same APK and icon rows as Create app. APK changes save immediately.
+The icon picker previews uploads and removals until Save applies them, with an unsaved marker,
+an undo action, and failure feedback next to the picker. Runtime settings pairs a copyable runtime image
+reference with the configured ReDroid resolution and DPI when present. Give the image reference more
+room on wide panels and stack the fields when the panel narrows. Container arguments sit directly
+below the summary and expand to the full panel width. The lifecycle panel groups the timeout, RAM,
+and CPU fields under one heading. The panels reuse the same layouts while loading. Technical Details
 and Logs belong only in Diagnostics.
 
 The device agent is a viewport-contained workspace on desktop. Its header and resource navigation stay in

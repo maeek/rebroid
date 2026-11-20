@@ -16,6 +16,7 @@ import { AppViewerHeading } from '@/features/applications/viewer/components/head
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { updateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
@@ -28,7 +29,12 @@ import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
 import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
-import { buildAppManageUpdateInput, mergeAppPreservingDraftAssets, useAppManageDraft } from './use-app-manage-draft'
+import {
+  appManageDraftFromApp,
+  buildAppManageUpdateInput,
+  mergeAppConfiguration,
+  useAppManageDraft
+} from './use-app-manage-draft'
 
 export const AppManage = () => {
   const {
@@ -40,13 +46,25 @@ export const AppManage = () => {
     canViewAuditActivity
   } = useApplicationViewerApp()
   const [isSaving, setIsSaving] = useState(false)
+  const [isPreparingIcon, setIsPreparingIcon] = useState(false)
+  const [iconSaveError, setIconSaveError] = useState<string>()
   const [nameError, setNameError] = useState<string>()
   const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const { discardChanges, displayApp, draft, formValues, isDirty, markSaved, updateForm, updateIcon } =
-    useAppManageDraft(currentApp)
-  const draftSnapshot = JSON.stringify(draft)
-  const saveFeedback = useSaveFeedback(draftSnapshot)
+  const {
+    discardChanges,
+    displayApp,
+    draft,
+    formValues,
+    isDirty,
+    isIconDirty,
+    isSettingsDirty,
+    resetIcon,
+    resetSettings,
+    updateForm,
+    updateIcon
+  } = useAppManageDraft(currentApp)
+  const saveFeedback = useSaveFeedback(JSON.stringify(draft))
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
   const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
@@ -63,29 +81,48 @@ export const AppManage = () => {
   }, [nameError])
 
   const handleSave = async () => {
+    if (!isDirty || isSaving || isPreparingIcon) return
     saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     setNameError(undefined)
+    setIconSaveError(undefined)
+    let savedApp = currentApp
     try {
-      const result = await updateApplicationAction(
-        currentApp.id,
-        buildAppManageUpdateInput({
-          canChangeContainerArgs,
-          canChangeResources,
-          canChangeSessionLimit,
-          currentApp,
-          draft
-        })
-      )
-      if (!result.ok && result.error.fieldErrors?.name) {
-        setNameError(result.error.fieldErrors.name.join(' '))
-        return
+      if (isSettingsDirty) {
+        const result = await updateApplicationAction(
+          currentApp.id,
+          buildAppManageUpdateInput({
+            canChangeContainerArgs,
+            canChangeResources,
+            canChangeSessionLimit,
+            currentApp,
+            draft
+          })
+        )
+        if (!result.ok && result.error.fieldErrors?.name) {
+          setNameError(result.error.fieldErrors.name.join(' '))
+          return
+        }
+        const nextApp = mapAndroidApplicationToAppDefinition(unwrapActionResult(result))
+        savedApp = mergeAppConfiguration(nextApp, currentApp)
+        setApp(current => mergeAppConfiguration(nextApp, current ?? currentApp))
+        resetSettings()
+        if (nextApp.name !== currentApp.name) notifyRecentAppsUpdated()
       }
-      const nextApp = mapAndroidApplicationToAppDefinition(unwrapActionResult(result))
-      markSaved()
-      saveFeedback.confirmSaved(draftSnapshot)
-      setApp(current => mergeAppPreservingDraftAssets(nextApp, current))
-      if (nextApp.name !== currentApp.name) notifyRecentAppsUpdated()
+      if (isIconDirty) {
+        try {
+          const icon = unwrapActionResult(await setAppIconAction(currentApp.id, draft.icon))
+          savedApp = { ...savedApp, icon }
+          setApp(current => (current ? { ...current, icon } : current))
+          resetIcon()
+          notifyRecentAppsUpdated()
+        } catch (error) {
+          const message = getDisplayErrorMessage(error, 'Could not save the icon change.')
+          setIconSaveError(isSettingsDirty ? `Other app settings were saved. ${message}` : message)
+          return
+        }
+      }
+      saveFeedback.confirmSaved(JSON.stringify(appManageDraftFromApp(savedApp)))
       toast({ title: 'App saved', variant: 'success' })
       router.refresh()
     } catch (error) {
@@ -129,6 +166,7 @@ export const AppManage = () => {
           )}
           <MutationButton
             pending={isSaving}
+            disabled={isPreparingIcon || (!isDirty && !saveFeedback.saved)}
             pendingLabel='Saving…'
             success={saveFeedback.saved}
             onClick={() => void handleSave()}
@@ -158,36 +196,56 @@ export const AppManage = () => {
             canDiagnose={canViewBackendDetails || (canViewLogs && !isForeignOwnedApp)}
             showErrorDetails={canViewBackendDetails}
           />
-          <AppManageGeneralSettings
-            app={currentApp}
-            appId={currentApp.id}
-            values={formValues}
-            initialSettings={initialSettings}
-            icon={draft.icon}
-            onIconChange={updateIcon}
-            nameError={nameError}
-            nameInputRef={nameInput}
-            onAppNameChange={value => {
-              setNameError(undefined)
-              updateForm({ name: value })
-            }}
-          />
-          <Visible when={showRuntimeSection}>
-            <AppManageRuntimeSettings
+          <fieldset
+            className='contents'
+            disabled={isSaving}
+          >
+            <AppManageGeneralSettings
               app={currentApp}
+              appId={currentApp.id}
               values={formValues}
-              resourceLimits={resourceLimits}
-              canChangeSessionLimit={canChangeSessionLimit}
-              canChangeResources={canChangeResources}
-              canChangeContainerArgs={canChangeContainerArgs}
-              canViewBackendDetails={canViewBackendDetails}
-              onChange={updateForm}
+              initialSettings={initialSettings}
+              iconEditor={{
+                icon: draft.icon,
+                modified: isIconDirty,
+                pending: isPreparingIcon,
+                disabled: isSaving || isForeignOwnedApp,
+                saveError: iconSaveError,
+                onPreparingChange: setIsPreparingIcon,
+                onIconChange: icon => {
+                  setIconSaveError(undefined)
+                  updateIcon(icon)
+                },
+                onResetIcon: () => {
+                  setIconSaveError(undefined)
+                  resetIcon()
+                }
+              }}
+              nameError={nameError}
+              nameInputRef={nameInput}
+              onAppNameChange={value => {
+                setNameError(undefined)
+                updateForm({ name: value })
+              }}
             />
-          </Visible>
+            <Visible when={showRuntimeSection}>
+              <AppManageRuntimeSettings
+                app={currentApp}
+                disabled={isSaving}
+                values={formValues}
+                resourceLimits={resourceLimits}
+                canChangeSessionLimit={canChangeSessionLimit}
+                canChangeResources={canChangeResources}
+                canChangeContainerArgs={canChangeContainerArgs}
+                canViewBackendDetails={canViewBackendDetails}
+                onChange={updateForm}
+              />
+            </Visible>
+          </fieldset>
         </div>
       </PageContent>
       <UnsavedChangesGuard
-        dirty={isDirty}
+        dirty={isDirty || isPreparingIcon}
         onDiscard={discardChanges}
       />
     </EditorPage>

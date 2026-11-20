@@ -58,4 +58,20 @@ describe('NumberSliderField', () => {
     fireEvent.blur(screen.getByRole('spinbutton'))
     expect(onValueChange).toHaveBeenCalledWith('128')
   })
+
+  it('stops the slider at the last step within a fractional quota', () => {
+    render(
+      <NumberSliderField
+        value='1'
+        min={0.1}
+        max={1.28}
+        step={0.1}
+        rangeLabel='CPU limit'
+        onValueChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByRole('spinbutton')).toHaveAttribute('max', '1.28')
+    expect(screen.getByRole('slider')).toHaveAttribute('max', '1.2')
+  })
 })

@@ -150,8 +150,7 @@ export const AppManagePageSkeleton = () => {
             appId=''
             values={values}
             initialSettings={defaultOrchestratorUiSettings}
-            icon={null}
-            onIconChange={noop}
+            iconEditor={{ icon: null, onIconChange: noop, disabled: true }}
             onAppNameChange={noop}
           />
           <AppManageRuntimeSettings

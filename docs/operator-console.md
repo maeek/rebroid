@@ -72,6 +72,10 @@ with no registry tag or digest cannot be pulled again.
   while the browser tab is visible.
 - Resource destinations share `/app/[id]?view=<section>`, including `configuration`, `network`, `profiles`, `activity`, `diagnostics`, `ai-agent`, `workflows`, and `files`. The separate viewer window uses `/viewer/apps/[id]`.
 - The resource navigation is one row, with permission-based destinations kept consistent across views.
+- In **Configuration**, choose an image or select **Remove icon**, then click **Save** to apply the icon change.
+- The RAM and CPU fields in **Configuration**, **Create app**, and group quotas show the Docker host's
+  total RAM and logical CPU count. Account quotas still apply when setting app limits.
+  The orchestrator caches the totals after the first successful read and refreshes them after restart.
 - `?view=activity` displays the audit grid scoped to this application for administrators.
 - `?view=diagnostics` exposes permitted logs and backend details. Foreign-owned app interaction
   remains restricted. Error references and technical hints require backend-detail permission.

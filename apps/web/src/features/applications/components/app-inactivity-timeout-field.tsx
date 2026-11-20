@@ -1,16 +1,19 @@
 import { FormField } from '@/components/ui/form-field'
-import { Input } from '@/components/ui/input'
+import { NumberSliderField } from '@/components/ui/number-slider-field'
+import { lifecycleFieldClassName } from './app-form-utils'
 
 export const AppInactivityTimeoutField = ({
   values,
   modified,
   onChange,
-  timeoutError
+  timeoutError,
+  disabled
 }: {
   values: { inactivityTimeoutSeconds: number }
   modified?: Partial<Record<'inactivityTimeoutSeconds', boolean>>
   onChange: (patch: Partial<{ inactivityTimeoutSeconds: number }>) => void
   timeoutError?: string
+  disabled?: boolean
 }) => (
   <FormField
     label='Inactivity timeout'
@@ -18,15 +21,20 @@ export const AppInactivityTimeoutField = ({
     error={timeoutError}
     description='Idle seconds. Use -1 to keep running.'
     layout='vertical'
+    className={lifecycleFieldClassName}
+    controlOwnsLoading
   >
-    <Input
-      className='max-w-48'
+    <NumberSliderField
+      layout='side-by-side'
+      showSlider={false}
+      clampOnBlur={false}
       name='inactivityTimeoutSeconds'
-      value={values.inactivityTimeoutSeconds}
+      disabled={disabled}
+      value={String(values.inactivityTimeoutSeconds)}
       min={-1}
       max={86400}
-      type='number'
-      onChange={event => onChange({ inactivityTimeoutSeconds: Number(event.target.value) })}
+      inputSuffix='sec'
+      onValueChange={value => onChange({ inactivityTimeoutSeconds: Number(value) })}
     />
   </FormField>
 )

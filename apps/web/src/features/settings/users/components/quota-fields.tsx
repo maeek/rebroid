@@ -3,6 +3,7 @@
 import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { DetailFields } from '@/shared/ui/detail-fields'
+import { HostResourceTotal } from '@/shared/ui/platform/host-resource-total'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 import type { ResourceQuota } from '@/shared/permissions/permissions'
 
@@ -17,6 +18,7 @@ type QuotaField = {
   min: number
   max: number
   step?: number
+  hostResource?: 'ram' | 'cpu'
 }
 
 const quotaFields: QuotaField[] = [
@@ -45,7 +47,8 @@ const quotaFields: QuotaField[] = [
     suffix: ' MB',
     inputSuffix: 'MB',
     min: 128,
-    max: 65536
+    max: 65536,
+    hostResource: 'ram'
   },
   {
     key: 'maxCpuCpus',
@@ -55,7 +58,8 @@ const quotaFields: QuotaField[] = [
     inputSuffix: 'cores',
     min: 0.1,
     max: 64,
-    step: 0.1
+    step: 0.1,
+    hostResource: 'cpu'
   }
 ]
 
@@ -102,6 +106,15 @@ export const QuotaFields = ({
               : { label: `Set ${field.label} to unlimited`, onReset: () => setQuota(field.key, '') }
           }
           description={field.description}
+          hint={
+            field.hostResource ? (
+              <HostResourceTotal
+                resource={field.hostResource}
+                capacity={resourceLimits}
+              />
+            ) : undefined
+          }
+          hintPending={resourceLimits == null}
           layout='vertical'
         >
           <NumberSliderField

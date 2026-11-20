@@ -5,9 +5,9 @@ import { getRedroidDisplayDimensionsFromArgs } from '@rebroid/android-applicatio
 import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
 import { Section } from '@/components/ui/section'
 import { AppContainerRuntimeSection } from '@/features/applications/components/app-container-runtime-section'
-import { AppDisplayPreview } from '@/features/applications/components/app-display-preview'
 import { AppLifecycleFields } from '@/features/applications/components/app-lifecycle-fields'
 import { cn } from '@/lib/utils'
+import { DetailFields } from '@/shared/ui/detail-fields'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
@@ -21,6 +21,7 @@ type AppManageRuntimeSettingsProps = {
   canChangeResources: boolean
   canChangeContainerArgs: boolean
   canViewBackendDetails: boolean
+  disabled?: boolean
 }
 
 export const AppManageRuntimeSettings = ({
@@ -31,7 +32,8 @@ export const AppManageRuntimeSettings = ({
   canChangeSessionLimit,
   canChangeResources,
   canChangeContainerArgs,
-  canViewBackendDetails
+  canViewBackendDetails,
+  disabled
 }: AppManageRuntimeSettingsProps) => {
   const loading = useContext(FormLoadingContext)
   const showContainerSettings = canViewBackendDetails || canChangeContainerArgs
@@ -53,7 +55,7 @@ export const AppManageRuntimeSettings = ({
             contentClassName={cn(
               'gap-4',
               showRuntimeColumns &&
-                'grid items-start @min-[36rem]/runtime:grid-cols-2 @min-[36rem]/runtime:gap-x-form-column'
+                'grid items-start @min-[28rem]/runtime:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] @min-[28rem]/runtime:gap-x-form-column @min-[28rem]/runtime:gap-y-2'
             )}
             containerImage={app?.containerImage ?? ''}
             showContainerImage={canViewBackendDetails}
@@ -73,10 +75,20 @@ export const AppManageRuntimeSettings = ({
             containerArgsPlaceholder={isRedroid || loading ? 'androidboot.redroid_fps=30' : 'sleep infinity'}
           >
             {showDisplay ? (
-              <AppDisplayPreview
-                display={display}
-                title='Configured display'
-                layout='stacked'
+              <DetailFields
+                loading={loading}
+                compact
+                fields={[
+                  {
+                    label: 'Configured display',
+                    value: display ? (
+                      <span className='tabular-nums'>
+                        {display.width} × {display.height} px{display.dpi === undefined ? '' : ` · ${display.dpi} dpi`}
+                      </span>
+                    ) : null,
+                    fullWidth: true
+                  }
+                ]}
               />
             ) : null}
           </AppContainerRuntimeSection>
@@ -88,6 +100,7 @@ export const AppManageRuntimeSettings = ({
           surface='plain'
         >
           <AppLifecycleFields
+            disabled={disabled}
             showSession={canChangeSessionLimit}
             showResources={canChangeResources}
             values={values}

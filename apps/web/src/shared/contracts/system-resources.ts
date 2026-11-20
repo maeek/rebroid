@@ -1,11 +1,11 @@
-export interface ResourceLimitBounds {
-  maxMemoryMb: number | null
-  maxCpuCpus: number | null
-}
-
 export interface SystemResourceCapacity {
   hostMemoryBytes: number | null
   hostCpuCores: number | null
+}
+
+export interface ResourceLimitBounds extends SystemResourceCapacity {
+  maxMemoryMb: number | null
+  maxCpuCpus: number | null
 }
 
 export interface ManagedContainerUsage {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildAppManageUpdateInput, mergeAppPreservingDraftAssets } from './use-app-manage-draft'
+import { buildAppManageUpdateInput, mergeAppConfiguration } from './use-app-manage-draft'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
 const app = {
@@ -10,15 +10,15 @@ const app = {
 } as AppDefinition
 
 describe('app manage draft helpers', () => {
-  it('preserves dirty icon and owner display fields across polling merges', () => {
+  it.each(['saved.png', null])('preserves the saved icon (%s) and owner when applying settings', icon => {
     expect(
-      mergeAppPreservingDraftAssets(app, {
+      mergeAppConfiguration(app, {
         ...app,
-        icon: 'dirty.png',
+        icon,
         ownerDisplayName: 'Current Owner'
       })
     ).toMatchObject({
-      icon: 'dirty.png',
+      icon,
       ownerDisplayName: 'Current Owner'
     })
   })

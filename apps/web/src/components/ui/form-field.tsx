@@ -14,11 +14,14 @@ import { RowActionButton } from './row-actions'
 
 interface FormFieldProps {
   children: React.ReactNode
+  controlOwnsLoading?: boolean
   className?: string
   contentClassName?: string
   controlId?: string
   description?: React.ReactNode
   error?: React.ReactNode
+  hint?: React.ReactNode
+  hintPending?: boolean
   label: React.ReactNode
   layout?: 'vertical' | 'horizontal'
   /** Shows an unsaved-change marker without changing label alignment. */
@@ -42,8 +45,11 @@ export const FormField = (props: FormFieldProps) => {
     className,
     contentClassName,
     controlId,
+    controlOwnsLoading,
     description,
     error,
+    hint,
+    hintPending,
     label,
     layout = 'horizontal',
     required,
@@ -72,8 +78,11 @@ export const FormField = (props: FormFieldProps) => {
   const visibleError = loading ? undefined : error
   const modifiedId = modified && !loading ? `${id}-modified` : undefined
   const errorId = visibleError ? `${id}-error` : undefined
+  const showHintSkeleton = Boolean(hint) && (loading || hintPending)
+  const hintId = hint && !showHintSkeleton ? `${id}-hint` : undefined
   const describedBy =
-    [child?.props['aria-describedby'], descriptionId, errorId, modifiedId].filter(Boolean).join(' ') || undefined
+    [child?.props['aria-describedby'], descriptionId, errorId, hintId, modifiedId].filter(Boolean).join(' ') ||
+    undefined
   const control = child
     ? React.cloneElement(child, {
         id,
@@ -148,10 +157,11 @@ export const FormField = (props: FormFieldProps) => {
         className={cn(
           'min-w-0 text-sm font-normal',
           fieldLayout === 'vertical' ? 'flex w-full flex-col items-start' : 'flex shrink-0 items-center justify-end',
+          fieldLayout === 'horizontal' && hint && 'flex-col items-end',
           contentClassName
         )}
       >
-        {loading ? (
+        {loading && !controlOwnsLoading ? (
           <div className='relative w-full min-w-0'>
             <div
               className={cn(
@@ -173,6 +183,14 @@ export const FormField = (props: FormFieldProps) => {
             id={`${id}-error`}
             error={visibleError}
           />
+        ) : null}
+        {hint ? (
+          <div
+            id={hintId}
+            className='mt-2 text-xs leading-4 text-foreground-muted touch:text-sm/5'
+          >
+            {showHintSkeleton ? <Skeleton className='my-0.5 h-3 w-24 touch:my-1' /> : hint}
+          </div>
         ) : null}
       </div>
     </div>

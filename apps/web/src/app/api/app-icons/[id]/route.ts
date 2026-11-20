@@ -23,7 +23,7 @@ export const GET = async (_request: Request, { params }: { params: Promise<{ id:
     return new NextResponse(body, {
       headers: {
         'content-type': icon.mimeType,
-        'cache-control': 'private, max-age=300'
+        'cache-control': 'private, no-store'
       }
     })
   } catch {

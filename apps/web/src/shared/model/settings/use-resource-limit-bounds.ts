@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react'
 import { getBff } from '@/lib/http/bff'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
+const unavailableResourceLimits: ResourceLimitBounds = {
+  hostMemoryBytes: null,
+  hostCpuCores: null,
+  maxMemoryMb: null,
+  maxCpuCpus: null
+}
+
 export const useResourceLimitBounds = (enabled: boolean, initialValue: ResourceLimitBounds | null = null) => {
   const [resourceLimits, setResourceLimits] = useState<ResourceLimitBounds | null>(initialValue)
 
@@ -23,7 +30,7 @@ export const useResourceLimitBounds = (enabled: boolean, initialValue: ResourceL
       })
       .catch(() => {
         if (isCurrent) {
-          setResourceLimits(null)
+          setResourceLimits(unavailableResourceLimits)
         }
       })
 

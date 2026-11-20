@@ -31,7 +31,12 @@ vi.mock('@/shared/model/settings/use-orchestrator-ui-settings', () => ({
   useOrchestratorUiSettings: (settings: unknown) => settings
 }))
 vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
-  useResourceLimitBounds: () => ({ maxMemoryMb: 16384, maxCpuCpus: 8 })
+  useResourceLimitBounds: () => ({
+    maxMemoryMb: 16384,
+    maxCpuCpus: 8,
+    hostMemoryBytes: 32 * 1024 ** 3,
+    hostCpuCores: 12
+  })
 }))
 
 const renderForm = (firewallEnabled = false, formProps: Partial<ComponentProps<typeof CreateAppForm>> = {}) =>
@@ -346,6 +351,7 @@ describe('Create app failure feedback', () => {
 
     const ram = await screen.findByRole('spinbutton', { name: 'RAM limit' })
     expect(ram).toHaveAccessibleDescription(/RAM limit exceeds your quota/)
+    expect(ram).toHaveAccessibleDescription(/Host total 32 GiB/)
     expect(ram).toHaveAttribute('aria-invalid', 'true')
   })
 

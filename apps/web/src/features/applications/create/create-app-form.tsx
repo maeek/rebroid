@@ -515,6 +515,7 @@ export const CreateAppForm = ({
                 >
                   <AppLifecycleFields
                     values={formValues}
+                    disabled={isCreating}
                     resourceLimits={resourceLimits}
                     showSession={showSessionSection}
                     showResources={showResourcesSection}

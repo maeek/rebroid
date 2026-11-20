@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Notice } from '@/components/ui/notice'
 import { AppManageNetworkPolicySettings } from '@/features/applications/manage/app-manage-network-policy-settings'
-import { mergeAppPreservingDraftAssets } from '@/features/applications/manage/use-app-manage-draft'
+import { mergeAppConfiguration } from '@/features/applications/manage/use-app-manage-draft'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { hasPermission } from '@/shared/permissions/permissions'
@@ -47,7 +47,7 @@ export const AppNetworkPage = () => {
             key={app.id}
             app={app}
             canUseInternet={hasPermission(permissions, 'applications:use-internet')}
-            onUpdated={next => setApp(current => mergeAppPreservingDraftAssets(next, current))}
+            onUpdated={next => setApp(current => mergeAppConfiguration(next, current))}
           />
         ) : (
           <Notice

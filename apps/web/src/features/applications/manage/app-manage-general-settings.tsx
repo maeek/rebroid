@@ -6,7 +6,7 @@ import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
-import { AppManageIconPanel } from './app-manage-icon-panel'
+import { AppManageIconPanel, type AppManageIconPanelProps } from './app-manage-icon-panel'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -16,8 +16,7 @@ type AppManageGeneralSettingsProps = {
   appId: string
   values: AppFormValues
   initialSettings: OrchestratorUiSettings
-  icon: string | null
-  onIconChange: (icon: string | null, isDirty: boolean) => void
+  iconEditor: Omit<AppManageIconPanelProps, 'appId' | 'appName' | 'maxUploadSizeMb'>
   nameError?: string
   nameInputRef?: Ref<HTMLInputElement>
   onAppNameChange: (value: string) => void
@@ -28,8 +27,7 @@ export const AppManageGeneralSettings = ({
   appId,
   values,
   initialSettings,
-  icon,
-  onIconChange,
+  iconEditor,
   nameError,
   nameInputRef,
   onAppNameChange
@@ -86,11 +84,10 @@ export const AppManageGeneralSettings = ({
       }}
       iconSlot={
         <AppManageIconPanel
+          {...iconEditor}
           appId={appId}
           appName={values.name}
-          icon={icon}
-          initialSettings={initialSettings}
-          onIconChange={onIconChange}
+          maxUploadSizeMb={settings.maxApkUploadSizeMb}
         />
       }
     />

@@ -1,7 +1,9 @@
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { randomBytes } from 'node:crypto'
+import { mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import 'server-only'
 import { PublicActionError } from '@/server/errors/public-action-error'
+import { logger } from '@/server/observability/logger'
 
 const safeId = (appId: string) => appId.replace(/[^a-zA-Z0-9_-]/g, '')
 const configuredRootPath = () => process.env.WEB_APP_ICONS_PATH?.trim()
@@ -12,20 +14,42 @@ const storagePath = (fileName: string) => {
     : join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'app-icons', fileName)
 }
 const iconPath = (appId: string) => storagePath(`${safeId(appId)}.json`)
-const iconFilePath = (appId: string, extension: string) => storagePath(`${safeId(appId)}.${extension}`)
-const iconUrl = (appId: string) => `/api/app-icons/${encodeURIComponent(appId)}`
+const iconUrl = (appId: string, revision?: string) =>
+  `/api/app-icons/${encodeURIComponent(appId)}${revision ? `?v=${revision}` : ''}`
 
 type StoredIconMetadata = {
   icon?: unknown
   fileName?: unknown
   mimeType?: unknown
+  revision?: unknown
 }
 
 const dataUrlPattern = /^data:([^;,]+);base64,([\s\S]+)$/
 const maxIconBytes = 2 * 1024 * 1024
-const maxCachedIconUrls = 512
-const iconUrlCacheTtlMs = 30_000
-const iconUrls = new Map<string, { appId: string; expiresAt: number; value: Promise<string | null> }>()
+const iconWrites = new Map<string, Promise<void>>()
+const revisionPattern = /^[a-f0-9]{32}$/
+
+const getRevision = (metadata: StoredIconMetadata) =>
+  typeof metadata.revision === 'string' && revisionPattern.test(metadata.revision) ? metadata.revision : undefined
+
+const withIconWrite = async <T>(path: string, write: () => Promise<T>) => {
+  const operation = (iconWrites.get(path) ?? Promise.resolve()).then(write)
+  const settled = operation.then(
+    () => undefined,
+    () => undefined
+  )
+  iconWrites.set(path, settled)
+  try {
+    return await operation
+  } finally {
+    if (iconWrites.get(path) === settled) iconWrites.delete(path)
+  }
+}
+
+const unlinkIfPresent = (path: string) =>
+  unlink(path).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error
+  })
 
 const extensionForMimeType = (mimeType: string) => {
   if (mimeType === 'image/jpeg') return 'jpg'
@@ -60,46 +84,29 @@ const readMetadata = async (appId: string): Promise<StoredIconMetadata | null> =
   }
 }
 
-const readStoredAppIconUrl = async (appId: string) => {
+const publishedIconUrl = async (appId: string, metadata: StoredIconMetadata | null) => {
+  if (!metadata || metadata.icon !== iconUrl(appId, getRevision(metadata))) return null
+  const file = storedIconFile(appId, metadata)
+  if (!file) return null
+  const details = await stat(file.path).catch(() => null)
+  return details?.isFile() && details.size > 0 ? metadata.icon : null
+}
+
+// Page reads and Server Actions can load separate module instances. Read the published metadata from disk.
+export const getStoredAppIcon = async (appId: string) => {
   const metadata = await readMetadata(appId)
-  if (typeof metadata?.icon !== 'string') {
-    return null
-  }
+  if (typeof metadata?.icon !== 'string' || !metadata.icon.startsWith('data:')) return publishedIconUrl(appId, metadata)
 
-  if (metadata.icon === iconUrl(appId)) {
-    return metadata.icon
-  }
-
-  if (metadata.icon.startsWith('data:')) {
-    return setStoredAppIcon(appId, metadata.icon)
-  }
-
-  return null
-}
-
-export const getStoredAppIcon = (appId: string) => {
-  const path = iconPath(appId)
-  const now = performance.now()
-  const cached = iconUrls.get(path)
-  if (cached?.appId === appId && cached.expiresAt > now) return cached.value
-
-  const value = readStoredAppIconUrl(appId).catch((error: unknown) => {
-    if (iconUrls.get(path)?.value === value) iconUrls.delete(path)
-    throw error
+  return withIconWrite(iconPath(appId), async () => {
+    const current = await readMetadata(appId)
+    if (typeof current?.icon !== 'string' || !current.icon.startsWith('data:')) return publishedIconUrl(appId, current)
+    return writeStoredAppIcon(appId, current.icon, current)
   })
-  iconUrls.delete(path)
-  if (iconUrls.size >= maxCachedIconUrls) {
-    const oldest = iconUrls.keys().next()
-    if (!oldest.done) iconUrls.delete(oldest.value)
-  }
-  iconUrls.set(path, { appId, expiresAt: now + iconUrlCacheTtlMs, value })
-  return value
 }
 
-export const setStoredAppIcon = async (appId: string, icon: string) => {
+const writeStoredAppIcon = async (appId: string, icon: string, previous: StoredIconMetadata | null) => {
   const path = iconPath(appId)
-  await mkdir(dirname(path), { recursive: true })
-  const parsed = parseIconDataUrl(icon)
+  const parsed = typeof icon === 'string' ? parseIconDataUrl(icon) : null
 
   if (!parsed) {
     throw new PublicActionError('App icons must be PNG, JPEG, or WebP image data.', {
@@ -111,34 +118,53 @@ export const setStoredAppIcon = async (appId: string, icon: string) => {
     throw new PublicActionError('App icons must not exceed 2 MB.', { code: 'validation', status: 422 })
   }
 
-  const fileName = `${safeId(appId)}.${parsed.extension}`
-  const storedIcon = iconUrl(appId)
+  const revision = randomBytes(16).toString('hex')
+  const fileName = `${safeId(appId)}.${revision}.${parsed.extension}`
+  const filePath = storagePath(fileName)
+  const temporaryMetadata = `${path}.${revision}.tmp`
+  const storedIcon = iconUrl(appId, revision)
+  await mkdir(dirname(path), { recursive: true })
   try {
-    await writeFile(iconFilePath(appId, parsed.extension), parsed.buffer, { mode: 0o600 })
-    await writeFile(path, `${JSON.stringify({ icon: storedIcon, fileName, mimeType: parsed.mimeType }, null, 2)}\n`, {
-      encoding: 'utf-8',
-      mode: 0o600
-    })
-    return storedIcon
-  } finally {
-    iconUrls.delete(path)
+    await writeFile(filePath, parsed.buffer, { mode: 0o600 })
+    await writeFile(
+      temporaryMetadata,
+      `${JSON.stringify({ icon: storedIcon, fileName, mimeType: parsed.mimeType, revision })}\n`,
+      {
+        encoding: 'utf-8',
+        mode: 0o600
+      }
+    )
+    await rename(temporaryMetadata, path)
+  } catch (error) {
+    await Promise.allSettled([unlinkIfPresent(filePath), unlinkIfPresent(temporaryMetadata)])
+    throw error
   }
+  const previousFile = storedIconFile(appId, previous)
+  if (previousFile) {
+    await unlinkIfPresent(previousFile.path).catch(() => logger.warn('application.icon_cleanup_failed', { appId }))
+  }
+  return storedIcon
 }
 
-export const removeStoredAppIcon = async (appId: string) => {
-  const metadataPath = iconPath(appId)
-  const paths = [metadataPath, ...['png', 'jpg', 'webp'].map(extension => iconFilePath(appId, extension))]
-  try {
-    await Promise.all(
-      paths.map(path =>
-        unlink(path).catch((error: NodeJS.ErrnoException) => {
-          if (error.code !== 'ENOENT') throw error
-        })
-      )
+export const setStoredAppIcon = (appId: string, icon: string) =>
+  withIconWrite(iconPath(appId), async () => writeStoredAppIcon(appId, icon, await readMetadata(appId)))
+
+export const removeStoredAppIcon = (appId: string) => {
+  const path = iconPath(appId)
+  return withIconWrite(path, async () => {
+    await unlinkIfPresent(path)
+    const files = await readdir(dirname(path)).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return []
+      throw error
+    })
+    const prefix = `${safeId(appId)}.`
+    const iconFiles = files.filter(
+      name =>
+        name.startsWith(prefix) &&
+        /^(?:(?:[a-f0-9]{32}\.)?(?:png|jpg|webp)|json\.[a-f0-9]{32}\.tmp)$/.test(name.slice(prefix.length))
     )
-  } finally {
-    iconUrls.delete(metadataPath)
-  }
+    await Promise.all(iconFiles.map(name => unlinkIfPresent(storagePath(name))))
+  })
 }
 
 export const cloneStoredAppIcon = async (sourceAppId: string, targetAppId: string) => {
@@ -151,11 +177,10 @@ export const cloneStoredAppIcon = async (sourceAppId: string, targetAppId: strin
   return setStoredAppIcon(targetAppId, `data:${source.mimeType};base64,${content.toString('base64')}`)
 }
 
-export const getStoredAppIconFile = async (appId: string) => {
-  const metadata = await readMetadata(appId)
+const storedIconFile = (appId: string, metadata: StoredIconMetadata | null) => {
   const fileName = typeof metadata?.fileName === 'string' ? metadata.fileName : null
   const mimeType = typeof metadata?.mimeType === 'string' ? metadata.mimeType : null
-  if (!fileName || !mimeType) {
+  if (!metadata || !fileName || !mimeType) {
     return null
   }
 
@@ -164,8 +189,9 @@ export const getStoredAppIconFile = async (appId: string) => {
     return null
   }
 
-  return {
-    path: iconFilePath(appId, extension),
-    mimeType
-  }
+  const revision = getRevision(metadata)
+  const expectedFileName = `${safeId(appId)}${revision ? `.${revision}` : ''}.${extension}`
+  return fileName === expectedFileName ? { path: storagePath(fileName), mimeType } : null
 }
+
+export const getStoredAppIconFile = async (appId: string) => storedIconFile(appId, await readMetadata(appId))

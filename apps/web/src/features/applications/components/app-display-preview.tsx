@@ -2,19 +2,9 @@ import { useContext, type CSSProperties } from 'react'
 import { IconBrandAndroid, IconDeviceMobile } from '@tabler/icons-react'
 import { FormLoadingContext } from '@/components/ui/form-loading-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 
-export const AppDisplayPreview = ({
-  display,
-  title = 'Display preview',
-  layout = 'inline'
-}: {
-  display: { width: number; height: number; dpi?: number } | null
-  title?: string
-  layout?: 'inline' | 'stacked'
-}) => {
+export const AppDisplayPreview = ({ display }: { display: { width: number; height: number; dpi?: number } | null }) => {
   const loading = useContext(FormLoadingContext)
-  const stacked = layout === 'stacked'
   const ratio = display ? display.width / display.height : 0
   const screenWidth = Math.min(13 / 11, ratio)
   const screenHeight = Math.min(1, 13 / 11 / ratio)
@@ -23,22 +13,9 @@ export const AppDisplayPreview = ({
   return (
     <div
       data-slot='display-preview'
-      className={cn(
-        'min-w-0 [--device-unit:5.5rem] @min-[42rem]/runtime:[--device-unit:9rem]',
-        !stacked && 'px-3 py-2 @min-[42rem]/runtime:py-3'
-      )}
+      className='min-w-0 px-3 py-2 [--device-unit:5.5rem] @min-[42rem]/runtime:py-3 @min-[42rem]/runtime:[--device-unit:9rem]'
     >
-      {stacked ? (
-        <p className='flex min-h-6 items-center text-xs font-medium text-foreground-muted touch:text-sm/5'>{title}</p>
-      ) : null}
-      <div
-        className={cn(
-          'grid min-w-0 items-center',
-          stacked
-            ? 'gap-2 pt-2'
-            : 'mx-auto max-w-sm grid-cols-[7rem_minmax(0,1fr)] gap-3 @min-[42rem]/runtime:grid-cols-[11rem_minmax(0,1fr)] @min-[42rem]/runtime:gap-5'
-        )}
-      >
+      <div className='mx-auto grid min-w-0 max-w-sm grid-cols-[7rem_minmax(0,1fr)] items-center gap-3 @min-[42rem]/runtime:grid-cols-[11rem_minmax(0,1fr)] @min-[42rem]/runtime:gap-5'>
         <div
           aria-hidden='true'
           className='grid h-24 place-items-center @min-[42rem]/runtime:h-40'
@@ -67,8 +44,8 @@ export const AppDisplayPreview = ({
             <IconDeviceMobile className='size-10 text-foreground-muted' />
           )}
         </div>
-        <div className={cn('grid min-w-0 gap-1', stacked && 'min-h-5 content-center justify-items-center text-center')}>
-          {!stacked ? <p className='text-sm font-medium @min-[42rem]/runtime:text-base'>{title}</p> : null}
+        <div className='grid min-w-0 gap-1'>
+          <p className='text-sm font-medium @min-[42rem]/runtime:text-base'>Display preview</p>
           {loading ? (
             <>
               <Skeleton className='h-4 w-20 max-w-full' />

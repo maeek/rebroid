@@ -15,7 +15,12 @@ vi.mock('@/server/users/actions/create-user-group-action', () => ({
 
 vi.mock('@/hooks/use-toast', () => ({ toast: mocks.toast }))
 vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
-  useResourceLimitBounds: () => null
+  useResourceLimitBounds: () => ({
+    maxMemoryMb: 16384,
+    maxCpuCpus: 8,
+    hostMemoryBytes: 16 * 1024 ** 3,
+    hostCpuCores: 8
+  })
 }))
 
 const createdGroup: UserGroup = {
@@ -63,6 +68,11 @@ describe('CreateGroupDialog', () => {
 
     openAndCompleteDetails()
     expect(screen.getByText('Max Open Apps')).toBeTruthy()
+    expect(screen.getByRole('spinbutton', { name: 'Max RAM' })).toHaveAccessibleDescription(/Host total 16 GiB/)
+    expect(screen.getByRole('spinbutton', { name: 'Max CPU' })).toHaveAccessibleDescription(/Host total 8 logical CPUs/)
+    expect(screen.getByRole('spinbutton', { name: 'Max Open Apps' })).toHaveAccessibleDescription(
+      'Maximum running or provisioning apps for the user.'
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.getByDisplayValue('Support')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next' }))

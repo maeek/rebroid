@@ -1,6 +1,7 @@
 import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
-import { verticalSettingClassName } from './app-form-utils'
+import { HostResourceTotal } from '@/shared/ui/platform/host-resource-total'
+import { lifecycleFieldClassName } from './app-form-utils'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
 type AppResourceLimitFieldsProps = {
@@ -13,6 +14,7 @@ type AppResourceLimitFieldsProps = {
   onChange: (patch: Partial<{ memoryLimitMb: string; cpuLimitCpus: string }>) => void
   memoryError?: string
   cpuError?: string
+  disabled?: boolean
 }
 
 export const AppResourceLimitFields = ({
@@ -21,13 +23,14 @@ export const AppResourceLimitFields = ({
   resourceLimits,
   onChange,
   memoryError,
-  cpuError
+  cpuError,
+  disabled
 }: AppResourceLimitFieldsProps) => (
   <>
     <FormField
       label='RAM limit'
       resetAction={
-        values.memoryLimitMb.trim()
+        !disabled && values.memoryLimitMb.trim()
           ? { label: 'Reset RAM limit to default', onReset: () => onChange({ memoryLimitMb: '' }) }
           : undefined
       }
@@ -35,15 +38,27 @@ export const AppResourceLimitFields = ({
       error={memoryError}
       description='In MB. Blank uses the default.'
       layout='vertical'
-      className={verticalSettingClassName}
+      className={lifecycleFieldClassName}
+      controlOwnsLoading
     >
       <NumberSliderField
         name='memoryLimitMb'
-        showSlider={false}
+        disabled={disabled}
+        layout='side-by-side'
+        rangeLabel='Adjust RAM limit'
+        boundsPending={resourceLimits === null}
         value={values.memoryLimitMb}
         min={128}
         max={resourceLimits?.maxMemoryMb}
         inputSuffix='MB'
+        suffix=' MB'
+        placeholder='Default'
+        inputNote={
+          <HostResourceTotal
+            resource='ram'
+            capacity={resourceLimits}
+          />
+        }
         allowEmpty
         onValueChange={value => onChange({ memoryLimitMb: value })}
       />
@@ -51,7 +66,7 @@ export const AppResourceLimitFields = ({
     <FormField
       label='CPU limit'
       resetAction={
-        values.cpuLimitCpus.trim()
+        !disabled && values.cpuLimitCpus.trim()
           ? { label: 'Reset CPU limit to default', onReset: () => onChange({ cpuLimitCpus: '' }) }
           : undefined
       }
@@ -59,16 +74,28 @@ export const AppResourceLimitFields = ({
       error={cpuError}
       description='Cores can be fractional. Blank for default.'
       layout='vertical'
-      className={verticalSettingClassName}
+      className={lifecycleFieldClassName}
+      controlOwnsLoading
     >
       <NumberSliderField
         name='cpuLimitCpus'
-        showSlider={false}
+        disabled={disabled}
+        layout='side-by-side'
+        rangeLabel='Adjust CPU limit'
+        boundsPending={resourceLimits === null}
         value={values.cpuLimitCpus}
         min={0.1}
         max={resourceLimits?.maxCpuCpus}
         step={0.1}
         inputSuffix='cores'
+        suffix=' cores'
+        placeholder='Default'
+        inputNote={
+          <HostResourceTotal
+            resource='cpu'
+            capacity={resourceLimits}
+          />
+        }
         allowEmpty
         onValueChange={value => onChange({ cpuLimitCpus: value })}
       />

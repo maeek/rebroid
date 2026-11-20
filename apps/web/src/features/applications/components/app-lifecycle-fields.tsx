@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils'
 import { AppInactivityTimeoutField } from './app-inactivity-timeout-field'
 import { AppResourceLimitFields } from './app-resource-limit-fields'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
@@ -16,7 +15,8 @@ export const AppLifecycleFields = ({
   showSession,
   showResources,
   errors,
-  modified
+  modified,
+  disabled
 }: {
   values: LifecycleValues
   resourceLimits: ResourceLimitBounds | null
@@ -25,35 +25,28 @@ export const AppLifecycleFields = ({
   showResources: boolean
   errors?: Partial<Record<keyof LifecycleValues, string | undefined>>
   modified?: Partial<Record<keyof LifecycleValues, boolean>>
+  disabled?: boolean
 }) => (
-  <div className='@container/lifecycle'>
-    <div
-      className={cn(
-        'grid items-start gap-4',
-        showResources && '@min-[36rem]/lifecycle:grid-cols-2 @min-[36rem]/lifecycle:gap-x-form-column',
-        showSession && showResources && '@min-[42rem]/lifecycle:grid-cols-3'
-      )}
-    >
-      {showSession ? (
-        <div className={cn(showResources && '@min-[36rem]/lifecycle:col-span-2 @min-[42rem]/lifecycle:col-span-1')}>
-          <AppInactivityTimeoutField
-            modified={modified}
-            values={values}
-            onChange={onChange}
-            timeoutError={errors?.inactivityTimeoutSeconds}
-          />
-        </div>
-      ) : null}
-      {showResources ? (
-        <AppResourceLimitFields
-          modified={modified}
-          values={values}
-          resourceLimits={resourceLimits}
-          onChange={onChange}
-          memoryError={errors?.memoryLimitMb}
-          cpuError={errors?.cpuLimitCpus}
-        />
-      ) : null}
-    </div>
+  <div className='@container/lifecycle grid gap-4'>
+    {showSession ? (
+      <AppInactivityTimeoutField
+        modified={modified}
+        values={values}
+        onChange={onChange}
+        timeoutError={errors?.inactivityTimeoutSeconds}
+        disabled={disabled}
+      />
+    ) : null}
+    {showResources ? (
+      <AppResourceLimitFields
+        modified={modified}
+        values={values}
+        resourceLimits={resourceLimits}
+        onChange={onChange}
+        memoryError={errors?.memoryLimitMb}
+        cpuError={errors?.cpuLimitCpus}
+        disabled={disabled}
+      />
+    ) : null}
   </div>
 )

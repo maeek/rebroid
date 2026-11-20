@@ -434,10 +434,12 @@ export const getRedroidDisplayDimensionsFromArgs = (
     positiveNumberArg(containerArgs, "androidboot.redroid_width") ?? 1080;
   const height =
     positiveNumberArg(containerArgs, "androidboot.redroid_height") ?? 2340;
+  const dpi = positiveNumberArg(containerArgs, "androidboot.redroid_dpi");
 
   return {
     width,
     height,
     aspectRatio: width / height,
+    ...(dpi === null ? {} : { dpi }),
   };
 };
