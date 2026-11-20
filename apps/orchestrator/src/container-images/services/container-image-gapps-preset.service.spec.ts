@@ -1,11 +1,11 @@
 import type { ConfigService } from '@nestjs/config';
-import type { DockerEnginePort } from '../../docker/contracts/docker-engine.port';
+import type { DockerResourceRuntimePort } from '../../docker/contracts/docker-resource-runtime.port';
 import { ContainerImageGappsPresetService } from './container-image-gapps-preset.service';
 
 describe('ContainerImageGappsPresetService', () => {
   const service = new ContainerImageGappsPresetService(
     {} as ConfigService,
-    {} as DockerEnginePort,
+    {} as DockerResourceRuntimePort,
   );
 
   it.each([

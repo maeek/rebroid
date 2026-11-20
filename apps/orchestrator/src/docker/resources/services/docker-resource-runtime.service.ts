@@ -15,7 +15,6 @@ import {
 import type { DockerResourceRuntimePort } from '../../contracts/docker-resource-runtime.port';
 
 const STATS_FRESHNESS_MS = 5_000;
-const CAPACITY_FRESHNESS_MS = 30_000;
 const MAX_CACHED_STATS = 256;
 const STATS_SWEEP_CONCURRENCY = 4;
 const STATS_SWEEP_TIMEOUT_MS = 7_000;
@@ -34,8 +33,7 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     string,
     { expiresAt: number; value: ContainerResourceUsage }
   >();
-  private capacity?: { expiresAt: number; value: HostCapacity };
-  private pendingCapacity?: Promise<HostCapacity>;
+  private capacityRequest?: Promise<HostCapacity>;
 
   constructor(
     private readonly engine: DockerEngineService,
@@ -61,21 +59,13 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
   }
 
   hostCapacity() {
-    if (this.capacity && this.capacity.expiresAt > performance.now()) {
-      return Promise.resolve(this.capacity.value);
-    }
-    this.pendingCapacity ??= this.collectHostCapacity()
-      .then((value) => {
-        this.capacity = {
-          expiresAt: performance.now() + CAPACITY_FRESHNESS_MS,
-          value,
-        };
-        return value;
-      })
-      .finally(() => {
-        this.pendingCapacity = undefined;
-      });
-    return this.pendingCapacity;
+    this.capacityRequest ??= this.collectHostCapacity().catch(
+      (error: unknown) => {
+        this.capacityRequest = undefined;
+        throw error;
+      },
+    );
+    return this.capacityRequest;
   }
 
   private async collectHostCapacity() {

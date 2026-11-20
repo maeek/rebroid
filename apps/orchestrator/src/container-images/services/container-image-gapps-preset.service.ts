@@ -3,9 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { mkdir, statfs } from 'node:fs/promises';
 import { freemem } from 'node:os';
 import {
-  DOCKER_ENGINE,
-  type DockerEnginePort,
-} from '../../docker/contracts/docker-engine.port';
+  DOCKER_RESOURCE_RUNTIME,
+  type DockerResourceRuntimePort,
+} from '../../docker/contracts/docker-resource-runtime.port';
 import { supportedGappsAndroidVersions } from '../dto/gapps-build.dto';
 import type {
   GappsBuildPresetDto,
@@ -57,7 +57,8 @@ const presets: Record<SupportedGappsAndroidVersion, GappsBuildPresetDto> = {
 export class ContainerImageGappsPresetService {
   constructor(
     private readonly config: ConfigService,
-    @Inject(DOCKER_ENGINE) private readonly engine: DockerEnginePort,
+    @Inject(DOCKER_RESOURCE_RUNTIME)
+    private readonly resources: DockerResourceRuntimePort,
   ) {}
 
   getPreset(androidVersion: SupportedGappsAndroidVersion) {
@@ -67,13 +68,13 @@ export class ContainerImageGappsPresetService {
   async list(): Promise<GappsBuildPresetsResponseDto> {
     const uploadsDir = this.config.getOrThrow<string>('app.uploadsDir');
     await mkdir(uploadsDir, { recursive: true });
-    const [filesystem, engineInfo] = await Promise.all([
+    const [filesystem, capacity] = await Promise.all([
       statfs(uploadsDir),
-      this.engine.info(),
+      this.resources.hostCapacity(),
     ]);
     const diskAvailableBytes = filesystem.bavail * filesystem.bsize;
-    const memoryAvailableBytes = Math.min(engineInfo.MemTotal ?? 0, freemem());
-    const cpuCount = engineInfo.NCPU ?? 0;
+    const memoryAvailableBytes = Math.min(capacity.memoryBytes ?? 0, freemem());
+    const cpuCount = capacity.cpuCores ?? 0;
     const diskRequirementMet = diskAvailableBytes >= requiredDiskBytes;
     const memoryRequirementMet = memoryAvailableBytes >= requiredMemoryBytes;
     const cpuRecommendationMet = cpuCount >= recommendedCpuCount;

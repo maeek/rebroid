@@ -9,7 +9,7 @@ describe('Docker resource inventory and stats', () => {
     jest.useRealTimers();
   });
 
-  it('shares container samples across staggered overviews and the container detail read', async () => {
+  it('shares host capacity across resource endpoints and refreshes container samples independently', async () => {
     jest.useFakeTimers({ now: new Date('2026-10-01T00:00:00.000Z') });
     const containers = Array.from({ length: 24 }, (_, i) => ({
       Id: i.toString(16).padStart(64, '0'),
@@ -17,7 +17,9 @@ describe('Docker resource inventory and stats', () => {
       State: 'running',
       Status: 'Up 1 minute',
     }));
-    const info = jest.fn().mockResolvedValue({ NCPU: 4 });
+    const info = jest
+      .fn()
+      .mockResolvedValue({ NCPU: 4, MemTotal: 8 * 1024 ** 3 });
     const listContainers = jest.fn().mockResolvedValue(containers);
     const stats = jest.fn().mockResolvedValue({ memory_stats: { usage: 4 } });
     const engine = {
@@ -36,6 +38,10 @@ describe('Docker resource inventory and stats', () => {
     await Promise.all([
       service.getUsage(),
       resources.getContainerResourceUsage(containers[0].Id),
+      expect(service.getCapacity()).resolves.toEqual({
+        hostCpuCores: 4,
+        hostMemoryBytes: 8 * 1024 ** 3,
+      }),
     ]);
     for (let i = 0; i < 4; i++) {
       await jest.advanceTimersByTimeAsync(1_000);
@@ -55,6 +61,37 @@ describe('Docker resource inventory and stats', () => {
     });
     expect(stats).toHaveBeenCalledTimes(48);
     expect(listContainers).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(60_000);
+    await expect(service.getUsage()).resolves.toMatchObject({
+      hostCpuCores: 4,
+      hostMemoryBytes: 8 * 1024 ** 3,
+      containerStatsCollectedAt: '2026-10-01T00:01:05.000Z',
+    });
+    expect(info).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries host capacity when the initial Docker read fails', async () => {
+    const info = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Docker unavailable'))
+      .mockResolvedValue({ NCPU: 4 });
+    const engine = { info } as unknown as DockerEngineService;
+    const resources = new DockerResourceRuntimeService(
+      engine,
+      new DockerInventoryService(engine),
+    );
+
+    await expect(resources.hostCapacity()).rejects.toThrow(
+      'Docker unavailable',
+    );
+    await expect(resources.hostCapacity()).resolves.toMatchObject({
+      cpuCores: 4,
+    });
+    await expect(resources.hostCapacity()).resolves.toMatchObject({
+      cpuCores: 4,
+    });
+    expect(info).toHaveBeenCalledTimes(2);
   });
 
   it('returns the available usage and coverage when a sweep reaches its deadline', async () => {
