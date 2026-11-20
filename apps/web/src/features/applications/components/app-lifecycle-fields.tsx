@@ -1,12 +1,7 @@
 import { AppInactivityTimeoutField } from './app-inactivity-timeout-field'
 import { AppResourceLimitFields } from './app-resource-limit-fields'
+import type { AppRuntimeFieldErrors, AppRuntimeFields, AppRuntimeSettingsDraft } from '../model/app-runtime-settings'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
-
-type LifecycleValues = {
-  inactivityTimeoutSeconds: number
-  memoryLimitMb: string
-  cpuLimitCpus: string
-}
 
 export const AppLifecycleFields = ({
   values,
@@ -18,13 +13,13 @@ export const AppLifecycleFields = ({
   modified,
   disabled
 }: {
-  values: LifecycleValues
+  values: AppRuntimeSettingsDraft
   resourceLimits: ResourceLimitBounds | null
-  onChange: (changes: Partial<LifecycleValues>) => void
+  onChange: (changes: Partial<AppRuntimeSettingsDraft>) => void
   showSession: boolean
   showResources: boolean
-  errors?: Partial<Record<keyof LifecycleValues, string | undefined>>
-  modified?: Partial<Record<keyof LifecycleValues, boolean>>
+  errors?: AppRuntimeFieldErrors
+  modified?: AppRuntimeFields
   disabled?: boolean
 }) => (
   <div className='@container/lifecycle grid gap-4'>

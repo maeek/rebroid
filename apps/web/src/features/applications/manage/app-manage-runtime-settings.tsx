@@ -8,15 +8,19 @@ import { AppContainerRuntimeSection } from '@/features/applications/components/a
 import { AppLifecycleFields } from '@/features/applications/components/app-lifecycle-fields'
 import { cn } from '@/lib/utils'
 import { DetailFields } from '@/shared/ui/detail-fields'
-import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
+import type { AppRuntimeFieldErrors, AppRuntimeFields, AppRuntimeSettingsDraft } from '../model/app-runtime-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
 
+type RuntimeValues = AppRuntimeSettingsDraft & { customContainerArgs: string }
+
 type AppManageRuntimeSettingsProps = {
   app?: AppDefinition
-  values: AppFormValues
+  values: RuntimeValues
   resourceLimits: ResourceLimitBounds | null
-  onChange: (patch: Partial<AppFormValues>) => void
+  onChange: (patch: Partial<RuntimeValues>) => void
+  modified?: AppRuntimeFields & { customContainerArgs?: boolean }
+  errors?: AppRuntimeFieldErrors
   canChangeSessionLimit: boolean
   canChangeResources: boolean
   canChangeContainerArgs: boolean
@@ -29,6 +33,8 @@ export const AppManageRuntimeSettings = ({
   values,
   resourceLimits,
   onChange,
+  modified,
+  errors,
   canChangeSessionLimit,
   canChangeResources,
   canChangeContainerArgs,
@@ -65,7 +71,7 @@ export const AppManageRuntimeSettings = ({
             collapsibleArgs
             containerArgsLabel='Command-line arguments'
             containerArgsValue={values.customContainerArgs}
-            containerArgsModified={Boolean(app && values.customContainerArgs !== (app.containerArgs ?? ''))}
+            containerArgsModified={modified?.customContainerArgs}
             onContainerArgsChange={value => onChange({ customContainerArgs: value })}
             containerArgsDescription={
               isRedroid || loading
@@ -106,13 +112,8 @@ export const AppManageRuntimeSettings = ({
             values={values}
             resourceLimits={resourceLimits}
             onChange={onChange}
-            modified={{
-              inactivityTimeoutSeconds: Boolean(
-                app && values.inactivityTimeoutSeconds !== app.inactivityTimeoutSeconds
-              ),
-              memoryLimitMb: Boolean(app && values.memoryLimitMb !== (app.memoryLimitMb?.toString() ?? '')),
-              cpuLimitCpus: Boolean(app && values.cpuLimitCpus !== (app.cpuLimitCpus?.toString() ?? ''))
-            }}
+            modified={modified}
+            errors={errors}
           />
         </Section>
       ) : null}

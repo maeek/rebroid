@@ -54,7 +54,12 @@ describe('AppResourceLimitFields', () => {
     const cpu = screen.getByRole('spinbutton', { name: 'CPU limit' })
     expect(ram).toHaveAccessibleDescription('In MB. Blank uses the default.')
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+    expect(ram).toHaveAttribute('max', '262144')
+    expect(cpu).toHaveAttribute('max', '128')
 
+    rerender(fields({ hostMemoryBytes: null, hostCpuCores: 256, maxMemoryMb: 524288, maxCpuCpus: 256 }))
+    expect(ram).toHaveAttribute('max', '262144')
+    expect(cpu).toHaveAttribute('max', '128')
     rerender(fields({ hostMemoryBytes: null, hostCpuCores: 1, maxMemoryMb: 4096, maxCpuCpus: 1 }))
     expect(ram).toHaveAccessibleDescription('In MB. Blank uses the default. Host total unavailable')
     expect(cpu).toHaveAccessibleDescription('Cores can be fractional. Blank for default. Host total 1 logical CPU')

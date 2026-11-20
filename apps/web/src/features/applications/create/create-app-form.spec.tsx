@@ -60,6 +60,7 @@ const renderForm = (firewallEnabled = false, formProps: Partial<ComponentProps<t
         initialSettings={defaultOrchestratorUiSettings}
         permissions={{
           'applications:change-resources': true,
+          'applications:change-session-limit': true,
           'applications:configure-egress': true,
           'applications:upload-apk': true
         }}
@@ -423,10 +424,12 @@ describe('Create app failure feedback', () => {
   })
 
   it.each([
-    ['CPU limit', '16', /Enter a value of 8 or less/],
-    ['RAM limit', '32768', /Enter a value of 16384 or less/],
-    ['CPU limit', '0.15', /Enter a value in increments of 0\.1/]
-  ])('validates %s with value %s when submitted before blur', (label, value, message) => {
+    ['CPU limit', '16', /Enter a value of 8 or less/, ''],
+    ['RAM limit', '32768', /Enter a value of 16384 or less/, ''],
+    ['CPU limit', '0.15', /Enter a value in increments of 0\.1/, ''],
+    ['Inactivity timeout', '86401', /Enter a value of 86400 or less/, '-1'],
+    ['Inactivity timeout', '', /Enter a value\./, '0']
+  ])('validates %s with value %s when submitted before blur', (label, value, message, corrected) => {
     renderForm()
     fireEvent.change(screen.getByRole('textbox', { name: /Name/ }), { target: { value: 'Tablet' } })
     fireEvent.click(screen.getByRole('button', { name: /Lifecycle and resources/ }))
@@ -440,10 +443,13 @@ describe('Create app failure feedback', () => {
     act(() => input.form?.requestSubmit())
 
     expect(submitCreateApplicationAction).not.toHaveBeenCalled()
-    expect(input).toHaveValue(Number(value))
+    expect(screen.getByText('Review the highlighted fields and try again.')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Go to first error' }))
+    expect(input).toHaveFocus()
+    expect(input).toHaveValue(value === '' ? null : Number(value))
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(input).toHaveAccessibleDescription(message)
-    fireEvent.change(input, { target: { value: '' } })
+    fireEvent.change(input, { target: { value: corrected } })
     expect(submit).toBeEnabled()
   })
 })

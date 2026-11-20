@@ -8,7 +8,6 @@ import { updateApkAction } from '@/server/orchestrator/applications/actions/conf
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { AppManageIconPanel, type AppManageIconPanelProps } from './app-manage-icon-panel'
-import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { UploadedApk } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -18,7 +17,8 @@ type AppManageGeneralSettingsProps = {
   appId: string
   canReplaceApk?: boolean
   canUploadApk?: boolean
-  values: AppFormValues
+  name: string
+  nameModified?: boolean
   initialSettings: OrchestratorUiSettings
   iconEditor: Omit<AppManageIconPanelProps, 'appId' | 'appName' | 'maxUploadSizeMb'>
   nameError?: string
@@ -31,7 +31,8 @@ export const AppManageGeneralSettings = ({
   appId,
   canReplaceApk = false,
   canUploadApk = false,
-  values,
+  name,
+  nameModified,
   initialSettings,
   iconEditor,
   nameError,
@@ -77,9 +78,9 @@ export const AppManageGeneralSettings = ({
 
   return (
     <AppIdentitySection
-      valuesName={values.name}
+      valuesName={name}
       nameLabel='Name'
-      nameModified={Boolean(app && values.name !== app.name)}
+      nameModified={nameModified}
       nameError={nameError}
       nameInputRef={nameInputRef}
       apkDescription='APK changes save immediately.'
@@ -98,7 +99,7 @@ export const AppManageGeneralSettings = ({
         <AppManageIconPanel
           {...iconEditor}
           appId={appId}
-          appName={values.name}
+          appName={name}
           maxUploadSizeMb={settings.maxApkUploadSizeMb}
         />
       }

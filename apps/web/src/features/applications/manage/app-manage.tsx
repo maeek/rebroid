@@ -11,6 +11,7 @@ import { AppResourceNavigation } from '@/features/applications/detail/app-resour
 import { AppViewerStatusSection } from '@/features/applications/detail/app-viewer-status-section'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { useAppRuntimeValidation } from '@/features/applications/hooks/use-app-runtime-validation'
 import { AppViewerDeleteAction } from '@/features/applications/viewer/actions/app-viewer-delete-action'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
@@ -26,6 +27,7 @@ import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import { UnsavedChangesGuard } from '@/shared/ui/unsaved-changes-dialog'
+import { appRuntimeFields, type AppRuntimeFieldErrors } from '../model/app-runtime-settings'
 import { AppConfigurationMenu } from './app-configuration-menu'
 import { AppManageGeneralSettings } from './app-manage-general-settings'
 import { AppManageRuntimeSettings } from './app-manage-runtime-settings'
@@ -33,7 +35,8 @@ import {
   appManageDraftFromApp,
   buildAppManageUpdateInput,
   mergeAppConfiguration,
-  useAppManageDraft
+  useAppManageDraft,
+  type AppConfigurationSettings
 } from './use-app-manage-draft'
 
 export const AppManage = () => {
@@ -49,13 +52,18 @@ export const AppManage = () => {
   const [isPreparingIcon, setIsPreparingIcon] = useState(false)
   const [iconSaveError, setIconSaveError] = useState<string>()
   const [nameError, setNameError] = useState<string>()
+  const [runtimeErrors, setRuntimeErrors] = useState<AppRuntimeFieldErrors>({})
   const nameInput = useRef<HTMLInputElement>(null)
+  const configurationFields = useRef<HTMLFieldSetElement>(null)
   const router = useRouter()
+  const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
+  const canChangeResources = hasPermission(permissions, 'applications:change-resources')
+  const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
   const {
     discardChanges,
     displayApp,
     draft,
-    formValues,
+    modified,
     isDirty,
     isIconDirty,
     isSettingsDirty,
@@ -63,11 +71,8 @@ export const AppManage = () => {
     resetSettings,
     updateForm,
     updateIcon
-  } = useAppManageDraft(currentApp)
+  } = useAppManageDraft(currentApp, { canChangeSessionLimit, canChangeResources, canChangeContainerArgs })
   const saveFeedback = useSaveFeedback(JSON.stringify(draft))
-  const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
-  const canChangeResources = hasPermission(permissions, 'applications:change-resources')
-  const canChangeContainerArgs = hasPermission(permissions, 'applications:change-container-args')
   const canViewBackendDetails = hasPermission(permissions, 'applications:view-backend-details')
   const canViewLogs = hasPermission(permissions, 'applications:view-logs')
   const canDelete = hasPermission(permissions, 'applications:delete')
@@ -75,33 +80,56 @@ export const AppManage = () => {
   const showRuntimeSection =
     canChangeSessionLimit || canChangeResources || canChangeContainerArgs || canViewBackendDetails
   const resourceLimits = useResourceLimitBounds(canChangeResources)
+  const runtimeValidation = useAppRuntimeValidation(
+    configurationFields,
+    draft,
+    {
+      inactivityTimeoutSeconds: canChangeSessionLimit,
+      memoryLimitMb: canChangeResources,
+      cpuLimitCpus: canChangeResources
+    },
+    resourceLimits,
+    modified
+  )
+  const isRuntimeInvalid = Object.keys(runtimeValidation.errors).length > 0
+
+  const updateRuntime = (patch: Partial<AppConfigurationSettings>) => {
+    setRuntimeErrors(current => {
+      const next = { ...current }
+      for (const field of appRuntimeFields) {
+        if (patch[field] !== undefined) delete next[field]
+      }
+      return next
+    })
+    updateForm(patch)
+  }
 
   useEffect(() => {
     if (nameError) nameInput.current?.focus()
   }, [nameError])
 
   const handleSave = async () => {
-    if (!isDirty || isSaving || isPreparingIcon) return
+    if (!isDirty || isSaving || isPreparingIcon || Object.keys(runtimeValidation.validate()).length > 0) return
     saveFeedback.resetSaveFeedback()
     setIsSaving(true)
     setNameError(undefined)
+    setRuntimeErrors({})
     setIconSaveError(undefined)
     let savedApp = currentApp
     try {
       if (isSettingsDirty) {
-        const result = await updateApplicationAction(
-          currentApp.id,
-          buildAppManageUpdateInput({
-            canChangeContainerArgs,
-            canChangeResources,
-            canChangeSessionLimit,
-            currentApp,
-            draft
-          })
-        )
-        if (!result.ok && result.error.fieldErrors?.name) {
-          setNameError(result.error.fieldErrors.name.join(' '))
-          return
+        const result = await updateApplicationAction(currentApp.id, buildAppManageUpdateInput(draft, modified))
+        if (!result.ok && result.error.fieldErrors) {
+          const errors = result.error.fieldErrors
+          const nextRuntimeErrors: AppRuntimeFieldErrors = {}
+          for (const field of appRuntimeFields) {
+            if (errors[field]?.length) nextRuntimeErrors[field] = errors[field].join(' ')
+          }
+          if (errors.name?.length || Object.keys(nextRuntimeErrors).length > 0) {
+            setNameError(errors.name?.join(' '))
+            setRuntimeErrors(nextRuntimeErrors)
+            return
+          }
         }
         const nextApp = mapAndroidApplicationToAppDefinition(unwrapActionResult(result))
         savedApp = mergeAppConfiguration(nextApp, currentApp)
@@ -166,7 +194,7 @@ export const AppManage = () => {
           )}
           <MutationButton
             pending={isSaving}
-            disabled={isPreparingIcon || (!isDirty && !saveFeedback.saved)}
+            disabled={isPreparingIcon || isRuntimeInvalid || (!isDirty && !saveFeedback.saved)}
             pendingLabel='Saving…'
             success={saveFeedback.saved}
             onClick={() => void handleSave()}
@@ -197,15 +225,18 @@ export const AppManage = () => {
             showErrorDetails={canViewBackendDetails}
           />
           <fieldset
+            ref={configurationFields}
             className='contents'
             disabled={isSaving}
+            onInput={runtimeValidation.onInput}
           >
             <AppManageGeneralSettings
               app={currentApp}
               appId={currentApp.id}
               canReplaceApk={!isForeignOwnedApp && hasPermission(permissions, 'applications:update-apk')}
               canUploadApk={hasPermission(permissions, 'applications:upload-apk')}
-              values={formValues}
+              name={draft.name}
+              nameModified={modified.name}
               initialSettings={initialSettings}
               iconEditor={{
                 icon: draft.icon,
@@ -234,21 +265,27 @@ export const AppManage = () => {
               <AppManageRuntimeSettings
                 app={currentApp}
                 disabled={isSaving}
-                values={formValues}
+                values={draft}
+                modified={modified}
+                errors={{ ...runtimeErrors, ...runtimeValidation.errors }}
                 resourceLimits={resourceLimits}
                 canChangeSessionLimit={canChangeSessionLimit}
                 canChangeResources={canChangeResources}
                 canChangeContainerArgs={canChangeContainerArgs}
                 canViewBackendDetails={canViewBackendDetails}
-                onChange={updateForm}
+                onChange={updateRuntime}
               />
             </Visible>
           </fieldset>
         </div>
       </PageContent>
       <UnsavedChangesGuard
-        dirty={isDirty || isPreparingIcon}
-        onDiscard={discardChanges}
+        dirty={isDirty || isRuntimeInvalid || isPreparingIcon}
+        onDiscard={() => {
+          discardChanges()
+          setRuntimeErrors({})
+          setNameError(undefined)
+        }}
       />
     </EditorPage>
   )

@@ -1,8 +1,11 @@
+import { androidApplicationResourceLimits } from '@rebroid/android-application-core/redroid-runtime'
 import { FormField } from '@/components/ui/form-field'
 import { NumberSliderField } from '@/components/ui/number-slider-field'
 import { HostResourceTotal } from '@/shared/ui/platform/host-resource-total'
 import { lifecycleFieldClassName } from './app-form-utils'
 import type { ResourceLimitBounds } from '@/shared/contracts/system-resources'
+
+const { memoryLimitMb, cpuLimitCpus } = androidApplicationResourceLimits
 
 type AppResourceLimitFieldsProps = {
   values: {
@@ -48,8 +51,8 @@ export const AppResourceLimitFields = ({
         rangeLabel='Adjust RAM limit'
         boundsPending={resourceLimits === null}
         value={values.memoryLimitMb}
-        min={128}
-        max={resourceLimits?.maxMemoryMb}
+        min={memoryLimitMb.min}
+        max={Math.min(memoryLimitMb.max, resourceLimits?.maxMemoryMb ?? memoryLimitMb.max)}
         inputSuffix='MB'
         suffix=' MB'
         placeholder='Default'
@@ -60,6 +63,7 @@ export const AppResourceLimitFields = ({
           />
         }
         allowEmpty
+        clampOnBlur={false}
         onValueChange={value => onChange({ memoryLimitMb: value })}
       />
     </FormField>
@@ -84,8 +88,8 @@ export const AppResourceLimitFields = ({
         rangeLabel='Adjust CPU limit'
         boundsPending={resourceLimits === null}
         value={values.cpuLimitCpus}
-        min={0.1}
-        max={resourceLimits?.maxCpuCpus}
+        min={cpuLimitCpus.min}
+        max={Math.min(cpuLimitCpus.max, resourceLimits?.maxCpuCpus ?? cpuLimitCpus.max)}
         step={0.1}
         inputSuffix='cores'
         suffix=' cores'
@@ -97,6 +101,7 @@ export const AppResourceLimitFields = ({
           />
         }
         allowEmpty
+        clampOnBlur={false}
         onValueChange={value => onChange({ cpuLimitCpus: value })}
       />
     </FormField>

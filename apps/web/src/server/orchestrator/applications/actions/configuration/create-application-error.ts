@@ -15,27 +15,44 @@ const validationMessages = {
   cpuLimitCpus: 'Enter a CPU limit from 0.1 to 128 cores.'
 }
 
-export const toApplicationNameError = (error: unknown) => {
-  if (!(error instanceof OrchestratorRequestError)) return undefined
+const applicationNameConflict = () => {
+  const message = 'This owner already has an app with that name. Enter a different name.'
+  return new PublicActionError(message, { code: 'conflict', status: 409, fieldErrors: { name: [message] } })
+}
+
+const validationFieldErrors = (fields: readonly string[] | undefined) => {
+  const invalid = new Set(fields)
+  return Object.fromEntries(
+    Object.entries(validationMessages)
+      .filter(([field]) => invalid.has(field))
+      .map(([field, message]) => [field, [message]])
+  )
+}
+
+const configurationFields = ['name', 'inactivityTimeoutSeconds', 'memoryLimitMb', 'cpuLimitCpus']
+
+export const toUpdateApplicationError = (error: unknown): unknown => {
+  if (!(error instanceof OrchestratorRequestError)) return error
   const { status, details } = error
-  if (status === 409 && details?.code === 'application_name_taken') {
-    const message = 'This owner already has an app with that name. Enter a different name.'
-    return new PublicActionError(message, { code: 'conflict', status, fieldErrors: { name: [message] } })
+  if (status === 409 && details?.code === 'application_name_taken') return applicationNameConflict()
+  if (status === 400) {
+    const fieldErrors = validationFieldErrors(details?.fields?.filter(field => configurationFields.includes(field)))
+    if (Object.keys(fieldErrors).length) {
+      return new PublicActionError('Review the highlighted fields and try again.', {
+        code: 'validation',
+        status,
+        fieldErrors
+      })
+    }
   }
-  if (status === 400 && details?.fields?.includes('name')) {
-    return new PublicActionError(validationMessages.name, {
-      code: 'validation',
-      status,
-      fieldErrors: { name: [validationMessages.name] }
-    })
-  }
+  return error
 }
 
 export const toCreateApplicationError = (error: unknown): unknown => {
   if (!(error instanceof OrchestratorRequestError)) return error
 
   const { status, details } = error
-  if (status === 409 && details?.code === 'application_name_taken') return toApplicationNameError(error)
+  if (status === 409 && details?.code === 'application_name_taken') return applicationNameConflict()
   if (status === 503 && details?.code === 'container_engine_unavailable') {
     return new PublicActionError(
       'The container engine is unavailable. Ask a platform administrator to check the Docker or Podman connection, then try again.',
@@ -59,12 +76,7 @@ export const toCreateApplicationError = (error: unknown): unknown => {
     })
   }
   if (status === 400) {
-    const fields = new Set(details?.fields)
-    const fieldErrors = Object.fromEntries(
-      Object.entries(validationMessages)
-        .filter(([field]) => fields.has(field))
-        .map(([field, message]) => [field, [message]])
-    )
+    const fieldErrors = validationFieldErrors(details?.fields)
     return new PublicActionError(
       Object.keys(fieldErrors).length
         ? 'Review the highlighted fields and try again.'

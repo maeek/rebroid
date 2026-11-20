@@ -1,3 +1,4 @@
+import { androidApplicationResourceLimits } from '@rebroid/android-application-core/redroid-runtime';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -15,6 +16,8 @@ import {
   OptionalNetworkPolicyAllowCidrs,
   OptionalNetworkPolicyEnabled,
 } from '../../../network-policy/network-policy-validation';
+
+const { memoryLimitMb, cpuLimitCpus } = androidApplicationResourceLimits;
 
 export class CreateAndroidApplicationDto {
   @ApiProperty({ example: 'Signal Android' })
@@ -48,20 +51,28 @@ export class CreateAndroidApplicationDto {
   @Max(86400)
   inactivityTimeoutSeconds?: number;
 
-  @ApiPropertyOptional({ example: 2048, minimum: 128, maximum: 262144 })
+  @ApiPropertyOptional({
+    example: 2048,
+    minimum: memoryLimitMb.min,
+    maximum: memoryLimitMb.max,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(128)
-  @Max(262144)
+  @Min(memoryLimitMb.min)
+  @Max(memoryLimitMb.max)
   memoryLimitMb?: number;
 
-  @ApiPropertyOptional({ example: 2, minimum: 0.1, maximum: 128 })
+  @ApiPropertyOptional({
+    example: 2,
+    minimum: cpuLimitCpus.min,
+    maximum: cpuLimitCpus.max,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0.1)
-  @Max(128)
+  @Min(cpuLimitCpus.min)
+  @Max(cpuLimitCpus.max)
   cpuLimitCpus?: number;
 
   @ApiPropertyOptional({

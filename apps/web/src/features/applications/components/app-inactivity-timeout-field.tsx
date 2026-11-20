@@ -9,9 +9,9 @@ export const AppInactivityTimeoutField = ({
   timeoutError,
   disabled
 }: {
-  values: { inactivityTimeoutSeconds: number }
+  values: { inactivityTimeoutSeconds: string }
   modified?: Partial<Record<'inactivityTimeoutSeconds', boolean>>
-  onChange: (patch: Partial<{ inactivityTimeoutSeconds: number }>) => void
+  onChange: (patch: { inactivityTimeoutSeconds: string }) => void
   timeoutError?: string
   disabled?: boolean
 }) => (
@@ -30,11 +30,12 @@ export const AppInactivityTimeoutField = ({
       clampOnBlur={false}
       name='inactivityTimeoutSeconds'
       disabled={disabled}
-      value={String(values.inactivityTimeoutSeconds)}
+      value={values.inactivityTimeoutSeconds}
+      required
       min={-1}
       max={86400}
       inputSuffix='sec'
-      onValueChange={value => onChange({ inactivityTimeoutSeconds: Number(value) })}
+      onValueChange={inactivityTimeoutSeconds => onChange({ inactivityTimeoutSeconds })}
     />
   </FormField>
 )

@@ -2,6 +2,11 @@ import { parseCommandLine } from "./command-line";
 
 export { parseCommandLine };
 
+export const androidApplicationResourceLimits = {
+  memoryLimitMb: { min: 128, max: 262_144 },
+  cpuLimitCpus: { min: 0.1, max: 128 },
+} as const;
+
 export const androidRenderingModes = ["software", "host"] as const;
 
 export interface AndroidRenderingSettings {

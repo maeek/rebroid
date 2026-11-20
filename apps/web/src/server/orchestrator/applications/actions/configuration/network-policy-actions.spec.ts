@@ -122,6 +122,33 @@ describe('network policy actions', () => {
     })
   })
 
+  it('returns safe field messages for rejected runtime settings', async () => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue(
+      user({ 'applications:change-resources': true, 'applications:change-session-limit': true })
+    )
+    vi.mocked(orchestratorAppCatalogClient.updateApplication).mockRejectedValueOnce(
+      new OrchestratorRequestError('Internal validation details', 400, 'request', {
+        fields: ['cpuLimitCpus', 'inactivityTimeoutSeconds']
+      })
+    )
+
+    await expect(
+      updateApplicationAction(networkPolicyAppId, {
+        cpuLimitCpus: 129,
+        inactivityTimeoutSeconds: 86401
+      })
+    ).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: 'validation',
+        fieldErrors: {
+          cpuLimitCpus: ['Enter a CPU limit from 0.1 to 128 cores.'],
+          inactivityTimeoutSeconds: ['Enter a whole number of seconds from 0 to 86,400, or -1 for no automatic stop.']
+        }
+      }
+    })
+  })
+
   it('allows disabling and applying a policy without a web feature gate', async () => {
     const input = { networkPolicyEnabled: false, networkPolicyAllowCidrs: [] }
     expect(await updateNetworkPolicyAction(networkPolicyAppId, input)).toMatchObject({ ok: true })

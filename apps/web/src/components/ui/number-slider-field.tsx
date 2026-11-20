@@ -34,6 +34,7 @@ type NumberFieldBaseProps = {
   boundsPending?: boolean
   layout?: 'stacked' | 'side-by-side'
   allowEmpty?: boolean
+  required?: boolean
   clampOnBlur?: boolean
   className?: string
   disabled?: boolean
@@ -71,6 +72,7 @@ export const NumberSliderField = ({
   rangeLabel,
   showSlider = true,
   allowEmpty,
+  required,
   clampOnBlur = true,
   className,
   disabled,
@@ -120,6 +122,7 @@ export const NumberSliderField = ({
             min={min}
             max={inputMax}
             step={step}
+            required={required}
             type='number'
             placeholder={placeholder}
             onBlur={clampOnBlur ? normalizeOnBlur : undefined}

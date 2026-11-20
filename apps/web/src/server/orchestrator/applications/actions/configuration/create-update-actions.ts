@@ -26,7 +26,7 @@ import {
   sanitizeAndroidApplicationForUser
 } from '../../safety'
 import { assertCanAccessApplication } from '../common/action-helpers'
-import { toApplicationNameError, toCreateApplicationError } from './create-application-error'
+import { toCreateApplicationError, toUpdateApplicationError } from './create-application-error'
 
 const assertCanChangeResources = (
   user: Awaited<ReturnType<typeof getCurrentUserContext>>,
@@ -123,7 +123,7 @@ export const updateApplicationAction = async (id: string, input: UpdateAndroidAp
       enforceResourceQuotas(update, quotas)
       enforceSessionQuota(input, quotas)
       const command = await orchestratorAppCatalogClient.updateApplication(id, update).catch((error: unknown) => {
-        throw toApplicationNameError(error) ?? error
+        throw toUpdateApplicationError(error)
       })
       recordAuditEvent({
         actorUserId: user.ownerUserId,

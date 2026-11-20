@@ -1,11 +1,10 @@
 import type { ReactNode, Ref } from 'react'
 import { AppIdentitySection } from '@/features/applications/components/app-identity-section'
-import type { AppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
 
 type AppFormGeneralSectionProps = {
-  values: AppFormValues
-  onChange: (patch: Partial<AppFormValues>) => void
+  values: { name: string }
+  onChange: (patch: { name: string }) => void
   uploadedApk?: UploadedApk | null
   apkLabel?: string | null
   pendingApkName?: string | null

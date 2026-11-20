@@ -148,7 +148,7 @@ export const AppManagePageSkeleton = () => {
         <EditorPage className='gap-6 pb-16'>
           <AppManageGeneralSettings
             appId=''
-            values={values}
+            name={values.name}
             initialSettings={defaultOrchestratorUiSettings}
             iconEditor={{ icon: null, onIconChange: noop, disabled: true }}
             onAppNameChange={noop}

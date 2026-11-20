@@ -3,6 +3,7 @@ import {
   defaultRedroidDisplayProfileId,
   type RuntimeImageKind
 } from '@rebroid/android-application-core/redroid-runtime'
+import { readRuntimeNumber } from '../model/app-runtime-settings'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { CreateApplicationActionInput, UploadedApk } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -10,7 +11,7 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchest
 export const getInitialCreateAppFormValues = (settings: OrchestratorUiSettings): CreateAppFormValues => ({
   name: '',
   containerImage: settings.defaultContainerImage,
-  inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
+  inactivityTimeoutSeconds: String(settings.defaultInactivityTimeoutSeconds),
   memoryLimitMb: '',
   cpuLimitCpus: '',
   customContainerArgs: '',
@@ -64,22 +65,6 @@ export const validateCreateAppDraft = (values: CreateAppFormValues, usesRedroidD
   return errors
 }
 
-export const validateCreateAppNumericFields = (form: HTMLFormElement) => {
-  const errors: Record<string, string[]> = {}
-
-  for (const field of ['memoryLimitMb', 'cpuLimitCpus', 'inactivityTimeoutSeconds']) {
-    const input = form.elements.namedItem(field)
-    if (!(input instanceof HTMLInputElement) || !input.willValidate || input.validity.valid) continue
-
-    if (input.validity.rangeOverflow) errors[field] = [`Enter a value of ${input.max} or less.`]
-    else if (input.validity.rangeUnderflow) errors[field] = [`Enter a value of ${input.min} or more.`]
-    else if (input.validity.stepMismatch) errors[field] = [`Enter a value in increments of ${input.step || '1'}.`]
-    else errors[field] = [input.validationMessage]
-  }
-
-  return errors
-}
-
 export const buildCreateApplicationInput = ({
   canChangeBaseImage,
   canChangeContainerArgs,
@@ -109,9 +94,11 @@ export const buildCreateApplicationInput = ({
 }): CreateApplicationActionInput => ({
   name: trimmedName,
   containerImage: canChangeBaseImage ? values.containerImage.trim() || undefined : undefined,
-  inactivityTimeoutSeconds: canChangeSessionLimit ? values.inactivityTimeoutSeconds : undefined,
-  memoryLimitMb: canChangeResources && values.memoryLimitMb ? Number(values.memoryLimitMb) : undefined,
-  cpuLimitCpus: canChangeResources && values.cpuLimitCpus ? Number(values.cpuLimitCpus) : undefined,
+  inactivityTimeoutSeconds: canChangeSessionLimit
+    ? (readRuntimeNumber(values.inactivityTimeoutSeconds) ?? undefined)
+    : undefined,
+  memoryLimitMb: canChangeResources ? (readRuntimeNumber(values.memoryLimitMb) ?? undefined) : undefined,
+  cpuLimitCpus: canChangeResources ? (readRuntimeNumber(values.cpuLimitCpus) ?? undefined) : undefined,
   containerArgs: canChangeContainerArgs
     ? (isRedroidRuntime
         ? applyRedroidDisplayContainerArgs(

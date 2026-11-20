@@ -1,3 +1,4 @@
+import { androidApplicationResourceLimits } from '@rebroid/android-application-core/redroid-runtime';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -10,6 +11,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+
+const { memoryLimitMb, cpuLimitCpus } = androidApplicationResourceLimits;
 
 export class UpdateAndroidApplicationDto {
   @ApiPropertyOptional({ example: 'Signal Android' })
@@ -34,29 +37,29 @@ export class UpdateAndroidApplicationDto {
   @ApiPropertyOptional({
     type: Number,
     example: 2048,
-    minimum: 128,
-    maximum: 262144,
+    minimum: memoryLimitMb.min,
+    maximum: memoryLimitMb.max,
     nullable: true,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(128)
-  @Max(262144)
+  @Min(memoryLimitMb.min)
+  @Max(memoryLimitMb.max)
   memoryLimitMb?: number | null;
 
   @ApiPropertyOptional({
     type: Number,
     example: 2,
-    minimum: 0.1,
-    maximum: 128,
+    minimum: cpuLimitCpus.min,
+    maximum: cpuLimitCpus.max,
     nullable: true,
   })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
-  @Min(0.1)
-  @Max(128)
+  @Min(cpuLimitCpus.min)
+  @Max(cpuLimitCpus.max)
   cpuLimitCpus?: number | null;
 
   @ApiPropertyOptional({

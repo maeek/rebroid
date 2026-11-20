@@ -25,7 +25,7 @@ describe('create app form model', () => {
   it('builds initial values from UI settings', () => {
     expect(getInitialCreateAppFormValues(settings)).toMatchObject({
       containerImage: 'redroid/redroid:13.0.0',
-      inactivityTimeoutSeconds: 120,
+      inactivityTimeoutSeconds: '120',
       networkPolicyEnabled: true
     })
   })
@@ -74,7 +74,7 @@ describe('create app form model', () => {
         containerImage: ' custom/image ',
         customContainerArgs: ' --foo bar ',
         cpuLimitCpus: '2',
-        inactivityTimeoutSeconds: 0,
+        inactivityTimeoutSeconds: '0',
         memoryLimitMb: '512',
         networkPolicyEnabled: false,
         networkPolicyAllowCidrs: ['0.0.0.0/0']

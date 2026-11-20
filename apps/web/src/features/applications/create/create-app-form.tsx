@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
@@ -13,6 +13,7 @@ import { AppIconField } from '@/features/applications/components/app-icon-field'
 import { AppLifecycleFields } from '@/features/applications/components/app-lifecycle-fields'
 import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
 import { parseOutboundDestinations } from '@/features/applications/components/outbound-destinations'
+import { useAppRuntimeValidation } from '@/features/applications/hooks/use-app-runtime-validation'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { cn } from '@/lib/utils'
@@ -38,8 +39,7 @@ import {
   buildCreateApplicationInput,
   getCustomDisplayConfig,
   getInitialCreateAppFormValues,
-  validateCreateAppDraft,
-  validateCreateAppNumericFields
+  validateCreateAppDraft
 } from './create-app-form-model'
 import { AppFormGeneralSection } from './create-app-general-section'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
@@ -88,7 +88,6 @@ export const CreateAppForm = ({
     focusName?: boolean
   } | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
-  const [numericErrors, setNumericErrors] = useState<Record<string, string[]>>({})
   const submitting = useRef(false)
   const form = useRef<HTMLFormElement>(null)
   const failureSummary = useRef<HTMLDivElement>(null)
@@ -115,28 +114,24 @@ export const CreateAppForm = ({
   const resourceSummary =
     formValues.memoryLimitMb || formValues.cpuLimitCpus ? 'Custom RAM or CPU limits' : 'Default RAM and CPU limits'
   const resourceLimits = useResourceLimitBounds(showResourcesSection && !loading)
+  const runtimeValidation = useAppRuntimeValidation(
+    form,
+    formValues,
+    {
+      inactivityTimeoutSeconds: showSessionSection && !loading,
+      memoryLimitMb: showResourcesSection && !loading,
+      cpuLimitCpus: showResourcesSection && !loading
+    },
+    resourceLimits
+  )
   const customDisplayConfig =
     formValues.redroidDisplayProfileId === 'custom' ? getCustomDisplayConfig(formValues) : undefined
-
-  // Recheck native constraints when defaults or fetched limits change without an input event.
-  useLayoutEffect(() => {
-    if (form.current && !loading) setNumericErrors(validateCreateAppNumericFields(form.current))
-  }, [
-    formValues.cpuLimitCpus,
-    formValues.inactivityTimeoutSeconds,
-    formValues.memoryLimitMb,
-    loading,
-    resourceLimits?.maxCpuCpus,
-    resourceLimits?.maxMemoryMb,
-    showResourcesSection,
-    showSessionSection
-  ])
 
   useEffect(() => {
     setFormValues(current => ({
       ...current,
       containerImage: initialContainerImage?.trim() || settings.defaultContainerImage,
-      inactivityTimeoutSeconds: settings.defaultInactivityTimeoutSeconds,
+      inactivityTimeoutSeconds: String(settings.defaultInactivityTimeoutSeconds),
       redroidExtraArgs: '',
       customContainerArgs: ''
     }))
@@ -201,19 +196,19 @@ export const CreateAppForm = ({
     ...validateCreateAppDraft(formValues, isRedroidRuntime && canChangeContainerArgs),
     ...(destinations.error ? { networkPolicyAllowCidrs: [destinations.error] } : {})
   }
-  const isDraftInvalid = Object.keys(draftErrors).length > 0 || Object.keys(numericErrors).length > 0
-  const visibleErrors: Record<string, string[]> = { ...fieldErrors, ...numericErrors, ...draftErrors }
+  const isDraftInvalid = Object.keys(draftErrors).length > 0 || Object.keys(runtimeValidation.errors).length > 0
+  const visibleErrors: Record<string, string[]> = { ...fieldErrors, ...draftErrors }
   const fieldError = (field: string) => visibleErrors[field]?.join(' ')
-  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0 || Object.keys(runtimeValidation.errors).length > 0
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (isBusy || submitting.current || loading) return
 
-    const submissionErrors = { ...draftErrors, ...validateCreateAppNumericFields(event.currentTarget) }
-    setFieldErrors(submissionErrors)
-    if (Object.keys(submissionErrors).length > 0) {
+    const runtimeErrors = runtimeValidation.validate()
+    setFieldErrors(draftErrors)
+    if (Object.keys(draftErrors).length > 0 || Object.keys(runtimeErrors).length > 0) {
       setFailure({ message: 'Review the highlighted fields and try again.', hasFieldErrors: true })
       return
     }
@@ -317,11 +312,7 @@ export const CreateAppForm = ({
           id={createFormId}
           className='w-full'
           noValidate
-          onInput={event => {
-            if (event.target instanceof HTMLInputElement && event.target.type === 'number') {
-              setNumericErrors(validateCreateAppNumericFields(event.currentTarget))
-            }
-          }}
+          onInput={runtimeValidation.onInput}
           onSubmit={event => void handleSubmit(event)}
         >
           <CreateAppLayout>
@@ -448,9 +439,10 @@ export const CreateAppForm = ({
                     showResources={showResourcesSection}
                     onChange={updateFormValues}
                     errors={{
-                      inactivityTimeoutSeconds: fieldError('inactivityTimeoutSeconds'),
-                      memoryLimitMb: fieldError('memoryLimitMb'),
-                      cpuLimitCpus: fieldError('cpuLimitCpus')
+                      inactivityTimeoutSeconds:
+                        runtimeValidation.errors.inactivityTimeoutSeconds ?? fieldError('inactivityTimeoutSeconds'),
+                      memoryLimitMb: runtimeValidation.errors.memoryLimitMb ?? fieldError('memoryLimitMb'),
+                      cpuLimitCpus: runtimeValidation.errors.cpuLimitCpus ?? fieldError('cpuLimitCpus')
                     }}
                   />
                 </Section>

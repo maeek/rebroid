@@ -28,18 +28,30 @@ vi.mock('@/server/orchestrator/applications/actions/configuration/create-update-
   updateApkAction: vi.fn()
 }))
 vi.mock('@/shared/model/media/icon-metadata', () => ({ optimizeIconFile: vi.fn() }))
+vi.mock('@/shared/model/settings/use-resource-limit-bounds', () => ({
+  useResourceLimitBounds: () => ({
+    maxMemoryMb: 16384,
+    maxCpuCpus: 8,
+    hostMemoryBytes: 32 * 1024 ** 3,
+    hostCpuCores: 12
+  })
+}))
 
 const replacement = 'data:image/png;base64,AQ=='
 const originalUrl = '/api/app-icons/preview-app'
 const updatedUrl = `${originalUrl}?v=updated`
 
-const renderConfiguration = (savedIcon: string | null) => {
+const renderConfiguration = (savedIcon: string | null, settings: Partial<AppDefinition> = {}) => {
   vi.mocked(useApplicationViewerApp).mockImplementation(function useTestApplicationViewerApp() {
-    const [app, setApp] = useState<AppDefinition | undefined>(() => ({ ...previewApp, icon: savedIcon }))
+    const [app, setApp] = useState<AppDefinition | undefined>(() => ({ ...previewApp, icon: savedIcon, ...settings }))
     return {
       app: app!,
       setApp,
-      permissions: {},
+      permissions: {
+        'applications:change-resources': true,
+        'applications:change-session-limit': true,
+        'applications:change-container-args': true
+      },
       initialSettings: defaultOrchestratorUiSettings,
       isForeignOwnedApp: false,
       canViewAuditActivity: false
@@ -111,4 +123,66 @@ it('keeps a failed icon change for retry without resubmitting saved settings', a
   expect(await screen.findByText('Current icon')).toBeVisible()
   expect(updateApplicationAction).toHaveBeenCalledOnce()
   expect(setAppIconAction).toHaveBeenCalledTimes(2)
+})
+
+it.each([
+  ['Inactivity timeout', '86401', /Enter a value of 86400 or less/],
+  ['Inactivity timeout', '', /Enter a value\./],
+  ['RAM limit', '32768', /Enter a value of 16384 or less/],
+  ['CPU limit', '0.15', /Enter a value in increments of 0\.1/]
+])('blocks Save when %s is set to %s', (label, value, message) => {
+  renderConfiguration(null)
+  const input = screen.getByRole('spinbutton', { name: label })
+  const save = screen.getByRole('button', { name: 'Save' })
+
+  fireEvent.change(input, { target: { value } })
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+  expect(input).toHaveAccessibleDescription(message)
+  expect(save).toBeDisabled()
+  fireEvent.click(save)
+  expect(updateApplicationAction).not.toHaveBeenCalled()
+})
+
+it('sends only the name when renaming an app with existing limits', async () => {
+  const settings = { cpuLimitCpus: 16, memoryLimitMb: 4096, containerArgs: 'androidboot.redroid_fps=30' }
+  vi.mocked(updateApplicationAction).mockResolvedValue(actionOk({} as AndroidApplication))
+  vi.mocked(mapAndroidApplicationToAppDefinition).mockReturnValue({ ...previewApp, ...settings, name: 'New name' })
+  renderConfiguration(null, settings)
+  const cpu = screen.getByRole('spinbutton', { name: 'CPU limit' })
+  expect(cpu).toHaveValue(16)
+  fireEvent.blur(cpu)
+  expect(cpu).toHaveValue(16)
+  expect(cpu).not.toHaveAttribute('aria-invalid', 'true')
+
+  fireEvent.change(screen.getByRole('textbox', { name: /^Name/ }), { target: { value: 'New name' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+  expect(updateApplicationAction).toHaveBeenCalledExactlyOnceWith(previewApp.id, { name: 'New name' })
+  expect(await screen.findByRole('button', { name: 'Saved' })).toBeVisible()
+})
+
+it('clears a saved limit and omits a reverted or already blank limit', async () => {
+  const settings = { cpuLimitCpus: 2, memoryLimitMb: 4096 }
+  vi.mocked(updateApplicationAction).mockResolvedValue(actionOk({} as AndroidApplication))
+  vi.mocked(mapAndroidApplicationToAppDefinition).mockReturnValue({ ...previewApp, ...settings, memoryLimitMb: null })
+  renderConfiguration(null, settings)
+  const cpu = screen.getByRole('spinbutton', { name: 'CPU limit' })
+  const ram = screen.getByRole('spinbutton', { name: 'RAM limit' })
+  const save = screen.getByRole('button', { name: 'Save' })
+
+  fireEvent.change(cpu, { target: { value: '' } })
+  expect(cpu).toHaveAccessibleDescription(/Unsaved change/)
+  expect(save).toBeEnabled()
+  fireEvent.change(cpu, { target: { value: '2.0' } })
+  expect(cpu).not.toHaveAccessibleDescription(/Unsaved change/)
+  expect(save).toBeDisabled()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Reset RAM limit to default' }))
+  expect(ram).toHaveValue(null)
+  expect(ram).toHaveAccessibleDescription(/Unsaved change/)
+  fireEvent.click(save)
+
+  expect(updateApplicationAction).toHaveBeenCalledExactlyOnceWith(previewApp.id, { memoryLimitMb: null })
+  expect(await screen.findByRole('button', { name: 'Saved' })).toBeVisible()
+  expect(ram).not.toHaveAccessibleDescription(/Unsaved change/)
 })

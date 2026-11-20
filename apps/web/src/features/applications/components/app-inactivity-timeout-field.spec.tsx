@@ -8,7 +8,7 @@ describe('AppInactivityTimeoutField', () => {
 
     render(
       <AppInactivityTimeoutField
-        values={{ inactivityTimeoutSeconds: 120 }}
+        values={{ inactivityTimeoutSeconds: '120' }}
         onChange={onChange}
       />
     )
@@ -16,6 +16,6 @@ describe('AppInactivityTimeoutField', () => {
     const timeoutInput = screen.getByDisplayValue('120')
     fireEvent.change(timeoutInput, { target: { value: '300' } })
 
-    expect(onChange).toHaveBeenCalledWith({ inactivityTimeoutSeconds: 300 })
+    expect(onChange).toHaveBeenCalledWith({ inactivityTimeoutSeconds: '300' })
   })
 })
