@@ -21,12 +21,12 @@ import {
   ScrcpyControlQueue,
 } from "./scrcpy-control-queue";
 import {
-  compatibilityStateChanged,
   compatibilityProbeServices,
   displayDiagnosticPattern,
   parseCompatibilityProbe,
-  selectInitialRetryStreamOptions,
-  selectRestartStreamOptions,
+  planScrcpyInitialRetry,
+  planScrcpyRestart,
+  planScrcpyRestartBackoff,
   type ScrcpyCompatibilityProbe,
 } from "./scrcpy-compatibility";
 import {
@@ -44,7 +44,6 @@ import {
   ForwardedVideoSocket,
   ScrcpyAudioPacket,
   ScrcpyAttemptResult,
-  ScrcpyCompatibilityMode,
   ScrcpyMediaSink,
   ScrcpySocket,
   ScrcpyStreamAttachment,
@@ -58,7 +57,6 @@ import type {
 
 const LOCALHOST = "127.0.0.1";
 const SOCKET_CONNECT_TIMEOUT_MS = 10_000;
-const STREAM_RESTART_BACKOFF_MS = 500;
 const STREAM_HEARTBEAT_INTERVAL_MS = 5_000;
 const SCRCPY_CONNECT_RETRY_DELAY_MS = 100;
 const REVERSE_SOCKET_ACCEPT_TIMEOUT_MS = 5_000;
@@ -287,20 +285,15 @@ export class ScrcpyService implements OnModuleDestroy {
         }
 
         streamedOnce = true;
-        const audioWasEnabled = effectiveOptions.audio;
-        const previousOptions = effectiveOptions;
-        effectiveOptions = selectRestartStreamOptions(
+        const restart = planScrcpyRestart(
           effectiveOptions,
           result,
           this.streamSessions.isAudioDisabled(effectiveOptions.sessionId),
         );
-        if (audioWasEnabled && !effectiveOptions.audio) {
+        effectiveOptions = restart.options;
+        if (restart.disablesAudio) {
           this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
-        }
-        if (compatibilityStateChanged(previousOptions, effectiveOptions)) {
           this.sendCompatibilityStatus(options.sink, effectiveOptions);
-        }
-        if (audioWasEnabled && !effectiveOptions.audio) {
           this.logger.debug(
             `[scrcpy:${options.udid}:${options.sessionId}] Android audio configuration failed; retrying with video only`,
           );
@@ -309,8 +302,11 @@ export class ScrcpyService implements OnModuleDestroy {
             message: "Android audio capture failed; continuing with video only.",
           });
         }
-        restartAttempt = result.durationMs > 30_000 ? 0 : restartAttempt + 1;
-        const delayMs = this.restartDelayMs(restartAttempt);
+        const { attempt, delayMs } = planScrcpyRestartBackoff(
+          restartAttempt,
+          result.durationMs,
+        );
+        restartAttempt = attempt;
         this.logger.debug(
           `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after: ${result.reason}; delayMs=${delayMs}`,
         );
@@ -329,46 +325,43 @@ export class ScrcpyService implements OnModuleDestroy {
             `scrcpy:${options.udid}:${options.sessionId}`,
           ).catch(() => compatibilityProbe);
           if (clientClosed || !options.sink.isOpen()) return;
-          const nextOptions = selectInitialRetryStreamOptions(
+          const retry = planScrcpyInitialRetry(
             effectiveOptions,
             this.errorMessage(error),
             diagnostics,
           );
-          if (nextOptions !== effectiveOptions) {
-            const audioWasEnabled = effectiveOptions.audio;
-            const controlWasEnabled = effectiveOptions.control !== false;
-            effectiveOptions = nextOptions;
-            if (audioWasEnabled && !effectiveOptions.audio) {
-              this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
-            }
-            restartAttempt += 1;
-            const delayMs = this.restartDelayMs(restartAttempt);
-            this.logger.debug(
-              `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${this.retryDescription(effectiveOptions, audioWasEnabled, controlWasEnabled)}; delayMs=${delayMs}`,
-            );
-            if (audioWasEnabled && !effectiveOptions.audio) {
-              this.sendJson(options.sink, {
-                type: "audio-disabled",
-                message: "Android could not configure the audio stream; continuing with video only.",
-              });
-            }
-            this.sendCompatibilityStatus(options.sink, effectiveOptions, {
-              message: this.compatibilityProbeSummary(diagnostics),
-              diagnostic: this.firstDiagnosticLine(diagnostics),
-            });
-            this.sendJson(options.sink, {
-              type: "reconnecting",
-              message: this.reconnectMessage(effectiveOptions, error),
-              diagnostic: this.firstDiagnosticLine(diagnostics),
-            });
-            await this.delay(delayMs);
-            continue;
+          if (!retry) throw error;
+
+          effectiveOptions = retry.options;
+          if (retry.disablesAudio) {
+            this.streamSessions.markAudioDisabled(effectiveOptions.sessionId);
           }
-          throw error;
+          const { attempt, delayMs } = planScrcpyRestartBackoff(restartAttempt);
+          restartAttempt = attempt;
+          this.logger.debug(
+            `[scrcpy:${options.udid}:${options.sessionId}] initial display stream setup failed: ${this.errorMessage(error)}; retrying with ${retry.description}; delayMs=${delayMs}`,
+          );
+          if (retry.disablesAudio) {
+            this.sendJson(options.sink, {
+              type: "audio-disabled",
+              message: "Android could not configure the audio stream; continuing with video only.",
+            });
+          }
+          this.sendCompatibilityStatus(options.sink, effectiveOptions, {
+            message: this.compatibilityProbeSummary(diagnostics),
+            diagnostic: this.firstDiagnosticLine(diagnostics),
+          });
+          this.sendJson(options.sink, {
+            type: "reconnecting",
+            message: retry.reconnectMessage,
+            diagnostic: this.firstDiagnosticLine(diagnostics),
+          });
+          await this.delay(delayMs);
+          continue;
         }
 
-        restartAttempt += 1;
-        const delayMs = this.restartDelayMs(restartAttempt);
+        const { attempt, delayMs } = planScrcpyRestartBackoff(restartAttempt);
+        restartAttempt = attempt;
         this.logger.debug(
           `[scrcpy:${options.udid}:${options.sessionId}] restarting display stream after setup failure: ${this.errorMessage(error)}; delayMs=${delayMs}`,
         );
@@ -1660,13 +1653,6 @@ export class ScrcpyService implements OnModuleDestroy {
     });
   }
 
-  private restartDelayMs(attempt: number) {
-    return Math.min(
-      STREAM_RESTART_BACKOFF_MS * 2 ** Math.min(Math.max(attempt - 1, 0), 4),
-      5_000,
-    );
-  }
-
   private assertCompatibleScrcpyServerVersion() {
     const version = this.config.scrcpyVersion.trim();
     const major = Number(version.split(".")[0]);
@@ -1760,31 +1746,6 @@ export class ScrcpyService implements OnModuleDestroy {
       return "Stream control is disabled for this Android build; viewer controls use ADB fallback.";
     }
     return "Using the standard scrcpy display stream.";
-  }
-
-  private reconnectMessage(options: ScrcpyStreamOptions, error: unknown) {
-    const mode = options.compatibilityMode ?? "normal";
-    if (mode === "stream-control-disabled") {
-      return "Retrying live display without scrcpy stream control...";
-    }
-    if (mode === "audio-disabled") {
-      return "Retrying live display without Android audio capture...";
-    }
-    return `Reconnecting live display: ${this.errorMessage(error)}`;
-  }
-
-  private retryDescription(
-    options: ScrcpyStreamOptions,
-    audioWasEnabled: boolean,
-    controlWasEnabled: boolean,
-  ) {
-    if (audioWasEnabled && !options.audio) {
-      return "video only";
-    }
-    if (controlWasEnabled && options.control === false) {
-      return "ADB control fallback";
-    }
-    return "the requested video profile";
   }
 
   private compatibilityProbeSummary(probe: ScrcpyCompatibilityProbe | null) {

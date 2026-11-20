@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   parseCompatibilityProbe,
-  selectInitialRetryStreamOptions,
-  selectRestartStreamOptions,
+  planScrcpyInitialRetry,
+  planScrcpyRestart,
+  planScrcpyRestartBackoff,
   shouldRetryWithoutStreamControl,
 } from "./scrcpy-compatibility";
 
@@ -52,12 +53,8 @@ test("keeps Android audio diagnostics without treating historical logs as a new 
   );
   assert.equal(probe.diagnostics.length, 2);
   assert.equal(
-    selectInitialRetryStreamOptions(
-      streamOptions,
-      "ADB connection failed",
-      probe,
-    ).audio,
-    true,
+    planScrcpyInitialRetry(streamOptions, "ADB connection failed", probe),
+    null,
   );
 });
 
@@ -106,31 +103,45 @@ const streamOptions = {
 };
 
 test("retries a confirmed audio failure without changing the requested video profile", () => {
-  const withoutAudio = selectInitialRetryStreamOptions(
+  const retry = planScrcpyInitialRetry(
     streamOptions,
     "invalid audio stream: scrcpy stream configuration failed on the device",
     null,
   );
-  assert.equal(withoutAudio.audio, false);
-  assert.equal(withoutAudio.compatibilityMode, "audio-disabled");
+  assert.ok(retry);
+  assert.deepEqual(retry, {
+    options: {
+      ...streamOptions,
+      audio: false,
+      compatibilityMode: "audio-disabled",
+    },
+    disablesAudio: true,
+    description: "video only",
+    reconnectMessage: "Retrying live display without Android audio capture...",
+  });
 
-  const withoutControl = selectInitialRetryStreamOptions(
-    { ...withoutAudio, control: true },
+  const withoutControl = planScrcpyInitialRetry(
+    retry.options,
     "InputManagerGlobal failed",
     null,
   );
-  assert.equal(withoutControl.control, false);
-  assert.equal(withoutControl.compatibilityMode, "stream-control-disabled");
+  assert.ok(withoutControl);
+  assert.equal(withoutControl.options.audio, false);
+  assert.equal(withoutControl.options.control, false);
+  assert.equal(withoutControl.disablesAudio, false);
+  assert.equal(
+    withoutControl.options.compatibilityMode,
+    "stream-control-disabled",
+  );
 
-  const unchanged = selectRestartStreamOptions(
-    { ...streamOptions, audio: false },
+  const silentOptions = { ...streamOptions, audio: false };
+  const unchanged = planScrcpyRestart(
+    silentOptions,
     { reason: "socket closed", durationMs: 1_000, bytesForwarded: 1 },
     false,
   );
-  assert.equal(unchanged.compatibilityMode, undefined);
-  assert.equal(unchanged.maxSize, 1080);
-  assert.equal(unchanged.maxFps, 60);
-  assert.equal(unchanged.bitrate, 8_000_000);
+  assert.equal(unchanged.options, silentOptions);
+  assert.equal(unchanged.disablesAudio, false);
 });
 
 test("unrelated startup failures do not disable requested audio", () => {
@@ -139,21 +150,26 @@ test("unrelated startup failures do not disable requested audio", () => {
     "scrcpy video socket closed during startup.",
     "Display source was replaced.",
   ]) {
-    const retry = selectInitialRetryStreamOptions(streamOptions, message, null);
-    assert.equal(retry.audio, true, message);
-    assert.equal(retry.compatibilityMode, undefined, message);
+    assert.equal(planScrcpyInitialRetry(streamOptions, message, null), null);
   }
 });
 
 test("a control failure preserves audio when selecting a compatibility retry", () => {
-  const retry = selectInitialRetryStreamOptions(
+  const retry = planScrcpyInitialRetry(
     streamOptions,
     "InputManagerGlobal failed",
     null,
   );
-  assert.equal(retry.audio, true);
-  assert.equal(retry.control, false);
-  assert.equal(retry.compatibilityMode, "stream-control-disabled");
+  assert.deepEqual(retry, {
+    options: {
+      ...streamOptions,
+      control: false,
+      compatibilityMode: "stream-control-disabled",
+    },
+    disablesAudio: false,
+    description: "ADB control fallback",
+    reconnectMessage: "Retrying live display without scrcpy stream control...",
+  });
 });
 
 test("virtual surfaces never fall back to default-display ADB controls", () => {
@@ -163,34 +179,59 @@ test("virtual surfaces never fall back to default-display ADB controls", () => {
   ]) {
     const options = { ...streamOptions, ...surface };
     assert.equal(
-      selectInitialRetryStreamOptions(
-        options,
-        "InputManagerGlobal failed",
-        null,
-      ),
-      options,
+      planScrcpyInitialRetry(options, "InputManagerGlobal failed", null),
+      null,
     );
   }
 });
 
 test("restart disables audio only after the scrcpy audio configuration marker", () => {
-  const ordinaryRestart = selectRestartStreamOptions(
-    streamOptions,
-    { reason: "video socket closed", durationMs: 1_000, bytesForwarded: 1 },
-    false,
-  );
-  assert.equal(ordinaryRestart.audio, true);
+  const completed = {
+    reason: "video socket closed",
+    durationMs: 1_000,
+    bytesForwarded: 1,
+  };
+  const ordinaryRestart = planScrcpyRestart(streamOptions, completed, false);
+  assert.equal(ordinaryRestart.options, streamOptions);
+  assert.equal(ordinaryRestart.disablesAudio, false);
 
-  const audioFailure = selectRestartStreamOptions(
+  const audioFailure = planScrcpyRestart(
     streamOptions,
     {
+      ...completed,
       reason:
         "invalid audio stream: scrcpy stream configuration failed on the device",
-      durationMs: 1_000,
-      bytesForwarded: 1,
     },
     false,
   );
-  assert.equal(audioFailure.audio, false);
-  assert.equal(audioFailure.maxFps, 60);
+  assert.deepEqual(audioFailure, {
+    options: {
+      ...streamOptions,
+      audio: false,
+      compatibilityMode: "audio-disabled",
+    },
+    disablesAudio: true,
+  });
+  assert.deepEqual(
+    planScrcpyRestart(streamOptions, completed, true),
+    audioFailure,
+  );
+});
+
+test("restart backoff caps rapid retries and resets after a stable stream", () => {
+  assert.deepEqual(
+    [0, 1, 2, 3, 4, 5].map((attempt) => planScrcpyRestartBackoff(attempt)),
+    [500, 1_000, 2_000, 4_000, 5_000, 5_000].map((delayMs, index) => ({
+      attempt: index + 1,
+      delayMs,
+    })),
+  );
+  assert.deepEqual(planScrcpyRestartBackoff(4, 30_000), {
+    attempt: 5,
+    delayMs: 5_000,
+  });
+  assert.deepEqual(planScrcpyRestartBackoff(4, 30_001), {
+    attempt: 0,
+    delayMs: 500,
+  });
 });

@@ -2,6 +2,8 @@ import type { ScrcpyAttemptResult, ScrcpyStreamOptions } from "./scrcpy.types";
 
 const audioConfigurationFailureReason =
   "invalid audio stream: scrcpy stream configuration failed on the device";
+const streamRestartBackoffMs = 500;
+const stableStreamDurationMs = 30_000;
 
 export const compatibilityProbeServices = [
   "input",
@@ -112,16 +114,29 @@ export const shouldRetryWithoutStreamControl = (
   );
 };
 
-export const selectInitialRetryStreamOptions = (
+type ScrcpyInitialRetry = {
+  options: ScrcpyStreamOptions;
+  disablesAudio: boolean;
+  description: string;
+  reconnectMessage: string;
+};
+
+export function planScrcpyInitialRetry(
   options: ScrcpyStreamOptions,
   errorMessage: string,
   probe: ScrcpyCompatibilityProbe | null,
-) => {
+): ScrcpyInitialRetry | null {
   if (options.audio && errorMessage === audioConfigurationFailureReason) {
     return {
-      ...options,
-      audio: false,
-      compatibilityMode: "audio-disabled" as const,
+      options: {
+        ...options,
+        audio: false,
+        compatibilityMode: "audio-disabled",
+      },
+      disablesAudio: true,
+      description: "video only",
+      reconnectMessage:
+        "Retrying live display without Android audio capture...",
     };
   }
   if (
@@ -131,36 +146,42 @@ export const selectInitialRetryStreamOptions = (
     shouldRetryWithoutStreamControl(errorMessage, probe)
   ) {
     return {
-      ...options,
-      control: false,
-      compatibilityMode: "stream-control-disabled" as const,
+      options: {
+        ...options,
+        control: false,
+        compatibilityMode: "stream-control-disabled",
+      },
+      disablesAudio: false,
+      description: "ADB control fallback",
+      reconnectMessage:
+        "Retrying live display without scrcpy stream control...",
     };
   }
-  return options;
-};
+  return null;
+}
 
-export const selectRestartStreamOptions = (
+export function planScrcpyRestart(
   options: ScrcpyStreamOptions,
   result: ScrcpyAttemptResult,
-  audioDisabled: boolean,
-) => {
-  if (
+  audioAlreadyDisabled: boolean,
+) {
+  const disablesAudio =
     options.audio &&
-    (result.reason === audioConfigurationFailureReason || audioDisabled)
-  ) {
-    return {
-      ...options,
-      audio: false,
-      compatibilityMode: "audio-disabled" as const,
-    };
-  }
-  return options;
-};
+    (result.reason === audioConfigurationFailureReason || audioAlreadyDisabled);
+  const nextOptions: ScrcpyStreamOptions = disablesAudio
+    ? { ...options, audio: false, compatibilityMode: "audio-disabled" }
+    : options;
+  return { options: nextOptions, disablesAudio };
+}
 
-export const compatibilityStateChanged = (
-  previous: ScrcpyStreamOptions,
-  next: ScrcpyStreamOptions,
-) =>
-  previous.compatibilityMode !== next.compatibilityMode ||
-  previous.audio !== next.audio ||
-  previous.control !== next.control;
+export function planScrcpyRestartBackoff(
+  previousAttempt: number,
+  durationMs = 0,
+) {
+  const attempt = durationMs > stableStreamDurationMs ? 0 : previousAttempt + 1;
+  const delayMs = Math.min(
+    streamRestartBackoffMs * 2 ** Math.min(Math.max(attempt - 1, 0), 4),
+    5_000,
+  );
+  return { attempt, delayMs };
+}
