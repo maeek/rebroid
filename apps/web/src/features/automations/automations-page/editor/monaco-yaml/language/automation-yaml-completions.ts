@@ -1,3 +1,4 @@
+import { parseDocument, type ParsedNode } from 'yaml'
 import { automationYamlCompletionContext, type AutomationYamlCompletionContext } from './automation-yaml-context'
 import {
   enumValues,
@@ -23,14 +24,15 @@ export const createAutomationYamlCompletionProvider = ({
   triggerCharacters: [':', ' ', '.', '-'],
   provideCompletionItems(model, position) {
     const linePrefix = model.getLineContent(position.lineNumber).slice(0, position.column - 1)
-    const context = automationYamlCompletionContext(model, position)
+    const { contents: root } = parseDocument(model.getValue(), { prettyErrors: false })
+    const context = automationYamlCompletionContext(model, position, root)
     const range = completionRange(monaco, position, linePrefix)
     const suggestions = [
       ...usesSuggestions(monaco, context, position, commands),
       ...stepSkeletonSuggestions(monaco, context, position, commands),
       ...tagSkeletonSuggestions(monaco, context, position),
-      ...propertyValueSuggestions(monaco, model, position, linePrefix, range, commands, schema),
-      ...propertyNameSuggestions(monaco, model, position, context, linePrefix, range, commands, schema)
+      ...propertyValueSuggestions(monaco, model, position, root, linePrefix, range, commands, schema),
+      ...propertyNameSuggestions(monaco, model, position, root, context, linePrefix, range, commands, schema)
     ]
 
     return { suggestions }
@@ -182,6 +184,7 @@ const propertyValueSuggestions = (
   monaco: typeof Monaco,
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
+  root: ParsedNode | null,
   linePrefix: string,
   range: Monaco.IRange,
   commands: AutomationCommand[],
@@ -194,7 +197,7 @@ const propertyValueSuggestions = (
   if (propertyName === 'uses') return []
 
   const query = match[2] ?? ''
-  const propertySchema = schemaForCurrentProperty(model, position, propertyName, commands, schema)
+  const propertySchema = schemaForCurrentProperty(model, position, root, propertyName, commands, schema)
   const values = enumValues(propertySchema)
 
   return values
@@ -211,6 +214,7 @@ const propertyNameSuggestions = (
   monaco: typeof Monaco,
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
+  root: ParsedNode | null,
   context: AutomationYamlCompletionContext,
   linePrefix: string,
   range: Monaco.IRange,
@@ -222,7 +226,7 @@ const propertyNameSuggestions = (
 
   const query = match[2] ?? ''
   const schemaContext =
-    context.kind === 'with-property' ? schemaContextForCurrentProperty(model, position, query, commands) : null
+    context.kind === 'with-property' ? schemaContextForCurrentProperty(model, position, root, query, commands) : null
   const activeSchema =
     context.kind === 'with-property'
       ? (schemaContext?.parentSchema ?? commands.find(command => command.uses === context.uses)?.inputSchema)

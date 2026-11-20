@@ -20,7 +20,7 @@ import type {
 type BuilderInput = {
   contextFiles: ContainerImageBuildContextFile[]
   images: PlatformImage[]
-  jobs: ContainerImageBuildJob[]
+  initialJob: ContainerImageBuildJob | null
   recipes: ContainerImageBuildRecipe[]
 }
 export const CustomBuilderContent = ({
@@ -97,7 +97,7 @@ export const RuntimeImageBuilderPageClient = (props: BuilderInput) => {
   return <CustomBuilderContent builder={builder} />
 }
 export const RuntimeImageBuilderPageLoading = () => {
-  const builder = useRuntimeImageBuilderController({ contextFiles: [], images: [], jobs: [], recipes: [] })
+  const builder = useRuntimeImageBuilderController({ contextFiles: [], images: [], initialJob: null, recipes: [] })
   return (
     <CustomBuilderContent
       builder={builder}

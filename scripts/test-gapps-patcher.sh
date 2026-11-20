@@ -17,11 +17,12 @@ git -C "${temporary}/repository" commit --quiet -m fixture
 revision="$(git -C "${temporary}/repository" rev-parse HEAD)"
 
 "${engine}" build -q -t "${image}" "${repo_root}/apps/gapps-patcher"
-test "$("${engine}" image inspect --format '{{ index .Config.Labels "com.rebroid.gapps-patcher.version" }}' "${image}")" = 1
+test "$("${engine}" image inspect --format '{{ index .Config.Labels "com.rebroid.gapps-patcher.version" }}' "${image}")" = 2
 worker_user="$("${engine}" image inspect --format '{{ .Config.User }}' "${image}")"
 [[ "${worker_user}" =~ ^[1-9][0-9]*(:[1-9][0-9]*)?$ ]]
 "${engine}" run --rm \
   --network none --cap-drop ALL --security-opt no-new-privileges \
+  --env GAPPS_ANDROID_VERSION=13 \
   --env SOURCE_REPOSITORY=file:///fixture \
   --env SOURCE_REVISION="${revision}" \
   --volume "${temporary}/repository:/fixture:ro" \

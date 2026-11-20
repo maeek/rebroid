@@ -8,6 +8,7 @@ import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
+import { parsePlatformInventorySort } from '@/shared/model/platform-inventory-sort'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -21,7 +22,6 @@ import {
 } from './runtime-containers-section-model'
 import { createContainerColumns } from './runtime-containers-table-parts'
 import { RuntimeContainerFilters } from './runtime-grid-filter-controls'
-import { platformSortFromSearchParam } from './runtime-grid-query-utils'
 import type { PlatformContainersGridPage, PlatformContainersGridQuery } from '@/shared/contracts/platform'
 
 const containerId = (container: PlatformContainersGridPage['items'][number]) => container.id
@@ -53,7 +53,7 @@ export const RuntimeContainersSection = ({
     gridQuery,
     pageSize: containersPage.pageSize,
     getItemId: containerId,
-    parseSort: platformSortFromSearchParam,
+    parseSort: sort => parsePlatformInventorySort('containers', sort),
     buildHref: buildContainersGridHref
   })
   const {

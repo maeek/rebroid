@@ -18,9 +18,6 @@ const startupFirst = (policies: Map<string, FirewallPolicy>) =>
 
 export interface FirewallAdapter {
   name: string;
-  initialize(): void;
-  apply(policy: FirewallPolicy, policies: Map<string, FirewallPolicy>): void;
-  remove(applicationId: string, policies: Map<string, FirewallPolicy>): void;
   reconcile(policies: Map<string, FirewallPolicy>): void;
 }
 
@@ -68,16 +65,6 @@ export class IptablesAdapter implements FirewallAdapter {
   ) {
     this.name =
       anchor === "DOCKER-USER" ? "docker-iptables" : "podman-iptables";
-  }
-
-  initialize() {}
-
-  apply(_policy: FirewallPolicy, policies: Map<string, FirewallPolicy>) {
-    this.reconcile(policies);
-  }
-
-  remove(_applicationId: string, policies: Map<string, FirewallPolicy>) {
-    this.reconcile(policies);
   }
 
   reconcile(policies: Map<string, FirewallPolicy>) {
@@ -158,16 +145,6 @@ export class NftablesAdapter implements FirewallAdapter {
   constructor(
     private readonly runner: FirewallCommandRunner = defaultCommandRunner,
   ) {}
-
-  initialize() {}
-
-  apply(_policy: FirewallPolicy, policies: Map<string, FirewallPolicy>) {
-    this.reconcile(policies);
-  }
-
-  remove(_applicationId: string, policies: Map<string, FirewallPolicy>) {
-    this.reconcile(policies);
-  }
 
   reconcile(policies: Map<string, FirewallPolicy>) {
     const lines = [

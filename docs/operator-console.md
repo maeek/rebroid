@@ -128,6 +128,10 @@ To run a saved workflow on a device, open the app's **Workflows** view and selec
 For recurring runs, open **Triggers → New trigger**, then choose a workflow, target app, profile,
 and schedule. Enable **Start app if needed** when the trigger has permission to start a stopped app.
 
+Schedules saved with an advanced cron expression show that expression in workflow trigger and
+maintenance task editors. Edits to other fields preserve it. Use **Replace schedule** to choose
+a new schedule with the standard controls.
+
 ## Workflow device steps
 
 The workflow editor and AI workflow drafting use the registered commands permitted for your
@@ -225,6 +229,10 @@ responses. The task covers saved workflow runs, including runs of workflows that
 deleted. Active runs and ad hoc AI conversations are outside its scope.
 
 ## Image build maintenance
+
+Each image builder shows the latest job for its build kind.
+On restart, the orchestrator marks interrupted Dockerfile builds and running GApps builds as failed.
+Queued GApps builds remain eligible to run.
 
 In **System → Maintenance tasks**, **Clean interrupted image builds** runs daily at 02:15
 by default. It removes temporary GApps package archives and extraction directories older than

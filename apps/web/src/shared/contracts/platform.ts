@@ -109,6 +109,7 @@ export type ContainerImageBuildStatus = OrchestratorApiSchemas['ContainerImageBu
 export type ContainerImageBuildContextFile = OrchestratorApiSchemas['ContainerImageBuildContextFile']
 export type ContainerImageBuildRecipe = OrchestratorApiSchemas['ContainerImageBuildRecipe']
 export type ContainerImageBuildJob = OrchestratorApiSchemas['ContainerImageBuildJob']
+export type ContainerImageBuildKind = ContainerImageBuildJob['buildKind']
 export type ContainerImageRecipeInput = OrchestratorApiSchemas['CreateContainerImageRecipeDto']
 export type StartContainerImageBuildInput = OrchestratorApiSchemas['StartContainerImageBuildDto']
 

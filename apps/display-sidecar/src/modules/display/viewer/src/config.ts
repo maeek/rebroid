@@ -1,15 +1,9 @@
-import type {
-  ViewerConfig,
-  ViewerEffectiveProfile,
-  ViewerElements,
-} from "./types.js";
+import type { ViewerEffectiveProfile } from "@rebroid/android-application-core/viewer-stream";
+import type { ViewerConfig, ViewerElements } from "./types.js";
 
 export const keyboardEventMessageType = "rebroid-viewer-keyboard-event";
 export const keyboardCaptureMessageType = "rebroid-viewer-keyboard-capture";
 export const viewerControlMessageType = "rebroid-viewer-control-event";
-export const viewerStreamStatusMessageType = "rebroid-viewer-stream-status";
-export const viewerStreamMetricsMessageType =
-  "rebroid-viewer-stream-metrics-v4";
 
 export function readViewerConfig(): ViewerConfig {
   const params = new URLSearchParams(location.search);

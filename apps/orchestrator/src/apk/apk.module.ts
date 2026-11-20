@@ -15,7 +15,6 @@ import { ApkIconSelectorService } from './services/apk-icon-selector.service';
 import { ApkManifestReaderService } from './services/apk-manifest-reader.service';
 import { ApkResourceReaderService } from './services/apk-resource-reader.service';
 import { ApkStorageService } from './services/apk-storage.service';
-import { ApkZipReaderService } from './services/apk-zip-reader.service';
 
 @Module({
   imports: [
@@ -34,7 +33,6 @@ import { ApkZipReaderService } from './services/apk-zip-reader.service';
     ApkManifestReaderService,
     ApkResourceReaderService,
     ApkStorageService,
-    ApkZipReaderService,
     {
       provide: APK_PACKAGE_INSPECTION,
       useExisting: ApkIconExtractorService,

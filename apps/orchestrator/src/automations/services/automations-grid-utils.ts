@@ -1,5 +1,6 @@
+import { parseAutomationGridSort } from '@rebroid/automation-core/grid-sort';
 import type {
-  AutomationDto,
+  AutomationSummaryDto,
   ListAutomationsGridQueryDto,
 } from '../dto/automation.dto';
 import type {
@@ -11,7 +12,7 @@ export const tagNames = (value: { tags: { name: string }[] }) =>
   value.tags.map((tag) => tag.name);
 
 export const automationGridFacets = (
-  automations: AutomationDto[],
+  automations: AutomationSummaryDto[],
   targetApplicationIds: string[],
 ) => ({
   tags: [
@@ -34,7 +35,7 @@ export const automationTriggerGridFacets = (
 });
 
 export const matchesAutomationLastRun = (
-  automation: AutomationDto,
+  automation: AutomationSummaryDto,
   filter: ListAutomationsGridQueryDto['lastRun'],
 ) => matchesLastRun(automation.lastRunAt, filter);
 
@@ -43,13 +44,13 @@ export const matchesAutomationTriggerLastRun = (
   filter: ListAutomationTriggersGridQueryDto['lastRun'],
 ) => matchesLastRun(trigger.lastRunAt, filter);
 
-export const filterAutomationGridItems = ({
+export const filterAutomationGridItems = <T extends AutomationSummaryDto>({
   automations,
   lastRun,
   query,
   targetApplicationIdsByAutomation,
 }: {
-  automations: AutomationDto[];
+  automations: T[];
   lastRun: ListAutomationsGridQueryDto['lastRun'];
   query: ListAutomationsGridQueryDto;
   targetApplicationIdsByAutomation: Map<string, Set<string>>;
@@ -120,24 +121,28 @@ export const filterAutomationTriggerGridItems = ({
   });
 };
 
-export const sortAutomationGridItems = (
-  items: AutomationDto[],
+export const sortAutomationGridItems = <T extends AutomationSummaryDto>(
+  items: T[],
   sort?: string,
 ) =>
-  sortGridItems(items, sort, automationGridSortFields, (left, right, id) => {
-    if (id === 'name') return left.name.localeCompare(right.name);
-    if (id === 'lastStatus') {
-      return left.lastStatus.localeCompare(right.lastStatus);
-    }
-    if (id === 'lastRunAt') {
-      return compareNullableDates(left.lastRunAt, right.lastRunAt);
-    }
-    if (id === 'createdAt')
-      return compareDates(left.createdAt, right.createdAt);
-    if (id === 'updatedAt')
-      return compareDates(left.updatedAt, right.updatedAt);
-    return 0;
-  });
+  sortGridItems(
+    items,
+    parseAutomationGridSort(sort, 'workflows'),
+    (left, right, id) => {
+      if (id === 'name') return left.name.localeCompare(right.name);
+      if (id === 'lastStatus') {
+        return left.lastStatus.localeCompare(right.lastStatus);
+      }
+      if (id === 'lastRunAt') {
+        return compareNullableDates(left.lastRunAt, right.lastRunAt);
+      }
+      if (id === 'createdAt')
+        return compareDates(left.createdAt, right.createdAt);
+      if (id === 'updatedAt')
+        return compareDates(left.updatedAt, right.updatedAt);
+      return 0;
+    },
+  );
 
 export const sortAutomationTriggerGridItems = (
   items: AutomationTriggerDto[],
@@ -145,8 +150,7 @@ export const sortAutomationTriggerGridItems = (
 ) =>
   sortGridItems(
     items,
-    sort,
-    automationTriggerGridSortFields,
+    parseAutomationGridSort(sort, 'triggers'),
     (left, right, id) => {
       if (id === 'name') return left.name.localeCompare(right.name);
       if (id === 'enabled') return Number(left.enabled) - Number(right.enabled);
@@ -165,23 +169,6 @@ export const sortAutomationTriggerGridItems = (
     },
   );
 
-const automationGridSortFields = new Set([
-  'name',
-  'lastRunAt',
-  'lastStatus',
-  'createdAt',
-  'updatedAt',
-]);
-
-const automationTriggerGridSortFields = new Set([
-  'name',
-  'enabled',
-  'nextRunAt',
-  'lastRunAt',
-  'lastStatus',
-  'updatedAt',
-]);
-
 const matchesLastRun = (
   lastRunAt: string | null,
   filter:
@@ -199,20 +186,9 @@ const matchesLastRun = (
 
 const sortGridItems = <TItem extends { id: string }>(
   items: TItem[],
-  sort: string | undefined,
-  allowedFields: Set<string>,
+  sorting: ReturnType<typeof parseAutomationGridSort>,
   compare: (left: TItem, right: TItem, id: string) => number,
 ) => {
-  const sorting = (sort || 'updatedAt:desc')
-    .split(',')
-    .map((part) => {
-      const [id, direction] = part.split(':');
-      if (!id || !allowedFields.has(id)) return null;
-      return { id, desc: direction !== 'asc' };
-    })
-    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-    .slice(0, 3);
-
   return [...items].sort((left, right) => {
     for (const sortItem of sorting) {
       const result = compare(left, right, sortItem.id);

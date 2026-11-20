@@ -21,11 +21,13 @@ import {
 import type { FastifyReply } from 'fastify';
 import {
   AutomationDto,
+  AutomationOptionDto,
   AutomationsGridPageDto,
   AutomationValidationDto,
   CreateAutomationDto,
   DraftAutomationYamlDto,
   ListAutomationsGridQueryDto,
+  RunnableAutomationOptionDto,
   UpdateAutomationDto,
   ValidateAutomationYamlDto,
 } from '../dto/automation.dto';
@@ -49,6 +51,7 @@ import {
 import {
   AutomationRunDto,
   AutomationAiRunHistoryDto,
+  ActiveAutomationRunDto,
   ListActiveAutomationRunsQueryDto,
   ListAutomationRunsQueryDto,
   RunAutomationDto,
@@ -188,10 +191,17 @@ export class AutomationsController {
   }
 
   @RequiresFeature('feature.workflows')
-  @Get('runnable')
-  @ApiOkResponse({ type: AutomationDto, isArray: true })
-  listRunnable(@Query('ownerUserId') ownerUserId: string) {
-    return this.automations.list(ownerUserId);
+  @Get('options')
+  @ApiOkResponse({ type: AutomationOptionDto, isArray: true })
+  listOptions(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.listOptions(ownerUserId);
+  }
+
+  @RequiresFeature('feature.workflows')
+  @Get('runnable/options')
+  @ApiOkResponse({ type: RunnableAutomationOptionDto, isArray: true })
+  listRunnableOptions(@Query('ownerUserId') ownerUserId: string) {
+    return this.automations.listRunnableOptions(ownerUserId);
   }
 
   @RequiresFeature('feature.workflows')
@@ -202,7 +212,7 @@ export class AutomationsController {
   }
 
   @Get('runs/active')
-  @ApiOkResponse({ type: AutomationRunDto, isArray: true })
+  @ApiOkResponse({ type: ActiveAutomationRunDto, isArray: true })
   listActiveRuns(@Query() query: ListActiveAutomationRunsQueryDto) {
     return this.automations.listActiveRuns(query.ownerUserId);
   }
@@ -246,21 +256,13 @@ export class AutomationsController {
     return this.automations.cancelRun(ownerUserId, runId);
   }
 
-  @Get('runs/:runId/events')
-  @ApiQuery({ name: 'view', required: false, enum: ['conversation'] })
+  @Get('runs/:runId/events/conversation')
   @ApiOkResponse({ type: AutomationRunEventDto, isArray: true })
-  listRunEvents(
+  listRunConversationEvents(
     @Param('runId') runId: string,
     @Query('ownerUserId') ownerUserId: string,
-    @Query('after') after?: string,
-    @Query('view') view?: string,
   ) {
-    return this.automations.listRunEvents(
-      ownerUserId,
-      runId,
-      after === undefined ? undefined : Number(after),
-      view,
-    );
+    return this.automations.listRunConversationEvents(ownerUserId, runId);
   }
 
   @Get('runs/:runId/events/page')

@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/v1/platform/docker/operation-limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DockerOperationSettingsController_getLimits"];
+        put: operations["DockerOperationSettingsController_updateLimits"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/metrics": {
         parameters: {
             query?: never;
@@ -36,123 +52,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/display-sidecar/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read display sidecar health. */
-        get: operations["DockerSidecarController_health"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read a bounded tail of the display sidecar container logs. */
-        get: operations["DockerSidecarController_logs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/repair": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restart or create the display sidecar. */
-        post: operations["DockerSidecarController_repair"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/sessions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List display sidecar sessions for administration. */
-        get: operations["DockerSidecarController_listSessions"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/sessions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Release one display sidecar session. */
-        delete: operations["DockerSidecarController_releaseSession"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/features": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["FeatureFlagsController_getManifest"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["FeatureFlagsController_update"];
-        trace?: never;
-    };
-    "/api/v1/features/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["FeatureFlagsController_reset"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/settings": {
         parameters: {
             query?: never;
@@ -179,6 +78,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["SettingsController_resetSettings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings/android-rendering": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SettingsController_readAndroidRendering"];
+        put: operations["SettingsController_updateAndroidRendering"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -345,6 +260,140 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/display-sidecar/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read display sidecar health. */
+        get: operations["DockerSidecarController_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/display-sidecar/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a bounded tail of the display sidecar container logs. */
+        get: operations["DockerSidecarController_logs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/display-sidecar/repair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restart or create the display sidecar. */
+        post: operations["DockerSidecarController_repair"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/display-sidecar/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List display sidecar sessions for administration. */
+        get: operations["DockerSidecarController_listSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/display-sidecar/sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke display sessions for the supplied accounts. */
+        post: operations["DockerSidecarController_revokeSessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/display-sidecar/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Release one display sidecar session. */
+        delete: operations["DockerSidecarController_releaseSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FeatureFlagsController_getManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["FeatureFlagsController_update"];
+        trace?: never;
+    };
+    "/api/v1/features/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FeatureFlagsController_reset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/apk-uploads": {
         parameters: {
             query?: never;
@@ -488,6 +537,22 @@ export interface paths {
         put?: never;
         /** Refresh one application state from Docker. */
         post: operations["AndroidAppsController_reconcileOne"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/viewer-runtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AndroidAppsController_getViewerRuntime"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -886,23 +951,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apps/{id}/runtime/snapshot": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read the latest thumbnail for an owned running application. */
-        get: operations["AndroidAppsRuntimeSnapshotController_read"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/apps/{id}/runtime/logs/container": {
         parameters: {
             query?: never;
@@ -946,6 +994,23 @@ export interface paths {
         };
         /** Read recent Android logcat output for a running application. */
         get: operations["AndroidAppsRuntimeController_adbLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apps/{id}/runtime/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the latest thumbnail for an owned running application. */
+        get: operations["AndroidAppsRuntimeSnapshotController_read"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1034,6 +1099,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/automations/ai/run-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listAdHocAiRunHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/automations": {
         parameters: {
             query?: never;
@@ -1066,14 +1147,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/automations/runnable": {
+    "/api/v1/automations/options": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["AutomationsController_listRunnable"];
+        get: operations["AutomationsController_listOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runnable/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunnableOptions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1090,6 +1187,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["AutomationsController_listActiveRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listApplicationWorkflowRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/history/{runId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_getApplicationWorkflowRun"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1130,14 +1259,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/automations/runs/{runId}/events": {
+    "/api/v1/automations/runs/{runId}/events/conversation": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["AutomationsController_listRunEvents"];
+        get: operations["AutomationsController_listRunConversationEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/automations/runs/{runId}/events/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunEventPage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1258,23 +1403,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/container-images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List images available in the container engine. */
-        get: operations["ContainerImagesController_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/platform/container-images/pull": {
         parameters: {
             query?: never;
@@ -1343,25 +1471,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/container-images/recipes/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Read an image build recipe. */
-        get: operations["ContainerImagesController_getRecipe"];
-        put?: never;
-        post?: never;
-        /** Remove an image build recipe. */
-        delete: operations["ContainerImagesController_removeRecipe"];
-        options?: never;
-        head?: never;
-        /** Update an image build recipe. */
-        patch: operations["ContainerImagesController_updateRecipe"];
         trace?: never;
     };
     "/api/v1/platform/container-images/builds": {
@@ -1433,6 +1542,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/container-images/builds/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the latest image build of one kind. */
+        get: operations["ContainerImagesController_getLatestBuild"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/container-images/builds/{id}": {
         parameters: {
             query?: never;
@@ -1462,23 +1588,6 @@ export interface paths {
         /** Cancel an image build job. */
         post: operations["ContainerImagesController_cancelBuild"];
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/container-images/{image}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Remove an image by name or id. */
-        delete: operations["ContainerImagesController_remove"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1902,139 +2011,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/platform/docker/operation-limits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["DockerOperationSettingsController_getLimits"];
-        put: operations["DockerOperationSettingsController_updateLimits"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/ai/run-history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listAdHocAiRunHistory"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runs/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listApplicationWorkflowRuns"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runs/history/{runId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_getApplicationWorkflowRun"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/settings/android-rendering": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["SettingsController_readAndroidRendering"];
-        put: operations["SettingsController_updateAndroidRendering"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/platform/display-sidecar/sessions/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revoke display sessions for the supplied accounts. */
-        post: operations["DockerSidecarController_revokeSessions"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/apps/{id}/viewer-runtime": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AndroidAppsController_getViewerRuntime"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/automations/runs/{runId}/events/page": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["AutomationsController_listRunEventPage"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        DockerOperationLimitsDto: {
+            maxConcurrentReads: number;
+            maxConcurrentLongOperations: number;
+            slowRequestWarningMs: number;
+            longOperationTimeoutMs: number;
+        };
         DockerMetricsLimitsDto: {
             maxConcurrentReads: number;
             maxConcurrentLongOperations: number;
@@ -2088,85 +2074,11 @@ export interface components {
             operations: components["schemas"]["DockerMetricsOperationDto"][];
             events: components["schemas"]["DockerMetricsEventDto"][];
         };
-        ServiceHealthDto: {
-            ok: boolean;
+        AndroidRenderingSettingsDto: {
             /** @enum {string} */
-            status: "healthy" | "unhealthy" | "offline" | "disabled";
-            message: string;
-            details?: {
-                [key: string]: unknown;
-            };
-        };
-        DockerSidecarLogTailDto: {
-            output: string;
-            lineLimit: number;
-            truncated: boolean;
-        };
-        DockerSidecarAdminSessionDto: {
-            id: string;
-            applicationId: string | null;
-            ownerUserId: string | null;
-            /** @enum {string} */
-            status: "created" | "active" | "released" | "expired";
-            createdAt: string;
-            lastActivityAt: string;
-            expiresAt: string;
-            capabilities: string[];
-        };
-        FeatureFlagStateDto: {
-            /**
-             * @example feature.ocr
-             * @enum {string}
-             */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
-            /** @enum {string} */
-            owner: "automations" | "network-policy" | "container-images" | "display" | "android-apps";
-            /** @example 3 */
-            revision: number;
-            /** @example OCR-backed automation perception. */
-            description: string;
-            /** @enum {string} */
-            control: "runtime" | "deployment";
-            /** @example true */
-            mutable: boolean;
-            /** @example true */
-            enabled: boolean;
-            /** @example true */
-            supported: boolean;
-            /** @example true */
-            effective: boolean;
-            /** @enum {string} */
-            syncStatus: "applied" | "pending" | "restart_required" | "failed";
-            /** @enum {string} */
-            disablePolicy: "block_new" | "drain_active" | "stop_active" | "restart_required";
-            /** @enum {string} */
-            lifecycle: "permanent" | "rollout";
-            removalCondition: string | null;
-            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
-            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
-        };
-        FeatureFlagManifestDto: {
-            /** @example 3 */
-            revision: number;
-            features: components["schemas"]["FeatureFlagStateDto"][];
-        };
-        FeatureFlagChangeDto: {
-            /**
-             * @example feature.ocr
-             * @enum {string}
-             */
-            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
-            /** @example false */
-            enabled: boolean;
-        };
-        UpdateFeatureFlagsDto: {
-            /** @example 3 */
-            revision: number;
-            changes: components["schemas"]["FeatureFlagChangeDto"][];
-        };
-        ResetFeatureFlagsDto: {
-            /** @example 3 */
-            revision: number;
+            mode: "software" | "host";
+            /** @example /dev/dri/renderD128 */
+            renderDevice: string | null;
         };
         OcrServiceSettingsDto: {
             /**
@@ -2477,6 +2389,92 @@ export interface components {
             serverFlavor?: "auto" | "openai" | "llama-cpp" | "lemonade" | "ollama";
             models: components["schemas"]["AutomationAiProviderModelDto"][];
         };
+        ServiceHealthDto: {
+            ok: boolean;
+            /** @enum {string} */
+            status: "healthy" | "unhealthy" | "offline" | "disabled";
+            message: string;
+            details?: {
+                [key: string]: unknown;
+            };
+        };
+        DockerSidecarLogTailDto: {
+            output: string;
+            lineLimit: number;
+            truncated: boolean;
+        };
+        DockerSidecarAdminSessionDto: {
+            id: string;
+            applicationId: string | null;
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "created" | "active" | "released" | "expired";
+            createdAt: string;
+            lastActivityAt: string;
+            expiresAt: string;
+            capabilities: string[];
+        };
+        RevokeDockerSidecarSessionsDto: {
+            ownerUserIds: string[];
+        };
+        DockerSidecarSessionRevocationDto: {
+            released: number;
+        };
+        FeatureFlagStateDto: {
+            /**
+             * @example feature.ocr
+             * @enum {string}
+             */
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
+            /** @enum {string} */
+            owner: "automations" | "network-policy" | "container-images" | "display" | "android-apps";
+            /** @example 3 */
+            revision: number;
+            /** @example OCR-backed automation perception. */
+            description: string;
+            /** @enum {string} */
+            control: "runtime" | "deployment";
+            /** @example true */
+            mutable: boolean;
+            /** @example true */
+            enabled: boolean;
+            /** @example true */
+            supported: boolean;
+            /** @example true */
+            effective: boolean;
+            /** @enum {string} */
+            syncStatus: "applied" | "pending" | "restart_required" | "failed";
+            /** @enum {string} */
+            disablePolicy: "block_new" | "drain_active" | "stop_active" | "restart_required";
+            /** @enum {string} */
+            lifecycle: "permanent" | "rollout";
+            removalCondition: string | null;
+            dependencies: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
+            conflicts: ("feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc")[];
+        };
+        FeatureFlagManifestDto: {
+            /** @example 3 */
+            revision: number;
+            features: components["schemas"]["FeatureFlagStateDto"][];
+        };
+        FeatureFlagChangeDto: {
+            /**
+             * @example feature.ocr
+             * @enum {string}
+             */
+            key: "feature.ocr" | "feature.firewall" | "feature.image-builder" | "feature.display-virtual" | "feature.ai" | "feature.workflows" | "feature.resource-quota" | "feature.display-webrtc";
+            /** @example false */
+            enabled: boolean;
+        };
+        UpdateFeatureFlagsDto: {
+            /** @example 3 */
+            revision: number;
+            changes: components["schemas"]["FeatureFlagChangeDto"][];
+        };
+        ResetFeatureFlagsDto: {
+            /** @example 3 */
+            revision: number;
+        };
         GooglePlayServicesAnalysisDto: {
             /** @enum {string} */
             verdict: "required" | "likely" | "not_detected" | "unknown";
@@ -2688,6 +2686,12 @@ export interface components {
             /** @enum {string} */
             outcome: "updated" | "unchanged" | "unavailable";
             message?: string;
+        };
+        AndroidApplicationViewerRuntimeDto: {
+            ownerUserId: string | null;
+            /** @enum {string} */
+            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
+            containerId: string | null;
         };
         UpdateAndroidApplicationDto: {
             /** @example Signal Android */
@@ -2929,6 +2933,14 @@ export interface components {
             /** @example container log output... */
             output: string;
         };
+        ApplicationRuntimeSnapshotDto: {
+            /** @enum {string} */
+            mimeType: "image/webp";
+            /** @example data:image/webp;base64,UklGRg== */
+            dataUrl: string;
+            /** Format: date-time */
+            capturedAt: string;
+        };
         AutomationCommandDto: {
             /** @example android.viewerCommand */
             uses: string;
@@ -3100,9 +3112,9 @@ export interface components {
             createdAt: string;
             /** @description Request ID recorded for a failed service request. */
             failureRequestId?: string;
-            updatedAt: string;
             /** @description Code recorded for a failed run. */
             failureCode?: string;
+            updatedAt: string;
         };
         AiPromptSuggestionContextEventDto: {
             /** @example ai.plan.proposed */
@@ -3142,40 +3154,6 @@ export interface components {
         AiPromptSuggestionsDto: {
             suggestions: components["schemas"]["AiPromptSuggestionDto"][];
         };
-        AutomationDto: {
-            id: string;
-            ownerUserId: string;
-            name: string;
-            description: string | null;
-            tags: components["schemas"]["AutomationTagDto"][];
-            definition: components["schemas"]["AutomationDefinitionDto"];
-            yaml: string;
-            lastRunAt: string | null;
-            lastRunId: string | null;
-            /** @enum {string} */
-            lastStatus: "never_run" | "success" | "failed" | "running";
-            lastError: string | null;
-            createdAt: string;
-            updatedAt: string;
-        };
-        AutomationsGridFacetsDto: {
-            tags: string[];
-            targetApplicationIds: string[];
-        };
-        AutomationsGridPageDto: {
-            items: components["schemas"]["AutomationDto"][];
-            total: number;
-            page: number;
-            pageSize: number;
-            facets: components["schemas"]["AutomationsGridFacetsDto"];
-        };
-        CreateAutomationDto: {
-            /** @example user_123 */
-            ownerUserId: string;
-            /** @description YAML automation definition. Required unless definition is supplied. */
-            yaml?: string;
-            definition?: components["schemas"]["AutomationDefinitionDto"];
-        };
         AutomationRunEventDto: {
             id: string;
             runId: string;
@@ -3187,6 +3165,125 @@ export interface components {
             message: string;
             data: Record<string, never>;
             createdAt: string;
+        };
+        AutomationAiRunHistoryDto: {
+            run: components["schemas"]["AutomationRunDto"];
+            events: components["schemas"]["AutomationRunEventDto"][];
+        };
+        AutomationDto: {
+            id: string;
+            ownerUserId: string;
+            name: string;
+            description: string | null;
+            tags: components["schemas"]["AutomationTagDto"][];
+            lastRunAt: string | null;
+            lastRunId: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed" | "running";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+            definition: components["schemas"]["AutomationDefinitionDto"];
+            yaml: string;
+        };
+        AutomationGridRowDto: {
+            id: string;
+            ownerUserId: string;
+            name: string;
+            description: string | null;
+            tags: components["schemas"]["AutomationTagDto"][];
+            lastRunAt: string | null;
+            lastRunId: string | null;
+            /** @enum {string} */
+            lastStatus: "never_run" | "success" | "failed" | "running";
+            lastError: string | null;
+            createdAt: string;
+            updatedAt: string;
+            stepCount: number;
+            targetApplicationIds: string[];
+        };
+        AutomationsGridFacetsDto: {
+            tags: string[];
+            targetApplicationIds: string[];
+        };
+        AutomationsGridPageDto: {
+            items: components["schemas"]["AutomationGridRowDto"][];
+            total: number;
+            page: number;
+            pageSize: number;
+            facets: components["schemas"]["AutomationsGridFacetsDto"];
+        };
+        AutomationOptionDto: {
+            id: string;
+            name: string;
+            description: string | null;
+            tags: components["schemas"]["AutomationTagDto"][];
+            topLevelStepCount: number;
+        };
+        RunnableAutomationOptionDto: {
+            id: string;
+            name: string;
+        };
+        CreateAutomationDto: {
+            /** @example user_123 */
+            ownerUserId: string;
+            /** @description YAML automation definition. Required unless definition is supplied. */
+            yaml?: string;
+            definition?: components["schemas"]["AutomationDefinitionDto"];
+        };
+        ActiveAutomationRunDto: {
+            id: string;
+            automationId: string;
+            targetApplicationId: string;
+            /** @enum {string} */
+            status: "queued" | "running";
+            createdAt: string;
+            workflowName: string | null;
+        };
+        ApplicationWorkflowRunRowDto: {
+            id: string;
+            automationId: string;
+            /** @enum {string} */
+            trigger: "manual" | "schedule";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            createdAt: string;
+            automationName: string | null;
+        };
+        ApplicationWorkflowRunPageDto: {
+            items: components["schemas"]["ApplicationWorkflowRunRowDto"][];
+            total: number;
+            pageSize: number;
+        };
+        ApplicationWorkflowRunDto: {
+            id: string;
+            automationId: string;
+            automationTriggerId: string | null;
+            ownerUserId: string;
+            targetApplicationId: string;
+            targetProfileMode: string | null;
+            targetProfileName: string | null;
+            /** @enum {string} */
+            trigger: "manual" | "schedule";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            stepResults: components["schemas"]["AutomationStepResultDto"][];
+            error: string | null;
+            createdAt: string;
+            /** @description Request ID recorded for a failed service request. */
+            failureRequestId?: string;
+            /** @description Code recorded for a failed run. */
+            failureCode?: string;
+            updatedAt: string;
+            automationName: string | null;
+        };
+        AutomationRunEventPageDto: {
+            events: components["schemas"]["AutomationRunEventDto"][];
+            nextAfter: number | null;
         };
         AutomationRunEventStreamTokenDto: {
             token: string;
@@ -3254,6 +3351,12 @@ export interface components {
             triggerType: "schedule";
             triggerConfig: components["schemas"]["AutomationScheduleTriggerConfigDto"];
         };
+        UpdateAutomationScheduleTriggerConfigDto: {
+            /** @example 0 9 * * * */
+            cronExpression?: string;
+            /** @enum {string} */
+            startPolicy?: "require-running" | "start-if-needed";
+        };
         UpdateAutomationTriggerDto: {
             /** @example user_123 */
             ownerUserId?: string;
@@ -3271,7 +3374,8 @@ export interface components {
             tags?: components["schemas"]["AutomationTagDto"][];
             /** @enum {string} */
             triggerType?: "schedule";
-            triggerConfig?: components["schemas"]["AutomationScheduleTriggerConfigDto"];
+            /** @description Omitted schedule settings retain their current values. */
+            triggerConfig?: components["schemas"]["UpdateAutomationScheduleTriggerConfigDto"];
         };
         RunAutomationDto: {
             /** @example user_123 */
@@ -3363,26 +3467,6 @@ export interface components {
              */
             signatureSpoofing: "not_applicable" | "external_required" | "present_unverified" | "verified";
             dockerfile: string;
-            contextFileIds?: string[];
-        };
-        UpdateContainerImageRecipeDto: {
-            /** @example Redroid 14 microG overlay */
-            name?: string;
-            /** @example local/redroid-microg:14 */
-            targetImage?: string;
-            /** @example redroid/redroid:14.0.0-latest */
-            baseImage?: string;
-            /** @enum {string} */
-            runtimeKind?: "redroid" | "generic";
-            /** @example 14 */
-            androidVersion?: string | null;
-            /** @example amd64 */
-            architecture?: string | null;
-            /** @enum {string} */
-            gmsMode?: "none" | "microg" | "gapps";
-            /** @enum {string} */
-            signatureSpoofing?: "not_applicable" | "external_required" | "present_unverified" | "verified";
-            dockerfile?: string;
             contextFileIds?: string[];
         };
         ContainerImageBuildJob: {
@@ -3489,6 +3573,9 @@ export interface components {
             dockerfile: string;
             contextFileIds?: string[];
             recipeId?: string;
+        };
+        LatestContainerImageBuildDto: {
+            job: components["schemas"]["ContainerImageBuildJob"] | null;
         };
         DockerPlatformContainerPortDto: {
             privatePort: number;
@@ -3741,87 +3828,6 @@ export interface components {
             ocr: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
         };
-        DockerOperationLimitsDto: {
-            maxConcurrentReads: number;
-            maxConcurrentLongOperations: number;
-            slowRequestWarningMs: number;
-            longOperationTimeoutMs: number;
-        };
-        AutomationAiRunHistoryDto: {
-            run: components["schemas"]["AutomationRunDto"];
-            events: components["schemas"]["AutomationRunEventDto"][];
-        };
-        ApplicationWorkflowRunDto: {
-            id: string;
-            automationId: string;
-            automationTriggerId: string | null;
-            ownerUserId: string;
-            targetApplicationId: string;
-            targetProfileMode: string | null;
-            targetProfileName: string | null;
-            /** @enum {string} */
-            trigger: "manual" | "schedule";
-            /** @enum {string} */
-            status: "queued" | "running" | "success" | "failed" | "canceled";
-            startedAt: string | null;
-            completedAt: string | null;
-            stepResults: components["schemas"]["AutomationStepResultDto"][];
-            error: string | null;
-            createdAt: string;
-            /** @description Request ID recorded for a failed service request. */
-            failureRequestId?: string;
-            updatedAt: string;
-            automationName: string | null;
-            /** @description Code recorded for a failed run. */
-            failureCode?: string;
-        };
-        ApplicationWorkflowRunRowDto: {
-            id: string;
-            automationId: string;
-            /** @enum {string} */
-            trigger: "manual" | "schedule";
-            /** @enum {string} */
-            status: "queued" | "running" | "success" | "failed" | "canceled";
-            startedAt: string | null;
-            completedAt: string | null;
-            createdAt: string;
-            automationName: string | null;
-        };
-        ApplicationWorkflowRunPageDto: {
-            items: components["schemas"]["ApplicationWorkflowRunRowDto"][];
-            total: number;
-            pageSize: number;
-        };
-        AndroidRenderingSettingsDto: {
-            /** @enum {string} */
-            mode: "software" | "host";
-            /** @example /dev/dri/renderD128 */
-            renderDevice: string | null;
-        };
-        RevokeDockerSidecarSessionsDto: {
-            ownerUserIds: string[];
-        };
-        DockerSidecarSessionRevocationDto: {
-            released: number;
-        };
-        AndroidApplicationViewerRuntimeDto: {
-            ownerUserId: string | null;
-            /** @enum {string} */
-            status: "provisioning" | "running" | "stopped" | "error" | "removing" | "removed";
-            containerId: string | null;
-        };
-        ApplicationRuntimeSnapshotDto: {
-            /** @enum {string} */
-            mimeType: "image/webp";
-            /** @example data:image/webp;base64,UklGRg== */
-            dataUrl: string;
-            /** Format: date-time */
-            capturedAt: string;
-        };
-        AutomationRunEventPageDto: {
-            events: components["schemas"]["AutomationRunEventDto"][];
-            nextAfter: number | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -3831,6 +3837,48 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    DockerOperationSettingsController_getLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerOperationLimitsDto"];
+                };
+            };
+        };
+    };
+    DockerOperationSettingsController_updateLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DockerOperationLimitsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerOperationLimitsDto"];
+                };
+            };
+        };
+    };
     MetricsController_read: {
         parameters: {
             query?: never;
@@ -3863,177 +3911,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockerMetricsSnapshotDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_health: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServiceHealthDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_logs: {
-        parameters: {
-            query?: {
-                expanded?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarLogTailDto"];
-                };
-            };
-            /** @description The container log tail exceeds the read limit. */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    DockerSidecarController_repair: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ServiceHealthDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_listSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"][];
-                };
-            };
-        };
-    };
-    DockerSidecarController_releaseSession: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"];
-                };
-            };
-        };
-    };
-    FeatureFlagsController_getManifest: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
-                };
-            };
-        };
-    };
-    FeatureFlagsController_update: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateFeatureFlagsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
-                };
-            };
-        };
-    };
-    FeatureFlagsController_reset: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResetFeatureFlagsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
                 };
             };
         };
@@ -4095,6 +3972,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorSettingsDto"];
+                };
+            };
+        };
+    };
+    SettingsController_readAndroidRendering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
+                };
+            };
+        };
+    };
+    SettingsController_updateAndroidRendering: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
                 };
             };
         };
@@ -4386,6 +4305,200 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationAiModelCatalogProviderDto"][];
+                };
+            };
+        };
+    };
+    DockerSidecarController_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceHealthDto"];
+                };
+            };
+        };
+    };
+    DockerSidecarController_logs: {
+        parameters: {
+            query?: {
+                expanded?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarLogTailDto"];
+                };
+            };
+            /** @description The container log tail exceeds the read limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DockerSidecarController_repair: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceHealthDto"];
+                };
+            };
+        };
+    };
+    DockerSidecarController_listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"][];
+                };
+            };
+        };
+    };
+    DockerSidecarController_revokeSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeDockerSidecarSessionsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarSessionRevocationDto"];
+                };
+            };
+        };
+    };
+    DockerSidecarController_releaseSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockerSidecarAdminSessionDto"];
+                };
+            };
+        };
+    };
+    FeatureFlagsController_getManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
+                };
+            };
+        };
+    };
+    FeatureFlagsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeatureFlagsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
+                };
+            };
+        };
+    };
+    FeatureFlagsController_reset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetFeatureFlagsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagManifestDto"];
                 };
             };
         };
@@ -4714,6 +4827,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AndroidAppRuntimeReconciliationDto"];
+                };
+            };
+        };
+    };
+    AndroidAppsController_getViewerRuntime: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AndroidApplicationViewerRuntimeDto"];
                 };
             };
         };
@@ -5489,37 +5623,6 @@ export interface operations {
             };
         };
     };
-    AndroidAppsRuntimeSnapshotController_read: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Authenticated account ID supplied by the trusted web service. */
-                "x-rebroid-snapshot-owner": string;
-            };
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationRuntimeSnapshotDto"];
-                };
-            };
-            /** @description The application snapshot is unavailable. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     AndroidAppsRuntimeController_containerLogs: {
         parameters: {
             query: {
@@ -5586,6 +5689,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApplicationLogDto"];
                 };
+            };
+        };
+    };
+    AndroidAppsRuntimeSnapshotController_read: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Authenticated account ID supplied by the trusted web service. */
+                "x-rebroid-snapshot-owner": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationRuntimeSnapshotDto"];
+                };
+            };
+            /** @description The application snapshot is unavailable. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5742,6 +5876,29 @@ export interface operations {
             };
         };
     };
+    AutomationsController_listAdHocAiRunHistory: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+                limit?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationAiRunHistoryDto"][];
+                };
+            };
+        };
+    };
     AutomationsController_list: {
         parameters: {
             query: {
@@ -5815,7 +5972,7 @@ export interface operations {
             };
         };
     };
-    AutomationsController_listRunnable: {
+    AutomationsController_listOptions: {
         parameters: {
             query: {
                 ownerUserId: string;
@@ -5831,7 +5988,28 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationDto"][];
+                    "application/json": components["schemas"]["AutomationOptionDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunnableOptions: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunnableAutomationOptionDto"][];
                 };
             };
         };
@@ -5852,7 +6030,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AutomationRunDto"][];
+                    "application/json": components["schemas"]["ActiveAutomationRunDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_listApplicationWorkflowRuns: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+                page?: number;
+                pageSize?: number;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationWorkflowRunPageDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_getApplicationWorkflowRun: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                targetApplicationId: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationWorkflowRunDto"];
                 };
             };
         };
@@ -5903,12 +6130,10 @@ export interface operations {
             };
         };
     };
-    AutomationsController_listRunEvents: {
+    AutomationsController_listRunConversationEvents: {
         parameters: {
             query: {
                 ownerUserId: string;
-                after: string;
-                view?: "conversation";
             };
             header?: never;
             path: {
@@ -5924,6 +6149,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AutomationRunEventDto"][];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunEventPage: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                after?: string;
+            };
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunEventPageDto"];
                 };
             };
         };
@@ -6243,24 +6492,6 @@ export interface operations {
             };
         };
     };
-    ContainerImagesController_list: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Container engine image summaries. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     ContainerImagesController_pull: {
         parameters: {
             query?: never;
@@ -6392,71 +6623,6 @@ export interface operations {
             };
         };
     };
-    ContainerImagesController_getRecipe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ContainerImageBuildRecipe"];
-                };
-            };
-        };
-    };
-    ContainerImagesController_removeRecipe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    ContainerImagesController_updateRecipe: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateContainerImageRecipeDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ContainerImageBuildRecipe"];
-                };
-            };
-        };
-    };
     ContainerImagesController_listBuilds: {
         parameters: {
             query?: never;
@@ -6560,6 +6726,27 @@ export interface operations {
             };
         };
     };
+    ContainerImagesController_getLatestBuild: {
+        parameters: {
+            query: {
+                buildKind: "dockerfile_overlay" | "redroid_gapps_patch";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LatestContainerImageBuildDto"];
+                };
+            };
+        };
+    };
     ContainerImagesController_getBuild: {
         parameters: {
             query?: never;
@@ -6599,28 +6786,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ContainerImageBuildJob"];
                 };
-            };
-        };
-    };
-    ContainerImagesController_remove: {
-        parameters: {
-            query?: {
-                force?: boolean;
-            };
-            header?: never;
-            path: {
-                /** @description URL-encoded image name or id. Example: redroid%2Fredroid%3A13.0.0-latest */
-                image: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -7254,230 +7419,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
-                };
-            };
-        };
-    };
-    DockerOperationSettingsController_getLimits: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerOperationLimitsDto"];
-                };
-            };
-        };
-    };
-    DockerOperationSettingsController_updateLimits: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DockerOperationLimitsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerOperationLimitsDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listAdHocAiRunHistory: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                targetApplicationId: string;
-                limit?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationAiRunHistoryDto"][];
-                };
-            };
-        };
-    };
-    AutomationsController_listApplicationWorkflowRuns: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                targetApplicationId: string;
-                page?: number;
-                pageSize?: number;
-                q?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationWorkflowRunPageDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_getApplicationWorkflowRun: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                targetApplicationId: string;
-            };
-            header?: never;
-            path: {
-                runId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationWorkflowRunDto"];
-                };
-            };
-        };
-    };
-    SettingsController_readAndroidRendering: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
-                };
-            };
-        };
-    };
-    SettingsController_updateAndroidRendering: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidRenderingSettingsDto"];
-                };
-            };
-        };
-    };
-    DockerSidecarController_revokeSessions: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RevokeDockerSidecarSessionsDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DockerSidecarSessionRevocationDto"];
-                };
-            };
-        };
-    };
-    AndroidAppsController_getViewerRuntime: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AndroidApplicationViewerRuntimeDto"];
-                };
-            };
-        };
-    };
-    AutomationsController_listRunEventPage: {
-        parameters: {
-            query: {
-                ownerUserId: string;
-                after?: string;
-            };
-            header?: never;
-            path: {
-                runId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AutomationRunEventPageDto"];
                 };
             };
         };

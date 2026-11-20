@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  visitAutomationSteps,
+  type AutomationDefinition,
+  type AutomationDefinitionStep,
+} from '@rebroid/automation-core/definition';
+import {
+  AutomationOptionDto,
   AutomationsGridPageDto,
   ListAutomationsGridQueryDto,
+  RunnableAutomationOptionDto,
 } from '../dto/automation.dto';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
@@ -32,6 +39,27 @@ export class AutomationsQueryService {
     );
   }
 
+  async listOptions(ownerUserId: string): Promise<AutomationOptionDto[]> {
+    const automations = await this.automations.listByOwner(ownerUserId);
+    return automations.map(({ id, name, description, definitionJson }) => {
+      const definition = JSON.parse(definitionJson) as AutomationDefinition;
+      return {
+        id,
+        name,
+        description,
+        tags: definition.metadata.tags ?? [],
+        topLevelStepCount: definition.spec.steps.length,
+      };
+    });
+  }
+
+  async listRunnableOptions(
+    ownerUserId: string,
+  ): Promise<RunnableAutomationOptionDto[]> {
+    const automations = await this.automations.listNamesByOwner(ownerUserId);
+    return automations.map(({ id, name }) => ({ id, name }));
+  }
+
   async listGrid(
     query: ListAutomationsGridQueryDto,
   ): Promise<AutomationsGridPageDto> {
@@ -56,15 +84,25 @@ export class AutomationsQueryService {
       targetApplicationIdsByAutomation.set(trigger.automationId, appIds);
     }
 
-    const automationDtos = automations.map((automation) =>
-      this.mapper.automation(automation, latestRuns.get(automation.id)),
-    );
+    const rows = automations.map((automation) => {
+      const definition = JSON.parse(
+        automation.definitionJson,
+      ) as AutomationDefinition;
+      return {
+        ...this.mapper.automationSummary(
+          automation,
+          definition.metadata.tags ?? [],
+          latestRuns.get(automation.id),
+        ),
+        steps: definition.spec.steps,
+      };
+    });
     const facets = automationGridFacets(
-      automationDtos,
+      rows,
       triggers.map((trigger) => trigger.targetApplicationId),
     );
     const filtered = filterAutomationGridItems({
-      automations: automationDtos,
+      automations: rows,
       lastRun: query.lastRun ?? 'all',
       query,
       targetApplicationIdsByAutomation,
@@ -73,7 +111,15 @@ export class AutomationsQueryService {
     const sorted = sortAutomationGridItems(filtered, query.sort);
     const offset = (page - 1) * pageSize;
     return {
-      items: sorted.slice(offset, offset + pageSize),
+      items: sorted
+        .slice(offset, offset + pageSize)
+        .map(({ steps, ...summary }) => ({
+          ...summary,
+          stepCount: countAutomationSteps(steps),
+          targetApplicationIds: Array.from(
+            targetApplicationIdsByAutomation.get(summary.id) ?? [],
+          ),
+        })),
       total: sorted.length,
       page,
       pageSize,
@@ -97,3 +143,11 @@ export class AutomationsQueryService {
     return automation;
   }
 }
+
+const countAutomationSteps = (steps: AutomationDefinitionStep[]) => {
+  let count = 0;
+  visitAutomationSteps(steps, () => {
+    count += 1;
+  });
+  return count;
+};

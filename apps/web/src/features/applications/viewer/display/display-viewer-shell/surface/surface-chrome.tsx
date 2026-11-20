@@ -15,10 +15,10 @@ import { Visible } from '@/components/ui/visible'
 import { ViewerActionBar } from '@/features/applications/viewer/components/viewer-action-bar'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { cn } from '@/lib/utils'
-import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import type { ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
-const streamStatusLabel = (status: DisplayViewerStreamStatus) => {
+const streamStatusLabel = (status: ViewerStreamStatus) => {
   if (status.code === 'audio-disabled') {
     return 'Audio disabled'
   }
@@ -31,7 +31,7 @@ const streamStatusLabel = (status: DisplayViewerStreamStatus) => {
   return 'Stream issue'
 }
 
-export const StreamStatusIndicator = ({ status }: { status: DisplayViewerStreamStatus }) => {
+export const StreamStatusIndicator = ({ status }: { status: ViewerStreamStatus }) => {
   const isInfo = status.severity === 'info'
   const Icon = isInfo ? IconInfoCircle : IconAlertTriangle
 
@@ -68,7 +68,7 @@ export const SurfaceChrome = ({
   actions?: ReactNode
   isClosing: boolean
   isFullscreen: boolean
-  streamStatus?: DisplayViewerStreamStatus
+  streamStatus?: ViewerStreamStatus
   surface: DisplayViewerSurface
   onClose: () => void
   onOpenPopout: () => void

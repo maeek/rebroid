@@ -1,10 +1,7 @@
-export type DisplayFrameSize = { width: number; height: number };
-
-export type DisplaySizePresentation = {
-  previous: DisplayFrameSize;
-  current: DisplayFrameSize;
-  elapsedMs?: number;
-};
+import type {
+  DisplayFrameSize,
+  DisplaySizePresentation,
+} from "@rebroid/android-application-core/viewer-stream";
 
 const sameSize = (a: DisplayFrameSize, b: DisplayFrameSize) =>
   a.width === b.width && a.height === b.height;

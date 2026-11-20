@@ -7,26 +7,6 @@ export interface PreparedUiXml {
 const UI_XML_MAX_CHARS = 80_000;
 const PROVIDER_ERROR_MAX_CHARS = 500;
 const EVENT_STRING_MAX_CHARS = 4_000;
-const SANITIZE_MAX_DEPTH = 4;
-const REDACTED_BINARY = '[redacted binary data]';
-
-const sensitiveDataKeys = new Set([
-  'apiKey',
-  'apikey',
-  'authorization',
-  'base64',
-  'contentBase64',
-  'contentbase64',
-  'dataUrl',
-  'dataurl',
-  'image',
-  'imageUrl',
-  'imageurl',
-  'password',
-  'secret',
-  'token',
-]);
-
 export const prepareUiXml = (xml: string): PreparedUiXml => {
   const normalized = xml.trim();
   const truncated = normalized.length > UI_XML_MAX_CHARS;
@@ -51,74 +31,10 @@ export const sanitizeAiText = (
   return `${text.slice(0, maxLength)}... [truncated ${text.length - maxLength} chars]`;
 };
 
-export const sanitizeAiDataForEvent = (value: unknown) =>
-  sanitizeAiData(value, EVENT_STRING_MAX_CHARS);
-
 export const providerErrorDetailFromText = (text: string) => {
   if (!text.trim()) return '';
   const detail = providerErrorTextFromBody(text);
   return sanitizeAiText(redactAiSecrets(detail), PROVIDER_ERROR_MAX_CHARS);
-};
-
-export const isImageInputUnsupportedProviderMessage = (message: string) => {
-  const normalized = message.toLowerCase();
-  return (
-    (normalized.includes('image') ||
-      normalized.includes('vision') ||
-      normalized.includes('multimodal') ||
-      normalized.includes('media')) &&
-    (normalized.includes('not support') ||
-      normalized.includes('unsupported') ||
-      normalized.includes('invalid') ||
-      normalized.includes('bad request'))
-  );
-};
-
-const sanitizeAiData = (
-  value: unknown,
-  maxStringLength: number,
-  depth = 0,
-): unknown => {
-  if (typeof value === 'string') {
-    return sanitizeAiText(value, maxStringLength);
-  }
-  if (
-    value === null ||
-    typeof value === 'number' ||
-    typeof value === 'boolean'
-  ) {
-    return value;
-  }
-  if (value === undefined) return null;
-  if (depth >= SANITIZE_MAX_DEPTH) return '[truncated object]';
-  if (Array.isArray(value)) {
-    return value
-      .slice(0, 50)
-      .map((item) => sanitizeAiData(item, maxStringLength, depth + 1));
-  }
-  if (typeof value !== 'object') {
-    return sanitizeAiText(value, maxStringLength);
-  }
-
-  const output: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (shouldRedactKey(key)) {
-      output[key] = REDACTED_BINARY;
-      continue;
-    }
-    output[key] = sanitizeAiData(item, maxStringLength, depth + 1);
-  }
-  return output;
-};
-
-const shouldRedactKey = (key: string) => {
-  const normalized = key.toLowerCase();
-  return (
-    sensitiveDataKeys.has(key) ||
-    sensitiveDataKeys.has(normalized) ||
-    normalized.endsWith('base64') ||
-    normalized.endsWith('dataurl')
-  );
 };
 
 const providerErrorTextFromBody = (text: string) => {

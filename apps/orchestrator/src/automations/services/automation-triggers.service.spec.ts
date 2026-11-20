@@ -1,9 +1,10 @@
 import { Test } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
+import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { CreateAutomationTriggerDto } from '../dto/automation-trigger.dto';
 import {
+  AutomationStartPolicy,
   AutomationTrigger,
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
@@ -18,8 +19,8 @@ import { AutomationsDtoMapper } from './automations-dto-mapper.service';
 import { AutomationsQueryService } from './automations-query.service';
 import { AutomationTriggersService } from './automation-triggers.service';
 
-describe('trigger descriptions', () => {
-  let database: DataSource;
+describe('trigger configuration', () => {
+  let database: SerializedSqliteDataSource;
   let service: AutomationTriggersService;
   const assertOwnerAccess = jest.fn();
   const getEntity = jest.fn();
@@ -36,7 +37,7 @@ describe('trigger descriptions', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    database = await new DataSource({
+    database = await new SerializedSqliteDataSource({
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [AutomationTrigger],
@@ -54,7 +55,7 @@ describe('trigger descriptions', () => {
         },
         {
           provide: AutomationsRepository,
-          useValue: { listByOwner: jest.fn().mockResolvedValue([]) },
+          useValue: { listNamesByOwner: jest.fn().mockResolvedValue([]) },
         },
         { provide: AutomationRunnerService, useValue: {} },
         {
@@ -80,6 +81,32 @@ describe('trigger descriptions', () => {
       ],
     }).compile();
     service = module.get(AutomationTriggersService);
+  });
+
+  it('merges concurrent cron and start-policy edits with other trigger changes', async () => {
+    const created = await service.create({
+      ...input,
+      triggerConfig: {
+        cronExpression: '0 8 1 * 1',
+        startPolicy: AutomationStartPolicy.StartIfNeeded,
+      },
+    });
+    await Promise.all([
+      service.update('owner', created.id, {
+        triggerConfig: { cronExpression: '0 14 1 * 2' },
+      }),
+      service.update('owner', created.id, {
+        triggerConfig: { startPolicy: AutomationStartPolicy.RequireRunning },
+      }),
+      service.update('owner', created.id, { name: 'Renamed' }),
+    ]);
+    await expect(service.get('owner', created.id)).resolves.toMatchObject({
+      name: 'Renamed',
+      triggerConfig: {
+        cronExpression: '0 14 1 * 2',
+        startPolicy: AutomationStartPolicy.RequireRunning,
+      },
+    });
   });
 
   afterEach(async () => {

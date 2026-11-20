@@ -101,14 +101,27 @@ describe('AppModule', () => {
     await app.init();
 
     const runs = app.get(AutomationRunsRepository);
-    const events = app.get(AutomationRunEventsRepository);
     const recovered = await runs.findByOwnerAndId('owner', 'run');
     expect(recovered).toMatchObject({ status: 'failed', lastEventSequence: 2 });
     expect(JSON.parse(recovered?.stepResultsJson ?? 'null')).toEqual(results);
-    await expect(events.listForRun('owner', 'run')).resolves.toMatchObject([
+    const route = '/api/v1/automations/runs/run/events/conversation';
+    const headers = { 'x-orchestrator-secret': 'test-secret' };
+    const conversation = await app.inject({
+      method: 'GET',
+      url: `${route}?ownerUserId=owner`,
+      headers,
+    });
+    expect(conversation.statusCode).toBe(200);
+    expect(conversation.json()).toMatchObject([
       { sequence: 1, type: 'run.started' },
       { sequence: 2, type: 'run.failed' },
     ]);
+    const foreign = await app.inject({
+      method: 'GET',
+      url: `${route}?ownerUserId=someone-else`,
+      headers,
+    });
+    expect(foreign.statusCode).toBe(404);
   });
 
   it('boots with Fastify and initializes the SQLite schema', async () => {
@@ -182,6 +195,23 @@ describe('AppModule', () => {
     expect(response.headers['cache-control']).toBe('no-store');
 
     const headers = { 'x-orchestrator-secret': 'test-secret' };
+    const latestBuildUrl = '/api/v1/platform/container-images/builds/latest';
+    const [latestBuild, invalidBuildKind] = await Promise.all([
+      app.inject({
+        method: 'GET',
+        url: `${latestBuildUrl}?buildKind=dockerfile_overlay`,
+        headers,
+      }),
+      app.inject({
+        method: 'GET',
+        url: `${latestBuildUrl}?buildKind=unknown`,
+        headers,
+      }),
+    ]);
+    expect(latestBuild.statusCode).toBe(200);
+    expect(latestBuild.json()).toEqual({ job: null });
+    expect(invalidBuildKind.statusCode).toBe(400);
+
     const renderingUrl = '/api/v1/settings/android-rendering';
     const rendering = await app.inject({
       method: 'GET',
@@ -226,6 +256,57 @@ describe('AppModule', () => {
       feature: 'feature.ai',
     });
 
+    await database.query(`
+      INSERT INTO automations (id, ownerUserId, name, definitionJson)
+      VALUES ('named', 'owner-1', 'Visible workflow', '{}'),
+             ('foreign', 'owner-2', 'Private workflow', '{}')
+    `);
+    await database.query(`
+      INSERT INTO automation_runs
+        (id, automationId, ownerUserId, targetApplicationId, trigger, status, createdAt)
+      VALUES ('queued', 'named', 'owner-1', 'app-1', 'manual', 'queued', '2026-01-04'),
+             ('ad-hoc', 'ephemeral-ai-1', 'owner-1', 'app-2', 'manual', 'running', '2026-01-03'),
+             ('unknown', 'foreign', 'owner-1', 'app-3', 'manual', 'running', '2026-01-02'),
+             ('other-owner', 'foreign', 'owner-2', 'app-4', 'manual', 'running', '2026-01-01'),
+             ('completed', 'named', 'owner-1', 'app-1', 'manual', 'success', '2026-01-01')
+    `);
+    const activeRunsUrl = '/api/v1/automations/runs/active?ownerUserId=owner-1';
+    const activeRuns = await app.inject({
+      method: 'GET',
+      url: activeRunsUrl,
+      headers,
+    });
+    expect(activeRuns.statusCode).toBe(200);
+    const activeRun = {
+      id: 'queued',
+      automationId: 'named',
+      targetApplicationId: 'app-1',
+      status: 'queued',
+      createdAt: '2026-01-04T00:00:00.000Z',
+      workflowName: 'Visible workflow',
+    };
+    expect(activeRuns.json()).toEqual([
+      activeRun,
+      {
+        ...activeRun,
+        id: 'ad-hoc',
+        automationId: 'ephemeral-ai-1',
+        targetApplicationId: 'app-2',
+        status: 'running',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        workflowName: null,
+      },
+      {
+        ...activeRun,
+        id: 'unknown',
+        automationId: 'foreign',
+        targetApplicationId: 'app-3',
+        status: 'running',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        workflowName: null,
+      },
+    ]);
+
     const update = await app.inject({
       method: 'PATCH',
       url: '/api/v1/features',
@@ -257,6 +338,18 @@ describe('AppModule', () => {
       code: 'feature_disabled',
       feature: 'feature.workflows',
     });
+
+    const runsWithWorkflowsDisabled = await app.inject({
+      method: 'GET',
+      url: activeRunsUrl,
+      headers,
+    });
+    expect(runsWithWorkflowsDisabled.statusCode).toBe(200);
+    expect(runsWithWorkflowsDisabled.json()).toMatchObject([
+      { ...activeRun, workflowName: null },
+      { id: 'ad-hoc', workflowName: null },
+      { id: 'unknown', workflowName: null },
+    ]);
 
     const dataSource = app.get(DataSource);
     const schemaQueryRunner = dataSource.createQueryRunner();
@@ -372,11 +465,13 @@ describe('AppModule', () => {
     expect(
       appended.map((event) => event.sequence).sort((a, b) => a - b),
     ).toEqual(Array.from({ length: 20 }, (_, index) => index + 1));
-    await expect(events.listForRun('owner-1', runId, 10)).resolves.toHaveLength(
-      10,
-    );
+    await expect(
+      events.listReplayPage('owner-1', runId, 10, Number.MAX_SAFE_INTEGER),
+    ).resolves.toHaveLength(10);
     await events.deleteForRuns('owner-1', []);
     await events.deleteForRuns('owner-1', [runId]);
-    await expect(events.listForRun('owner-1', runId)).resolves.toEqual([]);
+    await expect(
+      events.listReplayPage('owner-1', runId, 0, Number.MAX_SAFE_INTEGER),
+    ).resolves.toEqual([]);
   });
 });

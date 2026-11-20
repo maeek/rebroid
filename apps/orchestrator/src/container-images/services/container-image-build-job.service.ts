@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildStatus } from '../entities/container-image-build-status';
 import type {
@@ -26,6 +27,7 @@ type QueuedImageBuildJobInput = Pick<
   phase?: ContainerImageGappsBuildPhase;
 };
 
+const unfinishedStatuses: ContainerImageBuildStatus[] = ['queued', 'running'];
 const terminalStatuses: ContainerImageBuildStatus[] = [
   'succeeded',
   'failed',
@@ -35,6 +37,8 @@ const logTailMaxLength = 60_000;
 
 @Injectable()
 export class ContainerImageBuildJobService {
+  private readonly logger = new Logger(ContainerImageBuildJobService.name);
+
   constructor(
     @InjectRepository(ContainerImageBuildJob)
     private readonly jobs: Repository<ContainerImageBuildJob>,
@@ -42,6 +46,16 @@ export class ContainerImageBuildJobService {
 
   listJobs() {
     return this.jobs.find({ order: { createdAt: 'DESC' }, take: 50 });
+  }
+
+  findLatestJob(buildKind: ContainerImageBuildKind) {
+    return this.jobs
+      .createQueryBuilder('job')
+      .where({ buildKind })
+      .orderBy('job.createdAt', 'DESC')
+      .addOrderBy('job.rowid', 'DESC')
+      .take(1)
+      .getOne();
   }
 
   findNextQueuedGappsJob() {
@@ -54,7 +68,7 @@ export class ContainerImageBuildJobService {
   hasUnfinishedGappsJob(id: string) {
     return this.jobs.existsBy({
       id,
-      status: In(['queued', 'running']),
+      status: In(unfinishedStatuses),
       buildKind: 'redroid_gapps_patch',
     });
   }
@@ -88,9 +102,12 @@ export class ContainerImageBuildJobService {
     return result.affected ?? 0;
   }
 
-  async failInterruptedGappsJobs() {
+  async failInterruptedJobs() {
     const jobs = await this.jobs.find({
-      where: { status: 'running', buildKind: 'redroid_gapps_patch' },
+      where: [
+        { status: 'running', buildKind: 'redroid_gapps_patch' },
+        { status: In(unfinishedStatuses), buildKind: 'dockerfile_overlay' },
+      ],
     });
     await Promise.all(
       jobs.map((job) =>
@@ -142,14 +159,10 @@ export class ContainerImageBuildJobService {
   }
 
   async markRunning(job: ContainerImageBuildJob) {
-    await this.jobs.update(
-      { id: job.id, status: 'queued' },
-      {
-        status: 'running',
-        startedAt: new Date(),
-        logTail: this.nextLogTail(job.logTail, 'Build started.'),
-      },
-    );
+    await this.updateWithLog(job.id, ['queued'], 'Build started.', {
+      status: 'running',
+      startedAt: new Date(),
+    });
     return this.getJob(job.id);
   }
 
@@ -181,61 +194,80 @@ export class ContainerImageBuildJobService {
     if (values.dockerfile) patch.dockerfile = values.dockerfile;
     return this.jobs
       .update(
-        { id: job.id, status: In(['queued', 'running']) },
+        { id: job.id, status: In(unfinishedStatuses) },
         patch as Parameters<Repository<ContainerImageBuildJob>['update']>[1],
       )
       .then(() => this.getJob(job.id));
   }
 
   async markCancelled(job: ContainerImageBuildJob) {
-    await this.jobs.update(
-      { id: job.id, status: In(['queued', 'running']) },
-      {
-        status: 'cancelled',
-        finishedAt: job.finishedAt ?? new Date(),
-        logTail: this.nextLogTail(job.logTail, 'Build cancelled.'),
-      },
-    );
+    await this.updateWithLog(job.id, unfinishedStatuses, 'Build cancelled.', {
+      status: 'cancelled',
+      finishedAt: job.finishedAt ?? new Date(),
+    });
     return this.getJob(job.id);
   }
 
   async markSucceeded(job: ContainerImageBuildJob, imageId: string) {
-    await this.jobs.update(
-      { id: job.id, status: 'running' },
+    await this.updateWithLog(
+      job.id,
+      ['running'],
+      `Build succeeded: ${imageId}`,
       {
         status: 'succeeded',
         imageId,
         finishedAt: new Date(),
         phase: 'complete',
-        logTail: this.nextLogTail(job.logTail, `Build succeeded: ${imageId}`),
       },
     );
     return this.getJob(job.id);
   }
 
   async markFailed(job: ContainerImageBuildJob, message: string) {
-    await this.jobs.update(
-      { id: job.id, status: In(['queued', 'running']) },
+    await this.updateWithLog(
+      job.id,
+      unfinishedStatuses,
+      `Build failed: ${message}`,
       {
         status: 'failed',
         error: message,
         finishedAt: new Date(),
-        logTail: this.nextLogTail(job.logTail, `Build failed: ${message}`),
       },
     );
     return this.getJob(job.id);
   }
 
-  async appendLog(id: string, message: string) {
-    const job = await this.jobs.findOneBy({ id });
-    if (!job || this.isTerminal(job.status)) {
-      return;
-    }
+  appendLog(id: string, message: string) {
+    return this.updateWithLog(id, unfinishedStatuses, message);
+  }
 
-    await this.jobs.update(
-      { id, status: In(['queued', 'running']) },
-      { logTail: this.nextLogTail(job.logTail, message) },
-    );
+  recordProgress(id: string, message: string) {
+    void this.appendLog(id, message).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not save progress for image build ${id}: ${getErrorMessage(error)}`,
+      );
+    });
+  }
+
+  private updateWithLog(
+    id: string,
+    expectedStatuses: ContainerImageBuildStatus[],
+    message: string,
+    patch: Parameters<Repository<ContainerImageBuildJob>['update']>[1] = {},
+  ) {
+    return this.jobs.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(ContainerImageBuildJob);
+      const job = await repository.findOne({
+        where: { id },
+        select: { status: true, logTail: true },
+      });
+      if (!job || !expectedStatuses.includes(job.status)) return;
+
+      await repository.update(
+        { id, status: job.status },
+        { ...patch, logTail: this.nextLogTail(job.logTail, message) },
+      );
+    });
   }
 
   private nextLogTail(current: string, message: string) {

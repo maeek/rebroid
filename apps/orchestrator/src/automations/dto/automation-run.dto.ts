@@ -78,6 +78,28 @@ export class ListActiveAutomationRunsQueryDto {
   ownerUserId!: string;
 }
 
+export class ActiveAutomationRunDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  automationId!: string;
+
+  @ApiProperty()
+  targetApplicationId!: string;
+
+  @ApiProperty({
+    enum: [AutomationRunStatus.Queued, AutomationRunStatus.Running],
+  })
+  status!: AutomationRunStatus.Queued | AutomationRunStatus.Running;
+
+  @ApiProperty()
+  createdAt!: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  workflowName!: string | null;
+}
+
 export class AutomationStepResultDto {
   @ApiProperty({ example: 'wake-device' })
   stepId!: string;

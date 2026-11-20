@@ -1,4 +1,5 @@
 import { isDefaultAiCapability, isSelectableAiCapability } from '@rebroid/automation-core/ai-run'
+import { visitAutomationSteps, type AutomationDefinition } from '@rebroid/automation-core/definition'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
@@ -9,7 +10,6 @@ import {
 } from '../applications/actions/common/action-helpers'
 import { orchestratorAutomationsClient } from './client'
 import type { AutomationCommand, RunAutomationInput, SaveAutomationTriggerInput } from '@/shared/contracts/automation'
-import type { AutomationDefinition, AutomationDefinitionStep } from '@rebroid/automation-core/definition'
 
 export type CurrentAutomationUser = Pick<Awaited<ReturnType<typeof getCurrentUserContext>>, 'permissions'>
 
@@ -51,21 +51,8 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
       assertAutomationPermission(user, permission)
     }
   }
-  const assertStep = (step: AutomationDefinitionStep) => {
-    if (!('uses' in step)) {
-      if (step.type === 'condition') {
-        step.then.forEach(assertStep)
-        step.else?.forEach(assertStep)
-        return
-      }
-      if (step.type === 'switch') {
-        step.cases.forEach(item => item.steps.forEach(assertStep))
-        step.default?.forEach(assertStep)
-        return
-      }
-      step.steps.forEach(assertStep)
-      return
-    }
+  visitAutomationSteps(definition.spec.steps, step => {
+    if (!('uses' in step)) return
     assertCommandPermissions(step.uses)
     if (step.uses === 'ai.run') {
       if (step.with.rawShellPolicy === 'allowlisted') assertAutomationPermission(user, 'automations:run-adb-shell')
@@ -87,8 +74,7 @@ export const assertDefinitionPermissions = async (user: CurrentAutomationUser, d
         assertCommandPermissions(uses)
       }
     }
-  }
-  definition.spec.steps.forEach(assertStep)
+  })
   return defaultAiCapabilities
 }
 

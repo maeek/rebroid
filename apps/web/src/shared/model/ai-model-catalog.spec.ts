@@ -8,7 +8,6 @@ import {
   selectCatalogModel,
   selectCatalogProvider,
   selectCatalogProviderAndModel,
-  selectInitialPlannerVisionCatalog,
   selectMatchingVisionPair,
   selectRoleVisionCatalog,
   type AiModelCatalogProvider
@@ -89,10 +88,6 @@ describe('AI model catalog', () => {
   })
 
   it('keeps a shared planner and vision model paired when available', () => {
-    const initial = selectInitialPlannerVisionCatalog([catalog[2], ...catalog])
-    expect(initial.selectedProvider?.id).toBe('shared')
-    expect(initial.selectedVisionModel?.id).toBe('shared-default')
-
     const match = selectMatchingVisionPair({
       plannerProvider: catalog[2],
       plannerModel: catalog[2].models[0],

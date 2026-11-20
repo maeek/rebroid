@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -160,9 +165,26 @@ export class CreateAutomationTriggerDto {
   triggerConfig!: Record<string, unknown>;
 }
 
+export class UpdateAutomationScheduleTriggerConfigDto extends PartialType(
+  OmitType(AutomationScheduleTriggerConfigDto, ['startPolicy'] as const),
+) {
+  @ApiPropertyOptional({ enum: AutomationStartPolicy })
+  @IsOptional()
+  @IsEnum(AutomationStartPolicy)
+  startPolicy?: AutomationStartPolicy;
+}
+
 export class UpdateAutomationTriggerDto extends PartialType(
-  CreateAutomationTriggerDto,
-) {}
+  OmitType(CreateAutomationTriggerDto, ['triggerConfig'] as const),
+) {
+  @ApiPropertyOptional({
+    type: UpdateAutomationScheduleTriggerConfigDto,
+    description: 'Omitted schedule settings retain their current values.',
+  })
+  @IsOptional()
+  @IsObject()
+  triggerConfig?: Record<string, unknown>;
+}
 
 export class AutomationTriggerDto {
   @ApiProperty()

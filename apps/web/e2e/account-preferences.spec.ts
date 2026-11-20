@@ -69,7 +69,12 @@ test('the mobile drawer ends with direct account actions and inline Appearance c
   const drawer = page.getByRole('dialog', { name: 'Navigation' })
   const account = drawer.getByRole('region', { name: 'Account' })
   const lastNavigationLink = drawer.getByRole('link', { name: 'Maintenance tasks' })
-  expect((await lastNavigationLink.boundingBox())!.y).toBeLessThan((await account.boundingBox())!.y)
+  const navigationLink = await lastNavigationLink.elementHandle()
+  const accountFollowsNavigation = await account.evaluate(
+    (region, link) => link !== null && link.getBoundingClientRect().top < region.getBoundingClientRect().top,
+    navigationLink
+  )
+  expect(accountFollowsNavigation).toBe(true)
   await expect(account.getByRole('heading', { name: 'Preview operator' })).toBeAttached()
   await expect(account.getByRole('link', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
   await expect(account.getByRole('link', { name: 'Security' })).toHaveAttribute('href', '/preferences/security')

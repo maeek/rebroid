@@ -49,19 +49,6 @@ import type {
 } from './automation-action-definition'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
-const actionCategories: AutomationActionCategory[] = [
-  'Device',
-  'Touch',
-  'Text',
-  'Files',
-  'Network',
-  'Assertions',
-  'Flow',
-  'Debug',
-  'Vision',
-  'AI'
-]
-
 const actionDefinitions = [
   waitAction,
   viewerCommandAction,
@@ -175,8 +162,6 @@ const createFallbackDefinition = (uses: string, command?: AutomationCommand): Au
 }
 
 export const getAutomationActionDefinitions = () => actionDefinitions
-
-export const getAutomationActionCategories = () => actionCategories
 
 export const getAutomationActionDefinition = (uses: string, command?: AutomationCommand): AutomationActionDefinition =>
   actionDefinitionByUses.get(uses) ?? createFallbackDefinition(uses, command)

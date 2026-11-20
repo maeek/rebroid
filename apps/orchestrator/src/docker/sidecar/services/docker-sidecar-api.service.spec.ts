@@ -35,7 +35,7 @@ describe('DockerSidecarApiService', () => {
         get: jest.fn((key: string) =>
           key === 'app.sharedSecret' ? 'internal-secret' : undefined,
         ),
-        getOrThrow: jest.fn(() => 'http://display.test'),
+        getOrThrow: jest.fn(() => 'http://display.test/'),
       } as never,
       { errorMessage: (error: unknown) => String(error) } as never,
       {
@@ -83,12 +83,12 @@ describe('DockerSidecarApiService', () => {
     ]);
     expect(fetchMock).toHaveBeenCalledWith(
       'http://display.test/rebroid/display/sessions/inventory',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'x-rebroid-sidecar-secret': 'internal-secret',
-        }),
-      }),
+      expect.objectContaining({ headers: expect.any(Headers) }),
     );
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(headers.get('x-rebroid-sidecar-secret')).toBe('internal-secret');
+    expect(headers.get('accept')).toBe('application/json');
+    expect(headers.has('content-type')).toBe(false);
   });
 
   it('posts owner-scoped revocation and validates the acknowledgement', async () => {
@@ -106,11 +106,11 @@ describe('DockerSidecarApiService', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ ownerUserIds: ['owner-1'] }),
-        headers: expect.objectContaining({
-          'x-rebroid-sidecar-secret': 'internal-secret',
-        }),
       }),
     );
+    const headers = new Headers(fetchMock.mock.calls[0][1].headers);
+    expect(headers.get('x-rebroid-sidecar-secret')).toBe('internal-secret');
+    expect(headers.get('content-type')).toBe('application/json');
     await expect(
       service().revokeDisplaySessions(['owner-1']),
     ).rejects.toBeInstanceOf(BadGatewayException);
@@ -195,6 +195,11 @@ describe('DockerSidecarApiService', () => {
         await jest.advanceTimersByTimeAsync(50);
         await rejected;
         expect(fetchMock).toHaveBeenCalledTimes(phase === 'health' ? 1 : 2);
+        const [healthUrl, healthInit] = fetchMock.mock.calls[0];
+        expect(healthUrl).toBe('http://display.test/rebroid/display/health');
+        expect(
+          new Headers(healthInit?.headers).has('x-rebroid-sidecar-secret'),
+        ).toBe(false);
       } finally {
         jest.useRealTimers();
       }

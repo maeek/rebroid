@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { UploadedApk } from '../entities/uploaded-apk.entity';
 
 @Injectable()
@@ -56,9 +56,5 @@ export class UploadedApksRepository {
   async referencedFileNames() {
     const uploads = await this.uploadedApks.find({ select: { sha256: true } });
     return new Set(uploads.map((upload) => `${upload.sha256}.apk`));
-  }
-
-  findByIds(ids: string[]) {
-    return this.uploadedApks.find({ where: { id: In(ids) } });
   }
 }

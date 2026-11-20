@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import { AutomationAiDefinitionFactory } from '../ai/automation-ai-definition.factory';
 import { AutomationAiSuggestionsService } from '../ai/automation-ai-suggestions.service';
 import { AutomationAiYamlDraftService } from '../ai/automation-ai-yaml-draft.service';
@@ -28,7 +29,10 @@ import {
   AutomationRunEventPageDto,
   AutomationRunEventStreamTokenDto,
 } from '../dto/automation-run-event.dto';
-import { RunAutomationDto } from '../dto/automation-run.dto';
+import type {
+  ActiveAutomationRunDto,
+  RunAutomationDto,
+} from '../dto/automation-run.dto';
 import {
   CreateAutomationTriggerDto,
   UpdateAutomationTriggerDto,
@@ -67,6 +71,7 @@ export class AutomationsService {
     private readonly aiSuggestions: AutomationAiSuggestionsService,
     private readonly aiYamlDrafts: AutomationAiYamlDraftService,
     private readonly automationTriggers: AutomationTriggersService,
+    private readonly features: FeatureFlagsService,
   ) {}
 
   listCommands(): AutomationCommandDto[] {
@@ -79,6 +84,14 @@ export class AutomationsService {
 
   async listGrid(query: Parameters<AutomationsQueryService['listGrid']>[0]) {
     return this.queries.listGrid(query);
+  }
+
+  listOptions(ownerUserId: string) {
+    return this.queries.listOptions(ownerUserId);
+  }
+
+  listRunnableOptions(ownerUserId: string) {
+    return this.queries.listRunnableOptions(ownerUserId);
   }
 
   async get(ownerUserId: string, id: string) {
@@ -267,10 +280,27 @@ export class AutomationsService {
     ).map((run) => this.mapper.run(run));
   }
 
-  async listActiveRuns(ownerUserId: string) {
-    return (await this.runs.listActive(ownerUserId)).map((run) =>
-      this.mapper.run(run),
-    );
+  async listActiveRuns(ownerUserId: string): Promise<ActiveAutomationRunDto[]> {
+    const rows = await this.runs.listActive(ownerUserId);
+    const showNames = this.features.isEnabled('feature.workflows');
+    return rows.flatMap(({ run, workflowName }) => {
+      const { id, automationId, targetApplicationId, status, createdAt } = run;
+      if (
+        status !== AutomationRunStatus.Queued &&
+        status !== AutomationRunStatus.Running
+      )
+        return [];
+      return [
+        {
+          id,
+          automationId,
+          targetApplicationId,
+          status,
+          createdAt: createdAt.toISOString(),
+          workflowName: showNames ? workflowName : null,
+        },
+      ];
+    });
   }
 
   async listApplicationWorkflowRuns({
@@ -365,16 +395,12 @@ export class AutomationsService {
     }
   }
 
-  async listRunEvents(
+  async listRunConversationEvents(
     ownerUserId: string,
     runId: string,
-    after?: number,
-    view?: string,
   ): Promise<AutomationRunEventDto[]> {
     await this.assertOwnedRun(ownerUserId, runId);
-    return view === 'conversation'
-      ? this.events.listConversationEvents(ownerUserId, [runId])
-      : this.events.list(ownerUserId, runId, after);
+    return this.events.listConversationEvents(ownerUserId, [runId]);
   }
 
   async listRunEventPage(

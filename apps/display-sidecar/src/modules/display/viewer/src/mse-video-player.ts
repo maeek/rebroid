@@ -1,4 +1,4 @@
-import type { DisplayFrameSize } from "./display-size-presentation.js";
+import type { DisplayFrameSize } from "@rebroid/android-application-core/viewer-stream";
 
 type VideoFrameCallbackMetadata = {
   mediaTime?: number;

@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils'
-import { cronToSchedule, scheduleLabel, scheduleToCron, weekdays } from '@/shared/model/schedule/schedule-format'
+import { cronToSchedule, scheduleLabel, weekdays } from '@/shared/model/schedule/schedule-format'
 
 const scheduleParts = (expression: string) => {
   const schedule = cronToSchedule(expression)
-  if (scheduleToCron(schedule) !== expression.trim().replace(/\s+/g, ' ')) {
+  if (schedule.frequency === 'custom') {
     return { frequency: expression, time: 'Cron expression' }
   }
   if (schedule.frequency === 'hourly') {

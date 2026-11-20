@@ -29,14 +29,14 @@ import { appResourceHref } from '@/shared/model/applications/app-resource-links'
 import { StateView, type StateViewAction } from '@/shared/ui/state-view'
 import { ViewerActivityKeepalive } from './viewer-activity-keepalive'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type {
-  DisplayViewerStreamMetrics,
-  DisplayViewerStreamStatus,
-  ViewerFrameObservation
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerOrientation } from '@/features/applications/viewer/player/android-viewer'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ScrcpySession } from '@/shared/contracts/application'
+import type {
+  ViewerStreamMetricsV4,
+  ViewerStreamStatus,
+  ViewerFrameObservation
+} from '@rebroid/android-application-core/viewer-stream'
 
 type EmbeddedViewerError = {
   description: string
@@ -143,8 +143,8 @@ export const DisplayViewerEmbed = ({
   onViewerSettingsChange?: (settings: ViewerSettings) => void
   streamingSettings?: ReactNode
   clipboard?: ReactNode
-  onStreamMetrics?: (surface: DisplayViewerSurface, metrics: DisplayViewerStreamMetrics) => void
-  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
+  onStreamMetrics?: (surface: DisplayViewerSurface, metrics: ViewerStreamMetricsV4) => void
+  onStreamIssue?: (surfaceId: string, status: ViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation, requestAt?: number) => void
 }) => {
   const pinnedViewer = usePinnedViewer()

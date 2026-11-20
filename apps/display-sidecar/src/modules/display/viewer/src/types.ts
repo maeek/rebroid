@@ -1,6 +1,3 @@
-import type { FrameAcknowledgementStatus } from "./webrtc-idle-presentation.js";
-import type { DisplaySizePresentation } from "./display-size-presentation.js";
-
 export type ViewerConfig = {
   params: URLSearchParams;
   sessionId: string | null;
@@ -112,49 +109,6 @@ export type DisplayTransport = {
   scheduleReconnect: () => void;
 };
 
-export type ViewerStreamStatusCode =
-  | "audio-disabled"
-  | "reconnecting"
-  | "first-frame-timeout"
-  | "video-stalled"
-  | "session-expired"
-  | "session-ready"
-  | "stream-error";
-
-export type ViewerStreamStatusSeverity = "info" | "warning" | "error";
-
-export type ViewerStreamStatus = {
-  code: ViewerStreamStatusCode;
-  severity: ViewerStreamStatusSeverity;
-  blocking: boolean;
-  message: string;
-  sessionId?: string | null;
-  startup?: { connectAt: number; presentedAt: number };
-  consumerAttemptId?: string;
-  closeCode?: number;
-  failureStage?: string;
-  transport?: "webrtc" | "websocket";
-};
-
-export type ViewerEffectiveProfile = {
-  transport: "webrtc" | "websocket";
-  codec: string;
-  maxSize: number;
-  maxFps: number;
-  bitrate: number;
-  iFrameInterval: number;
-  audio: boolean;
-  control?: boolean;
-  tunnel?: string;
-  actualEncoder?: string;
-  width?: number;
-  height?: number;
-  pixelRate?: number;
-  h264ProfileLevelId?: string;
-  negotiatedH264ProfileLevelId?: string;
-  sourceAttemptId?: string;
-};
-
 export type ViewerRelayMetrics = {
   sourceFps: number;
   sourceVideoFrames?: number;
@@ -193,97 +147,4 @@ export type ViewerRelayMetrics = {
   videoResetCompletedGeneration?: number;
   videoResetElapsedMs?: number;
   videoResetCount?: number;
-};
-
-export type ViewerRendererBackend =
-  | "webrtc-video"
-  | "chromium-webcodecs"
-  | "firefox-mse"
-  | "webcodecs-webgl2-fallback";
-
-export type ViewerStreamMetricsV4 = {
-  version: 4;
-  transport: "webrtc" | "websocket";
-  displaySizePresentation?: DisplaySizePresentation;
-  sourceFps?: number;
-  relayIngressFps?: number;
-  bridgeInputFps?: number;
-  rtpSentFps?: number;
-  receivedFps?: number;
-  receivedFrames?: number;
-  decodedFrames?: number;
-  presentedFrames?: number;
-  receiverPacketsLost?: number;
-  receiverNackCount?: number;
-  receiverPliCount?: number;
-  frameAcknowledgement?: FrameAcknowledgementStatus;
-  frameAcknowledgementsSent?: number;
-  decodedFps?: number;
-  drawnFps?: number;
-  presentedFps?: number;
-  wireBitrateMbps?: number;
-  sourceBitrateMbps?: number;
-  sourceFrameSizeP95Bytes?: number;
-  keyFrameSizeBytes?: number;
-  frameGapP50Ms?: number;
-  frameGapP95Ms?: number;
-  frameGapP99Ms?: number;
-  frameGapMaxMs?: number;
-  sourceInterFrameP95Ms?: number;
-  networkInterArrivalJitterP95Ms?: number;
-  decodeP95Ms?: number;
-  decodeToDrawP95Ms?: number;
-  liveEdgeAgeP95Ms?: number;
-  relayQueueDepthMs?: number;
-  relayP95Ms?: number;
-  relayP99Ms?: number;
-  rtpPacketizationP95Ms?: number;
-  rtpWriteP95Ms?: number;
-  rtpSendErrors?: number;
-  eventLoopUtilization?: number;
-  gcPauseP95Ms?: number;
-  decoderQueueDepth?: number;
-  pendingRenderFrames?: number;
-  audioQueueDepthMs?: number;
-  webrtcJitterBufferDepthMs?: number;
-  jitterBufferTargetMs?: number;
-  mseBufferedLeadMs?: number;
-  relayDroppedFrames?: number;
-  decodeDroppedFrames?: number;
-  presentationDroppedFrames?: number;
-  audioDroppedFrames?: number;
-  freezeCount?: number;
-  reconnectCount?: number;
-  resyncCount?: number;
-  videoResetCount?: number;
-  sourceRestartCount?: number;
-  roundTripTimeMs?: number;
-  packetsLost?: number;
-  nackCount?: number;
-  pliCount?: number;
-  retransmittedPackets?: number;
-  retransmittedBytes?: number;
-  packetsDiscardedOnSend?: number;
-  rtpSendDelayMs?: number;
-  mainThreadLongTaskCount?: number;
-  highestReceivedSequence?: number;
-  highestDecodedSequence?: number;
-  highestPresentedSequence?: number;
-  presentationSequenceLag?: number;
-  width?: number;
-  height?: number;
-  renderer: ViewerRendererBackend;
-  decoderPreference?: "hardware" | "software" | "native";
-  h264ProfileLevelId?: string;
-  negotiatedH264ProfileLevelId?: string;
-  sourceAttemptId?: string;
-  consumerAttemptId?: string;
-  sourceCodecGeneration?: number;
-  videoResetGeneration?: number;
-  videoResetCompletedGeneration?: number;
-  videoResetElapsedMs?: number;
-
-  consumerGeneration?: number;
-  effectiveProfile: ViewerEffectiveProfile;
-  collectedAt: number;
 };

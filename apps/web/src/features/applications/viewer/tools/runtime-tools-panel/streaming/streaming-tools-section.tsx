@@ -16,13 +16,13 @@ import {
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { ViewerBitrateField } from '@/shared/ui/settings/viewer-bitrate-field'
 import { ToolSection } from '../tool-section'
-import type { DisplayViewerStreamMetrics } from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
+import type { ViewerStreamMetricsV4 } from '@rebroid/android-application-core/viewer-stream'
 
 const metricValue = (value: number | undefined, digits = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '--'
 
-const StreamingMetricBadges = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
+const StreamingMetricBadges = ({ metrics }: { metrics?: ViewerStreamMetricsV4 | null }) => {
   if (!metrics) return null
 
   const isWebRtc = metrics.transport === 'webrtc'
@@ -65,7 +65,7 @@ const DiagnosticValue = ({ label, value }: { label: string; value: string }) => 
   </div>
 )
 
-const StreamingDiagnostics = ({ metrics }: { metrics?: DisplayViewerStreamMetrics | null }) => {
+const StreamingDiagnostics = ({ metrics }: { metrics?: ViewerStreamMetricsV4 | null }) => {
   if (!metrics) {
     return null
   }
@@ -227,7 +227,7 @@ export const StreamingToolsSection = ({
   onViewerSettingsChange: (patch: Partial<ViewerSettings>) => void
   bitrateInput: string
   onBitrateInputChange: (value: string) => void
-  streamMetrics?: DisplayViewerStreamMetrics | null
+  streamMetrics?: ViewerStreamMetricsV4 | null
   className?: string
   hideHeader?: boolean
 }) => {

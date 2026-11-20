@@ -1,9 +1,6 @@
 export interface ZipEntry {
   name: string;
-  compressionMethod: number;
-  compressedSize: number;
   uncompressedSize: number;
-  localHeaderOffset: number;
 }
 
 export interface IconCandidate {
@@ -22,9 +19,6 @@ export interface ParsedStringPool {
   strings: string[];
 }
 
-export const eocdSignature = 0x06054b50;
-export const centralFileHeaderSignature = 0x02014b50;
-export const localFileHeaderSignature = 0x04034b50;
 export const maxIconBytes = 512 * 1024;
 export const maxCandidatesToRead = 24;
 export const resStringPoolType = 0x0001;

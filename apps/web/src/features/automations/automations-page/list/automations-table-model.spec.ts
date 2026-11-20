@@ -1,19 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  automationStatusLabel,
-  automationTriggerAppIdsByAutomationId,
   buildAutomationsGridHref,
-  countActiveAutomationFilters,
-  countAutomationSteps,
   deletedAutomationIdsFromResults,
   retainPageAutomationSelection,
   selectedAutomationsFromIds,
   summarizeAutomationDeleteResults
 } from './automations-table-model'
-import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
-import type { AutomationDefinitionStep } from '@rebroid/automation-core/definition'
+import type { AutomationGridRow } from '@/shared/contracts/automation'
 
-const automation = (id: string): Automation => ({ id, name: id }) as Automation
+const automation = (id: string): AutomationGridRow => ({ id, name: id }) as AutomationGridRow
 
 describe('automations table model', () => {
   it('clears workflow filters without restoring their previous values', () => {
@@ -27,48 +22,6 @@ describe('automations table model', () => {
     )
     expect([...url.searchParams.keys()]).toEqual(['q', 'page', 'pageSize'])
   })
-  it('labels workflow statuses for display', () => {
-    expect(automationStatusLabel('never_run')).toBe('Never run')
-    expect(automationStatusLabel('success')).toBe('Success')
-    expect(automationStatusLabel('running')).toBe('Running')
-    expect(automationStatusLabel('failed')).toBe('Failed')
-  })
-
-  it('counts nested automation steps', () => {
-    const steps = [
-      { id: 'one', uses: 'android.wait', with: {} },
-      {
-        id: 'condition',
-        type: 'condition',
-        if: 'true',
-        then: [{ id: 'then', uses: 'android.tap', with: {} }],
-        else: [{ id: 'else', uses: 'android.key', with: {} }]
-      },
-      {
-        id: 'switch',
-        type: 'switch',
-        value: '${{ value }}',
-        cases: [{ when: 'a', steps: [{ id: 'case', uses: 'android.wait', with: {} }] }],
-        default: [{ id: 'default', uses: 'android.wait', with: {} }]
-      }
-    ] as unknown as AutomationDefinitionStep[]
-
-    expect(countAutomationSteps(steps)).toBe(7)
-  })
-
-  it('groups trigger target app ids by automation', () => {
-    const triggers = [
-      { automationId: 'a', targetApplicationId: 'app-1' },
-      { automationId: 'a', targetApplicationId: 'app-2' },
-      { automationId: 'b', targetApplicationId: 'app-1' }
-    ] as AutomationTrigger[]
-
-    const grouped = automationTriggerAppIdsByAutomationId(triggers)
-
-    expect([...(grouped.get('a') ?? [])]).toEqual(['app-1', 'app-2'])
-    expect([...(grouped.get('b') ?? [])]).toEqual(['app-1'])
-  })
-
   it('retains and derives current page selection', () => {
     const automations = [automation('a'), automation('c')]
     const selectedIds = new Set(['a', 'b', 'c'])
@@ -77,8 +30,7 @@ describe('automations table model', () => {
     expect(selectedAutomationsFromIds(automations, selectedIds)).toEqual(automations)
   })
 
-  it('counts active filters and extracts fulfilled delete ids', () => {
-    expect(countActiveAutomationFilters({ tag: 'smoke', status: 'failed' })).toBe(2)
+  it('extracts fulfilled delete ids', () => {
     expect([
       ...deletedAutomationIdsFromResults(
         [automation('a'), automation('b')],

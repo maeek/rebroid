@@ -9,7 +9,6 @@ import {
   startImageBuildAction
 } from '@/server/orchestrator/platform/image-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import {
   localBuildContextFilesFromFileList,
   readDirectoryWithPicker,
@@ -41,12 +40,12 @@ import type {
 export const useRuntimeImageBuilderController = ({
   contextFiles,
   images,
-  jobs,
+  initialJob,
   recipes
 }: {
   contextFiles: ContainerImageBuildContextFile[]
   images: PlatformImage[]
-  jobs: ContainerImageBuildJob[]
+  initialJob: ContainerImageBuildJob | null
   recipes: ContainerImageBuildRecipe[]
 }) => {
   const folderInputRef = useRef<HTMLInputElement | null>(null)
@@ -74,9 +73,10 @@ export const useRuntimeImageBuilderController = ({
     isStarting,
     isCancelling,
     startBuild: startActiveBuild,
-    cancelBuild
-  } = useActiveImageBuild(jobs.find(job => job.buildKind === 'dockerfile_overlay') ?? null)
-  const [isSettingDefault, setIsSettingDefault] = useState(false)
+    cancelBuild,
+    isSettingDefault,
+    setAsDefault
+  } = useActiveImageBuild(initialJob)
   const [removingContextFileId, setRemovingContextFileId] = useState<string | null>(null)
   const dockerfileContextReferences = useMemo(
     () => parseDockerfileContextReferences(values.dockerfile),
@@ -302,25 +302,6 @@ export const useRuntimeImageBuilderController = ({
         })
       )
     }, 'Build started')
-  }
-
-  const setAsDefault = async () => {
-    if (!activeJob || activeJob.status !== 'succeeded' || isSettingDefault) return
-    setIsSettingDefault(true)
-    try {
-      await saveOrchestratorUiSettings({
-        defaultContainerImage: activeJob.targetImage
-      })
-      toast({ title: 'Default image updated', variant: 'success' })
-    } catch (error) {
-      toast({
-        title: 'Could not update default image',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsSettingDefault(false)
-    }
   }
 
   const selectRecipe = (id: string) => {

@@ -53,52 +53,67 @@ const createService = (
 };
 
 describe('DockerPlatformImagesService', () => {
-  it('uses one per-request image and container inventory for details', async () => {
-    const imageInfo = {
-      Id: 'sha256:image-1',
-      RepoTags: ['example/image:latest'],
-      RepoDigests: [],
-      Size: 10,
-      Created: 1,
-      Labels: {},
-    };
-    const inspect = {
-      Id: imageInfo.Id,
-      RepoTags: imageInfo.RepoTags,
-      RepoDigests: [],
-      Size: 10,
-      Created: new Date(1000).toISOString(),
-      Config: { Labels: {} },
-    };
-    const listImages = jest.fn().mockResolvedValue([imageInfo]);
-    const listContainers = jest.fn().mockResolvedValue([]);
-    const inspectImage = jest.fn().mockResolvedValue(inspect);
-    const engine = {
-      docker: {
-        listImages,
-        listContainers,
-        getImage: jest.fn().mockReturnValue({ inspect: inspectImage }),
-      },
-      read: jest.fn((operation: () => Promise<unknown>) => operation()),
-    };
-    const metadata = {
-      enrichPlatformImages: jest.fn(async (images: unknown) => images),
-    };
-    const service = new DockerPlatformImagesService(
-      engine as never,
-      {} as never,
-      metadata as never,
-      new DockerInventoryService(engine as never),
-    );
+  it.each([true, false])(
+    'enriches only the requested image (listed=%s)',
+    async (listed) => {
+      const imageInfo = {
+        Id: 'sha256:image-1',
+        RepoTags: ['example/image:latest'],
+        RepoDigests: [],
+        Size: 10,
+        Created: 1,
+        Labels: {},
+      };
+      const inspect = {
+        Id: imageInfo.Id,
+        RepoTags: imageInfo.RepoTags,
+        RepoDigests: [],
+        Size: 10,
+        Created: new Date(1000).toISOString(),
+        Config: { Labels: {} },
+      };
+      const otherImage = {
+        ...imageInfo,
+        Id: 'sha256:image-2',
+      };
+      const listImages = jest
+        .fn()
+        .mockResolvedValue(listed ? [otherImage, imageInfo] : [otherImage]);
+      const listContainers = jest.fn().mockResolvedValue([]);
+      const inspectImage = jest.fn().mockResolvedValue(inspect);
+      const engine = {
+        docker: {
+          listImages,
+          listContainers,
+          getImage: jest.fn().mockReturnValue({ inspect: inspectImage }),
+        },
+        read: jest.fn((operation: () => Promise<unknown>) => operation()),
+      };
+      const metadata = {
+        enrichPlatformImage: jest.fn(async (image: unknown) => image),
+      };
+      const service = new DockerPlatformImagesService(
+        engine as never,
+        {} as never,
+        metadata as never,
+        new DockerInventoryService(engine as never),
+      );
 
-    const details = await service.getPlatformImageDetails(imageInfo.Id);
+      const details = await service.getPlatformImageDetails(
+        imageInfo.RepoTags[0],
+      );
 
-    expect(details.image.id).toBe(imageInfo.Id);
-    expect(listImages).toHaveBeenCalledTimes(1);
-    expect(listContainers).toHaveBeenCalledTimes(1);
-    expect(inspectImage).toHaveBeenCalledTimes(1);
-    expect(metadata.enrichPlatformImages).toHaveBeenCalledTimes(1);
-  });
+      expect(details.image.id).toBe(imageInfo.Id);
+      expect(listImages).toHaveBeenCalledTimes(1);
+      expect(listContainers).toHaveBeenCalledTimes(1);
+      expect(inspectImage).toHaveBeenCalledTimes(1);
+      expect(metadata.enrichPlatformImage).toHaveBeenCalledTimes(1);
+      expect(metadata.enrichPlatformImage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: imageInfo.Id }),
+        imageInfo.RepoTags[0],
+      );
+    },
+  );
 
   it('maps missing image removals to a friendly not-found error', async () => {
     const service = createService(

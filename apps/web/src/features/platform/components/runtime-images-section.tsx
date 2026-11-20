@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { Section } from '@/components/ui/section'
+import { parsePlatformInventorySort } from '@/shared/model/platform-inventory-sort'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DataGridPagination } from '@/shared/ui/data-grid/data-grid-pagination'
@@ -14,7 +15,6 @@ import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { useRuntimeImageActions } from '../hooks/use-runtime-image-actions'
 import { useRuntimeResourceGridController } from '../hooks/use-runtime-resource-grid-controller'
 import { RuntimeImageFilters } from './runtime-grid-filter-controls'
-import { platformSortFromSearchParam } from './runtime-grid-query-utils'
 import { buildImagesGridHref, canRemoveSelectedImages, getImageRemoveDialogLabel } from './runtime-images-section-model'
 import { createImageColumns } from './runtime-images-table-parts'
 import type { PlatformImagesGridPage, PlatformImagesGridQuery } from '@/shared/contracts/platform'
@@ -48,7 +48,7 @@ export const RuntimeImagesSection = ({
     gridQuery,
     pageSize: imagesPage.pageSize,
     getItemId: imageId,
-    parseSort: sort => platformSortFromSearchParam(sort, { defaultSort: 'createdAt:desc', missingDirection: 'desc' }),
+    parseSort: sort => parsePlatformInventorySort('images', sort),
     buildHref: buildImagesGridHref
   })
   const { pendingRemove, setPendingRemove, busyId, removeImages } = useRuntimeImageActions({

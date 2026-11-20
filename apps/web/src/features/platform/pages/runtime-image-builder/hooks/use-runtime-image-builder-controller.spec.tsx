@@ -34,12 +34,12 @@ const job = (status: ContainerImageBuildJob['status']): ContainerImageBuildJob =
     logTail: status === 'running' ? 'Building layer' : ''
   }) as ContainerImageBuildJob
 
-const renderBuilder = (jobs: ContainerImageBuildJob[] = []) =>
+const renderBuilder = (initialJob: ContainerImageBuildJob | null = null) =>
   renderHook(() =>
     useRuntimeImageBuilderController({
       contextFiles,
       images: [],
-      jobs,
+      initialJob,
       recipes: []
     })
   )
@@ -70,7 +70,7 @@ describe('useRuntimeImageBuilderController', () => {
 
   it('exposes live progress and replaces it with the cancelled job', async () => {
     vi.mocked(sendBff).mockResolvedValue(job('cancelled'))
-    const { result } = renderBuilder([job('running')])
+    const { result } = renderBuilder(job('running'))
 
     expect(result.current.buildSectionProps.isActiveJobRunning).toBe(true)
     expect(result.current.buildSectionProps.activeJob?.logTail).toBe('Building layer')
@@ -82,7 +82,7 @@ describe('useRuntimeImageBuilderController', () => {
 
   it('sets the default image without resending unrelated runtime settings', async () => {
     vi.mocked(saveOrchestratorUiSettings).mockResolvedValue(defaultOrchestratorUiSettings)
-    const { result } = renderBuilder([job('succeeded')])
+    const { result } = renderBuilder(job('succeeded'))
     act(() => result.current.buildSectionProps.onSetAsDefault())
     await waitFor(() => expect(toast).toHaveBeenCalledWith({ title: 'Default image updated', variant: 'success' }))
     expect(saveOrchestratorUiSettings).toHaveBeenCalledExactlyOnceWith({
@@ -90,13 +90,8 @@ describe('useRuntimeImageBuilderController', () => {
     })
   })
 
-  it('ignores jobs belonging to the Google Play builder', () => {
-    const { result } = renderBuilder([{ ...job('running'), buildKind: 'redroid_gapps_patch' }])
-    expect(result.current.buildSectionProps.activeJob).toBeNull()
-  })
-
   it('prevents another start while a build is running', async () => {
-    const { result } = renderBuilder([job('running')])
+    const { result } = renderBuilder(job('running'))
     act(() => {
       result.current.contextSectionProps.onToggleContextFile('apk', true)
       result.current.contextSectionProps.onToggleContextFile('permissions', true)

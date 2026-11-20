@@ -1,3 +1,4 @@
+import { parsePlatformInventorySort } from '@/shared/model/platform-inventory-sort'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { resolvePlatformImageRuntimeMetadata } from '@/shared/model/runtime-image/runtime-image-metadata'
 import type {
@@ -22,26 +23,10 @@ const uniqueValues = (values: Array<string | null | undefined>) =>
     left.localeCompare(right, undefined, { numeric: true })
   )
 
-const parseSorting = (sort: string | undefined, fallback: string, fields: Set<string>, descDefault: boolean) =>
-  (sort || fallback)
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id || !fields.has(id)) return null
-      return {
-        id,
-        desc: descDefault ? direction !== 'asc' : direction === 'desc'
-      }
-    })
-    .filter((item): item is { id: string; desc: boolean } => Boolean(item))
-    .slice(0, 3)
-
-const containerSortFields = new Set(['name', 'state', 'image', 'applicationId'])
-
 const containerName = (container: PlatformContainer) => container.names[0] ?? container.shortId
 
 const sortContainers = (containers: PlatformContainer[], sort?: string) => {
-  const sorting = parseSorting(sort, 'name:asc', containerSortFields, false)
+  const sorting = parsePlatformInventorySort('containers', sort)
 
   return [...containers].sort((left, right) => {
     if (left.orphaned !== right.orphaned) return left.orphaned ? -1 : 1
@@ -123,10 +108,8 @@ export const platformContainersGridPage = (
   }
 }
 
-const imageSortFields = new Set(['name', 'sizeBytes', 'createdAt', 'containers'])
-
 const sortImages = (images: PlatformImage[], sort?: string) => {
-  const sorting = parseSorting(sort, 'createdAt:desc', imageSortFields, true)
+  const sorting = parsePlatformInventorySort('images', sort)
 
   return [...images].sort((left, right) => {
     for (const item of sorting) {
@@ -153,18 +136,20 @@ export const platformImagesGridPage = (
 ): PlatformImagesGridPage => {
   const { page, pageSize } = pageBounds(query)
   const search = query.q?.trim().toLowerCase()
-  const scoped = query.ownership === 'all' ? images : images.filter(image => image.managed)
-  const structured = scoped.filter(image => {
-    const metadata = resolvePlatformImageRuntimeMetadata(image).metadata
-    if (query.usage === 'in-use' && image.containers <= 0) return false
-    if (query.usage === 'unused' && image.containers !== 0) return false
-    if (query.usage === 'unknown' && image.containers >= 0) return false
-    if (query.runtimeKind && query.runtimeKind !== 'all' && metadata.runtimeKind !== query.runtimeKind) return false
-    if (query.androidVersion && metadata.androidVersion !== query.androidVersion) return false
-    if (query.architecture && metadata.architecture !== query.architecture) return false
-    if (query.gmsMode && query.gmsMode !== 'all' && metadata.gmsMode !== query.gmsMode) return false
-    return true
-  })
+  const imageDetails = images.map(image => ({ image, metadata: resolvePlatformImageRuntimeMetadata(image).metadata }))
+  const scoped = query.ownership === 'all' ? imageDetails : imageDetails.filter(({ image }) => image.managed)
+  const structured = scoped
+    .filter(({ image, metadata }) => {
+      if (query.usage === 'in-use' && image.containers <= 0) return false
+      if (query.usage === 'unused' && image.containers !== 0) return false
+      if (query.usage === 'unknown' && image.containers >= 0) return false
+      if (query.runtimeKind && query.runtimeKind !== 'all' && metadata.runtimeKind !== query.runtimeKind) return false
+      if (query.androidVersion && metadata.androidVersion !== query.androidVersion) return false
+      if (query.architecture && metadata.architecture !== query.architecture) return false
+      if (query.gmsMode && query.gmsMode !== 'all' && metadata.gmsMode !== query.gmsMode) return false
+      return true
+    })
+    .map(({ image }) => image)
   const filtered = search
     ? structured.filter(image =>
         [
@@ -189,18 +174,14 @@ export const platformImagesGridPage = (
     page,
     pageSize,
     facets: {
-      androidVersions: uniqueValues(
-        images.map(image => resolvePlatformImageRuntimeMetadata(image).metadata.androidVersion)
-      ),
-      architectures: uniqueValues(images.map(image => resolvePlatformImageRuntimeMetadata(image).metadata.architecture))
+      androidVersions: uniqueValues(imageDetails.map(({ metadata }) => metadata.androidVersion)),
+      architectures: uniqueValues(imageDetails.map(({ metadata }) => metadata.architecture))
     }
   }
 }
 
-const networkSortFields = new Set(['name', 'driver', 'scope', 'containers'])
-
 const sortNetworks = (networks: PlatformNetwork[], sort?: string) => {
-  const sorting = parseSorting(sort, 'name:asc', networkSortFields, false)
+  const sorting = parsePlatformInventorySort('networks', sort)
 
   return [...networks].sort((left, right) => {
     if (left.managed !== right.managed) return left.managed ? -1 : 1

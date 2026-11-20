@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import {
   resolveRuntimeImageMetadata,
   type RuntimeImageMetadata,
@@ -10,7 +10,6 @@ import { ContainerImageRuntimeMetadata } from '../entities/container-image-runti
 import type {
   DockerImageRuntimeMetadataPort,
   ResolvedRuntimeImageMetadata,
-  RuntimeImageMetadataRecord,
   UpsertRuntimeImageMetadataInput,
 } from '../../contracts/docker-image-runtime-metadata.port';
 
@@ -41,18 +40,6 @@ export class DockerImageRuntimeMetadataService implements DockerImageRuntimeMeta
     return record;
   }
 
-  async findByReferences(references: string[]) {
-    const normalized = [
-      ...new Set(references.map((ref) => ref.trim()).filter(Boolean)),
-    ];
-    if (!normalized.length) {
-      return null;
-    }
-
-    const records = await this.findRecordsByReferences(normalized);
-    return this.preferredRecord(records, normalized);
-  }
-
   async resolveForReference(
     image: string,
     options: {
@@ -60,55 +47,39 @@ export class DockerImageRuntimeMetadataService implements DockerImageRuntimeMeta
       labels?: Record<string, string | undefined> | null;
     } = {},
   ): Promise<ResolvedRuntimeImageMetadata> {
-    const stored = await this.findByReferences([
-      image,
-      ...(options.imageId ? [options.imageId] : []),
-    ]);
+    const references = [image, ...(options.imageId ? [options.imageId] : [])];
+    const lookup = await this.loadMetadata(references);
 
     return resolveRuntimeImageMetadata({
       image,
       labels: options.labels,
-      metadata: stored ? this.toRuntimeMetadata(stored) : null,
+      metadata: lookup(references),
     });
   }
 
   async enrichPlatformImages(images: PlatformImage[]) {
-    const references = images.flatMap((image) =>
-      this.referencesForImage(image),
+    const references = images.map((image) => this.referencesForImage(image));
+    const lookup = await this.loadMetadata(references.flat());
+    return images.map((image, index) =>
+      this.enrichImage(image, lookup(references[index])),
     );
-    const records = await this.findRecordsByReferences(references);
-    const recordsByReference = new Map<string, ContainerImageRuntimeMetadata>();
-    for (const record of records) {
-      recordsByReference.set(record.imageRef, record);
-      if (record.imageId) recordsByReference.set(record.imageId, record);
-    }
-    return images.map((image) => {
-      const imageReferences = this.referencesForImage(image);
-      const stored =
-        imageReferences
-          .map((reference) => recordsByReference.get(reference))
-          .find(Boolean) ?? null;
-      const resolved = resolveRuntimeImageMetadata({
-        image: image.repoTags[0] ?? image.id,
-        labels: image.labels,
-        metadata: stored ? this.toRuntimeMetadata(stored) : null,
-      });
-      return {
-        ...image,
-        runtimeMetadata: resolved.metadata,
-        runtimeMetadataSource: resolved.source,
-      };
-    });
   }
 
-  async enrichPlatformImage(image: PlatformImage): Promise<PlatformImage> {
-    const stored = await this.findByReferences(this.referencesForImage(image));
+  async enrichPlatformImage(image: PlatformImage, requestedRef?: string) {
+    const references = this.referencesForImage(image, requestedRef);
+    const lookup = await this.loadMetadata(references);
+    return this.enrichImage(image, lookup(references));
+  }
+
+  private enrichImage(
+    image: PlatformImage,
+    metadata: RuntimeImageMetadata | null,
+  ) {
     const resolved = resolveRuntimeImageMetadata({
       image: image.repoTags[0] ?? image.id,
       labels: image.labels,
-      metadata: stored ? this.toRuntimeMetadata(stored) : null,
+      metadata,
     });
-
     return {
       ...image,
       runtimeMetadata: resolved.metadata,
@@ -116,49 +87,67 @@ export class DockerImageRuntimeMetadataService implements DockerImageRuntimeMeta
     };
   }
 
-  toRuntimeMetadata(record: RuntimeImageMetadataRecord): RuntimeImageMetadata {
-    return {
-      runtimeKind: record.runtimeKind,
-      androidVersion: record.androidVersion,
-      architecture: record.architecture,
-      gmsMode: record.gmsMode,
-      signatureSpoofing: record.signatureSpoofing,
-    };
+  private referencesForImage(image: PlatformImage, requestedRef?: string) {
+    return [
+      ...(requestedRef ? [requestedRef] : []),
+      image.id,
+      image.shortId,
+      ...image.repoTags,
+      ...image.repoDigests,
+    ];
   }
 
-  private referencesForImage(image: PlatformImage) {
-    return [image.id, image.shortId, ...image.repoTags, ...image.repoDigests];
-  }
-
-  private findRecordsByReferences(references: string[]) {
+  private async loadMetadata(references: string[]) {
     const normalized = [
       ...new Set(references.map((ref) => ref.trim()).filter(Boolean)),
     ];
-    if (!normalized.length) {
-      return Promise.resolve([]);
-    }
-    return this.metadata.find({
-      where: [{ imageRef: In(normalized) }, { imageId: In(normalized) }],
-    });
-  }
-
-  private preferredRecord(
-    records: ContainerImageRuntimeMetadata[],
-    references: string[],
-  ) {
-    if (!records.length) {
-      return null;
-    }
-
-    for (const ref of references) {
-      const record = records.find(
-        (candidate) => candidate.imageRef === ref || candidate.imageId === ref,
-      );
-      if (record) {
-        return record;
+    const records = normalized.length
+      ? await this.metadata
+          .createQueryBuilder('metadata')
+          .addCommonTableExpression(
+            'SELECT value FROM json_each(:references)',
+            'image_references',
+          )
+          .where(
+            `metadata.imageRef IN (SELECT value FROM image_references)
+              OR metadata.imageId IN (SELECT value FROM image_references)`,
+            { references: JSON.stringify(normalized) },
+          )
+          .getMany()
+      : [];
+    const byReference = new Map<string, ContainerImageRuntimeMetadata>();
+    const byImageId = new Map<string, ContainerImageRuntimeMetadata>();
+    for (const record of records) {
+      byReference.set(record.imageRef, record);
+      if (!record.imageId) continue;
+      const existing = byImageId.get(record.imageId);
+      // Multiple references can share an ID. Use a stable tie-break independent of row order.
+      if (!existing || record.imageRef < existing.imageRef) {
+        byImageId.set(record.imageId, record);
       }
     }
-
-    return records[0];
+    return (orderedReferences: string[]): RuntimeImageMetadata | null => {
+      for (const reference of orderedReferences) {
+        const key = reference.trim();
+        const record = byReference.get(key) ?? byImageId.get(key);
+        if (record) {
+          const {
+            runtimeKind,
+            androidVersion,
+            architecture,
+            gmsMode,
+            signatureSpoofing,
+          } = record;
+          return {
+            runtimeKind,
+            androidVersion,
+            architecture,
+            gmsMode,
+            signatureSpoofing,
+          };
+        }
+      }
+      return null;
+    };
   }
 }

@@ -1,7 +1,8 @@
 export type ScheduleFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly'
 
 export interface ScheduleDraft {
-  frequency: ScheduleFrequency
+  frequency: ScheduleFrequency | 'custom'
+  originalCron?: string
   intervalHours: number
   time: string
   weekday: string
@@ -38,6 +39,7 @@ const timeParts = (time: string) => {
 }
 
 export const scheduleToCron = (schedule: ScheduleDraft) => {
+  if (schedule.originalCron !== undefined) return schedule.originalCron
   const { hour, minute } = timeParts(schedule.time)
   if (schedule.frequency === 'hourly') {
     return `0 */${clampInteger(schedule.intervalHours, 1, 24)} * * *`
@@ -51,7 +53,7 @@ export const scheduleToCron = (schedule: ScheduleDraft) => {
   return `${minute} ${hour} * * *`
 }
 
-export const cronToSchedule = (cronExpression: string): ScheduleDraft => {
+const editableScheduleFromCron = (cronExpression: string): ScheduleDraft | undefined => {
   const [minute, hour, dayOfMonth, month, dayOfWeek] = cronExpression.trim().split(/\s+/)
   if (minute === '0' && hour?.startsWith('*/') && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
     return {
@@ -82,5 +84,18 @@ export const cronToSchedule = (cronExpression: string): ScheduleDraft => {
       time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
     }
   }
-  return defaultSchedule
+}
+
+export const cronToSchedule = (cronExpression: string): ScheduleDraft => {
+  const normalized = cronExpression
+    .trim()
+    .split(/\s+/)
+    .map(field => (/^\d+$/.test(field) ? String(Number(field)) : field))
+    .join(' ')
+  const editable = editableScheduleFromCron(normalized)
+  // Only offer the simple controls when they can represent the stored expression.
+  if (!editable || scheduleToCron(editable) !== normalized) {
+    return { ...defaultSchedule, frequency: 'custom', originalCron: cronExpression }
+  }
+  return cronExpression === normalized ? editable : { ...editable, originalCron: cronExpression }
 }

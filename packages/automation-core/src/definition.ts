@@ -134,6 +134,26 @@ export type AutomationDefinitionStep =
   | AutomationSwitchStep
   | AutomationRepeatStep;
 
+export const visitAutomationSteps = (
+  steps: readonly AutomationDefinitionStep[],
+  visit: (step: AutomationDefinitionStep) => void,
+): void => {
+  for (const step of steps) {
+    visit(step);
+    if ("uses" in step) continue;
+    if (step.type === "condition") {
+      visitAutomationSteps(step.then, visit);
+      if (step.else) visitAutomationSteps(step.else, visit);
+    } else if (step.type === "switch") {
+      for (const branch of step.cases)
+        visitAutomationSteps(branch.steps, visit);
+      if (step.default) visitAutomationSteps(step.default, visit);
+    } else {
+      visitAutomationSteps(step.steps, visit);
+    }
+  }
+};
+
 export interface AutomationDefinitionSpec {
   steps: AutomationDefinitionStep[];
 }

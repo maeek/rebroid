@@ -102,7 +102,7 @@ describe('Scheduler page', () => {
     expect(within(dialog).queryByRole('textbox')).toBeNull()
   })
 
-  it('saves custom task changes with its schedule and action options intact', async () => {
+  it('saves a custom task rename without sending the old schedule or action options', async () => {
     const task = schedulerPreviewTasks.at(-1)!
     vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, name: 'Sunday cleanup' })
     renderPage()
@@ -111,18 +111,7 @@ describe('Scheduler page', () => {
     fireEvent.change(within(dialog).getByLabelText(/Name/), { target: { value: 'Sunday cleanup' } })
     expect(within(dialog).getByRole('switch', { name: 'Dangling images only' })).not.toBeChecked()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
-    await waitFor(() =>
-      expect(updateScheduledTaskAction).toHaveBeenCalledWith(
-        task.id,
-        expect.objectContaining({
-          name: 'Sunday cleanup',
-          enabled: false,
-          actionType: 'prune_images',
-          cronExpression: task.cronExpression,
-          payload: { danglingOnly: false }
-        })
-      )
-    )
+    await waitFor(() => expect(updateScheduledTaskAction).toHaveBeenCalledWith(task.id, { name: 'Sunday cleanup' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(screen.getByRole('button', { name: 'Sunday cleanup' })).toBeVisible()
   })

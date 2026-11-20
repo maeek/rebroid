@@ -12,13 +12,13 @@ export class AutomationRunnableResolverService {
   ) {}
 
   async resolve(automationId: string): Promise<RunnableAutomation | null> {
+    if (!automationId) return null;
     const ephemeral = this.ephemeralAutomations.get(automationId);
     if (ephemeral) {
       return ephemeral;
     }
 
-    const automations = await this.automations.findByIds([automationId]);
-    const automation = automations[0];
+    const automation = await this.automations.findById(automationId);
     if (!automation) {
       return null;
     }

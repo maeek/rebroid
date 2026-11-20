@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import {
   ScheduledTask,
   ScheduledTaskActionType,
@@ -9,6 +9,7 @@ import { ScheduledTasksRepository } from '../persistence/scheduled-tasks.reposit
 import { ScheduledTaskActionsService } from './scheduled-task-actions.service';
 import { ScheduledTaskCronRegistryService } from './scheduled-task-cron-registry.service';
 import { ScheduledTaskRunnerService } from './scheduled-task-runner.service';
+import { ScheduledTasksService } from './scheduled-tasks.service';
 
 const deferred = () => {
   let resolve!: () => void;
@@ -19,14 +20,14 @@ const deferred = () => {
 };
 
 describe('scheduled task execution reservation', () => {
-  let database: DataSource;
+  let database: SerializedSqliteDataSource;
   let tasks: ScheduledTasksRepository;
   let runner: ScheduledTaskRunnerService;
   const run = jest.fn();
   const unregisterTask = jest.fn();
 
   beforeEach(async () => {
-    database = await new DataSource({
+    database = await new SerializedSqliteDataSource({
       type: 'better-sqlite3',
       database: ':memory:',
       entities: [ScheduledTask],
@@ -57,6 +58,30 @@ describe('scheduled task execution reservation', () => {
     await database.destroy();
   });
 
+  it('retains a concurrent cron edit when updating a task name', async () => {
+    const registerTask = jest.fn();
+    const service = new ScheduledTasksService(
+      tasks,
+      {} as never,
+      { registerTask } as unknown as ScheduledTaskCronRegistryService,
+      {} as never,
+      runner,
+    );
+    await Promise.all([
+      service.update('task-1', { cronExpression: '0 14 1 * 2' }),
+      service.update('task-1', { name: 'Renamed' }),
+    ]);
+
+    await expect(service.get('task-1')).resolves.toMatchObject({
+      name: 'Renamed',
+      cronExpression: '0 14 1 * 2',
+    });
+    expect(registerTask).toHaveBeenLastCalledWith(
+      expect.objectContaining({ cronExpression: '0 14 1 * 2' }),
+      expect.any(Function),
+    );
+  });
+
   it('admits only one simultaneous cron or manual invocation', async () => {
     const completion = deferred();
     run.mockReturnValue(completion.promise);
@@ -69,14 +94,12 @@ describe('scheduled task execution reservation', () => {
 
   it('retains edits made during execution and schedules from current settings', async () => {
     run.mockImplementation(async () => {
-      const current = (await tasks.findById('task-1'))!;
-      await tasks.updateConfiguration({
-        ...current,
+      await tasks.updateConfiguration('task-1', () => ({
         name: 'Updated',
         enabled: false,
         nextRunAt: null,
         cronExpression: '0 4 * * *',
-      });
+      }));
     });
     await runner.runTask('task-1');
     expect(await tasks.findById('task-1')).toMatchObject({
@@ -108,11 +131,10 @@ describe('scheduled task execution reservation', () => {
   it('keeps a newer schedule when a stale next-run write arrives', async () => {
     const original = (await tasks.findById('task-1'))!;
     const nextRunAt = new Date('2030-01-01T00:00:00Z');
-    await tasks.updateConfiguration({
-      ...original,
+    await tasks.updateConfiguration(original.id, () => ({
       enabled: false,
       nextRunAt: null,
-    });
+    }));
     await tasks.updateNextRun(original, nextRunAt);
     expect(await tasks.findById('task-1')).toMatchObject({
       enabled: false,
@@ -122,11 +144,10 @@ describe('scheduled task execution reservation', () => {
 
   it('skips a queued cron callback after disabling but still allows Run now', async () => {
     const task = (await tasks.findById('task-1'))!;
-    await tasks.updateConfiguration({
-      ...task,
+    await tasks.updateConfiguration(task.id, () => ({
       enabled: false,
       nextRunAt: null,
-    });
+    }));
     await runner.runTask(task.id, 'cron');
     expect(run).not.toHaveBeenCalled();
     await runner.runTask(task.id);

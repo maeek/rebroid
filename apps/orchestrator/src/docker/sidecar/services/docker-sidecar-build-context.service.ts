@@ -1,6 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
+import { Readable } from 'node:stream';
 import tar from 'tar-stream';
 import { shouldIgnoreBuildContextEntry } from '../utils/docker-sidecar.utils';
 
@@ -17,7 +18,7 @@ export class DockerSidecarBuildContextService {
     const pack = tar.pack();
     await this.addDirectory(pack, directory, directory);
     pack.finalize();
-    return pack;
+    return Readable.from(pack, { objectMode: false });
   }
 
   private async addDirectory(

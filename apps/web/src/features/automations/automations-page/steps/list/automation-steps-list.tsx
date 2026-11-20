@@ -26,7 +26,7 @@ import { AutomationStepInspector } from '../inspector/automation-step-inspector'
 import { AutomationStepOutlineListView } from '../outline/automation-step-outline-list-view'
 import { isAutomationStepForm, readAutomationStepFromText } from '../shared/automation-step-clipboard'
 import { rewriteAutomationStepReferences } from '../shared/automation-step-reference-rewrite'
-import { collectStepKeys, selectionAfterDelete } from '../shared/automation-step-selection'
+import { collectSelectionKeys, firstStepKey, selectionAfterDelete } from '../shared/automation-step-selection'
 import { stepTitle } from '../shared/automation-step-utils'
 import {
   findStepById,
@@ -161,13 +161,13 @@ export function AutomationStepsList({
       const deleted = findStepById(safeSteps, stepId)
       if (!location || !deleted) return
 
-      const deletedKeys = new Set(collectStepKeys([deleted]))
+      const deletedKeys = new Set(collectSelectionKeys([deleted]).stepKeys)
       let fallback: string | null = null
       const next = updateStepList(safeSteps, location.listId, list => {
         fallback = selectionAfterDelete(list, location.index)
         return list.filter(step => step.clientKey !== stepId)
       })
-      const selection = fallback ?? collectStepKeys(next)[0] ?? null
+      const selection = fallback ?? firstStepKey(next)
       onChange(next)
       if (selectedStepKey && !deletedKeys.has(selectedStepKey)) return
       if (keyboard) {

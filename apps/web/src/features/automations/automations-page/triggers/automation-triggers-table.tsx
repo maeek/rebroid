@@ -14,7 +14,7 @@ import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { WorkflowRunResult } from '../shared/workflow-run-result'
 import { getScheduleCron } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation, AutomationTrigger } from '@/shared/contracts/automation'
+import type { AutomationOption, AutomationTrigger } from '@/shared/contracts/automation'
 import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { CellContext, ColumnDef, SortingState } from '@tanstack/react-table'
@@ -103,7 +103,7 @@ export function AutomationTriggersTable({
   toggleFeedback
 }: {
   applicationById: Map<string, AndroidApplication>
-  automationById: Map<string, Automation>
+  automationById: Map<string, AutomationOption>
   busyId: string | null
   canCreateApp: boolean
   disabled?: boolean

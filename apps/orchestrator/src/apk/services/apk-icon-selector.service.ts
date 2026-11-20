@@ -77,38 +77,4 @@ export class ApkIconSelectorService {
       ? `data:${best.mimeType};base64,${best.content.toString('base64')}`
       : null;
   }
-
-  selectBestIconDataUrlSync(
-    entries: ZipEntry[],
-    readEntry: (candidate: IconCandidate) => Buffer | null,
-  ) {
-    const candidates = entries
-      .map((entry) => this.toIconCandidate(entry))
-      .filter((candidate): candidate is IconCandidate => Boolean(candidate))
-      .sort((left, right) => right.score - left.score)
-      .slice(0, maxCandidatesToRead);
-
-    let best: { score: number; mimeType: string; content: Buffer } | null =
-      null;
-    for (const candidate of candidates) {
-      const content = readEntry(candidate);
-      if (!content || content.length === 0 || content.length > maxIconBytes) {
-        continue;
-      }
-
-      const dimensions = imageDimensions(content, candidate.mimeType);
-      const score =
-        candidate.score +
-        (dimensions
-          ? Math.min(Math.max(dimensions.width, dimensions.height), 512)
-          : 0);
-      if (!best || score > best.score) {
-        best = { score, mimeType: candidate.mimeType, content };
-      }
-    }
-
-    return best
-      ? `data:${best.mimeType};base64,${best.content.toString('base64')}`
-      : null;
-  }
 }

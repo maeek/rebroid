@@ -5,6 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { z } from 'zod';
 import { readBoundedResponseBody } from '../../../common/bounded-response-body';
+import {
+  displaySidecarJsonHeaders,
+  displaySidecarUrl,
+} from '../../../common/display-sidecar-request';
 import { getErrorMessage } from '../../../common/error-message';
 import { waitForOperation } from '../../../common/wait-for-operation';
 import { AndroidApplication } from '../../android-application.entity';
@@ -386,19 +390,11 @@ export class AndroidAppsSidecarAdbService {
   ): Promise<T> {
     init.signal?.throwIfAborted();
     const timeout = AbortSignal.timeout(requestTimeoutMs);
-    const body = init.body;
-    const baseUrl = this.config
-      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
-      .replace(/\/$/, '');
-    const secret = this.config.get<string>('app.sharedSecret');
-    const hasBody = body !== undefined && body !== null && `${body}`.length > 0;
-    const headers = new Headers(init.headers);
-    if (hasBody && !headers.has('content-type')) {
-      headers.set('content-type', 'application/json');
-    }
-    if (secret) {
-      headers.set('x-rebroid-sidecar-secret', secret);
-    }
+    const url = displaySidecarUrl(
+      this.config,
+      `/rebroid/adb/${encodeURIComponent(target.udid)}${path}`,
+    );
+    const headers = displaySidecarJsonHeaders(this.config, init);
     const transportFailure = (error: unknown): never => {
       if (!init.signal?.aborted || awaitMutation)
         this.viewerNetwork.invalidateViewerTarget(target);
@@ -406,19 +402,15 @@ export class AndroidAppsSidecarAdbService {
         `Display sidecar ADB API is not reachable: ${getErrorMessage(error)}`,
       );
     };
-    const response = await fetch(
-      `${baseUrl}/rebroid/adb/${encodeURIComponent(target.udid)}${path}`,
-      {
-        ...init,
-        body,
-        headers,
-        // Once sent, a mutation holds its admission until acknowledgement or transport failure.
-        signal:
-          init.signal && !awaitMutation
-            ? AbortSignal.any([init.signal, timeout])
-            : timeout,
-      },
-    ).catch(transportFailure);
+    const response = await fetch(url, {
+      ...init,
+      headers,
+      // Once sent, a mutation holds its admission until acknowledgement or transport failure.
+      signal:
+        init.signal && !awaitMutation
+          ? AbortSignal.any([init.signal, timeout])
+          : timeout,
+    }).catch(transportFailure);
 
     const text = await (
       maxResponseBytes === undefined

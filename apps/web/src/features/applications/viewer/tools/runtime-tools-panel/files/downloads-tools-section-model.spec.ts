@@ -8,8 +8,7 @@ import {
   runtimeFilesRootPath,
   runtimeItemLabel,
   runtimePathForPartIndex,
-  runtimePathParts,
-  topLoaderProgressForUpload
+  runtimePathParts
 } from './downloads-tools-section-model'
 import type { ApplicationRuntimeFile } from '@/shared/contracts/application'
 
@@ -65,11 +64,5 @@ describe('downloads tools section model', () => {
     expect(runtimeFileCanPreview(runtimeFile({ name: 'photo.JPEG' }))).toBe(true)
     expect(runtimeFileCanPreview(runtimeFile({ name: 'vector.svg' }))).toBe(false)
     expect(runtimeFileCanPreview(runtimeFile({ name: 'movie.mp4' }))).toBe(false)
-  })
-
-  it('clamps top-loader upload progress to visible in-flight range', () => {
-    expect(topLoaderProgressForUpload(0)).toBe(0.08)
-    expect(topLoaderProgressForUpload(50)).toBe(0.5)
-    expect(topLoaderProgressForUpload(100)).toBe(0.95)
   })
 })

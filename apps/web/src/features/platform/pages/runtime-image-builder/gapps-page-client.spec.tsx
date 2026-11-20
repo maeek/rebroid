@@ -49,7 +49,7 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     render(
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
-        jobs={[]}
+        initialJob={null}
       />
     )
 
@@ -75,7 +75,7 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
       render(
         <RuntimeGappsImageBuilderPageClient
           presetResponse={presetResponse}
-          jobs={[activeJob]}
+          initialJob={activeJob}
         />
       )
 
@@ -115,7 +115,7 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     render(
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
-        jobs={[]}
+        initialJob={null}
       />
     )
 
@@ -151,7 +151,7 @@ describe('RuntimeGappsImageBuilderPageClient', () => {
     render(
       <RuntimeGappsImageBuilderPageClient
         presetResponse={presetResponse}
-        jobs={[activeJob]}
+        initialJob={activeJob}
       />
     )
 

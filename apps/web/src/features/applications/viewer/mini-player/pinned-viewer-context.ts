@@ -1,12 +1,9 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type {
-  DisplayViewerStreamMetrics,
-  DisplayViewerStreamStatus
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplaySize, DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
 import type { ScrcpySession } from '@/shared/contracts/application'
+import type { ViewerStreamMetricsV4, ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
 export type DockedViewer = {
   appId: string
@@ -21,8 +18,8 @@ export type DockedViewer = {
   canClipboard: boolean
   isActive: boolean
   keyboardCaptureEnabled: boolean
-  onStreamMetrics: (metrics: DisplayViewerStreamMetrics) => void
-  onStreamStatus: (status: DisplayViewerStreamStatus) => void
+  onStreamMetrics: (metrics: ViewerStreamMetricsV4) => void
+  onStreamStatus: (status: ViewerStreamStatus) => void
   onRetry: () => void
   onFocus?: () => void
   retrying: boolean

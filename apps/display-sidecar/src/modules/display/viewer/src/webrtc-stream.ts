@@ -1,9 +1,9 @@
+import type { ViewerEffectiveProfile } from "@rebroid/android-application-core/viewer-stream";
 import type {
   ControlChannel,
   PageLifecycle,
   ViewerConfig,
   ViewerUi,
-  ViewerEffectiveProfile,
   ViewerRelayMetrics,
 } from "./types.js";
 import { configuredStreamProfile } from "./config.js";

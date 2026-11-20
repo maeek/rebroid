@@ -1,6 +1,5 @@
 import { compactGridParams } from '../shared/grid-query-utils'
-import type { Automation, AutomationsGridQuery, AutomationTrigger } from '@/shared/contracts/automation'
-import type { AutomationDefinitionStep } from '@rebroid/automation-core/definition'
+import type { AutomationGridRow, AutomationsGridQuery } from '@/shared/contracts/automation'
 
 type AutomationsGridHrefInput = {
   gridQuery: AutomationsGridQuery
@@ -14,59 +13,14 @@ type AutomationOperationToast = {
   variant?: 'danger'
 }
 
-export const automationStatusLabel = (status: Automation['lastStatus']) => {
-  if (status === 'never_run') return 'Never run'
-  return status === 'success' ? 'Success' : status === 'running' ? 'Running' : 'Failed'
-}
-
-export const countAutomationSteps = (steps: AutomationDefinitionStep[]): number =>
-  steps.reduce((count, step) => {
-    if ('uses' in step) return count + 1
-    if (step.type === 'condition')
-      return count + 1 + countAutomationSteps(step.then) + countAutomationSteps(step.else ?? [])
-    if (step.type === 'switch') {
-      return (
-        count +
-        1 +
-        step.cases.reduce((sum, item) => sum + countAutomationSteps(item.steps), 0) +
-        countAutomationSteps(step.default ?? [])
-      )
-    }
-    return count + 1 + countAutomationSteps(step.steps)
-  }, 0)
-
-export const automationTriggerAppIdsByAutomationId = (triggers: AutomationTrigger[]) => {
-  const map = new Map<string, Set<string>>()
-
-  for (const trigger of triggers) {
-    const set = map.get(trigger.automationId) ?? new Set<string>()
-    set.add(trigger.targetApplicationId)
-    map.set(trigger.automationId, set)
-  }
-
-  return map
-}
-
-export const retainPageAutomationSelection = (automations: Automation[], selectedIds: Set<string>) => {
+export const retainPageAutomationSelection = (automations: AutomationGridRow[], selectedIds: Set<string>) => {
   const currentPageIds = new Set(automations.map(automation => automation.id))
 
   return new Set([...selectedIds].filter(id => currentPageIds.has(id)))
 }
 
-export const selectedAutomationsFromIds = (automations: Automation[], selectedIds: Set<string>) =>
+export const selectedAutomationsFromIds = (automations: AutomationGridRow[], selectedIds: Set<string>) =>
   automations.filter(automation => selectedIds.has(automation.id))
-
-export const countActiveAutomationFilters = ({
-  lastRun,
-  status,
-  tag,
-  targetApplicationId
-}: {
-  lastRun?: string
-  status?: string
-  tag?: string
-  targetApplicationId?: string
-}) => [tag, targetApplicationId, status, lastRun].filter(Boolean).length
 
 export const buildAutomationsGridHref = ({ gridQuery, pageSize, patch }: AutomationsGridHrefInput) => {
   const params = compactGridParams({
@@ -79,7 +33,7 @@ export const buildAutomationsGridHref = ({ gridQuery, pageSize, patch }: Automat
   return `/automations${params.size ? `?${params.toString()}` : ''}`
 }
 
-export const deletedAutomationIdsFromResults = (items: Automation[], results: PromiseSettledResult<unknown>[]) =>
+export const deletedAutomationIdsFromResults = (items: AutomationGridRow[], results: PromiseSettledResult<unknown>[]) =>
   new Set(
     results
       .map((result, index) => (result.status === 'fulfilled' ? items[index]?.id : null))
@@ -87,7 +41,7 @@ export const deletedAutomationIdsFromResults = (items: Automation[], results: Pr
   )
 
 export const summarizeAutomationDeleteResults = (
-  items: Automation[],
+  items: AutomationGridRow[],
   deletedIds: Set<string>,
   results: PromiseSettledResult<unknown>[]
 ): AutomationOperationToast => {

@@ -110,16 +110,26 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .getMany();
   }
 
-  listActive(ownerUserId: string) {
-    return this.runs
-      .createQueryBuilder('run')
-      .addSelect('run.stepResultsJson')
-      .where([
-        { ownerUserId, status: AutomationRunStatus.Queued },
-        { ownerUserId, status: AutomationRunStatus.Running },
+  async listActive(ownerUserId: string) {
+    const { entities, raw } = await this.runsWithWorkflow()
+      .select([
+        'run.id',
+        'run.automationId',
+        'run.targetApplicationId',
+        'run.status',
+        'run.createdAt',
       ])
+      .addSelect('workflow.name', 'workflowName')
+      .where({
+        ownerUserId,
+        status: In([AutomationRunStatus.Queued, AutomationRunStatus.Running]),
+      })
       .orderBy('run.createdAt', 'DESC')
-      .getMany();
+      .getRawAndEntities<{ workflowName: string | null }>();
+    return entities.map((run, index) => ({
+      run,
+      workflowName: raw[index]?.workflowName ?? null,
+    }));
   }
 
   async listApplicationWorkflows(
@@ -185,17 +195,21 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
     ownerUserId: string,
     targetApplicationId: string,
   ) {
+    return this.runsWithWorkflow()
+      .where({ ownerUserId, targetApplicationId })
+      .andWhere('run.automationId NOT LIKE :adHocAiPattern', {
+        adHocAiPattern,
+      });
+  }
+
+  private runsWithWorkflow() {
     return this.runs
       .createQueryBuilder('run')
       .leftJoin(
         Automation,
         'workflow',
         'workflow.id = run.automationId AND workflow.ownerUserId = run.ownerUserId',
-      )
-      .where({ ownerUserId, targetApplicationId })
-      .andWhere('run.automationId NOT LIKE :adHocAiPattern', {
-        adHocAiPattern,
-      });
+      );
   }
 
   listAdHocAiForTarget(
@@ -242,16 +256,6 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
 
   existsForOwner(ownerUserId: string, id: string) {
     return this.runs.existsBy({ ownerUserId, id });
-  }
-
-  findActiveByTarget(targetApplicationId: string) {
-    return this.runs.findOne({
-      where: [
-        { targetApplicationId, status: AutomationRunStatus.Queued },
-        { targetApplicationId, status: AutomationRunStatus.Running },
-      ],
-      order: { createdAt: 'DESC' },
-    });
   }
 
   async deleteByIds(ownerUserId: string, ids: string[]) {

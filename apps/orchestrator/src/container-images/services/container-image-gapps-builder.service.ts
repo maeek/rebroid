@@ -59,7 +59,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.jobs.failInterruptedGappsJobs();
+    await this.jobs.failInterruptedJobs();
     this.scheduleDrain();
   }
 
@@ -164,7 +164,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
 
       await this.jobs.updateGappsDetails(job, { phase: 'pulling_base' });
       await this.images.pullImage(job.baseImage, (message) => {
-        void this.jobs.appendLog(id, message);
+        this.jobs.recordProgress(id, message);
       });
       const baseInspect = await this.images.inspectImage(job.baseImage);
       const resolvedBaseDigest = baseInspect.RepoDigests?.[0] ?? baseInspect.Id;
@@ -327,7 +327,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
       timeoutMs: 60 * 60 * 1000,
       signal,
       onProgress: (message) => {
-        void this.jobs.appendLog(jobId, message);
+        this.jobs.recordProgress(jobId, message);
       },
     });
   }

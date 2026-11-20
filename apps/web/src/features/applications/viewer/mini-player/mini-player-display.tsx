@@ -10,10 +10,7 @@ import { DesktopMiniPlayer } from './desktop-mini-player'
 import { MiniPlayerToolbar } from './mini-player-toolbar'
 import { useDockedViewerPosition } from './use-docked-viewer-position'
 import type { DockedViewer } from './pinned-viewer-context'
-import type {
-  DisplayViewerStreamMetrics,
-  DisplayViewerStreamStatus
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type { ViewerStreamMetricsV4, ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
 export const MiniPlayerDisplay = ({
   viewer,
@@ -41,7 +38,7 @@ export const MiniPlayerDisplay = ({
   const [stream, setStream] = useState<{
     key: string
     size?: { width: number; height: number }
-    status?: DisplayViewerStreamStatus
+    status?: ViewerStreamStatus
   }>()
   const status = stream?.key === frameKey ? stream.status : undefined
   const size = (stream?.key === frameKey ? stream.size : undefined) ?? viewer.displaySize
@@ -67,13 +64,13 @@ export const MiniPlayerDisplay = ({
     return () => document.removeEventListener('fullscreenchange', updateFullscreen)
   }, [hostElements, viewer.appId])
 
-  const onStatus = (next: DisplayViewerStreamStatus) => {
+  const onStatus = (next: ViewerStreamStatus) => {
     if (next.sessionId && next.sessionId !== viewer.surface.sessionId) return
     setStream(current => ({ ...(current?.key === frameKey ? current : undefined), key: frameKey, status: next }))
     if (viewer.element.isConnected) viewer.onStreamStatus(next)
   }
 
-  const onMetrics = (metrics: DisplayViewerStreamMetrics) => {
+  const onMetrics = (metrics: ViewerStreamMetricsV4) => {
     const { width, height } = metrics
     if (width && width > 0 && height && height > 0) {
       setStream(current => {

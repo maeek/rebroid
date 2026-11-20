@@ -125,12 +125,10 @@ export const selectRoleVisionCatalog = <TProvider extends AiModelCatalogProvider
 export const selectMatchingVisionPair = <TProvider extends AiModelCatalogProvider>({
   plannerModel,
   plannerProvider,
-  requireVisionDefault = false,
   visionCatalog
 }: {
   plannerModel: TProvider['models'][number] | undefined
   plannerProvider: TProvider | undefined
-  requireVisionDefault?: boolean
   visionCatalog: TProvider[]
 }): AiCatalogSelection<TProvider> => {
   if (!plannerProvider || !plannerModel?.roles?.includes('vision')) {
@@ -138,37 +136,9 @@ export const selectMatchingVisionPair = <TProvider extends AiModelCatalogProvide
   }
 
   const provider = visionCatalog.find(item => item.id === plannerProvider.id)
-  const model = provider?.models.find(
-    item => item.id === plannerModel.id && (!requireVisionDefault || item.defaultFor?.includes('vision'))
-  )
+  const model = provider?.models.find(item => item.id === plannerModel.id)
 
   return model ? { provider, model } : { provider: undefined, model: undefined }
-}
-
-export const selectInitialPlannerVisionCatalog = <TProvider extends AiModelCatalogProvider>(
-  catalog: TProvider[]
-): AiRoleCatalogSelection<TProvider> => {
-  const plannerCatalog = catalogByRole(catalog, 'planner')
-  const visionCatalog = catalogByRole(catalog, 'vision')
-  const selectedProvider = plannerCatalog[0]
-  const selectedModel = selectCatalogModel(selectedProvider, '', 'planner')
-  const matchingVision = selectMatchingVisionPair({
-    plannerModel: selectedModel,
-    plannerProvider: selectedProvider,
-    requireVisionDefault: true,
-    visionCatalog
-  })
-  const selectedVisionProvider = matchingVision.provider ?? visionCatalog[0]
-  const selectedVisionModel = matchingVision.model ?? selectCatalogModel(selectedVisionProvider, '', 'vision')
-
-  return {
-    primaryCatalog: plannerCatalog,
-    visionCatalog,
-    selectedProvider,
-    selectedModel,
-    selectedVisionProvider,
-    selectedVisionModel
-  }
 }
 
 export const aiProviderKindLabel = (kind: AiProviderKind) => {

@@ -8,6 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { setTimeout as delay } from 'node:timers/promises';
+import {
+  displaySidecarJsonHeaders,
+  displaySidecarUrl,
+} from '../../../common/display-sidecar-request';
 import { DockerEngineService } from '../../docker-engine.service';
 import { OperationDeadline } from '../../../common/operation-deadline';
 import type { DockerOperationOptions } from '../../contracts/docker-operation-options';
@@ -204,7 +208,8 @@ export class DockerSidecarApiService
 
   async probeHealth(options?: DockerOperationOptions) {
     try {
-      const response = await fetch(`${this.baseUrl()}/rebroid/display/health`, {
+      const url = displaySidecarUrl(this.config, '/rebroid/display/health');
+      const response = await fetch(url, {
         signal: this.requestSignal(2_000, options),
       });
       void response.body?.cancel().catch(() => undefined);
@@ -221,15 +226,12 @@ export class DockerSidecarApiService
     init: RequestInit = {},
     options?: DockerOperationOptions,
   ): Promise<T> {
-    const secret = this.config.get<string>('app.sharedSecret');
-    const response = await fetch(`${this.baseUrl()}/rebroid/display${path}`, {
+    const url = displaySidecarUrl(this.config, `/rebroid/display${path}`);
+    const headers = displaySidecarJsonHeaders(this.config, init);
+    if (!headers.has('accept')) headers.set('accept', 'application/json');
+    const response = await fetch(url, {
       ...init,
-      headers: {
-        accept: 'application/json',
-        ...(init.body ? { 'content-type': 'application/json' } : {}),
-        ...(secret ? { 'x-rebroid-sidecar-secret': secret } : {}),
-        ...(init.headers ?? {}),
-      },
+      headers,
       signal: this.requestSignal(10_000, options),
     }).catch((error) => {
       throw new ConflictException(
@@ -255,12 +257,6 @@ export class DockerSidecarApiService
     return options?.signal
       ? AbortSignal.any([timeout, options.signal])
       : timeout;
-  }
-
-  private baseUrl() {
-    return this.config
-      .getOrThrow<string>('app.displaySidecar.internalBaseUrl')
-      .replace(/\/$/, '');
   }
 
   private toAdminDisplaySession(session: DisplaySidecarSession) {

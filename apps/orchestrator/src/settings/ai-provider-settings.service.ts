@@ -9,7 +9,6 @@ import {
   maskProvider,
   normalizeAiModel,
   normalizeAiProvider,
-  normalizeAiProviders,
   normalizeDefaultModel,
   resolveUpdatedApiKey,
 } from './ai-provider-settings';
@@ -165,7 +164,7 @@ export class AiProviderSettingsService {
       }
       return {
         ...settings,
-        aiProviders: normalizeAiProviders([...settings.aiProviders, provider]),
+        aiProviders: [...settings.aiProviders, provider],
       };
     });
     return providerResponse(provider);
@@ -203,7 +202,7 @@ export class AiProviderSettingsService {
       }
       const providers = [...settings.aiProviders];
       providers[index] = next;
-      return { ...settings, aiProviders: normalizeAiProviders(providers) };
+      return { ...settings, aiProviders: providers };
     });
     if (!next)
       throw new NotFoundException(`AI provider "${providerId}" was not found.`);

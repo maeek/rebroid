@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultConditionStep, defaultStep } from '../../editor/builder-utils'
-import { collectBlockKeys, collectStepKeys, firstStepKey, selectionAfterDelete } from './automation-step-selection'
+import { collectSelectionKeys, firstStepKey, selectionAfterDelete } from './automation-step-selection'
 
 describe('automation step selection helpers', () => {
   it('collects root and nested step keys in visible workflow order', () => {
@@ -12,9 +12,11 @@ describe('automation step selection helpers', () => {
       elseSteps: []
     }
 
-    expect(collectStepKeys([rootAction, condition])).toEqual(['root-action', 'condition-block', 'nested-action'])
+    expect(collectSelectionKeys([rootAction, condition])).toEqual({
+      stepKeys: ['root-action', 'condition-block', 'nested-action'],
+      blockKeys: ['condition-block']
+    })
     expect(firstStepKey([rootAction, condition])).toBe('root-action')
-    expect(collectBlockKeys([rootAction, condition])).toEqual(['condition-block'])
   })
 
   it('selects the nearest sibling after deleting a step', () => {

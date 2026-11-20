@@ -11,7 +11,7 @@ import type { ContainerImageBuildJob, GappsBuildPresetsResponse } from '@/shared
 
 type GappsBuilderProps = {
   presetResponse: GappsBuildPresetsResponse
-  jobs: ContainerImageBuildJob[]
+  initialJob: ContainerImageBuildJob | null
   uploadedApkId?: string
 }
 
