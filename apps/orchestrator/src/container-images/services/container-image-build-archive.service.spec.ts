@@ -1,6 +1,7 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { Readable } from 'node:stream';
 import { setTimeout as delay } from 'node:timers/promises';
 import tar from 'tar-stream';
 import { ContainerImageBuildContextFile } from '../entities/container-image-build-context-file.entity';
@@ -21,7 +22,7 @@ const contextFile = (
   createdAt: new Date(),
 });
 
-const readTarEntries = async (pack: tar.Pack) =>
+const readTarEntries = async (pack: Readable) =>
   new Promise<string[]>((resolve, reject) => {
     const extract = tar.extract();
     const entries: string[] = [];
@@ -37,10 +38,10 @@ const readTarEntries = async (pack: tar.Pack) =>
     pack.pipe(extract);
   });
 
-const readTarHeaders = async (pack: tar.Pack) =>
-  new Promise<tar.Headers[]>((resolve, reject) => {
+const readTarHeaders = async (pack: Readable) =>
+  new Promise<tar.Header[]>((resolve, reject) => {
     const extract = tar.extract();
-    const headers: tar.Headers[] = [];
+    const headers: tar.Header[] = [];
 
     extract.on('entry', (header, stream, next) => {
       headers.push(header);

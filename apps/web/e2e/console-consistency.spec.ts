@@ -569,7 +569,7 @@ test('desktop sidebar collapses to a navigable icon rail and persists', async ({
     await access.hover()
     await expect(group).toHaveAttribute('aria-label', 'Users & groups')
     await expect(group).toHaveCSS('animation-name', 'none')
-    const flyout = (await group.elementHandle())!
+    const flyout = await group.elementHandle()
     await sidebar.getByRole('button', { name: 'Docker', exact: true }).hover()
     await expect(group).toHaveAttribute('aria-label', 'Docker')
     expect(await flyout.getAttribute('aria-label')).toBe('Docker')
