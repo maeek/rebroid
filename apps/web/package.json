@@ -85,7 +85,7 @@
     "prettier": "catalog:",
     "tailwindcss": "^4.3.5",
     "typescript": "catalog:",
-    "vitest": "^4.1.10",
+    "vitest": "^5.1.0",
     "whatwg-fetch": "^3.6.20"
   }
 }
