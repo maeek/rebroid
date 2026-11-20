@@ -98,6 +98,90 @@ async function requestPolicy(
   return (await requestAgent(server, method, url, body)).status;
 }
 
+test("policy removal validates the query after authorization and application ID checks", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  const recovery = FirewallPolicyCommands.restore(
+    new FirewallPolicyStore(join(directory, "policies.json")),
+    () => adapter,
+  );
+  assert.ok(recovery.commands);
+  const remove = context.mock.method(
+    recovery.commands,
+    "remove",
+    (_id: string, containerId?: string) =>
+      containerId ? "unchanged" : "applied",
+  );
+  let secret = "other-secret";
+  const server = createFirewallAgentServer({
+    getSecret: () => secret,
+    recovery,
+  });
+  const path = "/v1/policies/app-1";
+  assert.deepEqual(
+    await requestAgent(server, "DELETE", `${path}?generation=1`),
+    {
+      status: 401,
+      body: { message: "Unauthorized." },
+    },
+  );
+  secret = "secret";
+  assert.deepEqual(
+    await requestAgent(
+      server,
+      "DELETE",
+      "/v1/policies/invalid_id?generation=1",
+    ),
+    { status: 400, body: { message: "Invalid application id." } },
+  );
+
+  for (const query of [
+    "",
+    "containerId=",
+    "containerId=old&containerId=new",
+    "generation=1",
+    "containerId=old&generation=1&generation=2",
+    "revision=1&revision=2",
+    "containerId=old&generation=9007199254740992",
+    "revision=-1",
+    "revision=1.5",
+    "containerId=old&unexpected=1",
+  ]) {
+    assert.deepEqual(
+      await requestAgent(server, "DELETE", `${path}?${query}`),
+      { status: 400, body: { message: "Invalid policy removal query." } },
+      query,
+    );
+  }
+  assert.equal(remove.mock.callCount(), 0);
+
+  const applied = {
+    status: 200,
+    body: { status: "applied", message: "Firewall policy removed." },
+  };
+  assert.deepEqual(await requestAgent(server, "DELETE", path), applied);
+  assert.deepEqual(
+    await requestAgent(server, "DELETE", `${path}?revision=0`),
+    applied,
+  );
+  assert.deepEqual(
+    await requestAgent(
+      server,
+      "DELETE",
+      `${path}?containerId=old%20runtime&generation=0007&revision=2`,
+    ),
+    { status: 200, body: { status: "unchanged" } },
+  );
+  assert.deepEqual(
+    remove.mock.calls.map(({ arguments: args }) => args),
+    [
+      ["app-1", undefined, undefined, undefined],
+      ["app-1", undefined, undefined, 0],
+      ["app-1", "old runtime", 7, 2],
+    ],
+  );
+});
+
 test("server reports failed recovery and rejects authenticated policy commands", async (context) => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));

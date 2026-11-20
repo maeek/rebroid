@@ -6,10 +6,9 @@ import {
   FirewallPolicyRecoveryPendingError,
   type FirewallPolicyRecovery,
 } from "./policy-commands";
+import { parsePolicyRemovalQuery } from "./policy-removal-query";
 
 const maximumBodyBytes = 128 * 1024;
-const isNonnegativeInteger = (value: string) =>
-  /^\d+$/.test(value) && Number.isSafeInteger(Number(value));
 
 class RequestBodyTooLargeError extends Error {}
 class InvalidRequestBodyError extends Error {}
@@ -142,34 +141,12 @@ export const createFirewallAgentServer = ({
           json(response, 400, { message: "Invalid application id." });
           return;
         }
-        let expectedContainerId: string | undefined;
-        let generation: number | undefined;
-        let revision: number | undefined;
-        if (query !== undefined) {
-          const params = new URLSearchParams(query);
-          const containerIds = params.getAll("containerId");
-          const generations = params.getAll("generation");
-          const revisions = params.getAll("revision");
-          if (
-            params.size === 0 ||
-            containerIds.length > 1 ||
-            containerIds.includes("") ||
-            generations.length > 1 ||
-            revisions.length > 1 ||
-            params.size !==
-              containerIds.length + generations.length + revisions.length ||
-            (generations.length > 0 &&
-              (!containerIds.length ||
-                !isNonnegativeInteger(generations[0]))) ||
-            (revisions.length > 0 && !isNonnegativeInteger(revisions[0]))
-          ) {
-            json(response, 400, { message: "Invalid policy removal query." });
-            return;
-          }
-          expectedContainerId = containerIds[0];
-          if (generations.length) generation = Number(generations[0]);
-          if (revisions.length) revision = Number(revisions[0]);
+        const removal = parsePolicyRemovalQuery(query);
+        if (!removal) {
+          json(response, 400, { message: "Invalid policy removal query." });
+          return;
         }
+        const { expectedContainerId, generation, revision } = removal;
         if (
           commands.remove(
             applicationId,
