@@ -731,6 +731,49 @@ describe('Android startup probe scheduling', () => {
     expect(exec.execInContainerWithOutput).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    { running: true, expected: 'Timed out waiting for Android' },
+    { running: false, expected: 'before Android finished booting' },
+  ])(
+    'handles observations settling at the boot deadline ($expected)',
+    async ({ running, expected }) => {
+      const { android, exec, lifecycle, logs } = setup();
+      const diagnosticLog = jest.spyOn(Logger.prototype, 'log');
+      Object.assign(lifecycle, {
+        getContainerLogs: jest.fn().mockResolvedValue(''),
+      });
+      exec.execInContainerWithOutput.mockImplementation(async () => ({
+        stdout: performance.now() >= 14_000 ? 'dev.bootcomplete=1' : '',
+        stderr: `Sample at ${performance.now()}`,
+      }));
+      lifecycle.getContainerRuntimeState.mockImplementation(async () => {
+        if (performance.now() < 14_000) {
+          return { exists: true, running: true };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        return { exists: true, running };
+      });
+
+      const failed = expect(android.waitForAndroidBoot(app)).rejects.toThrow(
+        expected,
+      );
+      await jest.advanceTimersByTimeAsync(15_000);
+      await failed;
+
+      expect(diagnosticLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'android_boot_probe',
+          elapsedMs: 15_000,
+          runtimeRunning: running,
+          propertyReady: true,
+        }),
+      );
+      expect(logs.append.mock.calls.map(([, message]) => message)).toEqual(
+        running ? ['Android boot diagnostics'] : [],
+      );
+    },
+  );
+
   it('reuses setup facts on a retry and refreshes both after an observed sidecar restart', async () => {
     const { android, lifecycle, sidecar, viewer } = setup();
     sidecar.connectAdb

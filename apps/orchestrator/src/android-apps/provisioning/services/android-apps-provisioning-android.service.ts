@@ -42,24 +42,22 @@ import {
   parseAndroidBootReadiness,
   truncateDiagnosticText,
 } from '../utils/android-apps-android-provisioning.utils';
+import {
+  bootCheckIntervalMs,
+  decideAndroidBootObservation,
+  type BootObservationState,
+  type BootPropertyObservation,
+  type BootPropertySample,
+} from '../utils/android-boot-observation';
 import { AndroidBootOperationTimer } from '../utils/android-boot-operation-timer';
 import {
   androidBootEventCommand,
   parseAndroidBootEvents,
 } from '../utils/android-boot-events';
 
-const bootCheckIntervalMs = 1_000;
-const maxUnchangedBootProbeIntervalMs = 3_000;
 const adbSetupObservationTtlMs = 3_000;
-const maxConsecutiveObservationFailures = 3;
 const bootDiagnosticTimeoutMs = 5_000;
 const bootEventTimeoutMs = 2_000;
-
-type BootPropertySample = {
-  sequence: number;
-  dispatchedAfterMs: number | null;
-  settledAfterMs: number;
-};
 
 type BootEventObservation = {
   applicationId: string;
@@ -182,12 +180,14 @@ export class AndroidAppsProvisioningAndroidService {
     const bootObservationId = randomUUID();
     let observationSequence = 0;
     let previousObservationSettledAt = bootStartedAt;
-    let lastProbe = 'Android boot readiness was not reported.';
+    let observationState: BootObservationState = {
+      lastProbe: 'Android boot readiness was not reported.',
+      probeIntervalMs: bootCheckIntervalMs,
+      runtimeFailures: 0,
+      propertyFailures: 0,
+      guestShellObserved: false,
+    };
     let nextProbeAt = performance.now();
-    let probeIntervalMs = bootCheckIntervalMs;
-    let stateFailures = 0;
-    let probeFailures = 0;
-    let guestShellObserved = false;
     let initialGuestUnavailableAt: number | undefined;
     let guestUnavailableObservations = 0;
     let lastNotReady:
@@ -233,6 +233,10 @@ export class AndroidAppsProvisioningAndroidService {
           : undefined;
       const observationSettledAt = performance.now();
       const propertyTimings = propertyTimer?.snapshot();
+      const initialGuestShellUnavailable =
+        !observationState.guestShellObserved &&
+        probeResult.status === 'rejected' &&
+        this.isInitialGuestShellUnavailable(probeResult.reason);
       this.logger.log({
         event: 'android_boot_probe',
         applicationId: app.id,
@@ -253,47 +257,50 @@ export class AndroidAppsProvisioningAndroidService {
           runtime.status === 'fulfilled'
             ? runtime.value.exists && runtime.value.running
             : null,
-        initialGuestShellUnavailable:
-          !guestShellObserved &&
-          probeResult.status === 'rejected' &&
-          this.isInitialGuestShellUnavailable(probeResult.reason),
+        initialGuestShellUnavailable,
         cancelled: signal.aborted,
       });
       previousObservationSettledAt = observationSettledAt;
       this.tracker.ensureActive(app.id);
       signal.throwIfAborted();
-      // A terminal runtime observation wins even if the property probe timed out.
-      if (
-        runtime.status === 'fulfilled' &&
-        (!runtime.value.exists || !runtime.value.running)
-      ) {
-        throw new Error(this.androidBootExitedMessage(runtime.value));
+      const deadlineExpired = deadline.remainingMs() === 0;
+      let properties: BootPropertyObservation = { status: 'skipped' };
+      if (probeResult.status === 'rejected') {
+        properties = {
+          status: 'failed',
+          error: probeResult.reason,
+          initialGuestShellUnavailable,
+        };
+      } else if (probeResult.value && readiness && propertyTimings) {
+        properties = {
+          status: 'observed',
+          readiness,
+          stderr: probeResult.value.stderr,
+          sample: {
+            sequence: observationSequence,
+            dispatchedAfterMs: propertyTimings.dispatchedAfterMs,
+            settledAfterMs: propertyTimings.settledAfterMs,
+          },
+        };
       }
-      if (deadline.remainingMs() === 0) break;
-      if (runtime.status === 'rejected') {
-        lastProbe = getErrorMessage(runtime.reason);
+      const decision = decideAndroidBootObservation({
+        state: observationState,
+        runtime,
+        properties,
+        deadlineExpired,
+        isRetryableError: (error) => this.isRetryableBootObservation(error),
+      });
+      if (decision.kind === 'runtime-exited') {
+        throw new Error(this.androidBootExitedMessage(decision.runtime));
+      }
+      if (decision.kind === 'deadline-expired') break;
+      if (decision.kind === 'failed') throw decision.error;
+
+      if (decision.kind === 'ready' || decision.kind === 'not-ready') {
         if (
-          !this.isRetryableBootObservation(runtime.reason) ||
-          ++stateFailures >= maxConsecutiveObservationFailures
+          !observationState.guestShellObserved &&
+          initialGuestUnavailableAt !== undefined
         ) {
-          throw runtime.reason;
-        }
-        // Successful properties alone cannot establish that this runtime is still running.
-        await delay(
-          Math.min(bootCheckIntervalMs, deadline.remainingMs()),
-          undefined,
-          { signal },
-        );
-        continue;
-      }
-      stateFailures = 0;
-      if (
-        probeResult.status === 'fulfilled' &&
-        probeResult.value &&
-        readiness &&
-        propertyTimings
-      ) {
-        if (!guestShellObserved && initialGuestUnavailableAt !== undefined) {
           this.logger.log({
             event: 'android_guest_shell_available',
             applicationId: app.id,
@@ -305,24 +312,14 @@ export class AndroidAppsProvisioningAndroidService {
             unavailableObservations: guestUnavailableObservations,
           });
         }
-        guestShellObserved = true;
-        probeFailures = 0;
-        const observation = [readiness.probe, probeResult.value.stderr.trim()]
-          .filter(Boolean)
-          .join(' ');
-        const sample = {
-          sequence: observationSequence,
-          dispatchedAfterMs: propertyTimings.dispatchedAfterMs,
-          settledAfterMs: propertyTimings.settledAfterMs,
-        };
-        const containerStartedAt = runtime.value.startedAt;
-        if (readiness.ready) {
+        const { startedAt: containerStartedAt, sample } = decision;
+        if (decision.kind === 'ready') {
           const lastNotReadySample =
             lastNotReady?.startedAt === containerStartedAt
               ? (lastNotReady?.sample ?? null)
               : null;
           await this.logs.append(app.id, 'Android boot completed', {
-            probe: observation,
+            probe: decision.state.lastProbe,
             containerId: app.containerId,
             reservationId: reservationId ?? null,
             bootObservationId,
@@ -354,42 +351,24 @@ export class AndroidAppsProvisioningAndroidService {
           return undefined;
         }
         lastNotReady = { startedAt: containerStartedAt, sample };
-        probeIntervalMs =
-          observation === lastProbe
-            ? Math.min(
-                probeIntervalMs + bootCheckIntervalMs,
-                maxUnchangedBootProbeIntervalMs,
-              )
-            : bootCheckIntervalMs;
-        lastProbe = observation;
-        nextProbeAt = performance.now() + probeIntervalMs;
-      } else if (probeResult.status === 'rejected') {
-        lastProbe = getErrorMessage(probeResult.reason);
-        if (
-          !guestShellObserved &&
-          this.isInitialGuestShellUnavailable(probeResult.reason)
-        ) {
-          // Redroid may be running before its initial guest shell is available.
-          // This boot observation uses the full boot budget, not transport retries.
-          guestUnavailableObservations += 1;
-          if (initialGuestUnavailableAt === undefined) {
-            initialGuestUnavailableAt = performance.now();
-            this.logger.log({
-              event: 'android_guest_shell_unavailable',
-              applicationId: app.id,
-              containerId: app.containerId,
-              observedAt: new Date().toISOString(),
-            });
-          }
-          probeFailures = 0;
-        } else if (
-          !this.isRetryableBootObservation(probeResult.reason) ||
-          ++probeFailures >= maxConsecutiveObservationFailures
-        ) {
-          throw probeResult.reason;
+      } else if (
+        decision.kind === 'retry-properties' &&
+        decision.initialGuestShellUnavailable
+      ) {
+        guestUnavailableObservations += 1;
+        if (initialGuestUnavailableAt === undefined) {
+          initialGuestUnavailableAt = performance.now();
+          this.logger.log({
+            event: 'android_guest_shell_unavailable',
+            applicationId: app.id,
+            containerId: app.containerId,
+            observedAt: new Date().toISOString(),
+          });
         }
-        probeIntervalMs = bootCheckIntervalMs;
-        nextProbeAt = performance.now() + probeIntervalMs;
+      }
+      observationState = decision.state;
+      if (decision.kind !== 'wait') {
+        nextProbeAt = performance.now() + observationState.probeIntervalMs;
       }
       await delay(
         Math.min(bootCheckIntervalMs, deadline.remainingMs()),
@@ -407,7 +386,7 @@ export class AndroidAppsProvisioningAndroidService {
     throw new Error(
       [
         `Timed out waiting for Android to finish booting after ${timeoutMs / 1000}s.`,
-        `Last probe: ${lastProbe}`,
+        `Last probe: ${observationState.lastProbe}`,
         diagnostics.summary ? `Diagnostics: ${diagnostics.summary}` : null,
       ]
         .filter(Boolean)
