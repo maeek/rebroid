@@ -114,12 +114,12 @@ export class ScheduledTaskActionsService {
   private definitions(): ScheduledTaskActionDefinition[] {
     return [
       {
-        type: ScheduledTaskActionType.CleanUploadedApks,
-        label: 'Clean APK uploads',
+        type: ScheduledTaskActionType.CleanOrphanedApkFiles,
+        label: 'Clean orphaned APK files',
         description:
-          'Remove uploaded APK records and files that are not referenced by any application.',
+          'Remove incomplete transfers and APK files without upload records.',
         normalizePayload: () => null,
-        run: () => this.apks.cleanupUnused(),
+        run: () => this.apks.cleanupOrphanedFiles(),
       },
       {
         type: ScheduledTaskActionType.PruneImages,

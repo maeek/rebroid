@@ -19,7 +19,7 @@ const task = (patch: Partial<ScheduledTask> = {}): ScheduledTask => ({
   kind: ScheduledTaskKind.Custom,
   predefinedKey: null,
   cronExpression: '0 3 * * *',
-  actionType: ScheduledTaskActionType.CleanUploadedApks,
+  actionType: ScheduledTaskActionType.CleanOrphanedApkFiles,
   payloadJson: null,
   lastRunAt: null,
   nextRunAt: null,

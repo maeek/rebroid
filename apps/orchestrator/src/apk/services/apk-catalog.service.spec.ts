@@ -59,7 +59,6 @@ describe('APK catalog shared blob coordination', () => {
       remove: async (record: UploadedApk) => {
         records = records.filter((current) => current.id !== record.id);
       },
-      listForCleanup: async () => [...records],
       referencedFileNames: async () =>
         new Set(records.map(({ sha256 }) => `${sha256}.apk`)),
     };
@@ -82,6 +81,10 @@ describe('APK catalog shared blob coordination', () => {
           evidence: [],
           analysisVersion: 1,
         }),
+      } as never,
+      {
+        assertFileAllowed: async () => undefined,
+        assertAllowed: async () => undefined,
       } as never,
     );
   });

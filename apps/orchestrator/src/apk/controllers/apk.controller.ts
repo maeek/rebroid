@@ -16,18 +16,37 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
-import { CleanupUploadedApksResponseDto } from '../dto/cleanup-uploaded-apks-response.dto';
-import { CleanupUploadedApksDto } from '../dto/cleanup-uploaded-apks.dto';
+import {
+  ApkLibraryEntryDto,
+  ApkLibraryMutationDto,
+  ApkLibraryMutationResultDto,
+} from '../dto/apk-library.dto';
 import { ListUploadedApksDto } from '../dto/list-uploaded-apks.dto';
 import { LookupUploadedApkDto } from '../dto/lookup-uploaded-apk.dto';
 import { UploadApkDto } from '../dto/upload-apk.dto';
 import { UploadedApkResponseDto } from '../dto/uploaded-apk-response.dto';
 import { ApkCatalogService } from '../services/apk-catalog.service';
+import { ApkLibraryService } from '../services/apk-library.service';
 
 @ApiTags('apk-uploads')
 @Controller('apk-uploads')
 export class ApkController {
-  constructor(private readonly apk: ApkCatalogService) {}
+  constructor(
+    private readonly apk: ApkCatalogService,
+    private readonly library: ApkLibraryService,
+  ) {}
+
+  @Get('library')
+  @ApiOkResponse({ type: [ApkLibraryEntryDto] })
+  listLibrary() {
+    return this.library.list();
+  }
+
+  @Post('library')
+  @ApiCreatedResponse({ type: ApkLibraryMutationResultDto })
+  mutateLibrary(@Body() input: ApkLibraryMutationDto) {
+    return this.library.mutate(input);
+  }
 
   @Post()
   @ApiConsumes('multipart/form-data')
@@ -62,15 +81,19 @@ export class ApkController {
     return upload ? UploadedApkResponseDto.fromEntity(upload) : null;
   }
 
+  @Get('selection/:id')
+  @ApiOkResponse({ type: UploadedApkResponseDto })
+  async selection(
+    @Param('id') id: string,
+    @Query() query: ListUploadedApksDto,
+  ) {
+    const upload = await this.apk.getForOwner(id, query.ownerUserId);
+    return UploadedApkResponseDto.fromEntity(upload);
+  }
+
   @Delete(':id')
   @ApiOkResponse({ type: UploadedApkResponseDto })
   async remove(@Param('id') id: string) {
     return UploadedApkResponseDto.fromEntity(await this.apk.remove(id));
-  }
-
-  @Post('cleanup')
-  @ApiOkResponse({ type: CleanupUploadedApksResponseDto })
-  cleanup(@Body() dto: CleanupUploadedApksDto) {
-    return this.apk.cleanupUnused(dto.ownerUserId);
   }
 }

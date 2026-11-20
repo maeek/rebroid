@@ -1050,37 +1050,6 @@
         ]
       }
     },
-    "/api/v1/apk-uploads/cleanup": {
-      "post": {
-        "operationId": "ApkController_cleanup",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CleanupUploadedApksDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CleanupUploadedApksResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "apk-uploads"
-        ]
-      }
-    },
     "/api/v1/apps": {
       "post": {
         "operationId": "AndroidAppsController_create",
@@ -5819,6 +5788,98 @@
           "health"
         ]
       }
+    },
+    "/api/v1/apk-uploads/library": {
+      "get": {
+        "operationId": "ApkController_listLibrary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApkLibraryEntryDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      },
+      "post": {
+        "operationId": "ApkController_mutateLibrary",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApkLibraryMutationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApkLibraryMutationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      }
+    },
+    "/api/v1/apk-uploads/selection/{id}": {
+      "get": {
+        "operationId": "ApkController_selection",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "admin",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedApkResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apk-uploads"
+        ]
+      }
     }
   },
   "info": {
@@ -7454,9 +7515,6 @@
           "sizeBytes": {
             "type": "number"
           },
-          "filePath": {
-            "type": "string"
-          },
           "extractedIconDataUrl": {
             "type": "string",
             "nullable": true
@@ -7487,39 +7545,12 @@
           "originalName",
           "sha256",
           "sizeBytes",
-          "filePath",
           "extractedIconDataUrl",
           "displayName",
           "packageName",
           "googlePlayServices",
           "createdAt",
           "updatedAt"
-        ]
-      },
-      "CleanupUploadedApksDto": {
-        "type": "object",
-        "properties": {
-          "ownerUserId": {
-            "type": "string",
-            "example": "admin"
-          }
-        }
-      },
-      "CleanupUploadedApksResponseDto": {
-        "type": "object",
-        "properties": {
-          "deletedRecords": {
-            "type": "number",
-            "example": 3
-          },
-          "removedFiles": {
-            "type": "number",
-            "example": 2
-          }
-        },
-        "required": [
-          "deletedRecords",
-          "removedFiles"
         ]
       },
       "ApplicationCommandNetworkPolicyDto": {
@@ -11824,7 +11855,7 @@
           "type": {
             "type": "string",
             "enum": [
-              "clean_uploaded_apks",
+              "clean_orphaned_apk_files",
               "prune_images",
               "prune_containers",
               "prune_networks",
@@ -11878,7 +11909,7 @@
           "actionType": {
             "type": "string",
             "enum": [
-              "clean_uploaded_apks",
+              "clean_orphaned_apk_files",
               "prune_images",
               "prune_containers",
               "prune_networks",
@@ -11974,7 +12005,7 @@
           "actionType": {
             "type": "string",
             "enum": [
-              "clean_uploaded_apks",
+              "clean_orphaned_apk_files",
               "prune_images",
               "prune_containers",
               "prune_networks",
@@ -12022,7 +12053,7 @@
           "actionType": {
             "type": "string",
             "enum": [
-              "clean_uploaded_apks",
+              "clean_orphaned_apk_files",
               "prune_images",
               "prune_containers",
               "prune_networks",
@@ -12208,6 +12239,191 @@
           "firewall",
           "ocr",
           "services"
+        ]
+      },
+      "ApkLibraryAppDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "ApkLibraryRuleDto": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "package"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "value",
+          "reason"
+        ]
+      },
+      "ApkLibraryEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "packageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeBytes": {
+            "type": "number",
+            "nullable": true
+          },
+          "ownerUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "uploads": {
+            "type": "number"
+          },
+          "apps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibraryAppDto"
+            }
+          },
+          "googlePlayServices": {
+            "type": "string",
+            "nullable": true
+          },
+          "inspectionEvidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibraryRuleDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "originalName",
+          "displayName",
+          "sha256",
+          "packageName",
+          "sizeBytes",
+          "ownerUserIds",
+          "uploads",
+          "apps",
+          "googlePlayServices",
+          "inspectionEvidence",
+          "rules"
+        ]
+      },
+      "ApkLibraryMutationDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "block",
+              "unblock",
+              "delete"
+            ]
+          },
+          "ids": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "sha256",
+              "package"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "action",
+          "ids"
+        ]
+      },
+      "ApkLibrarySkippedDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason"
+        ]
+      },
+      "ApkLibraryMutationResultDto": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApkLibrarySkippedDto"
+            }
+          },
+          "bytesFreed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "changed",
+          "skipped",
+          "bytesFreed"
         ]
       }
     }

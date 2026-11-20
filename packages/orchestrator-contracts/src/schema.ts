@@ -442,22 +442,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/apk-uploads/cleanup": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["ApkController_cleanup"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/apps": {
         parameters: {
             query?: never;
@@ -2011,6 +1995,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/apk-uploads/library": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApkController_listLibrary"];
+        put?: never;
+        post: operations["ApkController_mutateLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/apk-uploads/selection/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ApkController_selection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2488,7 +2504,6 @@ export interface components {
             originalName: string;
             sha256: string;
             sizeBytes: number;
-            filePath: string;
             extractedIconDataUrl: string | null;
             displayName: string | null;
             packageName: string | null;
@@ -2497,16 +2512,6 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-        };
-        CleanupUploadedApksDto: {
-            /** @example admin */
-            ownerUserId?: string;
-        };
-        CleanupUploadedApksResponseDto: {
-            /** @example 3 */
-            deletedRecords: number;
-            /** @example 2 */
-            removedFiles: number;
         };
         ApplicationCommandNetworkPolicyDto: {
             enabled: boolean;
@@ -3724,7 +3729,7 @@ export interface components {
         };
         ScheduledTaskActionDto: {
             /** @enum {string} */
-            type: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
+            type: "clean_orphaned_apk_files" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             label: string;
             description: string;
         };
@@ -3737,7 +3742,7 @@ export interface components {
             predefinedKey: string | null;
             cronExpression: string;
             /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
+            actionType: "clean_orphaned_apk_files" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload: Record<string, never> | null;
             lastRunAt: string | null;
             nextRunAt: string | null;
@@ -3770,7 +3775,7 @@ export interface components {
             /** @example 0 3 * * 0 */
             cronExpression: string;
             /** @enum {string} */
-            actionType: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
+            actionType: "clean_orphaned_apk_files" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
         };
         UpdateScheduledTaskDto: {
@@ -3784,7 +3789,7 @@ export interface components {
             /** @example 0 3 * * 0 */
             cronExpression?: string;
             /** @enum {string} */
-            actionType?: "clean_uploaded_apks" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
+            actionType?: "clean_orphaned_apk_files" | "prune_images" | "prune_containers" | "prune_networks" | "prune_volumes" | "prune_all" | "clean_runtime_logs" | "clean_workflow_history" | "clean_interrupted_image_builds" | "clean_image_build_history";
             payload?: components["schemas"]["ScheduledTaskPayloadDto"] | null;
         };
         SystemResourceCapacityDto: {
@@ -3827,6 +3832,47 @@ export interface components {
             firewall: boolean;
             ocr: boolean;
             services: components["schemas"]["OrchestratorDiagnosticsServicesDto"];
+        };
+        ApkLibraryAppDto: {
+            id: string;
+            name: string;
+        };
+        ApkLibraryRuleDto: {
+            /** @enum {string} */
+            scope: "sha256" | "package";
+            value: string;
+            reason: string;
+        };
+        ApkLibraryEntryDto: {
+            id: string;
+            originalName: string;
+            displayName: string | null;
+            sha256: string | null;
+            packageName: string | null;
+            sizeBytes: number | null;
+            ownerUserIds: string[];
+            uploads: number;
+            apps: components["schemas"]["ApkLibraryAppDto"][];
+            googlePlayServices: string | null;
+            inspectionEvidence: string[];
+            rules: components["schemas"]["ApkLibraryRuleDto"][];
+        };
+        ApkLibraryMutationDto: {
+            /** @enum {string} */
+            action: "block" | "unblock" | "delete";
+            ids: string[];
+            /** @enum {string} */
+            scope?: "sha256" | "package";
+            reason?: string;
+        };
+        ApkLibrarySkippedDto: {
+            id: string;
+            reason: string;
+        };
+        ApkLibraryMutationResultDto: {
+            changed: string[];
+            skipped: components["schemas"]["ApkLibrarySkippedDto"][];
+            bytesFreed: number;
         };
     };
     responses: never;
@@ -4591,29 +4637,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadedApkResponseDto"];
-                };
-            };
-        };
-    };
-    ApkController_cleanup: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CleanupUploadedApksDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CleanupUploadedApksResponseDto"];
                 };
             };
         };
@@ -7419,6 +7442,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrchestratorDiagnosticsDto"];
+                };
+            };
+        };
+    };
+    ApkController_listLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApkLibraryEntryDto"][];
+                };
+            };
+        };
+    };
+    ApkController_mutateLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApkLibraryMutationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApkLibraryMutationResultDto"];
+                };
+            };
+        };
+    };
+    ApkController_selection: {
+        parameters: {
+            query?: {
+                ownerUserId?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedApkResponseDto"];
                 };
             };
         };

@@ -13,11 +13,16 @@ import {
   consumeSingleFileUpload,
 } from '../../common/http-upload';
 import { SettingsService } from '../../settings/settings.service';
-import type { ApkCatalogPort } from '../contracts/apk-catalog.port';
+import type {
+  ApkCatalogPort,
+  UploadedApkReference,
+} from '../contracts/apk-catalog.port';
+import type { UploadedApk } from '../entities/uploaded-apk.entity';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 import { ApkIconExtractorService } from './apk-icon-extractor.service';
 import { ApkGooglePlayServicesAnalyzerService } from './apk-google-play-services-analyzer.service';
 import { ApkStorageService } from './apk-storage.service';
+import { ApkBlockPolicyService } from './apk-block-policy.service';
 
 @Injectable()
 export class ApkCatalogService implements ApkCatalogPort {
@@ -29,6 +34,7 @@ export class ApkCatalogService implements ApkCatalogPort {
     private readonly storage: ApkStorageService,
     private readonly iconExtractor: ApkIconExtractorService,
     private readonly googlePlayServicesAnalyzer: ApkGooglePlayServicesAnalyzerService,
+    private readonly policy: ApkBlockPolicyService,
   ) {}
 
   async upload(request: MultipartUploadRequest, ownerUserId?: string | null) {
@@ -73,11 +79,15 @@ export class ApkCatalogService implements ApkCatalogPort {
     ownerUserId?: string | null,
   ) {
     const { filePath, sha256, sizeBytes } = stored;
+    await this.policy.assertFileAllowed(sha256);
     const owner = ownerUserId?.trim() || null;
     const [metadata, googlePlayServices] = await Promise.all([
       this.iconExtractor.extractMetadataFromFile(filePath),
       this.googlePlayServicesAnalyzer.analyze(filePath),
     ]);
+    await this.policy.assertAllowed(sha256, metadata.packageName, () =>
+      this.iconExtractor.extractPackageNameFromFile(filePath),
+    );
     const existing = await this.uploadedApks.findBySha256ForOwner(
       sha256,
       owner,
@@ -129,17 +139,72 @@ export class ApkCatalogService implements ApkCatalogPort {
   }
 
   async findBySha256(sha256: string, ownerUserId?: string | null) {
-    return this.uploadedApks.findBySha256ForOwner(sha256, ownerUserId);
+    const upload = await this.uploadedApks.findBySha256ForOwner(
+      sha256,
+      ownerUserId,
+    );
+    if (!upload) return null;
+    try {
+      await this.assertAllowed(upload);
+      return upload;
+    } catch (error) {
+      if (error instanceof ConflictException) return null;
+      throw error;
+    }
   }
 
   async list(ownerUserId?: string) {
-    return this.uploadedApks.list(ownerUserId);
+    const records = await this.uploadedApks.list(ownerUserId);
+    if (!ownerUserId) return records;
+    const available = await Promise.all(
+      records.map(async (record) => {
+        try {
+          await this.assertAllowed(record);
+          return record;
+        } catch (error) {
+          if (error instanceof ConflictException) return null;
+          throw error;
+        }
+      }),
+    );
+    return available.filter((record) => record !== null);
   }
 
   /**
    * Loads an uploaded APK or throws when the id does not exist.
    */
   async get(id: string) {
+    const upload = await this.find(id);
+    await this.assertAllowed(upload);
+    return upload;
+  }
+
+  async getForOwner(id: string, ownerUserId?: string) {
+    const upload = await this.find(id);
+    if (!ownerUserId || upload.ownerUserId !== ownerUserId) {
+      throw new ConflictException('This APK is unavailable.');
+    }
+    await this.assertAllowed(upload);
+    return upload;
+  }
+
+  private assertAllowed(upload: UploadedApk) {
+    return this.policy.assertAllowed(upload.sha256, upload.packageName, () =>
+      this.iconExtractor.extractPackageNameFromFile(upload.filePath),
+    );
+  }
+
+  async withReference<T>(
+    id: string,
+    operation: (upload: UploadedApkReference) => Promise<T>,
+  ) {
+    const upload = await this.find(id);
+    return this.storage.withHash(upload.sha256, async () =>
+      operation(await this.get(id)),
+    );
+  }
+
+  private async find(id: string) {
     const uploaded = await this.uploadedApks.findById(id);
     if (!uploaded) {
       throw new ConflictException(`Uploaded APK "${id}" was not found.`);
@@ -194,9 +259,9 @@ export class ApkCatalogService implements ApkCatalogPort {
    * Deletes an upload record only when no application still references it.
    */
   async remove(id: string) {
-    const uploaded = await this.get(id);
+    const uploaded = await this.find(id);
     return this.storage.withHash(uploaded.sha256, async () => {
-      const current = await this.get(id);
+      const current = await this.find(id);
       const inUseCount =
         await this.applicationReferences.countUsingUploadedApk(id);
       if (inUseCount > 0) {
@@ -211,34 +276,7 @@ export class ApkCatalogService implements ApkCatalogPort {
     });
   }
 
-  /**
-   * Removes unreferenced uploads and deletes shared files only after the last reference is gone.
-   */
-  async cleanupUnused(ownerUserId?: string | null) {
-    const uploads = await this.uploadedApks.listForCleanup(ownerUserId);
-    const usedIds =
-      uploads.length > 0
-        ? await this.applicationReferences.findReferencedUploadedApkIds(
-            uploads.map(({ id }) => id),
-          )
-        : new Set<string>();
-    let removedFiles = 0;
-    let deletedRecords = 0;
-    for (const upload of uploads) {
-      if (usedIds.has(upload.id)) continue;
-      await this.storage.withHash(upload.sha256, async () => {
-        const current = await this.uploadedApks.findById(upload.id);
-        if (!current) return;
-        if (await this.applicationReferences.countUsingUploadedApk(current.id))
-          return;
-        await this.uploadedApks.remove(current);
-        deletedRecords += 1;
-        if (await this.storage.removeSharedFileIfUnreferenced(current))
-          removedFiles += 1;
-      });
-    }
-
-    removedFiles += await this.storage.cleanupOrphanedFiles();
-    return { deletedRecords, removedFiles };
+  cleanupOrphanedFiles() {
+    return this.storage.cleanupOrphanedFiles();
   }
 }

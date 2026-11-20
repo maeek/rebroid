@@ -12,7 +12,12 @@ describe('APK owner authorization', () => {
           .fn()
           .mockResolvedValue({ ownerUserId: 'owner', status: 'stopped' }),
       },
-      apks: { get: jest.fn().mockResolvedValue({ ownerUserId: 'other' }) },
+      apks: {
+        withReference: (
+          _id: string,
+          use: (apk: { ownerUserId: string }) => unknown,
+        ) => use({ ownerUserId: 'other' }),
+      },
       applicationFactory: { applyUploadedApk },
     });
     await expect(

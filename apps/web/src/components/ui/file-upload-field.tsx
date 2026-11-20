@@ -18,6 +18,7 @@ type FileUploadFieldProps = ComponentProps<'input'> & {
   buttonLabel?: string
   emptyLabel?: string
   preview?: ReactNode
+  previewActions?: ReactNode
 }
 
 export const FileUploadField = ({
@@ -32,6 +33,7 @@ export const FileUploadField = ({
   buttonLabel = 'Choose file',
   emptyLabel = 'No file selected',
   preview,
+  previewActions,
   ...props
 }: FileUploadFieldProps) => {
   const generatedId = useId()
@@ -120,17 +122,29 @@ export const FileUploadField = ({
       {preview ? (
         <Surface
           level='control'
-          className='grid min-h-20 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 p-2 max-[379px]:grid-cols-[auto_minmax(0,1fr)] max-[379px]:gap-y-0 sm:gap-3 sm:px-3'
+          className={cn(
+            'grid min-h-20 min-w-0 items-center gap-2 p-2 sm:gap-3 sm:px-3',
+            previewActions
+              ? 'grid-cols-[auto_minmax(0,1fr)]'
+              : 'grid-cols-[auto_minmax(0,1fr)_auto] max-[379px]:grid-cols-[auto_minmax(0,1fr)] max-[379px]:gap-y-0'
+          )}
         >
           <div
             data-slot='file-upload-preview'
-            className='max-[379px]:row-span-2'
+            className={cn(!previewActions && 'max-[379px]:row-span-2')}
             aria-hidden='true'
           >
             {preview}
           </div>
           {status}
-          {picker}
+          {previewActions ? (
+            <div className='col-span-full flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5'>
+              {picker}
+              {previewActions}
+            </div>
+          ) : (
+            picker
+          )}
         </Surface>
       ) : (
         <>

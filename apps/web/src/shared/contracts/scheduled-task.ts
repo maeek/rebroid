@@ -1,5 +1,5 @@
 export type ScheduledTaskActionType =
-  | 'clean_uploaded_apks'
+  | 'clean_orphaned_apk_files'
   | 'prune_images'
   | 'prune_containers'
   | 'prune_networks'

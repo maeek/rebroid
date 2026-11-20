@@ -203,6 +203,8 @@ export const AppManage = () => {
             <AppManageGeneralSettings
               app={currentApp}
               appId={currentApp.id}
+              canReplaceApk={!isForeignOwnedApp && hasPermission(permissions, 'applications:update-apk')}
+              canUploadApk={hasPermission(permissions, 'applications:upload-apk')}
               values={formValues}
               initialSettings={initialSettings}
               iconEditor={{

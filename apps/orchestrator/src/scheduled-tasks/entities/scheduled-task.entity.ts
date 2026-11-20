@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 
 export enum ScheduledTaskActionType {
-  CleanUploadedApks = 'clean_uploaded_apks',
+  CleanOrphanedApkFiles = 'clean_orphaned_apk_files',
   PruneImages = 'prune_images',
   PruneContainers = 'prune_containers',
   PruneNetworks = 'prune_networks',

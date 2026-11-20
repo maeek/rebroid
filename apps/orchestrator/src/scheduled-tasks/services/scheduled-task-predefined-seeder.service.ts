@@ -22,11 +22,11 @@ type PredefinedScheduledTask = {
 
 const predefinedTasks: PredefinedScheduledTask[] = [
   {
-    key: 'clean-uploaded-apks',
-    name: 'Clean APK uploads',
+    key: 'clean-orphaned-apk-files',
+    name: 'Clean orphaned APK files',
     enabled: true,
     cronExpression: '0 2 * * *',
-    actionType: ScheduledTaskActionType.CleanUploadedApks,
+    actionType: ScheduledTaskActionType.CleanOrphanedApkFiles,
     payload: null,
   },
   {
@@ -111,6 +111,7 @@ export class ScheduledTaskPredefinedSeederService {
   ) {}
 
   async ensurePredefinedTasks() {
+    await this.tasks.retireApkUploadCleanup();
     const existingTasks = await this.tasks.findByPredefinedKeys(
       predefinedTasks.map((task) => task.key),
     );

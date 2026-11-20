@@ -6,6 +6,10 @@ import { ApkController } from './controllers/apk.controller';
 import { APK_PACKAGE_INSPECTION } from './contracts/apk-package-inspection.port';
 import { APK_CATALOG } from './contracts/apk-catalog.port';
 import { UploadedApk } from './entities/uploaded-apk.entity';
+import { ApkBlockRule } from './entities/apk-block-rule.entity';
+import { ApkBlockRulesRepository } from './persistence/apk-block-rules.repository';
+import { ApkBlockPolicyService } from './services/apk-block-policy.service';
+import { ApkLibraryService } from './services/apk-library.service';
 import { UploadedApksRepository } from './persistence/uploaded-apks.repository';
 import { ApkArchiveService } from './services/apk-archive.service';
 import { ApkCatalogService } from './services/apk-catalog.service';
@@ -18,12 +22,15 @@ import { ApkStorageService } from './services/apk-storage.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UploadedApk]),
+    TypeOrmModule.forFeature([UploadedApk, ApkBlockRule]),
     AndroidAppsPersistenceModule,
     SettingsModule,
   ],
   controllers: [ApkController],
   providers: [
+    ApkBlockRulesRepository,
+    ApkBlockPolicyService,
+    ApkLibraryService,
     UploadedApksRepository,
     ApkArchiveService,
     ApkCatalogService,

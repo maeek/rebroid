@@ -46,6 +46,24 @@ export const permissionDefinitions = [
     description: 'Upload APK artifacts into owned application storage.'
   },
   {
+    id: 'apks:review',
+    category: 'apk-management',
+    name: 'Review APK library',
+    description: 'Review uploaded APKs and their inspection results across all accounts.'
+  },
+  {
+    id: 'apks:delete',
+    category: 'apk-management',
+    name: 'Delete APK files',
+    description: 'Delete unused APK files and their upload records. Requires Review APK library.'
+  },
+  {
+    id: 'apks:block',
+    category: 'apk-management',
+    name: 'Manage APK blocks',
+    description: 'Block or unblock APK uploads and installs across the platform. Requires Review APK library.'
+  },
+  {
     id: 'applications:change-base-image',
     category: 'runtime-configuration',
     name: 'Change base image',

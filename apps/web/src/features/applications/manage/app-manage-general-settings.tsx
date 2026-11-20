@@ -5,15 +5,19 @@ import { AppIdentitySection } from '@/features/applications/components/app-ident
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { updateApkAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { AppManageIconPanel, type AppManageIconPanelProps } from './app-manage-icon-panel'
 import type { AppFormValues } from '@/features/applications/create/create-app-form.types'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { UploadedApk } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
   appId: string
+  canReplaceApk?: boolean
+  canUploadApk?: boolean
   values: AppFormValues
   initialSettings: OrchestratorUiSettings
   iconEditor: Omit<AppManageIconPanelProps, 'appId' | 'appName' | 'maxUploadSizeMb'>
@@ -25,6 +29,8 @@ type AppManageGeneralSettingsProps = {
 export const AppManageGeneralSettings = ({
   app,
   appId,
+  canReplaceApk = false,
+  canUploadApk = false,
   values,
   initialSettings,
   iconEditor,
@@ -37,9 +43,15 @@ export const AppManageGeneralSettings = ({
   const [apkError, setApkError] = useState<string>()
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
   const router = useRouter()
+  const replaceApk = async (apk: UploadedApk) => {
+    setApkError(undefined)
+    unwrapActionResult(await updateApkAction(appId, apk.id))
+    toast({ title: 'APK update accepted', variant: 'success' })
+    router.refresh()
+  }
 
   const handleApkUpload = async (file: File | null) => {
-    if (!file || pendingApkName !== null) return
+    if (!file || pendingApkName !== null || !canReplaceApk || !canUploadApk) return
 
     setPendingApkName(file.name)
     setApkError(undefined)
@@ -54,9 +66,7 @@ export const AppManageGeneralSettings = ({
       })
       if (!uploaded) return
 
-      await updateApkAction(appId, uploaded.id)
-      toast({ title: 'APK update accepted', variant: 'success' })
-      router.refresh()
+      await replaceApk(uploaded)
     } catch (cause) {
       setApkError(getDisplayErrorMessage(cause, 'Could not replace the APK.'))
     } finally {
@@ -79,6 +89,8 @@ export const AppManageGeneralSettings = ({
       isUploadingApk={pendingApkName !== null}
       pendingApkName={pendingApkName}
       apkUploadProgress={apkUploadProgress}
+      onSavedApkSelect={canReplaceApk ? replaceApk : undefined}
+      uploadDisabled={!canReplaceApk || !canUploadApk}
       onApkSelect={file => {
         void handleApkUpload(file)
       }}

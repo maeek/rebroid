@@ -19,7 +19,8 @@ export default async function FilesLayout({ children }: { children: React.ReactN
             avatarDataUrl: user.avatarDataUrl,
             isPlatformAdmin: user.isPlatformAdmin,
             canCreateApp: hasPermission(user.effectivePermissions, 'applications:create'),
-            canManageWorkflows: hasPermission(user.effectivePermissions, 'automations:manage')
+            canManageWorkflows: hasPermission(user.effectivePermissions, 'automations:manage'),
+            canReviewApks: hasPermission(user.effectivePermissions, 'apks:review')
           }}
           initialSidebarCollapsed={initialSidebarCollapsed}
         >

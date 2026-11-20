@@ -5,7 +5,6 @@ import {
   pruneNetworksAction,
   pruneVolumesAction
 } from '@/server/orchestrator/docker-maintenance/actions'
-import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
 import type { DockerPruneResponse } from '@/shared/contracts/docker-maintenance'
 
@@ -33,17 +32,6 @@ const summarizePruneResult = (result: DockerPruneResponse) => {
 }
 
 export const runtimeMaintenanceOperations: RuntimeMaintenanceOperation[] = [
-  {
-    key: 'apks',
-    title: 'Unused APK uploads',
-    description: 'Remove uploaded files and records that no app references.',
-    actionLabel: 'Delete unused APK uploads',
-    confirmation: 'Permanently delete uploaded APK files and records that no app references.',
-    run: async () => {
-      const result = await cleanupUploadedApksAction()
-      return `Removed ${result.deletedRecords} upload records and ${result.removedFiles} files.`
-    }
-  },
   {
     key: 'images',
     title: 'Dangling images',

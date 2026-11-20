@@ -7,16 +7,11 @@ import type {
   AutomationAiProviderModelDownload,
   AutomationAiProviderRemoteModel
 } from '@/shared/contracts/ai-provider'
-import type { CleanupUploadedApksResponse } from '@/shared/contracts/application'
 import type { FeatureFlagManifest, UpdateFeatureFlags } from '@/shared/contracts/feature-flags'
 import type { OrchestratorSettingsResponse } from '@/shared/contracts/ui-settings'
 import type { RuntimeUiSettingsPatch } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const orchestratorSettingsClient = {
-  cleanupUploadedApks(ownerUserId?: string) {
-    return jsonRequest<CleanupUploadedApksResponse>('/apk-uploads/cleanup', 'POST', { ownerUserId })
-  },
-
   getSettings() {
     return emptyRequest<OrchestratorSettingsResponse>('/settings')
   },

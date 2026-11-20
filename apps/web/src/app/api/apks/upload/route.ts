@@ -49,7 +49,13 @@ export const POST = async (request: NextRequest) => {
     return NextResponse.json(uploaded)
   } catch (error) {
     const status = error instanceof OrchestratorRequestError ? error.status : 500
-    const message = error instanceof Error ? error.message : 'APK upload failed.'
-    return NextResponse.json({ message }, { status })
+    const code = error instanceof OrchestratorRequestError ? error.details?.code : undefined
+    const messages: Record<string, string> = {
+      apk_blocked: 'This APK was blocked by an administrator.',
+      apk_package_unavailable: 'Rebroid could not verify the package name. Choose a different APK.'
+    }
+    let message = status === 413 ? 'The APK exceeds the upload size limit.' : 'APK upload failed. Try again.'
+    if (code && Object.hasOwn(messages, code)) message = messages[code]
+    return NextResponse.json({ message, ...(code ? { code } : {}) }, { status })
   }
 }

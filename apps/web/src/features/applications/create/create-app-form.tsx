@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, FormEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { FormEvent, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { IconPlus } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { useTopLoader } from 'nextjs-toploader'
@@ -9,7 +9,6 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Visible } from '@/components/ui/visible'
-import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { AppIconField } from '@/features/applications/components/app-icon-field'
 import { AppLifecycleFields } from '@/features/applications/components/app-lifecycle-fields'
 import { AppNetworkPolicyEditorSection } from '@/features/applications/components/app-network-policy-editor-section'
@@ -23,7 +22,6 @@ import { isActionResult, unwrapActionResult } from '@/shared/actions/action-resu
 import { unconfirmedAppCreationMessage } from '@/shared/contracts/application'
 import { isApplicationId } from '@/shared/model/application-id'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import {
   findPlatformImageByReference,
   resolvePlatformImageRuntimeMetadata,
@@ -46,6 +44,7 @@ import {
 import { AppFormGeneralSection } from './create-app-general-section'
 import { CreateAppGooglePlayGuidance } from './create-app-google-play-guidance'
 import { CreateAppLayout } from './create-app-layout'
+import { useCreateAppMediaDraft } from './hooks/use-create-app-media-draft'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
 import type { PlatformImage } from '@/shared/contracts/platform'
@@ -79,14 +78,6 @@ export const CreateAppForm = ({
       containerImage: initialContainerImage?.trim() || settings.defaultContainerImage
     }
   })
-  const [uploadedApk, setUploadedApk] = useState<UploadedApk | null>(initialUploadedApk ?? null)
-  const [pendingApkName, setPendingApkName] = useState<string | null>(null)
-  const [apkUploadProgress, setApkUploadProgress] = useState<number | null>(null)
-  const [apkUploadError, setApkUploadError] = useState<string>()
-  const [manualIconPreview, setManualIconPreview] = useState<string | null>(null)
-  const [isPreparingIcon, setIsPreparingIcon] = useState(false)
-  const [iconError, setIconError] = useState<string>()
-  const [autoExtractIcon, setAutoExtractIcon] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [nameEdited, setNameEdited] = useState(false)
   const [destinationDraft, setDestinationDraft] = useState('')
@@ -103,9 +94,6 @@ export const CreateAppForm = ({
   const failureSummary = useRef<HTMLDivElement>(null)
   const nameInput = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const isUploadingApk = pendingApkName !== null
-  const extractedIcon = uploadedApk?.extractedIconDataUrl ?? null
-  const iconPreview = manualIconPreview ?? (autoExtractIcon ? extractedIcon : null)
   const canChangeBaseImage = hasPermission(permissions, 'applications:change-base-image')
   const canChangeSessionLimit = hasPermission(permissions, 'applications:change-session-limit')
   const canChangeResources = hasPermission(permissions, 'applications:change-resources')
@@ -120,11 +108,9 @@ export const CreateAppForm = ({
     selectedImageMetadata?.runtimeKind ?? runtimeKindForImageReference(images, formValues.containerImage)
   const isRedroidRuntime = runtimeKind === 'redroid'
   const imageIncludesGooglePlay = selectedImageMetadata?.gmsMode === 'gapps'
-  const showGooglePlayGuidance = uploadedApk !== null && !imageIncludesGooglePlay
   const showDeviceSection = canChangeBaseImage || canChangeContainerArgs
   const showSessionSection = canChangeSessionLimit
   const showResourcesSection = canChangeResources
-  const showRuntimeSection = showDeviceSection || showGooglePlayGuidance
   const showAdvancedSection = showSessionSection || showResourcesSection
   const resourceSummary =
     formValues.memoryLimitMb || formValues.cpuLimitCpus ? 'Custom RAM or CPU limits' : 'Default RAM and CPU limits'
@@ -189,8 +175,24 @@ export const CreateAppForm = ({
     clearFieldErrors(...keys)
   }
 
+  const { apk, icon } = useCreateAppMediaDraft({
+    initialUploadedApk,
+    maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
+    disabled: loading || isCreating,
+    canUploadApk: hasPermission(permissions, 'applications:upload-apk'),
+    clearApkFieldError: () => clearFieldErrors('uploadedApkId'),
+    onApkApplied: selectedApk => {
+      if (!nameInput.current?.value.trim()) {
+        updateFormValues({ name: appNameFromApk(selectedApk.originalName, selectedApk) })
+      }
+    }
+  })
+  const { uploadedApk } = apk
+  const { iconPreview } = icon
+  const showGooglePlayGuidance = uploadedApk !== null && !imageIncludesGooglePlay
+  const showRuntimeSection = showDeviceSection || showGooglePlayGuidance
   const trimmedName = formValues.name.trim()
-  const isBusy = isCreating || isUploadingApk || isPreparingIcon
+  const isBusy = isCreating || apk.isUploadingApk || icon.pending
   const destinations = parseOutboundDestinations(
     canConfigureEgress && formValues.networkPolicyEnabled ? destinationDraft : '',
     canUseInternet
@@ -203,64 +205,6 @@ export const CreateAppForm = ({
   const visibleErrors: Record<string, string[]> = { ...fieldErrors, ...numericErrors, ...draftErrors }
   const fieldError = (field: string) => visibleErrors[field]?.join(' ')
   const hasFieldErrors = Object.keys(fieldErrors).length > 0
-
-  const handleIconChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file || isPreparingIcon || isCreating || loading) return
-
-    setIsPreparingIcon(true)
-    setIconError(undefined)
-    try {
-      setManualIconPreview(await optimizeIconFile(file))
-    } catch (error) {
-      setIconError(getDisplayErrorMessage(error, 'Choose a different image.'))
-    } finally {
-      setIsPreparingIcon(false)
-    }
-  }
-
-  const handleClearIcon = () => {
-    setIconError(undefined)
-    setManualIconPreview(null)
-  }
-
-  const handleApkSelect = async (file: File | null) => {
-    if (!file || isUploadingApk || isCreating || loading) return
-
-    setApkUploadError(undefined)
-    clearFieldErrors('uploadedApkId')
-    setPendingApkName(file.name)
-
-    try {
-      const uploaded = await uploadApkWithFeedback({
-        errorTitle: 'Could not upload APK',
-        file,
-        maxApkUploadSizeMb: settings.maxApkUploadSizeMb,
-        onProgress: setApkUploadProgress,
-        onError: setApkUploadError
-      })
-      if (!uploaded) return
-
-      setUploadedApk(uploaded)
-      if (!nameInput.current?.value.trim()) {
-        updateFormValues({ name: appNameFromApk(file.name, uploaded) })
-      }
-
-      if (!uploaded.extractedIconDataUrl) {
-        toast({
-          title: 'APK uploaded',
-          description: 'No direct launcher icon was found in the APK.',
-          variant: 'success'
-        })
-      } else {
-        toast({ title: 'APK uploaded', description: 'Launcher icon was extracted.', variant: 'success' })
-      }
-    } finally {
-      setPendingApkName(null)
-      setApkUploadProgress(null)
-    }
-  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -421,35 +365,18 @@ export const CreateAppForm = ({
             ) : null}
             <div>
               <AppFormGeneralSection
+                {...apk}
                 values={formValues}
                 onChange={updateFormValues}
-                uploadedApk={uploadedApk}
-                pendingApkName={pendingApkName}
-                isUploadingApk={isUploadingApk}
-                apkUploadProgress={apkUploadProgress}
                 disabled={loading || isCreating}
                 nameError={nameEdited || formValues.name || fieldErrors.name ? fieldError('name') : undefined}
                 nameInputRef={nameInput}
-                apkError={apkUploadError ?? fieldError('uploadedApkId')}
-                onApkSelect={file => void handleApkSelect(file)}
+                apkError={apk.apkError ?? fieldError('uploadedApkId')}
                 iconSlot={
                   <AppIconField
+                    {...icon}
                     appName={trimmedName}
-                    iconPreview={iconPreview}
-                    autoExtractIcon={!manualIconPreview && autoExtractIcon}
                     disabled={loading || isCreating}
-                    pending={isPreparingIcon}
-                    error={iconError}
-                    onIconChange={event => void handleIconChange(event)}
-                    onClearIcon={manualIconPreview ? handleClearIcon : undefined}
-                    onAutoExtractIconChange={
-                      extractedIcon && !manualIconPreview
-                        ? checked => {
-                            setIconError(undefined)
-                            setAutoExtractIcon(checked)
-                          }
-                        : undefined
-                    }
                   />
                 }
               />

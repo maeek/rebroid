@@ -14,6 +14,7 @@ import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { getCurrentOwnerUserId, getCurrentUserContext } from '../../../current-user'
 import { loadFeatureFlags } from '../../../features'
+import { OrchestratorRequestError } from '../../../request'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
 import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
@@ -218,24 +219,30 @@ export const submitCreateApplicationAction = async (input: CreateApplicationActi
     }
   )
 
-export const updateApkAction = async (id: string, uploadedApkId: string) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
-  if (!hasPermission(user.permissions, 'applications:update-apk')) {
-    throw new PublicActionError('You do not have permission to update APKs.', { code: 'forbidden', status: 403 })
-  }
-  const command = await orchestratorAppLifecycleClient.updateApk(id, uploadedApkId)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.apk.update',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: command.name,
-    details: { uploadedApkId }
+export const updateApkAction = async (id: string, uploadedApkId: string) =>
+  runSafeAction(async () => {
+    await assertCanAccessApplication(id)
+    const user = await getCurrentUserContext()
+    if (!hasPermission(user.permissions, 'applications:update-apk')) {
+      throw new PublicActionError('You do not have permission to update APKs.', { code: 'forbidden', status: 403 })
+    }
+    const command = await orchestratorAppLifecycleClient.updateApk(id, uploadedApkId).catch((error: unknown) => {
+      if (error instanceof OrchestratorRequestError && error.details?.code === 'apk_blocked') {
+        throw new PublicActionError('This APK was blocked by an administrator.', { code: 'conflict', status: 409 })
+      }
+      throw error
+    })
+    recordAuditEvent({
+      actorUserId: user.ownerUserId,
+      actorLabel: user.ownerUserId,
+      category: 'application',
+      action: 'application.apk.update',
+      resourceType: 'application',
+      resourceId: id,
+      resourceLabel: command.name,
+      details: { uploadedApkId }
+    })
+    revalidateApplicationDetail(id)
+    const app = await orchestratorAppCatalogClient.getApplication(id)
+    return sanitizeAndroidApplicationForUser(app, user)
   })
-  revalidateApplicationDetail(id)
-  const app = await orchestratorAppCatalogClient.getApplication(id)
-  return sanitizeAndroidApplicationForUser(app, user)
-}

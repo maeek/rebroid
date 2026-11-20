@@ -41,8 +41,8 @@ const app = {
   recreateContainerOnNextStart: true
 } satisfies AppDefinition
 
-const setup = (permissions = {}, isForeignOwnedApp = false) => {
-  vi.mocked(useApplicationViewerApp).mockReturnValue({ app, permissions, isForeignOwnedApp } as ReturnType<
+const setup = (permissions = {}, isForeignOwnedApp = false, application: AppDefinition = app) => {
+  vi.mocked(useApplicationViewerApp).mockReturnValue({ app: application, permissions, isForeignOwnedApp } as ReturnType<
     typeof useApplicationViewerApp
   >)
 }
@@ -80,6 +80,23 @@ describe('AppResourceHome', () => {
     expect(screen.queryByText('Inspect boot output.')).toBeNull()
     expect(screen.getAllByText('Runtime default')).toHaveLength(2)
     expect(screen.queryByRole('link', { name: 'Open viewer' })).toBeNull()
+  })
+  it.each([true, false])('gates the attached APK link on review permission (%s)', canReview => {
+    const id = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
+    setup({ 'apks:review': canReview }, false, {
+      ...app,
+      id,
+      uploadedApkId: 'd1492403-93fd-441e-8c2c-de7d84d7da32',
+      apkOriginalName: 'stockroom.apk'
+    })
+    render(<AppResourceHome view='overview' />)
+    const link = screen.queryByRole('link', { name: 'stockroom.apk' })
+    if (canReview) {
+      expect(link).toHaveAttribute('href', `/platform/apks?app=${id}`)
+    } else {
+      expect(link).toBeNull()
+      expect(screen.getByText('stockroom.apk')).toBeVisible()
+    }
   })
   it('leaves a steady lifecycle state in the heading without repeating it in a notice', () => {
     vi.mocked(useApplicationViewerApp).mockReturnValue({

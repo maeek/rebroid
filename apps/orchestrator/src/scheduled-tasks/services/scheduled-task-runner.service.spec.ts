@@ -48,7 +48,7 @@ describe('scheduled task execution reservation', () => {
         kind: ScheduledTaskKind.Custom,
         enabled: true,
         cronExpression: '0 3 * * *',
-        actionType: ScheduledTaskActionType.CleanUploadedApks,
+        actionType: ScheduledTaskActionType.CleanOrphanedApkFiles,
         payloadJson: null,
       }),
     );

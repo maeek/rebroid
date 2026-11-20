@@ -248,6 +248,24 @@ or guarantee Google login, Play Protect certification, or Play Integrity compati
 For builder changes, run `pnpm test:gapps-patcher` and manually build the affected Android versions.
 Record image IDs, payload validation, duration, disk usage, and peak memory.
 
+## APK library
+
+Create app and App Configuration let users choose an available APK from their own uploads.
+Published uploads remain available even when no app uses them. The **Clean orphaned APK files**
+maintenance task removes abandoned transfers and unrecorded files after an hour.
+
+In **Administration → APK library**, a reviewer can search and filter distinct APK files and
+inspect which apps reference them. Grant **Review APK library** to see the inventory, **Delete
+APK files** to remove unused uploads, and **Manage APK blocks** to change platform-wide rules.
+Reviewers can open an app's APK directly from the filename in its Overview.
+Delete checks application references again before removing a file. Deleting a file preserves
+matching block rules, which remain visible through the **Blocked** status filter.
+
+**Exact file (SHA-256)** matches a single binary. **Android package name** matches every
+version and signer of that package. Both scopes apply to uploads, reuse, and future managed
+APK installations. Previously installed APKs stay on their devices. Unblock the applicable
+scopes to make an APK available again.
+
 ## AI provider compatibility
 
 Enable AI in **Administration → Feature management** before opening **Administration → AI**.

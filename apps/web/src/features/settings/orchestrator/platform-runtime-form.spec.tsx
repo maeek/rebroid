@@ -24,7 +24,6 @@ vi.mock('@/server/orchestrator/docker-maintenance/actions', () => ({
   pruneNetworksAction: vi.fn(),
   pruneVolumesAction: vi.fn()
 }))
-vi.mock('@/server/orchestrator/settings/actions', () => ({ cleanupUploadedApksAction: vi.fn() }))
 
 const initialSettings = { ...defaultOrchestratorUiSettings, removeDataOnDelete: false }
 const renderForm = () =>

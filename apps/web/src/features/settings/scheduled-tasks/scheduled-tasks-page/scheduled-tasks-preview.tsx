@@ -2,7 +2,11 @@ import { ScheduledTasksPage } from './scheduled-tasks-page'
 import type { ScheduledTask, ScheduledTaskAction } from '@/shared/contracts/scheduled-task'
 
 export const schedulerPreviewActions: ScheduledTaskAction[] = [
-  { type: 'clean_uploaded_apks', label: 'Clean APK uploads', description: 'Remove unreferenced APK uploads.' },
+  {
+    type: 'clean_orphaned_apk_files',
+    label: 'Clean orphaned APK files',
+    description: 'Remove incomplete transfers and APK files without upload records.'
+  },
   { type: 'clean_runtime_logs', label: 'Clean runtime logs', description: 'Remove expired runtime log files.' },
   { type: 'prune_images', label: 'Prune images', description: 'Remove unused Docker images.' },
   { type: 'prune_all', label: 'Full cleanup', description: 'Remove unused Docker resources.' }

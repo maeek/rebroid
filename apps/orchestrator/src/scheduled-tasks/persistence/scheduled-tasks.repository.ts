@@ -92,4 +92,12 @@ export class ScheduledTasksRepository {
   findByPredefinedKeys(keys: string[]) {
     return this.tasks.find({ where: { predefinedKey: In(keys) } });
   }
+
+  retireApkUploadCleanup() {
+    return this.tasks
+      .createQueryBuilder()
+      .delete()
+      .where('"actionType" = :type', { type: 'clean_uploaded_apks' })
+      .execute();
+  }
 }

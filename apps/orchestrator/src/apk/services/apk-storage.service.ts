@@ -158,6 +158,18 @@ export class ApkStorageService {
     return removed;
   }
 
+  /** Called under the hash lock after all application references are checked. */
+  async deleteSharedFile(sha256: string) {
+    const path = join(await this.apkDirectory(), `${sha256}.apk`);
+    try {
+      await unlink(path);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      return false;
+    }
+  }
+
   private async removeFile(path: string) {
     try {
       await unlink(path);

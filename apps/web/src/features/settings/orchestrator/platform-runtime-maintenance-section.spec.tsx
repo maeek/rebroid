@@ -7,7 +7,6 @@ import {
   pruneNetworksAction,
   pruneVolumesAction
 } from '@/server/orchestrator/docker-maintenance/actions'
-import { cleanupUploadedApksAction } from '@/server/orchestrator/settings/actions'
 import { PlatformRuntimeMaintenanceSection } from './platform-runtime-maintenance-section'
 
 vi.mock('@/server/orchestrator/docker-maintenance/actions', () => ({
@@ -29,9 +28,6 @@ vi.mock('@/server/orchestrator/docker-maintenance/actions', () => ({
   pruneNetworksAction: vi.fn(() => Promise.resolve({ ok: true, requestId: 'test', data: {} })),
   pruneVolumesAction: vi.fn(() => Promise.resolve({ ok: true, requestId: 'test', data: {} }))
 }))
-vi.mock('@/server/orchestrator/settings/actions', () => ({
-  cleanupUploadedApksAction: vi.fn(() => Promise.resolve({ deletedRecords: 2, removedFiles: 2 }))
-}))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -50,7 +46,6 @@ describe('Runtime maintenance', () => {
   })
 
   it.each([
-    ['Delete unused APK uploads', cleanupUploadedApksAction],
     ['Remove dangling images', pruneImagesAction],
     ['Remove stopped containers', pruneContainersAction],
     ['Remove unused networks', pruneNetworksAction],
@@ -72,8 +67,7 @@ describe('Runtime maintenance', () => {
       pruneContainersAction,
       pruneImagesAction,
       pruneNetworksAction,
-      pruneVolumesAction,
-      cleanupUploadedApksAction
+      pruneVolumesAction
     ]
     expect(calls.reduce((sum, operation) => sum + vi.mocked(operation).mock.calls.length, 0)).toBe(1)
   })

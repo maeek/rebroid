@@ -3,7 +3,7 @@
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { getCurrentOwnerUserId, getCurrentUserContext } from '../current-user'
+import { getCurrentUserContext } from '../current-user'
 import { requireAdminUser, revalidateOrchestratorSettingsPage } from '../shared'
 import { orchestratorSettingsClient } from './client'
 import type { AutomationAiProvider, AutomationAiProviderModel } from '@/shared/contracts/ai-provider'
@@ -15,21 +15,6 @@ const requireAutomationAiRunUser = async () => {
     throw new PublicActionError('You do not have permission to use automation AI.', { code: 'forbidden', status: 403 })
   }
   return user
-}
-
-export const cleanupUploadedApksAction = async () => {
-  const ownerUserId = await getCurrentOwnerUserId()
-  const result = await orchestratorSettingsClient.cleanupUploadedApks(ownerUserId)
-  recordAuditEvent({
-    actorUserId: ownerUserId,
-    actorLabel: ownerUserId,
-    category: 'apk',
-    action: 'apk.cleanup',
-    resourceType: 'apk',
-    details: result
-  })
-  revalidateOrchestratorSettingsPage()
-  return result
 }
 
 export const getOrchestratorSettingsAction = async () => {

@@ -42,11 +42,32 @@ export class UploadedApksRepository {
     });
   }
 
-  listForCleanup(ownerUserId?: string | null) {
-    const owner = ownerUserId?.trim();
+  findBySha256(sha256: string) {
     return this.uploadedApks.find({
-      where: owner ? { ownerUserId: owner } : {},
+      select: { id: true, sizeBytes: true },
+      where: { sha256 },
     });
+  }
+
+  listForLibrary() {
+    return this.uploadedApks.find({
+      select: {
+        id: true,
+        ownerUserId: true,
+        sha256: true,
+        originalName: true,
+        displayName: true,
+        packageName: true,
+        sizeBytes: true,
+        googlePlayServicesVerdict: true,
+        googlePlayServicesEvidenceJson: true,
+      },
+      order: { createdAt: 'DESC', id: 'ASC' },
+    });
+  }
+
+  removeBySha256(sha256: string) {
+    return this.uploadedApks.delete({ sha256 });
   }
 
   countBySha256(sha256: string) {

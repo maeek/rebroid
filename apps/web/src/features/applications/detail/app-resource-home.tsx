@@ -85,6 +85,7 @@ export const AppResourceHome = ({
           summary={
             <AppConfigurationSummary
               app={app}
+              canReviewApks={hasPermission(permissions, 'apks:review')}
               canViewInfrastructure={canViewInfrastructure}
               canConfigureEgress={canConfigureEgress}
             />
@@ -140,11 +141,13 @@ export const AppResourceHome = ({
 
 export const AppConfigurationSummary = ({
   app,
+  canReviewApks = false,
   canViewInfrastructure = false,
   canConfigureEgress = false,
   loading = false
 }: {
   app?: AppDefinition
+  canReviewApks?: boolean
   canViewInfrastructure?: boolean
   canConfigureEgress?: boolean
   loading?: boolean
@@ -158,7 +161,17 @@ export const AppConfigurationSummary = ({
       loading={loading}
       fields={[
         { label: 'Name', value: app?.name },
-        { label: 'APK', value: app?.apkOriginalName ?? 'No APK installed' },
+        {
+          label: 'APK',
+          value:
+            canReviewApks && app?.uploadedApkId && app.apkOriginalName ? (
+              <ResourceLink href={`/platform/apks?app=${encodeURIComponent(app.id)}`}>
+                {app.apkOriginalName}
+              </ResourceLink>
+            ) : (
+              (app?.apkOriginalName ?? 'No APK installed')
+            )
+        },
         {
           label: 'Runtime image',
           value:

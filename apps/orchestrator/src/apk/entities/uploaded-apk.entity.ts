@@ -59,7 +59,7 @@ export class UploadedApk {
   @Column({ type: 'text', default: 'unknown' })
   googlePlayServicesVerdict!: GooglePlayServicesVerdict;
 
-  @Column({ type: 'text', default: "'[]'" })
+  @Column({ type: 'text', default: '[]' })
   googlePlayServicesEvidenceJson!: string;
 
   @Column({ type: 'integer', default: 1 })

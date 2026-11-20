@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { uploadApkWithFeedback } from '@/features/applications/apks/upload-apk-with-feedback'
 import { toast } from '@/hooks/use-toast'
+import { getBff } from '@/lib/http/bff'
+import { setAppIconAction } from '@/server/app-icons/actions/set-app-icon-action'
 import { submitCreateApplicationAction } from '@/server/orchestrator/applications/actions/configuration/create-update-actions'
 import { actionError, actionOk } from '@/shared/actions/action-result'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
@@ -10,6 +12,7 @@ import { optimizeIconFile } from '@/shared/model/media/icon-metadata'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { appResourcePreviewFeatures } from '../detail/app-resource-preview-data'
 import { CreateAppForm } from './create-app-form'
+import type { UploadedApk } from '@/shared/contracts/application'
 import type { PlatformImage } from '@/shared/contracts/platform'
 
 const { push, topLoader } = vi.hoisted(() => ({
@@ -18,6 +21,7 @@ const { push, topLoader } = vi.hoisted(() => ({
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 vi.mock('nextjs-toploader', () => ({
   useTopLoader: () => topLoader
 }))
@@ -54,7 +58,11 @@ const renderForm = (firewallEnabled = false, formProps: Partial<ComponentProps<t
       <CreateAppForm
         images={[]}
         initialSettings={defaultOrchestratorUiSettings}
-        permissions={{ 'applications:change-resources': true, 'applications:configure-egress': true }}
+        permissions={{
+          'applications:change-resources': true,
+          'applications:configure-egress': true,
+          'applications:upload-apk': true
+        }}
         canBuildImages={false}
         {...formProps}
       />
@@ -119,7 +127,6 @@ describe('Create app failure feedback', () => {
         originalName: 'app.apk',
         sha256: '',
         sizeBytes: 10,
-        filePath: '',
         extractedIconDataUrl: null,
         displayName: 'Android app',
         packageName: null,
@@ -150,7 +157,6 @@ describe('Create app failure feedback', () => {
         originalName: 'original.apk',
         sha256: '',
         sizeBytes: 10,
-        filePath: '',
         extractedIconDataUrl: 'data:image/png;base64,AA==',
         displayName: 'Original app',
         packageName: null,
@@ -307,19 +313,64 @@ describe('Create app failure feedback', () => {
     expect(toast).not.toHaveBeenCalled()
   })
 
-  it('keeps the draft when a success response contains an unusable ID', async () => {
-    vi.mocked(submitCreateApplicationAction).mockResolvedValueOnce(actionOk({ id: 'undefined' }, 'create-456'))
+  it('keeps the name, saved APK, and custom icon for retry after an unusable app ID', async () => {
+    const savedApk: UploadedApk = {
+      id: 'saved',
+      ownerUserId: null,
+      originalName: 'stockroom.apk',
+      displayName: 'Stockroom',
+      packageName: 'com.example.stockroom',
+      sha256: '',
+      sizeBytes: 2048,
+      extractedIconDataUrl: 'data:image/png;base64,AA==',
+      googlePlayServices: { verdict: 'not_detected', evidence: [], analysisVersion: 1 },
+      createdAt: '',
+      updatedAt: ''
+    }
+    const appId = '6d8b5e09-e4bf-4568-9aa9-0572237c04d3'
+    const customIcon = 'data:image/png;base64,AQ=='
+    vi.mocked(getBff).mockResolvedValueOnce([savedApk]).mockResolvedValueOnce(savedApk)
+    vi.mocked(optimizeIconFile).mockResolvedValueOnce(customIcon)
+    vi.mocked(submitCreateApplicationAction)
+      .mockResolvedValueOnce(actionOk({ id: 'undefined' }, 'create-456'))
+      .mockResolvedValueOnce(actionOk({ id: appId }))
+    vi.mocked(setAppIconAction).mockResolvedValueOnce(actionOk(customIcon))
+
     renderForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose saved APK' }))
+    const dialog = within(screen.getByRole('dialog', { name: 'Choose a saved APK' }))
+    fireEvent.click(await dialog.findByRole('option', { name: /Stockroom/ }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Use APK' }))
+    expect(await screen.findByText('Icon from APK')).toBeVisible()
+
     const name = screen.getByRole('textbox', { name: /Name/ })
+    expect(name).toHaveValue('Stockroom')
     fireEvent.change(name, { target: { value: 'Tablet landscape' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create app' }))
+    fireEvent.change(screen.getByLabelText('App icon', { exact: true }), {
+      target: { files: [new File(['image'], 'icon.png', { type: 'image/png' })] }
+    })
+    expect(await screen.findByText('Custom icon')).toBeVisible()
+    const submit = screen.getByRole('button', { name: 'Create app' })
+    fireEvent.click(submit)
 
     const notice = await screen.findByRole('alert')
     expect(notice).toHaveTextContent('Check All apps before trying again.')
     expect(notice).toHaveTextContent('Request ID create-456')
     expect(name).toHaveValue('Tablet landscape')
+    expect(screen.getByText('stockroom.apk')).toBeVisible()
+    expect(screen.getByText('Custom icon')).toBeVisible()
+    expect(setAppIconAction).not.toHaveBeenCalled()
     expect(push).not.toHaveBeenCalled()
     expect(toast).not.toHaveBeenCalled()
+
+    fireEvent.click(submit)
+    await waitFor(() => expect(push).toHaveBeenCalledExactlyOnceWith(`/app/${appId}`))
+    expect(submitCreateApplicationAction).toHaveBeenCalledTimes(2)
+    expect(submitCreateApplicationAction).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ name: 'Tablet landscape', uploadedApkId: savedApk.id })
+    )
+    expect(setAppIconAction).toHaveBeenCalledExactlyOnceWith(appId, customIcon)
   })
 
   it('opens the app page only after receiving a valid app ID', async () => {

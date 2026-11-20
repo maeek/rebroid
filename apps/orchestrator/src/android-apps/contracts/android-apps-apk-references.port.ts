@@ -3,6 +3,9 @@ export const ANDROID_APPS_APK_REFERENCES = Symbol(
 );
 
 export interface AndroidAppsApkReferencesPort {
+  listUploadedApkReferences(): Promise<
+    { uploadedApkId: string | null; name: string; id: string }[]
+  >;
   countUsingUploadedApk(uploadedApkId: string): Promise<number>;
   findReferencedUploadedApkIds(
     uploadedApkIds: string[],

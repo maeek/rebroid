@@ -160,6 +160,19 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
 
     await queryRunner.createTable(
       new Table({
+        name: 'apk_block_rules',
+        columns: [
+          { name: 'scope', type: 'text', isPrimary: true },
+          { name: 'value', type: 'text', isPrimary: true },
+          { name: 'reason', type: 'text' },
+          { name: 'originalName', type: 'text' },
+          { name: 'packageName', type: 'text', isNullable: true },
+        ],
+      }),
+    );
+
+    await queryRunner.createTable(
+      new Table({
         name: 'uploaded_apks',
         columns: [
           { name: 'id', type: 'varchar', isPrimary: true, isNullable: false },
@@ -593,6 +606,7 @@ export class InitializeSqliteSchema1800000005000 implements MigrationInterface {
     await queryRunner.dropTable('scheduled_tasks');
     await queryRunner.dropTable('android_app_lifecycle_jobs');
     await queryRunner.dropTable('uploaded_apks');
+    await queryRunner.dropTable('apk_block_rules');
     await queryRunner.dropTable('android_applications');
   }
 }

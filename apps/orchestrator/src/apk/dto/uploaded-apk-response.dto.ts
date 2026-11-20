@@ -33,9 +33,6 @@ export class UploadedApkResponseDto {
   @ApiProperty()
   sizeBytes!: number;
 
-  @ApiProperty()
-  filePath!: string;
-
   @ApiProperty({ type: String, nullable: true })
   extractedIconDataUrl!: string | null;
 
@@ -55,22 +52,20 @@ export class UploadedApkResponseDto {
   updatedAt!: Date;
 
   static fromEntity(entity: UploadedApk): UploadedApkResponseDto {
-    const evidence = UploadedApkResponseDto.parseEvidence(
-      entity.googlePlayServicesEvidenceJson,
-    );
     return {
       id: entity.id,
       ownerUserId: entity.ownerUserId,
       originalName: entity.originalName,
       sha256: entity.sha256,
       sizeBytes: entity.sizeBytes,
-      filePath: entity.filePath,
       extractedIconDataUrl: entity.extractedIconDataUrl,
       displayName: entity.displayName,
       packageName: entity.packageName,
       googlePlayServices: {
         verdict: entity.googlePlayServicesVerdict,
-        evidence,
+        evidence: UploadedApkResponseDto.parseEvidence(
+          entity.googlePlayServicesEvidenceJson,
+        ),
         analysisVersion: entity.googlePlayServicesAnalysisVersion,
       },
       createdAt: entity.createdAt,
@@ -78,9 +73,7 @@ export class UploadedApkResponseDto {
     };
   }
 
-  private static parseEvidence(
-    value: string,
-  ): GooglePlayServicesEvidenceCode[] {
+  static parseEvidence(value: string): GooglePlayServicesEvidenceCode[] {
     try {
       const parsed: unknown = JSON.parse(value);
       if (!Array.isArray(parsed)) return [];

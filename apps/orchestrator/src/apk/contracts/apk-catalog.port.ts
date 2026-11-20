@@ -9,12 +9,13 @@ export interface UploadedApkReference {
 
 export interface ApkCatalogPort {
   get(id: string): Promise<UploadedApkReference>;
+  withReference<T>(
+    id: string,
+    operation: (apk: UploadedApkReference) => Promise<T>,
+  ): Promise<T>;
   cloneForOwner(
     id: string,
     ownerUserId?: string | null,
   ): Promise<UploadedApkReference>;
-  cleanupUnused(ownerUserId?: string | null): Promise<{
-    deletedRecords: number;
-    removedFiles: number;
-  }>;
+  cleanupOrphanedFiles(): Promise<number>;
 }

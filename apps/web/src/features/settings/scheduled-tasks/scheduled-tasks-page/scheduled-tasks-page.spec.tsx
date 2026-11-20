@@ -22,9 +22,9 @@ const renderPage = () =>
 describe('Scheduler page', () => {
   it('opens a named task for editing and preserves built-in restrictions', async () => {
     renderPage()
-    const task = screen.getByRole('button', { name: 'Clean APK uploads' })
-    const row = screen.getByRole('row', { name: /Clean APK uploads/ })
-    expect(within(row).getAllByText('Clean APK uploads')).toHaveLength(1)
+    const task = screen.getByRole('button', { name: 'Clean orphaned APK files' })
+    const row = screen.getByRole('row', { name: /Clean orphaned APK files/ })
+    expect(within(row).getAllByText('Clean orphaned APK files')).toHaveLength(1)
     expect(within(row).queryByText('Enabled')).toBeNull()
     fireEvent.click(task)
     const dialog = await screen.findByRole('dialog')
@@ -37,9 +37,9 @@ describe('Scheduler page', () => {
     const task = schedulerPreviewTasks[0]
     vi.mocked(updateScheduledTaskAction).mockResolvedValue({ ...task, enabled: false, nextRunAt: null })
     renderPage()
-    fireEvent.click(screen.getByRole('switch', { name: 'Disable Clean APK uploads' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Disable Clean orphaned APK files' }))
     await waitFor(() => expect(updateScheduledTaskAction).toHaveBeenCalledWith(task.id, { enabled: false }))
-    expect(await screen.findByRole('switch', { name: 'Enable Clean APK uploads' })).not.toBeChecked()
+    expect(await screen.findByRole('switch', { name: 'Enable Clean orphaned APK files' })).not.toBeChecked()
   })
 
   it('shows and saves image build history retention on the built-in task', async () => {

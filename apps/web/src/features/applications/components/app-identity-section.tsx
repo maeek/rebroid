@@ -1,11 +1,14 @@
 import type { ChangeEvent, ReactNode, Ref } from 'react'
 import { IconPackage } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
 import { FileDropZone } from '@/components/ui/file-drop-zone'
 import { FileUploadField } from '@/components/ui/file-upload-field'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Section } from '@/components/ui/section'
+import { SavedApkPicker } from '../apks/saved-apk-picker'
 import { verticalSettingClassName } from './app-form-utils'
+import type { UploadedApk } from '@/shared/contracts/application'
 
 type AppIdentitySectionProps = {
   valuesName: string
@@ -15,6 +18,9 @@ type AppIdentitySectionProps = {
   isUploadingApk: boolean
   apkUploadProgress?: number | null
   onApkSelect: (file: File | null) => void
+  onSavedApkSelect?: (apk: UploadedApk) => void | Promise<void>
+  onClearApk?: () => void
+  uploadDisabled?: boolean
   iconSlot?: React.ReactNode
   nameDescription?: string
   nameRequired?: boolean
@@ -37,6 +43,9 @@ export const AppIdentitySection = ({
   isUploadingApk,
   apkUploadProgress = null,
   onApkSelect,
+  onSavedApkSelect,
+  onClearApk,
+  uploadDisabled = false,
   iconSlot,
   nameDescription = 'At least 2 characters.',
   nameRequired = true,
@@ -87,46 +96,61 @@ export const AppIdentitySection = ({
       </FormField>
       <div className='@container'>
         <div className='grid items-start gap-x-form-column gap-y-4 @min-[42rem]:grid-cols-2'>
-          <FileDropZone
-            disabled={disabled || isUploadingApk}
-            onFiles={([file]) => onApkSelect(file ?? null)}
-          >
-            <FormField
-              label='APK file'
-              error={apkError}
-              description={
-                apkDescription ?? (
-                  <>
-                    <span className='sm:hidden sm:pointer-coarse:inline'>
-                      Optional. Import the APK’s details and icon.
-                    </span>
-                    <span className='hidden sm:pointer-fine:inline'>
-                      Optional. Drop an APK to import its details and icon.
-                    </span>
-                  </>
-                )
-              }
-              layout='vertical'
-              className={verticalSettingClassName}
+          <div className='grid gap-2'>
+            <FileDropZone
+              disabled={disabled || isUploadingApk || uploadDisabled}
+              onFiles={([file]) => onApkSelect(file ?? null)}
             >
-              <FileUploadField
-                accept='.apk,application/vnd.android.package-archive'
-                disabled={disabled}
-                pending={isUploadingApk}
-                pendingLabel={apkUploadProgress === 100 ? 'Processing APK…' : undefined}
-                progress={apkUploadProgress}
-                onChange={handleApkSelect}
-                aria-label='APK file'
-                buttonLabel={uploadedApkLabel ? 'Replace APK' : 'Upload APK'}
-                filenameLabel={isUploadingApk ? (pendingApkName ?? undefined) : (uploadedApkLabel ?? 'No APK selected')}
-                preview={
-                  <div className='grid size-12 place-items-center rounded-control bg-surface-panel text-foreground-muted'>
-                    <IconPackage className='size-6' />
-                  </div>
-                }
-              />
-            </FormField>
-          </FileDropZone>
+              <FormField
+                label='APK file'
+                error={apkError}
+                description={apkDescription ?? <>Optional. Upload an APK or choose one from your saved files.</>}
+                layout='vertical'
+                className={verticalSettingClassName}
+              >
+                <FileUploadField
+                  accept='.apk,application/vnd.android.package-archive'
+                  disabled={disabled || uploadDisabled}
+                  pending={isUploadingApk}
+                  pendingLabel={apkUploadProgress === 100 ? 'Processing APK…' : undefined}
+                  progress={apkUploadProgress}
+                  onChange={handleApkSelect}
+                  aria-label='APK file'
+                  buttonLabel={uploadedApkLabel ? 'Upload replacement' : 'Upload APK'}
+                  filenameLabel={
+                    isUploadingApk ? (pendingApkName ?? undefined) : (uploadedApkLabel ?? 'No APK selected')
+                  }
+                  preview={
+                    <div className='grid size-12 place-items-center rounded-control bg-surface-panel text-foreground-muted'>
+                      <IconPackage className='size-6' />
+                    </div>
+                  }
+                  previewActions={
+                    onSavedApkSelect || onClearApk ? (
+                      <>
+                        {onSavedApkSelect ? (
+                          <SavedApkPicker
+                            disabled={disabled || isUploadingApk}
+                            onChoose={onSavedApkSelect}
+                          />
+                        ) : null}
+                        {onClearApk ? (
+                          <Button
+                            type='button'
+                            variant='ghost'
+                            disabled={disabled || isUploadingApk}
+                            onClick={onClearApk}
+                          >
+                            Clear APK
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : undefined
+                  }
+                />
+              </FormField>
+            </FileDropZone>
+          </div>
           {iconSlot}
         </div>
       </div>

@@ -1,6 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { getBff } from '@/lib/http/bff'
 import { AppIdentitySection } from './app-identity-section'
+
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 
 describe('AppIdentitySection', () => {
   it('shows uploaded apk label and forwards name changes', () => {
@@ -44,5 +47,33 @@ describe('AppIdentitySection', () => {
     )
 
     expect(screen.getByText('Icon placeholder').textContent).toBe('Icon placeholder')
+  })
+
+  it('offers an upload and shows saved APK choices as soon as the picker opens', async () => {
+    const saved = {
+      id: 'saved',
+      displayName: 'Stockroom',
+      originalName: 'stockroom.apk',
+      packageName: 'com.example.stockroom',
+      sizeBytes: 2048
+    }
+    vi.mocked(getBff).mockResolvedValueOnce([saved]).mockResolvedValueOnce(saved)
+    const onSavedApkSelect = vi.fn()
+    render(
+      <AppIdentitySection
+        valuesName='Warehouse'
+        onNameChange={() => {}}
+        isUploadingApk={false}
+        onApkSelect={() => {}}
+        onSavedApkSelect={onSavedApkSelect}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Upload APK' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Choose saved APK' }))
+    const dialog = within(screen.getByRole('dialog', { name: 'Choose a saved APK' }))
+    fireEvent.click(await dialog.findByRole('option', { name: /Stockroom/ }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Use APK' }))
+    await waitFor(() => expect(onSavedApkSelect).toHaveBeenCalledWith(saved))
   })
 })

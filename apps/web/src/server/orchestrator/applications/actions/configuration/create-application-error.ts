@@ -7,7 +7,7 @@ const validationMessages = {
   name: 'Enter a name with at least 2 characters.',
   containerImage: 'Choose a runtime image.',
   containerArgs: 'Shorten the runtime arguments to 2,048 characters or fewer, including the runtime defaults.',
-  uploadedApkId: 'Upload the APK again.',
+  uploadedApkId: 'Choose another saved APK, upload a new file, or clear the selection.',
   networkPolicyEnabled: 'Select a network access mode.',
   networkPolicyAllowCidrs: 'Use valid IPv4 ranges such as 10.20.0.0/16.',
   inactivityTimeoutSeconds: 'Enter a whole number of seconds from 0 to 86,400, or -1 for no automatic stop.',
@@ -52,7 +52,7 @@ export const toCreateApplicationError = (error: unknown): unknown => {
     )
   }
   if (status === 409 && details?.code === 'apk_unavailable') {
-    return new PublicActionError('The uploaded APK is unavailable for this app. Upload it again to continue.', {
+    return new PublicActionError('The selected APK is unavailable for this app.', {
       code: 'conflict',
       status,
       fieldErrors: { uploadedApkId: [validationMessages.uploadedApkId] }

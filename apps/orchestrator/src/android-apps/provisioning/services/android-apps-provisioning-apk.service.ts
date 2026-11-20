@@ -1,12 +1,17 @@
 import {
   Inject,
   Injectable,
+  ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import {
   APK_PACKAGE_INSPECTION,
   type ApkPackageInspectionPort,
 } from '../../../apk/contracts/apk-package-inspection.port';
+import {
+  APK_CATALOG,
+  type ApkCatalogPort,
+} from '../../../apk/contracts/apk-catalog.port';
 import { getErrorMessage } from '../../../common/error-message';
 import {
   DOCKER_CONTAINER_ARCHIVE,
@@ -38,10 +43,27 @@ export class AndroidAppsProvisioningApkService {
     private readonly writer: AndroidAppsStateWriter,
     @Inject(APK_PACKAGE_INSPECTION)
     private readonly apkMetadata: ApkPackageInspectionPort,
+    @Inject(APK_CATALOG) private readonly apks: ApkCatalogPort,
   ) {}
 
   /** Copies the APK in and runs the install command. */
   async installApk(app: AndroidApplication) {
+    if (!app.uploadedApkId)
+      throw new ConflictException('Choose an available APK before installing.');
+    return this.apks.withReference(app.uploadedApkId, (apk) => {
+      if (
+        apk.ownerUserId !== app.ownerUserId ||
+        apk.filePath !== app.apkFilePath
+      ) {
+        throw new ConflictException(
+          'Choose an available APK before installing.',
+        );
+      }
+      return this.installAttachedApk(app);
+    });
+  }
+
+  private async installAttachedApk(app: AndroidApplication) {
     if (!app.containerId || !app.apkFilePath) {
       throw new InternalServerErrorException('Container and APK are required.');
     }

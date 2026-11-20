@@ -17,6 +17,9 @@ type AppFormGeneralSectionProps = {
   nameInputRef?: Ref<HTMLInputElement>
   apkError?: string
   onApkSelect: (file: File | null) => void
+  onSavedApkSelect?: (apk: UploadedApk) => void
+  onClearApk?: () => void
+  uploadDisabled?: boolean
 }
 
 export const AppFormGeneralSection = ({
@@ -32,7 +35,10 @@ export const AppFormGeneralSection = ({
   nameError,
   nameInputRef,
   apkError,
-  onApkSelect
+  onApkSelect,
+  onSavedApkSelect,
+  onClearApk,
+  uploadDisabled
 }: AppFormGeneralSectionProps) => {
   const uploadedApkLabel = uploadedApk ? uploadedApk.originalName : apkLabel
 
@@ -46,6 +52,9 @@ export const AppFormGeneralSection = ({
       apkUploadProgress={apkUploadProgress}
       disabled={disabled}
       onApkSelect={file => onApkSelect(file)}
+      onSavedApkSelect={onSavedApkSelect}
+      onClearApk={onClearApk}
+      uploadDisabled={uploadDisabled}
       iconSlot={iconSlot}
       nameError={nameError}
       nameInputRef={nameInputRef}

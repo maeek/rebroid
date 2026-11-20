@@ -87,21 +87,7 @@ export class AndroidAppsConfigurationService {
     if (dto.networkPolicyEnabled !== false) {
       this.features.assertEnabled('feature.firewall');
     }
-    const [settings, uploadedApk] = await Promise.all([
-      this.settings.getSettings(),
-      dto.uploadedApkId
-        ? this.apks.get(dto.uploadedApkId).catch((error: unknown) => {
-            if (!(error instanceof ConflictException)) throw error;
-            throw unavailableApk();
-          })
-        : Promise.resolve(null),
-    ]);
-    if (
-      uploadedApk &&
-      uploadedApk.ownerUserId !== (dto.ownerUserId?.trim() || null)
-    ) {
-      throw unavailableApk();
-    }
+    const settings = await this.settings.getSettings();
     const containerImage = resolveContainerImage(
       dto.containerImage ?? settings.defaultContainerImage,
       settings.dockerImageRegistry,
@@ -115,13 +101,27 @@ export class AndroidAppsConfigurationService {
     const name = dto.name.trim();
     return this.withOwnerConfiguration(ownerUserId, async () => {
       assertAppNameAvailable(name, await this.ownerNameKeys(ownerUserId));
-      return this.provision(
-        { ...dto, name },
-        settings,
-        containerImage,
-        uploadedApk,
-        maxOpenApps,
-      );
+      const provision = (apk: UploadedApkReference | null) =>
+        this.provision(
+          { ...dto, name },
+          settings,
+          containerImage,
+          apk,
+          maxOpenApps,
+        );
+      if (!dto.uploadedApkId) return provision(null);
+      let admitted = false;
+      try {
+        return await this.apks.withReference(dto.uploadedApkId, (apk) => {
+          if (apk.ownerUserId !== ownerUserId) throw unavailableApk();
+          admitted = true;
+          return provision(apk);
+        });
+      } catch (error) {
+        if (!admitted && error instanceof ConflictException)
+          throw unavailableApk();
+        throw error;
+      }
     });
   }
 
@@ -192,20 +192,24 @@ export class AndroidAppsConfigurationService {
       const uploadedApk = source.uploadedApkId
         ? await this.apks.cloneForOwner(source.uploadedApkId, ownerUserId)
         : null;
-      return this.provision(
-        {
-          name,
-          ownerUserId: ownerUserId ?? undefined,
-          inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
-          memoryLimitMb: source.memoryLimitMb ?? undefined,
-          cpuLimitCpus: source.cpuLimitCpus ?? undefined,
-          containerArgs: source.containerArgs ?? undefined,
-        },
-        settings,
-        containerImage,
-        uploadedApk,
-        maxOpenApps,
-      );
+      const provision = (apk: UploadedApkReference | null) =>
+        this.provision(
+          {
+            name,
+            ownerUserId: ownerUserId ?? undefined,
+            inactivityTimeoutSeconds: source.inactivityTimeoutSeconds,
+            memoryLimitMb: source.memoryLimitMb ?? undefined,
+            cpuLimitCpus: source.cpuLimitCpus ?? undefined,
+            containerArgs: source.containerArgs ?? undefined,
+          },
+          settings,
+          containerImage,
+          apk,
+          maxOpenApps,
+        );
+      return uploadedApk
+        ? this.apks.withReference(uploadedApk.id, provision)
+        : provision(null);
     });
   }
 
@@ -312,20 +316,21 @@ export class AndroidAppsConfigurationService {
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
     const app = await this.reconciler.reconcileById(id);
     this.assertMutable(app);
-    const uploadedApk = await this.apks.get(dto.uploadedApkId);
-    if (uploadedApk.ownerUserId !== app.ownerUserId) {
-      throw new ConflictException(
-        'Uploaded APK does not belong to this application owner.',
-      );
-    }
-    await this.assertRuntimeNotRecreating(app);
-    if (this.backgroundJobs.hasWork(id)) {
-      throw new ConflictException(
-        'Wait for the active application job before changing the attached APK.',
-      );
-    }
-    this.applicationFactory.applyUploadedApk(app, uploadedApk);
-    await this.writer.save(app);
+    await this.apks.withReference(dto.uploadedApkId, async (uploadedApk) => {
+      if (uploadedApk.ownerUserId !== app.ownerUserId) {
+        throw new ConflictException(
+          'Uploaded APK does not belong to this application owner.',
+        );
+      }
+      await this.assertRuntimeNotRecreating(app);
+      if (this.backgroundJobs.hasWork(id)) {
+        throw new ConflictException(
+          'Wait for the active application job before changing the attached APK.',
+        );
+      }
+      this.applicationFactory.applyUploadedApk(app, uploadedApk);
+      await this.writer.save(app);
+    });
 
     if (app.status !== AndroidApplicationStatus.Running) {
       return this.queries.decorate(app);

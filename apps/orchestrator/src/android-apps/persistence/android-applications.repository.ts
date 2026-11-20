@@ -261,6 +261,13 @@ export class AndroidApplicationsRepository
     return this.applications.countBy({ uploadedApkId });
   }
 
+  listUploadedApkReferences() {
+    return this.applications.find({
+      select: { id: true, name: true, uploadedApkId: true },
+      where: { uploadedApkId: Not(IsNull()) },
+    });
+  }
+
   async findReferencedUploadedApkIds(uploadedApkIds: string[]) {
     if (!uploadedApkIds.length) {
       return new Set<string>();
