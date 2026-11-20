@@ -83,17 +83,20 @@ Collapsing the System section moves this dot to the System item.
 Casting, Firewall, Docker, and OCR perception show their own health in the same way. Each dot has a text description.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
 is a 64 px icon rail with service health dots on the corresponding icons or flyout links. The account menu opens beside the rail and aligns
-with the bottom edge of its trigger. In the expanded sidebar it opens upward. The Appearance submenu uses
-the same floating surface as the desktop account menu.
+with the bottom edge of its trigger. In the expanded sidebar it opens 8 px above the borderless
+account row and matches its width. Use a neutral hover and open state on the row and a borderless
+floating menu. Show the current theme on the Theme row. Theme opens a list in the same menu, with
+swatches, a checkmark for the current choice, and a Back action. Keep the picker open after selection.
 On mobile, page headers identify the current resource. The shell reserves the top safe area.
 The bottom dock links to Apps and, when enabled, Workflows. Use `surface-floating-control` and
 `shadow-floating-control` to keep it distinct over content panels. Leave at least 12 px on either side
 and a gap above the bottom safe area. Tint the active icon and label with the accent and give
 the icon a small tinted surface. Keep the dock free of dividers and use 44 px touch targets.
 More opens the navigation drawer, with the Rebroid wordmark above the scrollable navigation links and service
-health dots. Place the account section after the last navigation group, with the avatar and name above direct
-Preferences and Security links, inline Appearance choices, and Log out. The drawer has a swipe-to-dismiss
-grip and an explicit close button.
+health dots. Place the Account entry at the top, before the navigation links. Open the account view
+in the same drawer with a Back button, the signed-in identity, direct Preferences and Security links,
+and a two-column Theme picker with touch targets at least 44 px tall. Keep Log out below the theme
+choices. The drawer has a swipe-to-dismiss grip and an explicit close button.
 The shell reserves space for the bottom bar and the bottom safe area.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
@@ -477,7 +480,8 @@ the user to All apps before retrying. Only a confirmed app ID opens the resource
 Application identity places the APK and icon pickers in matching preview rows. Stack them in
 narrow sections and put them side by side when both have room. Support dropping an APK and
 keep the picker available for touch and keyboard. On Create app, keep the selected APK and icon
-when a replacement fails, and show the error by the affected control. The ReDroid display preview
+when a replacement fails, and show the error by the affected control. **Choose saved APK** opens
+the account's saved APKs in a searchable dialog. Confirm the choice before applying it. The ReDroid display preview
 uses the selected screen's aspect ratio and shows dimensions and density beside it. It sits
 below the controls in narrow sections and grows into its own column beside the Runtime settings
 when space allows. Runtime arguments place editable overrides before the effective shell preview.
@@ -502,7 +506,7 @@ for streaming adjustments. Inline compound controls may explicitly opt out of ed
 
 ### Personal preferences
 
-The desktop account menu and the account section in the mobile drawer offer Preferences, Security, Appearance,
+The desktop account menu and the account view in the mobile drawer offer Preferences, Security, Theme,
 and Log out.
 Edit your profile in Preferences and manage sign-in in Security.
 
@@ -607,6 +611,13 @@ late running responses must never replace terminal or newly selected jobs. Defau
 to the image field. Monaco follows semantic surfaces and changes theme without replacing its draft/undo model.
 
 ## Resource management
+
+APK library uses the shared inventory grid, compact record rows, filter sheet, and selection toolbar.
+Blocked APKs are a status filter in the same grid. Keep removed files discoverable while a block
+still matches them. The inspector shows the checksum, package, referencing apps, and inspection findings.
+Confirm bulk changes with the exact scope and affected APKs. On phones, keep the selection toolbar
+within reach while scrolling, and show applicable bulk commands in an Actions sheet. Keep the
+inspector title and actions in view while its details scroll.
 
 Infrastructure detail pages for containers, images, and networks use `PlatformResourceSection` for their overview, metrics, related resources, logs, labels, and inspect groups. It reuses the rounded editor section surface, padding, and theme tokens. Loading layouts use the same composition.
 
