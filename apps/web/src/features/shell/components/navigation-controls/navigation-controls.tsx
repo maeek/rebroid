@@ -15,10 +15,7 @@ export const NavigationControls = ({
     <div
       role='group'
       aria-label='Navigation controls'
-      className={cn(
-        'flex shrink-0 items-center',
-        compact ? 'w-16 justify-center py-3' : 'border-t border-surface-border/60 px-3 py-3'
-      )}
+      className={cn('flex shrink-0 items-center', compact ? 'w-16 justify-center py-3' : 'px-3 py-3')}
     >
       <NavigationAccount
         initialUser={user}

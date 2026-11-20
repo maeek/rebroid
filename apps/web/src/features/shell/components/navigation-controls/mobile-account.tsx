@@ -1,15 +1,15 @@
 'use client'
 
 import { useId } from 'react'
-import { IconLogout, IconSunMoon } from '@tabler/icons-react'
+import { IconCheck, IconChevronRight, IconLogout } from '@tabler/icons-react'
+import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { useTheme } from 'next-themes'
 import { focusRingClassName } from '@/components/ui/surface'
-import { appThemeOptions } from '@/components/ui/theme-toggle'
 import { cn } from '@/lib/utils'
 import { variantStyles } from '../protected-navigation-config'
-import { NavLink } from '../protected-navigation-parts'
 import { AccountAvatar, accountDestinations } from './account-details'
+import { AccountThemeSwatch, accountThemeOptions } from './account-theme'
 import type { ShellUser } from '../shell-user'
 
 const styles = variantStyles.drawer
@@ -29,68 +29,72 @@ export const MobileAccount = ({
   return (
     <section
       aria-label='Account'
-      className='px-4 pb-4'
+      className='px-4 pt-1 pb-4'
     >
-      <h3 className='flex min-w-0 items-center gap-2 px-2 pb-2 text-sm font-medium'>
+      <p className='flex min-h-12 min-w-0 items-center gap-2 px-2 pb-1 text-sm font-medium'>
         <span className={styles.iconWrap}>
           <AccountAvatar user={user} />
         </span>
         <span className='min-w-0 truncate'>{user.name || 'Account'}</span>
-      </h3>
+      </p>
       <ul className='flex flex-col'>
-        {accountDestinations.map(destination => (
-          <NavLink
-            key={destination.href}
-            {...destination}
-            isActive={pathname === destination.href}
-            variant='drawer'
-            onNavigate={onNavigate}
-          />
-        ))}
-        <li className='px-2 pb-2'>
-          <fieldset className='min-w-0'>
-            <legend className='py-2'>
-              <span className='flex items-center gap-2'>
-                <span className={styles.iconWrap}>
-                  <IconSunMoon
-                    aria-hidden='true'
-                    className={styles.icon}
-                  />
-                </span>
-                Appearance
+        {accountDestinations.map(({ href, label, Icon }) => (
+          <li key={href}>
+            <Link
+              href={href}
+              className={cn(styles.item, focusRingClassName, pathname === href && styles.activeItem)}
+              aria-current={pathname === href ? 'page' : undefined}
+              onClick={onNavigate}
+            >
+              <span className={cn(styles.iconWrap, 'text-foreground-muted')}>
+                <Icon
+                  className={styles.icon}
+                  aria-hidden='true'
+                />
               </span>
-            </legend>
-            <div className='grid grid-cols-4 gap-0.5 rounded-control bg-surface-editor p-1'>
-              {appThemeOptions.map(({ value, label, Icon }) => (
+              {label}
+              <IconChevronRight
+                aria-hidden='true'
+                className='ml-auto size-4 shrink-0 text-foreground-muted'
+              />
+            </Link>
+          </li>
+        ))}
+        <li className='px-1 pt-2 pb-3'>
+          <fieldset className='min-w-0'>
+            <legend className='px-1 pb-2 text-sm font-medium'>Theme</legend>
+            <div className='grid grid-cols-2 gap-1'>
+              {accountThemeOptions.map(({ value, label }) => (
                 <label
                   key={value}
-                  className='flex min-h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-control text-xs text-foreground-muted hover:bg-control-hover has-checked:bg-control has-checked:text-foreground has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/40'
+                  className='group flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-control bg-control px-2.5 text-sm text-foreground hover:bg-control-hover has-checked:bg-primary/14 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring/40'
                 >
                   <input
                     className='sr-only'
                     type='radio'
                     name={themeInputName}
                     value={value}
-                    checked={theme === value}
+                    checked={(theme ?? 'dark') === value}
                     onChange={() => setTheme(value)}
                   />
-                  <Icon
-                    aria-hidden='true'
-                    className='size-4'
-                  />
+                  <AccountThemeSwatch theme={value} />
                   {label}
+                  <IconCheck
+                    aria-hidden='true'
+                    className='invisible ml-auto size-4 shrink-0 text-primary group-has-checked:visible'
+                  />
                 </label>
               ))}
             </div>
           </fieldset>
         </li>
-        <li>
+        <li className='border-t border-surface-border/50 pt-1'>
           <button
             type='button'
             className={cn(styles.item, focusRingClassName, 'w-full text-left')}
             onClick={() => void signOut({ redirect: true })}
           >
-            <span className={styles.iconWrap}>
+            <span className={cn(styles.iconWrap, 'text-foreground-muted')}>
               <IconLogout
                 aria-hidden='true'
                 className={styles.icon}

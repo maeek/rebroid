@@ -6,7 +6,16 @@ test('the desktop account menu links directly to Preferences and Security', asyn
   const controls = page.getByRole('group', { name: 'Navigation controls', exact: true })
   const account = controls.getByRole('button', { name: /^Account(?::|$)/ })
   await expect(controls.getByRole('button')).toHaveCount(1)
+  await expect(controls).toHaveCSS('border-top-width', '0px')
   await account.click()
+  const menu = page.getByRole('menu')
+  await expect(menu).toHaveCSS('border-top-width', '0px')
+  await expect(menu).toHaveAttribute('data-side', 'top')
+  const anchor = (await account.boundingBox())!
+  const popup = (await menu.boundingBox())!
+  expect(popup.x).toBeCloseTo(anchor.x, 0)
+  expect(popup.width).toBeCloseTo(anchor.width, 0)
+  expect(anchor.y - (popup.y + popup.height)).toBeCloseTo(8, 0)
   await expect(page.getByRole('menuitem', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
   await expect(page.getByRole('menuitem', { name: 'Security', exact: true })).toHaveAttribute(
     'href',
@@ -15,7 +24,7 @@ test('the desktop account menu links directly to Preferences and Security', asyn
   await expect(page.getByRole('menuitem', { name: 'Account overview', exact: true })).toHaveCount(0)
 })
 
-test('the desktop Appearance submenu matches its parent and opens beside the rail', async ({ page }) => {
+test('the desktop Theme picker reuses the account popup and keeps the current selection visible', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
   await page.goto('/skeleton-contract-test?editor=console-shell')
@@ -24,58 +33,59 @@ test('the desktop Appearance submenu matches its parent and opens beside the rai
 
   const account = page.getByRole('button', { name: /^Account(?::|$)/ })
   await account.click()
-  const trigger = page.getByRole('menuitem', { name: 'Appearance', exact: true })
-  await expect(trigger).toHaveCSS('column-gap', '8px')
-  await expect(trigger.locator('.tabler-icon-chevron-right')).toBeVisible()
-  const menu = page.getByRole('menu').filter({ has: trigger })
+  const trigger = page.getByRole('menuitem', { name: /^Theme/ })
+  await expect(trigger).toHaveText('ThemeDark')
+  const menu = page.getByRole('menu')
+  const initialMenuId = await menu.getAttribute('id')
   await trigger.press('ArrowRight')
 
   const dark = page.getByRole('menuitemradio', { name: 'Dark', exact: true })
-  const submenu = page.getByRole('menu', { name: 'Appearance', exact: true })
-  await expect(submenu).toBeVisible()
+  await expect(menu).toHaveCount(1)
+  const themes = menu.getByRole('group', { name: 'Theme' })
+  await expect(themes).toBeVisible()
+  expect(await menu.getAttribute('id')).toBe(initialMenuId)
+  await expect(menu).toHaveAttribute('data-side', 'right')
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['System', 'Light', 'Dark', 'OLED'])
   await expect(dark).toBeChecked()
-  await expect(dark).toHaveCSS('column-gap', '8px')
-  await expect(submenu).toHaveCSS(
-    'background-color',
-    await menu.evaluate(node => getComputedStyle(node).backgroundColor)
-  )
-  await expect(submenu).toHaveCSS(
-    'border-top-color',
-    await menu.evaluate(node => getComputedStyle(node).borderTopColor)
-  )
-  const parent = (await menu.boundingBox())!
-  await expect
-    .poll(async () => {
-      const child = (await submenu.boundingBox())!
-      const besideParent = child.x > parent.x + parent.width
-      const { width, height } = page.viewportSize()!
-      const fitsViewport =
-        child.x >= 0 && child.y >= 0 && child.x + child.width <= width && child.y + child.height <= height
-      return besideParent && fitsViewport
-    })
-    .toBe(true)
+  await expect(dark).toBeFocused()
 
-  await page.getByRole('menuitemradio', { name: 'OLED' }).click()
+  const oled = page.getByRole('menuitemradio', { name: 'OLED', exact: true })
+  await page.keyboard.press('ArrowDown')
+  await expect(oled).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(oled).toBeChecked()
   await expect(page.locator('html')).toHaveClass(/\boled\b/)
+  await expect(themes).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(trigger).toBeFocused()
+  await expect(trigger).toHaveText('ThemeOLED')
+  await trigger.click()
+  await menu.getByRole('menuitem', { name: 'Back to account menu' }).click()
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(account).toBeFocused()
 })
 
-test('the mobile drawer ends with direct account actions and inline Appearance choices', async ({ page }) => {
+test('the mobile More drawer starts with an account entry that opens inline Theme choices', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 600 })
   await page.addInitScript(() => localStorage.setItem('theme', 'dark'))
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const more = page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' })
   await more.click()
 
-  const drawer = page.getByRole('dialog', { name: 'Navigation' })
-  const account = drawer.getByRole('region', { name: 'Account' })
-  const lastNavigationLink = drawer.getByRole('link', { name: 'Maintenance tasks' })
-  const navigationLink = await lastNavigationLink.elementHandle()
-  const accountFollowsNavigation = await account.evaluate(
-    (region, link) => link !== null && link.getBoundingClientRect().top < region.getBoundingClientRect().top,
-    navigationLink
+  const navigation = page.getByRole('dialog', { name: 'Navigation' })
+  const entry = navigation.getByRole('button', { name: 'Account: Preview operator' })
+  await expect(entry).toBeInViewport()
+  expect((await entry.boundingBox())!.y).toBeLessThan(
+    (await navigation.getByRole('link', { name: 'All apps', exact: true }).boundingBox())!.y
   )
-  expect(accountFollowsNavigation).toBe(true)
-  await expect(account.getByRole('heading', { name: 'Preview operator' })).toBeAttached()
+  await entry.click()
+  const drawer = page.getByRole('dialog', { name: 'Account', exact: true })
+  const account = drawer.getByRole('region', { name: 'Account' })
+  const back = drawer.getByRole('button', { name: 'Back to More' })
+  await expect(back).toBeFocused()
+  await expect(account.getByText('Preview operator', { exact: true })).toBeVisible()
   await expect(account.getByRole('link', { name: 'Preferences' })).toHaveAttribute('href', '/preferences/general')
   await expect(account.getByRole('link', { name: 'Security' })).toHaveAttribute('href', '/preferences/security')
   await expect(drawer.getByRole('menu')).toHaveCount(0)
@@ -83,22 +93,28 @@ test('the mobile drawer ends with direct account actions and inline Appearance c
   const logout = account.getByRole('button', { name: 'Log out' })
   await logout.scrollIntoViewIfNeeded()
   await expect(logout).toBeInViewport()
-  const appearance = account.getByRole('group', { name: 'Appearance' })
-  await expect(appearance.getByRole('radio')).toHaveCount(4)
-  const dark = appearance.getByRole('radio', { name: 'Dark' })
-  const oled = appearance.getByRole('radio', { name: 'OLED' })
+  const theme = account.getByRole('group', { name: 'Theme' })
+  await expect(theme.getByRole('radio')).toHaveCount(4)
+  const dark = theme.getByRole('radio', { name: 'Dark' })
+  const oled = theme.getByRole('radio', { name: 'OLED' })
   await expect(dark).toBeChecked()
   await dark.press('ArrowRight')
   await expect(oled).toBeChecked()
   await expect(page.locator('html')).toHaveClass(/\boled\b/)
   await expect(oled).toBeFocused()
-  const { x, width } = (await appearance.boundingBox())!
+  const { x, width } = (await theme.boundingBox())!
   expect(x).toBeGreaterThanOrEqual(0)
   expect(x + width).toBeLessThanOrEqual(320)
+  await back.click()
+  await expect(entry).toBeFocused()
+  await entry.click()
+  await expect(oled).toBeChecked()
 
   await page.keyboard.press('Escape')
   await expect(drawer).toBeHidden()
   await expect(more).toBeFocused()
+  await more.click()
+  await expect(entry).toBeInViewport()
 })
 
 test('personal preferences apply immediately or have their own save action', async ({ page }) => {

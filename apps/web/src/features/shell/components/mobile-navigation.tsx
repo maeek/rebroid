@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { IconDots, IconX } from '@tabler/icons-react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { IconArrowLeft, IconChevronRight, IconDots, IconX } from '@tabler/icons-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } 
 import { focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
+import { AccountAvatar } from './navigation-controls/account-details'
 import { MobileAccount } from './navigation-controls/mobile-account'
 import { ProtectedNavigation } from './protected-navigation'
 import {
@@ -41,6 +42,10 @@ export const MobileNavigation = ({
   pollNavigation: boolean
 }) => {
   const [open, setOpen] = useState(false)
+  const [showAccount, setShowAccount] = useState(false)
+  const accountEntry = useRef<HTMLButtonElement>(null)
+  const accountBack = useRef<HTMLButtonElement>(null)
+  const drawerScroll = useRef<HTMLDivElement>(null)
   const close = () => setOpen(false)
   const pathname = usePathname()
   const { isFeatureEnabled } = useFeatureFlags()
@@ -55,6 +60,13 @@ export const MobileNavigation = ({
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  useLayoutEffect(() => {
+    const scrollRegion = drawerScroll.current
+    if (scrollRegion) scrollRegion.scrollTop = 0
+    const target = showAccount ? accountBack : accountEntry
+    target.current?.focus({ preventScroll: true })
+  }, [showAccount])
 
   return (
     <nav
@@ -88,7 +100,10 @@ export const MobileNavigation = ({
       })}
       <Drawer
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={nextOpen => {
+          if (nextOpen) setShowAccount(false)
+          setOpen(nextOpen)
+        }}
       >
         <DrawerTrigger
           type='button'
@@ -105,19 +120,39 @@ export const MobileNavigation = ({
         </DrawerTrigger>
         <DrawerContent className='max-h-[85dvh] border-0 bg-surface-navigation lg:hidden'>
           <div className='flex min-h-0 flex-col'>
-            <div className='flex shrink-0 items-center justify-between gap-2 ps-5 pe-2'>
+            <div className={cn('flex shrink-0 items-center gap-2 pe-2', showAccount ? 'ps-2' : 'ps-5')}>
+              {showAccount ? (
+                <Button
+                  ref={accountBack}
+                  type='button'
+                  variant='ghost'
+                  size='icon-md'
+                  className='size-11'
+                  aria-label='Back to More'
+                  onClick={() => setShowAccount(false)}
+                >
+                  <IconArrowLeft
+                    className='size-5'
+                    aria-hidden='true'
+                  />
+                </Button>
+              ) : null}
               <DrawerTitle
-                aria-label='Navigation'
-                className={styles.wordmark}
+                aria-label={showAccount ? undefined : 'Navigation'}
+                className={showAccount ? undefined : styles.wordmark}
               >
-                Rebroid
+                {showAccount ? 'Account' : 'Rebroid'}
               </DrawerTitle>
-              <DrawerDescription className='sr-only'>Navigate between apps and settings pages.</DrawerDescription>
+              <DrawerDescription className='sr-only'>
+                {showAccount
+                  ? 'Manage your preferences, theme, and sign-in.'
+                  : 'Navigate between apps and settings pages.'}
+              </DrawerDescription>
               <Button
                 type='button'
                 variant='ghost'
                 size='icon-md'
-                className='size-11'
+                className='ml-auto size-11'
                 aria-label='Close navigation'
                 onClick={close}
               >
@@ -127,18 +162,45 @@ export const MobileNavigation = ({
                 />
               </Button>
             </div>
-            <div className='scrollbar-thin min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]'>
-              <ProtectedNavigation
-                variant='drawer'
-                initialUser={user}
-                pollRecentApps={pollNavigation && open}
-                onNavigate={close}
-              />
-              <MobileAccount
-                user={user}
-                pathname={pathname}
-                onNavigate={close}
-              />
+            <div
+              ref={drawerScroll}
+              className='scrollbar-thin min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]'
+            >
+              <div hidden={showAccount}>
+                <div className='px-4 pt-1'>
+                  <Button
+                    ref={accountEntry}
+                    type='button'
+                    variant='secondary'
+                    className='h-auto min-h-14 w-full justify-start px-2.5 text-left'
+                    aria-label={user.name ? `Account: ${user.name}` : 'Account'}
+                    onClick={() => setShowAccount(true)}
+                  >
+                    <AccountAvatar user={user} />
+                    <span className='flex min-w-0 flex-1 flex-col'>
+                      {user.name ? <span className='truncate'>{user.name}</span> : null}
+                      <span className={cn(user.name && 'text-xs text-foreground-muted')}>Account</span>
+                    </span>
+                    <IconChevronRight
+                      className='size-4 text-foreground-muted'
+                      aria-hidden='true'
+                    />
+                  </Button>
+                </div>
+                <ProtectedNavigation
+                  variant='drawer'
+                  initialUser={user}
+                  pollRecentApps={pollNavigation && open && !showAccount}
+                  onNavigate={close}
+                />
+              </div>
+              {showAccount ? (
+                <MobileAccount
+                  user={user}
+                  pathname={pathname}
+                  onNavigate={close}
+                />
+              ) : null}
             </div>
           </div>
         </DrawerContent>

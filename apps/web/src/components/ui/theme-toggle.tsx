@@ -2,15 +2,7 @@
 
 import { IconDeviceMobile, IconMoon, IconSun, IconSunMoon } from '@tabler/icons-react'
 import { useTheme } from 'next-themes'
-import {
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger
-} from '@/components/ui/dropdown-menu'
-import { Visible } from '@/components/ui/visible'
+import { DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu'
 
 export const appThemeOptions = [
   { value: 'light', label: 'Light', Icon: IconSun },
@@ -38,37 +30,5 @@ export const ThemeMenuItems = () => {
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>
-  )
-}
-
-export function ThemeToggle() {
-  const { theme } = useTheme()
-
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <Visible when={theme === 'light'}>
-          <IconSun className='size-3.5' />
-        </Visible>
-        <Visible when={theme === 'dark'}>
-          <IconMoon className='size-3.5' />
-        </Visible>
-        <Visible when={theme === 'oled'}>
-          <IconDeviceMobile className='size-3.5' />
-        </Visible>
-        <Visible when={theme !== 'light' && theme !== 'dark' && theme !== 'oled'}>
-          <IconSunMoon className='size-3.5' />
-        </Visible>
-        <span>Appearance</span>
-      </DropdownMenuSubTrigger>
-      <DropdownMenuPortal>
-        <DropdownMenuSubContent
-          sideOffset={12}
-          collisionPadding={8}
-        >
-          <ThemeMenuItems />
-        </DropdownMenuSubContent>
-      </DropdownMenuPortal>
-    </DropdownMenuSub>
   )
 }

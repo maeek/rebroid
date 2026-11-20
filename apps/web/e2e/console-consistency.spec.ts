@@ -433,7 +433,7 @@ test('service health dots stay with navigation in the sidebar, rail, and drawer'
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320)
   await page.getByRole('navigation', { name: 'Mobile navigation' }).getByRole('button', { name: 'More' }).click()
   const drawer = page.getByRole('dialog', { name: 'Navigation' })
-  await expect(drawer.getByRole('region', { name: 'Account' })).toBeAttached()
+  await expect(drawer.getByRole('button', { name: /^Account:/ })).toBeInViewport()
   await expect(drawer.getByRole('link', { name: 'Services' }).locator(dot)).toBeVisible()
   const drawerSystem = drawer.getByRole('link', { name: 'System', exact: true })
   await expect(drawerSystem).toHaveAttribute('href', '/system/resources')

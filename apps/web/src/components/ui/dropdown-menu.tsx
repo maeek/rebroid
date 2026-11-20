@@ -2,11 +2,10 @@
 
 import * as React from 'react'
 import { Menu as DropdownMenuPrimitive } from '@base-ui/react/menu'
-import { IconCheck, IconChevronRight } from '@tabler/icons-react'
+import { IconCheck } from '@tabler/icons-react'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { handleMenuSelect, type MenuSelectEvent } from '@/components/ui/menu-select-event'
 import {
-  actionMenuItemClassName,
   actionMenuSurfaceClassName,
   floatingLayerClassName,
   selectableActionMenuItemClassName,
@@ -50,69 +49,7 @@ const DropdownMenuTrigger = ({
   )
 }
 
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal
-
-const DropdownMenuSub = DropdownMenuPrimitive.SubmenuRoot
-
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
-
-const DropdownMenuSubTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.SubmenuTrigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubmenuTrigger> & WithInset & WithAsChild
->(({ className, inset, children, asChild, ...props }, ref) => {
-  const view = getBaseRender(asChild, children)
-
-  return (
-    <DropdownMenuPrimitive.SubmenuTrigger
-      ref={ref}
-      render={view}
-      className={cn(
-        'flex cursor-default select-none items-center data-[open]:bg-control-hover',
-        actionMenuItemClassName,
-        {
-          'pl-8': inset
-        },
-        className
-      )}
-      {...props}
-    >
-      {getBaseChildren(asChild, children)}
-      <IconChevronRight
-        aria-hidden='true'
-        className='ml-auto size-3.5'
-      />
-    </DropdownMenuPrimitive.SubmenuTrigger>
-  )
-})
-DropdownMenuSubTrigger.displayName = 'DropdownMenuSubTrigger'
-
-const DropdownMenuSubContent = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Popup>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Popup> &
-    PositionerProps &
-    Pick<React.ComponentProps<typeof DropdownMenuPrimitive.Positioner>, 'collisionPadding'>
->(({ className, sideOffset = 4, align = 'start', side, collisionPadding, ...props }, ref) => (
-  <DropdownMenuPrimitive.Positioner
-    align={align}
-    className={floatingLayerClassName}
-    collisionPadding={collisionPadding}
-    side={side}
-    sideOffset={sideOffset}
-  >
-    <DropdownMenuPrimitive.Popup
-      ref={ref}
-      className={cn(
-        'scrollbar-thin z-50 max-h-(--available-height) overflow-x-hidden overflow-y-auto overscroll-contain origin-(--transform-origin)',
-        popupFadeClassName,
-        actionMenuSurfaceClassName,
-        'min-w-32',
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Positioner>
-))
-DropdownMenuSubContent.displayName = 'DropdownMenuSubContent'
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Popup>,
@@ -228,9 +165,5 @@ export {
   DropdownMenuRadioItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuGroup,
-  DropdownMenuPortal,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger
+  DropdownMenuGroup
 }
