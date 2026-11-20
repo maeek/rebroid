@@ -257,9 +257,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
-      '@types/tar-stream':
-        specifier: ^3.1.5
-        version: 3.1.5
       '@types/ws':
         specifier: ^8.18.2
         version: 8.18.2
@@ -2430,9 +2427,6 @@ packages:
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
-
-  '@types/tar-stream@3.1.5':
-    resolution: {integrity: sha512-zCUA6CSDw0t2cpQiZixpyzfubpeuVZmBr5wztvuCG4bhy7reX/9wGXdZxEzz2CjMFLQ32UPR/01jzUUSRJeCeQ==}
 
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
@@ -8728,10 +8722,6 @@ snapshots:
       '@types/node': 18.19.130
 
   '@types/stack-utils@2.0.3': {}
-
-  '@types/tar-stream@3.1.5':
-    dependencies:
-      '@types/node': 24.19.2
 
   '@types/trusted-types@2.0.7':
     optional: true
