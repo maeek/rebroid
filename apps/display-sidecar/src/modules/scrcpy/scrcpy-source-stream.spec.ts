@@ -453,8 +453,6 @@ test("live WebSocket overflow asks for one IDR and resumes without detaching eit
       await blocked;
     },
     writeAudio: async () => undefined,
-    onVideoKeyFrameNeeded: () =>
-      attachment.requestVideoReset("websocket:consumer-queue-overflow"),
     close: () => undefined,
   });
   const attachment = source.attach(sink);
@@ -467,7 +465,7 @@ test("live WebSocket overflow asks for one IDR and resumes without detaching eit
     for (let step = 1n; step <= 12n; step++)
       source.writeVideo(packet(1_000n + step * 16_667n));
     await Promise.resolve();
-    assert.deepEqual(resets, ["websocket:consumer-queue-overflow"]);
+    assert.deepEqual(resets, ["consumer-queue-overflow"]);
     releaseWrite();
     blocked = undefined;
     source.writeVideo(packet(220_000n, { keyFrame: true }));

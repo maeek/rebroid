@@ -1,5 +1,8 @@
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
-import type { MediaQueueSnapshot } from "./scrcpy-media-queue";
+import type {
+  MediaQueueSnapshot,
+  VideoQueueOverflow,
+} from "./scrcpy-media-queue";
 
 export const scrcpyVideoConfigurationChangedCloseCode = 4001;
 
@@ -38,7 +41,7 @@ export interface ScrcpyMediaSink {
   writeVideo: (
     packet: ScrcpyPacket,
     completion?: (error?: Error, delivered?: boolean) => void,
-  ) => void;
+  ) => VideoQueueOverflow | void;
   writeAudio: (
     packet: ScrcpyAudioPacket,
     completion?: (error?: Error) => void,

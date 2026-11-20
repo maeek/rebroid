@@ -6,6 +6,7 @@ import {
   videoMediaFrame,
 } from "./scrcpy-media-frame";
 import { BoundedAudioQueue, GopAwareVideoQueue } from "./scrcpy-media-queue";
+import type { VideoQueueOverflow } from "./scrcpy-media-queue";
 import type {
   ScrcpyAudioPacket,
   ScrcpyMediaSink,
@@ -16,7 +17,6 @@ type BinaryWriter = (payload: Buffer) => Promise<void>;
 
 export interface QueuedScrcpyMediaSinkOptions {
   allowClipboard?: boolean;
-  onVideoKeyFrameNeeded?: () => void;
   onVideoReset?: (deadlineMs: number) => void;
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
@@ -73,7 +73,6 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
         isVideoResetPending: () =>
           this.videoResetDeadlineMs !== 0 &&
           Date.now() < this.videoResetDeadlineMs,
-        onKeyFrameNeeded: options.onVideoKeyFrameNeeded,
         onRecoveryTimeout: (error) => this.close(1011, error.message),
       },
     );
@@ -116,7 +115,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
   writeVideo(
     packet: ScrcpyPacket,
     completion?: (error?: Error, delivered?: boolean) => void,
-  ): void {
+  ): VideoQueueOverflow | void {
     if (!packet.config) {
       this.sourceVideoFrames += 1;
       this.sourceVideoBytes += packet.data.byteLength;
@@ -142,7 +141,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
       this.lastSourceTimestampUs = packet.timestampUs;
     }
     const enqueuedAt = performance.now();
-    this.videoQueue.push(packet, (error, delivered) => {
+    return this.videoQueue.push(packet, (error, delivered) => {
       if (!error && delivered) {
         this.recordVideoRelayLatency(performance.now() - enqueuedAt);
       }

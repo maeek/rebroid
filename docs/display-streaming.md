@@ -76,6 +76,8 @@ timestamps and configuration, keyframe, and discontinuity flags.
   audio is capped at 100 ms. A slow consumer must not pause scrcpy or another consumer.
 - Video overflow discards the queued group of pictures (GOP), suppresses delta frames, and resumes
   with cached codec configuration plus an IDR keyframe. Never drop an arbitrary delta and continue.
+  For either transport, the source attachment requests a rate-limited encoder reset if the
+  overflowing queue still needs an IDR after the current batch.
 - Resynchronization discards audio older than the resumed keyframe. Reattachment caches are bounded
   to two seconds and 16 MiB. Replay a cached GOP only if it fits the consumer's live-edge queue.
 - WebRTC negotiates from a configuration and IDR from the same source generation. If the source

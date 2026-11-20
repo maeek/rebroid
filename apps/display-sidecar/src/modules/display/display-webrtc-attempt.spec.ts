@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Logger } from "@nestjs/common";
+import { ScrcpyBootstrapSink } from "../scrcpy/scrcpy-bootstrap-sink";
 import { ScrcpySourceStream } from "../scrcpy/scrcpy-source-stream";
 import { ScrcpyVideoResetWatchdog } from "../scrcpy/scrcpy-video-reset-watchdog";
 import { scrcpyVideoConfigurationChangedCloseCode } from "../scrcpy/scrcpy.types";
@@ -338,5 +339,145 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
     attempt.stop();
     source.close();
     watchdog.clear();
+  }
+});
+
+test("a connected peer recovers from live queue overflow without RTCP feedback", async (t) => {
+  for (const sameBatchIdr of [false, true]) {
+    await t.test(
+      sameBatchIdr
+        ? "same-batch IDR skips reset"
+        : "missing IDR requests one reset",
+      async (t) => {
+        const requestReset = t.mock.fn(() => {
+          source.setVideoResetDeadline(Date.now() + 3_000);
+          return true;
+        });
+        const source = new ScrcpySourceStream(
+          () => undefined,
+          () => undefined,
+          requestReset,
+        );
+        const writeVideo = (
+          timestampUs: bigint,
+          kind: "config" | "idr" | "delta",
+        ) => {
+          source.writeVideo({
+            timestampUs,
+            config: kind === "config",
+            keyFrame: kind === "idr",
+            data: Buffer.from(
+              kind === "config"
+                ? "000000016742c032da0280b7fe5c050505020000000168ce06e2"
+                : kind === "idr"
+                  ? "00000001658884"
+                  : "00000001418884",
+              "hex",
+            ),
+          });
+        };
+        writeVideo(0n, "config");
+        writeVideo(1_000n, "idr");
+        const siblingSink = new ScrcpyBootstrapSink();
+        const siblingVideo = t.mock.method(siblingSink, "writeVideo");
+        source.attach(siblingSink);
+
+        let receive!: (message: WebrtcBridgeMessage) => void;
+        let open = true;
+        const closeListeners: Array<() => void> = [];
+        const sentFlags: number[] = [];
+        let blocked: Promise<void> | undefined;
+        let releaseWrite: (() => void) | undefined;
+        const waitForVideoReset = t.mock.fn();
+        const bridge: WebrtcBridge = {
+          isOpen: () => open,
+          onClose: (listener) => closeListeners.push(listener),
+          listen: ({ onMessage }) => {
+            receive = onMessage;
+          },
+          sendOffer: () => receive({ type: "answer", sdp: "answer" }),
+          sendDataChannel: () => undefined,
+          waitForVideoReset,
+          writeVideo: async (payload) => {
+            sentFlags.push(payload.readUInt16BE(6));
+            await blocked;
+          },
+          writeAudio: async () => undefined,
+          stopAudio: () => undefined,
+          close: () => {
+            if (!open) return;
+            open = false;
+            closeListeners.forEach((listener) => listener());
+          },
+        };
+        const attempt = new DisplayWebrtcAttempt({
+          sessionId: "display",
+          sdp: [
+            "m=video 9 UDP/TLS/RTP/SAVPF 96",
+            "a=rtpmap:96 H264/90000",
+            "a=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+          ].join("\r\n"),
+          iceHost: "localhost",
+          maxFps: 60,
+          audio: false,
+          allowClipboard: false,
+          iceServers: [],
+          attachSource: (sink) => source.attach(sink, { mode: "bootstrap" }),
+          launchBridge: () => bridge,
+          executeControl: () => {
+            throw new Error("Unexpected control command");
+          },
+          onFinish: () => undefined,
+        });
+
+        try {
+          await attempt.run();
+          receive({ type: "state", state: "connected" });
+          await new Promise<void>((resolve) => setImmediate(resolve));
+          assert.deepEqual(sentFlags, [5, 6]);
+          blocked = new Promise<void>((resolve) => {
+            releaseWrite = resolve;
+          });
+          for (let step = 1n; step <= 12n; step++) {
+            writeVideo(1_000n + step * 16_667n, "delta");
+          }
+          if (sameBatchIdr) writeVideo(220_000n, "idr");
+          await Promise.resolve();
+          assert.equal(requestReset.mock.callCount(), sameBatchIdr ? 0 : 1);
+          assert.equal(
+            waitForVideoReset.mock.callCount(),
+            sameBatchIdr ? 0 : 1,
+          );
+
+          if (!sameBatchIdr) {
+            writeVideo(2_000_000n, "delta");
+            assert.equal(
+              open,
+              true,
+              "the reset deadline keeps the peer attached",
+            );
+            writeVideo(2_010_000n, "config");
+            writeVideo(2_010_000n, "idr");
+          }
+          const nextDelta = sameBatchIdr ? 237_000n : 2_027_000n;
+          writeVideo(nextDelta, "delta");
+          releaseWrite?.();
+          blocked = undefined;
+          await new Promise<void>((resolve) => setImmediate(resolve));
+
+          assert.deepEqual(sentFlags, [5, 6, 0, 5, 6, 0]);
+          assert.equal(open, true);
+          assert.equal(source.consumerCount(), 2);
+          assert.equal(
+            siblingVideo.mock.calls.at(-1)?.arguments[0].timestampUs,
+            nextDelta,
+          );
+        } finally {
+          releaseWrite?.();
+          attempt.stop();
+          source.close();
+        }
+      },
+    );
   }
 });

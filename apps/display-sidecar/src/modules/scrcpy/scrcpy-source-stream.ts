@@ -91,7 +91,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     if (this.videoResetDeadlineMs > Date.now()) {
       sink.waitForVideoReset?.(this.videoResetDeadlineMs);
     }
-    const replayedGop = this.replayCachedGop(consumer, mode);
+    const replayedGop = this.replayCachedGop(consumer);
     this.onConsumerAdded();
     // SDP bootstrap needs only the current configuration and an IDR. A media
     // consumer needs the complete GOP to safely accept the next live delta.
@@ -181,11 +181,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
           continue;
         }
       }
-      consumer.sink.writeVideo(packet, (error) => {
-        if (error) {
-          this.detachConsumer(consumer.id, true, error.message);
-        }
-      });
+      this.writeConsumerVideo(consumer, packet);
     }
     completion?.();
   }
@@ -447,37 +443,32 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     }
   }
 
-  private replayCachedGop(
-    consumer: Consumer,
-    mode: "bootstrap" | "media",
-  ): boolean {
+  private replayCachedGop(consumer: Consumer): boolean {
     const config = this.cachedConfig;
     if (!config) return false;
-    const { sink } = consumer;
-    sink.writeVideo(config);
+    this.writeConsumerVideo(consumer, config);
     // A partial GOP would leave the next live delta without its references.
     if (!canReplayVideoGop(this.cachedGop)) return false;
-    let recoveryScheduled = false;
     for (const packet of this.cachedGop) {
-      sink.writeVideo(packet, (_error, delivered) => {
-        if (mode === "bootstrap" || delivered !== false || recoveryScheduled) {
-          return;
-        }
-        recoveryScheduled = true;
-        // A live delta may overflow the queue during replay. Let the current
-        // enqueue finish first so a live IDR can satisfy recovery directly.
-        queueMicrotask(() => {
-          if (
-            !consumer.detached &&
-            sink.isOpen() &&
-            this.cachedConfig === config &&
-            sink.snapshot().video.awaitingKeyFrame
-          ) {
-            this.requestReset("consumer-attached");
-          }
-        });
-      });
+      this.writeConsumerVideo(consumer, packet);
     }
     return true;
+  }
+
+  private writeConsumerVideo(consumer: Consumer, packet: ScrcpyPacket): void {
+    const overflow = consumer.sink.writeVideo(packet, (error) => {
+      if (error) this.detachConsumer(consumer.id, true, error.message);
+    });
+    if (!overflow) return;
+    // A keyframe later in the same batch can satisfy recovery.
+    queueMicrotask(() => {
+      if (
+        !consumer.detached &&
+        consumer.sink.isOpen() &&
+        overflow.needsKeyFrame()
+      ) {
+        this.requestReset("consumer-queue-overflow");
+      }
+    });
   }
 }

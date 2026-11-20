@@ -23,6 +23,10 @@ export interface MediaQueueSnapshot {
   awaitingKeyFrame: boolean;
 }
 
+export interface VideoQueueOverflow {
+  needsKeyFrame: () => boolean;
+}
+
 const maxVideoFrames = 3;
 const maxVideoSpanUs = 75_000n;
 
@@ -45,7 +49,6 @@ interface GopAwareVideoQueueOptions {
   keyFrameRecoveryTimeoutMs?: number;
   isVideoResetPending?: () => boolean;
   onRecoveryTimeout?: (error: Error) => void;
-  onKeyFrameNeeded?: () => void;
 }
 
 function errorFrom(value: unknown): Error {
@@ -60,6 +63,7 @@ export class GopAwareVideoQueue {
   private awaitingKeyFrame = true;
   private droppedFrames = 0;
   private recoveryStartTimestampUs: bigint | null = null;
+  private overflow: VideoQueueOverflow | undefined;
 
   constructor(
     private readonly write: (
@@ -70,7 +74,10 @@ export class GopAwareVideoQueue {
     private readonly options: GopAwareVideoQueueOptions = {},
   ) {}
 
-  push(packet: ScrcpyPacket, completion?: Completion): void {
+  push(
+    packet: ScrcpyPacket,
+    completion?: Completion,
+  ): VideoQueueOverflow | void {
     if (this.closed) {
       completion?.(new Error("media queue is closed"));
       return;
@@ -105,14 +112,9 @@ export class GopAwareVideoQueue {
       if (!packet.keyFrame) {
         this.droppedFrames += 1;
         completion?.(undefined, false);
-        // A keyframe arriving in the same batch can satisfy recovery directly.
-        if (this.options.onKeyFrameNeeded) {
-          queueMicrotask(() => {
-            if (!this.closed && this.awaitingKeyFrame)
-              this.options.onKeyFrameNeeded?.();
-          });
-        }
-        return;
+        const overflow = { needsKeyFrame: () => this.overflow === overflow };
+        this.overflow = overflow;
+        return overflow;
       }
       this.enqueueResync(packet, completion);
       return;
@@ -127,6 +129,7 @@ export class GopAwareVideoQueue {
       return;
     }
     this.closed = true;
+    this.overflow = undefined;
     for (const pending of this.queue.splice(0)) {
       pending.completion?.(error);
     }
@@ -152,6 +155,7 @@ export class GopAwareVideoQueue {
   }
 
   private enqueueResync(packet: ScrcpyPacket, completion?: Completion): void {
+    this.overflow = undefined;
     this.recoveryStartTimestampUs = null;
     if (this.cachedConfig) {
       this.queue.push({

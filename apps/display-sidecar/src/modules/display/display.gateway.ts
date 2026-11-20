@@ -49,11 +49,6 @@ export class DisplayGateway implements OnGatewayConnection {
       });
       let attachment: ScrcpyStreamAttachment | null = null;
       const sink = new QueuedScrcpyMediaSink({
-        onVideoKeyFrameNeeded: () => {
-          if (client.readyState === WebSocket.OPEN) {
-            attachment?.requestVideoReset("websocket:consumer-queue-overflow");
-          }
-        },
         allowClipboard: session.capabilities.includes("clipboard"),
         isOpen: () => client.readyState === WebSocket.OPEN,
         onClose: (listener) => client.once("close", listener),
