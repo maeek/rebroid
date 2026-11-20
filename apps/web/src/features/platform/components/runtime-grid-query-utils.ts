@@ -1,6 +1,5 @@
 import { type ActionResult } from '@/shared/actions/action-result'
 import { summarizeBulkResults } from '@/shared/actions/bulk-action-results'
-import type { SortingState } from '@tanstack/react-table'
 
 type PlatformGridQuery = {
   page?: number
@@ -57,18 +56,3 @@ export const summarizePlatformBulkRemoveResults = (
   resourceLabel: string
 ): PlatformBulkRemoveToast =>
   summarizeBulkResults(results, `Selected ${resourceLabel}s removed`, `Some ${resourceLabel}s could not be removed`)
-
-export const platformSortFromSearchParam = (
-  sort: string | undefined,
-  options: { defaultSort?: string; missingDirection?: 'asc' | 'desc' } = {}
-): SortingState =>
-  (sort ?? options.defaultSort ?? 'name:asc')
-    .split(',')
-    .map(part => {
-      const [id, direction] = part.split(':')
-      if (!id) return null
-      const normalizedDirection = direction ?? options.missingDirection ?? 'asc'
-      return { id, desc: normalizedDirection === 'desc' }
-    })
-    .filter((item): item is SortingState[number] => Boolean(item))
-    .slice(0, 3)

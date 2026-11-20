@@ -6,6 +6,23 @@ import {
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
 
+type TriggerConfigurationPatch = Partial<
+  Pick<
+    AutomationTrigger,
+    | 'name'
+    | 'description'
+    | 'automationId'
+    | 'targetApplicationId'
+    | 'profileMode'
+    | 'profileName'
+    | 'enabled'
+    | 'tagsJson'
+    | 'triggerType'
+    | 'triggerConfigJson'
+    | 'nextRunAt'
+  >
+>;
+
 @Injectable()
 export class AutomationTriggersRepository {
   constructor(
@@ -21,38 +38,17 @@ export class AutomationTriggersRepository {
     return this.triggers.save(trigger);
   }
 
-  async saveConfiguration(trigger: AutomationTrigger) {
-    const {
-      id,
-      ownerUserId,
-      name,
-      description,
-      automationId,
-      targetApplicationId,
-      profileMode,
-      profileName,
-      enabled,
-      tagsJson,
-      triggerType,
-      triggerConfigJson,
-      nextRunAt,
-    } = trigger;
-    await this.triggers.update(
-      { id, ownerUserId },
-      {
-        name,
-        description,
-        automationId,
-        targetApplicationId,
-        profileMode,
-        profileName,
-        enabled,
-        tagsJson,
-        triggerType,
-        triggerConfigJson,
-        nextRunAt,
-      },
-    );
+  updateConfiguration(
+    ownerUserId: string,
+    id: string,
+    prepare: (current: AutomationTrigger) => TriggerConfigurationPatch,
+  ) {
+    return this.triggers.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(AutomationTrigger);
+      const criteria = { id, ownerUserId };
+      const current = await repository.findOneBy(criteria);
+      if (current) await repository.update(criteria, prepare(current));
+    });
   }
 
   updateSchedule(

@@ -75,7 +75,7 @@ export class AutomationTriggersService implements OnModuleInit {
     );
     const [triggerDtos, automations] = await Promise.all([
       this.list(ownerUserId),
-      this.automations.listByOwner(ownerUserId),
+      query.q?.trim() ? this.automations.listNamesByOwner(ownerUserId) : [],
     ]);
     const automationNamesById = new Map(
       automations.map((automation) => [automation.id, automation.name]),
@@ -149,58 +149,60 @@ export class AutomationTriggersService implements OnModuleInit {
     id: string,
     dto: UpdateAutomationTriggerDto,
   ) {
-    const trigger = await this.getEntity(ownerUserId, id);
+    if (
+      dto.automationId !== undefined ||
+      dto.targetApplicationId !== undefined
+    ) {
+      await this.getEntity(ownerUserId, id);
+    }
     if (dto.automationId !== undefined) {
       await this.queries.getEntity(ownerUserId, dto.automationId);
-      trigger.automationId = dto.automationId;
-    }
-    if (dto.name !== undefined) {
-      trigger.name = dto.name.trim();
-    }
-    if (dto.description !== undefined) {
-      trigger.description = dto.description?.trim() || null;
     }
     if (dto.targetApplicationId !== undefined) {
       await this.targetApplications.assertOwnerAccess(
         ownerUserId,
         dto.targetApplicationId,
       );
-      trigger.targetApplicationId = dto.targetApplicationId;
     }
-    if (dto.profileMode !== undefined) {
-      trigger.profileMode = dto.profileMode;
-    }
-    if (dto.profileName !== undefined) {
-      trigger.profileName = dto.profileName?.trim() || null;
-    }
-    if (dto.enabled !== undefined) {
-      trigger.enabled = dto.enabled;
-    }
-    if (dto.tags !== undefined) {
-      trigger.tagsJson = stringifyTags(dto.tags);
-    }
-    if (dto.triggerType !== undefined) {
-      trigger.triggerType = dto.triggerType;
-    }
-    if (dto.triggerConfig !== undefined || dto.triggerType !== undefined) {
-      const triggerConfig = this.triggerScheduler.normalizeConfig(
-        trigger.triggerType,
-        dto.triggerConfig ?? this.mapper.triggerConfig(trigger),
-      );
-      trigger.triggerConfigJson = JSON.stringify(triggerConfig);
-    }
-    trigger.nextRunAt = trigger.enabled
-      ? this.triggerScheduler.nextRunForTrigger(
-          trigger.triggerType,
-          this.mapper.triggerConfig(trigger),
-        )
-      : null;
-    await this.triggers.saveConfiguration(trigger);
-    const [saved, latestRuns] = await Promise.all([
-      this.getEntity(ownerUserId, id),
-      this.runs.latestForTriggers(ownerUserId, id),
-    ]);
+    await this.triggers.updateConfiguration(ownerUserId, id, (current) => {
+      const triggerType = dto.triggerType ?? current.triggerType;
+      const currentConfig = this.mapper.triggerConfig(current);
+      const updatesConfig =
+        dto.triggerConfig !== undefined || dto.triggerType !== undefined;
+      const triggerConfig = updatesConfig
+        ? this.triggerScheduler.normalizeConfig(triggerType, {
+            ...currentConfig,
+            ...dto.triggerConfig,
+          })
+        : currentConfig;
+      const enabled = dto.enabled ?? current.enabled;
+      return {
+        name: dto.name?.trim(),
+        description:
+          dto.description === undefined
+            ? undefined
+            : dto.description?.trim() || null,
+        automationId: dto.automationId,
+        targetApplicationId: dto.targetApplicationId,
+        profileMode: dto.profileMode,
+        profileName:
+          dto.profileName === undefined
+            ? undefined
+            : dto.profileName?.trim() || null,
+        enabled: dto.enabled,
+        tagsJson: dto.tags === undefined ? undefined : stringifyTags(dto.tags),
+        triggerType: dto.triggerType,
+        triggerConfigJson: updatesConfig
+          ? JSON.stringify(triggerConfig)
+          : undefined,
+        nextRunAt: enabled
+          ? this.triggerScheduler.nextRunForTrigger(triggerType, triggerConfig)
+          : null,
+      };
+    });
+    const saved = await this.getEntity(ownerUserId, id);
     this.registerTrigger(saved);
+    const latestRuns = await this.runs.latestForTriggers(ownerUserId, id);
     return this.mapper.trigger(saved, latestRuns.get(id));
   }
 

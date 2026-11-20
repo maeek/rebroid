@@ -3,11 +3,11 @@ import type { AndroidApplication } from '@/shared/contracts/application'
 import type {
   Automation,
   AutomationCommand,
+  AutomationOption,
   AutomationsGridPage,
   AutomationsGridQuery,
   AutomationTriggersGridPage,
-  AutomationTriggersGridQuery,
-  AutomationTrigger
+  AutomationTriggersGridQuery
 } from '@/shared/contracts/automation'
 import type { WorkflowHistoryRetention } from '@/shared/contracts/scheduled-task'
 
@@ -16,7 +16,6 @@ export interface AutomationsListPageProps {
   initialApplications: AndroidApplication[]
   automationsPage: AutomationsGridPage
   gridQuery: AutomationsGridQuery
-  initialTriggers: AutomationTrigger[]
   workflowHistoryRetention?: ActionResult<WorkflowHistoryRetention> | null
   canManageHistoryRetention?: boolean
 }
@@ -34,7 +33,7 @@ export interface AutomationTriggersPageProps {
   canRun?: boolean
   canCreateApp?: boolean
   initialApplications: AndroidApplication[]
-  initialAutomations: Automation[]
+  initialAutomations: AutomationOption[]
   triggersPage: AutomationTriggersGridPage
   gridQuery: AutomationTriggersGridQuery
 }

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { startupRuntimeKey } from './startup-timings'
-import type { ViewerFrameObservation } from '../display/display-viewer-stream-status'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
 
 export type ViewerStartupDurations = {
   requestToConnectMs: number

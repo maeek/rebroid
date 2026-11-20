@@ -1,22 +1,15 @@
+import {
+  rbd1Flag,
+  rbd1HeaderBytes,
+  rbd1Magic,
+  rbd1MediaKind,
+  rbd1Offset,
+  rbd1Version,
+} from "../display/viewer/src/rbd1-header.js";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 import type { ScrcpyAudioPacket } from "./scrcpy.types";
 
-export const REBROID_MEDIA_MAGIC = "RBD1";
-export const REBROID_MEDIA_VERSION = 1;
-export const REBROID_MEDIA_HEADER_BYTES = 24;
-
-export const rebroidMediaKind = {
-  video: 1,
-  audio: 2,
-} as const;
-
-export const rebroidMediaFlag = {
-  config: 1 << 0,
-  keyFrame: 1 << 1,
-  discontinuity: 1 << 2,
-} as const;
-
-export type RebroidMediaKind = keyof typeof rebroidMediaKind;
+export type RebroidMediaKind = keyof typeof rbd1MediaKind;
 
 export interface RebroidMediaFrame {
   kind: RebroidMediaKind;
@@ -61,26 +54,24 @@ export function audioMediaFrame(
 }
 
 export function encodeRebroidMediaFrame(frame: RebroidMediaFrame): Buffer {
-  const output = Buffer.allocUnsafe(
-    REBROID_MEDIA_HEADER_BYTES + frame.data.byteLength,
-  );
-  output.write(REBROID_MEDIA_MAGIC, 0, 4, "ascii");
-  output.writeUInt8(REBROID_MEDIA_VERSION, 4);
-  output.writeUInt8(rebroidMediaKind[frame.kind], 5);
+  const output = Buffer.allocUnsafe(rbd1HeaderBytes + frame.data.byteLength);
+  output.writeUInt32BE(rbd1Magic, 0);
+  output.writeUInt8(rbd1Version, rbd1Offset.version);
+  output.writeUInt8(rbd1MediaKind[frame.kind], rbd1Offset.kind);
   let flags = 0;
   if (frame.config) {
-    flags |= rebroidMediaFlag.config;
+    flags |= rbd1Flag.config;
   }
   if (frame.keyFrame) {
-    flags |= rebroidMediaFlag.keyFrame;
+    flags |= rbd1Flag.keyFrame;
   }
   if (frame.discontinuity) {
-    flags |= rebroidMediaFlag.discontinuity;
+    flags |= rbd1Flag.discontinuity;
   }
-  output.writeUInt16BE(flags, 6);
-  output.writeUInt32BE(frame.sequence >>> 0, 8);
-  output.writeBigUInt64BE(frame.timestampUs, 12);
-  output.writeUInt32BE(frame.data.byteLength, 20);
-  frame.data.copy(output, REBROID_MEDIA_HEADER_BYTES);
+  output.writeUInt16BE(flags, rbd1Offset.flags);
+  output.writeUInt32BE(frame.sequence >>> 0, rbd1Offset.sequence);
+  output.writeBigUInt64BE(frame.timestampUs, rbd1Offset.timestampUs);
+  output.writeUInt32BE(frame.data.byteLength, rbd1Offset.payloadLength);
+  frame.data.copy(output, rbd1HeaderBytes);
   return output;
 }

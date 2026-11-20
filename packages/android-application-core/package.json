@@ -17,6 +17,10 @@
     "./viewer-control": {
       "types": "./dist/viewer-control.d.ts",
       "default": "./dist/viewer-control.js"
+    },
+    "./viewer-stream": {
+      "types": "./dist/viewer-stream.d.ts",
+      "default": "./dist/viewer-stream.js"
     }
   },
   "typesVersions": {
@@ -29,6 +33,9 @@
       ],
       "viewer-control": [
         "dist/viewer-control.d.ts"
+      ],
+      "viewer-stream": [
+        "dist/viewer-stream.d.ts"
       ]
     }
   },

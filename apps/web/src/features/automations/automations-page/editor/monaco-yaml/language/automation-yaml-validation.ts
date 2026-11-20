@@ -62,7 +62,7 @@ export const validateAutomationYamlModel = ({
     const rawValue = propertyMatch[4] ?? ''
     const propertyStartOffset = line.indexOf(propertyName)
     const position = new monaco.Position(lineNumber, line.length + 1)
-    const schemaContext = schemaContextForCurrentProperty(model, position, propertyName, commands)
+    const schemaContext = schemaContextForCurrentProperty(model, position, parsed.contents, propertyName, commands)
 
     if (
       schemaContext?.parentSchema &&

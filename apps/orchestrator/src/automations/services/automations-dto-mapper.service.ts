@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AutomationDefinitionService } from '../definition/automation-definition.service';
-import { AutomationDefinition } from '@rebroid/automation-core/definition';
-import { AutomationDto } from '../dto/automation.dto';
+import type {
+  AutomationDefinition,
+  AutomationTag,
+} from '@rebroid/automation-core/definition';
+import { AutomationDto, AutomationSummaryDto } from '../dto/automation.dto';
 import { AutomationRunDto } from '../dto/automation-run.dto';
 import { AutomationTriggerDto } from '../dto/automation-trigger.dto';
 import {
@@ -25,13 +28,27 @@ export class AutomationsDtoMapper {
       automation.definitionJson,
     ) as AutomationDefinition;
     return {
+      ...this.automationSummary(
+        automation,
+        definition.metadata.tags ?? [],
+        latestRun,
+      ),
+      definition,
+      yaml: this.definitions.toYaml(definition),
+    };
+  }
+
+  automationSummary(
+    automation: Automation,
+    tags: AutomationTag[],
+    latestRun?: AutomationRun,
+  ): AutomationSummaryDto {
+    return {
       id: automation.id,
       ownerUserId: automation.ownerUserId,
       name: automation.name,
       description: automation.description,
-      tags: definition.metadata.tags ?? [],
-      definition,
-      yaml: this.definitions.toYaml(definition),
+      tags,
       ...runSummary(latestRun),
       createdAt: toIso(automation.createdAt) ?? new Date().toISOString(),
       updatedAt: toIso(automation.updatedAt) ?? new Date().toISOString(),

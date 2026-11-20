@@ -26,13 +26,13 @@ import { runAutomationAction } from '@/server/orchestrator/automations/automatio
 import { hasPermission } from '@/shared/permissions/permissions'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
-import type { Automation, AutomationRun } from '@/shared/contracts/automation'
+import type { AutomationRun, RunnableAutomationOption } from '@/shared/contracts/automation'
 
 export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
   const { app, permissions, setApp } = useApplicationViewerContext()
   const mutationPending = useRef(false)
   const [open, setOpen] = useState(false)
-  const [automations, setAutomations] = useState<Automation[]>([])
+  const [automations, setAutomations] = useState<RunnableAutomationOption[]>([])
   const [automationId, setAutomationId] = useState('')
   const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(() => app?.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(() => app?.profileName ?? 'default')

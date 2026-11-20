@@ -20,13 +20,10 @@ import { getApplicationAction } from '@/server/orchestrator/applications/actions
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
-import type {
-  DisplayViewerStreamMetrics,
-  ViewerFrameObservation
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
+import type { ViewerStreamMetricsV4, ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
 
 type ApplicationViewerContextValue = {
   app?: AppDefinition
@@ -53,7 +50,7 @@ type ApplicationViewerContextValue = {
 export type ViewerStreamSample = {
   sessionId: string
   runtimeId: string | null
-  metrics: DisplayViewerStreamMetrics
+  metrics: ViewerStreamMetricsV4
 }
 
 export const ApplicationViewerContext = createContext<ApplicationViewerContextValue | null>(null)

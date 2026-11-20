@@ -1,9 +1,12 @@
 import { requireFeature } from '@/server/orchestrator/features'
-import { listGappsBuildPresetsAction, listImageBuildJobsAction } from '@/server/orchestrator/platform/image-actions'
+import { listGappsBuildPresetsAction, getLatestImageBuildAction } from '@/server/orchestrator/platform/image-actions'
 
 export const loadRuntimeGappsBuilderPageData = async () => {
   await requireFeature('feature.image-builder')
-  const [presetResponse, jobs] = await Promise.all([listGappsBuildPresetsAction(), listImageBuildJobsAction()])
+  const [presetResponse, initialJob] = await Promise.all([
+    listGappsBuildPresetsAction(),
+    getLatestImageBuildAction('redroid_gapps_patch')
+  ])
 
-  return { presetResponse, jobs }
+  return { presetResponse, initialJob }
 }

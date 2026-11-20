@@ -47,8 +47,6 @@ export const runtimeFileEntryDetail = (entry: ApplicationRuntimeFile) => {
   return entry.itemCount === null ? 'Folder' : runtimeItemLabel(entry.itemCount)
 }
 
-export const topLoaderProgressForUpload = (progress: number) => Math.min(Math.max(progress / 100, 0.08), 0.95)
-
 const imageExtensions = new Set(['gif', 'jpeg', 'jpg', 'png', 'webp'])
 
 export const runtimeFileCanPreview = (entry: ApplicationRuntimeFile) => {

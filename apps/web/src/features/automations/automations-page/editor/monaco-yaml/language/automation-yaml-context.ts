@@ -1,7 +1,7 @@
-import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
-import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
-import { indentation } from './automation-yaml-language-utils'
+import { yamlPathAt } from './automation-yaml-ast-utils'
+import { indentation, nearestUsesFromPath, offsetAt, workflowContext } from './automation-yaml-language-utils'
 import type * as Monaco from 'monaco-editor'
+import type { ParsedNode } from 'yaml'
 
 export type AutomationYamlCompletionContext =
   | {
@@ -33,23 +33,23 @@ export type AutomationYamlCompletionContext =
 
 export const automationYamlCompletionContext = (
   model: Monaco.editor.ITextModel,
-  position: Monaco.Position
+  position: Monaco.Position,
+  root: ParsedNode | null
 ): AutomationYamlCompletionContext => {
   const line = model.getLineContent(position.lineNumber)
   const linePrefix = line.slice(0, position.column - 1)
   const offset = offsetAt(model, position)
-  const document = parseDocument(model.getValue(), { prettyErrors: false })
 
   const usesContext = usesValueContext(model, position, linePrefix)
   if (usesContext) return usesContext
 
-  const listItemContext = stepListItemContext(model, position, linePrefix, document.contents, offset)
+  const listItemContext = stepListItemContext(model, position, linePrefix, root, offset)
   if (listItemContext) return listItemContext
 
-  const tagItemContext = tagListItemContext(model, position, linePrefix, document.contents, offset)
+  const tagItemContext = tagListItemContext(model, position, linePrefix, root, offset)
   if (tagItemContext) return tagItemContext
 
-  const withContext = withPropertyContext(model, position, document.contents, offset)
+  const withContext = withPropertyContext(model, position, root, offset)
   if (withContext) return withContext
 
   return { kind: 'schema' }
@@ -168,14 +168,6 @@ const isStepArrayPath = (path: Array<string | number>) => {
   return false
 }
 
-const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
-  const node = yamlNodeAtPath(root, stepPath)
-  if (!node || !isMap(node)) return null
-
-  const usesPair = node.items.find(pair => isScalar(pair.key) && pair.key.value === 'uses')
-  return usesPair?.value && isScalar(usesPair.value) ? String(usesPair.value.value) : null
-}
-
 const propertyIndentForUsesLine = (linePrefix: string) => {
   const inlineItemMatch = linePrefix.match(/^(\s*)-\s*uses:/)
   if (inlineItemMatch) return (inlineItemMatch[1]?.length ?? 0) + 2
@@ -220,22 +212,8 @@ const fallbackWithPropertyContext = (
   model: Monaco.editor.ITextModel,
   position: Monaco.Position
 ): Extract<AutomationYamlCompletionContext, { kind: 'with-property' }> | null => {
-  const currentIndent = indentation(model.getLineContent(position.lineNumber))
-  let uses: string | null = null
-  let withIndent: number | null = null
-
-  for (let lineNumber = position.lineNumber - 1; lineNumber >= 1; lineNumber -= 1) {
-    const line = model.getLineContent(lineNumber)
-    const indent = indentation(line)
-    const usesMatch = line.match(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/)
-    if (!uses && usesMatch) uses = usesMatch[1] ?? null
-    if (withIndent === null && /^\s*with:\s*(?:#.*)?$/.test(line)) withIndent = indent
-    if (/^\s*-\s+/.test(line) && indent < currentIndent) break
-  }
-
-  return uses && withIndent !== null && currentIndent > withIndent
-    ? { kind: 'with-property', uses, indent: currentIndent }
-    : null
+  const context = workflowContext(model, position, model.getLineContent(position.lineNumber) === '')
+  return context?.uses ? { kind: 'with-property', uses: context.uses, indent: context.indent } : null
 }
 
 const fallbackIsStepArrayItem = (model: Monaco.editor.ITextModel, lineNumber: number, listIndent: number) => {
@@ -264,15 +242,4 @@ const fallbackIsTagArrayItem = (model: Monaco.editor.ITextModel, lineNumber: num
   }
 
   return false
-}
-
-const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
-  if ('getOffsetAt' in model && typeof model.getOffsetAt === 'function') return model.getOffsetAt(position)
-
-  let offset = 0
-  for (let lineNumber = 1; lineNumber < position.lineNumber; lineNumber += 1) {
-    offset += model.getLineContent(lineNumber).length + 1
-  }
-
-  return offset + position.column - 1
 }

@@ -21,7 +21,6 @@ import { getDatabase, resetDatabaseForTests } from './database'
 import { getMfaSetup, saveMfaSetup } from './mfa-setup-repository'
 import {
   dismissRecentApplication,
-  forgetRecentApplication,
   listDismissedRecentApplicationIds,
   listRecentApplications,
   rememberRecentApplication
@@ -90,8 +89,7 @@ describe('fresh web database', () => {
 
   it('keeps five recent applications per user', () => {
     for (let index = 0; index < 6; index += 1) rememberRecentApplication('user-1', `app-${index + 1}`, index)
-    forgetRecentApplication('user-1', 'app-5')
-    expect(listRecentApplications('user-1')).toHaveLength(4)
+    expect(listRecentApplications('user-1').map(app => app.id)).toEqual(['app-6', 'app-5', 'app-4', 'app-3', 'app-2'])
   })
 
   it('remembers sidebar dismissals across history pruning until the account reopens the app', () => {

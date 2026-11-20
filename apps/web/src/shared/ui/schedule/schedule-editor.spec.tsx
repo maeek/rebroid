@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { defaultSchedule } from '@/shared/model/automation-schedule'
+import { cronToSchedule, defaultSchedule, scheduleToCron } from '@/shared/model/automation-schedule'
 import { ScheduleEditor } from './schedule-editor'
 import type { ScheduleDraft } from '@/shared/model/automation-schedule'
 
@@ -16,7 +16,30 @@ describe('ScheduleEditor', () => {
     )
     expect(screen.getByRole('combobox', { name: 'Frequency' })).toBeVisible()
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Interval (hours)' }), { target: { value: '30' } })
-    expect(onChange).toHaveBeenCalledWith({ intervalHours: 24 })
+    expect(onChange).toHaveBeenCalledWith({ intervalHours: 24, originalCron: undefined })
+  })
+
+  it('shows a custom cron expression until the operator replaces it', () => {
+    const expression = '15 9 * * MON-FRI'
+    function Harness() {
+      const [schedule, setSchedule] = useState(() => cronToSchedule(expression))
+      return (
+        <>
+          <output>{scheduleToCron(schedule)}</output>
+          <ScheduleEditor
+            schedule={schedule}
+            onScheduleChange={patch => setSchedule(current => ({ ...current, ...patch }))}
+          />
+        </>
+      )
+    }
+
+    render(<Harness />)
+    expect(screen.getByLabelText('Cron expression')).toHaveValue(expression)
+    expect(screen.getByRole('status')).toHaveTextContent(expression)
+    fireEvent.click(screen.getByRole('button', { name: 'Replace schedule' }))
+    expect(screen.getByRole('combobox', { name: 'Frequency' })).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('0 3 * * *')
   })
 
   it('retains time and monthly drafts across frequency changes', () => {

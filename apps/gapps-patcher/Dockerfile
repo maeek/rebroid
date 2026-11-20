@@ -3,7 +3,7 @@
 FROM debian:bookworm-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
-LABEL com.rebroid.gapps-patcher.version="1"
+LABEL com.rebroid.gapps-patcher.version="2"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

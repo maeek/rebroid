@@ -4,7 +4,7 @@ import { appProfileMode, appProfileName, getScheduleCron, getStartPolicy } from 
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication, ApplicationProfileMode } from '@/shared/contracts/application'
 import type {
-  Automation,
+  AutomationOption,
   AutomationTrigger,
   AutomationTriggersGridQuery,
   SaveAutomationTriggerInput
@@ -22,16 +22,13 @@ type TriggerOperationToast = {
   variant: 'danger' | 'success'
 }
 
-export const defaultTriggerName = (automation: Automation | undefined, app: AndroidApplication | undefined) => {
+export const defaultTriggerName = (automation: AutomationOption | undefined, app: AndroidApplication | undefined) => {
   if (automation && app) {
     return `${automation.name} on ${app.name}`.slice(0, 120)
   }
 
   return 'New workflow trigger'
 }
-
-export const activeTriggerFilterCount = (query: AutomationTriggersGridQuery) =>
-  [query.tag, query.targetApplicationId, query.enabled, query.status, query.lastRun].filter(Boolean).length
 
 export const buildAutomationTriggersGridHref = ({ gridQuery, pageSize, patch }: TriggerGridHrefInput) => {
   const params = compactGridParams({
@@ -98,7 +95,7 @@ export const newTriggerFormState = ({
   automation,
   app
 }: {
-  automation: Automation
+  automation: AutomationOption
   app: AndroidApplication
 }): TriggerFormState => ({
   name: defaultTriggerName(automation, app),
@@ -137,7 +134,7 @@ export const applyTriggerTargetApplication = (
   form: TriggerFormState,
   targetApplicationId: string,
   app: AndroidApplication | undefined,
-  workflow?: Automation,
+  workflow?: AutomationOption,
   previousApp?: AndroidApplication
 ): TriggerFormState => ({
   ...form,
@@ -152,8 +149,8 @@ export const applyTriggerTargetApplication = (
 
 export const applyTriggerWorkflow = (
   form: TriggerFormState,
-  workflow: Automation | undefined,
-  previousWorkflow: Automation | undefined,
+  workflow: AutomationOption | undefined,
+  previousWorkflow: AutomationOption | undefined,
   app: AndroidApplication | undefined
 ): TriggerFormState => ({
   ...form,
@@ -164,18 +161,43 @@ export const applyTriggerWorkflow = (
       : form.name
 })
 
-export const triggerFormSavePayload = (form: TriggerFormState): SaveAutomationTriggerInput => ({
-  name: form.name.trim(),
-  description: form.description.trim() || null,
-  automationId: form.automationId,
-  targetApplicationId: form.targetApplicationId,
-  profileMode: form.profileMode,
-  profileName: form.profileName.trim() || 'default',
-  enabled: form.enabled,
-  tags: form.tags,
-  triggerType: 'schedule',
-  triggerConfig: {
-    cronExpression: scheduleToCron(form.schedule),
-    startPolicy: form.startPolicy
+export const triggerFormSavePayload = (form: TriggerFormState) =>
+  ({
+    name: form.name.trim(),
+    description: form.description.trim() || null,
+    automationId: form.automationId,
+    targetApplicationId: form.targetApplicationId,
+    profileMode: form.profileMode,
+    profileName: form.profileName.trim() || 'default',
+    enabled: form.enabled,
+    tags: form.tags,
+    triggerType: 'schedule',
+    triggerConfig: {
+      cronExpression: scheduleToCron(form.schedule),
+      startPolicy: form.startPolicy
+    }
+  }) satisfies SaveAutomationTriggerInput
+
+export const triggerFormUpdatePayload = (
+  form: TriggerFormState,
+  baseline: TriggerFormState
+): Partial<SaveAutomationTriggerInput> => {
+  const next = triggerFormSavePayload(form)
+  const previous = triggerFormSavePayload(baseline)
+  const { cronExpression, startPolicy } = next.triggerConfig
+  const triggerConfig = {
+    ...(cronExpression !== previous.triggerConfig.cronExpression && { cronExpression }),
+    ...(startPolicy !== previous.triggerConfig.startPolicy && { startPolicy })
   }
-})
+  return {
+    ...(next.name !== previous.name && { name: next.name }),
+    ...(next.description !== previous.description && { description: next.description }),
+    ...(next.automationId !== previous.automationId && { automationId: next.automationId }),
+    ...(next.targetApplicationId !== previous.targetApplicationId && { targetApplicationId: next.targetApplicationId }),
+    ...(next.profileMode !== previous.profileMode && { profileMode: next.profileMode }),
+    ...(next.profileName !== previous.profileName && { profileName: next.profileName }),
+    ...(next.enabled !== previous.enabled && { enabled: next.enabled }),
+    ...(JSON.stringify(next.tags) !== JSON.stringify(previous.tags) && { tags: next.tags }),
+    ...(Object.keys(triggerConfig).length > 0 && { triggerConfig })
+  }
+}

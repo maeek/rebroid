@@ -10,22 +10,8 @@ export const canInspectActiveWorkflowRuns = (permissions: PermissionMap) =>
 
 export const isWorkflowRun = (run: Pick<AutomationRun, 'automationId'>) => !run.automationId.startsWith('ephemeral-ai-')
 
-export const listActiveWorkflowRuns = async (ownerUserId: string): Promise<ActiveWorkflowRun[]> => {
-  const runs = (await orchestratorAutomationsClient.listActiveRuns(ownerUserId)).flatMap<ActiveWorkflowRun>(
-    ({ id, automationId, targetApplicationId, createdAt, status }) => {
-      if (!isWorkflowRun({ automationId }) || (status !== 'queued' && status !== 'running')) return []
-      return [{ id, automationId, targetApplicationId, createdAt, status, workflowName: null }]
-    }
-  )
-  if (runs.length === 0) return []
-
-  const workflows = await orchestratorAutomationsClient.list(ownerUserId).catch(error => {
-    if (workflowCatalogIsDisabled(error)) return []
-    throw error
-  })
-  const workflowNames = new Map(workflows.map(workflow => [workflow.id, workflow.name]))
-  return runs.map(run => ({ ...run, workflowName: workflowNames.get(run.automationId) ?? null }))
-}
+export const listActiveWorkflowRuns = async (ownerUserId: string): Promise<ActiveWorkflowRun[]> =>
+  (await orchestratorAutomationsClient.listActiveRuns(ownerUserId)).filter(isWorkflowRun)
 
 export const workflowCatalogIsDisabled = (error: unknown) =>
   error instanceof OrchestratorRequestError &&

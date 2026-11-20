@@ -9,6 +9,7 @@ import {
   type DockerImageRuntimePort,
 } from '../../docker/contracts/docker-image-runtime.port';
 import { StartContainerImageBuildDto } from '../dto/container-image-build.dto';
+import type { ContainerImageBuildKind } from '../entities/container-image-gapps-build';
 import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildContextService } from './container-image-build-context.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
@@ -42,6 +43,10 @@ export class ContainerImageBuilderService {
 
   listJobs() {
     return this.jobs.listJobs();
+  }
+
+  findLatestJob(buildKind: ContainerImageBuildKind) {
+    return this.jobs.findLatestJob(buildKind);
   }
 
   activeBuildIds() {
@@ -119,14 +124,11 @@ export class ContainerImageBuilderService {
 
     const active = new AbortController();
     this.activeBuilds.set(id, active);
-    const runningJob = await this.jobs.markRunning(job);
-    if (runningJob.status !== 'running') {
-      this.activeBuilds.delete(id);
-      return;
-    }
-    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
-
     try {
+      const runningJob = await this.jobs.markRunning(job);
+      if (runningJob.status !== 'running') return;
+      await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
+
       const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];
       const contextFiles = await this.context.findByIds(contextFileIds);
       const foundContextFileIds = new Set(contextFiles.map((file) => file.id));
@@ -148,9 +150,7 @@ export class ContainerImageBuilderService {
         operationName: 'container_image_build',
         description: `Build container image ${job.targetImage}`,
         signal: active.signal,
-        onProgress: (message) => {
-          void this.jobs.appendLog(id, message);
-        },
+        onProgress: (message) => this.jobs.recordProgress(id, message),
       });
 
       const current = await this.getJob(id);

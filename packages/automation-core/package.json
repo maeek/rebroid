@@ -10,6 +10,10 @@
       "types": "./dist/definition.d.ts",
       "default": "./dist/definition.js"
     },
+    "./grid-sort": {
+      "types": "./dist/grid-sort.d.ts",
+      "default": "./dist/grid-sort.js"
+    },
     "./metadata": {
       "types": "./dist/metadata.d.ts",
       "default": "./dist/metadata.js"
@@ -35,6 +39,9 @@
     "*": {
       "definition": [
         "dist/definition.d.ts"
+      ],
+      "grid-sort": [
+        "dist/grid-sort.d.ts"
       ],
       "metadata": [
         "dist/metadata.d.ts"

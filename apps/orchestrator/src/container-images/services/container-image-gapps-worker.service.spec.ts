@@ -18,7 +18,10 @@ const makeArchive = () => {
 describe('ContainerImageGappsWorkerService package transfer', () => {
   let directory: string;
   let destination: string;
-  const preset = { sourceRepository: 'repo' } as GappsBuildPresetDto;
+  const preset = {
+    androidVersion: '16',
+    sourceRepository: 'repo',
+  } as GappsBuildPresetDto;
   const setup = (run: (request: DockerGappsWorkerRequest) => Promise<void>) =>
     new ContainerImageGappsWorkerService(
       { getOrThrow: () => 'worker:test' } as unknown as ConfigService,
@@ -26,7 +29,7 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
       {
         imageExists: async () => true,
         inspectImage: async () => ({
-          Config: { Labels: { 'com.rebroid.gapps-patcher.version': '1' } },
+          Config: { Labels: { 'com.rebroid.gapps-patcher.version': '2' } },
         }),
       } as never,
       {} as never,
@@ -47,9 +50,11 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
   });
 
   it('writes the complete package before returning the path', async () => {
-    const service = setup(({ consumeArchive, signal }) =>
-      consumeArchive(makeArchive() as unknown as Readable, signal),
+    const run = jest.fn(
+      ({ consumeArchive, signal }: DockerGappsWorkerRequest) =>
+        consumeArchive(makeArchive() as unknown as Readable, signal),
     );
+    const service = setup(run);
     await expect(
       service.buildPackage(
         'job',
@@ -58,6 +63,9 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
         new AbortController().signal,
       ),
     ).resolves.toBe(destination);
+    expect(run).toHaveBeenCalledWith(
+      expect.objectContaining({ androidVersion: '16' }),
+    );
     await expect(readFile(destination, 'utf8')).resolves.toBe(
       'package content',
     );

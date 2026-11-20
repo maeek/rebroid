@@ -38,7 +38,6 @@ export class FirewallPolicyCommands {
     try {
       const { policies } = store.load();
       adapter = selectAdapter();
-      adapter.initialize();
       adapter.reconcile(policies);
       return {
         commands: new FirewallPolicyCommands(adapter, store),
@@ -98,7 +97,7 @@ export class FirewallPolicyCommands {
         );
       }
     }
-    this.commit(state, () => this.adapter.reconcile(desired));
+    this.commit(state);
     return "applied";
   }
 
@@ -124,10 +123,7 @@ export class FirewallPolicyCommands {
     if (policy.revision !== undefined) state.revisions.set(id, policy.revision);
     state.removals.delete(id);
     state.removals.delete(containerRemovalKey(id, policy.containerId));
-    this.commit(state, () => {
-      if (policy.enabled) this.adapter.apply(policy, state.policies);
-      else this.adapter.remove(id, state.policies);
-    });
+    this.commit(state);
     return "applied";
   }
 
@@ -195,7 +191,7 @@ export class FirewallPolicyCommands {
     }
 
     state.policies.delete(id);
-    this.commit(state, () => this.adapter.remove(id, state.policies));
+    this.commit(state);
     return "applied";
   }
 
@@ -209,11 +205,11 @@ export class FirewallPolicyCommands {
     }
   }
 
-  private commit(next: FirewallPolicyState, install: () => void) {
+  private commit(next: FirewallPolicyState) {
     let installed = false;
     try {
       this.store.save(next, () => {
-        install();
+        this.adapter.reconcile(next.policies);
         installed = true;
       });
     } catch (error) {

@@ -1,20 +1,14 @@
-const mediaMagic = [0x52, 0x42, 0x44, 0x31] as const;
-const mediaHeaderBytes = 24;
-const mediaVersion = 1;
-
-export const viewerMediaKind = {
-  video: 1,
-  audio: 2,
-} as const;
-
-const mediaFlag = {
-  config: 1 << 0,
-  keyFrame: 1 << 1,
-  discontinuity: 1 << 2,
-} as const;
+import {
+  rbd1Flag,
+  rbd1HeaderBytes,
+  rbd1Magic,
+  rbd1MediaKind,
+  rbd1Offset,
+  rbd1Version,
+} from "./rbd1-header.js";
 
 export type ViewerMediaFrame = {
-  kind: keyof typeof viewerMediaKind;
+  kind: keyof typeof rbd1MediaKind;
   sequence: number;
   timestampUs: number;
   config: boolean;
@@ -24,41 +18,40 @@ export type ViewerMediaFrame = {
 };
 
 export function parseViewerMediaFrame(buffer: ArrayBuffer): ViewerMediaFrame {
-  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
   if (
-    bytes.byteLength < mediaHeaderBytes ||
-    mediaMagic.some((value, index) => bytes[index] !== value) ||
-    bytes[4] !== mediaVersion
+    view.byteLength < rbd1HeaderBytes ||
+    view.getUint32(0) !== rbd1Magic ||
+    view.getUint8(rbd1Offset.version) !== rbd1Version
   ) {
     throw new Error("Invalid RBD1 media frame.");
   }
-  const view = new DataView(buffer);
-  const kindValue = bytes[5];
+  const kindValue = view.getUint8(rbd1Offset.kind);
   const kind =
-    kindValue === viewerMediaKind.video
+    kindValue === rbd1MediaKind.video
       ? "video"
-      : kindValue === viewerMediaKind.audio
+      : kindValue === rbd1MediaKind.audio
         ? "audio"
         : null;
   if (!kind) {
     throw new Error("Unsupported RBD1 media kind.");
   }
-  const payloadLength = view.getUint32(20);
-  if (!payloadLength || payloadLength !== bytes.byteLength - mediaHeaderBytes) {
+  const payloadLength = view.getUint32(rbd1Offset.payloadLength);
+  if (!payloadLength || payloadLength !== view.byteLength - rbd1HeaderBytes) {
     throw new Error("Invalid RBD1 media payload length.");
   }
-  const timestamp = view.getBigUint64(12);
+  const timestamp = view.getBigUint64(rbd1Offset.timestampUs);
   if (timestamp > BigInt(Number.MAX_SAFE_INTEGER)) {
     throw new Error("RBD1 media timestamp exceeds browser precision.");
   }
-  const flags = view.getUint16(6);
+  const flags = view.getUint16(rbd1Offset.flags);
   return {
     kind,
-    sequence: view.getUint32(8),
+    sequence: view.getUint32(rbd1Offset.sequence),
     timestampUs: Number(timestamp),
-    config: (flags & mediaFlag.config) !== 0,
-    keyFrame: (flags & mediaFlag.keyFrame) !== 0,
-    discontinuity: (flags & mediaFlag.discontinuity) !== 0,
-    data: bytes.subarray(mediaHeaderBytes),
+    config: (flags & rbd1Flag.config) !== 0,
+    keyFrame: (flags & rbd1Flag.keyFrame) !== 0,
+    discontinuity: (flags & rbd1Flag.discontinuity) !== 0,
+    data: new Uint8Array(buffer, rbd1HeaderBytes),
   };
 }

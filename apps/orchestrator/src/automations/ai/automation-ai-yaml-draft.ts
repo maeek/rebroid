@@ -1,8 +1,8 @@
 import type { ChatMessage } from '../../common/ai-provider-request';
 import { parseArguments } from './core/arguments';
-import type {
-  AutomationDefinition,
-  AutomationDefinitionStep,
+import {
+  visitAutomationSteps,
+  type AutomationDefinition,
 } from '@rebroid/automation-core/definition';
 import { AutomationCommandDto } from '../dto/automation-command.dto';
 import { sanitizeAiText } from './automation-ai-observation.utils';
@@ -121,33 +121,19 @@ export const assertDraftUsesAllowedCommands = (
   commands: AutomationCommandDto[],
 ) => {
   const allowed = new Set(commands.map((command) => command.uses));
-  const assertStep = (step: AutomationDefinitionStep) => {
-    if ('uses' in step) {
-      if (step.uses === 'ai.run') {
-        throw new Error(
-          'Drafted automations must use concrete steps instead of ai.run.',
-        );
-      }
-      if (!allowed.has(step.uses)) {
-        throw new Error(
-          `Draft uses unavailable automation command "${step.uses}".`,
-        );
-      }
-      return;
+  visitAutomationSteps(definition.spec.steps, (step) => {
+    if (!('uses' in step)) return;
+    if (step.uses === 'ai.run') {
+      throw new Error(
+        'Drafted automations must use concrete steps instead of ai.run.',
+      );
     }
-    if (step.type === 'condition') {
-      step.then.forEach(assertStep);
-      step.else?.forEach(assertStep);
-      return;
+    if (!allowed.has(step.uses)) {
+      throw new Error(
+        `Draft uses unavailable automation command "${step.uses}".`,
+      );
     }
-    if (step.type === 'switch') {
-      step.cases.forEach((item) => item.steps.forEach(assertStep));
-      step.default?.forEach(assertStep);
-      return;
-    }
-    step.steps.forEach(assertStep);
-  };
-  definition.spec.steps.forEach(assertStep);
+  });
 };
 
 export const submitYamlTool = () => ({

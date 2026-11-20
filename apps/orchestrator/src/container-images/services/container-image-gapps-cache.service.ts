@@ -17,6 +17,18 @@ import {
 } from '../dto/gapps-build.dto';
 import { gappsTemporaryPackageDirectory } from '../utils/gapps-staging-paths';
 
+const cacheFileNames = (
+  androidVersion: SupportedGappsAndroidVersion,
+  revision: string,
+) => {
+  // Older Android 15 and 16 archives lack the compatible GSF used by the patch worker.
+  const stem =
+    androidVersion === '15' || androidVersion === '16'
+      ? `${revision}-gsf-compat-v1`
+      : revision;
+  return { packageFile: `${stem}.zip`, checksumFile: `${stem}.sha256` };
+};
+
 @Injectable()
 export class ContainerImageGappsCacheService {
   constructor(private readonly config: ConfigService) {}
@@ -26,8 +38,12 @@ export class ContainerImageGappsCacheService {
     revision: string,
   ) {
     const directory = await this.versionDirectory(androidVersion);
-    const packagePath = join(directory, `${revision}.zip`);
-    const checksumPath = join(directory, `${revision}.sha256`);
+    const { packageFile, checksumFile } = cacheFileNames(
+      androidVersion,
+      revision,
+    );
+    const packagePath = join(directory, packageFile);
+    const checksumPath = join(directory, checksumFile);
     try {
       const expected = (await readFile(checksumPath, 'utf8')).trim();
       const actual = await this.calculateSha256(packagePath);
@@ -58,8 +74,12 @@ export class ContainerImageGappsCacheService {
     revision: string,
   ) {
     const directory = await this.versionDirectory(androidVersion);
-    const packagePath = join(directory, `${revision}.zip`);
-    const checksumPath = join(directory, `${revision}.sha256`);
+    const { packageFile, checksumFile } = cacheFileNames(
+      androidVersion,
+      revision,
+    );
+    const packagePath = join(directory, packageFile);
+    const checksumPath = join(directory, checksumFile);
     const sha256 = await this.calculateSha256(temporaryPath);
     await rm(packagePath, { force: true });
     await rename(temporaryPath, packagePath);
@@ -72,7 +92,11 @@ export class ContainerImageGappsCacheService {
     revision: string,
   ) {
     const directory = await this.versionDirectory(androidVersion);
-    const keep = new Set([`${revision}.zip`, `${revision}.sha256`]);
+    const { packageFile, checksumFile } = cacheFileNames(
+      androidVersion,
+      revision,
+    );
+    const keep = new Set([packageFile, checksumFile]);
     await Promise.all(
       (await readdir(directory))
         .filter((name) => !keep.has(name))

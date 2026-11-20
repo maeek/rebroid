@@ -96,7 +96,7 @@ const GappsPreview = ({ state }: { state: string }) => {
           }
         }
       : builderPreviewPresets
-  const controller = useGappsBuildController({ presetResponse: presets, jobs: [] })
+  const controller = useGappsBuildController({ presetResponse: presets, initialJob: null })
   const job = status ? builderPreviewJob(status) : null
   return (
     <GappsBuilderContent
@@ -114,7 +114,7 @@ const CustomPreview = ({ state }: { state: string }) => {
   const builder = useRuntimeImageBuilderController({
     contextFiles: state === 'missing' ? [] : builderPreviewFiles,
     images: [],
-    jobs: [],
+    initialJob: null,
     recipes: []
   })
   const status = state === 'running' || state === 'failed' || state === 'succeeded' ? state : null

@@ -67,6 +67,7 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
         // Allow an in-flight create to return its ID even after job cancellation.
         abortSignal: createSignal,
         Env: [
+          `GAPPS_ANDROID_VERSION=${request.androidVersion}`,
           `SOURCE_REPOSITORY=${request.sourceRepository}`,
           `SOURCE_REVISION=${request.sourceRevision}`,
         ],

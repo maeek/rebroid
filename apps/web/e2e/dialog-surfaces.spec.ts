@@ -23,9 +23,14 @@ test('model picker has no blank empty-state row and dialogs separate controls fr
       await input.fill('Another')
       const list = page.getByRole('listbox')
       const popup = list.locator('..')
-      const first = await page.getByRole('option').first().boundingBox()
-      const bounds = await popup.boundingBox()
-      expect(first!.y - bounds!.y).toBeLessThanOrEqual(6)
+      await expect
+        .poll(() =>
+          popup.evaluate(node => {
+            const first = node.querySelector('[role="option"]')
+            return first ? first.getBoundingClientRect().top - node.getBoundingClientRect().top : Infinity
+          })
+        )
+        .toBeLessThanOrEqual(6)
       const liveRegion = popup.getByRole('status')
       expect((await liveRegion.boundingBox())!.height).toBe(0)
       await expect(liveRegion).toHaveAttribute('aria-live', 'polite')

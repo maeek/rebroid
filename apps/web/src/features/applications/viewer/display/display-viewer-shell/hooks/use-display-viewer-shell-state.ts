@@ -12,14 +12,14 @@ import {
   viewerControlRailWidth,
   workspacePadding
 } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-layout'
-import type {
-  DisplayViewerStreamMetrics,
-  ViewerFrameObservation,
-  DisplayViewerStreamStatus
-} from '@/features/applications/viewer/display/display-viewer-stream-status'
 import type { DisplayViewerSurface } from '@/features/applications/viewer/display/display-viewer-surfaces'
+import type {
+  ViewerStreamMetricsV4,
+  ViewerFrameObservation,
+  ViewerStreamStatus
+} from '@rebroid/android-application-core/viewer-stream'
 
-const transientStreamStatusCodes = new Set<DisplayViewerStreamStatus['code']>([
+const transientStreamStatusCodes = new Set<ViewerStreamStatus['code']>([
   'reconnecting',
   'first-frame-timeout',
   'video-stalled',
@@ -57,8 +57,8 @@ export const useDisplayViewerShellState = ({
   initialKeyboardCaptureEnabled: boolean
   onSurfacesChanged?: () => void
   onKeyboardCaptureChange?: (enabled: boolean) => void
-  onStreamMetrics?: (surfaceId: string, metrics: DisplayViewerStreamMetrics) => void
-  onStreamIssue?: (surfaceId: string, status: DisplayViewerStreamStatus) => void
+  onStreamMetrics?: (surfaceId: string, metrics: ViewerStreamMetricsV4) => void
+  onStreamIssue?: (surfaceId: string, status: ViewerStreamStatus) => void
   onFirstFrame?: (observation?: ViewerFrameObservation) => void
 }) => {
   const [keyboardCaptureEnabled, setKeyboardCaptureEnabled] = useState(initialKeyboardCaptureEnabled)
@@ -70,7 +70,7 @@ export const useDisplayViewerShellState = ({
   const scrollSettleTimerRef = useRef<number | null>(null)
   const streamStatusTimersRef = useRef<Record<string, number | undefined>>({})
   const [streamSizes, setStreamSizes] = useState<Record<string, { width: number; height: number }>>({})
-  const [streamStatuses, setStreamStatuses] = useState<Record<string, DisplayViewerStreamStatus | undefined>>({})
+  const [streamStatuses, setStreamStatuses] = useState<Record<string, ViewerStreamStatus | undefined>>({})
   const [workspaceSize, setWorkspaceSize] = useState({
     width: 0,
     height: 0,
@@ -300,7 +300,7 @@ export const useDisplayViewerShellState = ({
     })
   }
 
-  const setSurfaceStreamStatus = (surfaceId: string, status: DisplayViewerStreamStatus) => {
+  const setSurfaceStreamStatus = (surfaceId: string, status: ViewerStreamStatus) => {
     const surface = surfaces.find(item => item.id === surfaceId)
     if (!surface || (status.sessionId && status.sessionId !== surface.sessionId)) return
     if (status.code === 'session-expired' || status.code === 'session-ready') {
@@ -344,7 +344,7 @@ export const useDisplayViewerShellState = ({
     }
   }
 
-  const setSurfaceStreamMetrics = (surfaceId: string, metrics: DisplayViewerStreamMetrics) => {
+  const setSurfaceStreamMetrics = (surfaceId: string, metrics: ViewerStreamMetricsV4) => {
     const { width, height } = metrics
     if (width && width > 0 && height && height > 0) {
       setStreamSizes(current => {

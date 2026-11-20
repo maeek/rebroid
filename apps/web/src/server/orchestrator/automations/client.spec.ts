@@ -18,6 +18,12 @@ describe('automation owner boundary', () => {
       expect(path).toContain('q=login')
     }
   })
+  it('uses owner-scoped option endpoints for the trigger and run pickers', async () => {
+    await client.listOptions('actor')
+    await client.listRunnableOptions('actor')
+    expect(emptyRequest).toHaveBeenCalledWith('/automations/options?ownerUserId=actor')
+    expect(emptyRequest).toHaveBeenCalledWith('/automations/runnable/options?ownerUserId=actor')
+  })
   it('preserves the trusted owner in creation and run bodies', async () => {
     await client.create('actor', { ownerUserId: 'victim', yaml: 'test' } as never)
     await client.run('actor', 'workflow', { ownerUserId: 'victim', targetApplicationId: 'app' } as never)

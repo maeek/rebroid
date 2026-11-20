@@ -171,15 +171,6 @@ export class AutomationRunEventsRepository {
     });
   }
 
-  listForRun(ownerUserId: string, runId: string, after = 0) {
-    return this.listReplayPage(
-      ownerUserId,
-      runId,
-      after,
-      Number.MAX_SAFE_INTEGER,
-    );
-  }
-
   listReplayPage(
     ownerUserId: string,
     runId: string,

@@ -56,10 +56,6 @@ export class AutomationRunEventBus {
     }
   }
 
-  list(ownerUserId: string, runId: string, after?: number) {
-    return this.events.listForRun(ownerUserId, runId, after);
-  }
-
   async listPage(ownerUserId: string, runId: string, after: number) {
     const through = await this.events.latestSequence(ownerUserId, runId);
     const events = await this.events.listReplayPage(

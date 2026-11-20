@@ -5,7 +5,7 @@ import { loadAutomationsListPageData, type AutomationsSearchParams } from './pag
 import { AutomationsListPageLoading } from './page-loading'
 
 const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Promise<AutomationsSearchParams> }) => {
-  const { applications, automationsPage, gridQuery, orchestratorError, triggers, workflowHistoryRetention } =
+  const { applications, automationsPage, gridQuery, orchestratorError, workflowHistoryRetention } =
     await loadAutomationsListPageData((await searchParams) ?? {})
 
   if (orchestratorError) {
@@ -17,7 +17,6 @@ const AutomationsListPageContent = async ({ searchParams }: { searchParams?: Pro
       initialApplications={applications}
       automationsPage={automationsPage}
       gridQuery={gridQuery}
-      initialTriggers={triggers}
       workflowHistoryRetention={workflowHistoryRetention}
     />
   )

@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { DockerEngineService } from '../../docker-engine.service';
 import { PlatformImage, PlatformImageDetails } from '../../docker.types';
-import { shortDockerId } from '../../docker.utils';
 import { DockerInventoryService } from '../../inventory/docker-inventory.service';
 import { platformImageFromInspect } from '../utils/platform-image.utils';
 import { DockerImageRuntimeService } from './docker-image-runtime.service';
@@ -26,7 +25,10 @@ export class DockerPlatformImagesService implements DockerPlatformImagesPort {
   ) {}
 
   async listPlatformImages(): Promise<PlatformImage[]> {
-    return (await this.loadInventory()).images;
+    const { images, managedImageIds } = await this.loadInventory();
+    return this.metadata.enrichPlatformImages(
+      images.map((image) => this.withManagedStatus(image, managedImageIds)),
+    );
   }
 
   private async loadInventory() {
@@ -39,14 +41,16 @@ export class DockerPlatformImagesService implements DockerPlatformImagesPort {
         .filter((container) => container.managed)
         .map((container) => container.imageId),
     );
+    return { images, containers, managedImageIds };
+  }
+
+  private withManagedStatus(
+    image: PlatformImage,
+    managedImageIds: Set<string>,
+  ) {
     return {
-      images: await this.metadata.enrichPlatformImages(
-        images.map((image) => ({
-          ...image,
-          managed: image.managed || managedImageIds.has(image.id),
-        })),
-      ),
-      containers,
+      ...image,
+      managed: image.managed || managedImageIds.has(image.id),
     };
   }
 
@@ -54,26 +58,21 @@ export class DockerPlatformImagesService implements DockerPlatformImagesPort {
     imageId: string,
   ): Promise<PlatformImageDetails> {
     const image = this.engine.docker.getImage(imageId);
-    const [inspect, inventory] = await Promise.all([
-      this.engine.read(
-        () => image.inspect(),
-        `Inspect platform image ${imageId}`,
-      ),
-      this.loadInventory(),
-    ]);
-    const images = inventory.images;
-    const containers = inventory.containers;
-    const listItem =
-      images.find(
-        (item) =>
-          item.id === inspect.Id ||
-          item.shortId === shortDockerId(inspect.Id) ||
-          item.repoTags.includes(imageId) ||
-          item.repoDigests.includes(imageId),
-      ) ??
-      (await this.metadata.enrichPlatformImage(
-        platformImageFromInspect(inspect),
-      ));
+    const [inspect, { images, containers, managedImageIds }] =
+      await Promise.all([
+        this.engine.read(
+          () => image.inspect(),
+          `Inspect platform image ${imageId}`,
+        ),
+        this.loadInventory(),
+      ]);
+    const inventoryItem = images.find((item) => item.id === inspect.Id);
+    const listItem = await this.metadata.enrichPlatformImage(
+      inventoryItem
+        ? this.withManagedStatus(inventoryItem, managedImageIds)
+        : platformImageFromInspect(inspect),
+      imageId,
+    );
     const relatedContainers = containers.filter(
       (container) =>
         container.imageId === listItem.id ||

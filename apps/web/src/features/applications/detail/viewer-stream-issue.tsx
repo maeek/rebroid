@@ -1,10 +1,10 @@
 import { Notice } from '@/components/ui/notice'
 import { DetailFields, type DetailField } from '@/shared/ui/detail-fields'
-import type { DisplayViewerStreamStatus } from '@/features/applications/viewer/display/display-viewer-stream-status'
+import type { ViewerStreamStatus } from '@rebroid/android-application-core/viewer-stream'
 
 export type ObservedStreamIssue = {
   surfaceId: string
-  status: DisplayViewerStreamStatus
+  status: ViewerStreamStatus
   observedAt: number
 }
 

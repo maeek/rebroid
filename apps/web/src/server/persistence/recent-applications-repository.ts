@@ -52,13 +52,6 @@ export const listDismissedRecentApplicationIds = (userId: string) =>
     ).map(row => row.application_id)
   )
 
-export const forgetRecentApplication = (userId: string, applicationId: string) => {
-  getDatabase()
-    .prepare('DELETE FROM recent_applications WHERE user_id = ? AND application_id = ?')
-    .run(userId, applicationId)
-  return listRecentApplications(userId)
-}
-
 export const forgetDeletedApplication = (applicationId: string) => {
   getDatabase().prepare('DELETE FROM recent_applications WHERE application_id = ?').run(applicationId)
 }

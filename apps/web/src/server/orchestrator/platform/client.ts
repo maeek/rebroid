@@ -2,6 +2,7 @@ import { emptyRequest, jsonRequest, streamRequest } from '../request'
 import type {
   ContainerImageBuildContextFile,
   ContainerImageBuildJob,
+  ContainerImageBuildKind,
   ContainerImageBuildRecipe,
   ContainerImageRecipeInput,
   PlatformContainer,
@@ -93,8 +94,12 @@ export const orchestratorPlatformClient = {
     return jsonRequest<ContainerImageBuildRecipe>('/platform/container-images/recipes', 'POST', input)
   },
 
-  listImageBuildJobs() {
-    return emptyRequest<ContainerImageBuildJob[]>('/platform/container-images/builds')
+  async getLatestImageBuild(buildKind: ContainerImageBuildKind) {
+    const query = new URLSearchParams({ buildKind })
+    const { job } = await emptyRequest<OrchestratorApiSchemas['LatestContainerImageBuildDto']>(
+      `/platform/container-images/builds/latest?${query}`
+    )
+    return job
   },
 
   startImageBuild(input: StartContainerImageBuildInput) {

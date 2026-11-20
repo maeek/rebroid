@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { rbd1 } from "./rbd1-test-frame.mjs";
 
 const annexB = (...nals) =>
   Uint8Array.from(nals.flatMap((nal) => [0, 0, 0, 1, ...nal]));
@@ -19,19 +20,6 @@ const landscapeConfiguration = Uint8Array.from(
 );
 const keyFrame = annexB([0x65, 0x88, 0x84]);
 const deltaFrame = annexB([0x41, 0x9a, 0x20]);
-
-const rbd1 = ({ sequence, timestampUs, config = false, key = false, data }) => {
-  const buffer = new ArrayBuffer(24 + data.byteLength);
-  const bytes = new Uint8Array(buffer);
-  bytes.set([0x52, 0x42, 0x44, 0x31, 1, 1]);
-  const view = new DataView(buffer);
-  view.setUint16(6, (config ? 1 : 0) | (key ? 2 : 0));
-  view.setUint32(8, sequence);
-  view.setBigUint64(12, BigInt(timestampUs));
-  view.setUint32(20, data.byteLength);
-  bytes.set(data, 24);
-  return buffer;
-};
 
 class FakeWebSocket {
   static CONNECTING = 0;

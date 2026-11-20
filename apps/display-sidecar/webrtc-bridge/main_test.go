@@ -105,10 +105,10 @@ func TestRegistersOnlyConfiguredH264Profile(t *testing.T) {
 }
 
 func TestRTPTimestampUsesPTSAndWraps(t *testing.T) {
-	if got := rtpTimestampForPTS(1_000_000, 10, 1_016_667); got != 1510 {
+	if got := rtpTimestampForSharedPTS(1_000_000, 10, 1_016_667, videoClockRate); got != 1510 {
 		t.Fatalf("expected exact 90kHz timestamp delta, got %d", got)
 	}
-	if got := rtpTimestampForPTS(0, ^uint32(0)-10, 1_000_000); got != 89_989 {
+	if got := rtpTimestampForSharedPTS(0, ^uint32(0)-10, 1_000_000, videoClockRate); got != 89_989 {
 		t.Fatalf("expected uint32 RTP wrap, got %d", got)
 	}
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getBff, sendBff } from '@/lib/http/bff'
+import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { terminalBuildStatuses } from '../model/context-selection'
 import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
@@ -14,6 +15,7 @@ export const useActiveImageBuild = (initialJob: ContainerImageBuildJob | null) =
   const currentJob = useRef(initialJob)
   const pending = useRef(false)
   const [mutation, setMutation] = useState<'start' | 'cancel' | null>(null)
+  const [isSettingDefault, setIsSettingDefault] = useState(false)
   const jobId = activeJob?.id
   const isRunning = isLive(activeJob)
 
@@ -104,13 +106,32 @@ export const useActiveImageBuild = (initialJob: ContainerImageBuildJob | null) =
     }
   }
 
+  const setAsDefault = async () => {
+    if (!activeJob || activeJob.status !== 'succeeded' || isSettingDefault) return
+    setIsSettingDefault(true)
+    try {
+      await saveOrchestratorUiSettings({ defaultContainerImage: activeJob.targetImage })
+      toast({ title: 'Default image updated', variant: 'success' })
+    } catch (error) {
+      toast({
+        title: 'Could not update default image',
+        description: getDisplayErrorMessage(error),
+        variant: 'danger'
+      })
+    } finally {
+      setIsSettingDefault(false)
+    }
+  }
+
   return {
     activeJob,
     isIdle,
     isRunning,
     isStarting: mutation === 'start',
     isCancelling: mutation === 'cancel',
+    isSettingDefault,
     startBuild,
-    cancelBuild
+    cancelBuild,
+    setAsDefault
   }
 }

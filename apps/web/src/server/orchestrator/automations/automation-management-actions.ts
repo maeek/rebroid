@@ -121,7 +121,7 @@ export const draftWorkflowFromAdHocRunAction = async ({
   if (run.status !== 'success') {
     throw new Error('Only successful AI runs can be saved as workflow drafts.')
   }
-  const events = await orchestratorAutomationsClient.listRunEvents(user.ownerUserId, runId, 0, 'conversation')
+  const events = await orchestratorAutomationsClient.listRunConversationEvents(user.ownerUserId, runId)
   if (!adHocAiRunPrompt(events)) {
     throw new Error('This run does not contain an ad-hoc AI prompt.')
   }
@@ -147,10 +147,10 @@ export const draftWorkflowFromAdHocRunAction = async ({
   return draft
 }
 
-export const listAutomationsAction = async () => {
+export const listAutomationOptionsAction = async () => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.list(user.ownerUserId)
+  return orchestratorAutomationsClient.listOptions(user.ownerUserId)
 }
 
 export const listAutomationsGridAction = async (
@@ -164,7 +164,7 @@ export const listAutomationsGridAction = async (
 export const listRunnableAutomationsAction = async () => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:run')
-  return orchestratorAutomationsClient.listRunnable(user.ownerUserId)
+  return orchestratorAutomationsClient.listRunnableOptions(user.ownerUserId)
 }
 
 export const getAutomationAction = async (id: string) => {

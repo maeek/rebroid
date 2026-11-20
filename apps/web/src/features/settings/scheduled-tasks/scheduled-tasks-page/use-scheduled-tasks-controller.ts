@@ -71,24 +71,24 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
     try {
       const payload = normalizePayload(form)
       const cronExpression = scheduleToCron(form.schedule)
-      const input = { ...form, cronExpression, payload }
+      const { name, enabled, actionType } = form
       const workflowHistoryTask = tasks.find(task => task.id === form.id && isWorkflowHistoryRetentionTask(task))
-      const update = workflowHistoryTask
-        ? {
-            ...(form.enabled !== workflowHistoryTask.enabled && { enabled: form.enabled }),
-            ...(cronExpression !== workflowHistoryTask.cronExpression && { cronExpression }),
-            ...(payload?.retentionDays !== normalizePayload(taskToForm(workflowHistoryTask))?.retentionDays && {
-              payload
-            })
-          }
-        : input
+      const actionChanged = actionType !== baselineForm.actionType
+      const payloadChanged = JSON.stringify(payload) !== JSON.stringify(normalizePayload(baselineForm))
+      const update = {
+        ...(!workflowHistoryTask && name !== baselineForm.name && { name }),
+        ...(enabled !== baselineForm.enabled && { enabled }),
+        ...(cronExpression !== scheduleToCron(baselineForm.schedule) && { cronExpression }),
+        ...(!workflowHistoryTask && actionChanged && { actionType }),
+        ...(((!workflowHistoryTask && actionChanged) || payloadChanged) && { payload })
+      }
       let saved: ScheduledTask
       if (workflowHistoryTask && !Object.keys(update).length) {
         saved = workflowHistoryTask
       } else if (form.id) {
         saved = await updateScheduledTaskAction(form.id, update)
       } else {
-        saved = await createScheduledTaskAction(input)
+        saved = await createScheduledTaskAction({ name, enabled, actionType, cronExpression, payload })
       }
       replaceTask(saved)
       setIsFormOpen(false)

@@ -11,6 +11,7 @@ import { resolveManualImageReference } from './manual-image-reference'
 import { runAuditedPlatformAction } from './platform-audit'
 import { platformImagesGridPage } from './platform-grid-utils'
 import type {
+  ContainerImageBuildKind,
   ContainerImageRecipeInput,
   PlatformImagesGridPage,
   PlatformImagesGridQuery,
@@ -115,9 +116,9 @@ export const createImageBuildRecipeAction = async (input: ContainerImageRecipeIn
     { fallbackMessage: 'Could not create image build recipe.', logLabel: 'createImageBuildRecipeAction failed' }
   )
 
-export const listImageBuildJobsAction = async () => {
+export const getLatestImageBuildAction = async (buildKind: ContainerImageBuildKind) => {
   await requireAdminUser()
-  return orchestratorPlatformClient.listImageBuildJobs()
+  return orchestratorPlatformClient.getLatestImageBuild(buildKind)
 }
 
 export const startImageBuildAction = async (input: StartContainerImageBuildInput) =>

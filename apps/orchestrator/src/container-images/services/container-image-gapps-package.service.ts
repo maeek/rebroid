@@ -33,6 +33,11 @@ const unixRegularFile = 0o100000;
 const unixDirectory = 0o040000;
 const unixSymlink = 0o120000;
 const forbiddenUnixTypes = new Set([0o010000, 0o020000, 0o060000, 0o140000]);
+const requiredPackages = [
+  'com.google.android.gms',
+  'com.android.vending',
+  'com.google.android.gsf',
+];
 
 @Injectable()
 export class ContainerImageGappsPackageService {
@@ -70,18 +75,12 @@ export class ContainerImageGappsPackageService {
       const packageName =
         await this.apkInspection.extractPackageNameFromFile(apkPath);
       if (packageName) packageNames.add(packageName);
-      if (
-        packageNames.has('com.google.android.gms') &&
-        packageNames.has('com.android.vending')
-      ) {
-        break;
-      }
+      if (requiredPackages.every((name) => packageNames.has(name))) break;
     }
 
     const privilegedPermissionXml = await this.findPrivilegedPermissionXml(
       files.filter((path) => path.toLowerCase().endsWith('.xml')),
     );
-    const requiredPackages = ['com.google.android.gms', 'com.android.vending'];
     const missingPackages = requiredPackages.filter(
       (packageName) => !packageNames.has(packageName),
     );
@@ -289,7 +288,8 @@ export class ContainerImageGappsPackageService {
     if (normalized.includes('gmscore')) return 0;
     if (normalized.includes('phonesky') || normalized.includes('vending'))
       return 1;
-    return 2;
+    if (normalized.includes('googleservicesframework')) return 2;
+    return 3;
   }
 
   private async findPrivilegedPermissionXml(paths: string[]) {

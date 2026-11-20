@@ -1,4 +1,4 @@
-import { isMap, isScalar, parseDocument, type ParsedNode } from 'yaml'
+import { isMap, isScalar, type ParsedNode } from 'yaml'
 import { yamlNodeAtPath, yamlPathAt } from './automation-yaml-ast-utils'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
@@ -31,11 +31,12 @@ export const requiredPropertiesOf = (schema: unknown): string[] => {
 export const schemaForCurrentProperty = (
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
+  root: ParsedNode | null,
   propertyName: string,
   commands: AutomationCommand[],
   schema: JsonSchema
 ) => {
-  const schemaContext = schemaContextForCurrentProperty(model, position, propertyName, commands)
+  const schemaContext = schemaContextForCurrentProperty(model, position, root, propertyName, commands)
   if (schemaContext?.propertySchema) return schemaContext.propertySchema
 
   return propertiesOf(schema)[propertyName]
@@ -44,26 +45,22 @@ export const schemaForCurrentProperty = (
 export const schemaContextForCurrentProperty = (
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
+  root: ParsedNode | null,
   propertyName: string,
   commands: AutomationCommand[]
 ): { parentSchema: JsonSchema | null; propertySchema: JsonSchema | null; inputBinding: boolean } | null => {
-  const document = parseDocument(model.getValue(), { prettyErrors: false })
-  const path = ensureCurrentPropertyPath(
-    yamlPathAt(document.contents, Math.max(0, offsetAt(model, position) - 1)),
-    propertyName
-  )
+  const path = ensureCurrentPropertyPath(yamlPathAt(root, Math.max(0, offsetAt(model, position) - 1)), propertyName)
   const withIndex = path.lastIndexOf('with')
   if (withIndex === -1) return null
 
-  const uses =
-    nearestUsesFromPath(document.contents, path.slice(0, withIndex)) ?? workflowContext(model, position)?.uses
+  const uses = nearestUsesFromPath(root, path.slice(0, withIndex)) ?? workflowContext(model, position)?.uses
   const inputSchema = commands.find(command => command.uses === uses)?.inputSchema
   if (!inputSchema) return null
 
   const inputPath = path.slice(withIndex + 1)
   if (inputPath.length === 0) return null
 
-  const node = yamlNodeAtPath(document.contents, path)
+  const node = yamlNodeAtPath(root, path)
   return {
     parentSchema: schemaAtPath(inputSchema, inputPath.slice(0, -1)),
     propertySchema: schemaAtPath(inputSchema, inputPath),
@@ -71,9 +68,13 @@ export const schemaContextForCurrentProperty = (
   }
 }
 
-export const workflowContext = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+export const workflowContext = (
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+  inferBlankIndent = true
+) => {
   let currentIndent = indentation(model.getLineContent(position.lineNumber))
-  if (model.getLineContent(position.lineNumber).trim() === '') {
+  if (inferBlankIndent && model.getLineContent(position.lineNumber).trim() === '') {
     currentIndent = inferredBlankLineIndent(model, position.lineNumber) ?? currentIndent
   }
   let uses: string | null = null
@@ -129,7 +130,7 @@ const schemaAtPath = (schema: unknown, path: Array<string | number>): JsonSchema
   return isRecord(current) ? current : null
 }
 
-const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
+export const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | number>) => {
   const node = yamlNodeAtPath(root, stepPath)
   if (!node || !isMap(node)) return null
 
@@ -137,7 +138,7 @@ const nearestUsesFromPath = (root: ParsedNode | null, stepPath: Array<string | n
   return usesPair?.value && isScalar(usesPair.value) ? String(usesPair.value.value) : null
 }
 
-const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
+export const offsetAt = (model: Monaco.editor.ITextModel, position: Monaco.Position) => {
   if ('getOffsetAt' in model && typeof model.getOffsetAt === 'function') return model.getOffsetAt(position)
 
   let offset = 0

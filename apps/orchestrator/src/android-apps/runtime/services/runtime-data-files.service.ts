@@ -356,13 +356,7 @@ export class RuntimeDataFilesService {
     stagingName: string,
   ) {
     await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(directory)}`,
-      `staging_name=${this.paths.shellQuote(stagingName)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('parent'),
-      '[ -d "$parent" ] || exit 44',
-      'staging_dir="$parent/$staging_name"',
+      ...this.uploadStagingPreamble(directory, stagingName),
       '[ ! -e "$staging_dir" ] && [ ! -L "$staging_dir" ] || exit 43',
       'mkdir -m 700 "$staging_dir" || exit 45',
     ]);
@@ -377,14 +371,8 @@ export class RuntimeDataFilesService {
     overwrite: boolean,
   ) {
     await this.runDataCommand(app, [
-      `candidate=${this.paths.shellQuote(directory)}`,
-      `staging_name=${this.paths.shellQuote(stagingName)}`,
+      ...this.uploadStagingPreamble(directory, stagingName),
       `name=${this.paths.shellQuote(fileName)}`,
-      '[ -L "$candidate" ] && exit 41',
-      'parent=$(realpath "$candidate" 2>/dev/null) || exit 40',
-      this.dataContainmentCheck('parent'),
-      '[ -d "$parent" ] || exit 44',
-      'staging_dir="$parent/$staging_name"',
       '[ -d "$staging_dir" ] && [ ! -L "$staging_dir" ] || exit 44',
       'staged="$staging_dir/$name"',
       '[ -f "$staged" ] && [ ! -L "$staged" ] || exit 44',
@@ -412,6 +400,13 @@ export class RuntimeDataFilesService {
     stagingName: string,
   ) {
     await this.runDataCommand(app, [
+      ...this.uploadStagingPreamble(directory, stagingName),
+      'rm -rf "$staging_dir"',
+    ]).catch(() => undefined);
+  }
+
+  private uploadStagingPreamble(directory: string, stagingName: string) {
+    return [
       `candidate=${this.paths.shellQuote(directory)}`,
       `staging_name=${this.paths.shellQuote(stagingName)}`,
       '[ -L "$candidate" ] && exit 41',
@@ -419,8 +414,7 @@ export class RuntimeDataFilesService {
       this.dataContainmentCheck('parent'),
       '[ -d "$parent" ] || exit 44',
       'staging_dir="$parent/$staging_name"',
-      'rm -rf "$staging_dir"',
-    ]).catch(() => undefined);
+    ];
   }
 
   private dataContainmentCheck(variable: string) {

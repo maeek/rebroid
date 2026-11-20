@@ -186,13 +186,6 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
     );
   }
 
-  async listImages() {
-    return this.engine.read(
-      () => this.engine.docker.listImages(),
-      'List images',
-    );
-  }
-
   async removeImage(image: string, force = false) {
     return this.engine.mutate(
       () => this.engine.docker.getImage(image).remove({ force }),

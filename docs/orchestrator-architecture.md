@@ -230,6 +230,11 @@ logs the setup failure and continues its existing ADB probe.
 
 ## Workflow execution
 
+The Workflows grid reads summaries, nested step counts, and trigger target app IDs from
+`GET /automations/grid`. The trigger picker uses `GET /automations/options` for metadata and
+top-level step counts. The Run picker uses `GET /automations/runnable/options` for IDs and names.
+Workflow detail reads include the full definition and editable YAML.
+
 A queued run reserves its target before preparation. The runner owns enqueue, cancellation, dispatch,
 and abort controllers. The execution service prepares the target, runs steps, records metrics,
 conditionally finalizes the run, and cleans up.
@@ -255,6 +260,9 @@ These are correctness guarantees:
   buffered live events in order and skips duplicates.
 - Step results commit with their events, in execution order, and are assembled for run reads.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
+- The web app reads replay pages through `GET /api/v1/automations/runs/:runId/events/page`. Drafting
+  from an AI run reads the owner-scoped conversation through
+  `GET /api/v1/automations/runs/:runId/events/conversation`.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
 

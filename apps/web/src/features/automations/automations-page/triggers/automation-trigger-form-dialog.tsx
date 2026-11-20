@@ -24,7 +24,7 @@ import { AutomationTriggerTagPicker } from './automation-trigger-tag-picker'
 import { appProfileMode, appProfileName, appSavedProfiles } from './automation-trigger-utils'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation } from '@/shared/contracts/automation'
+import type { AutomationOption } from '@/shared/contracts/automation'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 
 export function AutomationTriggerFormDialog({
@@ -44,7 +44,7 @@ export function AutomationTriggerFormDialog({
   onUpdateTargetApplication
 }: {
   applications: AndroidApplication[]
-  automations: Automation[]
+  automations: AutomationOption[]
   tagSuggestions: AutomationTag[]
   form: TriggerFormState | null
   baseline?: TriggerFormState | null

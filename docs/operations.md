@@ -230,6 +230,12 @@ Patched images start ReDroid's `/init` directly with the base image's boot argum
 image using the same tag, then choose **Runtime actions → Recreate runtime** on the errored app.
 Recreating the runtime keeps the app's profile volumes.
 
+Android 15 and 16 images pair the upstream x86-64 Play Services APK with the
+compatible, checksum-verified Google Services Framework from MindTheGapps' Android 13
+source. If Home is black and ADB logcat reports `Failed to find provider com.google.android.gsf.gservices`,
+rebuild the Google Play image with the same tag, stop the affected app, and choose
+**Runtime actions → Recreate runtime**.
+
 Canceling removes the worker and temporary files while retaining verified cache entries. A patch
 job interrupted by restart is marked failed. A retry can reuse the cache. Under **Package cache**,
 **Clear cache** removes verified packages for the selected Android version. The **Custom builder**

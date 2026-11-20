@@ -1,3 +1,7 @@
+import type {
+  ViewerEffectiveProfile,
+  ViewerStreamMetricsV4,
+} from "@rebroid/android-application-core/viewer-stream";
 import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { codecConfiguration } from "./h264.js";
 import {
@@ -12,7 +16,6 @@ import {
   createVideoFrameRenderer,
   type VideoFrameRenderer,
 } from "./video-frame-renderer.js";
-import type { ViewerEffectiveProfile, ViewerStreamMetricsV4 } from "./types.js";
 
 export type ReconnectCause = {
   initiator: "worker" | "main" | "transport";

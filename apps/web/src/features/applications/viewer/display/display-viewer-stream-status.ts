@@ -1,16 +1,16 @@
-export const viewerStreamStatusMessageType = 'rebroid-viewer-stream-status'
-export const viewerStreamMetricsMessageType = 'rebroid-viewer-stream-metrics-v4'
-
-export type DisplayViewerStreamStatusCode =
-  | 'audio-disabled'
-  | 'reconnecting'
-  | 'first-frame-timeout'
-  | 'video-stalled'
-  | 'session-expired'
-  | 'session-ready'
-  | 'stream-error'
-
-export type DisplayViewerStreamStatusSeverity = 'info' | 'warning' | 'error'
+import {
+  optionalViewerStreamMetricFields,
+  viewerStreamMetricsMessageType,
+  viewerStreamStatusMessageType,
+  type DisplayFrameSize,
+  type DisplaySizePresentation,
+  type FrameAcknowledgementStatus,
+  type ViewerFrameObservation,
+  type ViewerStreamStatusCode,
+  type ViewerStreamStatusSeverity,
+  type ViewerStreamStatusMessage,
+  type ViewerStreamMetricsMessage
+} from '@rebroid/android-application-core/viewer-stream'
 
 export const frameAcknowledgementLabels = {
   'callback-unavailable': 'Frame callback unavailable',
@@ -22,134 +22,9 @@ export const frameAcknowledgementLabels = {
   'channel-buffered': 'Control channel buffered',
   'send-failed': 'Send failed',
   sent: 'Sent'
-} as const
+} as const satisfies Record<FrameAcknowledgementStatus, string>
 
-export type ViewerFrameObservation = { connectAt: number; presentedAt: number }
-
-type DisplayFrameSize = { width: number; height: number }
-type DisplaySizePresentation = {
-  previous: DisplayFrameSize
-  current: DisplayFrameSize
-  elapsedMs?: number
-}
-
-export type DisplayViewerStreamStatus = {
-  code: DisplayViewerStreamStatusCode
-  severity: DisplayViewerStreamStatusSeverity
-  blocking: boolean
-  message: string
-  sessionId?: string
-  startup?: ViewerFrameObservation
-  consumerAttemptId?: string
-  closeCode?: number
-  failureStage?: string
-  transport?: 'webrtc' | 'websocket'
-}
-
-export type DisplayViewerStreamMetrics = {
-  version: 4
-  transport: 'webrtc' | 'websocket'
-  displaySizePresentation?: DisplaySizePresentation
-  sourceFps?: number
-  relayIngressFps?: number
-  bridgeInputFps?: number
-  rtpSentFps?: number
-  receivedFps?: number
-  decodedFps?: number
-  drawnFps?: number
-  presentedFps?: number
-  wireBitrateMbps?: number
-  sourceBitrateMbps?: number
-  sourceFrameSizeP95Bytes?: number
-  keyFrameSizeBytes?: number
-  frameGapP50Ms?: number
-  frameGapP95Ms?: number
-  frameGapP99Ms?: number
-  frameGapMaxMs?: number
-  sourceInterFrameP95Ms?: number
-  networkInterArrivalJitterP95Ms?: number
-  decodeP95Ms?: number
-  decodeToDrawP95Ms?: number
-  liveEdgeAgeP95Ms?: number
-  relayQueueDepthMs?: number
-  relayP95Ms?: number
-  relayP99Ms?: number
-  rtpPacketizationP95Ms?: number
-  rtpWriteP95Ms?: number
-  rtpSendErrors?: number
-  eventLoopUtilization?: number
-  gcPauseP95Ms?: number
-  decoderQueueDepth?: number
-  pendingRenderFrames?: number
-  audioQueueDepthMs?: number
-  webrtcJitterBufferDepthMs?: number
-  jitterBufferTargetMs?: number
-  mseBufferedLeadMs?: number
-  relayDroppedFrames?: number
-  decodeDroppedFrames?: number
-  presentationDroppedFrames?: number
-  audioDroppedFrames?: number
-  freezeCount?: number
-  reconnectCount?: number
-  resyncCount?: number
-  videoResetCount?: number
-  sourceRestartCount?: number
-  roundTripTimeMs?: number
-  packetsLost?: number
-  nackCount?: number
-  pliCount?: number
-  retransmittedPackets?: number
-  retransmittedBytes?: number
-  packetsDiscardedOnSend?: number
-  rtpSendDelayMs?: number
-  mainThreadLongTaskCount?: number
-  highestReceivedSequence?: number
-  highestDecodedSequence?: number
-  highestPresentedSequence?: number
-  presentationSequenceLag?: number
-  width?: number
-  height?: number
-  renderer: 'webrtc-video' | 'chromium-webcodecs' | 'firefox-mse' | 'webcodecs-webgl2-fallback'
-  decoderPreference?: 'hardware' | 'software' | 'native'
-  h264ProfileLevelId?: string
-  negotiatedH264ProfileLevelId?: string
-  sourceAttemptId?: string
-  consumerAttemptId?: string
-  sourceCodecGeneration?: number
-  videoResetGeneration?: number
-  videoResetCompletedGeneration?: number
-  videoResetElapsedMs?: number
-  receivedFrames?: number
-  decodedFrames?: number
-  presentedFrames?: number
-  receiverPacketsLost?: number
-  receiverNackCount?: number
-  receiverPliCount?: number
-  frameAcknowledgement?: keyof typeof frameAcknowledgementLabels
-  frameAcknowledgementsSent?: number
-  consumerGeneration?: number
-  effectiveProfile: {
-    transport: 'webrtc' | 'websocket'
-    codec: string
-    maxSize: number
-    maxFps: number
-    bitrate: number
-    iFrameInterval: number
-    audio: boolean
-    control?: boolean
-    tunnel?: string
-    actualEncoder?: string
-    width?: number
-    height?: number
-    pixelRate?: number
-    h264ProfileLevelId?: string
-    negotiatedH264ProfileLevelId?: string
-    sourceAttemptId?: string
-  }
-  collectedAt: number
-}
-
-const statusCodes = new Set<DisplayViewerStreamStatusCode>([
+const statusCodes = new Set<ViewerStreamStatusCode>([
   'audio-disabled',
   'reconnecting',
   'first-frame-timeout',
@@ -159,7 +34,7 @@ const statusCodes = new Set<DisplayViewerStreamStatusCode>([
   'stream-error'
 ])
 
-const statusSeverities = new Set<DisplayViewerStreamStatusSeverity>(['info', 'warning', 'error'])
+const statusSeverities = new Set<ViewerStreamStatusSeverity>(['info', 'warning', 'error'])
 
 const isDisplayFrameSize = (value: unknown): value is DisplayFrameSize => {
   if (!value || typeof value !== 'object') return false
@@ -199,7 +74,7 @@ const isViewerFrameObservation = (value: unknown): value is ViewerFrameObservati
   )
 }
 
-export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayViewerStreamStatus => {
+export const isDisplayViewerStreamStatus = (value: unknown): value is ViewerStreamStatusMessage => {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -208,9 +83,9 @@ export const isDisplayViewerStreamStatus = (value: unknown): value is DisplayVie
   return (
     record.type === viewerStreamStatusMessageType &&
     typeof record.code === 'string' &&
-    statusCodes.has(record.code as DisplayViewerStreamStatusCode) &&
+    statusCodes.has(record.code as ViewerStreamStatusCode) &&
     typeof record.severity === 'string' &&
-    statusSeverities.has(record.severity as DisplayViewerStreamStatusSeverity) &&
+    statusSeverities.has(record.severity as ViewerStreamStatusSeverity) &&
     typeof record.blocking === 'boolean' &&
     typeof record.message === 'string' &&
     ((record.code !== 'session-expired' && record.code !== 'session-ready') ||
@@ -261,7 +136,7 @@ const isEffectiveProfile = (value: unknown) => {
   )
 }
 
-export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayViewerStreamMetrics => {
+export const isDisplayViewerStreamMetrics = (value: unknown): value is ViewerStreamMetricsMessage => {
   if (!value || typeof value !== 'object') {
     return false
   }
@@ -273,65 +148,7 @@ export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayVi
     (record.transport === 'webrtc' || record.transport === 'websocket') &&
     record.fps === undefined &&
     record.latencyMs === undefined &&
-    optionalFiniteNumber(record.sourceFps) &&
-    optionalFiniteNumber(record.relayIngressFps) &&
-    optionalFiniteNumber(record.bridgeInputFps) &&
-    optionalFiniteNumber(record.rtpSentFps) &&
-    optionalFiniteNumber(record.receivedFps) &&
-    optionalFiniteNumber(record.decodedFps) &&
-    optionalFiniteNumber(record.drawnFps) &&
-    optionalFiniteNumber(record.presentedFps) &&
-    optionalFiniteNumber(record.wireBitrateMbps) &&
-    optionalFiniteNumber(record.sourceBitrateMbps) &&
-    optionalFiniteNumber(record.sourceFrameSizeP95Bytes) &&
-    optionalFiniteNumber(record.keyFrameSizeBytes) &&
-    optionalFiniteNumber(record.frameGapP50Ms) &&
-    optionalFiniteNumber(record.frameGapP95Ms) &&
-    optionalFiniteNumber(record.frameGapP99Ms) &&
-    optionalFiniteNumber(record.frameGapMaxMs) &&
-    optionalFiniteNumber(record.sourceInterFrameP95Ms) &&
-    optionalFiniteNumber(record.networkInterArrivalJitterP95Ms) &&
-    optionalFiniteNumber(record.decodeP95Ms) &&
-    optionalFiniteNumber(record.decodeToDrawP95Ms) &&
-    optionalFiniteNumber(record.liveEdgeAgeP95Ms) &&
-    optionalFiniteNumber(record.relayQueueDepthMs) &&
-    optionalFiniteNumber(record.relayP95Ms) &&
-    optionalFiniteNumber(record.relayP99Ms) &&
-    optionalFiniteNumber(record.rtpPacketizationP95Ms) &&
-    optionalFiniteNumber(record.rtpWriteP95Ms) &&
-    optionalFiniteNumber(record.rtpSendErrors) &&
-    optionalFiniteNumber(record.eventLoopUtilization) &&
-    optionalFiniteNumber(record.gcPauseP95Ms) &&
-    optionalFiniteNumber(record.decoderQueueDepth) &&
-    optionalFiniteNumber(record.pendingRenderFrames) &&
-    optionalFiniteNumber(record.audioQueueDepthMs) &&
-    optionalFiniteNumber(record.webrtcJitterBufferDepthMs) &&
-    optionalFiniteNumber(record.jitterBufferTargetMs) &&
-    optionalFiniteNumber(record.mseBufferedLeadMs) &&
-    optionalFiniteNumber(record.relayDroppedFrames) &&
-    optionalFiniteNumber(record.decodeDroppedFrames) &&
-    optionalFiniteNumber(record.presentationDroppedFrames) &&
-    optionalFiniteNumber(record.audioDroppedFrames) &&
-    optionalFiniteNumber(record.freezeCount) &&
-    optionalFiniteNumber(record.reconnectCount) &&
-    optionalFiniteNumber(record.resyncCount) &&
-    optionalFiniteNumber(record.videoResetCount) &&
-    optionalFiniteNumber(record.sourceRestartCount) &&
-    optionalFiniteNumber(record.roundTripTimeMs) &&
-    optionalFiniteNumber(record.packetsLost) &&
-    optionalFiniteNumber(record.nackCount) &&
-    optionalFiniteNumber(record.pliCount) &&
-    optionalFiniteNumber(record.retransmittedPackets) &&
-    optionalFiniteNumber(record.retransmittedBytes) &&
-    optionalFiniteNumber(record.packetsDiscardedOnSend) &&
-    optionalFiniteNumber(record.rtpSendDelayMs) &&
-    optionalFiniteNumber(record.mainThreadLongTaskCount) &&
-    optionalFiniteNumber(record.highestReceivedSequence) &&
-    optionalFiniteNumber(record.highestDecodedSequence) &&
-    optionalFiniteNumber(record.highestPresentedSequence) &&
-    optionalFiniteNumber(record.presentationSequenceLag) &&
-    optionalFiniteNumber(record.width) &&
-    optionalFiniteNumber(record.height) &&
+    optionalViewerStreamMetricFields.every(field => optionalFiniteNumber(record[field])) &&
     (record.displaySizePresentation === undefined || isDisplaySizePresentation(record.displaySizePresentation)) &&
     (record.renderer === 'webrtc-video' ||
       record.renderer === 'chromium-webcodecs' ||
@@ -345,21 +162,9 @@ export const isDisplayViewerStreamMetrics = (value: unknown): value is DisplayVi
     (record.negotiatedH264ProfileLevelId === undefined || typeof record.negotiatedH264ProfileLevelId === 'string') &&
     (record.sourceAttemptId === undefined || typeof record.sourceAttemptId === 'string') &&
     (record.consumerAttemptId === undefined || typeof record.consumerAttemptId === 'string') &&
-    optionalFiniteNumber(record.sourceCodecGeneration) &&
-    optionalFiniteNumber(record.videoResetGeneration) &&
-    optionalFiniteNumber(record.videoResetCompletedGeneration) &&
-    optionalFiniteNumber(record.videoResetElapsedMs) &&
-    optionalFiniteNumber(record.receivedFrames) &&
-    optionalFiniteNumber(record.decodedFrames) &&
-    optionalFiniteNumber(record.presentedFrames) &&
-    optionalFiniteNumber(record.receiverPacketsLost) &&
-    optionalFiniteNumber(record.receiverNackCount) &&
-    optionalFiniteNumber(record.receiverPliCount) &&
     (record.frameAcknowledgement === undefined ||
       (typeof record.frameAcknowledgement === 'string' &&
         Object.hasOwn(frameAcknowledgementLabels, record.frameAcknowledgement))) &&
-    optionalFiniteNumber(record.frameAcknowledgementsSent) &&
-    optionalFiniteNumber(record.consumerGeneration) &&
     isEffectiveProfile(record.effectiveProfile) &&
     typeof record.collectedAt === 'number' &&
     Number.isFinite(record.collectedAt)

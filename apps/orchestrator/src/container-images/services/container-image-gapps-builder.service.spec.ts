@@ -30,7 +30,7 @@ describe('ContainerImageGappsBuilderService', () => {
           signal: expect.any(AbortSignal),
         }),
       );
-      expect(build.jobs.appendLog).toHaveBeenCalledWith(
+      expect(build.jobs.recordProgress).toHaveBeenCalledWith(
         'job-id',
         'Installing payload',
       );
@@ -74,7 +74,7 @@ const runQueuedBuild = async (
     baseImage,
   };
   const jobs = {
-    failInterruptedGappsJobs: jest.fn(),
+    failInterruptedJobs: jest.fn(),
     findNextQueuedGappsJob: jest
       .fn()
       .mockResolvedValueOnce(job)
@@ -83,6 +83,7 @@ const runQueuedBuild = async (
     markRunning: jest.fn().mockResolvedValue({ ...job, status: 'running' }),
     updateGappsDetails: jest.fn(),
     appendLog: jest.fn(),
+    recordProgress: jest.fn(),
     markSucceeded: jest.fn(),
     markFailed: jest.fn(),
   };
