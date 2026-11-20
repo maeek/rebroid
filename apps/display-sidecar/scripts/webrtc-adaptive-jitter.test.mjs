@@ -300,3 +300,52 @@ test("reset diagnostics correlate completion and discard stale source/generation
   assert.equal(restarted.videoResetGeneration, undefined);
   assert.equal(applyVideoRecoveryStatus(restarted, completion), restarted);
 });
+
+test("control relay updates require summary fields and preserve the active source metadata", async () => {
+  const { applyControlRelayMetrics } =
+    await import("../dist/modules/display/viewer/assets/relay-metrics.js");
+  const { applyVideoRecoveryStatus } =
+    await import("../dist/modules/display/viewer/assets/video-recovery-metrics.js");
+  const pending = {
+    sourceAttemptId: "source-a",
+    sourceFps: 60,
+    droppedFrames: 1,
+    queueDepthMs: 2,
+    bridgePliCount: 6,
+    videoResetGeneration: 2,
+    sourceVideoFrames: 100,
+    relayP95Ms: 3,
+  };
+  assert.equal(applyControlRelayMetrics(pending, { sourceFps: 15 }), pending);
+
+  const relay = applyControlRelayMetrics(pending, {
+    sourceFps: "30",
+    droppedFrames: 2,
+    queueDepthMs: null,
+    sourceVideoFrames: "200",
+    sourceAttemptId: "other-source",
+  });
+  assert.equal(relay.sourceFps, 30);
+  assert.equal(relay.droppedFrames, 2);
+  assert.equal(relay.queueDepthMs, 0);
+  assert.equal(relay.sourceVideoFrames, 200);
+  assert.equal(relay.relayP95Ms, undefined);
+  assert.equal(relay.sourceAttemptId, "source-a");
+  assert.equal(relay.videoResetGeneration, 2);
+  assert.equal(relay.bridgePliCount, 6);
+
+  const restarted = applyVideoRecoveryStatus(relay, {
+    type: "ready",
+    sourceAttemptId: "source-b",
+  });
+  assert.equal(restarted.sourceFps, 0);
+  assert.equal(restarted.sourceVideoFrames, undefined);
+  const next = applyControlRelayMetrics(restarted, {
+    sourceFps: 50,
+    droppedFrames: 0,
+    queueDepthMs: 1,
+  });
+  assert.equal(next.sourceAttemptId, "source-b");
+  assert.equal(next.videoResetGeneration, undefined);
+  assert.equal(next.bridgePliCount, 6);
+});

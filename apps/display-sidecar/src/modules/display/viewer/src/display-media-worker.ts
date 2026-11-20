@@ -2,6 +2,7 @@ import type {
   ViewerEffectiveProfile,
   ViewerStreamMetricsV4,
 } from "@rebroid/android-application-core/viewer-stream";
+import { DisplayMediaMetrics } from "./display-media-metrics.js";
 import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { codecConfiguration } from "./h264.js";
 import {
@@ -11,6 +12,7 @@ import {
 } from "./fragmented-mp4.js";
 import { parseViewerMediaFrame, type ViewerMediaFrame } from "./media-frame.js";
 import { MediaIngressQueue } from "./media-ingress-queue.js";
+import { parseRelayMetrics } from "./relay-metrics.js";
 import { VideoProgressWatchdog } from "./video-progress-watchdog.js";
 import {
   createVideoFrameRenderer,
@@ -167,54 +169,22 @@ let pendingFrame: {
 } | null = null;
 let lastSequences = new Map<string, number>();
 let lastResyncRequestAt = 0;
-let latestSourcePtsUs = 0;
 let audioPlayheadUs: number | null = null;
 let audioQueueDepthMs = 0;
 let audioDiscontinuityPending = false;
 let sourceAttemptId: string | undefined;
 
-let bytes = 0;
-let receivedFrames = 0;
-let decodedFrames = 0;
-let drawnFrames = 0;
-let presentedFrames = 0;
+const intervalMetrics = new DisplayMediaMetrics(performance.now());
 const displaySizePresentation = new DisplaySizePresentationTracker();
-let lastBytes = 0;
-let lastReceivedFrames = 0;
-let lastDecodedFrames = 0;
-let lastDrawnFrames = 0;
-let lastPresentedFrames = 0;
-let lastMetricsAt = performance.now();
-let lastArrivalAt: number | null = null;
-let lastReceivedPtsUs: number | null = null;
-let lastDrawAt: number | null = null;
-let sourceAdvancedSinceDraw = false;
-let relaySourceFps: number | undefined;
-let sourceBitrateMbps: number | undefined;
-let sourceFrameSizeP95Bytes: number | undefined;
-let keyFrameSizeBytes: number | undefined;
-let relaySourceInterFrameP95Ms: number | undefined;
-let relayQueueDepthMs: number | undefined;
-let relayP95Ms: number | undefined;
-let relayP99Ms: number | undefined;
-let eventLoopUtilization: number | undefined;
-let gcPauseP95Ms: number | undefined;
-let relayDroppedFrames = 0;
+let relayMetrics = parseRelayMetrics({});
 let decodeDroppedFrames = 0;
 let presentationDroppedFrames = 0;
 let audioDroppedFrames = 0;
 let audioWorkletDroppedFrames = 0;
-let freezeCount = 0;
 let reconnectCount = 0;
 let resyncCount = 0;
 let videoResetCount = 0;
 let sourceRestartCount = 0;
-let sourceGapsMs: number[] = [];
-let networkJitterMs: number[] = [];
-let decodeTimesMs: number[] = [];
-let decodeToDrawMs: number[] = [];
-let liveEdgeAgesMs: number[] = [];
-let frameGapsMs: number[] = [];
 
 function postMessage(message: WorkerOutput, transfer?: Transferable[]): void {
   scope.postMessage({ ...message, demandEpoch }, transfer);
@@ -230,21 +200,6 @@ let mp4FlushTimer = 0;
 let highestReceivedSequence: number | undefined;
 let highestDecodedSequence: number | undefined;
 let highestPresentedSequence: number | undefined;
-
-function percentile(
-  values: number[],
-  percentileValue: number,
-): number | undefined {
-  if (values.length === 0) {
-    return undefined;
-  }
-  const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.max(
-    0,
-    Math.min(sorted.length - 1, Math.ceil(sorted.length * percentileValue) - 1),
-  );
-  return sorted[index];
-}
 
 function sequenceLag(
   newest: number | undefined,
@@ -349,10 +304,7 @@ async function configureVideo(
       const sequence = decodeSequences.get(frame.timestamp);
       decodeStartedAt.delete(frame.timestamp);
       decodeSequences.delete(frame.timestamp);
-      if (startedAt !== undefined) {
-        decodeTimesMs.push(decodedAt - startedAt);
-      }
-      decodedFrames += 1;
+      intervalMetrics.recordVideoDecode(decodedAt, startedAt);
       highestDecodedSequence = sequence ?? highestDecodedSequence;
       if (
         audioPlayheadUs !== null &&
@@ -526,21 +478,6 @@ function receiveVideoConfiguration(frame: ViewerMediaFrame): void {
   }
 }
 
-function recordVideoArrival(frame: ViewerMediaFrame, arrivalAt: number): void {
-  receivedFrames += 1;
-  highestReceivedSequence = frame.sequence;
-  latestSourcePtsUs = Math.max(latestSourcePtsUs, frame.timestampUs);
-  sourceAdvancedSinceDraw = true;
-  if (lastArrivalAt !== null && lastReceivedPtsUs !== null) {
-    const sourceGapMs =
-      Math.max(0, frame.timestampUs - lastReceivedPtsUs) / 1_000;
-    sourceGapsMs.push(sourceGapMs);
-    networkJitterMs.push(Math.abs(arrivalAt - lastArrivalAt - sourceGapMs));
-  }
-  lastArrivalAt = arrivalAt;
-  lastReceivedPtsUs = frame.timestampUs;
-}
-
 async function decodeVideo(
   frame: ViewerMediaFrame,
   expiresAt: number,
@@ -646,23 +583,10 @@ function drawPendingFrame(): void {
     { width: frameWidth, height: frameHeight },
     performance.timeOrigin + drawnAt,
   );
-  decodeToDrawMs.push(drawnAt - pending.decodedAt);
-  liveEdgeAgesMs.push(
-    Math.max(0, latestSourcePtsUs - pending.frame.timestamp) / 1_000,
-  );
+  const timestampUs = pending.frame.timestamp;
   pending.frame.close();
-  drawnFrames += 1;
-  presentedFrames += 1;
+  intervalMetrics.recordVideoDraw(drawnAt, pending.decodedAt, timestampUs);
   highestPresentedSequence = pending.sequence;
-  if (sourceAdvancedSinceDraw && lastDrawAt !== null) {
-    const gap = drawnAt - lastDrawAt;
-    frameGapsMs.push(gap);
-    if (gap > 100) {
-      freezeCount += 1;
-    }
-  }
-  sourceAdvancedSinceDraw = false;
-  lastDrawAt = drawnAt;
   if (!hasFrameInGeneration) {
     hasFrame = true;
     reconnectAttempt = 0;
@@ -860,7 +784,7 @@ function handleBinary(
   data: ArrayBuffer,
   connection: NonNullable<typeof ingress>,
 ): void {
-  bytes += data.byteLength;
+  intervalMetrics.recordWireBytes(data.byteLength);
   const frame = parseViewerMediaFrame(data);
   const contiguous = validateSequence(frame);
   const receivedAt = performance.now();
@@ -870,7 +794,8 @@ function handleBinary(
       receiveVideoConfiguration(frame);
       return;
     }
-    recordVideoArrival(frame, receivedAt);
+    intervalMetrics.recordVideoArrival(receivedAt, frame.timestampUs);
+    highestReceivedSequence = frame.sequence;
     if (frame.discontinuity) {
       if (!frame.keyFrame || !cachedConfiguration) {
         localVideoRecovery("rbd1-discontinuity");
@@ -972,19 +897,12 @@ function handleText(text: string): void {
     return;
   }
   if (payload.type === "relay-metrics" && payload.metrics) {
-    const metrics = payload.metrics as Record<string, unknown>;
-    relaySourceFps = numberField(metrics, "sourceFps");
-    if (visible) videoProgress.observeSource(relaySourceFps, performance.now());
-    sourceBitrateMbps = numberField(metrics, "sourceBitrateMbps");
-    sourceFrameSizeP95Bytes = numberField(metrics, "sourceFrameSizeP95Bytes");
-    keyFrameSizeBytes = numberField(metrics, "keyFrameSizeBytes");
-    relaySourceInterFrameP95Ms = numberField(metrics, "sourceInterFrameP95Ms");
-    relayQueueDepthMs = numberField(metrics, "queueDepthMs");
-    relayP95Ms = numberField(metrics, "relayP95Ms");
-    relayP99Ms = numberField(metrics, "relayP99Ms");
-    eventLoopUtilization = numberField(metrics, "eventLoopUtilization");
-    gcPauseP95Ms = numberField(metrics, "gcPauseP95Ms");
-    relayDroppedFrames = numberField(metrics, "droppedFrames") ?? 0;
+    relayMetrics = parseRelayMetrics(
+      payload.metrics as Record<string, unknown>,
+    );
+    if (visible) {
+      videoProgress.observeSource(relayMetrics.sourceFps, performance.now());
+    }
     return;
   }
   if (payload.type === "ready") {
@@ -1079,7 +997,7 @@ function markAlive(): void {
 
 function resetConsumerState(): void {
   videoProgress.reset();
-  relaySourceFps = undefined;
+  relayMetrics.sourceFps = undefined;
   clearFirstFrameTimer();
   clearHeartbeatTimer();
   ingress?.close();
@@ -1096,9 +1014,7 @@ function resetConsumerState(): void {
   hasFrameInGeneration = false;
   lastSequences = new Map();
   lastResyncRequestAt = 0;
-  lastArrivalAt = null;
-  lastReceivedPtsUs = null;
-  latestSourcePtsUs = 0;
+  intervalMetrics.resetArrivalTiming();
   highestReceivedSequence = undefined;
   highestDecodedSequence = undefined;
   highestPresentedSequence = undefined;
@@ -1257,7 +1173,7 @@ function startConsumer(): void {
     return;
   }
   if (!metricsTimer) {
-    lastMetricsAt = performance.now();
+    intervalMetrics.startSampling(performance.now());
     metricsTimer = setInterval(
       emitMetrics,
       metricsIntervalMs,
@@ -1315,8 +1231,6 @@ function emitMetrics(): void {
     return;
   }
   const now = performance.now();
-  const elapsedSeconds = Math.max((now - lastMetricsAt) / 1_000, 0.001);
-  const gaps = frameGapsMs;
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(
       JSON.stringify({
@@ -1328,45 +1242,34 @@ function emitMetrics(): void {
       }),
     );
   }
+  const sample = intervalMetrics.sample(now);
+  const {
+    sourceFps,
+    droppedFrames,
+    queueDepthMs,
+    sourceInterFrameP95Ms,
+    ...relayDiagnostics
+  } = relayMetrics;
   postMessage({
     type: "metrics",
     metrics: {
       version: 4,
       transport: "websocket",
       displaySizePresentation: displaySizePresentation.snapshot(),
-      sourceFps: relaySourceFps,
-      relayIngressFps: relaySourceFps,
-      receivedFps: (receivedFrames - lastReceivedFrames) / elapsedSeconds,
-      decodedFps: (decodedFrames - lastDecodedFrames) / elapsedSeconds,
-      drawnFps: (drawnFrames - lastDrawnFrames) / elapsedSeconds,
-      presentedFps: (presentedFrames - lastPresentedFrames) / elapsedSeconds,
-      wireBitrateMbps: ((bytes - lastBytes) * 8) / elapsedSeconds / 1_000_000,
-      sourceBitrateMbps,
-      sourceFrameSizeP95Bytes,
-      keyFrameSizeBytes,
-      frameGapP50Ms: percentile(gaps, 0.5),
-      frameGapP95Ms: percentile(gaps, 0.95),
-      frameGapP99Ms: percentile(gaps, 0.99),
-      frameGapMaxMs: gaps.length > 0 ? Math.max(...gaps) : undefined,
+      sourceFps,
+      relayIngressFps: sourceFps,
+      ...sample,
+      ...relayDiagnostics,
       sourceInterFrameP95Ms:
-        relaySourceInterFrameP95Ms ?? percentile(sourceGapsMs, 0.95),
-      networkInterArrivalJitterP95Ms: percentile(networkJitterMs, 0.95),
-      decodeP95Ms: percentile(decodeTimesMs, 0.95),
-      decodeToDrawP95Ms: percentile(decodeToDrawMs, 0.95),
-      liveEdgeAgeP95Ms: percentile(liveEdgeAgesMs, 0.95),
-      relayQueueDepthMs,
-      relayP95Ms,
-      relayP99Ms,
-      eventLoopUtilization,
-      gcPauseP95Ms,
+        sourceInterFrameP95Ms ?? sample.sourceInterFrameP95Ms,
+      relayQueueDepthMs: queueDepthMs,
       decoderQueueDepth: decoder?.decodeQueueSize ?? 0,
       pendingRenderFrames: pendingFrame ? 1 : 0,
       audioQueueDepthMs,
-      relayDroppedFrames,
+      relayDroppedFrames: droppedFrames ?? 0,
       decodeDroppedFrames,
       presentationDroppedFrames,
       audioDroppedFrames: audioDroppedFrames + audioWorkletDroppedFrames,
-      freezeCount,
       reconnectCount,
       resyncCount,
       videoResetCount,
@@ -1392,18 +1295,7 @@ function emitMetrics(): void {
       collectedAt: Date.now(),
     },
   });
-  lastBytes = bytes;
-  lastReceivedFrames = receivedFrames;
-  lastDecodedFrames = decodedFrames;
-  lastDrawnFrames = drawnFrames;
-  lastPresentedFrames = presentedFrames;
-  lastMetricsAt = now;
-  sourceGapsMs = [];
-  networkJitterMs = [];
-  decodeTimesMs = [];
-  decodeToDrawMs = [];
-  liveEdgeAgesMs = [];
-  frameGapsMs = [];
+  intervalMetrics.finishSample(now);
 }
 
 function shutdown(): void {

@@ -3,6 +3,7 @@ import { getViewerElements, readViewerConfig } from "./config.js";
 import { createControlChannel } from "./control-channel.js";
 import { createDisplayStream } from "./display-stream.js";
 import { createPageLifecycle } from "./page-lifecycle.js";
+import { applyControlRelayMetrics } from "./relay-metrics.js";
 import { setupTouchInput } from "./touch-input.js";
 import {
   emitViewerStreamStatus,
@@ -53,57 +54,10 @@ const handleSidecarMessage = (message: Record<string, unknown>) => {
     return;
   }
   if (message.type === "relay-metrics" && message.metrics) {
-    const metrics = message.metrics as Record<string, unknown>;
-    const sourceFps = Number(metrics.sourceFps);
-    const droppedFrames = Number(metrics.droppedFrames);
-    const queueDepthMs = Number(metrics.queueDepthMs);
-    if ([sourceFps, droppedFrames, queueDepthMs].every(Number.isFinite)) {
-      const optionalNumber = (key: string) => {
-        const value = Number(metrics[key]);
-        return Number.isFinite(value) ? value : undefined;
-      };
-      latestRelayMetrics = {
-        sourceFps,
-        sourceVideoFrames: optionalNumber("sourceVideoFrames"),
-        droppedFrames,
-        queueDepthMs,
-        sourceBitrateMbps: optionalNumber("sourceBitrateMbps"),
-        sourceFrameSizeP95Bytes: optionalNumber("sourceFrameSizeP95Bytes"),
-        keyFrameSizeBytes: optionalNumber("keyFrameSizeBytes"),
-        sourceInterFrameP95Ms: optionalNumber("sourceInterFrameP95Ms"),
-        relayP95Ms: optionalNumber("relayP95Ms"),
-        relayP99Ms: optionalNumber("relayP99Ms"),
-        eventLoopUtilization: optionalNumber("eventLoopUtilization"),
-        gcPauseP95Ms: optionalNumber("gcPauseP95Ms"),
-        bridgeNackCount: latestRelayMetrics?.bridgeNackCount,
-        bridgePliCount: latestRelayMetrics?.bridgePliCount,
-        bridgePacketsLost: latestRelayMetrics?.bridgePacketsLost,
-        bridgeRoundTripTimeMs: latestRelayMetrics?.bridgeRoundTripTimeMs,
-        retransmittedPackets: latestRelayMetrics?.retransmittedPackets,
-        retransmittedBytes: latestRelayMetrics?.retransmittedBytes,
-        packetsDiscardedOnSend: latestRelayMetrics?.packetsDiscardedOnSend,
-        rtpSendDelayMs: latestRelayMetrics?.rtpSendDelayMs,
-        bridgeInputFps: latestRelayMetrics?.bridgeInputFps,
-        rtpSentFps: latestRelayMetrics?.rtpSentFps,
-        rtpPacketizationP95Ms: latestRelayMetrics?.rtpPacketizationP95Ms,
-        rtpWriteP95Ms: latestRelayMetrics?.rtpWriteP95Ms,
-        rtpSendErrors: latestRelayMetrics?.rtpSendErrors,
-        actualEncoder: latestRelayMetrics?.actualEncoder,
-        width: latestRelayMetrics?.width,
-        height: latestRelayMetrics?.height,
-        h264ProfileLevelId: latestRelayMetrics?.h264ProfileLevelId,
-        negotiatedH264ProfileLevelId:
-          latestRelayMetrics?.negotiatedH264ProfileLevelId,
-        sourceAttemptId: latestRelayMetrics?.sourceAttemptId,
-        consumerAttemptId: latestRelayMetrics?.consumerAttemptId,
-        sourceCodecGeneration: latestRelayMetrics?.sourceCodecGeneration,
-        videoResetGeneration: latestRelayMetrics?.videoResetGeneration,
-        videoResetCompletedGeneration:
-          latestRelayMetrics?.videoResetCompletedGeneration,
-        videoResetElapsedMs: latestRelayMetrics?.videoResetElapsedMs,
-        videoResetCount: latestRelayMetrics?.videoResetCount,
-      };
-    }
+    latestRelayMetrics = applyControlRelayMetrics(
+      latestRelayMetrics,
+      message.metrics as Record<string, unknown>,
+    );
     return;
   }
   if (message.type === "webrtc-bridge-metrics" && message.metrics) {

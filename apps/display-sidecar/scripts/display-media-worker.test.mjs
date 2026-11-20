@@ -172,6 +172,135 @@ function sendFrame(socket, sequence, data, flags = {}) {
   });
 }
 
+test("WebSocket accepts partial relay metrics and gets the source attempt from ready messages", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const { socket, posted } = await startWebCodecsWorker(t, "relay-metrics", {
+    effectiveProfile: { transport: "websocket", codec: "h264", maxFps: 60 },
+  });
+  const sendStatus = (payload) =>
+    socket.emit("message", { data: JSON.stringify(payload) });
+  const sample = () => {
+    t.mock.timers.tick(1_000);
+    return posted.findLast(({ type }) => type === "metrics").metrics;
+  };
+
+  sendStatus({
+    type: "ready",
+    sourceAttemptId: "source-a",
+    effectiveProfile: {},
+  });
+  sendStatus({
+    type: "relay-metrics",
+    metrics: {
+      sourceFps: 60,
+      droppedFrames: 4,
+      queueDepthMs: 11,
+      relayP95Ms: 12,
+    },
+  });
+  const first = sample();
+  assert.equal(first.sourceAttemptId, "source-a");
+  assert.equal(first.relayDroppedFrames, 4);
+  assert.equal(first.relayQueueDepthMs, 11);
+  assert.equal(first.relayP95Ms, 12);
+
+  sendStatus({
+    type: "ready",
+    sourceAttemptId: "source-b",
+    effectiveProfile: {},
+  });
+  const changedSource = sample();
+  assert.equal(changedSource.sourceAttemptId, "source-b");
+  assert.equal(changedSource.sourceFps, 60);
+
+  sendStatus({
+    type: "relay-metrics",
+    sourceAttemptId: "source-a",
+    metrics: { sourceFps: 30, droppedFrames: "8", relayP95Ms: null },
+  });
+  const partial = sample();
+  assert.equal(partial.sourceAttemptId, "source-b");
+  assert.equal(partial.sourceFps, 30);
+  assert.equal(partial.relayDroppedFrames, 0);
+  assert.equal(partial.relayQueueDepthMs, undefined);
+  assert.equal(partial.relayP95Ms, undefined);
+
+  sendStatus({ type: "relay-metrics", metrics: { sourceFps: "30" } });
+  assert.equal(sample().sourceFps, undefined);
+});
+
+test("worker samples interval rates across reconnect and resets arrival timing", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+  let now = 100;
+  t.mock.method(performance, "now", () => now);
+  globalThis.VideoDecoder = FakeVideoDecoder;
+  const animationFrames = [];
+  const { socket, posted } = await startWebCodecsWorker(t, "interval-metrics", {
+    effectiveProfile: { transport: "websocket", codec: "h264", maxFps: 60 },
+    requestAnimationFrame(callback) {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    },
+  });
+  const draw = async (connection, sequence, key, at) => {
+    now = at;
+    sendFrame(connection, sequence, key ? keyFrame : deltaFrame, { key });
+    await flush();
+    animationFrames.splice(0).forEach((callback) => callback(now));
+  };
+  const advance = (at, durationMs) => {
+    now = at;
+    t.mock.timers.tick(durationMs);
+  };
+  const metrics = () =>
+    posted.findLast(({ type }) => type === "metrics").metrics;
+  const assertActiveInterval = () => {
+    const sample = metrics();
+    const wireBytes =
+      3 * 24 + configuration.length + keyFrame.length + deltaFrame.length;
+    assert.equal(sample.wireBitrateMbps, (wireBytes * 8) / 1_000_000);
+    assert.equal(sample.receivedFps, 2);
+    assert.equal(sample.decodedFps, 2);
+    assert.equal(sample.drawnFps, 2);
+    assert.equal(sample.presentedFps, 2);
+    assert.equal(sample.sourceInterFrameP95Ms, 17);
+    assert.equal(sample.networkInterArrivalJitterP95Ms, 3);
+  };
+
+  sendFrame(socket, 0, configuration, { config: true });
+  await draw(socket, 1, true, 120);
+  await draw(socket, 2, false, 140);
+  advance(1_100, 1_000);
+  assertActiveInterval();
+  assert.equal(metrics().frameGapP95Ms, 20);
+  assert.equal(metrics().freezeCount, 0);
+
+  socket.emit("close", { code: 1006 });
+  assert.equal(
+    posted.findLast(({ type }) => type === "reconnecting").delayMs,
+    300,
+  );
+  advance(1_400, 300);
+  const replacement = FakeWebSocket.instances.at(-1);
+  assert.notEqual(replacement, socket);
+  replacement.open();
+  sendFrame(replacement, 100, configuration, { config: true });
+  await draw(replacement, 101, true, 1_410);
+  await draw(replacement, 102, false, 1_430);
+  advance(2_100, 700);
+  assertActiveInterval();
+  assert.equal(metrics().highestPresentedSequence, 102);
+  assert.equal(metrics().freezeCount, 1);
+
+  advance(3_100, 1_000);
+  assert.equal(metrics().wireBitrateMbps, 0);
+  assert.equal(metrics().receivedFps, 0);
+  assert.equal(metrics().sourceInterFrameP95Ms, undefined);
+  assert.equal(metrics().networkInterArrivalJitterP95Ms, undefined);
+  assert.equal(metrics().frameGapP95Ms, undefined);
+  assert.equal(metrics().freezeCount, 1);
+});
+
 test("WebCodecs presents a new size on the same socket and fences a retired decoder", async (t) => {
   t.mock.timers.enable({ apis: ["setInterval"] });
   let now = 100;

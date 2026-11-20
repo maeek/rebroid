@@ -9,6 +9,11 @@ import type {
 import { configuredStreamProfile } from "./config.js";
 import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { WebrtcIdlePresentation } from "./webrtc-idle-presentation.js";
+import {
+  calculateWebrtcIntervalMetrics,
+  readWebrtcReceiverStats,
+  type WebrtcIntervalSample,
+} from "./webrtc-receiver-metrics.js";
 import type { ViewerPresentation } from "./viewer-presentation.js";
 import {
   emitViewerSessionExpired,
@@ -428,34 +433,6 @@ async function playVideoWithAutoplayFallback(
   }
 }
 
-function finiteNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-function metricReportNumber(report: RTCStats, key: string): number | undefined {
-  return finiteNumber((report as unknown as Record<string, unknown>)[key]);
-}
-
-function isVideoInboundReport(report: RTCStats): boolean {
-  const record = report as unknown as Record<string, unknown>;
-  return (
-    report.type === "inbound-rtp" &&
-    record.kind === "video" &&
-    record.isRemote !== true
-  );
-}
-
-function isRoundTripReport(report: RTCStats): boolean {
-  const record = report as unknown as Record<string, unknown>;
-  return (
-    (report.type === "candidate-pair" &&
-      (record.selected === true || record.nominated === true)) ||
-    report.type === "remote-inbound-rtp"
-  );
-}
-
 function percentile(values: number[], percentileValue: number) {
   if (values.length === 0) {
     return undefined;
@@ -486,14 +463,17 @@ function startWebrtcMetricsMonitor(
   let stopped = false;
   let frameCallbackHandle: number | null = null;
   let presentedFrames = 0;
-  let lastBytes = 0;
-  let lastReceivedFrames = 0;
-  let lastDecodedFrames = 0;
-  let lastPresentedFrames: number | undefined;
-  let lastJitterBufferDelay = 0;
-  let lastJitterBufferEmitted = 0;
-  let lastDroppedFrames = 0;
-  let lastAt = performance.now();
+  let previousSample: WebrtcIntervalSample = {
+    receiver: {
+      bytesReceived: 0,
+      framesReceived: 0,
+      framesDecoded: 0,
+      jitterBufferDelay: 0,
+      jitterBufferEmittedCount: 0,
+    },
+    droppedFrames: 0,
+    sampledAt: performance.now(),
+  };
   let lastPresentedAt: number | null = null;
   let frameGapsMs: number[] = [];
   let freezeCount = 0;
@@ -548,60 +528,21 @@ function startWebrtcMetricsMonitor(
     const now = performance.now();
     idlePresentation.sample(reliableChannel, now);
     const frameAcknowledgement = idlePresentation.diagnostics();
-    const elapsedSeconds = Math.max((now - lastAt) / 1000, 0.001);
     const statsRequest = peer.getStats().catch(() => null);
     void statsRequest.then((stats) => {
       sampling = false;
       if (stopped || !stats) return;
-      let bytes = lastBytes;
-      let receivedFrames = lastReceivedFrames;
-      let decodedFrames = lastDecodedFrames;
-      let droppedFrames: number | undefined;
-      let packetsLost: number | undefined;
-      let nackCount: number | undefined;
-      let pliCount: number | undefined;
-      let jitterBufferDelay = lastJitterBufferDelay;
-      let jitterBufferEmitted = lastJitterBufferEmitted;
-      let roundTripTimeMs: number | undefined;
-      let networkJitterMs: number | undefined;
-
-      stats.forEach((report) => {
-        if (isVideoInboundReport(report)) {
-          bytes = metricReportNumber(report, "bytesReceived") ?? bytes;
-          receivedFrames =
-            metricReportNumber(report, "framesReceived") ?? receivedFrames;
-          decodedFrames =
-            metricReportNumber(report, "framesDecoded") ?? decodedFrames;
-          droppedFrames = metricReportNumber(report, "framesDropped");
-          packetsLost = metricReportNumber(report, "packetsLost");
-          nackCount = metricReportNumber(report, "nackCount");
-          pliCount = metricReportNumber(report, "pliCount");
-          const jitterSeconds = metricReportNumber(report, "jitter");
-          networkJitterMs =
-            jitterSeconds === undefined ? undefined : jitterSeconds * 1_000;
-          jitterBufferDelay =
-            metricReportNumber(report, "jitterBufferDelay") ??
-            jitterBufferDelay;
-          jitterBufferEmitted =
-            metricReportNumber(report, "jitterBufferEmittedCount") ??
-            jitterBufferEmitted;
-        }
-        if (isRoundTripReport(report)) {
-          const seconds =
-            metricReportNumber(report, "currentRoundTripTime") ??
-            metricReportNumber(report, "roundTripTime");
-          if (seconds !== undefined) {
-            roundTripTimeMs = seconds * 1000;
-          }
-        }
-      });
-
-      const jitterDelayDelta = jitterBufferDelay - lastJitterBufferDelay;
-      const jitterEmittedDelta = jitterBufferEmitted - lastJitterBufferEmitted;
-      const jitterQueueDepthMs =
-        jitterEmittedDelta > 0
-          ? (jitterDelayDelta / jitterEmittedDelta) * 1_000
-          : undefined;
+      const {
+        receiver,
+        droppedFrames,
+        packetsLost,
+        nackCount,
+        pliCount,
+        networkJitterMs,
+        roundTripTimeMs,
+      } = readWebrtcReceiverStats(stats, previousSample.receiver);
+      const { framesReceived: receivedFrames, framesDecoded: decodedFrames } =
+        receiver;
       const relayMetrics = getRelayMetrics();
       const quality = frameCallback.request
         ? undefined
@@ -613,10 +554,20 @@ function startWebrtcMetricsMonitor(
         presentedFrameCount =
           quality.totalVideoFrames - quality.droppedVideoFrames;
       }
-      const presentedFps =
-        presentedFrameCount === undefined || lastPresentedFrames === undefined
-          ? undefined
-          : (presentedFrameCount - lastPresentedFrames) / elapsedSeconds;
+      const currentSample: WebrtcIntervalSample = {
+        receiver,
+        presentedFrames: presentedFrameCount,
+        droppedFrames: droppedFrames ?? previousSample.droppedFrames,
+        sampledAt: now,
+      };
+      const {
+        receivedFps,
+        decodedFps,
+        presentedFps,
+        wireBitrateMbps,
+        jitterQueueDepthMs,
+        droppedFramesDelta,
+      } = calculateWebrtcIntervalMetrics(previousSample, currentSample);
       const presentation = progress.sample(
         relayMetrics,
         presentedFrameCount,
@@ -631,11 +582,7 @@ function startWebrtcMetricsMonitor(
 
       const gaps = frameGapsMs;
       const frameGapP95Ms = percentile(gaps, 0.95);
-      const currentDroppedFrames = droppedFrames ?? lastDroppedFrames;
-      jitterController.sample(
-        frameGapP95Ms,
-        Math.max(0, currentDroppedFrames - lastDroppedFrames),
-      );
+      jitterController.sample(frameGapP95Ms, droppedFramesDelta);
 
       emitViewerStreamMetrics({
         version: 4,
@@ -645,7 +592,7 @@ function startWebrtcMetricsMonitor(
         relayIngressFps: relayMetrics?.sourceFps,
         bridgeInputFps: relayMetrics?.bridgeInputFps,
         rtpSentFps: relayMetrics?.rtpSentFps,
-        receivedFps: (receivedFrames - lastReceivedFrames) / elapsedSeconds,
+        receivedFps,
         receivedFrames,
         decodedFrames,
         presentedFrames: presentedFrameCount,
@@ -663,10 +610,10 @@ function startWebrtcMetricsMonitor(
           relayMetrics?.videoResetCompletedGeneration,
         videoResetElapsedMs: relayMetrics?.videoResetElapsedMs,
         videoResetCount: relayMetrics?.videoResetCount,
-        decodedFps: (decodedFrames - lastDecodedFrames) / elapsedSeconds,
+        decodedFps,
         drawnFps: presentedFps,
         presentedFps,
-        wireBitrateMbps: ((bytes - lastBytes) * 8) / elapsedSeconds / 1_000_000,
+        wireBitrateMbps,
         sourceBitrateMbps: relayMetrics?.sourceBitrateMbps,
         sourceFrameSizeP95Bytes: relayMetrics?.sourceFrameSizeP95Bytes,
         keyFrameSizeBytes: relayMetrics?.keyFrameSizeBytes,
@@ -728,14 +675,7 @@ function startWebrtcMetricsMonitor(
         collectedAt: Date.now(),
       });
 
-      lastBytes = bytes;
-      lastReceivedFrames = receivedFrames;
-      lastDecodedFrames = decodedFrames;
-      lastPresentedFrames = presentedFrameCount;
-      lastJitterBufferDelay = jitterBufferDelay;
-      lastJitterBufferEmitted = jitterBufferEmitted;
-      lastDroppedFrames = currentDroppedFrames;
-      lastAt = now;
+      previousSample = currentSample;
       frameGapsMs = [];
       if (presentation.stalled) onStall();
     });
