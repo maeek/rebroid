@@ -24,7 +24,7 @@ test('Configuration adapts the identity, runtime summary and limits to the avail
     }
     await page.goto('/skeleton-contract-test?editor=app-resource&view=configuration')
 
-    const apk = page.getByRole('button', { name: 'Replace APK', exact: true })
+    const apk = page.getByRole('button', { name: 'Upload replacement', exact: true })
     const icon = page.getByRole('button', { name: 'Upload icon', exact: true })
     await expect(icon).toHaveAccessibleDescription('Click Save to apply icon changes.')
     await expect(apk).toHaveAccessibleDescription('APK changes save immediately.')

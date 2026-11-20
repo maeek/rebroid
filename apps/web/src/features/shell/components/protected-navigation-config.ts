@@ -65,6 +65,8 @@ export const hasChildWithSameHealth = (healthId: NavigationHealthId | undefined,
 
 export const overviewSections: NavigationItem[] = [{ name: 'Overview', Icon: IconChartHistogram, href: '/platform' }]
 
+export const apkLibraryNavigationItem: NavigationItem = { name: 'APK library', Icon: IconBox, href: '/platform/apks' }
+
 export const administrationEntries: (NavigationItem | NavigationGroup)[] = [
   { name: 'General', Icon: IconAdjustments, href: '/platform/runtime' },
   { name: 'Casting', Icon: IconCast, href: '/platform/casting', healthId: 'display' },

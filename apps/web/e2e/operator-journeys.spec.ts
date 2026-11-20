@@ -452,7 +452,7 @@ test('scheduler matches shared panels and keeps task interactions stable', async
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0)
       await page.screenshot({ path: `/tmp/rebroid-scheduler-${width}-${theme}-${test.info().project.name}.png` })
     }
-    await page.getByRole('button', { name: 'Clean APK uploads', exact: true }).click()
+    await page.getByRole('button', { name: 'Clean orphaned APK files', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('heading', { name: 'Edit scheduled task' })).toBeVisible()
     await expect(dialog.getByLabel('Name', { exact: false })).toBeDisabled()
@@ -482,10 +482,10 @@ test('scheduler matches shared panels and keeps task interactions stable', async
   await filters.getByRole('combobox', { name: 'State', exact: true }).click()
   await page.getByRole('option', { name: 'Paused', exact: true }).click()
   await filters.getByRole('button', { name: 'Done', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Clean APK uploads', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Clean orphaned APK files', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Weekend image cleanup', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Remove State filter' }).click()
-  await expect(page.getByRole('button', { name: 'Clean APK uploads', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Clean orphaned APK files', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 

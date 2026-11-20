@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const protectedRoot = resolve(process.cwd(), 'src/app/(protected)')
 
 const renderableRoutes = [
+  '(standard)/(apk-review)/platform/apks',
   '(standard)/app/[slug]',
   '(standard)/apps',
   '(standard)/apps/create',
@@ -47,6 +48,7 @@ const renderableRoutes = [
 ] as const
 
 const dataGridLoadingOwners = [
+  'features/applications/apks/pages/library/page-client.tsx',
   'features/automations/automations-page/automation-page-skeletons.tsx',
   'features/automations/pages/active-workflow-runs/active-workflow-runs-grid.tsx',
   'features/platform/components/platform-page-skeletons/platform-container-detail-page-skeleton.tsx',

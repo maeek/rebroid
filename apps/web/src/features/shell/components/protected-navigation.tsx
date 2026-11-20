@@ -10,6 +10,7 @@ import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
 import { NavigationRail } from './navigation-rail-group'
 import {
   administrationEntries,
+  apkLibraryNavigationItem,
   appSections,
   isNavigationDestinationActive,
   automationSections,
@@ -61,7 +62,11 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
   }
 
   const isItemVisible = (item: NavigationItem) => !item.feature || isFeatureEnabled(item.feature)
-  const visibleAdministration = administrationEntries
+  const administrativeItems = isAdmin ? administrationEntries : []
+  const visibleAdministration = [
+    ...(initialUser.canReviewApks ? [apkLibraryNavigationItem] : []),
+    ...administrativeItems
+  ]
     .filter(entry => 'items' in entry || isItemVisible(entry))
     .map(entry => {
       if (!('items' in entry)) return entry
@@ -141,7 +146,7 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
         </ul>
       </Visible>
 
-      <Visible when={isAdmin}>
+      <Visible when={visibleAdministration.length > 0}>
         <SectionHeader
           title='Administration'
           variant={variant}
