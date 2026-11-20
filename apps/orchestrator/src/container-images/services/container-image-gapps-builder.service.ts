@@ -3,6 +3,7 @@ import {
   Inject,
   Injectable,
   Logger,
+  OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
@@ -18,6 +19,7 @@ import type {
   StartGappsBuildDto,
   SupportedGappsAndroidVersion,
 } from '../dto/gapps-build.dto';
+import type { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import { runtimeImageLabelKeys } from '@rebroid/android-application-core/redroid-runtime';
 import {
   dockerfileWithRequiredLabels,
@@ -26,6 +28,7 @@ import {
 import { validateContainerImageBuildReference } from '../utils/container-image-reference';
 import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
+import { ContainerImageBuildLifecycleService } from './container-image-build-lifecycle.service';
 import { ContainerImageGappsCacheService } from './container-image-gapps-cache.service';
 import { FeatureFlagsService } from '../../feature-flags/feature-flags.service';
 import { ContainerImageGappsPackageService } from './container-image-gapps-package.service';
@@ -34,14 +37,23 @@ import { ContainerImageGappsSourceService } from './container-image-gapps-source
 import { ContainerImageGappsWorkerService } from './container-image-gapps-worker.service';
 
 type GappsImageStartup = { entrypoint: string[]; cmd: string[] };
+type GappsStaging = {
+  workDirectory: string | null;
+  temporaryPackage: string | null;
+};
 
 const setupWizardProperty = 'ro.setupwizard.mode=';
+const gappsQueueRetryMs = 5_000;
 
 @Injectable()
-export class ContainerImageGappsBuilderService implements OnModuleInit {
+export class ContainerImageGappsBuilderService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(ContainerImageGappsBuilderService.name);
-  private readonly active = new Map<string, AbortController>();
   private draining = false;
+  private drainRequested = false;
+  private retryTimer?: NodeJS.Timeout;
+  private stopping = false;
 
   constructor(
     private readonly jobs: ContainerImageBuildJobService,
@@ -56,6 +68,7 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     @Inject(DOCKER_IMAGE_RUNTIME_METADATA)
     private readonly metadata: DockerImageRuntimeMetadataPort,
     private readonly features: FeatureFlagsService,
+    private readonly lifecycle: ContainerImageBuildLifecycleService,
   ) {}
 
   async onModuleInit() {
@@ -63,8 +76,9 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     this.scheduleDrain();
   }
 
-  activeBuildIds() {
-    return [...this.active.keys()];
+  onModuleDestroy() {
+    this.stopping = true;
+    clearTimeout(this.retryTimer);
   }
 
   async startBuild(dto: StartGappsBuildDto) {
@@ -100,214 +114,217 @@ export class ContainerImageGappsBuilderService implements OnModuleInit {
     return job;
   }
 
-  async cancelBuild(id: string) {
-    const job = await this.jobs.getJob(id);
-    if (this.jobs.isTerminal(job.status)) return job;
-    const active = this.active.get(id);
-    if (active) {
-      active.abort(new Error('GApps image build cancelled.'));
-    }
-    const cancelled = await this.jobs.markCancelled(job);
-    this.scheduleDrain();
-    return cancelled;
-  }
-
   async clearCache(androidVersion: string) {
-    const active = [...this.active.keys()];
-    for (const id of active) {
-      const job = await this.jobs.getJob(id);
-      if (job.androidVersion === androidVersion) {
-        throw new ConflictException(
-          `Cannot clear Android ${androidVersion} cache during an active build.`,
-        );
-      }
+    if (this.lifecycle.hasActiveGappsBuild(androidVersion)) {
+      throw new ConflictException(
+        `Cannot clear Android ${androidVersion} cache during an active build.`,
+      );
     }
     return this.cache.clear(androidVersion);
   }
 
   private scheduleDrain() {
+    if (this.stopping || this.retryTimer) return;
+    this.drainRequested = true;
+    if (this.draining) return;
+    this.draining = true;
     queueMicrotask(() => {
-      void this.drain().catch((error) => {
-        this.logger.error(
-          `GApps build queue failed: ${getErrorMessage(error)}`,
-        );
-      });
+      void this.drain()
+        .catch((error) => {
+          this.logger.error(
+            `GApps build queue failed: ${getErrorMessage(error)}`,
+          );
+          this.retryDrain();
+        })
+        .finally(() => {
+          this.draining = false;
+          if (this.drainRequested) this.scheduleDrain();
+        });
     });
   }
 
+  private retryDrain() {
+    if (this.stopping || this.retryTimer) return;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined;
+      this.scheduleDrain();
+    }, gappsQueueRetryMs).unref();
+  }
+
   private async drain() {
-    if (this.draining) return;
-    this.draining = true;
-    try {
-      while (true) {
-        const job = await this.jobs.findNextQueuedGappsJob();
-        if (!job) break;
-        await this.runBuild(job.id);
+    while (!this.stopping) {
+      this.drainRequested = false;
+      const job = await this.jobs.findNextQueuedGappsJob();
+      if (!job && !this.lifecycle.hasActiveGappsBuild()) return;
+      if (!(await this.lifecycle.confirmGappsSlotAvailable())) {
+        this.retryDrain();
+        return;
       }
-    } finally {
-      this.draining = false;
+      if (this.stopping) return;
+      if (job) await this.runBuild(job);
+      else if (!this.drainRequested) return;
     }
   }
 
-  private async runBuild(id: string) {
-    const job = await this.jobs.getJob(id);
-    if (job.status !== 'queued') return;
-    const active = new AbortController();
-    this.active.set(id, active);
-    let workDirectory: string | null = null;
-    let temporaryPackage: string | null = null;
+  private runBuild(job: ContainerImageBuildJob) {
+    const staging: GappsStaging = {
+      workDirectory: null,
+      temporaryPackage: null,
+    };
+    return this.lifecycle.run(
+      job,
+      (signal) => this.build(job, signal, staging),
+      () => this.cleanupStaging(staging),
+    );
+  }
+
+  private async build(
+    job: ContainerImageBuildJob,
+    signal: AbortSignal,
+    staging: GappsStaging,
+  ) {
+    const { id } = job;
+    const androidVersion = job.androidVersion as SupportedGappsAndroidVersion;
+    const preset = this.presets.getPreset(androidVersion);
+
+    await this.jobs.updateGappsDetails(job, { phase: 'pulling_base' });
+    signal.throwIfAborted();
+    await this.images.pullImage(job.baseImage, (message) => {
+      this.jobs.recordProgress(id, message);
+    });
+    signal.throwIfAborted();
+    const baseInspect = await this.images.inspectImage(job.baseImage);
+    const resolvedBaseDigest = baseInspect.RepoDigests?.[0] ?? baseInspect.Id;
+    const baseEntrypoint = baseInspect.Config?.Entrypoint;
+    if (!Array.isArray(baseEntrypoint) || baseEntrypoint[0] !== '/init') {
+      throw new Error(`Base image ${job.baseImage} must start ReDroid /init.`);
+    }
+    const startup: GappsImageStartup = {
+      entrypoint: [
+        ...baseEntrypoint.filter((arg) => !arg.startsWith(setupWizardProperty)),
+        `${setupWizardProperty}DISABLED`,
+      ],
+      cmd: baseInspect.Config?.Cmd ?? [],
+    };
+    const pinnedDockerfile = this.dockerfile(
+      resolvedBaseDigest,
+      androidVersion,
+      startup,
+    );
+    await this.jobs.updateGappsDetails(job, {
+      resolvedBaseDigest,
+      dockerfile: pinnedDockerfile,
+    });
+
+    await this.jobs.updateGappsDetails(job, { phase: 'resolving_sources' });
+    signal.throwIfAborted();
+    const revision = await this.sources.resolveRevision(preset.sourceBranch);
+    await this.jobs.updateGappsDetails(job, { sourceRevision: revision });
+    let cached = await this.cache.findVerified(androidVersion, revision);
+    let packagePath: string;
+    if (cached) {
+      await this.jobs.updateGappsDetails(job, {
+        cacheState: 'hit',
+        packageSha256: cached.sha256,
+      });
+      await this.jobs.appendLog(id, 'Using verified cached GApps package.');
+      packagePath = cached.packagePath;
+    } else {
+      await this.jobs.updateGappsDetails(job, {
+        phase: 'building_gapps',
+        cacheState: 'miss',
+      });
+      signal.throwIfAborted();
+      staging.temporaryPackage = await this.worker.buildPackage(
+        id,
+        preset,
+        revision,
+        signal,
+      );
+      signal.throwIfAborted();
+      const packageSha256 = await this.cache.calculateSha256(
+        staging.temporaryPackage,
+      );
+      await this.jobs.updateGappsDetails(job, {
+        packageSha256,
+      });
+      packagePath = staging.temporaryPackage;
+    }
+
+    await this.jobs.updateGappsDetails(job, { phase: 'validating_payload' });
+    signal.throwIfAborted();
+    const workDirectory = await this.packages.extract(packagePath, id);
+    staging.workDirectory = workDirectory;
+    signal.throwIfAborted();
+    const payloadValidation = await this.packages.validate(workDirectory);
+    signal.throwIfAborted();
+    if (staging.temporaryPackage) {
+      cached = await this.cache.promote(
+        staging.temporaryPackage,
+        androidVersion,
+        revision,
+      );
+      staging.temporaryPackage = null;
+      await this.jobs.updateGappsDetails(job, {
+        cacheState: 'built',
+        packageSha256: cached.sha256,
+      });
+    }
+    await this.jobs.updateGappsDetails(job, {
+      validationResults: { payload: payloadValidation },
+    });
+
+    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
+    signal.throwIfAborted();
+    await this.buildImage(
+      job.id,
+      job.targetImage,
+      pinnedDockerfile,
+      workDirectory,
+      signal,
+    );
+
+    await this.jobs.updateGappsDetails(job, { phase: 'validating_image' });
+    signal.throwIfAborted();
+    const inspect = await this.images.inspectImage(job.targetImage);
+    const imageValidation = this.validateImage(
+      job.targetImage,
+      androidVersion,
+      inspect,
+      startup,
+    );
+    await this.jobs.updateGappsDetails(job, {
+      validationResults: {
+        payload: payloadValidation,
+        image: imageValidation,
+      },
+    });
+    signal.throwIfAborted();
+    await this.metadata.upsert({
+      imageRef: job.targetImage,
+      imageId: inspect.Id,
+      runtimeKind: 'redroid',
+      androidVersion,
+      architecture: 'amd64',
+      gmsMode: 'gapps',
+      signatureSpoofing: 'not_applicable',
+    });
+    await this.cache.retainOnly(androidVersion, revision).catch((error) => {
+      this.logger.warn(
+        `Could not prune older Android ${androidVersion} GApps caches: ${getErrorMessage(error)}`,
+      );
+    });
+    return inspect.Id;
+  }
+
+  private async cleanupStaging({
+    temporaryPackage,
+    workDirectory,
+  }: GappsStaging) {
     try {
-      const runningJob = await this.jobs.markRunning(job);
-      if (runningJob.status !== 'running') return;
-      const androidVersion = job.androidVersion as SupportedGappsAndroidVersion;
-      const preset = this.presets.getPreset(androidVersion);
-
-      await this.jobs.updateGappsDetails(job, { phase: 'pulling_base' });
-      await this.images.pullImage(job.baseImage, (message) => {
-        this.jobs.recordProgress(id, message);
-      });
-      const baseInspect = await this.images.inspectImage(job.baseImage);
-      const resolvedBaseDigest = baseInspect.RepoDigests?.[0] ?? baseInspect.Id;
-      const baseEntrypoint = baseInspect.Config?.Entrypoint;
-      if (!Array.isArray(baseEntrypoint) || baseEntrypoint[0] !== '/init') {
-        throw new Error(
-          `Base image ${job.baseImage} must start ReDroid /init.`,
-        );
-      }
-      const startup: GappsImageStartup = {
-        entrypoint: [
-          ...baseEntrypoint.filter(
-            (arg) => !arg.startsWith(setupWizardProperty),
-          ),
-          `${setupWizardProperty}DISABLED`,
-        ],
-        cmd: baseInspect.Config?.Cmd ?? [],
-      };
-      const pinnedDockerfile = this.dockerfile(
-        resolvedBaseDigest,
-        androidVersion,
-        startup,
-      );
-      await this.jobs.updateGappsDetails(job, {
-        resolvedBaseDigest,
-        dockerfile: pinnedDockerfile,
-      });
-
-      await this.jobs.updateGappsDetails(job, { phase: 'resolving_sources' });
-      const revision = await this.sources.resolveRevision(preset.sourceBranch);
-      await this.jobs.updateGappsDetails(job, { sourceRevision: revision });
-      let cached = await this.cache.findVerified(androidVersion, revision);
-      let packagePath: string;
-      if (cached) {
-        await this.jobs.updateGappsDetails(job, {
-          cacheState: 'hit',
-          packageSha256: cached.sha256,
-        });
-        await this.jobs.appendLog(id, 'Using verified cached GApps package.');
-        packagePath = cached.packagePath;
-      } else {
-        await this.jobs.updateGappsDetails(job, {
-          phase: 'building_gapps',
-          cacheState: 'miss',
-        });
-        active.signal.throwIfAborted();
-        temporaryPackage = await this.worker.buildPackage(
-          id,
-          preset,
-          revision,
-          active.signal,
-        );
-        const packageSha256 =
-          await this.cache.calculateSha256(temporaryPackage);
-        await this.jobs.updateGappsDetails(job, {
-          packageSha256,
-        });
-        packagePath = temporaryPackage;
-      }
-
-      active.signal.throwIfAborted();
-      await this.jobs.updateGappsDetails(job, { phase: 'validating_payload' });
-      workDirectory = await this.packages.extract(packagePath, id);
-      const payloadValidation = await this.packages.validate(workDirectory);
-      if (temporaryPackage) {
-        cached = await this.cache.promote(
-          temporaryPackage,
-          androidVersion,
-          revision,
-        );
-        temporaryPackage = null;
-        await this.jobs.updateGappsDetails(job, {
-          cacheState: 'built',
-          packageSha256: cached.sha256,
-        });
-      }
-      await this.jobs.updateGappsDetails(job, {
-        validationResults: { payload: payloadValidation },
-      });
-
-      active.signal.throwIfAborted();
-      await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
-      await this.buildImage(
-        job.id,
-        job.targetImage,
-        pinnedDockerfile,
-        workDirectory,
-        active.signal,
-      );
-
-      active.signal.throwIfAborted();
-      await this.jobs.updateGappsDetails(job, { phase: 'validating_image' });
-      const inspect = await this.images.inspectImage(job.targetImage);
-      const imageValidation = this.validateImage(
-        job.targetImage,
-        androidVersion,
-        inspect,
-        startup,
-      );
-      const current = await this.jobs.getJob(id);
-      await this.jobs.updateGappsDetails(current, {
-        validationResults: {
-          payload: payloadValidation,
-          image: imageValidation,
-        },
-      });
-      await this.metadata.upsert({
-        imageRef: job.targetImage,
-        imageId: inspect.Id,
-        runtimeKind: 'redroid',
-        androidVersion,
-        architecture: 'amd64',
-        gmsMode: 'gapps',
-        signatureSpoofing: 'not_applicable',
-      });
-      await this.cache.retainOnly(androidVersion, revision).catch((error) => {
-        this.logger.warn(
-          `Could not prune older Android ${androidVersion} GApps caches: ${getErrorMessage(error)}`,
-        );
-      });
-      const finalJob = await this.jobs.getJob(id);
-      if (finalJob.status !== 'cancelled' && !active.signal.aborted) {
-        await this.jobs.markSucceeded(finalJob, inspect.Id);
-      }
-    } catch (error) {
-      const current = await this.jobs.getJob(id);
-      if (current.status === 'cancelled' || active.signal.aborted) {
-        if (current.status !== 'cancelled')
-          await this.jobs.markCancelled(current);
-      } else {
-        await this.jobs.markFailed(current, getErrorMessage(error));
-      }
+      if (temporaryPackage) await this.cache.removeTemporary(temporaryPackage);
     } finally {
-      try {
-        if (temporaryPackage)
-          await this.cache.removeTemporary(temporaryPackage);
-      } finally {
-        try {
-          if (workDirectory) await this.packages.cleanup(workDirectory);
-        } finally {
-          this.active.delete(id);
-        }
-      }
+      if (workDirectory) await this.packages.cleanup(workDirectory);
     }
   }
 

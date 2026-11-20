@@ -17,8 +17,7 @@ import {
 } from '../utils/gapps-staging-paths';
 import type { ContainerImageBuildJobService } from './container-image-build-job.service';
 import { ContainerImageBuildMaintenanceService } from './container-image-build-maintenance.service';
-import type { ContainerImageBuilderService } from './container-image-builder.service';
-import type { ContainerImageGappsBuilderService } from './container-image-gapps-builder.service';
+import type { ContainerImageBuildLifecycleService } from './container-image-build-lifecycle.service';
 
 describe('ContainerImageBuildMaintenanceService', () => {
   it('removes stale staging for finished or missing jobs and protects live, fresh, and unmanaged paths', async () => {
@@ -35,14 +34,13 @@ describe('ContainerImageBuildMaintenanceService', () => {
       hasUnfinishedGappsJob: async (id: string) =>
         id === running || id === queued,
     } as ContainerImageBuildJobService;
-    const gappsBuilds = {
-      activeBuildIds: () => [cancelling],
-    } as ContainerImageGappsBuilderService;
+    const builds = {
+      isActive: (id: string) => id === cancelling,
+    } as ContainerImageBuildLifecycleService;
     const service = new ContainerImageBuildMaintenanceService(
       new ConfigService({ app: { uploadsDir } }),
       jobs,
-      {} as ContainerImageBuilderService,
-      gappsBuilds,
+      builds,
     );
 
     try {

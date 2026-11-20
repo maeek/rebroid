@@ -9,8 +9,7 @@ import {
   gappsWorkDirectory,
 } from '../utils/gapps-staging-paths';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
-import { ContainerImageBuilderService } from './container-image-builder.service';
-import { ContainerImageGappsBuilderService } from './container-image-gapps-builder.service';
+import { ContainerImageBuildLifecycleService } from './container-image-build-lifecycle.service';
 
 const stagingGracePeriodMs = 24 * 60 * 60 * 1000;
 
@@ -28,8 +27,7 @@ export class ContainerImageBuildMaintenanceService implements ContainerImageBuil
   constructor(
     private readonly config: ConfigService,
     private readonly jobs: ContainerImageBuildJobService,
-    private readonly builds: ContainerImageBuilderService,
-    private readonly gappsBuilds: ContainerImageGappsBuilderService,
+    private readonly builds: ContainerImageBuildLifecycleService,
   ) {}
 
   async cleanInterruptedBuilds() {
@@ -51,10 +49,10 @@ export class ContainerImageBuildMaintenanceService implements ContainerImageBuil
   }
 
   async pruneBuildHistory(cutoff: Date) {
-    const removed = await this.jobs.pruneHistory(cutoff, [
-      ...this.builds.activeBuildIds(),
-      ...this.gappsBuilds.activeBuildIds(),
-    ]);
+    const removed = await this.jobs.pruneHistory(
+      cutoff,
+      this.builds.activeBuildIds(),
+    );
     this.logger.log(`Removed ${removed} completed image build records.`);
   }
 
@@ -82,7 +80,7 @@ export class ContainerImageBuildMaintenanceService implements ContainerImageBuil
       if (!stats || !expectedType || stats.mtimeMs >= cutoff) continue;
       if (await this.jobs.hasUnfinishedGappsJob(jobId)) continue;
       // Cancellation can terminalize a row before the builder releases its files.
-      if (this.gappsBuilds.activeBuildIds().includes(jobId)) continue;
+      if (this.builds.isActive(jobId)) continue;
 
       const deleted = await rm(path, { recursive: kind === 'work' })
         .then(() => true)

@@ -37,6 +37,7 @@ import { ContainerImageBuildJob } from './entities/container-image-build-job.ent
 import { ContainerImageBuildRecipe } from './entities/container-image-build-recipe.entity';
 import { ContainerImageBuilderService } from './services/container-image-builder.service';
 import { ContainerImageBuildContextService } from './services/container-image-build-context.service';
+import { ContainerImageBuildLifecycleService } from './services/container-image-build-lifecycle.service';
 import { ContainerImageRecipeService } from './services/container-image-recipe.service';
 import {
   GappsBuildPresetsResponseDto,
@@ -60,6 +61,7 @@ export class ContainerImagesController {
     private readonly builder: ContainerImageBuilderService,
     private readonly gappsBuilder: ContainerImageGappsBuilderService,
     private readonly gappsPresets: ContainerImageGappsPresetService,
+    private readonly builds: ContainerImageBuildLifecycleService,
   ) {}
 
   @Post('pull')
@@ -196,12 +198,6 @@ export class ContainerImagesController {
   @ApiOperation({ summary: 'Cancel an image build job.' })
   @ApiOkResponse({ type: ContainerImageBuildJob })
   cancelBuild(@Param('id') id: string) {
-    return this.builder
-      .getJob(id)
-      .then((job) =>
-        job.buildKind === 'redroid_gapps_patch'
-          ? this.gappsBuilder.cancelBuild(id)
-          : this.builder.cancelBuild(id),
-      );
+    return this.builds.cancelBuild(id);
   }
 }

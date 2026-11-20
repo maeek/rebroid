@@ -242,6 +242,10 @@ deleted. Active runs and ad hoc AI conversations are outside its scope.
 Each image builder shows the latest job for its build kind.
 On restart, the orchestrator marks interrupted Dockerfile builds and running GApps builds as failed.
 Queued GApps builds remain eligible to run.
+**Cancel** returns after the job status is recorded. The build may still be releasing its
+Docker resources and staging files. The next GApps build waits for cleanup to settle and for
+Docker to confirm that earlier managed GApps workers have stopped or been removed. The queue
+rechecks Docker while that confirmation is pending.
 
 In **System → Maintenance tasks**, **Clean interrupted image builds** runs daily at 02:15
 by default. It removes temporary GApps package archives and extraction directories older than

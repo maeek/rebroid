@@ -158,12 +158,11 @@ export class ContainerImageBuildJobService {
     );
   }
 
-  async markRunning(job: ContainerImageBuildJob) {
-    await this.updateWithLog(job.id, ['queued'], 'Build started.', {
+  markRunning(job: ContainerImageBuildJob) {
+    return this.updateWithLog(job.id, ['queued'], 'Build started.', {
       status: 'running',
       startedAt: new Date(),
     });
-    return this.getJob(job.id);
   }
 
   updateGappsDetails(
@@ -261,12 +260,13 @@ export class ContainerImageBuildJobService {
         where: { id },
         select: { status: true, logTail: true },
       });
-      if (!job || !expectedStatuses.includes(job.status)) return;
+      if (!job || !expectedStatuses.includes(job.status)) return false;
 
-      await repository.update(
+      const result = await repository.update(
         { id, status: job.status },
         { ...patch, logTail: this.nextLogTail(job.logTail, message) },
       );
+      return result.affected === 1;
     });
   }
 

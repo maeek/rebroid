@@ -1,6 +1,7 @@
 import { ContainerImageBuilderService } from './container-image-builder.service';
 import type { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildJobService } from './container-image-build-job.service';
+import { ContainerImageBuildLifecycleService } from './container-image-build-lifecycle.service';
 
 it('fails and releases a Dockerfile build if the initial phase write fails', async () => {
   const job = {
@@ -10,10 +11,7 @@ it('fails and releases a Dockerfile build if the initial phase write fails', asy
   const jobs = {
     createQueuedJob: jest.fn().mockResolvedValue(job),
     getJob: jest.fn().mockResolvedValue(job),
-    markRunning: jest.fn(async () => {
-      job.status = 'running';
-      return job;
-    }),
+    markRunning: jest.fn().mockResolvedValue(true),
     updateGappsDetails: jest
       .fn()
       .mockRejectedValue(new Error('phase write failed')),
@@ -22,13 +20,19 @@ it('fails and releases a Dockerfile build if the initial phase write fails', asy
       return job;
     }),
   } satisfies Partial<ContainerImageBuildJobService>;
+  const jobService = jobs as unknown as ContainerImageBuildJobService;
+  const lifecycle = new ContainerImageBuildLifecycleService(
+    jobService,
+    {} as never,
+  );
   const builder = new ContainerImageBuilderService(
-    jobs as unknown as ContainerImageBuildJobService,
+    jobService,
     {} as never,
     {} as never,
     {} as never,
     {} as never,
     { assertEnabled: jest.fn() } as never,
+    lifecycle,
   );
 
   await builder.startBuild({
@@ -41,5 +45,5 @@ it('fails and releases a Dockerfile build if the initial phase write fails', asy
 
   expect(jobs.markFailed).toHaveBeenCalledWith(job, 'phase write failed');
   expect(job.status).toBe('failed');
-  expect(builder.activeBuildIds()).toEqual([]);
+  expect(lifecycle.activeBuildIds()).toEqual([]);
 });

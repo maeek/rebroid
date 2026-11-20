@@ -160,6 +160,31 @@ describe('ContainerImageBuildJobService', () => {
     }
   });
 
+  it('claims a queued job once and keeps cancellation terminal', async () => {
+    const database = await openDatabase();
+    try {
+      const service = new ContainerImageBuildJobService(
+        database.getRepository(ContainerImageBuildJob),
+      );
+      await insertJob(database, 'build', 'queued');
+      const queued = await service.getJob('build');
+      await expect(service.markRunning(queued)).resolves.toBe(true);
+      await expect(service.markRunning(queued)).resolves.toBe(false);
+      await expect(service.markCancelled(queued)).resolves.toMatchObject({
+        status: 'cancelled',
+      });
+      await expect(service.markRunning(queued)).resolves.toBe(false);
+      await expect(
+        service.markSucceeded(queued, 'sha256:ignored'),
+      ).resolves.toMatchObject({
+        status: 'cancelled',
+        imageId: null,
+      });
+    } finally {
+      await database.destroy();
+    }
+  });
+
   it('fails interrupted builds on restart, keeps queued GApps jobs, and bounds the log tail', async () => {
     const database = await openDatabase();
     try {

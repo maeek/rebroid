@@ -12,6 +12,7 @@ import { ContainerImageBuilderService } from './services/container-image-builder
 import { ContainerImageBuildArchiveService } from './services/container-image-build-archive.service';
 import { ContainerImageBuildContextService } from './services/container-image-build-context.service';
 import { ContainerImageBuildJobService } from './services/container-image-build-job.service';
+import { ContainerImageBuildLifecycleService } from './services/container-image-build-lifecycle.service';
 import { ContainerImageBuildMaintenanceService } from './services/container-image-build-maintenance.service';
 import { ContainerImageRecipeService } from './services/container-image-recipe.service';
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
@@ -40,6 +41,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
     ContainerImageBuildArchiveService,
     ContainerImageBuildContextService,
     ContainerImageBuildJobService,
+    ContainerImageBuildLifecycleService,
     ContainerImageBuildMaintenanceService,
     {
       provide: CONTAINER_IMAGE_BUILD_MAINTENANCE,

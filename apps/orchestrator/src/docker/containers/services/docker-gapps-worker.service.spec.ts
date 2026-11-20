@@ -25,9 +25,25 @@ const setup = (timeoutMs = 60_000) => {
     getArchive: jest.fn().mockResolvedValue(archive),
     kill: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
+    inspect: jest.fn().mockResolvedValue({
+      Config: {
+        Labels: {
+          'com.rebroid.managed': 'true',
+          'com.rebroid.component': 'gapps-patch-worker',
+          'com.rebroid.image-build-job': 'job-1',
+        },
+      },
+    }),
   };
   const createContainer = jest.fn().mockResolvedValue(container);
-  const docker = { createContainer } as unknown as Dockerode;
+  const listContainers = jest.fn();
+  const getContainer = jest.fn().mockReturnValue(container);
+  const docker = {
+    createContainer,
+    listContainers,
+    getContainer,
+  } as unknown as Dockerode;
+  const read = jest.fn();
   const executor = new DockerOperationExecutor(
     {} as never,
     {
@@ -46,7 +62,23 @@ const setup = (timeoutMs = 60_000) => {
     longOperationTimeoutMs: timeoutMs,
     remoteRequestTimeoutMs: 60_000,
   });
-  const engine: Pick<DockerEnginePort, 'longOperation' | 'isDockerNotFound'> = {
+  const engine: Pick<
+    DockerEnginePort,
+    | 'docker'
+    | 'read'
+    | 'longOperation'
+    | 'isDockerNotFound'
+    | 'isTransientDockerTransportError'
+  > = {
+    docker,
+    read: (operation, description, options) => {
+      read(operation, description, options);
+      return operation(
+        options?.deadline
+          ? AbortSignal.timeout(options.deadline.remainingMs())
+          : undefined,
+      );
+    },
     longOperation: (name, description, operation, _timeout, options) =>
       executor.longOperation(
         name,
@@ -57,6 +89,8 @@ const setup = (timeoutMs = 60_000) => {
         options,
       ),
     isDockerNotFound: () => false,
+    isTransientDockerTransportError: (error) =>
+      error instanceof Error && error.message === 'connection reset',
   };
   const worker = new DockerGappsWorkerService(
     engine as DockerEnginePort,
@@ -82,6 +116,9 @@ const setup = (timeoutMs = 60_000) => {
     logs,
     archive,
     createContainer,
+    listContainers,
+    getContainer,
+    read,
     cancellation,
     executor,
     docker,
@@ -186,5 +223,60 @@ describe('DockerGappsWorkerService cancellation and cleanup', () => {
     container.remove.mockRejectedValue(new Error('cleanup failed'));
     await expect(worker.run(request)).rejects.toThrow('cleanup failed');
     expect(request.consumeArchive).toHaveBeenCalled();
+  });
+
+  it('removes a verified worker when Docker loses the create response', async () => {
+    const { worker, request, createContainer, getContainer, container } =
+      setup();
+    createContainer.mockRejectedValueOnce(new Error('connection reset'));
+
+    await expect(worker.run(request)).rejects.toThrow('connection reset');
+    expect(getContainer).toHaveBeenCalledWith('rebroid-gapps-worker-job-1');
+    expect(container.inspect.mock.invocationCallOrder[0]).toBeLessThan(
+      container.remove.mock.invocationCallOrder[0],
+    );
+    expect(container.remove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        force: true,
+        abortSignal: expect.any(AbortSignal),
+      }),
+    );
+    expect(container.start).not.toHaveBeenCalled();
+  });
+
+  it('uses fresh Docker inventory and only releases the slot for stopped or absent workers', async () => {
+    const { worker, listContainers, read } = setup();
+    listContainers
+      .mockResolvedValueOnce([{ State: 'removing' }])
+      .mockRejectedValueOnce(new Error('Docker unavailable'))
+      .mockResolvedValueOnce([{ State: 'exited' }])
+      .mockResolvedValueOnce([]);
+
+    await expect(worker.hasUnstoppedWorkers()).resolves.toBe(true);
+    await expect(worker.hasUnstoppedWorkers()).rejects.toThrow(
+      'Docker unavailable',
+    );
+    await expect(worker.hasUnstoppedWorkers()).resolves.toBe(false);
+    await expect(worker.hasUnstoppedWorkers()).resolves.toBe(false);
+    expect(listContainers).toHaveBeenCalledTimes(4);
+    expect(read).toHaveBeenCalledWith(
+      expect.any(Function),
+      'Check managed GApps workers',
+      {
+        deadline: expect.objectContaining({ timeoutMs: 60_000 }),
+      },
+    );
+    expect(listContainers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        all: true,
+        abortSignal: expect.any(AbortSignal),
+        filters: {
+          label: [
+            'com.rebroid.managed=true',
+            'com.rebroid.component=gapps-patch-worker',
+          ],
+        },
+      }),
+    );
   });
 });

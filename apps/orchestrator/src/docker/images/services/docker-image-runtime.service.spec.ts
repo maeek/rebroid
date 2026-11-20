@@ -85,7 +85,7 @@ describe('DockerImageRuntimeService.buildImage', () => {
         request.description,
         expect.any(Function),
         request.timeoutMs,
-        { changesInventory: true },
+        { changesInventory: true, waitForCleanup: true },
       );
     },
   );

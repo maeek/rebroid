@@ -25,7 +25,7 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
   const setup = (run: (request: DockerGappsWorkerRequest) => Promise<void>) =>
     new ContainerImageGappsWorkerService(
       { getOrThrow: () => 'worker:test' } as unknown as ConfigService,
-      { run },
+      { run, hasUnstoppedWorkers: async () => false },
       {
         imageExists: async () => true,
         inspectImage: async () => ({

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type Dockerode from 'dockerode';
 import type { Readable } from 'node:stream';
 import { getErrorMessage } from '../../../common/error-message';
+import { OperationDeadline } from '../../../common/operation-deadline';
 import {
   DOCKER_ENGINE,
   type DockerEnginePort,
@@ -13,6 +14,10 @@ import type {
 } from '../../contracts/docker-gapps-worker.port';
 
 const workerTimeoutMs = 3 * 60 * 60 * 1000;
+const managedLabel = 'com.rebroid.managed';
+const componentLabel = 'com.rebroid.component';
+const jobLabel = 'com.rebroid.image-build-job';
+const gappsWorkerComponent = 'gapps-patch-worker';
 
 @Injectable()
 export class DockerGappsWorkerService implements DockerGappsWorkerPort {
@@ -29,8 +34,30 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
       `Build GApps package for job ${request.jobId}`,
       (docker, timeoutSignal) => this.runWorker(docker, request, timeoutSignal),
       workerTimeoutMs,
-      { waitForCleanup: true, changesInventory: true },
+      { signal: request.signal, waitForCleanup: true, changesInventory: true },
     );
+  }
+
+  async hasUnstoppedWorkers(): Promise<boolean> {
+    const deadline = new OperationDeadline(
+      this.config.getOrThrow<number>('app.docker.requestTimeoutMs'),
+    );
+    const workers = await this.engine.read(
+      (signal) =>
+        this.engine.docker.listContainers({
+          all: true,
+          abortSignal: signal,
+          filters: {
+            label: [
+              `${managedLabel}=true`,
+              `${componentLabel}=${gappsWorkerComponent}`,
+            ],
+          },
+        }),
+      'Check managed GApps workers',
+      { deadline },
+    );
+    return workers.some(({ State }) => State !== 'exited' && State !== 'dead');
   }
 
   private async runWorker(
@@ -46,6 +73,7 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
     const name = `rebroid-gapps-worker-${request.jobId}`;
     const createSignal = AbortSignal.timeout(requestTimeoutMs);
     let container: Dockerode.Container | undefined;
+    let createUnconfirmed = false;
     let logs: Readable | undefined;
     let archive: Readable | undefined;
     let abortCleanup = Promise.resolve();
@@ -82,9 +110,9 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
           PidsLimit: 512,
         },
         Labels: {
-          'com.rebroid.managed': 'true',
-          'com.rebroid.component': 'gapps-patch-worker',
-          'com.rebroid.image-build-job': request.jobId,
+          [managedLabel]: 'true',
+          [componentLabel]: gappsWorkerComponent,
+          [jobLabel]: request.jobId,
         },
       });
       signal.throwIfAborted();
@@ -127,12 +155,16 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
       signal.throwIfAborted();
       await request.consumeArchive(archive, signal);
       signal.throwIfAborted();
+    } catch (error) {
+      createUnconfirmed =
+        !container && this.engine.isTransientDockerTransportError(error);
+      throw error;
     } finally {
       signal.removeEventListener('abort', abort);
       logs?.destroy();
       archive?.destroy();
       await abortCleanup;
-      if (container || createSignal.aborted) {
+      if (container || createSignal.aborted || createUnconfirmed) {
         await this.removeWorker(
           docker,
           container,
@@ -159,9 +191,9 @@ export class DockerGappsWorkerService implements DockerGappsWorkerPort {
         });
         const labels = inspect.Config?.Labels;
         if (
-          labels?.['com.rebroid.managed'] !== 'true' ||
-          labels['com.rebroid.component'] !== 'gapps-patch-worker' ||
-          labels['com.rebroid.image-build-job'] !== jobId
+          labels?.[managedLabel] !== 'true' ||
+          labels[componentLabel] !== gappsWorkerComponent ||
+          labels[jobLabel] !== jobId
         ) {
           throw new Error('GApps worker identity could not be verified.');
         }

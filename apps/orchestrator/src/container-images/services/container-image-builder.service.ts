@@ -9,10 +9,12 @@ import {
   type DockerImageRuntimePort,
 } from '../../docker/contracts/docker-image-runtime.port';
 import { StartContainerImageBuildDto } from '../dto/container-image-build.dto';
+import type { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildKind } from '../entities/container-image-gapps-build';
 import { ContainerImageBuildArchiveService } from './container-image-build-archive.service';
 import { ContainerImageBuildContextService } from './container-image-build-context.service';
 import { ContainerImageBuildJobService } from './container-image-build-job.service';
+import { ContainerImageBuildLifecycleService } from './container-image-build-lifecycle.service';
 import {
   dockerfileWithRequiredLabels,
   requiredRuntimeImageLabels,
@@ -28,7 +30,6 @@ const cleanNullable = (value: string | null | undefined) => {
 @Injectable()
 export class ContainerImageBuilderService {
   private readonly logger = new Logger(ContainerImageBuilderService.name);
-  private readonly activeBuilds = new Map<string, AbortController>();
 
   constructor(
     private readonly jobs: ContainerImageBuildJobService,
@@ -39,6 +40,7 @@ export class ContainerImageBuilderService {
     private readonly context: ContainerImageBuildContextService,
     private readonly archive: ContainerImageBuildArchiveService,
     private readonly features: FeatureFlagsService,
+    private readonly lifecycle: ContainerImageBuildLifecycleService,
   ) {}
 
   listJobs() {
@@ -47,10 +49,6 @@ export class ContainerImageBuilderService {
 
   findLatestJob(buildKind: ContainerImageBuildKind) {
     return this.jobs.findLatestJob(buildKind);
-  }
-
-  activeBuildIds() {
-    return [...this.activeBuilds.keys()];
   }
 
   getJob(id: string) {
@@ -95,91 +93,57 @@ export class ContainerImageBuilderService {
       contextFileIds,
     });
 
-    void this.runBuild(job.id).catch((error) => {
-      this.logger.error(
-        `Image build ${job.id} crashed: ${getErrorMessage(error)}`,
-      );
-    });
+    void this.lifecycle
+      .run(job, (signal) => this.build(job, signal))
+      .catch((error) => {
+        this.logger.error(
+          `Image build ${job.id} crashed: ${getErrorMessage(error)}`,
+        );
+      });
     return job;
   }
 
-  async cancelBuild(id: string) {
-    const job = await this.getJob(id);
-    if (this.jobs.isTerminal(job.status)) {
-      return job;
-    }
+  private async build(job: ContainerImageBuildJob, signal: AbortSignal) {
+    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
+    signal.throwIfAborted();
 
-    this.activeBuilds
-      .get(id)
-      ?.abort(new Error('Container image build cancelled.'));
-
-    return this.jobs.markCancelled(job);
-  }
-
-  private async runBuild(id: string) {
-    const job = await this.getJob(id);
-    if (job.status === 'cancelled') {
-      return;
-    }
-
-    const active = new AbortController();
-    this.activeBuilds.set(id, active);
-    try {
-      const runningJob = await this.jobs.markRunning(job);
-      if (runningJob.status !== 'running') return;
-      await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
-
-      const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];
-      const contextFiles = await this.context.findByIds(contextFileIds);
-      const foundContextFileIds = new Set(contextFiles.map((file) => file.id));
-      const missingContextFileIds = contextFileIds.filter(
-        (fileId) => !foundContextFileIds.has(fileId),
+    const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];
+    const contextFiles = await this.context.findByIds(contextFileIds);
+    const foundContextFileIds = new Set(contextFiles.map((file) => file.id));
+    const missingContextFileIds = contextFileIds.filter(
+      (fileId) => !foundContextFileIds.has(fileId),
+    );
+    if (missingContextFileIds.length > 0) {
+      throw new ConflictException(
+        `Build context files are missing: ${missingContextFileIds.join(', ')}`,
       );
-      if (missingContextFileIds.length > 0) {
-        throw new ConflictException(
-          `Build context files are missing: ${missingContextFileIds.join(', ')}`,
-        );
-      }
-      const buildContext = await this.archive.createTar(
-        job.dockerfile,
-        contextFiles,
-      );
-      await this.images.buildImage({
-        context: buildContext,
-        targetImage: job.targetImage,
-        operationName: 'container_image_build',
-        description: `Build container image ${job.targetImage}`,
-        signal: active.signal,
-        onProgress: (message) => this.jobs.recordProgress(id, message),
-      });
-
-      const current = await this.getJob(id);
-      if (current.status === 'cancelled' || active.signal.aborted) {
-        return;
-      }
-
-      const inspect = await this.images.inspectImage(job.targetImage);
-      await this.metadata.upsert({
-        imageRef: job.targetImage,
-        imageId: inspect.Id,
-        runtimeKind: job.runtimeKind,
-        androidVersion: job.androidVersion,
-        architecture: job.architecture,
-        gmsMode: job.gmsMode,
-        signatureSpoofing: job.signatureSpoofing,
-      });
-      await this.jobs.markSucceeded(current, inspect.Id);
-    } catch (error) {
-      const current = await this.getJob(id);
-      if (current.status === 'cancelled' || active.signal.aborted) {
-        await this.jobs.markCancelled(current);
-        return;
-      }
-
-      const message = getErrorMessage(error);
-      await this.jobs.markFailed(current, message);
-    } finally {
-      this.activeBuilds.delete(id);
     }
+    signal.throwIfAborted();
+    const buildContext = await this.archive.createTar(
+      job.dockerfile,
+      contextFiles,
+    );
+    await this.images.buildImage({
+      context: buildContext,
+      targetImage: job.targetImage,
+      operationName: 'container_image_build',
+      description: `Build container image ${job.targetImage}`,
+      signal,
+      onProgress: (message) => this.jobs.recordProgress(job.id, message),
+    });
+
+    signal.throwIfAborted();
+    const inspect = await this.images.inspectImage(job.targetImage);
+    signal.throwIfAborted();
+    await this.metadata.upsert({
+      imageRef: job.targetImage,
+      imageId: inspect.Id,
+      runtimeKind: job.runtimeKind,
+      androidVersion: job.androidVersion,
+      architecture: job.architecture,
+      gmsMode: job.gmsMode,
+      signatureSpoofing: job.signatureSpoofing,
+    });
+    return inspect.Id;
   }
 }

@@ -15,4 +15,5 @@ export interface DockerGappsWorkerRequest {
 
 export interface DockerGappsWorkerPort {
   run(request: DockerGappsWorkerRequest): Promise<void>;
+  hasUnstoppedWorkers(): Promise<boolean>;
 }
