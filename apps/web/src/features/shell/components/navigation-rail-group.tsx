@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { IconCirclePlus } from '@tabler/icons-react'
 import Link from 'next/link'
 import {
@@ -8,6 +9,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { NavigationHealth, NavigationHealthDetails } from './navigation-health'
 import { usePlatformHealth } from './platform-health-context'
 import {
   hasChildWithSameHealth,
@@ -15,7 +17,6 @@ import {
   type NavigationGroup,
   type NavigationItem
 } from './protected-navigation-config'
-import { NavigationHealth, NavigationHealthDetails } from './navigation-health'
 import { NavLink } from './protected-navigation-parts'
 
 export const NavigationRail = ({
@@ -25,6 +26,7 @@ export const NavigationRail = ({
   entries: (NavigationItem | NavigationGroup)[]
   isActivePath: (href: string) => boolean
 }) => {
+  const railId = useId()
   const styles = variantStyles.rail
   const statuses = usePlatformHealth()
 
@@ -64,7 +66,7 @@ export const NavigationRail = ({
                     <button
                       type='button'
                       aria-label={entry.label}
-                      aria-description={status?.label}
+                      aria-describedby={status ? `${railId}-${entry.healthId}` : undefined}
                       className={cn(
                         styles.item,
                         'relative',
@@ -81,6 +83,14 @@ export const NavigationRail = ({
                       />
                     </button>
                   </DropdownMenuTrigger>
+                  {status ? (
+                    <span
+                      hidden
+                      id={`${railId}-${entry.healthId}`}
+                    >
+                      {status.label}. {status.description}
+                    </span>
+                  ) : null}
                 </li>
               )
             })}
@@ -122,8 +132,11 @@ const NavigationRailItems = ({
   return (
     <>
       {issue ? (
-        <div className="border-b border-surface-border/60 px-2.5 py-2 touch:hidden">
-          <NavigationHealthDetails label={group.label} status={issue} />
+        <div className='border-b border-surface-border/60 px-2.5 py-2 touch:hidden'>
+          <NavigationHealthDetails
+            label={group.label}
+            status={issue}
+          />
         </div>
       ) : null}
       {items.map(({ name, href, Icon: ItemIcon, healthId }) => {

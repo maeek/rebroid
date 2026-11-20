@@ -374,9 +374,7 @@ test('the account menu clears the sidebar rail', async ({ page }) => {
   await expect(railAccount).toBeFocused()
 })
 
-test('service health labels and rail symbols stay with navigation in the sidebar, rail, and drawer', async ({
-  page
-}) => {
+test('service health labels and rail dots stay with navigation in the sidebar, rail, and drawer', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell')
   const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
@@ -400,6 +398,26 @@ test('service health labels and rail symbols stay with navigation in the sidebar
     }
   }
 
+  if (await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)) {
+    const popup = page.locator('[data-slot="navigation-hint"]').filter({
+      hasText: 'Waiting for the first health check.'
+    })
+    for (const name of ['Casting', 'Docker', 'Services']) {
+      const link = sidebar.getByRole('link', { name, exact: true })
+      await link.hover()
+      await expect(popup).toBeVisible()
+      await expect
+        .poll(async () => {
+          const [row, hint, panel] = await Promise.all([link.boundingBox(), popup.boundingBox(), sidebar.boundingBox()])
+          return row && hint && panel
+            ? { topOffset: Math.round(hint.y - row.y), sidebarGap: Math.round(hint.x - panel.x - panel.width) }
+            : null
+        })
+        .toEqual({ topOffset: 0, sidebarGap: 8 })
+      await page.keyboard.press('Escape')
+    }
+  }
+
   const systemSection = sidebar.getByRole('button', { name: /^(Collapse|Expand) System menu$/ })
   const systemLink = sidebar.getByRole('link', { name: 'System', exact: true })
   await expect(systemLink).toHaveAttribute('href', '/system/resources')
@@ -416,13 +434,24 @@ test('service health labels and rail symbols stay with navigation in the sidebar
   await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
   await expect(sidebar).toHaveCSS('width', '64px')
   const railHealth = sidebar.getByRole('link', { name: 'Casting' }).locator(health)
-  await expect(railHealth.locator('svg')).toBeVisible()
+  await expect(railHealth).toHaveCSS('position', 'absolute')
+  await expect(railHealth).toHaveCSS('width', '6px')
   await expect(railHealth).toHaveText('')
   await expect(sidebar.getByRole('button', { name: 'Docker' }).locator(health)).toBeVisible()
   const system = sidebar.getByRole('button', { name: 'System' })
+  const administration = sidebar.getByRole('list').filter({
+    has: page.getByRole('button', { name: 'System', exact: true })
+  })
+  await expect(administration).toHaveCSS('border-bottom-width', '0px')
   await expect(system.locator(health)).toBeVisible()
   await system.press('Enter')
   const systemMenu = page.getByRole('menu', { name: 'System' })
+  await expect(systemMenu).toBeVisible()
+  await expect(administration).toHaveCSS('border-bottom-width', '0px')
+  await expect(administration).toHaveCSS('margin-bottom', '0px')
+  if (await page.evaluate(() => matchMedia('(pointer: fine)').matches)) {
+    await expect(systemMenu).toContainText('Waiting for the first health check.')
+  }
   const overview = systemMenu.getByRole('menuitem', { name: 'Overview' })
   await expect(overview).toHaveAttribute('href', '/system/resources')
   await expect(overview.locator(health)).toHaveCount(0)
@@ -431,6 +460,13 @@ test('service health labels and rail symbols stay with navigation in the sidebar
   await page.keyboard.press('Escape')
   await expect(system).toBeFocused()
   await expect(system.locator(health)).toBeVisible()
+  if (await page.evaluate(() => matchMedia('(hover: hover) and (pointer: fine)').matches)) {
+    await sidebar.getByRole('button', { name: 'Docker', exact: true }).hover()
+    await expect(page.getByRole('menu', { name: 'Docker' })).toBeVisible()
+    await expect(administration).toHaveCSS('border-bottom-width', '0px')
+    await expect(administration).toHaveCSS('margin-bottom', '0px')
+    await page.mouse.move(450, 20)
+  }
 
   await page.setViewportSize({ width: 320, height: 640 })
   await expect(page.getByRole('banner')).toHaveCount(0)

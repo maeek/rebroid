@@ -164,7 +164,7 @@ export const MobileNavigation = ({
             </div>
             <div
               ref={drawerScroll}
-              className='scrollbar-thin min-h-0 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]'
+              className='scrollbar-thin min-h-0 overflow-y-auto transform-gpu overscroll-contain pb-[env(safe-area-inset-bottom)]'
             >
               <div hidden={showAccount}>
                 <div className='px-4 pt-1'>

@@ -135,12 +135,24 @@ describe('platform health navigation', () => {
     mockPoll(summary)
     rerender(sidebar())
     expect(screen.getByRole('link', { name: 'Services' })).toHaveAccessibleDescription('Degraded')
-    expect(within(screen.getByRole('link', { name: 'Casting' })).getByText('Healthy')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Casting' })).toHaveAccessibleDescription('Healthy')
+    expect(screen.queryByText('Healthy')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Casting' })).not.toHaveAccessibleDescription()
     expect(screen.getByRole('link', { name: 'Firewall' })).toHaveAccessibleDescription('Offline')
     expect(screen.getByRole('link', { name: 'Docker' })).toHaveAccessibleDescription('Degraded')
-    expect(screen.getByRole('link', { name: 'OCR perception' })).toHaveAccessibleDescription('Healthy')
+    expect(screen.getByRole('link', { name: 'OCR perception' })).not.toHaveAccessibleDescription()
     expect(screen.getByRole('link', { name: 'Containers' })).not.toHaveAccessibleDescription()
+  })
+
+  it('clears the service warning after recovery', () => {
+    mockPoll(summary)
+    const { rerender } = render(sidebar())
+    const firewall = screen.getByRole('link', { name: 'Firewall' })
+    expect(within(firewall).getByText('Offline')).toBeVisible()
+
+    mockPoll({ ...summary, services: { ...summary.services, firewall: healthy } })
+    rerender(sidebar())
+    expect(firewall).not.toHaveAccessibleDescription()
+    expect(within(firewall).queryByText('Offline')).toBeNull()
   })
 
   it('shows unknown service health when the summary request fails and hides optional services that are disabled', () => {

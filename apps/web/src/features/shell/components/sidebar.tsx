@@ -106,7 +106,7 @@ export default function Sidebar({
         </Tooltip>
       </div>
       <div className='flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-panel'>
-        <div className='scrollbar-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain'>
+        <div className='scrollbar-thin min-h-0 flex-1 overflow-x-hidden overflow-y-auto transform-gpu overscroll-contain'>
           <div className={collapsed ? 'w-16' : 'w-72'}>
             <ProtectedNavigation
               variant={collapsed ? 'rail' : 'sidebar'}

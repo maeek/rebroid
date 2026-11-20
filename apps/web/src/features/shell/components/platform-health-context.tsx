@@ -3,19 +3,23 @@
 import { createContext, useContext, type ReactNode } from 'react'
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
-import { dockerRuntimeHealth, serviceHealthState } from '@/shared/model/diagnostics/service-health'
+import {
+  dockerRuntimeHealth,
+  serviceHealthState,
+  type DisplayServiceHealth
+} from '@/shared/model/diagnostics/service-health'
 import type { OrchestratorHealth } from '@/shared/contracts/diagnostics'
 
 export type NavigationHealthId = 'system' | 'display' | 'firewall' | 'docker' | 'ocr'
 type ServiceState = ReturnType<typeof serviceHealthState>
 export type NavigationHealthStatus =
-  | Exclude<ServiceState, { label: 'Healthy' }>
-  | { label: 'Checking'; tone: 'neutral'; description: string }
+  Exclude<ServiceState, { label: 'Healthy' }> | { label: 'Checking'; tone: 'neutral'; description: string }
 
 const checking = { label: 'Checking', tone: 'neutral', description: 'Waiting for the first health check.' } as const
 
 const getSystemStatus = (health?: OrchestratorHealth, error?: unknown): NavigationHealthStatus | undefined => {
-  if (error) return { label: 'Offline', tone: 'danger', description: 'The platform health summary could not be retrieved.' }
+  if (error)
+    return { label: 'Offline', tone: 'danger', description: 'The platform health summary could not be retrieved.' }
   if (!health) return checking
   if (!health.services.orchestrator.ok) {
     return { label: 'Offline', tone: 'danger', description: health.services.orchestrator.message }
@@ -25,7 +29,11 @@ const getSystemStatus = (health?: OrchestratorHealth, error?: unknown): Navigati
     .filter(service => !service.ok && service.status !== 'disabled')
     .map(service => service.message.trim())
     .filter(Boolean)
-  return { label: 'Degraded', tone: 'warning', description: [...new Set(reasons)].join(' ') || 'One or more platform health checks failed.' }
+  return {
+    label: 'Degraded',
+    tone: 'warning',
+    description: [...new Set(reasons)].join(' ') || 'One or more platform health checks failed.'
+  }
 }
 
 const PlatformHealthContext = createContext<Partial<Record<NavigationHealthId, NavigationHealthStatus>>>({})
@@ -37,9 +45,8 @@ export const PlatformHealthProvider = ({ polling, children }: { polling: boolean
     { enabled: polling, intervalMs: 10_000 }
   )
   const health = error ? undefined : data
-  const fallback = error ? { label: 'Unknown', tone: 'warning', description: 'Service health could not be checked.' } as const : checking
-  const serviceIssue = (service?: Parameters<typeof serviceHealthState>[0]) => {
-    if (!health) return fallback
+  const serviceIssue = (service?: DisplayServiceHealth) => {
+    if (!health && !error) return checking
     const state = serviceHealthState(service)
     return state.label === 'Healthy' ? undefined : state
   }

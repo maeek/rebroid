@@ -78,11 +78,12 @@ Set `surface-navigation` between the page background and editor panels, without 
 brand and sidebar toggle in a single row above the scrollable links. In the icon rail, use a right
 chevron beside the logo at the top-right edge. Reveal it when the pointer enters the rail or the
 toggle gains keyboard focus. Keep it visible on touch screens. Place the account control at the bottom.
-For platform administrators, the Services navigation item shows overall platform health with a right-aligned symbol and a short text label.
+For platform administrators, Services shows a right-aligned symbol and short label when overall health is pending, unknown, or impaired. Healthy services have no status marker.
 Collapsing the System section moves this status to the System item.
-Casting, Firewall, Docker, and OCR perception show their own health in the same way. Reserve sidebar dots for notifications.
+Casting, Firewall, Docker, and OCR perception show their own health in the same way. On desktop, hover or focus a service link to read the diagnostic message. The mobile drawer uses the inline label.
+Align the diagnostic hint with the top of its row and place it 8 px beyond the sidebar’s outer edge.
 Animate the desktop sidebar width and content inset together, respecting reduced motion. The collapsed sidebar
-is a 64 px icon rail with a health symbol beside each service icon and the full state in its hint or flyout. The account menu opens beside the rail and aligns
+is a 64 px icon rail with small corner dots for service exceptions. Show the reason in the existing group flyout or a matching hint on direct links. The account menu opens beside the rail and aligns
 with the bottom edge of its trigger. In the expanded sidebar it opens 8 px above the borderless
 account row and matches its width. Use a neutral hover and open state on the row and a borderless
 floating menu. Show the current theme on the Theme row. Theme opens a list in the same menu, with

@@ -157,7 +157,7 @@ export const variantStyles = {
     sectionAction:
       'touch-control flex size-8 shrink-0 items-center justify-center rounded-control text-foreground-muted hover:bg-control-hover hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring',
     sectionActionIcon: 'size-4 stroke-current',
-    list: 'grid justify-items-center gap-1 mb-3 border-b border-surface-border/60 pb-3 last:mb-0 last:border-b-0',
+    list: 'grid justify-items-center gap-1 mb-3 border-b border-surface-border/60 pb-3 last-of-type:mb-0 last-of-type:border-b-0',
     item: 'touch-control flex size-9 shrink-0 items-center justify-center rounded-control text-foreground hover:bg-control-hover focus-visible:outline-2 focus-visible:outline-ring',
     activeItem: 'bg-accent text-accent-foreground!',
     iconWrap: 'flex size-6 shrink-0 items-center justify-center',

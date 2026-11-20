@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { DisclosureChevron } from '@/components/ui/disclosure'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
-import { NavigationHint } from './navigation-hint'
 import { NavigationHealth, NavigationHealthHint } from './navigation-health'
+import { NavigationHint } from './navigation-hint'
 import { usePlatformHealth } from './platform-health-context'
 import {
   hasChildWithSameHealth,
@@ -112,7 +112,13 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, varia
 
   return (
     <li className={shortcut ? cn('relative flex items-center', compact && 'flex-col') : undefined}>
-      <NavigationHealthHint label={label} status={status} variant={variant}>{link}</NavigationHealthHint>
+      <NavigationHealthHint
+        label={label}
+        status={status}
+        variant={variant}
+      >
+        {link}
+      </NavigationHealthHint>
       {shortcut ? (
         <NavigationAddLink
           href={shortcut.href}
@@ -183,17 +189,21 @@ export const NestedNavigationMenu = ({
     <li>
       {href ? (
         <div className='flex min-w-0'>
-          <NavigationHealthHint label={label} status={status} variant={variant}>
-          <Link
-            href={href}
-            className={cn(styles.item, 'min-w-0 flex-1', linkActive && styles.activeItem)}
-            onClick={onNavigate}
-            aria-current={linkActive ? 'page' : undefined}
-            aria-description={status?.label}
+          <NavigationHealthHint
+            label={label}
+            status={status}
+            variant={variant}
           >
-            {labelContent}
-            <NavigationHealth status={status} />
-          </Link>
+            <Link
+              href={href}
+              className={cn(styles.item, 'min-w-0 flex-1', linkActive && styles.activeItem)}
+              onClick={onNavigate}
+              aria-current={linkActive ? 'page' : undefined}
+              aria-description={status?.label}
+            >
+              {labelContent}
+              <NavigationHealth status={status} />
+            </Link>
           </NavigationHealthHint>
           <button
             {...toggleProps}
@@ -223,25 +233,29 @@ export const NestedNavigationMenu = ({
                 key={itemHref}
                 className='relative flex items-center'
               >
-                <NavigationHealthHint label={name} status={itemStatus} variant={variant}>
-                <Link
-                  href={itemHref}
-                  className={cn(
-                    styles.nestedItem,
-                    'flex-1',
-                    shortcut && 'pr-9 touch:pr-2',
-                    isActivePath(itemHref) && styles.nestedActiveItem
-                  )}
-                  onClick={onNavigate}
-                  aria-current={isActivePath(itemHref) ? 'page' : undefined}
-                  aria-description={itemStatus?.label}
+                <NavigationHealthHint
+                  label={name}
+                  status={itemStatus}
+                  variant={variant}
                 >
-                  <div className={styles.nestedIconWrap}>
-                    <Icon className={styles.nestedIcon} />
-                  </div>
-                  <span className='truncate'>{name}</span>
-                  <NavigationHealth status={itemStatus} />
-                </Link>
+                  <Link
+                    href={itemHref}
+                    className={cn(
+                      styles.nestedItem,
+                      'flex-1',
+                      shortcut && 'pr-9 touch:pr-2',
+                      isActivePath(itemHref) && styles.nestedActiveItem
+                    )}
+                    onClick={onNavigate}
+                    aria-current={isActivePath(itemHref) ? 'page' : undefined}
+                    aria-description={itemStatus?.label}
+                  >
+                    <div className={styles.nestedIconWrap}>
+                      <Icon className={styles.nestedIcon} />
+                    </div>
+                    <span className='truncate'>{name}</span>
+                    <NavigationHealth status={itemStatus} />
+                  </Link>
                 </NavigationHealthHint>
                 {shortcut ? (
                   <NavigationAddLink

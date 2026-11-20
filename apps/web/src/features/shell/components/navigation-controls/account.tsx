@@ -104,7 +104,7 @@ export const NavigationAccount = ({
         {...popupPosition}
         ref={popup}
         className={cn(
-          'scrollbar-thin max-h-(--available-height) overflow-y-auto overscroll-contain border-0 bg-surface-elevated',
+          'scrollbar-thin max-h-(--available-height) overflow-y-auto transform-gpu overscroll-contain border-0 bg-surface-elevated',
           showName ? 'w-(--anchor-width) min-w-0' : 'w-48'
         )}
         onKeyDown={event => {
