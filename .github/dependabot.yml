@@ -34,6 +34,9 @@ updates:
       # Upgrade the shared compiler and its consumers together.
       - dependency-name: typescript
         update-types: [version-update:semver-major]
+      # Coordinate NestJS majors across both apps, their adapters, and tooling.
+      - dependency-name: "@nestjs/*"
+        update-types: [version-update:semver-major]
       # The web lint plugins still declare ESLint 9 compatibility.
       - dependency-name: eslint
         update-types: [version-update:semver-major]
