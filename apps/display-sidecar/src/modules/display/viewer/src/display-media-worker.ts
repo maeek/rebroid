@@ -5,11 +5,11 @@ import type {
 import { DisplayMediaMetrics } from "./display-media-metrics.js";
 import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
 import { codecConfiguration } from "./h264.js";
+import type { FragmentedMp4Configuration } from "./fragmented-mp4.js";
 import {
-  FragmentedMp4Muxer,
-  type FragmentedMp4Configuration,
-  type FragmentedMp4Sample,
-} from "./fragmented-mp4.js";
+  MseVideoFragments,
+  type MseVideoFragmentMessage,
+} from "./mse-video-fragments.js";
 import { parseViewerMediaFrame, type ViewerMediaFrame } from "./media-frame.js";
 import { MediaIngressQueue } from "./media-ingress-queue.js";
 import { parseRelayMetrics } from "./relay-metrics.js";
@@ -73,23 +73,7 @@ type WorkerOutput =
   | { type: "status"; payload: Record<string, unknown> }
   | { type: "metrics"; metrics: ViewerStreamMetricsV4 }
   | { type: "mse-reset"; epoch: number }
-  | {
-      type: "mse-init";
-      epoch: number;
-      codec: string;
-      width: number;
-      height: number;
-      sourcePtsOriginUs: number;
-      segment: ArrayBuffer;
-    }
-  | {
-      type: "mse-segment";
-      epoch: number;
-      durationMs: number;
-      sourcePtsOriginUs: number;
-      samples: Array<{ sequence: number; timestampUs: number }>;
-      segment: ArrayBuffer;
-    }
+  | MseVideoFragmentMessage
   | { type: "renderer-fallback"; reason: string }
   | { type: "reconnecting"; cause: ReconnectCause; delayMs: number }
   | { type: "session-expired" }
@@ -193,10 +177,8 @@ const decodeStartedAt = new Map<number, number>();
 const decodeSequences = new Map<number, number>();
 let decoderPreference: "hardware" | "software" = "hardware";
 let softwareDecoderFallbackUsed = false;
-const mp4Muxer = new FragmentedMp4Muxer();
 let mp4Configuration: FragmentedMp4Configuration | null = null;
-let pendingMp4Samples: FragmentedMp4Sample[] = [];
-let mp4FlushTimer = 0;
+let mseFragments: MseVideoFragments | null = null;
 let highestReceivedSequence: number | undefined;
 let highestDecodedSequence: number | undefined;
 let highestPresentedSequence: number | undefined;
@@ -357,89 +339,6 @@ function combinedRecoveryAccessUnit(
   return combined;
 }
 
-function clearMp4FlushTimer(): void {
-  if (mp4FlushTimer) {
-    clearTimeout(mp4FlushTimer);
-    mp4FlushTimer = 0;
-  }
-}
-
-function postMp4Initialization(sourcePtsOriginUs: number): void {
-  if (!mp4Configuration) {
-    throw new Error("Firefox MSE is missing H.264 configuration.");
-  }
-  const initialization = mp4Muxer.initialize(mp4Configuration);
-  const segment = initialization.segment;
-  postMessage(
-    {
-      type: "mse-init",
-      epoch: videoEpoch,
-      codec: initialization.codec,
-      width: initialization.width,
-      height: initialization.height,
-      sourcePtsOriginUs,
-      segment,
-    },
-    [segment],
-  );
-  armFirstFrameTimer(generation);
-}
-
-function flushMp4Samples(nextTimestampUs?: number): void {
-  clearMp4FlushTimer();
-  if (pendingMp4Samples.length === 0) {
-    return;
-  }
-  const samples = pendingMp4Samples.splice(
-    0,
-    Math.min(2, pendingMp4Samples.length),
-  );
-  const fragment = mp4Muxer.fragment(samples, nextTimestampUs);
-  postMessage(
-    {
-      type: "mse-segment",
-      epoch: videoEpoch,
-      durationMs: fragment.durationMs,
-      sourcePtsOriginUs: fragment.sourcePtsOriginUs,
-      samples: fragment.samples,
-      segment: fragment.segment,
-    },
-    [fragment.segment],
-  );
-  if (pendingMp4Samples.length > 0) {
-    scheduleMp4Flush();
-  }
-}
-
-function scheduleMp4Flush(): void {
-  if (mp4FlushTimer || pendingMp4Samples.length === 0) {
-    return;
-  }
-  mp4FlushTimer = setTimeout(() => {
-    mp4FlushTimer = 0;
-    flushMp4Samples();
-  }, 33) as unknown as number;
-}
-
-function enqueueMp4Sample(frame: ViewerMediaFrame): void {
-  if (needsKeyFrame) {
-    pendingMp4Samples = [];
-    postMp4Initialization(frame.timestampUs);
-    needsKeyFrame = false;
-  }
-  pendingMp4Samples.push({
-    sequence: frame.sequence,
-    timestampUs: frame.timestampUs,
-    keyFrame: frame.keyFrame,
-    data: frame.data,
-  });
-  if (pendingMp4Samples.length >= 3) {
-    flushMp4Samples(pendingMp4Samples[2]!.timestampUs);
-  } else {
-    scheduleMp4Flush();
-  }
-}
-
 function receiveVideoConfiguration(frame: ViewerMediaFrame): void {
   if (frame.data.byteLength > maxCodecConfigurationBytes) {
     throw new Error("H.264 configuration exceeds the viewer size limit.");
@@ -497,7 +396,21 @@ async function decodeVideo(
     return;
   }
   if (rendererMode === "mse") {
-    enqueueMp4Sample(frame);
+    if (!mseFragments) {
+      if (!mp4Configuration) {
+        throw new Error("Firefox MSE is missing H.264 configuration.");
+      }
+      mseFragments = new MseVideoFragments(
+        videoEpoch,
+        mp4Configuration,
+        (message) => {
+          postMessage(message, [message.segment]);
+          if (message.type === "mse-init") armFirstFrameTimer(generation);
+        },
+      );
+    }
+    mseFragments.push(frame);
+    needsKeyFrame = false;
     return;
   }
   const epoch = videoEpoch;
@@ -619,8 +532,8 @@ function requestVideoResync(reason: string): void {
 function resetVideoAdmission(): void {
   videoEpoch += 1;
   needsKeyFrame = true;
-  clearMp4FlushTimer();
-  pendingMp4Samples = [];
+  mseFragments?.close();
+  mseFragments = null;
   if (rendererMode === "mse")
     postMessage({ type: "mse-reset", epoch: videoEpoch });
 }

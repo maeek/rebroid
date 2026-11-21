@@ -61,7 +61,7 @@ const flush = async () => {
 };
 
 test("Firefox worker presents rotated fMP4 without replacing the socket or constructing a VideoDecoder", async (t) => {
-  t.mock.timers.enable({ apis: ["setInterval"] });
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
   let now = 100;
   t.mock.method(performance, "now", () => now);
   const posted = [];
@@ -193,6 +193,20 @@ test("Firefox worker presents rotated fMP4 without replacing the socket or const
       .findLast((message) => message.type === "mse-segment")
       .samples.map(({ sequence }) => sequence),
     [6, 7],
+  );
+  t.mock.timers.tick(33);
+  assert.deepEqual(
+    posted
+      .filter(({ type }) => type === "mse-segment")
+      .map(({ epoch, samples }) => [
+        epoch,
+        samples.map(({ sequence }) => sequence),
+      ]),
+    [
+      [initialization.epoch, [1, 2]],
+      [landscape.epoch, [6, 7]],
+      [landscape.epoch, [8]],
+    ],
   );
   now = 230;
   present(initialization.epoch, 2340, 1080);
