@@ -6095,6 +6095,59 @@
           "apps"
         ]
       }
+    },
+    "/api/v1/automations/{id}/run-history": {
+      "get": {
+        "operationId": "AutomationsController_listRunHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "example": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationRunHistoryRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
     }
   },
   "info": {
@@ -12902,6 +12955,85 @@
           "status",
           "errors",
           "updatedAt"
+        ]
+      },
+      "AutomationRunHistoryRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "automationId": {
+            "type": "string"
+          },
+          "targetApplicationId": {
+            "type": "string"
+          },
+          "targetProfileMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetProfileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "schedule"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "success",
+              "failed",
+              "canceled"
+            ]
+          },
+          "startedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "stepCount": {
+            "type": "number"
+          },
+          "completedSteps": {
+            "type": "number"
+          },
+          "failedSteps": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "automationId",
+          "targetApplicationId",
+          "targetProfileMode",
+          "targetProfileName",
+          "trigger",
+          "status",
+          "startedAt",
+          "completedAt",
+          "error",
+          "createdAt",
+          "stepCount",
+          "completedSteps",
+          "failedSteps"
         ]
       }
     }

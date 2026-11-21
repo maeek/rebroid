@@ -12,20 +12,20 @@ import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { AutomationRun, AutomationRunStatus } from '@/shared/contracts/automation'
+import type { AutomationRunHistoryRow, AutomationRunStatus } from '@/shared/contracts/automation'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import styles from '@/shared/ui/data-grid/data-grid-table.module.css'
 
 const statusVariant = (status: AutomationRunStatus) =>
   status === 'failed' || status === 'canceled' ? 'danger' : status === 'success' ? 'success' : 'neutral'
 
-const durationMs = (run: AutomationRun) => {
+const durationMs = (run: AutomationRunHistoryRow) => {
   if (!run.startedAt || !run.completedAt) return null
   const value = new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime()
   return Number.isFinite(value) && value >= 0 ? value : null
 }
 
-const durationLabel = (run: AutomationRun) => {
+const durationLabel = (run: AutomationRunHistoryRow) => {
   const value = durationMs(run)
   if (value === null) return '-'
   if (value < 1000) return `${value} ms`
@@ -33,23 +33,22 @@ const durationLabel = (run: AutomationRun) => {
   return `${(value / 1000).toFixed(1)} s`
 }
 
-const triggerLabel = (run: AutomationRun) => {
+const triggerLabel = (run: AutomationRunHistoryRow) => {
   if (run.trigger === 'manual') return 'Manual'
   if (run.trigger === 'schedule') return 'Schedule'
   return run.trigger
 }
 
-const stepProgressLabel = (run: AutomationRun) => {
-  const failed = run.stepResults.filter(step => step.status === 'failed').length
-  const completed = run.stepResults.filter(step => step.status === 'success').length
+const stepProgressLabel = (run: AutomationRunHistoryRow) => {
+  const { failedSteps: failed, completedSteps: completed } = run
   if (failed > 0) return `${completed} completed, ${failed} failed`
 
   return `${completed} completed`
 }
 
-const runTime = (run: AutomationRun) => new Date(run.startedAt ?? run.createdAt).getTime()
+const runTime = (run: AutomationRunHistoryRow) => new Date(run.startedAt ?? run.createdAt).getTime()
 
-const sortRuns = (runs: AutomationRun[], sorting: SortingState) => {
+const sortRuns = (runs: AutomationRunHistoryRow[], sorting: SortingState) => {
   const activeSorting = sorting.length > 0 ? sorting : [{ id: 'startedAt', desc: true }]
   return [...runs].sort((left, right) => {
     for (const item of activeSorting) {
@@ -58,7 +57,7 @@ const sortRuns = (runs: AutomationRun[], sorting: SortingState) => {
       if (item.id === 'startedAt') result = runTime(left) - runTime(right)
       else if (item.id === 'trigger') result = triggerLabel(left).localeCompare(triggerLabel(right))
       else if (item.id === 'target') result = left.targetApplicationId.localeCompare(right.targetApplicationId)
-      else if (item.id === 'steps') result = left.stepResults.length - right.stepResults.length
+      else if (item.id === 'steps') result = left.stepCount - right.stepCount
       else if (item.id === 'duration') result = (durationMs(left) ?? -1) - (durationMs(right) ?? -1)
       else if (item.id === 'status') result = left.status.localeCompare(right.status)
       if (result !== 0) return result * multiplier
@@ -74,8 +73,8 @@ export function AutomationTracesSection({
   loading = false
 }: {
   loading?: boolean
-  applications: AndroidApplication[]
-  runs: AutomationRun[]
+  applications: Pick<AndroidApplication, 'id' | 'name'>[]
+  runs: AutomationRunHistoryRow[]
   workflowId?: string
 }) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'startedAt', desc: true }])
@@ -101,7 +100,7 @@ export function AutomationTracesSection({
   }, [applicationById, runs, search, sourceFilter, statusFilter, targetFilter])
   const sortedRuns = useMemo(() => sortRuns(filteredRuns, sorting), [filteredRuns, sorting])
 
-  const columns = useMemo<ColumnDef<AutomationRun>[]>(
+  const columns = useMemo<ColumnDef<AutomationRunHistoryRow>[]>(
     () => [
       {
         id: 'startedAt',
@@ -152,7 +151,7 @@ export function AutomationTracesSection({
       },
       {
         id: 'steps',
-        accessorFn: run => run.stepResults.length,
+        accessorFn: run => run.stepCount,
         header: 'Steps',
         size: 160,
         meta: { label: 'Steps', skeleton: { kind: 'text', width: 'w-24' } },

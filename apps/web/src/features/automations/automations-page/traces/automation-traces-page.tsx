@@ -1,4 +1,9 @@
+'use client'
+
+import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getBff } from '@/lib/http/bff'
+import { ActionResultError } from '@/shared/actions/action-result'
 import { activeWorkflowRunsHref } from '@/shared/model/active-workflow-runs-href'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
@@ -10,22 +15,38 @@ import { StateView } from '@/shared/ui/state-view'
 import { AutomationRunTrace } from './automation-run-trace'
 import { AutomationTracesSection } from './automation-traces-section'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { Automation, AutomationRun } from '@/shared/contracts/automation'
+import type { Automation, AutomationRun, AutomationRunHistoryRow } from '@/shared/contracts/automation'
 
 export function AutomationTracesPage({
   applications,
   automation,
   runs,
+  initialRun,
   selectedRunId,
   loading = false
 }: {
-  applications: AndroidApplication[]
-  automation: Automation | null
+  applications: Pick<AndroidApplication, 'id' | 'name'>[]
+  automation: Pick<Automation, 'id' | 'name'> | null
   loading?: boolean
-  runs: AutomationRun[]
+  runs: AutomationRunHistoryRow[]
+  initialRun?: AutomationRun
   selectedRunId?: string
 }) {
-  const selectedRun = runs.find(run => run.id === selectedRunId)
+  const detail = useQuery({
+    queryKey: ['workflow-trace-run', initialRun?.automationId, selectedRunId],
+    queryFn: ({ signal }) => {
+      const query = new URLSearchParams({ workflow: initialRun!.automationId })
+      return getBff<AutomationRun>(`/api/bff/automations/runs/${encodeURIComponent(selectedRunId!)}?${query}`, signal)
+    },
+    initialData: initialRun,
+    enabled: false,
+    gcTime: 0,
+    retry: false
+  })
+  const accessLost =
+    detail.error instanceof ActionResultError &&
+    ['unauthenticated', 'forbidden', 'not_found'].includes(detail.error.failure.code)
+  const selectedRun = accessLost || !initialRun ? undefined : detail.data
   const editorHref = automation ? `/automations/${encodeURIComponent(automation.id)}` : undefined
   const historyHref = automation ? workflowTraceHref(automation.id) : '/automations'
   const trail = [
@@ -82,6 +103,7 @@ export function AutomationTracesPage({
               key={selectedRun.id}
               run={selectedRun}
               showTargetId={!target}
+              refresh={() => detail.refetch({ throwOnError: true })}
             />
           ) : null}
           {!loading && !selectedRun ? (

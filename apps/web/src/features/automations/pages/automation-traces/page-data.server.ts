@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation'
-import { listApplicationsAction } from '@/server/orchestrator/applications/actions/queries/listing-actions'
+import { listApplicationGallery } from '@/server/orchestrator/applications/application-gallery-query'
 import { isWorkflowRun, workflowCatalogIsDisabled } from '@/server/orchestrator/automations/active-workflow-runs-query'
 import { getAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
-import { listAutomationRunsAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { orchestratorAutomationsClient } from '@/server/orchestrator/automations/client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
@@ -26,25 +25,30 @@ export const loadAutomationTracesPageData = async (id: string, selectedRunId?: s
   )
     notFound()
 
-  const loadRuns = async () => {
-    if (selectedRunId === undefined) return listAutomationRunsAction(id, 50)
+  const loadSelectedRun = async () => {
+    if (selectedRunId === undefined) return undefined
     if (!/^[a-zA-Z0-9_-]{1,128}$/.test(selectedRunId)) {
       if (!automation) notFound()
-      return []
+      return undefined
     }
     const selected = await orchestratorAutomationsClient.getRun(user.ownerUserId, selectedRunId).catch(error => {
       if (error instanceof OrchestratorRequestError && error.status === 404) return null
       throw error
     })
-    if (selected?.automationId === id && isWorkflowRun(selected)) return [selected]
+    if (selected?.automationId === id && isWorkflowRun(selected)) return selected
     if (!automation) notFound()
-    return []
+    return undefined
   }
-  const [applications, runs] = await Promise.all([listApplicationsAction(), loadRuns()])
+  const [applications, runs, selectedRun] = await Promise.all([
+    listApplicationGallery(user),
+    selectedRunId === undefined ? orchestratorAutomationsClient.listRunHistory(user.ownerUserId, id, 50) : [],
+    loadSelectedRun()
+  ])
 
   return {
-    applications,
-    automation,
-    runs
+    applications: applications.map(app => ({ id: app.id, name: app.name })),
+    automation: automation && { id: automation.id, name: automation.name },
+    runs,
+    selectedRun
   }
 }

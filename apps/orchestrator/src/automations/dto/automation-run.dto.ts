@@ -1,5 +1,5 @@
 import { AutomationRunEventDto } from './automation-run-event.dto';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsEnum,
@@ -182,6 +182,29 @@ export class AutomationRunDto {
 
   @ApiProperty()
   updatedAt!: string;
+}
+
+export class AutomationRunHistoryRowDto extends PickType(AutomationRunDto, [
+  'id',
+  'automationId',
+  'targetApplicationId',
+  'targetProfileMode',
+  'targetProfileName',
+  'trigger',
+  'status',
+  'startedAt',
+  'completedAt',
+  'createdAt',
+  'error',
+] as const) {
+  @ApiProperty()
+  stepCount!: number;
+
+  @ApiProperty()
+  completedSteps!: number;
+
+  @ApiProperty()
+  failedSteps!: number;
 }
 
 export class AutomationAiRunHistoryDto {

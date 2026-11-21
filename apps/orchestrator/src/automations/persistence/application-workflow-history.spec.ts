@@ -47,6 +47,12 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
     const otherApp = await save({ targetApplicationId: 'other-app' });
     const otherOwner = await save({ ownerUserId: 'other-owner' });
     const adHoc = await save({ automationId: 'ephemeral-ai-fixture' });
+    for (const [index, status] of ['success', 'failed', 'skipped'].entries()) {
+      await db.query(
+        'INSERT INTO automation_run_step_results (runId, sequence, resultJson) VALUES (?, ?, ?)',
+        [completed.id, index + 1, JSON.stringify({ status })],
+      );
+    }
 
     const first = await runs.listApplicationWorkflows('owner', 'app', 0, 1, '');
     expect(first).toMatchObject({
@@ -70,6 +76,25 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
       ],
     });
     expect(second.items[0]?.run.stepResultsJson).toBeUndefined();
+    const history = await runs.listHistoryForAutomation('owner', 'workflow');
+    expect(history.map(({ run }) => run.id)).toEqual([
+      otherApp.id,
+      completed.id,
+    ]);
+    expect(history[0]).toMatchObject({
+      stepCount: 0,
+      completedSteps: 0,
+      failedSteps: 0,
+    });
+    expect(history[1]).toMatchObject({
+      stepCount: 3,
+      completedSteps: 1,
+      failedSteps: 1,
+    });
+    expect(history[1]?.run).not.toHaveProperty(
+      'stepResultsJson',
+      expect.anything(),
+    );
     await expect(
       runs.listApplicationWorkflows('owner', 'app', 0, 25, 'INVENTORY'),
     ).resolves.toMatchObject({ total: 1 });

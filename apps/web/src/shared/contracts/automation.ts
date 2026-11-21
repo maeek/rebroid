@@ -87,6 +87,8 @@ export interface AutomationStepResult {
   error: string | null
 }
 
+export type AutomationRunHistoryRow = OrchestratorApiSchemas['AutomationRunHistoryRowDto']
+
 export interface AutomationRun {
   id: string
   automationId: string

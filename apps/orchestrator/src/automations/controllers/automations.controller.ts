@@ -50,6 +50,7 @@ import {
 } from '../dto/automation-run-event.dto';
 import {
   AutomationRunDto,
+  AutomationRunHistoryRowDto,
   AutomationAiRunHistoryDto,
   ActiveAutomationRunDto,
   ListActiveAutomationRunsQueryDto,
@@ -381,6 +382,16 @@ export class AutomationsController {
   @ApiCreatedResponse({ type: AutomationRunDto })
   run(@Param('id') id: string, @Body() dto: RunAutomationDto) {
     return this.automations.run(dto.ownerUserId, id, dto);
+  }
+
+  @RequiresFeature('feature.workflows')
+  @Get(':id/run-history')
+  @ApiOkResponse({ type: AutomationRunHistoryRowDto, isArray: true })
+  listRunHistory(
+    @Param('id') id: string,
+    @Query() query: ListAutomationRunsQueryDto,
+  ) {
+    return this.automations.listRunHistory(query.ownerUserId, id, query.limit);
   }
 
   @RequiresFeature('feature.workflows')

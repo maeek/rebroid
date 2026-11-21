@@ -5,7 +5,10 @@ import type {
   AutomationTag,
 } from '@rebroid/automation-core/definition';
 import { AutomationDto, AutomationSummaryDto } from '../dto/automation.dto';
-import { AutomationRunDto } from '../dto/automation-run.dto';
+import {
+  AutomationRunDto,
+  AutomationRunHistoryRowDto,
+} from '../dto/automation-run.dto';
 import { AutomationTriggerDto } from '../dto/automation-trigger.dto';
 import {
   Automation,
@@ -14,6 +17,7 @@ import {
 import {
   AutomationRun,
   AutomationRunStatus,
+  type AutomationRunSummaryFields,
 } from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';
 import { AutomationStepResult } from '../runner/automation-runner.types';
@@ -57,10 +61,30 @@ export class AutomationsDtoMapper {
 
   run(run: AutomationRun): AutomationRunDto {
     return {
-      id: run.id,
-      automationId: run.automationId,
+      ...this.runFields(run),
       automationTriggerId: run.automationTriggerId,
       ownerUserId: run.ownerUserId,
+      stepResults: JSON.parse(
+        run.stepResultsJson ?? '[]',
+      ) as AutomationStepResult[],
+      updatedAt: toIso(run.updatedAt) ?? new Date().toISOString(),
+    };
+  }
+
+  runHistoryRow(
+    run: AutomationRunSummaryFields,
+    counts: Pick<
+      AutomationRunHistoryRowDto,
+      'stepCount' | 'completedSteps' | 'failedSteps'
+    >,
+  ): AutomationRunHistoryRowDto {
+    return { ...this.runFields(run), ...counts };
+  }
+
+  private runFields(run: AutomationRunSummaryFields) {
+    return {
+      id: run.id,
+      automationId: run.automationId,
       targetApplicationId: run.targetApplicationId,
       targetProfileMode: run.targetProfileMode,
       targetProfileName: run.targetProfileName,
@@ -68,12 +92,8 @@ export class AutomationsDtoMapper {
       status: run.status,
       startedAt: toIso(run.startedAt),
       completedAt: toIso(run.completedAt),
-      stepResults: JSON.parse(
-        run.stepResultsJson ?? '[]',
-      ) as AutomationStepResult[],
       error: run.error,
       createdAt: toIso(run.createdAt) ?? new Date().toISOString(),
-      updatedAt: toIso(run.updatedAt) ?? new Date().toISOString(),
     };
   }
 

@@ -280,6 +280,22 @@ export class AutomationsService {
     ).map((run) => this.mapper.run(run));
   }
 
+  async listRunHistory(
+    ownerUserId: string,
+    automationId: string,
+    limit?: number,
+  ) {
+    await this.queries.getEntity(ownerUserId, automationId);
+    const rows = await this.runs.listHistoryForAutomation(
+      ownerUserId,
+      automationId,
+      limit,
+    );
+    return rows.map(({ run, ...counts }) =>
+      this.mapper.runHistoryRow(run, counts),
+    );
+  }
+
   async listActiveRuns(ownerUserId: string): Promise<ActiveAutomationRunDto[]> {
     const rows = await this.runs.listActive(ownerUserId);
     const showNames = this.features.isEnabled('feature.workflows');

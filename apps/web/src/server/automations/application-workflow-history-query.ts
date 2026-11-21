@@ -8,7 +8,7 @@ import type {
 } from '@/shared/contracts/application-workflow-history'
 
 const workflowHistoryQuery = async (targetApplicationId: string) => {
-  const user = await getCurrentUserContext()
+  const user = await getCurrentUserContext('api')
   assertAutomationPermission(user, 'automations:run')
   return new URLSearchParams({ ownerUserId: user.ownerUserId, targetApplicationId })
 }
@@ -24,7 +24,9 @@ export const listApplicationWorkflowRuns = async (
   return emptyRequest<ApplicationWorkflowRunPage>(`/automations/runs/history?${query}`)
 }
 
-export const readApplicationWorkflowRun = async (appId: string, runId: string) => {
+export const readApplicationWorkflowRun = async (appId: string, runId: string, signal?: AbortSignal) => {
   const query = await workflowHistoryQuery(appId)
-  return emptyRequest<ApplicationWorkflowRun>(`/automations/runs/history/${encodeURIComponent(runId)}?${query}`)
+  return emptyRequest<ApplicationWorkflowRun>(`/automations/runs/history/${encodeURIComponent(runId)}?${query}`, {
+    signal
+  })
 }

@@ -23,6 +23,7 @@ export const useAutomationRunEvents = (
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
   const [state, setState] = useState({ runId, status: serverStatus })
   const [streamError, setStreamError] = useState<string | null>(null)
+  const [connected, setConnected] = useState(false)
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
   const statusRef = useRef(serverStatus)
   const status = state.runId === runId && activeRunStatuses.has(serverStatus) ? state.status : serverStatus
@@ -52,6 +53,7 @@ export const useAutomationRunEvents = (
   const applyEventStatus = useEffectEvent(applyStatus)
 
   useEffect(() => {
+    setConnected(false)
     if (!enabled) return
     return subscribeToRunEvents({
       runId,
@@ -71,8 +73,13 @@ export const useAutomationRunEvents = (
         setStreamError(null)
         setHasLoadedEvents(true)
       },
-      onDisconnect: () => setStreamError('Reconnecting to live updates…'),
+      onConnected: () => setConnected(true),
+      onDisconnect: () => {
+        setConnected(false)
+        setStreamError('Reconnecting to live updates…')
+      },
       onError: reason => {
+        setConnected(false)
         if (reason === 'invalid-event') setStreamError('A live event could not be read.')
         else
           setStreamError(
@@ -84,5 +91,5 @@ export const useAutomationRunEvents = (
     })
   }, [enabled, runId])
 
-  return { status, events, streamError, hasLoadedEvents, applyStatus }
+  return { status, events, streamError, hasLoadedEvents, connected, applyStatus }
 }

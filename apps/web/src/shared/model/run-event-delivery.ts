@@ -73,6 +73,7 @@ interface RunEventSubscription {
   isLive?: () => boolean
   onEvents: (events: AutomationRunEvent[]) => void
   onReady?: () => void
+  onConnected?: () => void
   onDisconnect?: () => void
   onError?: (reason: 'unavailable' | 'invalid-event') => void
 }
@@ -84,6 +85,7 @@ export const subscribeToRunEvents = ({
   isLive,
   onEvents,
   onReady,
+  onConnected,
   onDisconnect,
   onError
 }: RunEventSubscription) => {
@@ -129,6 +131,9 @@ export const subscribeToRunEvents = ({
       if (!current() || !live()) return
       const connection = new WebSocket(streamUrl)
       socket = connection
+      connection.onopen = () => {
+        if (current() && socket === connection) onConnected?.()
+      }
       connection.onmessage = message => {
         if (!current() || socket !== connection) return
         try {

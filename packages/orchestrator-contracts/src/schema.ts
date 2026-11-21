@@ -2125,6 +2125,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/automations/{id}/run-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_listRunHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4028,6 +4044,24 @@ export interface components {
             status: components["schemas"]["AndroidApplicationStatusResponseDto"];
             errors: components["schemas"]["AndroidApplicationErrorResponseDto"];
             updatedAt: string;
+        };
+        AutomationRunHistoryRowDto: {
+            id: string;
+            automationId: string;
+            targetApplicationId: string;
+            targetProfileMode: string | null;
+            targetProfileName: string | null;
+            /** @enum {string} */
+            trigger: "manual" | "schedule";
+            /** @enum {string} */
+            status: "queued" | "running" | "success" | "failed" | "canceled";
+            startedAt: string | null;
+            completedAt: string | null;
+            error: string | null;
+            createdAt: string;
+            stepCount: number;
+            completedSteps: number;
+            failedSteps: number;
         };
     };
     responses: never;
@@ -7805,6 +7839,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AndroidApplicationDetailRefreshDto"];
+                };
+            };
+        };
+    };
+    AutomationsController_listRunHistory: {
+        parameters: {
+            query: {
+                ownerUserId: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationRunHistoryRowDto"][];
                 };
             };
         };

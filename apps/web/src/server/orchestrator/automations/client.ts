@@ -10,6 +10,7 @@ import type {
   AutomationTriggersGridQuery,
   AutomationCommand,
   AutomationRun,
+  AutomationRunHistoryRow,
   AutomationRunEvent,
   AutomationRunEventPage,
   AutomationRunEventStreamToken,
@@ -90,13 +91,15 @@ export const orchestratorAutomationsClient = {
     })
   },
 
-  listRuns(ownerUserId: string, id: string, limit = 50) {
+  listRunHistory(ownerUserId: string, id: string, limit = 50) {
     const query = new URLSearchParams({ ownerUserId, limit: String(limit) })
-    return emptyRequest<AutomationRun[]>(`/automations/${encodeURIComponent(id)}/runs?${query.toString()}`)
+    return emptyRequest<AutomationRunHistoryRow[]>(`/automations/${encodeURIComponent(id)}/run-history?${query}`)
   },
 
-  getRun(ownerUserId: string, runId: string) {
-    return emptyRequest<AutomationRun>(`/automations/runs/${encodeURIComponent(runId)}?${ownerQuery(ownerUserId)}`)
+  getRun(ownerUserId: string, runId: string, signal?: AbortSignal) {
+    return emptyRequest<AutomationRun>(`/automations/runs/${encodeURIComponent(runId)}?${ownerQuery(ownerUserId)}`, {
+      signal
+    })
   },
 
   cancelRun(ownerUserId: string, runId: string) {

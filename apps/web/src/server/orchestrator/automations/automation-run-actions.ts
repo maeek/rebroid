@@ -94,9 +94,3 @@ export const clearAdHocAiAutomationRunsAction = async (targetApplicationId: stri
   await assertTargetApplication(targetApplicationId)
   return orchestratorAutomationsClient.clearAdHocAiRuns(user.ownerUserId, targetApplicationId)
 }
-
-export const listAutomationRunsAction = async (automationId: string, limit = 50) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  return orchestratorAutomationsClient.listRuns(user.ownerUserId, automationId, limit)
-}

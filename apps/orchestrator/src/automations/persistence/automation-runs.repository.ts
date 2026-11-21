@@ -9,6 +9,7 @@ import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import {
   AutomationRun,
   AutomationRunStatus,
+  type AutomationRunSummaryFields,
 } from '../entities/automation-run.entity';
 
 const adHocAiPattern = `${adHocAiAutomationIdPrefix}%`;
@@ -56,6 +57,55 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
       .addOrderBy('run.rowid', 'DESC')
       .limit(Math.max(1, Math.min(Math.trunc(limit), 100)))
       .getMany();
+  }
+
+  async listHistoryForAutomation(
+    ownerUserId: string,
+    automationId: string,
+    limit = 50,
+  ): Promise<
+    {
+      run: AutomationRunSummaryFields;
+      stepCount: number;
+      completedSteps: number;
+      failedSteps: number;
+    }[]
+  > {
+    const { entities, raw } = await this.runs
+      .createQueryBuilder('run')
+      .select([
+        'run.id',
+        'run.automationId',
+        'run.targetApplicationId',
+        'run.targetProfileMode',
+        'run.targetProfileName',
+        'run.trigger',
+        'run.status',
+        'run.startedAt',
+        'run.completedAt',
+        'run.createdAt',
+        'run.error',
+      ])
+      .addSelect(
+        `(
+        SELECT json_array(count(*),
+          count(*) FILTER (WHERE json_extract(result.resultJson, '$.status') = 'success'),
+          count(*) FILTER (WHERE json_extract(result.resultJson, '$.status') = 'failed'))
+        FROM automation_run_step_results result WHERE result.runId = run.id
+      )`,
+        'stepCounts',
+      )
+      .where({ ownerUserId, automationId })
+      .orderBy('run.createdAt', 'DESC')
+      .addOrderBy('run.rowid', 'DESC')
+      .limit(Math.max(1, Math.min(Math.trunc(limit), 100)))
+      .getRawAndEntities<{ stepCounts: string }>();
+    return entities.map((run, index) => {
+      const [stepCount, completedSteps, failedSteps] = JSON.parse(
+        raw[index].stepCounts,
+      ) as [number, number, number];
+      return { run, stepCount, completedSteps, failedSteps };
+    });
   }
 
   async latestForAutomations(ownerUserId: string, id?: string) {

@@ -16,7 +16,7 @@ import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
-import { useAutomationRunEvents } from '@/shared/ui/automation/use-automation-run-events'
+import { useWorkflowRunUpdates } from '@/shared/ui/automation/use-workflow-run-updates'
 import { WorkflowRunProgress } from '@/shared/ui/automation/workflow-run-progress'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -34,10 +34,6 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
     queryKey: ['application-workflow-run', endpoint, runId],
     queryFn: ({ signal }) => getBff<ApplicationWorkflowRun>(`${endpoint}/${encodeURIComponent(runId)}`, signal),
     refetchOnMount: 'always',
-    refetchInterval: current => {
-      const run = current.state.data
-      return run && workflowRunIsActive(run.status) ? 3000 : false
-    },
     retry: false
   })
   const stop = useMutation({
@@ -47,11 +43,14 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
       return query.refetch()
     }
   })
-  const run = query.data
-  const feed = useAutomationRunEvents(
+  const accessLost =
+    query.error instanceof ActionResultError &&
+    ['unauthenticated', 'forbidden', 'not_found'].includes(query.error.failure.code)
+  const run = accessLost ? undefined : query.data
+  const feed = useWorkflowRunUpdates(
     { id: runId, status: run?.status ?? 'queued' },
     run !== undefined && (tab === 'events' || workflowRunIsActive(run.status)),
-    () => void query.refetch()
+    () => query.refetch({ throwOnError: true })
   )
   if (!run) {
     const unavailable = query.error instanceof ActionResultError && query.error.failure.code === 'not_found'

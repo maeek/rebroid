@@ -77,3 +77,18 @@ export class AutomationRun {
   @UpdateDateColumn()
   updatedAt!: Date;
 }
+
+export type AutomationRunSummaryFields = Pick<
+  AutomationRun,
+  | 'id'
+  | 'automationId'
+  | 'targetApplicationId'
+  | 'targetProfileMode'
+  | 'targetProfileName'
+  | 'trigger'
+  | 'status'
+  | 'startedAt'
+  | 'completedAt'
+  | 'error'
+  | 'createdAt'
+>;

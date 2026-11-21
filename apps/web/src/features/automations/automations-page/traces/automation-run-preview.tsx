@@ -33,8 +33,9 @@ const run: AutomationRun = {
 export const AutomationRunPreview = () => (
   <AutomationTracesPage
     applications={[applicationPreview]}
-    automation={previewWorkflow}
-    runs={[run]}
+    automation={{ id: previewWorkflow.id, name: previewWorkflow.name }}
+    runs={[]}
+    initialRun={run}
     selectedRunId={run.id}
   />
 )

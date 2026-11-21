@@ -282,6 +282,8 @@ These are correctness guarantees:
 - Live listeners subscribe before replay. Replay reads bounded pages through a fixed sequence, then sends
   buffered live events in order and skips duplicates.
 - Step results commit with their events, in execution order, and are assembled for run reads.
+- Workflow run history reads summary rows with step counts. An open trace refreshes the selected run after committed
+  step or status events, with a focused poll while event delivery reconnects.
 - Queued and running rows found at startup fail instead of resuming partially executed workflows.
 - The web app reads replay pages through `GET /api/v1/automations/runs/:runId/events/page`. Drafting
   from an AI run reads the owner-scoped conversation through

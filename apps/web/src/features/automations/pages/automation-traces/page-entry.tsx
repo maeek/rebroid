@@ -31,11 +31,12 @@ export async function AutomationTracesPageEntry({
         />
       )}
     >
-      {({ applications, automation, runs }) => (
+      {({ applications, automation, runs, selectedRun }) => (
         <AutomationTracesPage
           applications={applications}
           automation={automation}
           runs={runs}
+          initialRun={selectedRun}
           selectedRunId={query?.run}
         />
       )}

@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useLayoutEffect, useRef, useState, useTransition } from 'react'
 import { IconFileText, IconListCheck, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Disclosure, DisclosureChevron, DisclosureSummary } from '@/components/ui/disclosure'
@@ -14,7 +13,7 @@ import { sendBff } from '@/lib/http/bff'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
-import { useAutomationRunEvents } from '@/shared/ui/automation/use-automation-run-events'
+import { useWorkflowRunUpdates } from '@/shared/ui/automation/use-workflow-run-updates'
 import { WorkflowRunProgress } from '@/shared/ui/automation/workflow-run-progress'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -53,7 +52,15 @@ const elapsed = (start: string | null, end: string | null) => {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`
 }
 
-export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; showTargetId: boolean }) {
+export function AutomationRunTrace({
+  run,
+  showTargetId,
+  refresh
+}: {
+  run: AutomationRun
+  showTargetId: boolean
+  refresh: () => Promise<unknown>
+}) {
   const [tab, setTab] = useState('summary')
   const [ocrStep, setOcrStep] = useState<{ stepId: string; path?: string | null }>()
   const [stopError, setStopError] = useState(false)
@@ -61,26 +68,21 @@ export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; 
   const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
   const failedRow = useRef<HTMLTableRowElement>(null)
   const jumpToFailure = useRef(false)
-  const router = useRouter()
   const activeSnapshot = run.status === 'queued' || run.status === 'running'
-  const feed = useAutomationRunEvents(run, activeSnapshot || tab === 'events', () => router.refresh())
+  const feed = useWorkflowRunUpdates(run, activeSnapshot || tab === 'events', refresh)
   const active = feed.status === 'queued' || feed.status === 'running'
   const stopping = active && (stopPending || cancelRequestedRunId === run.id)
-  useEffect(() => {
-    if (!activeSnapshot) return
-    const interval = window.setInterval(() => router.refresh(), 5000)
-    return () => window.clearInterval(interval)
-  }, [activeSnapshot, router])
   const stop = () => {
     setStopError(false)
     startStopping(async () => {
       try {
         await sendBff(`/api/bff/automations/runs/${encodeURIComponent(run.id)}/cancel`, {})
-        setCancelRequestedRunId(run.id)
-        router.refresh()
       } catch {
         setStopError(true)
+        return
       }
+      setCancelRequestedRunId(run.id)
+      await refresh().catch(() => undefined)
     })
   }
   const failureIndex = run.stepResults.findIndex(step => step.status === 'failed')
