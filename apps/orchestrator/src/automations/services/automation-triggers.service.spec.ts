@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { setImmediate } from 'node:timers/promises';
 import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -22,8 +23,13 @@ import { AutomationTriggersService } from './automation-triggers.service';
 describe('trigger configuration', () => {
   let database: SerializedSqliteDataSource;
   let service: AutomationTriggersService;
+  let repository: AutomationTriggersRepository;
   const assertOwnerAccess = jest.fn();
   const getEntity = jest.fn();
+  const enqueue = jest.fn();
+  const unregister = jest.fn();
+  const register = jest.fn();
+  const findByOwnerAndId = jest.fn();
   const input: CreateAutomationTriggerDto = {
     ownerUserId: 'owner',
     name: 'Morning check',
@@ -43,21 +49,25 @@ describe('trigger configuration', () => {
       entities: [AutomationTrigger],
       synchronize: true,
     }).initialize();
+    repository = new AutomationTriggersRepository(
+      database.getRepository(AutomationTrigger),
+    );
     const module = await Test.createTestingModule({
       providers: [
         AutomationTriggersService,
         AutomationsDtoMapper,
         {
           provide: AutomationTriggersRepository,
-          useValue: new AutomationTriggersRepository(
-            database.getRepository(AutomationTrigger),
-          ),
+          useValue: repository,
         },
         {
           provide: AutomationsRepository,
-          useValue: { listNamesByOwner: jest.fn().mockResolvedValue([]) },
+          useValue: {
+            listNamesByOwner: jest.fn().mockResolvedValue([]),
+            findByOwnerAndId,
+          },
         },
-        { provide: AutomationRunnerService, useValue: {} },
+        { provide: AutomationRunnerService, useValue: { enqueue } },
         {
           provide: AutomationRunsRepository,
           useValue: {
@@ -70,7 +80,10 @@ describe('trigger configuration', () => {
           useValue: {
             normalizeConfig: jest.fn((_type, config) => config),
             nextRunForTrigger: jest.fn(() => new Date('2026-11-09T09:00:00Z')),
-            register: jest.fn(),
+            parseScheduleConfig: (trigger: AutomationTrigger) =>
+              JSON.parse(trigger.triggerConfigJson) as unknown,
+            register,
+            unregister,
           },
         },
         { provide: AutomationsQueryService, useValue: { getEntity } },
@@ -81,6 +94,64 @@ describe('trigger configuration', () => {
       ],
     }).compile();
     service = module.get(AutomationTriggersService);
+  });
+
+  it('returns the accepted run when next-run bookkeeping fails', async () => {
+    const trigger = await service.create(input);
+    enqueue.mockResolvedValueOnce({
+      id: 'accepted-run',
+      createdAt: new Date(),
+      startedAt: null,
+      completedAt: null,
+    });
+    jest
+      .spyOn(repository, 'updateSchedule')
+      .mockRejectedValueOnce(new Error('write failed'));
+
+    await expect(service.run('owner', trigger.id)).resolves.toMatchObject({
+      id: 'accepted-run',
+    });
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the timer registered when deletion fails', async () => {
+    const trigger = await service.create(input);
+    jest
+      .spyOn(repository, 'remove')
+      .mockRejectedValueOnce(new Error('delete failed'));
+    await expect(service.remove('owner', trigger.id)).rejects.toThrow(
+      'delete failed',
+    );
+    expect(unregister).not.toHaveBeenCalled();
+  });
+
+  it('does not enqueue from a superseded expression after a tick starts', async () => {
+    const started = new Promise<void>((resolve) => {
+      findByOwnerAndId.mockImplementationOnce(
+        () =>
+          new Promise((finish) => {
+            resolve();
+            completeLookup = () => finish({ id: input.automationId });
+          }),
+      );
+    });
+    let completeLookup!: () => void;
+    const trigger = await service.create(input);
+    const tick = register.mock.calls[0][1] as (value: {
+      cronExpression: string;
+      isCurrent: () => boolean;
+    }) => void;
+    tick({ cronExpression: '0 9 * * *', isCurrent: () => true });
+    await started;
+    try {
+      await service.update(input.ownerUserId, trigger.id, {
+        triggerConfig: { cronExpression: '0 11 * * *' },
+      });
+    } finally {
+      completeLookup();
+    }
+    await setImmediate();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 
   it('merges concurrent cron and start-policy edits with other trigger changes', async () => {

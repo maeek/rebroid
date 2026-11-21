@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
+import {
+  registerCron,
+  unregisterCron,
+  type CronTick,
+} from '../../common/cron-registration';
 import {
   AutomationTrigger,
   AutomationTriggerType,
@@ -15,31 +19,19 @@ export class AutomationCronRegistryService {
   registerTrigger(
     trigger: AutomationTrigger,
     cronExpression: string | null,
-    onTick: () => void,
+    onTick: (tick: CronTick) => void,
   ) {
-    this.unregisterTrigger(trigger.id);
-    if (
-      !trigger.enabled ||
-      trigger.triggerType !== AutomationTriggerType.Schedule ||
-      !cronExpression
-    ) {
-      return;
-    }
-
-    const job = CronJob.from({
-      cronTime: cronExpression,
+    registerCron(
+      this.scheduler,
+      automationTriggerJobName(trigger.id),
+      trigger.enabled && trigger.triggerType === AutomationTriggerType.Schedule
+        ? cronExpression
+        : null,
       onTick,
-      start: false,
-    });
-    this.scheduler.addCronJob(automationTriggerJobName(trigger.id), job);
-    job.start();
+    );
   }
 
   unregisterTrigger(id: string) {
-    try {
-      this.scheduler.deleteCronJob(automationTriggerJobName(id));
-    } catch {
-      return;
-    }
+    unregisterCron(this.scheduler, automationTriggerJobName(id));
   }
 }

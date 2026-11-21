@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import type { CronTick } from '../../common/cron-registration';
 import {
   nextCronRun,
   normalizeCronExpression,
@@ -64,7 +65,7 @@ export class AutomationTriggerSchedulerService {
     );
   }
 
-  register(trigger: AutomationTrigger, onRun: () => void) {
+  register(trigger: AutomationTrigger, onRun: (tick: CronTick) => void) {
     const cronExpression =
       trigger.triggerType === AutomationTriggerType.Schedule
         ? this.parseScheduleConfig(trigger).cronExpression

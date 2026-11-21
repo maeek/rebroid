@@ -1,51 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
-import { CronJob } from 'cron';
+import {
+  registerCron,
+  unregisterCron,
+  type CronTick,
+} from '../../common/cron-registration';
 import { ScheduledTask } from '../entities/scheduled-task.entity';
 
 const taskJobName = (id: string) => `scheduled-task:${id}`;
 
-export type ScheduledTaskTick = {
-  cronExpression: string;
-  isCurrent: () => boolean;
-};
+export type ScheduledTaskTick = CronTick;
 
 @Injectable()
 export class ScheduledTaskCronRegistryService {
   constructor(private readonly scheduler: SchedulerRegistry) {}
 
   registerTask(task: ScheduledTask, onTick: (tick: ScheduledTaskTick) => void) {
-    const name = taskJobName(task.id);
-    if (!task.enabled) {
-      this.unregisterTask(task.id);
-      return;
-    }
-
-    const current = this.scheduler.getCronJobs().get(name);
-    if (current?.isActive && current.cronTime.source === task.cronExpression) {
-      return;
-    }
-
-    const tick: ScheduledTaskTick = {
-      cronExpression: task.cronExpression,
-      isCurrent: () => this.scheduler.getCronJobs().get(name) === job,
-    };
-    const job = CronJob.from({
-      cronTime: task.cronExpression,
-      onTick: () => onTick(tick),
-      start: false,
-    });
-    this.unregisterTask(task.id);
-    this.scheduler.addCronJob(name, job);
-    job.start();
+    registerCron(
+      this.scheduler,
+      taskJobName(task.id),
+      task.enabled ? task.cronExpression : null,
+      onTick,
+    );
   }
 
   unregisterTask(id: string) {
-    const name = taskJobName(id);
-    try {
-      this.scheduler.deleteCronJob(name);
-    } catch {
-      return;
-    }
+    unregisterCron(this.scheduler, taskJobName(id));
   }
 }

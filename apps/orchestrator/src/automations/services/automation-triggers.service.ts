@@ -14,6 +14,8 @@ import {
 import { Automation } from '../entities/automation.entity';
 import { AutomationRunTrigger } from '../entities/automation-run.entity';
 import { AutomationTrigger } from '../entities/automation-trigger.entity';
+import type { CronTick } from '../../common/cron-registration';
+import { getErrorMessage } from '../../common/error-message';
 import { AutomationsRepository } from '../persistence/automations.repository';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
@@ -21,7 +23,10 @@ import { AutomationRunnerService } from '../runner/automation-runner.service';
 import { toAutomationRunStartPolicy } from '../runner/automation-runner-policy';
 import { normalizeAutomationTags } from '../tags/automation-tags';
 import { AutomationTargetApplicationService } from './automation-target-application.service';
-import { AutomationTriggerSchedulerService } from './automation-trigger-scheduler.service';
+import {
+  AutomationTriggerSchedulerService,
+  type ScheduleTriggerConfig,
+} from './automation-trigger-scheduler.service';
 import { AutomationsDtoMapper } from './automations-dto-mapper.service';
 import {
   automationTriggerGridFacets,
@@ -164,43 +169,52 @@ export class AutomationTriggersService implements OnModuleInit {
         dto.targetApplicationId,
       );
     }
-    await this.triggers.updateConfiguration(ownerUserId, id, (current) => {
-      const triggerType = dto.triggerType ?? current.triggerType;
-      const currentConfig = this.mapper.triggerConfig(current);
-      const updatesConfig =
-        dto.triggerConfig !== undefined || dto.triggerType !== undefined;
-      const triggerConfig = updatesConfig
-        ? this.triggerScheduler.normalizeConfig(triggerType, {
-            ...currentConfig,
-            ...dto.triggerConfig,
-          })
-        : currentConfig;
-      const enabled = dto.enabled ?? current.enabled;
-      return {
-        name: dto.name?.trim(),
-        description:
-          dto.description === undefined
-            ? undefined
-            : dto.description?.trim() || null,
-        automationId: dto.automationId,
-        targetApplicationId: dto.targetApplicationId,
-        profileMode: dto.profileMode,
-        profileName:
-          dto.profileName === undefined
-            ? undefined
-            : dto.profileName?.trim() || null,
-        enabled: dto.enabled,
-        tagsJson: dto.tags === undefined ? undefined : stringifyTags(dto.tags),
-        triggerType: dto.triggerType,
-        triggerConfigJson: updatesConfig
-          ? JSON.stringify(triggerConfig)
-          : undefined,
-        nextRunAt: enabled
-          ? this.triggerScheduler.nextRunForTrigger(triggerType, triggerConfig)
-          : null,
-      };
-    });
-    const saved = await this.getEntity(ownerUserId, id);
+    const saved = await this.triggers.updateConfiguration(
+      ownerUserId,
+      id,
+      (current) => {
+        const triggerType = dto.triggerType ?? current.triggerType;
+        const currentConfig = this.mapper.triggerConfig(current);
+        const updatesConfig =
+          dto.triggerConfig !== undefined || dto.triggerType !== undefined;
+        const triggerConfig = updatesConfig
+          ? this.triggerScheduler.normalizeConfig(triggerType, {
+              ...currentConfig,
+              ...dto.triggerConfig,
+            })
+          : currentConfig;
+        const enabled = dto.enabled ?? current.enabled;
+        return {
+          name: dto.name?.trim(),
+          description:
+            dto.description === undefined
+              ? undefined
+              : dto.description?.trim() || null,
+          automationId: dto.automationId,
+          targetApplicationId: dto.targetApplicationId,
+          profileMode: dto.profileMode,
+          profileName:
+            dto.profileName === undefined
+              ? undefined
+              : dto.profileName?.trim() || null,
+          enabled: dto.enabled,
+          tagsJson:
+            dto.tags === undefined ? undefined : stringifyTags(dto.tags),
+          triggerType: dto.triggerType,
+          triggerConfigJson: updatesConfig
+            ? JSON.stringify(triggerConfig)
+            : undefined,
+          nextRunAt: enabled
+            ? this.triggerScheduler.nextRunForTrigger(
+                triggerType,
+                triggerConfig,
+              )
+            : null,
+        };
+      },
+    );
+    if (!saved)
+      throw new NotFoundException(`Automation trigger "${id}" was not found.`);
     this.registerTrigger(saved);
     const latestRuns = await this.runs.latestForTriggers(ownerUserId, id);
     return this.mapper.trigger(saved, latestRuns.get(id));
@@ -209,18 +223,18 @@ export class AutomationTriggersService implements OnModuleInit {
   async remove(ownerUserId: string, id: string) {
     const trigger = await this.getEntity(ownerUserId, id);
     const latestRuns = await this.runs.latestForTriggers(ownerUserId, id);
-    this.triggerScheduler.unregister(trigger.id);
+    const removed = this.mapper.trigger(trigger, latestRuns.get(id));
     await this.triggers.remove(trigger);
-    return this.mapper.trigger(trigger, latestRuns.get(id));
+    this.triggerScheduler.unregister(id);
+    return removed;
   }
 
   async removeByAutomation(ownerUserId: string, automationId: string) {
-    for (const trigger of await this.triggers.listByOwner(ownerUserId)) {
-      if (trigger.automationId === automationId) {
-        this.triggerScheduler.unregister(trigger.id);
-      }
-    }
-    await this.triggers.deleteByAutomation(ownerUserId, automationId);
+    const removed = await this.triggers.deleteByAutomation(
+      ownerUserId,
+      automationId,
+    );
+    for (const id of removed) this.triggerScheduler.unregister(id);
   }
 
   async run(ownerUserId: string, id: string) {
@@ -229,33 +243,46 @@ export class AutomationTriggersService implements OnModuleInit {
       ownerUserId,
       trigger.automationId,
     );
-    const run = await this.enqueueTriggerRun(trigger, automation);
+    const config = this.triggerScheduler.parseScheduleConfig(trigger);
+    const run = await this.enqueueTriggerRun(trigger, automation, config);
+    await this.recordSchedule(trigger, config);
     return this.mapper.run(run);
   }
 
-  private async enqueueTriggerRun(
+  private enqueueTriggerRun(
     trigger: AutomationTrigger,
     automation: Automation,
+    config: ScheduleTriggerConfig,
   ) {
-    const config = this.triggerScheduler.parseScheduleConfig(trigger);
-    const run = await this.runner.enqueue(
-      automation,
-      AutomationRunTrigger.Schedule,
-      {
-        automationTriggerId: trigger.id,
-        targetApplicationId: trigger.targetApplicationId,
-        targetProfileMode: trigger.profileMode,
-        targetProfileName: trigger.profileName,
-        startPolicy: toAutomationRunStartPolicy(config.startPolicy),
-      },
-    );
-    await this.triggers.updateSchedule(
-      trigger,
-      trigger.enabled
-        ? this.triggerScheduler.nextRunForTrigger(trigger.triggerType, config)
-        : null,
-    );
-    return run;
+    return this.runner.enqueue(automation, AutomationRunTrigger.Schedule, {
+      automationTriggerId: trigger.id,
+      targetApplicationId: trigger.targetApplicationId,
+      targetProfileMode: trigger.profileMode,
+      targetProfileName: trigger.profileName,
+      startPolicy: toAutomationRunStartPolicy(config.startPolicy),
+    });
+  }
+
+  private async recordSchedule(
+    trigger: AutomationTrigger,
+    config: ScheduleTriggerConfig,
+    failure?: { at: Date; message: string },
+  ) {
+    try {
+      await this.triggers.updateSchedule(
+        trigger,
+        trigger.enabled
+          ? this.triggerScheduler.nextRunForTrigger(trigger.triggerType, {
+              ...config,
+            })
+          : null,
+        failure,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not update schedule for automation trigger ${trigger.id}: ${getErrorMessage(error)}`,
+      );
+    }
   }
 
   private async getEntity(ownerUserId: string, id: string) {
@@ -267,37 +294,46 @@ export class AutomationTriggersService implements OnModuleInit {
   }
 
   private registerTrigger(trigger: AutomationTrigger) {
-    this.triggerScheduler.register(trigger, () => {
-      void this.runScheduledTrigger(trigger.id).catch((error: unknown) => {
-        this.logger.error(
-          `Scheduled automation trigger ${trigger.id} failed unexpectedly: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      });
+    this.triggerScheduler.register(trigger, (tick) => {
+      void this.runScheduledTrigger(trigger.id, tick).catch(
+        (error: unknown) => {
+          this.logger.error(
+            `Scheduled automation trigger ${trigger.id} failed unexpectedly: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        },
+      );
     });
   }
 
-  private async runScheduledTrigger(id: string) {
-    const trigger = await this.triggers.findEnabledSchedule(id);
-    if (!trigger) {
+  private async runScheduledTrigger(id: string, tick: CronTick) {
+    if (!tick.isCurrent()) return;
+    const scheduled = await this.triggers.findEnabledSchedule(id);
+    if (!scheduled) {
       return;
     }
     const automation = await this.automations.findByOwnerAndId(
-      trigger.ownerUserId,
-      trigger.automationId,
+      scheduled.ownerUserId,
+      scheduled.automationId,
     );
-    if (!automation) {
+    if (!automation || !tick.isCurrent()) return;
+    const trigger = await this.triggers.findEnabledSchedule(id);
+    if (
+      !trigger ||
+      trigger.ownerUserId !== scheduled.ownerUserId ||
+      trigger.automationId !== scheduled.automationId
+    ) {
       return;
     }
+    const config = this.triggerScheduler.parseScheduleConfig(trigger);
+    if (!tick.isCurrent() || config.cronExpression !== tick.cronExpression)
+      return;
     const attemptedAt = new Date();
     try {
-      await this.enqueueTriggerRun(trigger, automation);
+      await this.enqueueTriggerRun(trigger, automation, config);
     } catch (error) {
-      await this.triggers.updateSchedule(
+      await this.recordSchedule(
         trigger,
-        this.triggerScheduler.nextRunForTrigger(
-          trigger.triggerType,
-          this.triggerScheduler.parseScheduleConfig(trigger),
-        ),
+        config,
         error instanceof FeatureDisabledException
           ? undefined
           : {
@@ -305,6 +341,8 @@ export class AutomationTriggersService implements OnModuleInit {
               message: error instanceof Error ? error.message : String(error),
             },
       );
+      return;
     }
+    await this.recordSchedule(trigger, config);
   }
 }

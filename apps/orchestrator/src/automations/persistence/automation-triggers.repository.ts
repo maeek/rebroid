@@ -47,7 +47,9 @@ export class AutomationTriggersRepository {
       const repository = manager.getRepository(AutomationTrigger);
       const criteria = { id, ownerUserId };
       const current = await repository.findOneBy(criteria);
-      if (current) await repository.update(criteria, prepare(current));
+      if (!current) return null;
+      await repository.update(criteria, prepare(current));
+      return repository.findOneByOrFail(criteria);
     });
   }
 
@@ -60,6 +62,10 @@ export class AutomationTriggersRepository {
       id: trigger.id,
       ownerUserId: trigger.ownerUserId,
       enabled: trigger.enabled,
+      automationId: trigger.automationId,
+      targetApplicationId: trigger.targetApplicationId,
+      profileMode: trigger.profileMode ?? IsNull(),
+      profileName: trigger.profileName ?? IsNull(),
       triggerConfigJson: trigger.triggerConfigJson,
     };
     if (!failure) return this.triggers.update(schedule, { nextRunAt });
@@ -104,6 +110,12 @@ export class AutomationTriggersRepository {
   }
 
   deleteByAutomation(ownerUserId: string, automationId: string) {
-    return this.triggers.delete({ ownerUserId, automationId });
+    return this.triggers.manager.transaction(async (manager) => {
+      const repository = manager.getRepository(AutomationTrigger);
+      const where = { ownerUserId, automationId };
+      const triggers = await repository.find({ where, select: { id: true } });
+      await repository.delete(where);
+      return triggers.map(({ id }) => id);
+    });
   }
 }
