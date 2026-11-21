@@ -221,7 +221,46 @@ export class DisplayController {
     @Param("id") id: string,
     @Param("surfaceId") surfaceId: string,
   ) {
-    const session = this.sessions.releaseSurface(id, surfaceId);
+    return this.cleanupReleasedSurface(
+      this.sessions.releaseSurface(id, surfaceId),
+    );
+  }
+
+  @UseGuards(SidecarAuthGuard)
+  @Delete(
+    "rebroid/display/sessions/apps/:appId/runtimes/:runtimeId/surfaces/:surfaceId",
+  )
+  @ApiOperation({
+    summary: "Release a virtual surface for a specific application runtime.",
+  })
+  @ApiHeader({ name: "x-rebroid-sidecar-secret", required: false })
+  @ApiParam({ name: "appId", description: "Application id." })
+  @ApiParam({ name: "runtimeId", description: "Current runtime container id." })
+  @ApiParam({
+    name: "surfaceId",
+    description: "Display surface or session id.",
+  })
+  @ApiQuery({ name: "ownerUserId", required: false, type: String })
+  @ApiOkResponse({ type: DisplaySessionDto })
+  releaseRuntimeSurface(
+    @Param("appId") appId: string,
+    @Param("runtimeId") runtimeId: string,
+    @Param("surfaceId") surfaceId: string,
+    @Query("ownerUserId") ownerUserId?: string,
+  ) {
+    return this.cleanupReleasedSurface(
+      this.sessions.releaseRuntimeSurface(
+        appId,
+        runtimeId,
+        surfaceId,
+        ownerUserId,
+      ),
+    );
+  }
+
+  private cleanupReleasedSurface(
+    session: ReturnType<DisplaySessionService["releaseSurface"]>,
+  ) {
     try {
       this.webrtc.stopSession(session.id);
     } catch {

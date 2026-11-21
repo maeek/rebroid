@@ -38,6 +38,30 @@ describe('AndroidAppsDisplaySidecarService viewer control', () => {
 
   afterEach(() => jest.restoreAllMocks());
 
+  it('releases an exact runtime surface with one authenticated request', async () => {
+    fetchDisplay.mockReset().mockResolvedValueOnce(Response.json(session));
+
+    await expect(
+      service.releaseVirtualSurface(
+        {
+          ...app,
+          containerId: 'runtime',
+          ownerUserId: 'account',
+        },
+        'surface',
+      ),
+    ).resolves.toEqual(session);
+    expect(fetchDisplay).toHaveBeenCalledTimes(1);
+    const [[url, init]] = fetchDisplay.mock.calls;
+    expect(url).toBe(
+      'http://sidecar.test/rebroid/display/sessions/apps/app-1/runtimes/runtime/surfaces/surface?ownerUserId=account',
+    );
+    expect(init.method).toBe('DELETE');
+    expect(new Headers(init.headers).get('x-rebroid-sidecar-secret')).toBe(
+      'test-sidecar-secret',
+    );
+  });
+
   it.each(['stream-control', 'adb'])(
     'accepts a Home acknowledgment over %s without a second session object',
     async (transport) => {

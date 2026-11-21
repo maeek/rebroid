@@ -242,14 +242,41 @@ export class DisplaySessionService {
     if (!surface) {
       throw new NotFoundException("Display surface not found.");
     }
+    return this.closeVirtualSurface(surface);
+  }
+
+  releaseRuntimeSurface(
+    appId: string,
+    runtimeId: string,
+    surfaceId: string,
+    ownerUserId?: string,
+  ): PublicDisplaySession {
+    this.purgeInactiveSessions();
+    const matchesRuntime = (session: DisplaySession) =>
+      session.appId === appId &&
+      session.runtimeId === runtimeId &&
+      (session.ownerUserId ?? undefined) === ownerUserId;
+    const direct = this.sessions.get(surfaceId);
+    const surface =
+      direct && matchesRuntime(direct)
+        ? direct
+        : [...this.sessions.values()].find(
+            (session) =>
+              session.surfaceId === surfaceId && matchesRuntime(session),
+          );
+    if (!surface) throw new NotFoundException("Display surface not found.");
+    return this.closeVirtualSurface(surface);
+  }
+
+  private closeVirtualSurface(surface: DisplaySession): PublicDisplaySession {
     if (surface.surfaceKind === "main") {
       throw new BadRequestException("Main display surface cannot be closed.");
     }
 
     surface.status = "released";
     surface.lastActivityAt = new Date().toISOString();
-    const released = this.toPublic(surface);
     this.sessions.delete(surface.id);
+    const released = this.toPublic(surface);
     this.notifyClosed(surface.id);
     return released;
   }

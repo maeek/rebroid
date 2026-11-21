@@ -47,6 +47,15 @@ test("development bootstrap serves Swagger assets and keeps internal APIs authen
       );
     }
     assert.equal(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: "/rebroid/display/sessions/apps/test/runtimes/runtime/surfaces/virtual",
+        })
+      ).statusCode,
+      401,
+    );
+    assert.equal(
       (await app.inject({ method: "GET", url: "/docs/../../package.json" }))
         .statusCode,
       404,

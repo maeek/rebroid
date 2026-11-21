@@ -18,8 +18,6 @@ import {
 
 type DisplaySessionResponse =
   DisplaySidecarApiSchemas['DisplaySessionResponseDto'];
-type DisplaySessionListResponse =
-  DisplaySidecarApiSchemas['DisplaySessionListResponseDto'];
 type DisplayActionResponse =
   DisplaySidecarApiSchemas['DisplayActionAcknowledgmentDto'];
 type DisplayClipboardResponse =
@@ -221,16 +219,18 @@ export class AndroidAppsDisplaySidecarService {
   }
 
   async releaseVirtualSurface(app: AndroidApplication, surfaceId: string) {
-    const surface = await this.findSurfaceSession(app, surfaceId);
-    if (surface.surfaceKind === 'main') {
-      throw new ConflictException('Main display surface cannot be closed.');
+    if (!app.containerId) {
+      throw new ConflictException('Application runtime is not active.');
     }
-    const parent = await this.findMainSession(app);
+    const query = new URLSearchParams();
+    if (app.ownerUserId != null) query.set('ownerUserId', app.ownerUserId);
+    const owner = query.size ? `?${query.toString()}` : '';
+    const application = encodeURIComponent(app.id);
+    const runtime = encodeURIComponent(app.containerId);
+    const surface = encodeURIComponent(surfaceId);
     return this.request<DisplaySessionDto>(
-      `/sessions/${encodeURIComponent(parent.id)}/surfaces/${encodeURIComponent(surface.surfaceId)}`,
-      {
-        method: 'DELETE',
-      },
+      `/sessions/apps/${application}/runtimes/${runtime}/surfaces/${surface}${owner}`,
+      { method: 'DELETE' },
     );
   }
 
@@ -252,51 +252,6 @@ export class AndroidAppsDisplaySidecarService {
       if (!signal?.aborted) this.viewerNetwork.invalidateViewerTarget(target);
       throw error;
     }
-  }
-
-  private async findMainSession(app: AndroidApplication) {
-    const session = (await this.listAppSessions(app)).find(
-      (item) => item.surfaceKind === 'main',
-    );
-    if (!session) {
-      throw new ConflictException('Main display session is not active.');
-    }
-
-    return session;
-  }
-
-  private async findSurfaceSession(app: AndroidApplication, surfaceId: string) {
-    const sessions = await this.listAppSessions(app);
-    const directSession = sessions.find(
-      (session) => session.id === surfaceId || session.surfaceId === surfaceId,
-    );
-    if (directSession) {
-      return directSession;
-    }
-
-    const surface = sessions
-      .flatMap((session) => session.surfaces ?? [])
-      .find((item) => item.id === surfaceId || item.sessionId === surfaceId);
-    if (!surface) {
-      throw new ConflictException(
-        `Display surface ${surfaceId} is not active.`,
-      );
-    }
-
-    return this.request<DisplaySessionResponse>(
-      `/sessions/${encodeURIComponent(surface.sessionId)}`,
-    ).then((result) => result.session);
-  }
-
-  private async listAppSessions(app: AndroidApplication) {
-    const response =
-      await this.request<DisplaySessionListResponse>('/sessions');
-    return response.items.filter(
-      (session) =>
-        session.appId === app.id &&
-        session.status !== 'released' &&
-        session.status !== 'expired',
-    );
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {

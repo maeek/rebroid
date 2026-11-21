@@ -38,6 +38,71 @@ test("display sessions reuse a matching live session", () => {
   assert.equal(service.list().length, 1);
 });
 
+test("runtime-scoped virtual surface release works with multiple main sessions", () => {
+  const features = new SidecarFeatureService();
+  features.apply({
+    revision: 1,
+    features: [
+      { key: "feature.display-virtual", effective: true },
+      { key: "feature.display-webrtc", effective: true },
+    ],
+  });
+  const sessions = new DisplaySessionService(
+    {
+      sessionTtlSeconds: 900,
+      sessionMaxLifetimeSeconds: 3600,
+      sessionMaxActive: 8,
+    } as SidecarConfigService,
+    features,
+  );
+  const scope = {
+    appId: "app",
+    runtimeId: "runtime",
+    ownerUserId: "owner",
+    udid: "127.0.0.1:5555",
+  };
+  const viewOnly = sessions.create({ ...scope, capabilities: ["video"] });
+  const control = sessions.create({
+    ...scope,
+    capabilities: ["video", "control"],
+  });
+  const surface = sessions.createVirtualSurface(control.id);
+  const closed: string[] = [];
+  sessions.onClosed((sessionId) => closed.push(sessionId));
+  assert.throws(
+    () => sessions.releaseSurface(viewOnly.id, surface.surfaceId),
+    /not found/,
+  );
+  assert.throws(
+    () => sessions.releaseRuntimeSurface("app", "old", surface.id, "owner"),
+    /not found/,
+  );
+  assert.throws(
+    () => sessions.releaseRuntimeSurface("app", "runtime", surface.id, "other"),
+    /not found/,
+  );
+  assert.throws(
+    () =>
+      sessions.releaseRuntimeSurface("other", "runtime", surface.id, "owner"),
+    /not found/,
+  );
+  assert.throws(
+    () =>
+      sessions.releaseRuntimeSurface("app", "runtime", viewOnly.id, "owner"),
+    /cannot be closed/,
+  );
+  assert.equal(
+    sessions.releaseRuntimeSurface("app", "runtime", surface.id, "owner")
+      .status,
+    "released",
+  );
+  assert.deepEqual(
+    sessions.list().map((session) => session.id),
+    [viewOnly.id, control.id],
+  );
+  assert.deepEqual(closed, [surface.id]);
+});
+
 test("released and expired sessions are purged", () => {
   const service = createService();
   const released = service.create({

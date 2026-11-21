@@ -1292,6 +1292,72 @@
         "tags": ["display"]
       }
     },
+    "/rebroid/display/sessions/apps/{appId}/runtimes/{runtimeId}/surfaces/{surfaceId}": {
+      "delete": {
+        "operationId": "DisplayController_releaseRuntimeSurface",
+        "parameters": [
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "description": "Application id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runtimeId",
+            "required": true,
+            "in": "path",
+            "description": "Current runtime container id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "surfaceId",
+            "required": true,
+            "in": "path",
+            "description": "Display surface or session id.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-rebroid-sidecar-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisplaySessionDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Release a virtual surface for a specific application runtime.",
+        "tags": [
+          "display"
+        ]
+      }
+    },
     "/rebroid/display/sessions/apps/{appId}": {
       "delete": {
         "operationId": "DisplayController_releaseAppSessions",

@@ -437,6 +437,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/rebroid/display/sessions/apps/{appId}/runtimes/{runtimeId}/surfaces/{surfaceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Release a virtual surface for a specific application runtime. */
+        delete: operations["DisplayController_releaseRuntimeSurface"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/rebroid/display/sessions/apps/{appId}": {
         parameters: {
             query?: never;
@@ -2002,6 +2019,36 @@ export interface operations {
                 /** @description Parent display session id. */
                 id: string;
                 /** @description Display surface id. */
+                surfaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisplaySessionDto"];
+                };
+            };
+        };
+    };
+    DisplayController_releaseRuntimeSurface: {
+        parameters: {
+            query?: {
+                ownerUserId?: string;
+            };
+            header?: {
+                "x-rebroid-sidecar-secret"?: string;
+            };
+            path: {
+                /** @description Application id. */
+                appId: string;
+                /** @description Current runtime container id. */
+                runtimeId: string;
+                /** @description Display surface or session id. */
                 surfaceId: string;
             };
             cookie?: never;

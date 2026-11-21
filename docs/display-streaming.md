@@ -35,6 +35,8 @@ requires a shared secret. Viewer URLs contain a
 session ID. The sidecar uses the same-origin browser session to verify the signed-in owner, active
 container, and capabilities with web before starting WebSocket media, WebRTC, or viewer controls.
 Active transports recheck access every 10 seconds and close on denial or authorization failure.
+Closing a virtual surface uses an authenticated request scoped to the current application, runtime
+container, and owner. The sidecar selects the surface directly among its active display sessions.
 Revocation commands close affected transports as soon as the sidecar receives them. Audio and
 Android-to-browser clipboard delivery follow the session's capabilities. A source supervisor
 owns scrcpy for a session/profile. Matching viewers share the capture. A different profile can
