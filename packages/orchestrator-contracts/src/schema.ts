@@ -1420,6 +1420,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/container-images/pulls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an image pull and return its job. */
+        post: operations["ContainerImagesController_startPull"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/container-images/pulls/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the phase of an image pull. */
+        get: operations["ContainerImagesController_getPull"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/container-images/build-context": {
         parameters: {
             query?: never;
@@ -3423,6 +3457,13 @@ export interface components {
         PullContainerImageDto: {
             /** @example redroid/redroid:14.0.0-latest */
             image: string;
+        };
+        ContainerImagePullJobDto: {
+            /** Format: uuid */
+            id: string;
+            image: string;
+            /** @enum {string} */
+            phase: "queued" | "contacting-registry" | "transferring-layers" | "registering" | "pulled" | "failed";
         };
         ContainerImageBuildContextFile: {
             id: string;
@@ -6571,6 +6612,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    ContainerImagesController_startPull: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PullContainerImageDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImagePullJobDto"];
+                };
+            };
+        };
+    };
+    ContainerImagesController_getPull: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContainerImagePullJobDto"];
                 };
             };
         };

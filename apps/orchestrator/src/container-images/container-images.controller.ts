@@ -1,10 +1,10 @@
 import {
-  Inject,
   Body,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -20,16 +20,12 @@ import {
 } from '@nestjs/swagger';
 import type { FastifyRequest } from 'fastify';
 import {
-  DOCKER_IMAGE_RUNTIME,
-  type DockerImageRuntimePort,
-} from '../docker/contracts/docker-image-runtime.port';
-import { SettingsService } from '../settings/settings.service';
-import {
   CreateContainerImageRecipeDto,
   LatestContainerImageBuildDto,
   LatestContainerImageBuildQueryDto,
   StartContainerImageBuildDto,
 } from './dto/container-image-build.dto';
+import { ContainerImagePullJobDto } from './dto/container-image-pull-job.dto';
 import { PullContainerImageDto } from './dto/pull-container-image.dto';
 import { UploadContainerImageContextFileDto } from './dto/upload-container-image-context-file.dto';
 import { ContainerImageBuildContextFile } from './entities/container-image-build-context-file.entity';
@@ -46,16 +42,14 @@ import {
 } from './dto/gapps-build.dto';
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
 import { ContainerImageGappsPresetService } from './services/container-image-gapps-preset.service';
-import { resolveContainerImage } from '../common/container-image-reference';
+import { ContainerImagePullService } from './services/container-image-pull.service';
 import { RequiresFeature } from '../feature-flags/feature-flags.guard';
 
 @ApiTags('platform-container-images')
 @Controller('platform/container-images')
 export class ContainerImagesController {
   constructor(
-    @Inject(DOCKER_IMAGE_RUNTIME)
-    private readonly images: DockerImageRuntimePort,
-    private readonly settings: SettingsService,
+    private readonly pulls: ContainerImagePullService,
     private readonly recipes: ContainerImageRecipeService,
     private readonly buildContext: ContainerImageBuildContextService,
     private readonly builder: ContainerImageBuilderService,
@@ -74,17 +68,22 @@ export class ContainerImagesController {
       },
     },
   })
-  async pull(@Body() dto: PullContainerImageDto) {
-    const settings = await this.settings.getSettings();
-    const image = resolveContainerImage(
-      dto.image,
-      settings.dockerImageRegistry,
-    );
-    await this.images.pullImage(image);
-    return {
-      image,
-      status: 'pulled',
-    };
+  pull(@Body() dto: PullContainerImageDto) {
+    return this.pulls.pull(dto.image);
+  }
+
+  @Post('pulls')
+  @ApiOperation({ summary: 'Start an image pull and return its job.' })
+  @ApiCreatedResponse({ type: ContainerImagePullJobDto })
+  startPull(@Body() dto: PullContainerImageDto) {
+    return this.pulls.start(dto.image);
+  }
+
+  @Get('pulls/:id')
+  @ApiOperation({ summary: 'Read the phase of an image pull.' })
+  @ApiOkResponse({ type: ContainerImagePullJobDto })
+  getPull(@Param('id', ParseUUIDPipe) id: string) {
+    return this.pulls.get(id);
   }
 
   @Get('build-context')

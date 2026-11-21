@@ -4584,6 +4584,69 @@
         ]
       }
     },
+    "/api/v1/platform/container-images/pulls": {
+      "post": {
+        "operationId": "ContainerImagesController_startPull",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PullContainerImageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImagePullJobDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Start an image pull and return its job.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
+    "/api/v1/platform/container-images/pulls/{id}": {
+      "get": {
+        "operationId": "ContainerImagesController_getPull",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContainerImagePullJobDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Read the phase of an image pull.",
+        "tags": [
+          "platform-container-images"
+        ]
+      }
+    },
     "/api/v1/platform/container-images/build-context": {
       "get": {
         "operationId": "ContainerImagesController_listBuildContextFiles",
@@ -10747,6 +10810,34 @@
         },
         "required": [
           "image"
+        ]
+      },
+      "ContainerImagePullJobDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "image": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "contacting-registry",
+              "transferring-layers",
+              "registering",
+              "pulled",
+              "failed"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "image",
+          "phase"
         ]
       },
       "ContainerImageBuildContextFile": {

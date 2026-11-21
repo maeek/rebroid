@@ -11,6 +11,7 @@ export type PlatformContainerDetails = Omit<
 }
 export type PlatformContainerLog = OrchestratorApiSchemas['DockerPlatformContainerLogDto']
 export type PlatformContainerStats = OrchestratorApiSchemas['DockerPlatformContainerStatsDto']
+export type PlatformImagePull = OrchestratorApiSchemas['ContainerImagePullJobDto']
 export type PlatformImage = OrchestratorApiSchemas['DockerPlatformImageDto']
 export type PlatformImageDetails = Omit<
   OrchestratorApiSchemas['DockerPlatformImageDetailsDto'],

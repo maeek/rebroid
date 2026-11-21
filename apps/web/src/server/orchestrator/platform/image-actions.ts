@@ -1,6 +1,5 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
 import { runSafeAction } from '@/server/actions/safe-action'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { requireFeature } from '../features'
@@ -47,14 +46,12 @@ export const pullPlatformImageAction = async (registry: string, draft: string) =
         throw new PublicActionError(message, { code: 'validation', status: 400, fieldErrors: { image: [message] } })
       }
 
-      const result = await runAuditedPlatformAction({
+      return runAuditedPlatformAction({
         action: 'docker.image.pull',
-        operation: () => orchestratorPlatformClient.pullPlatformImage({ image }),
+        operation: () => orchestratorPlatformClient.startPlatformImagePull({ image }),
         resourceType: 'docker_image',
         resourceId: image
       })
-      revalidatePath('/(protected)/(standard)/runtime/images/[id]', 'page')
-      return result
     },
     {
       fallbackMessage: 'Could not pull the image. Check the image reference and registry access, then try again.',

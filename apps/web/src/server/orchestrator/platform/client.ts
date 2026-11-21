@@ -11,6 +11,7 @@ import type {
   PlatformContainerStats,
   PlatformImage,
   PlatformImageDetails,
+  PlatformImagePull,
   PlatformNetwork,
   PlatformNetworkDetails,
   StartContainerImageBuildInput,
@@ -41,11 +42,12 @@ export const orchestratorPlatformClient = {
     return emptyRequest<PlatformImage[]>('/platform/docker/images')
   },
 
-  pullPlatformImage(input: OrchestratorApiSchemas['PullContainerImageDto']) {
-    return jsonRequest<{ image: string; status: 'pulled' }>('/platform/container-images/pull', 'POST', input, {
-      // Leave time to return a failure before the ingress's five-minute deadline.
-      timeoutMs: 285_000
-    })
+  startPlatformImagePull(input: OrchestratorApiSchemas['PullContainerImageDto']) {
+    return jsonRequest<PlatformImagePull>('/platform/container-images/pulls', 'POST', input)
+  },
+
+  getPlatformImagePull(id: string) {
+    return emptyRequest<PlatformImagePull>(`/platform/container-images/pulls/${encodeURIComponent(id)}`)
   },
 
   getPlatformImage(id: string) {

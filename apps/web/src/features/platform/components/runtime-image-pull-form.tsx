@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState } from 'react'
 import { IconDownload } from '@tabler/icons-react'
 import { FormField } from '@/components/ui/form-field'
 import { FormLoadingBoundary } from '@/components/ui/form-loading-boundary'
@@ -10,10 +10,8 @@ import { Section } from '@/components/ui/section'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
-import { toast } from '@/hooks/use-toast'
-import { pullPlatformImageAction } from '@/server/orchestrator/platform/image-actions'
-import { RuntimeImagePullNotice, unconfirmedImagePull } from './runtime-image-pull-notice'
-import type { ActionError } from '@/shared/actions/action-result'
+import { RuntimeImagePullNotice, RuntimeImagePullStatus } from './runtime-image-pull-notice'
+import { useRuntimeImagePull } from './use-runtime-image-pull'
 
 type Registry = 'docker-hub' | 'custom'
 
@@ -21,33 +19,19 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
   const [registry, setRegistry] = useState<Registry>('docker-hub')
   const [image, setImage] = useState('')
   const pullFeedback = useSaveFeedback(`${registry}:${image}`)
-  const [failure, setFailure] = useState<ActionError | null>(null)
-  const [pending, startPull] = useTransition()
+  const { start, failure, pending, status, stale, clearFailure } = useRuntimeImagePull(() => {
+    setImage('')
+    pullFeedback.confirmSaved(`${registry}:`)
+    onPulled?.()
+  })
   const imageError = failure?.fieldErrors?.image?.[0]
   const customRegistry = registry === 'custom'
   const disabled = loading || pending
 
   const pull = () => {
     if (disabled || !image.trim()) return
-
     pullFeedback.resetSaveFeedback()
-    setFailure(null)
-    startPull(async () => {
-      try {
-        const result = await pullPlatformImageAction(registry, image)
-        if (!result.ok) {
-          setFailure(result.error)
-          return
-        }
-
-        toast({ title: 'Image pulled', description: result.data.image, variant: 'success' })
-        setImage('')
-        pullFeedback.confirmSaved(`${registry}:`)
-        onPulled?.()
-      } catch {
-        setFailure(unconfirmedImagePull)
-      }
-    })
+    void start(registry, image)
   }
 
   const form = (
@@ -70,7 +54,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
             disabled={disabled}
             onValueChange={value => {
               setRegistry(value)
-              setFailure(null)
+              clearFailure()
             }}
           >
             <SelectTrigger className='w-full'>
@@ -99,7 +83,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
             required
             onChange={event => {
               setImage(event.target.value)
-              setFailure(null)
+              clearFailure()
             }}
           />
         </FormField>
@@ -110,7 +94,7 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
           type='submit'
           disabled={loading || !image.trim()}
           pending={pending}
-          pendingLabel='Pulling image…'
+          pendingLabel={status}
           success={pullFeedback.saved}
           successLabel='Image pulled'
         >
@@ -119,6 +103,11 @@ export const RuntimeImagePullForm = ({ loading = false, onPulled }: { loading?: 
         </MutationButton>
         {loading ? <Skeleton className='absolute inset-0' /> : null}
       </div>
+      <RuntimeImagePullStatus
+        pending={pending}
+        status={status}
+        stale={stale}
+      />
     </form>
   )
 

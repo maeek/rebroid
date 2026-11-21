@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { getBff } from '@/lib/http/bff'
 import { pullPlatformImageAction, removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
 import { removePlatformNetworkAction } from '@/server/orchestrator/platform/network-actions'
 import { actionError, actionOk } from '@/shared/actions/action-result'
@@ -8,6 +9,8 @@ import { RuntimeNetworkDetail } from './runtime-network-detail'
 import type { PlatformImageDetails, PlatformNetworkDetails } from '@/shared/contracts/platform'
 
 const { replace } = vi.hoisted(() => ({ replace: vi.fn() }))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
+
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace }) }))
 vi.mock('@/server/orchestrator/platform/image-actions', () => ({
   pullPlatformImageAction: vi.fn(),
@@ -73,14 +76,15 @@ describe('runtime resource header actions', () => {
     const pull = Promise.withResolvers<Awaited<ReturnType<typeof pullPlatformImageAction>>>()
     vi.mocked(pullPlatformImageAction)
       .mockReturnValueOnce(pull.promise)
-      .mockResolvedValueOnce(actionOk({ image: reference, status: 'pulled' }))
+      .mockResolvedValueOnce(actionOk({ id: 'job', image: reference, phase: 'queued' }))
+    vi.mocked(getBff).mockResolvedValueOnce({ id: 'job', image: reference, phase: 'pulled' })
     render(
       <RuntimeImageDetail details={{ ...imageDetails, image: { ...imageDetails.image, repoTags: [reference] } }} />
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Pull again' }))
     expect(pullPlatformImageAction).toHaveBeenCalledWith('from-reference', reference)
-    const pending = screen.getByRole('button', { name: 'Pulling image…' })
+    const pending = screen.getByRole('button', { name: 'Submitting pull request…' })
     expect(pending).toHaveAttribute('aria-busy', 'true')
     expect(pending).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled()

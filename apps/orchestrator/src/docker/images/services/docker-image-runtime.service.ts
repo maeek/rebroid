@@ -5,6 +5,7 @@ import { managedImageTag } from '../../docker.utils';
 import type {
   DockerImageBuildRequest,
   DockerImageRuntimePort,
+  DockerImagePullPhase,
 } from '../../contracts/docker-image-runtime.port';
 
 type DockerImageProgress = {
@@ -55,11 +56,17 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
   /**
    * Pulls an image and streams raw progress text to an optional callback.
    */
-  async pullImage(image: string, onProgress?: (message: string) => void) {
+  async pullImage(
+    image: string,
+    onProgress?: (message: string) => void,
+    onPhase?: (phase: DockerImagePullPhase) => void,
+  ) {
     await this.engine.longOperation(
       'image_pull',
       `Pull image ${image}`,
       async (docker, signal) => {
+        onPhase?.('contacting-registry');
+        let transferring = false;
         const stream = (await docker.pull(image, {
           abortSignal: signal,
         })) as unknown as Readable;
@@ -88,6 +95,16 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
                 pullError ??= new Error(failure);
                 return;
               }
+              if (
+                onPhase &&
+                !transferring &&
+                /^(Downloading|Extracting|Verifying Checksum)$/.test(
+                  event.status ?? '',
+                )
+              ) {
+                transferring = true;
+                onPhase('transferring-layers');
+              }
               if (!onProgress) {
                 return;
               }
@@ -103,6 +120,7 @@ export class DockerImageRuntimeService implements DockerImageRuntimePort {
       undefined,
       { changesInventory: true, waitForCleanup: true },
     );
+    onPhase?.('registering');
     await this.markPulledImageAsManaged(image);
   }
 

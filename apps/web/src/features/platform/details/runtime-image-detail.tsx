@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { IconDownload, IconTrash } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -9,12 +9,16 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
 import { RuntimeImageBadges } from '@/features/platform/components/runtime-image-badges'
-import { RuntimeImagePullNotice, unconfirmedImagePull } from '@/features/platform/components/runtime-image-pull-notice'
+import {
+  RuntimeImagePullNotice,
+  RuntimeImagePullStatus
+} from '@/features/platform/components/runtime-image-pull-notice'
+import { useRuntimeImagePull } from '@/features/platform/components/use-runtime-image-pull'
 import { RelatedContainersGrid } from '@/features/platform/details/related-containers-grid'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
-import { pullPlatformImageAction, removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
-import { unwrapActionResult, type ActionError } from '@/shared/actions/action-result'
+import { removePlatformImageAction } from '@/server/orchestrator/platform/image-actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { imageDisplayName } from '@/shared/model/runtime-image/image-display-name'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { JsonViewer } from '@/shared/ui/json-viewer'
@@ -29,12 +33,14 @@ const RuntimeImageActions = ({
   onPull,
   onRemove,
   isPulling = false,
-  isRemoving = false
+  isRemoving = false,
+  pullStatus
 }: {
   onPull?: () => void
   onRemove?: () => void
   isPulling?: boolean
   isRemoving?: boolean
+  pullStatus?: string
 }) => (
   <>
     <MutationButton
@@ -42,7 +48,7 @@ const RuntimeImageActions = ({
       variant='secondary'
       disabled={!onPull || isRemoving}
       pending={isPulling}
-      pendingLabel='Pulling image…'
+      pendingLabel={pullStatus}
       animate
       onClick={onPull}
     >
@@ -65,32 +71,19 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
   const router = useRouter()
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
-  const [isPulling, startPull] = useTransition()
-  const [pullFailure, setPullFailure] = useState<ActionError | null>(null)
   const image = details.image
   const pullReference = image.repoTags[0] ?? image.repoDigests[0]
 
+  const pullSourcePath = useRef<string>(null)
+  const pull = useRuntimeImagePull(() => {
+    if (pullReference && window.location.pathname === pullSourcePath.current) {
+      router.replace(`/runtime/images/${encodeURIComponent(pullReference)}`)
+    }
+  })
   const pullImage = () => {
-    if (!pullReference || isPulling || isRemoving) return
-
-    const sourcePath = window.location.pathname
-    setPullFailure(null)
-    startPull(async () => {
-      try {
-        const result = await pullPlatformImageAction('from-reference', pullReference)
-        if (!result.ok) {
-          setPullFailure(result.error)
-          return
-        }
-
-        toast({ title: 'Image pulled', description: pullReference, variant: 'success' })
-        if (window.location.pathname === sourcePath) {
-          router.replace(`/runtime/images/${encodeURIComponent(pullReference)}`)
-        }
-      } catch {
-        setPullFailure(unconfirmedImagePull)
-      }
-    })
+    if (!pullReference || pull.pending || isRemoving) return
+    pullSourcePath.current = window.location.pathname
+    void pull.start('from-reference', pullReference)
   }
 
   const removeImage = async () => {
@@ -119,19 +112,19 @@ export const RuntimeImageDetail = ({ details }: { details: PlatformImageDetails 
           <RuntimeImageActions
             onPull={pullReference ? pullImage : undefined}
             onRemove={() => setRemoveDialogOpen(true)}
-            isPulling={isPulling}
+            isPulling={pull.pending}
+            pullStatus={pull.status}
             isRemoving={isRemoving}
           />
         }
         feedback={
           <>
-            <span
-              role='status'
-              className='sr-only'
-            >
-              {isPulling ? 'Pulling image…' : null}
-            </span>
-            {pullFailure ? <RuntimeImagePullNotice failure={pullFailure} /> : null}
+            <RuntimeImagePullStatus
+              pending={pull.pending}
+              status={pull.status}
+              stale={pull.stale}
+            />
+            {pull.failure ? <RuntimeImagePullNotice failure={pull.failure} /> : null}
           </>
         }
       />

@@ -17,6 +17,9 @@ export interface DockerImageBuildRequest {
   onProgress?: (message: string, kind: 'output' | 'status' | 'error') => void;
 }
 
+export type DockerImagePullPhase =
+  'contacting-registry' | 'transferring-layers' | 'registering';
+
 export interface DockerImageRuntimePort {
   imageExists(image: string): Promise<boolean>;
   inspectImage(image: string): Promise<Dockerode.ImageInspectInfo>;
@@ -24,6 +27,7 @@ export interface DockerImageRuntimePort {
   pullImage(
     image: string,
     onProgress?: (message: string) => void,
+    onPhase?: (phase: DockerImagePullPhase) => void,
   ): Promise<void>;
   buildImage(request: DockerImageBuildRequest): Promise<void>;
   removeImage(

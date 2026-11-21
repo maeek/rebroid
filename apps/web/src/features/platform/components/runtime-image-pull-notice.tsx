@@ -21,3 +21,22 @@ export const RuntimeImagePullNotice = ({ failure }: { failure: ActionError }) =>
     </Notice>
   )
 }
+
+export const RuntimeImagePullStatus = ({
+  pending,
+  status,
+  stale
+}: {
+  pending: boolean
+  status: string
+  stale: boolean
+}) => (
+  <div
+    role='status'
+    aria-atomic='true'
+    className={stale ? 'text-sm text-foreground-muted' : 'sr-only'}
+  >
+    {pending ? status : null}
+    {stale ? ' Progress could not be refreshed. Retrying…' : null}
+  </div>
+)

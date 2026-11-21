@@ -14,6 +14,7 @@ import { ContainerImageBuildContextService } from './services/container-image-bu
 import { ContainerImageBuildJobService } from './services/container-image-build-job.service';
 import { ContainerImageBuildLifecycleService } from './services/container-image-build-lifecycle.service';
 import { ContainerImageBuildMaintenanceService } from './services/container-image-build-maintenance.service';
+import { ContainerImagePullService } from './services/container-image-pull.service';
 import { ContainerImageRecipeService } from './services/container-image-recipe.service';
 import { ContainerImageGappsBuilderService } from './services/container-image-gapps-builder.service';
 import { ContainerImageGappsCacheService } from './services/container-image-gapps-cache.service';
@@ -48,6 +49,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
       useExisting: ContainerImageBuildMaintenanceService,
     },
     ContainerImageRecipeService,
+    ContainerImagePullService,
     ContainerImageGappsBuilderService,
     ContainerImageGappsCacheService,
     ContainerImageGappsPackageService,

@@ -42,12 +42,21 @@ describe('DockerImageRuntimeService.pullImage', () => {
   it('rejects a registry error before marking the image as managed', async () => {
     const { images, progress } = buildFixture();
     const onProgress = jest.fn();
-    const pull = images.pullImage('docker.io/library/alpine:3', onProgress);
+    const onPhase = jest.fn();
+    const pull = images.pullImage(
+      'docker.io/library/alpine:3',
+      onProgress,
+      onPhase,
+    );
     progress.write('{"id":"layer","status":"Downloading","progress":"1/2"}\n');
     progress.end('{"errorDetail":{"message":"denied: requested access"}}\n');
 
     await expect(pull).rejects.toThrow('denied: requested access');
     expect(onProgress).toHaveBeenCalledWith('Downloading 1/2 layer');
+    expect(onPhase.mock.calls).toEqual([
+      ['contacting-registry'],
+      ['transferring-layers'],
+    ]);
   });
 });
 
