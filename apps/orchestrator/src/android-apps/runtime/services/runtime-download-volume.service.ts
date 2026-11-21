@@ -1,9 +1,16 @@
 import { Inject, ConflictException, Injectable } from '@nestjs/common';
-import { constants, createWriteStream } from 'node:fs';
-import { mkdir, readdir, open, stat, unlink } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import {
+  access,
+  lstat,
+  mkdir,
+  readdir,
+  open,
+  rename,
+  stat,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 import {
   DOCKER_RESOURCE_RUNTIME,
   type DockerResourceRuntimePort,
@@ -86,21 +93,29 @@ export class RuntimeDownloadVolumeService {
 
     await mkdir(directory, { recursive: true });
     const targetPath = join(directory, fileName);
-    let sizeBytes = 0;
-    const counter = this.uploads.createByteCounter((bytes) => {
-      sizeBytes += bytes;
-    });
-
-    try {
-      await pipeline(
-        stream,
-        counter,
-        createWriteStream(targetPath, { mode: 0o644 }),
-      );
-    } catch (error) {
-      await unlink(targetPath).catch(() => undefined);
-      throw error;
-    }
+    const sizeBytes = await this.uploads.withStagedFile(
+      stream,
+      async (stagedPath, stagedFile) => {
+        const previous = await lstat(targetPath).catch(
+          (error: NodeJS.ErrnoException) => {
+            if (error.code === 'ENOENT') return undefined;
+            throw error;
+          },
+        );
+        if (previous) {
+          if (!previous.isFile())
+            throw new ConflictException('Download must be a regular file.');
+          await access(targetPath, constants.W_OK);
+          const staged = await stagedFile.stat();
+          if (staged.uid !== previous.uid || staged.gid !== previous.gid) {
+            await stagedFile.chown(previous.uid, previous.gid);
+          }
+          await stagedFile.chmod(previous.mode & 0o777);
+        }
+        await rename(stagedPath, targetPath);
+      },
+      { directory, mode: 0o644 },
+    );
 
     return this.uploadResult(fileName, sizeBytes);
   }

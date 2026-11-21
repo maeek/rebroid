@@ -1,9 +1,8 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { createWriteStream } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { type FileHandle, mkdtemp, open, rm, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Readable, Transform, type TransformCallback } from 'node:stream';
+import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import {
   type MultipartUploadRequest,
@@ -27,10 +26,7 @@ export class RuntimeUploadStreamService {
       fieldName: 'file',
       maxBytes: this.maxUploadBytes,
       missingError: () => new ConflictException('A file upload is required.'),
-      limitError: () =>
-        new ConflictException(
-          `File upload exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
-        ),
+      limitError: () => this.limitError(),
       canceledError: () => new ConflictException('File upload was cancelled.'),
       consume: (stream, originalName) => store(stream, originalName),
     });
@@ -38,51 +34,41 @@ export class RuntimeUploadStreamService {
 
   async withStagedFile(
     stream: Readable,
-    store: (path: string) => Promise<void>,
+    store: (path: string, file: FileHandle) => Promise<void>,
+    options: { directory?: string; mode?: number } = {},
   ) {
-    const directory = await mkdtemp(join(tmpdir(), 'rebroid-runtime-upload-'));
+    const directory = await mkdtemp(
+      join(options.directory ?? tmpdir(), '.rebroid-runtime-upload-'),
+    );
+    const path = join(directory, 'upload');
     try {
-      const path = join(directory, 'upload');
+      await using file = await open(path, 'wx', options.mode ?? 0o600);
       let sizeBytes = 0;
       await pipeline(
         stream,
-        this.createByteCounter((bytes) => {
-          sizeBytes += bytes;
+        new Transform({
+          transform: (chunk: Buffer, _encoding, callback) => {
+            sizeBytes += chunk.length;
+            if (sizeBytes > this.maxUploadBytes) {
+              callback(this.limitError());
+            } else {
+              callback(null, chunk);
+            }
+          },
         }),
-        createWriteStream(path, { mode: 0o600 }),
+        (chunks) => file.writeFile(chunks),
       );
-      await store(path);
+      await store(path, file);
       return sizeBytes;
     } finally {
-      await rm(directory, { recursive: true, force: true }).catch(
-        () => undefined,
-      );
+      await rm(path, { force: true }).catch(() => undefined);
+      await rmdir(directory).catch(() => undefined);
     }
   }
 
-  createByteCounter(onBytes: (bytes: number) => void) {
-    let totalBytes = 0;
-    return new Transform({
-      transform: (
-        chunk: Buffer,
-        _encoding: BufferEncoding,
-        callback: TransformCallback,
-      ) => {
-        const bytes = Buffer.isBuffer(chunk)
-          ? chunk.length
-          : Buffer.byteLength(chunk);
-        totalBytes += bytes;
-        if (totalBytes > this.maxUploadBytes) {
-          callback(
-            new ConflictException(
-              `File upload exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
-            ),
-          );
-          return;
-        }
-        onBytes(bytes);
-        callback(null, chunk);
-      },
-    });
+  private limitError() {
+    return new ConflictException(
+      `File upload exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
+    );
   }
 }

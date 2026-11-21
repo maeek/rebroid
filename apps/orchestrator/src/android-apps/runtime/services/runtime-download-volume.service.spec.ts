@@ -1,8 +1,16 @@
 import { ConflictException } from '@nestjs/common';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import {
+  chmod,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Readable, Transform } from 'node:stream';
+import { Readable } from 'node:stream';
 import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
@@ -32,21 +40,11 @@ describe('RuntimeDownloadVolumeService', () => {
     const networkIsolation = {
       namesFor: jest.fn().mockReturnValue({ volumeName: 'volume-app-1' }),
     };
-    const uploads = {
-      createByteCounter: (onBytes: (bytes: number) => void) =>
-        new Transform({
-          transform(chunk, _encoding, callback) {
-            onBytes(Buffer.byteLength(chunk));
-            callback(null, chunk);
-          },
-        }),
-    } as RuntimeUploadStreamService;
-
     service = new RuntimeDownloadVolumeService(
       networkIsolation as never,
       resources as never,
       paths,
-      uploads,
+      new RuntimeUploadStreamService(),
     );
   });
 
@@ -102,6 +100,41 @@ describe('RuntimeDownloadVolumeService', () => {
     await expect(
       readFile(join(tempDir, 'media', '0', 'Download', 'stream.txt'), 'utf8'),
     ).resolves.toBe('hello world');
+  });
+
+  it('keeps the previous download when its replacement stream fails', async () => {
+    await service.storeStream(app, Readable.from(['original']), 'file.txt', {});
+    const incomplete = Readable.from(
+      (async function* () {
+        yield Buffer.from('partial');
+        throw new Error('upload interrupted');
+      })(),
+    );
+
+    await expect(
+      service.storeStream(app, incomplete, 'file.txt', {}),
+    ).rejects.toThrow('upload interrupted');
+
+    await expect(service.readFile(app, 'file.txt', {})).resolves.toEqual(
+      Buffer.from('original'),
+    );
+    await expect(
+      readdir(join(tempDir, 'media', '0', 'Download')),
+    ).resolves.toEqual(['file.txt']);
+  });
+
+  it('retains file permissions when replacing an existing download', async () => {
+    await service.storeStream(app, Readable.from(['original']), 'file.txt', {});
+    const path = join(tempDir, 'media', '0', 'Download', 'file.txt');
+    await chmod(path, 0o640);
+    const { uid, gid } = await stat(path);
+
+    await service.storeStream(app, Readable.from(['new']), 'file.txt', {});
+
+    const replaced = await stat(path);
+    expect(replaced).toMatchObject({ uid, gid });
+    expect(replaced.mode & 0o777).toBe(0o640);
+    await expect(readFile(path, 'utf8')).resolves.toBe('new');
   });
 
   it('reads persistent download files', async () => {
