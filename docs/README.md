@@ -27,11 +27,6 @@ Service-specific setup and verification are in the [web](../apps/web/README.md),
 [orchestrator](../apps/orchestrator/README.md), [display sidecar](../apps/display-sidecar/README.md),
 [OCR sidecar](../apps/ocr-sidecar/README.md), and [AI automation](../apps/orchestrator/src/automations/ai/README.md) guides.
 
-## Research notes
-
-- [AMD hardware acceleration](research/amd-hardware-acceleration.md)
-- [Rebroid UI review](research/rebroid-ui-review.md)
-- [Workflow step editor review](research/workflow-step-ux-review.md)
 
 Report vulnerabilities through the [security policy](../SECURITY.md).
 See the [third-party notices](../THIRD_PARTY_NOTICES.md) for bundled artifacts.
