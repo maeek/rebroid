@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DataSource } from 'typeorm';
@@ -156,5 +156,43 @@ describe('APK library', () => {
     expect((await library.list()).map((entry) => entry.id)).toEqual([
       second.id,
     ]);
+  });
+
+  it('retains the records and shared bytes when the catalog delete fails', async () => {
+    const { id, upload } = await save('build-kept', 'owner');
+    jest
+      .spyOn(uploads, 'removeBySha256')
+      .mockRejectedValueOnce(new Error('database offline'));
+
+    await expect(
+      library.mutate({ action: 'delete', ids: [id] }),
+    ).resolves.toMatchObject({
+      changed: [],
+      skipped: [{ id }],
+      bytesFreed: 0,
+    });
+    await expect(uploads.findBySha256(upload.sha256)).resolves.toHaveLength(1);
+    await expect(readFile(upload.filePath, 'utf8')).resolves.toBe('build-kept');
+  });
+
+  it('leaves committed removals eligible for a later orphan cleanup', async () => {
+    const { id, upload } = await save('build-orphaned', 'owner');
+    jest
+      .spyOn(storage, 'removeSharedFileIfUnreferenced')
+      .mockResolvedValueOnce(false);
+
+    await expect(
+      library.mutate({ action: 'delete', ids: [id] }),
+    ).resolves.toMatchObject({
+      changed: [id],
+      bytesFreed: 0,
+    });
+    await expect(uploads.findBySha256(upload.sha256)).resolves.toEqual([]);
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await utimes(upload.filePath, old, old);
+    await expect(storage.cleanupOrphanedFiles()).resolves.toBe(1);
+    await expect(readFile(upload.filePath)).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
   });
 });

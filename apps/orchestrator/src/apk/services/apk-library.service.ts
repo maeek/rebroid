@@ -230,8 +230,9 @@ export class ApkLibraryService {
       );
       if (inUse.size)
         return { reason: 'An app still uses this APK.', bytesFreed: 0 };
-      const deleted = await this.storage.deleteSharedFile(sha256);
-      await this.uploads.removeBySha256(sha256);
+      const deleted = await this.storage.removeCatalogRecords({ sha256 }, () =>
+        this.uploads.removeBySha256(sha256),
+      );
       return { reason: null, bytesFreed: deleted ? uploads[0].sizeBytes : 0 };
     });
   }

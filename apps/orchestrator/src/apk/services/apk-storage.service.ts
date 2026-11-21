@@ -123,6 +123,25 @@ export class ApkStorageService {
     return this.removeFile(upload.filePath);
   }
 
+  /** Called under the hash lock. Orphan cleanup can retry after catalog commit. */
+  async removeCatalogRecords(
+    upload: { sha256: string; filePath?: string },
+    removeRecords: () => Promise<unknown>,
+  ) {
+    await removeRecords();
+    try {
+      const { sha256 } = upload;
+      const filePath =
+        upload.filePath ?? join(await this.apkDirectory(), `${sha256}.apk`);
+      return await this.removeSharedFileIfUnreferenced({ sha256, filePath });
+    } catch (error) {
+      this.logger.warn(
+        `Could not check an APK for orphan cleanup: ${String(error)}`,
+      );
+      return false;
+    }
+  }
+
   async cleanupOrphanedFiles() {
     const apkDir = await this.apkDirectory();
     const referenced = await this.uploadedApks.referencedFileNames();
@@ -156,18 +175,6 @@ export class ApkStorageService {
       if (deleted) removed += 1;
     }
     return removed;
-  }
-
-  /** Called under the hash lock after all application references are checked. */
-  async deleteSharedFile(sha256: string) {
-    const path = join(await this.apkDirectory(), `${sha256}.apk`);
-    try {
-      await unlink(path);
-      return true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      return false;
-    }
   }
 
   private async removeFile(path: string) {

@@ -270,8 +270,9 @@ export class ApkCatalogService implements ApkCatalogPort {
         );
       }
       const deleted = { ...current };
-      await this.uploadedApks.remove(current);
-      await this.storage.removeSharedFileIfUnreferenced(deleted);
+      await this.storage.removeCatalogRecords(deleted, () =>
+        this.uploadedApks.remove(current),
+      );
       return deleted;
     });
   }
