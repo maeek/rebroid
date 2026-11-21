@@ -185,3 +185,47 @@ export function planScrcpyRestartBackoff(
   );
   return { attempt, delayMs };
 }
+
+export function compatibilityModeMessage(
+  mode: ScrcpyStreamOptions["compatibilityMode"],
+) {
+  if (mode === "audio-disabled") {
+    return "Audio capture is disabled for this stream after Android rejected the audio setup.";
+  }
+  if (mode === "stream-control-disabled") {
+    return "Stream control is disabled for this Android build; viewer controls use ADB fallback.";
+  }
+  return "Using the standard scrcpy display stream.";
+}
+
+export function compatibilityProbeSummary(
+  probe: ScrcpyCompatibilityProbe | null,
+) {
+  if (!probe) {
+    return "Android compatibility diagnostics were unavailable.";
+  }
+  const version = [
+    probe.androidRelease,
+    probe.androidSdk && `API ${probe.androidSdk}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const services = Object.entries(probe.services)
+    .map(([name, status]) => `${name}:${status}`)
+    .join(" ");
+  return [
+    version || "Android version unknown",
+    [probe.productBrand, probe.productModel].filter(Boolean).join(" ") ||
+      "unknown device",
+    probe.buildId ? `build ${probe.buildId}` : null,
+    services,
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+export function latestCompatibilityDiagnostic(
+  probe: ScrcpyCompatibilityProbe | null,
+) {
+  return probe?.diagnostics.at(-1)?.slice(0, 260);
+}

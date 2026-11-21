@@ -23,8 +23,11 @@ import {
   ScrcpyControlQueue,
 } from "./scrcpy-control-queue";
 import {
+  compatibilityModeMessage,
   compatibilityProbeServices,
+  compatibilityProbeSummary,
   displayDiagnosticPattern,
+  latestCompatibilityDiagnostic,
   parseCompatibilityProbe,
   planScrcpyInitialRetry,
   planScrcpyRestart,
@@ -37,6 +40,7 @@ import {
   ScrcpyPacketParser,
 } from "./scrcpy-packet-parser";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
+import { buildScrcpyServerOptions } from "./scrcpy-server-options";
 import { ScrcpyStreamLiveness } from "./scrcpy-stream-liveness";
 import { ScrcpyStreamSessionRegistry } from "./scrcpy-stream-session-registry";
 import { ScrcpySourceStream } from "./scrcpy-source-stream";
@@ -256,11 +260,15 @@ export class ScrcpyService implements OnModuleDestroy {
     const compatibilityProbe = await source.compatibility;
     if (!source.stream.isOpen()) return;
     if (source.stream.consumerCount() === 0) {
-      this.closeSource(options.sessionId, 1000, "Display source has no consumers");
+      this.closeSource(
+        options.sessionId,
+        1000,
+        "Display source has no consumers",
+      );
       return;
     }
     this.sendCompatibilityStatus(options.sink, effectiveOptions, {
-      message: this.compatibilityProbeSummary(compatibilityProbe),
+      message: compatibilityProbeSummary(compatibilityProbe),
     });
 
     options.sink.onClose((code, reason) => {
@@ -303,7 +311,8 @@ export class ScrcpyService implements OnModuleDestroy {
           );
           this.sendJson(options.sink, {
             type: "audio-disabled",
-            message: "Android audio capture failed; continuing with video only.",
+            message:
+              "Android audio capture failed; continuing with video only.",
           });
         }
         const { attempt, delayMs } = planScrcpyRestartBackoff(
@@ -348,17 +357,18 @@ export class ScrcpyService implements OnModuleDestroy {
           if (retry.disablesAudio) {
             this.sendJson(options.sink, {
               type: "audio-disabled",
-              message: "Android could not configure the audio stream; continuing with video only.",
+              message:
+                "Android could not configure the audio stream; continuing with video only.",
             });
           }
           this.sendCompatibilityStatus(options.sink, effectiveOptions, {
-            message: this.compatibilityProbeSummary(diagnostics),
-            diagnostic: this.firstDiagnosticLine(diagnostics),
+            message: compatibilityProbeSummary(diagnostics),
+            diagnostic: latestCompatibilityDiagnostic(diagnostics),
           });
           this.sendJson(options.sink, {
             type: "reconnecting",
             message: retry.reconnectMessage,
-            diagnostic: this.firstDiagnosticLine(diagnostics),
+            diagnostic: latestCompatibilityDiagnostic(diagnostics),
           });
           await this.delay(delayMs);
           continue;
@@ -739,7 +749,8 @@ export class ScrcpyService implements OnModuleDestroy {
         this.streamSessions.markAudioDisabled(options.sessionId);
         this.sendJson(options.sink, {
           type: "audio-disabled",
-          message: "The scrcpy audio connection could not be established; continuing with video only.",
+          message:
+            "The scrcpy audio connection could not be established; continuing with video only.",
         });
       }
       options.onActivity?.();
@@ -853,7 +864,10 @@ export class ScrcpyService implements OnModuleDestroy {
         }
         this.streamSessions.markAudioDisabled(options.sessionId);
         this.logger.debug(`[${logPrefix}] ${reason}; continuing video only`);
-        this.sendJson(options.sink, { type: "audio-disabled", message: reason });
+        this.sendJson(options.sink, {
+          type: "audio-disabled",
+          message: reason,
+        });
         audioSocket.destroy();
         audioSocket = null;
       };
@@ -1012,7 +1026,9 @@ export class ScrcpyService implements OnModuleDestroy {
 
   hasActiveControl(sessionId: string) {
     const active = this.controlSockets.get(sessionId);
-    return Boolean(active && !active.socket.destroyed && active.socket.writable);
+    return Boolean(
+      active && !active.socket.destroyed && active.socket.writable,
+    );
   }
 
   shouldWaitForStreamControl(sessionId: string) {
@@ -1094,49 +1110,12 @@ export class ScrcpyService implements OnModuleDestroy {
     socketName: string,
     tunnelMode: ScrcpyTunnelMode,
   ): ScrcpyServerLaunch {
-    const serverOptions = [
-      this.config.scrcpyVersion,
-      `scid=${scid}`,
-      `log_level=${this.config.scrcpyServerLogLevel}`,
-      "video=true",
-      `audio=${options.audio ? "true" : "false"}`,
-      "audio_codec=opus",
-      `control=${this.streamControlEnabled(options) ? "true" : "false"}`,
-      "clipboard_autosync=true",
-      "cleanup=false",
-      "keep_active=true",
-      "power_on=true",
-      "send_device_meta=false",
-      "send_frame_meta=true",
-      `send_dummy_byte=${tunnelMode === "reverse" ? "false" : "true"}`,
-      "send_stream_meta=true",
-      `max_size=${options.maxSize}`,
-      `video_bit_rate=${options.bitrate}`,
-      `max_fps=${options.maxFps}`,
-      `video_codec=${options.codec}`,
-    ];
-    if (this.config.scrcpyVideoEncoder) {
-      serverOptions.push(`video_encoder=${this.config.scrcpyVideoEncoder}`);
-    }
-
-    if (options.newDisplay) {
-      serverOptions.push(
-        `new_display=${options.newDisplay.width}x${options.newDisplay.height}/${options.newDisplay.dpi}`,
-        "vd_destroy_content=false",
-      );
-    } else if (options.displayId !== undefined) {
-      serverOptions.push(`display_id=${options.displayId}`);
-    }
-
-    if (tunnelMode !== "reverse") {
-      serverOptions.push("tunnel_forward=true");
-    }
-
-    if (options.iFrameInterval && options.iFrameInterval > 0) {
-      serverOptions.push(
-        `video_codec_options=i-frame-interval:int=${options.iFrameInterval},max-bframes:int=0`,
-      );
-    }
+    const serverOptions = buildScrcpyServerOptions(options, scid, tunnelMode, {
+      version: this.config.scrcpyVersion,
+      logLevel: this.config.scrcpyServerLogLevel,
+      controlEnabled: this.streamControlEnabled(options),
+      videoEncoder: this.config.scrcpyVideoEncoder,
+    });
 
     const serverClasspath = "/data/local/tmp/rebroid-scrcpy-server.jar";
     const serverCommand = [
@@ -1735,9 +1714,9 @@ export class ScrcpyService implements OnModuleDestroy {
         logcatResult.status === "fulfilled" ? logcatResult.value.stdout : "";
       const probe = parseCompatibilityProbe(output, logcat);
       this.logger.debug(
-        `[${logPrefix}] Android display compatibility probe: ${this.compatibilityProbeSummary(probe)}`,
+        `[${logPrefix}] Android display compatibility probe: ${compatibilityProbeSummary(probe)}`,
       );
-      const diagnostic = this.firstDiagnosticLine(probe);
+      const diagnostic = latestCompatibilityDiagnostic(probe);
       if (diagnostic) {
         this.logger.debug(`[${logPrefix}] diagnostic: ${diagnostic}`);
       }
@@ -1760,48 +1739,10 @@ export class ScrcpyService implements OnModuleDestroy {
       mode: options.compatibilityMode ?? "normal",
       control: this.streamControlEnabled(options),
       audio: options.audio,
-      message: details.message ?? this.compatibilityModeMessage(options),
+      message:
+        details.message ?? compatibilityModeMessage(options.compatibilityMode),
       diagnostic: details.diagnostic,
     });
-  }
-
-  private compatibilityModeMessage(options: ScrcpyStreamOptions) {
-    const mode = options.compatibilityMode ?? "normal";
-    if (mode === "audio-disabled") {
-      return "Audio capture is disabled for this stream after Android rejected the audio setup.";
-    }
-    if (mode === "stream-control-disabled") {
-      return "Stream control is disabled for this Android build; viewer controls use ADB fallback.";
-    }
-    return "Using the standard scrcpy display stream.";
-  }
-
-  private compatibilityProbeSummary(probe: ScrcpyCompatibilityProbe | null) {
-    if (!probe) {
-      return "Android compatibility diagnostics were unavailable.";
-    }
-    const version = [
-      probe.androidRelease,
-      probe.androidSdk && `API ${probe.androidSdk}`,
-    ]
-      .filter(Boolean)
-      .join(" ");
-    const services = Object.entries(probe.services)
-      .map(([name, status]) => `${name}:${status}`)
-      .join(" ");
-    return [
-      version || "Android version unknown",
-      [probe.productBrand, probe.productModel].filter(Boolean).join(" ") ||
-        "unknown device",
-      probe.buildId ? `build ${probe.buildId}` : null,
-      services,
-    ]
-      .filter(Boolean)
-      .join("; ");
-  }
-
-  private firstDiagnosticLine(probe: ScrcpyCompatibilityProbe | null) {
-    return probe?.diagnostics.at(-1)?.slice(0, 260);
   }
 
   private async maybeLogDeviceDiagnostics(
@@ -2176,7 +2117,9 @@ export class ScrcpyService implements OnModuleDestroy {
         `[scrcpy:${active.udid}:${sessionId}] encoder reset resetGeneration=${generation} sourceAttemptId=${source.stream.sourceAttemptId} codecGeneration=${source.stream.videoCodecGeneration} did not produce configuration followed by an IDR; restarting scrcpy attempt`,
       );
       this.runInBackground(
-        active.stopAttempt("encoder reset did not produce configuration and IDR"),
+        active.stopAttempt(
+          "encoder reset did not produce configuration and IDR",
+        ),
         `[scrcpy:${active.udid}:${sessionId}] encoder reset watchdog restart`,
       );
     });

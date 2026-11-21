@@ -8,12 +8,54 @@ import {
 } from "node:net";
 import test from "node:test";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
+import { buildScrcpyServerOptions } from "./scrcpy-server-options";
 import { ScrcpySourceStream } from "./scrcpy-source-stream";
 import { ScrcpyVideoResetWatchdog } from "./scrcpy-video-reset-watchdog";
 import { ScrcpyService } from "./scrcpy.service";
 import { parseCompatibilityProbe } from "./scrcpy-compatibility";
 
 const scrcpy = new ScrcpyService({} as never, {} as never);
+
+test("scrcpy server options preserve reverse and forward tunnel protocol flags", () => {
+  const stream = {
+    audio: false,
+    bitrate: 8_000_000,
+    codec: "h264",
+    displayId: 0,
+    iFrameInterval: 1,
+    maxFps: 60,
+    maxSize: 1280,
+  } as const;
+  const settings = {
+    version: "5.0.1",
+    logLevel: "warn",
+    controlEnabled: false,
+  };
+  const reverse = buildScrcpyServerOptions(stream, "a1", "reverse", settings);
+  assert.ok(reverse.includes("send_dummy_byte=false"));
+  assert.ok(reverse.includes("display_id=0"));
+  assert.ok(reverse.includes("control=false"));
+  assert.ok(!reverse.includes("tunnel_forward=true"));
+  assert.ok(
+    reverse.includes(
+      "video_codec_options=i-frame-interval:int=1,max-bframes:int=0",
+    ),
+  );
+
+  for (const tunnel of ["direct", "forward"] as const) {
+    const virtual = buildScrcpyServerOptions(
+      { ...stream, newDisplay: { width: 800, height: 600, dpi: 160 } },
+      "a1",
+      tunnel,
+      { ...settings, controlEnabled: true },
+    );
+    assert.ok(virtual.includes("send_dummy_byte=true"));
+    assert.ok(virtual.includes("tunnel_forward=true"));
+    assert.ok(virtual.includes("new_display=800x600/160"));
+    assert.ok(virtual.includes("control=true"));
+    assert.ok(!virtual.includes("display_id=0"));
+  }
+});
 
 test("Android 13–16 pass display admission while newer SDKs remain gated", () => {
   for (const sdk of [33, 34, 35, 36]) {
