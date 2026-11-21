@@ -4,19 +4,15 @@ import {
   OmitType,
   PartialType,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
   IsEnum,
   IsIn,
-  IsInt,
   IsObject,
   IsOptional,
   IsString,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
@@ -26,67 +22,19 @@ import {
   AutomationTriggerType,
 } from '../entities/automation-trigger.entity';
 import { AutomationTagDto } from './automation-definition.dto';
+import {
+  AutomationsGridFacetsDto,
+  ListAutomationsGridQueryDto,
+} from './automation.dto';
 
-export class ListAutomationTriggersGridQueryDto {
-  @ApiProperty({ example: 'user_123' })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
-  ownerUserId!: string;
-
-  @ApiPropertyOptional({ example: 1, minimum: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @ApiPropertyOptional({ example: 20, minimum: 1, maximum: 100 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize?: number;
-
+export class ListAutomationTriggersGridQueryDto extends ListAutomationsGridQueryDto {
   @ApiPropertyOptional({ example: 'daily smoke' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  q?: string;
-
-  @ApiPropertyOptional({ example: 'smoke' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(48)
-  tag?: string;
-
-  @ApiPropertyOptional({ example: 'app-123' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  targetApplicationId?: string;
+  declare q?: string;
 
   @ApiPropertyOptional({ enum: ['true', 'false'] })
   @IsOptional()
   @IsIn(['true', 'false'])
   enabled?: 'true' | 'false';
-
-  @ApiPropertyOptional({ enum: AutomationLastStatus })
-  @IsOptional()
-  @IsEnum(AutomationLastStatus)
-  status?: AutomationLastStatus;
-
-  @ApiPropertyOptional({ enum: ['all', 'never', '7d', '30d', '90d'] })
-  @IsOptional()
-  @IsIn(['all', 'never', '7d', '30d', '90d'])
-  lastRun?: 'all' | 'never' | '7d' | '30d' | '90d';
-
-  @ApiPropertyOptional({ example: 'updatedAt:desc,name:asc' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  sort?: string;
 }
 
 export class AutomationScheduleTriggerConfigDto {
@@ -245,13 +193,7 @@ export class AutomationTriggerDto {
   updatedAt!: string;
 }
 
-export class AutomationTriggersGridFacetsDto {
-  @ApiProperty({ type: String, isArray: true })
-  tags!: string[];
-
-  @ApiProperty({ type: String, isArray: true })
-  targetApplicationIds!: string[];
-}
+export class AutomationTriggersGridFacetsDto extends AutomationsGridFacetsDto {}
 
 export class AutomationTriggersGridPageDto {
   @ApiProperty({ type: AutomationTriggerDto, isArray: true })

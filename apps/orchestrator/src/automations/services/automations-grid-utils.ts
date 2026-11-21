@@ -162,9 +162,7 @@ const sortAutomationTriggerGridItems = (
 
 const matchesLastRun = (
   lastRunAt: string | null,
-  filter:
-    | ListAutomationsGridQueryDto['lastRun']
-    | ListAutomationTriggersGridQueryDto['lastRun'],
+  filter: ListAutomationsGridQueryDto['lastRun'],
 ) => {
   if (!filter || filter === 'all') return true;
   if (filter === 'never') return lastRunAt === null;
