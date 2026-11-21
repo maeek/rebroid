@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import {
   cloneStoredAppIcon,
   getStoredAppIcon,
-  getStoredAppIconFile,
+  readStoredAppIcon,
   removeStoredAppIcon,
   setInitialStoredAppIcon,
   setStoredAppIcon
@@ -13,7 +13,7 @@ import {
 
 vi.mock('node:fs/promises', async importOriginal => {
   const fs = await importOriginal<typeof import('node:fs/promises')>()
-  return { ...fs, rename: vi.fn(fs.rename) }
+  return { ...fs, rename: vi.fn(fs.rename), readFile: vi.fn(fs.readFile) }
 })
 
 let storage: string
@@ -37,13 +37,12 @@ it('reads the published icon after upload and replacement and sees removal', asy
   expect(second).toMatch(/^\/api\/app-icons\/edited-app\?v=/)
   expect(second).not.toBe(first)
   await expect(getStoredAppIcon(appId)).resolves.toBe(second)
-  const file = await getStoredAppIconFile(appId)
-  await expect(readFile(file!.path)).resolves.toEqual(Buffer.from([1]))
+  await expect(readStoredAppIcon(appId)).resolves.toMatchObject({ buffer: Buffer.from([1]) })
   await expect(readdir(storage)).resolves.toHaveLength(2)
 
   await removeStoredAppIcon(appId)
   await expect(getStoredAppIcon(appId)).resolves.toBeNull()
-  await expect(getStoredAppIconFile(appId)).resolves.toBeNull()
+  await expect(readStoredAppIcon(appId)).resolves.toBeNull()
   await expect(readdir(storage)).resolves.toEqual([])
 })
 
@@ -57,7 +56,7 @@ it('reads a removed icon as absent after a write from another server bundle', as
   expect(writer.getStoredAppIcon).not.toBe(getStoredAppIcon)
   await writer.removeStoredAppIcon(appId)
 
-  await expect(getStoredAppIconFile(appId)).resolves.toBeNull()
+  await expect(readStoredAppIcon(appId)).resolves.toBeNull()
   await expect(getStoredAppIcon(appId)).resolves.toBeNull()
 })
 
@@ -70,6 +69,7 @@ it('does not publish an icon whose metadata points to a missing image', async ()
   )
 
   await expect(getStoredAppIcon(appId)).resolves.toBeNull()
+  await expect(readStoredAppIcon(appId)).resolves.toBeNull()
 })
 
 it('keeps the previous image readable if publication fails', async () => {
@@ -78,8 +78,7 @@ it('keeps the previous image readable if publication fails', async () => {
   vi.mocked(rename).mockRejectedValueOnce(new Error('Could not publish metadata'))
   await expect(setStoredAppIcon(appId, 'data:image/png;base64,AQ==')).rejects.toThrow('Could not publish metadata')
   await expect(getStoredAppIcon(appId)).resolves.toBe(first)
-  const file = await getStoredAppIconFile(appId)
-  await expect(readFile(file!.path)).resolves.toEqual(Buffer.from([0]))
+  await expect(readStoredAppIcon(appId)).resolves.toMatchObject({ buffer: Buffer.from([0]) })
   await expect(readdir(storage)).resolves.toHaveLength(2)
 })
 
@@ -95,8 +94,35 @@ it('reads and clones icons saved before versioned URLs', async () => {
   await expect(getStoredAppIcon(appId)).resolves.toBe(url)
   const cloned = await cloneStoredAppIcon(appId, 'cloned-app')
   expect(cloned).toMatch(/^\/api\/app-icons\/cloned-app\?v=/)
-  const file = await getStoredAppIconFile('cloned-app')
-  await expect(readFile(file!.path)).resolves.toEqual(Buffer.from([1]))
+  await expect(readStoredAppIcon('cloned-app')).resolves.toMatchObject({ buffer: Buffer.from([1]) })
+})
+
+it('reads the next published revision if the previous file disappears during the read', async () => {
+  const appId = 'replaced-icon'
+  await setStoredAppIcon(appId, 'data:image/png;base64,AA==')
+  const fs = await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')
+  vi.mocked(readFile).mockImplementationOnce(async (path, options) => {
+    const previous = await fs.readFile(path, options)
+    await setStoredAppIcon(appId, 'data:image/png;base64,AQ==')
+    return previous
+  })
+  await expect(readStoredAppIcon(appId)).resolves.toMatchObject({ buffer: Buffer.from([1]) })
+})
+
+it('clones an inline legacy icon and preserves a newer target icon', async () => {
+  await writeFile(join(storage, 'legacy-inline.json'), JSON.stringify({ icon: 'data:image/png;base64,AQ==' }))
+  await expect(cloneStoredAppIcon('legacy-inline', 'new-app')).resolves.toMatch(/^\/api\/app-icons\/new-app\?v=/)
+  await expect(readStoredAppIcon('new-app')).resolves.toMatchObject({ buffer: Buffer.from([1]) })
+
+  const replacement = await setStoredAppIcon('new-app', 'data:image/png;base64,Ag==')
+  await expect(cloneStoredAppIcon('legacy-inline', 'new-app')).resolves.toBeNull()
+  await expect(getStoredAppIcon('new-app')).resolves.toBe(replacement)
+})
+
+it('preserves the existing icon when the submitted data decodes to an empty file', async () => {
+  const existing = await setStoredAppIcon('app', 'data:image/png;base64,AA==')
+  await expect(setStoredAppIcon('app', 'data:image/png;base64,   ')).rejects.toThrow('image data')
+  await expect(getStoredAppIcon('app')).resolves.toBe(existing)
 })
 
 it('serializes removal and replacement for the same app', async () => {

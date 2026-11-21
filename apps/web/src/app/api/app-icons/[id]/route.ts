@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises'
 import { NextResponse } from 'next/server'
-import { getStoredAppIconFile } from '@/server/app-icons/store'
+import { readStoredAppIcon } from '@/server/app-icons/store'
 import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 
@@ -14,13 +13,12 @@ export const GET = async (_request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ message: 'Not found' }, { status: 404 })
     }
 
-    const icon = await getStoredAppIconFile(id)
+    const icon = await readStoredAppIcon(id)
     if (!icon) {
       return NextResponse.json({ message: 'Not found' }, { status: 404 })
     }
 
-    const body = await readFile(icon.path)
-    return new NextResponse(body, {
+    return new NextResponse(icon.buffer, {
       headers: {
         'content-type': icon.mimeType,
         'cache-control': 'private, no-store'
