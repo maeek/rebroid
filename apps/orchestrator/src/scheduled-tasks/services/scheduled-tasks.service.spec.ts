@@ -167,6 +167,21 @@ describe('ScheduledTasksService', () => {
     );
   });
 
+  it('keeps the timer registered when deleting a task fails', async () => {
+    const existing = task({ kind: ScheduledTaskKind.Custom });
+    const { service, cronRegistry } = createService({
+      repository: {
+        findById: jest.fn().mockResolvedValue(existing),
+        remove: jest.fn().mockRejectedValue(new Error('database offline')),
+      },
+    });
+
+    await expect(service.remove(existing.id)).rejects.toThrow(
+      'database offline',
+    );
+    expect(cronRegistry.unregisterTask).not.toHaveBeenCalled();
+  });
+
   it('changes retention without rewriting or re-registering the schedule', async () => {
     const existing = task({
       actionType: ScheduledTaskActionType.CleanWorkflowHistory,

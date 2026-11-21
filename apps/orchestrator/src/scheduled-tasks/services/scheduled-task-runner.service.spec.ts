@@ -1,3 +1,4 @@
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { SerializedSqliteDataSource } from '../../database/serialized-sqlite-data-source';
 import {
   ScheduledTask,
@@ -82,11 +83,81 @@ describe('scheduled task execution reservation', () => {
     );
   });
 
+  it('registers the committed schedule without a separate lookup', async () => {
+    const registerTask = jest.fn();
+    const service = new ScheduledTasksService(
+      tasks,
+      {} as never,
+      { registerTask } as unknown as ScheduledTaskCronRegistryService,
+      {} as never,
+      runner,
+    );
+    jest
+      .spyOn(tasks, 'findById')
+      .mockRejectedValueOnce(new Error('lookup failed'));
+
+    const update = { cronExpression: '0 4 * * *' };
+    await expect(service.update('task-1', update)).resolves.toMatchObject(
+      update,
+    );
+    expect(tasks.findById).not.toHaveBeenCalled();
+    expect(registerTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task-1', ...update }),
+      expect.any(Function),
+    );
+  });
+
+  it('keeps a pending cron tick when renaming the task', async () => {
+    const scheduler = new SchedulerRegistry();
+    const cronRegistry = new ScheduledTaskCronRegistryService(scheduler);
+    const service = new ScheduledTasksService(
+      tasks,
+      {} as never,
+      cronRegistry,
+      { ensurePredefinedTasks: async () => undefined } as never,
+      runner,
+    );
+    const name = 'scheduled-task:task-1';
+    const lookup = deferred();
+    const original = await tasks.findById('task-1');
+    jest.spyOn(tasks, 'findById').mockImplementationOnce(async () => {
+      await lookup.promise;
+      return original;
+    });
+    const runTask = jest.spyOn(runner, 'runTask');
+
+    try {
+      await service.onModuleInit();
+      const job = scheduler.getCronJob(name);
+      await job.fireOnTick();
+      expect(runTask).toHaveBeenCalledTimes(1);
+      await service.update('task-1', { name: 'Renamed' });
+      expect(scheduler.getCronJob(name)).toBe(job);
+      lookup.resolve();
+      await runTask.mock.results[0].value;
+      expect(run).toHaveBeenCalledTimes(1);
+
+      scheduler.deleteCronJob(name);
+      await service.update('task-1', { name: 'Renamed again' });
+      expect(scheduler.getCronJob(name).isActive).toBe(true);
+    } finally {
+      lookup.resolve();
+      await runTask.mock.results[0]?.value;
+      cronRegistry.unregisterTask('task-1');
+    }
+  });
+
   it('admits only one simultaneous cron or manual invocation', async () => {
     const completion = deferred();
     run.mockReturnValue(completion.promise);
     const first = runner.runTask('task-1');
-    const second = runner.runTask('task-1', 'cron');
+    const second = runner.runTask('task-1', {
+      cronExpression: '0 3 * * *',
+      isCurrent: () => true,
+    });
+    await expect(runner.runTask('task-1')).rejects.toMatchObject({
+      status: 409,
+    });
     completion.resolve();
     await Promise.all([first, second]);
     expect(run).toHaveBeenCalledTimes(1);
@@ -148,9 +219,29 @@ describe('scheduled task execution reservation', () => {
       enabled: false,
       nextRunAt: null,
     }));
-    await runner.runTask(task.id, 'cron');
+    await runner.runTask(task.id, {
+      cronExpression: task.cronExpression,
+      isCurrent: () => true,
+    });
     expect(run).not.toHaveBeenCalled();
     await runner.runTask(task.id);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a tick from the previous enabled schedule after rescheduling', async () => {
+    const original = (await tasks.findById('task-1'))!;
+    await tasks.updateConfiguration(original.id, () => ({
+      cronExpression: '0 4 * * *',
+    }));
+    await runner.runTask(original.id, {
+      cronExpression: original.cronExpression,
+      isCurrent: () => true,
+    });
+    expect(run).not.toHaveBeenCalled();
+    await runner.runTask(original.id, {
+      cronExpression: '0 4 * * *',
+      isCurrent: () => true,
+    });
     expect(run).toHaveBeenCalledTimes(1);
   });
 });

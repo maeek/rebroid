@@ -1,8 +1,12 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { updateScheduledTaskAction } from '@/server/orchestrator/scheduled-tasks/actions'
+import { toast } from '@/hooks/use-toast'
+import { runScheduledTaskNowAction, updateScheduledTaskAction } from '@/server/orchestrator/scheduled-tasks/actions'
+import { actionError, actionOk } from '@/shared/actions/action-result'
 import { ScheduledTasksPage } from './scheduled-tasks-page'
 import { schedulerPreviewActions, schedulerPreviewTasks } from './scheduled-tasks-preview'
+
+vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 
 vi.mock('@/server/orchestrator/scheduled-tasks/actions', () => ({
   createScheduledTaskAction: vi.fn(),
@@ -31,6 +35,35 @@ describe('Scheduler page', () => {
     expect(within(dialog).getByLabelText(/Name/)).toBeDisabled()
     expect(within(dialog).getByRole('combobox', { name: 'Action' })).toBeDisabled()
     expect(within(dialog).getByRole('switch', { name: 'Enabled' })).toBeChecked()
+  })
+
+  it('shows the running task and counts settled requests in a mixed batch', async () => {
+    const first = schedulerPreviewTasks[0]
+    const second = schedulerPreviewTasks.at(-1)!
+    const request = Promise.withResolvers<Awaited<ReturnType<typeof runScheduledTaskNowAction>>>()
+    const remaining = Promise.withResolvers<Awaited<ReturnType<typeof runScheduledTaskNowAction>>>()
+    vi.mocked(runScheduledTaskNowAction).mockReturnValueOnce(request.promise).mockReturnValueOnce(remaining.promise)
+    renderPage()
+    const firstRow = screen.getByRole('row', { name: new RegExp(first.name) })
+    const secondRow = screen.getByRole('row', { name: new RegExp(second.name) })
+    fireEvent.click(within(firstRow).getByRole('checkbox'))
+    fireEvent.click(within(secondRow).getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    expect(screen.getByRole('button', { name: '0 of 2 finished' })).toBeDisabled()
+    expect(within(firstRow).getByRole('status', { name: `Running ${first.name}` })).toBeVisible()
+
+    request.resolve(actionOk({ ...first, lastStatus: 'success' }))
+    expect(await screen.findByRole('button', { name: '1 of 2 finished' })).toBeDisabled()
+    expect(within(secondRow).getByRole('status', { name: `Running ${second.name}` })).toBeVisible()
+    remaining.resolve(actionError({ code: 'conflict', message: 'Already running', status: 409 }))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: 'danger',
+          description: `1 succeeded, 1 failed. ${second.name} is already running.`
+        })
+      )
+    )
   })
 
   it('updates availability from the row and keeps the switch in sync', async () => {

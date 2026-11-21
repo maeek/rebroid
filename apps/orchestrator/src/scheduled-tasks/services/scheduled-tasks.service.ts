@@ -111,7 +111,7 @@ export class ScheduledTasksService implements OnModuleInit {
       }
       return this.toDto(current);
     }
-    const updated = await this.tasks.updateConfiguration(id, (current) => {
+    const saved = await this.tasks.updateConfiguration(id, (current) => {
       const cronExpression =
         dto.cronExpression === undefined
           ? current.cronExpression
@@ -139,10 +139,9 @@ export class ScheduledTasksService implements OnModuleInit {
         nextRunAt: enabled ? nextCronRun(cronExpression) : null,
       };
     });
-    if (!updated?.affected) {
+    if (!saved) {
       throw new NotFoundException(`Scheduled task "${id}" was not found.`);
     }
-    const saved = await this.getEntity(id);
     this.registerTask(saved);
     return this.toDto(saved);
   }
@@ -154,14 +153,14 @@ export class ScheduledTasksService implements OnModuleInit {
         'Predefined scheduled tasks cannot be deleted.',
       );
     }
-    this.cronRegistry.unregisterTask(task.id);
+    const removed = this.toDto(task);
     await this.tasks.remove(task);
-    return this.toDto(task);
+    this.cronRegistry.unregisterTask(id);
+    return removed;
   }
 
   async runNow(id: string) {
-    const task = await this.getEntity(id);
-    await this.runner.runTask(task.id);
+    await this.runner.runTask(id);
     return this.get(id);
   }
 
@@ -174,8 +173,8 @@ export class ScheduledTasksService implements OnModuleInit {
   }
 
   private registerTask(task: ScheduledTask) {
-    this.cronRegistry.registerTask(task, () => {
-      void this.runner.runTask(task.id, 'cron').catch((error: unknown) => {
+    this.cronRegistry.registerTask(task, (tick) => {
+      void this.runner.runTask(task.id, tick).catch((error: unknown) => {
         this.logger.error(
           `Could not execute scheduled task "${task.id}": ${getErrorMessage(error)}`,
         );

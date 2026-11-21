@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { FormField } from '@/components/ui/form-field'
+import { MutationButton } from '@/components/ui/mutation-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useScheduledTasksControllerContext } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-context'
 import { sortTasks } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/scheduled-tasks-table-utils'
@@ -28,6 +29,8 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
   const [enabledFilter, setEnabledFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const bulkInFlight = useRef(false)
+  const [bulkRunProgress, setBulkRunProgress] = useState<{ settled: number; total: number } | null>(null)
   const [bulkPending, setBulkPending] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ScheduledTask[]>([])
   const actionLabel = useCallback(
@@ -62,10 +65,13 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
     targets: ScheduledTask[],
     perform: (task: ScheduledTask) => Promise<void>,
     successTitle: string,
-    failureTitle: string
+    failureTitle: string,
+    onSettled?: (settled: number) => void
   ) => {
-    if (bulkPending || busyTaskId !== null || !targets.length) return
+    if (bulkInFlight.current || busyTaskId !== null || !targets.length) return
+    bulkInFlight.current = true
     setBulkPending(true)
+    onSettled?.(0)
     try {
       const results: PromiseSettledResult<void>[] = []
       for (const task of targets) {
@@ -75,17 +81,26 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
         } catch (reason) {
           results.push({ status: 'rejected', reason })
         }
+        onSettled?.(results.length)
       }
       const completed = successfulBulkIds(targets, results)
       setSelectedIds(current => new Set([...current].filter(id => !completed.has(id))))
       toast({ variant: 'success', ...summarizeBulkResults(results, successTitle, failureTitle) })
     } finally {
+      bulkInFlight.current = false
       setBulkPending(false)
+      if (onSettled) setBulkRunProgress(null)
     }
   }
 
   const runSelected = () =>
-    runBatch(selectedTasks, task => runNow(task, true), 'Selected tasks completed', 'Could not run all selected tasks')
+    runBatch(
+      selectedTasks,
+      task => runNow(task, true),
+      'Selected tasks completed',
+      'Could not run all selected tasks',
+      settled => setBulkRunProgress({ settled, total: selectedTasks.length })
+    )
 
   const updateSelectedEnabled = (enabled: boolean) =>
     runBatch(
@@ -221,16 +236,30 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
             setStatusFilter('all')
           }}
           selectedCount={selectedTasks.length}
+          selectionMode={bulkRunProgress !== null}
           bulkActions={
             <>
-              <Button
+              <MutationButton
                 size='sm'
                 variant='ghost'
                 disabled={bulkPending || busyTaskId !== null}
+                pending={bulkRunProgress !== null}
+                pendingLabel={
+                  bulkRunProgress ? `${bulkRunProgress.settled} of ${bulkRunProgress.total} finished` : undefined
+                }
                 onClick={() => void runSelected()}
               >
                 Run
-              </Button>
+              </MutationButton>
+              <span
+                role='status'
+                aria-atomic='true'
+                className='sr-only'
+              >
+                {bulkRunProgress
+                  ? `${bulkRunProgress.settled} of ${bulkRunProgress.total} maintenance tasks finished.`
+                  : ''}
+              </span>
               <Button
                 size='sm'
                 variant='ghost'
@@ -321,13 +350,17 @@ export const ScheduledTasksTable = ({ loading = false }: { loading?: boolean }) 
                     <IconEdit className='size-4' />
                     Edit
                   </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => void runNow(row.original)}>
+                  <ContextMenuItem
+                    disabled={bulkPending || busyTaskId !== null}
+                    onSelect={() => void runNow(row.original)}
+                  >
                     <IconPlayerPlayFilled className='size-4' />
                     Run now
                   </ContextMenuItem>
                   {row.original.kind === 'custom' ? (
                     <ContextMenuItem
                       className='text-danger focus:text-danger'
+                      disabled={bulkPending || busyTaskId !== null}
                       onSelect={() => setPendingDelete([row.original])}
                     >
                       <IconTrash className='size-4' />

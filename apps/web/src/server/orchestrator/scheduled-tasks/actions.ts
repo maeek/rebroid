@@ -95,12 +95,16 @@ export const saveWorkflowHistoryRetentionAction = async (retentionDays: number) 
     { fallbackMessage: 'Could not save workflow history retention.', logLabel: 'Save workflow history retention' }
   )
 
-export const runScheduledTaskNowAction = async (id: string) => {
-  await requireAdminUser()
-  const task = await orchestratorScheduledTasksClient.runNow(id)
-  await recordScheduledTaskAudit('scheduled_task.run', { actionType: task.actionType }, task.id, task.name)
-  return task
-}
+export const runScheduledTaskNowAction = async (id: string) =>
+  runSafeAction(
+    async () => {
+      await requireAdminUser()
+      const task = await orchestratorScheduledTasksClient.runNow(id)
+      await recordScheduledTaskAudit('scheduled_task.run', { actionType: task.actionType }, task.id, task.name)
+      return task
+    },
+    { fallbackMessage: 'Could not run the maintenance task.', logLabel: 'runScheduledTaskNowAction failed' }
+  )
 
 export const deleteScheduledTaskAction = async (id: string) => {
   await requireAdminUser()

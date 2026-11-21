@@ -7,7 +7,12 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   CreateScheduledTaskDto,
   ScheduledTaskActionDto,
@@ -53,6 +58,9 @@ export class ScheduledTasksController {
 
   @Post(':id/run')
   @ApiOkResponse({ type: ScheduledTaskDto })
+  @ApiConflictResponse({
+    description: 'The maintenance task is already running.',
+  })
   runNow(@Param('id') id: string) {
     return this.tasks.runNow(id);
   }

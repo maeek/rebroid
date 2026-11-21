@@ -40,7 +40,9 @@ export class ScheduledTasksRepository {
     return this.tasks.manager.transaction(async (manager) => {
       const repository = manager.getRepository(ScheduledTask);
       const current = await repository.findOneBy({ id });
-      return current ? repository.update(id, prepare(current)) : null;
+      if (!current) return null;
+      const updated = await repository.update(id, prepare(current));
+      return updated.affected ? repository.findOneByOrFail({ id }) : null;
     });
   }
 

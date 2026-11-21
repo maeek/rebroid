@@ -7334,6 +7334,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScheduledTaskDto"];
                 };
             };
+            /** @description The maintenance task is already running. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     SystemResourcesController_getCapacity: {

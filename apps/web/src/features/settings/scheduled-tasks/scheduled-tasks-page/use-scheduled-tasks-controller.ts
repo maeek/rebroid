@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   defaultForm,
   normalizePayload,
@@ -15,6 +15,7 @@ import {
   runScheduledTaskNowAction,
   updateScheduledTaskAction
 } from '@/server/orchestrator/scheduled-tasks/actions'
+import { unwrapActionResult } from '@/shared/actions/action-result'
 import { isWorkflowHistoryRetentionTask } from '@/shared/contracts/scheduled-task'
 import type { FormState, ScheduledTasksPageProps } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
@@ -26,6 +27,8 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   const [baselineForm, setBaselineForm] = useState<FormState>(() => defaultForm(firstActionType))
   const [isFormOpen, setIsFormOpen] = useState(false)
   const toggleFeedback = useImmediateSave()
+  const runningTask = useRef<string | null>(null)
+  const [runningTaskId, setRunningTaskId] = useState<string | null>(null)
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const actionByType = useMemo(() => new Map(initialActions.map(action => [action.type, action])), [initialActions])
@@ -124,9 +127,17 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   }
 
   const runNow = async (task: ScheduledTask, quiet = false) => {
-    setBusyTaskId(task.id)
+    if (runningTask.current !== null) return
+    runningTask.current = task.id
+    setRunningTaskId(task.id)
     try {
-      const result = await runScheduledTaskNowAction(task.id)
+      const response = await runScheduledTaskNowAction(task.id)
+      if (!response.ok && response.error.code === 'conflict') {
+        if (quiet) throw new Error(`${task.name} is already running.`)
+        toast({ title: 'Already running', description: task.name })
+        return
+      }
+      const result = unwrapActionResult(response)
       replaceTask(result)
       if (result.lastStatus === 'failed') throw new Error('The task reported a failed run. Check its last result.')
       if (!quiet) toast({ title: 'Scheduled task completed' })
@@ -138,7 +149,8 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
         variant: 'danger'
       })
     } finally {
-      setBusyTaskId(null)
+      runningTask.current = null
+      setRunningTaskId(null)
     }
   }
 
@@ -171,7 +183,8 @@ export const useScheduledTasksController = ({ initialActions, initialTasks }: Sc
   return {
     baselineForm,
     actionByType,
-    busyTaskId,
+    busyTaskId: busyTaskId ?? runningTaskId,
+    runningTaskId,
     enabledCount,
     failedCount,
     form,

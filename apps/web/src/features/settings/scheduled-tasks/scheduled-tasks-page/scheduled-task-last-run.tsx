@@ -1,6 +1,6 @@
 'use client'
 
-import { IconCircleCheck, IconAlertCircle, IconChevronRight } from '@tabler/icons-react'
+import { IconCircleCheck, IconAlertCircle, IconChevronRight, IconLoader2 } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,9 +16,26 @@ import { Notice } from '@/components/ui/notice'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { dateLabel } from './schedule-utils'
+import { useScheduledTasksControllerContext } from './scheduled-tasks-context'
 import type { ScheduledTask } from '@/shared/contracts/scheduled-task'
 
 export const ScheduledTaskLastRun = ({ task }: { task: ScheduledTask }) => {
+  const { runningTaskId } = useScheduledTasksControllerContext()
+  if (runningTaskId === task.id) {
+    return (
+      <span
+        role='status'
+        aria-label={`Running ${task.name}`}
+        className='flex items-center gap-1 text-foreground-muted'
+      >
+        <IconLoader2
+          aria-hidden
+          className='size-4 motion-safe:animate-spin'
+        />
+        Running…
+      </span>
+    )
+  }
   if (task.lastStatus === 'never_run') return <span className='text-foreground-muted'>Never run</span>
   return (
     <div className='grid justify-items-start gap-1'>
