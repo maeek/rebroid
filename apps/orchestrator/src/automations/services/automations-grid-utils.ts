@@ -8,58 +8,41 @@ import type {
   ListAutomationTriggersGridQueryDto,
 } from '../dto/automation-trigger.dto';
 
-export const tagNames = (value: { tags: { name: string }[] }) =>
+const tagNames = (value: { tags: { name: string }[] }) =>
   value.tags.map((tag) => tag.name);
 
-export const automationGridFacets = (
-  automations: AutomationSummaryDto[],
+const sortedUnique = (values: string[]) =>
+  [...new Set(values)].sort((left, right) => left.localeCompare(right));
+
+const gridPage = <T extends { tags: { name: string }[] }>(
+  sorted: T[],
+  allRows: T[],
   targetApplicationIds: string[],
-) => ({
-  tags: [
-    ...new Set(automations.flatMap((automation) => tagNames(automation))),
-  ].sort((left, right) => left.localeCompare(right)),
-  targetApplicationIds: [...new Set(targetApplicationIds)].sort((left, right) =>
-    left.localeCompare(right),
-  ),
-});
+  query: { page?: number; pageSize?: number },
+) => {
+  const page = Math.max(Math.trunc(query.page ?? 1), 1);
+  const pageSize = Math.min(Math.max(Math.trunc(query.pageSize ?? 20), 1), 100);
+  const offset = (page - 1) * pageSize;
+  return {
+    items: sorted.slice(offset, offset + pageSize),
+    total: sorted.length,
+    page,
+    pageSize,
+    facets: {
+      tags: sortedUnique(allRows.flatMap(tagNames)),
+      targetApplicationIds: sortedUnique(targetApplicationIds),
+    },
+  };
+};
 
-export const automationTriggerGridFacets = (
-  triggers: AutomationTriggerDto[],
-) => ({
-  tags: [...new Set(triggers.flatMap((trigger) => tagNames(trigger)))].sort(
-    (left, right) => left.localeCompare(right),
-  ),
-  targetApplicationIds: [
-    ...new Set(triggers.map((trigger) => trigger.targetApplicationId)),
-  ].sort((left, right) => left.localeCompare(right)),
-});
-
-export const matchesAutomationLastRun = (
-  automation: AutomationSummaryDto,
-  filter: ListAutomationsGridQueryDto['lastRun'],
-) => matchesLastRun(automation.lastRunAt, filter);
-
-export const matchesAutomationTriggerLastRun = (
-  trigger: AutomationTriggerDto,
-  filter: ListAutomationTriggersGridQueryDto['lastRun'],
-) => matchesLastRun(trigger.lastRunAt, filter);
-
-export const filterAutomationGridItems = <T extends AutomationSummaryDto>({
-  automations,
-  lastRun,
-  query,
-  targetApplicationIdsByAutomation,
-}: {
-  automations: T[];
-  lastRun: ListAutomationsGridQueryDto['lastRun'];
-  query: ListAutomationsGridQueryDto;
-  targetApplicationIdsByAutomation: Map<string, Set<string>>;
-}) => {
+export const buildAutomationGridPage = <T extends AutomationSummaryDto>(
+  automations: T[],
+  query: ListAutomationsGridQueryDto,
+  targetApplicationIdsByAutomation: Map<string, Set<string>>,
+) => {
   const search = query.q?.trim().toLowerCase();
   const tag = query.tag?.trim();
-  return automations.filter((automation) => {
-    const targetApplicationIds =
-      targetApplicationIdsByAutomation.get(automation.id) ?? new Set<string>();
+  const filtered = automations.filter((automation) => {
     return (
       (!search ||
         [
@@ -75,26 +58,28 @@ export const filterAutomationGridItems = <T extends AutomationSummaryDto>({
       (!tag || tagNames(automation).includes(tag)) &&
       (!query.status || automation.lastStatus === query.status) &&
       (!query.targetApplicationId ||
-        targetApplicationIds.has(query.targetApplicationId)) &&
-      matchesAutomationLastRun(automation, lastRun)
+        targetApplicationIdsByAutomation
+          .get(automation.id)
+          ?.has(query.targetApplicationId)) &&
+      matchesLastRun(automation.lastRunAt, query.lastRun)
     );
   });
+  return gridPage(
+    sortAutomationGridItems(filtered, query.sort),
+    automations,
+    [...targetApplicationIdsByAutomation.values()].flatMap((ids) => [...ids]),
+    query,
+  );
 };
 
-export const filterAutomationTriggerGridItems = ({
-  automationNamesById,
-  lastRun,
-  query,
-  triggers,
-}: {
-  automationNamesById: Map<string, string>;
-  lastRun: ListAutomationTriggersGridQueryDto['lastRun'];
-  query: ListAutomationTriggersGridQueryDto;
-  triggers: AutomationTriggerDto[];
-}) => {
+export const buildAutomationTriggerGridPage = (
+  triggers: AutomationTriggerDto[],
+  query: ListAutomationTriggersGridQueryDto,
+  automationNamesById: Map<string, string>,
+) => {
   const search = query.q?.trim().toLowerCase();
   const tag = query.tag?.trim();
-  return triggers.filter((trigger) => {
+  const filtered = triggers.filter((trigger) => {
     const automationName = automationNamesById.get(trigger.automationId);
     return (
       (!search ||
@@ -116,12 +101,18 @@ export const filterAutomationTriggerGridItems = ({
         trigger.targetApplicationId === query.targetApplicationId) &&
       (!query.enabled || String(trigger.enabled) === query.enabled) &&
       (!query.status || trigger.lastStatus === query.status) &&
-      matchesAutomationTriggerLastRun(trigger, lastRun)
+      matchesLastRun(trigger.lastRunAt, query.lastRun)
     );
   });
+  return gridPage(
+    sortAutomationTriggerGridItems(filtered, query.sort),
+    triggers,
+    triggers.map((trigger) => trigger.targetApplicationId),
+    query,
+  );
 };
 
-export const sortAutomationGridItems = <T extends AutomationSummaryDto>(
+const sortAutomationGridItems = <T extends AutomationSummaryDto>(
   items: T[],
   sort?: string,
 ) =>
@@ -144,7 +135,7 @@ export const sortAutomationGridItems = <T extends AutomationSummaryDto>(
     },
   );
 
-export const sortAutomationTriggerGridItems = (
+const sortAutomationTriggerGridItems = (
   items: AutomationTriggerDto[],
   sort?: string,
 ) =>
@@ -178,7 +169,7 @@ const matchesLastRun = (
   if (!filter || filter === 'all') return true;
   if (filter === 'never') return lastRunAt === null;
   if (!lastRunAt) return false;
-  const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
+  const days = { '7d': 7, '30d': 30, '90d': 90 }[filter];
   return (
     new Date(lastRunAt).getTime() >= Date.now() - days * 24 * 60 * 60 * 1000
   );

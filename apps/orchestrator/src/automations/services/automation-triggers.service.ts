@@ -28,11 +28,7 @@ import {
   type ScheduleTriggerConfig,
 } from './automation-trigger-scheduler.service';
 import { AutomationsDtoMapper } from './automations-dto-mapper.service';
-import {
-  automationTriggerGridFacets,
-  filterAutomationTriggerGridItems,
-  sortAutomationTriggerGridItems,
-} from './automations-grid-utils';
+import { buildAutomationTriggerGridPage } from './automations-grid-utils';
 import { AutomationsQueryService } from './automations-query.service';
 
 const stringifyTags = (value: unknown) =>
@@ -73,11 +69,6 @@ export class AutomationTriggersService implements OnModuleInit {
     query: ListAutomationTriggersGridQueryDto,
   ): Promise<AutomationTriggersGridPageDto> {
     const ownerUserId = query.ownerUserId.trim();
-    const page = Math.max(Math.trunc(query.page ?? 1), 1);
-    const pageSize = Math.min(
-      Math.max(Math.trunc(query.pageSize ?? 20), 1),
-      100,
-    );
     const [triggerDtos, automations] = await Promise.all([
       this.list(ownerUserId),
       query.q?.trim() ? this.automations.listNamesByOwner(ownerUserId) : [],
@@ -85,24 +76,11 @@ export class AutomationTriggersService implements OnModuleInit {
     const automationNamesById = new Map(
       automations.map((automation) => [automation.id, automation.name]),
     );
-    const facets = automationTriggerGridFacets(triggerDtos);
-
-    const filtered = filterAutomationTriggerGridItems({
-      automationNamesById,
-      lastRun: query.lastRun ?? 'all',
+    return buildAutomationTriggerGridPage(
+      triggerDtos,
       query,
-      triggers: triggerDtos,
-    });
-
-    const sorted = sortAutomationTriggerGridItems(filtered, query.sort);
-    const offset = (page - 1) * pageSize;
-    return {
-      items: sorted.slice(offset, offset + pageSize),
-      total: sorted.length,
-      page,
-      pageSize,
-      facets,
-    };
+      automationNamesById,
+    );
   }
 
   async get(ownerUserId: string, id: string) {

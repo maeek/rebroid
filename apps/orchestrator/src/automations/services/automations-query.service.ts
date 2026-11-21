@@ -14,11 +14,7 @@ import { AutomationRunsRepository } from '../persistence/automation-runs.reposit
 import { AutomationTriggersRepository } from '../persistence/automation-triggers.repository';
 import { AutomationsRepository } from '../persistence/automations.repository';
 import { AutomationsDtoMapper } from './automations-dto-mapper.service';
-import {
-  automationGridFacets,
-  filterAutomationGridItems,
-  sortAutomationGridItems,
-} from './automations-grid-utils';
+import { buildAutomationGridPage } from './automations-grid-utils';
 
 @Injectable()
 export class AutomationsQueryService {
@@ -64,11 +60,6 @@ export class AutomationsQueryService {
     query: ListAutomationsGridQueryDto,
   ): Promise<AutomationsGridPageDto> {
     const ownerUserId = query.ownerUserId.trim();
-    const page = Math.max(Math.trunc(query.page ?? 1), 1);
-    const pageSize = Math.min(
-      Math.max(Math.trunc(query.pageSize ?? 20), 1),
-      100,
-    );
     const [automations, triggers, latestRuns] = await Promise.all([
       this.automations.listByOwner(ownerUserId),
       this.triggers.listByOwner(ownerUserId),
@@ -97,33 +88,20 @@ export class AutomationsQueryService {
         steps: definition.spec.steps,
       };
     });
-    const facets = automationGridFacets(
+    const page = buildAutomationGridPage(
       rows,
-      triggers.map((trigger) => trigger.targetApplicationId),
-    );
-    const filtered = filterAutomationGridItems({
-      automations: rows,
-      lastRun: query.lastRun ?? 'all',
       query,
       targetApplicationIdsByAutomation,
-    });
-
-    const sorted = sortAutomationGridItems(filtered, query.sort);
-    const offset = (page - 1) * pageSize;
+    );
     return {
-      items: sorted
-        .slice(offset, offset + pageSize)
-        .map(({ steps, ...summary }) => ({
-          ...summary,
-          stepCount: countAutomationSteps(steps),
-          targetApplicationIds: Array.from(
-            targetApplicationIdsByAutomation.get(summary.id) ?? [],
-          ),
-        })),
-      total: sorted.length,
-      page,
-      pageSize,
-      facets,
+      ...page,
+      items: page.items.map(({ steps, ...summary }) => ({
+        ...summary,
+        stepCount: countAutomationSteps(steps),
+        targetApplicationIds: Array.from(
+          targetApplicationIdsByAutomation.get(summary.id) ?? [],
+        ),
+      })),
     };
   }
 
