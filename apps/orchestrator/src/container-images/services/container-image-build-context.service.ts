@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, unlink } from 'node:fs/promises';
+import { mkdir, rm, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -39,12 +39,10 @@ export class ContainerImageBuildContextService {
 
   async removeFile(id: string) {
     const file = await this.files.findOneBy({ id });
-    if (!file) {
-      return { id, removed: true };
+    if (file) {
+      await rm(file.storedPath, { force: true });
+      await this.files.delete(id);
     }
-
-    await this.files.delete(id);
-    await unlink(file.storedPath).catch(() => undefined);
     return { id, removed: true };
   }
 

@@ -5,6 +5,29 @@ import { Readable } from 'node:stream';
 import type { MultipartUploadRequest } from '../../common/http-upload';
 import { ContainerImageBuildContextService } from './container-image-build-context.service';
 
+it('keeps the context record until its file is gone and allows retry', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
+  const files = {
+    findOneBy: jest.fn().mockResolvedValue({ storedPath: directory }),
+    delete: jest.fn(),
+  };
+  const service = new ContainerImageBuildContextService(
+    files as never,
+    {} as never,
+  );
+  try {
+    await expect(service.removeFile('context')).rejects.toThrow();
+    expect(files.delete).not.toHaveBeenCalled();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+  await expect(service.removeFile('context')).resolves.toEqual({
+    id: 'context',
+    removed: true,
+  });
+  expect(files.delete).toHaveBeenCalledWith('context');
+});
+
 it('removes the uploaded context file when saving its record fails', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'rebroid-build-context-'));
   try {
