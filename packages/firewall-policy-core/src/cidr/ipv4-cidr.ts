@@ -4,30 +4,17 @@ const IPV4_ADDRESS =
   /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 
 export const normalizeIpv4Cidr = (value: string) => {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const [address, prefix] = trimmed.split("/");
-  if (!IPV4_ADDRESS.test(address)) {
-    return null;
-  }
-
-  if (prefix === undefined) {
-    return `${address}/32`;
-  }
-
-  const numericPrefix = Number(prefix);
+  const [address, prefix = "32", extra] = value.trim().split("/");
   if (
-    !Number.isInteger(numericPrefix) ||
-    numericPrefix < 0 ||
-    numericPrefix > 32
+    extra !== undefined ||
+    !IPV4_ADDRESS.test(address) ||
+    !/^\d{1,2}$/.test(prefix)
   ) {
     return null;
   }
 
-  return `${address}/${numericPrefix}`;
+  const numericPrefix = Number(prefix);
+  return numericPrefix <= 32 ? `${address}/${numericPrefix}` : null;
 };
 
 export const parseAllowCidrs = (value: string) =>

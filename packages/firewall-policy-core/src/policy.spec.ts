@@ -17,6 +17,21 @@ describe("firewall policy core", () => {
     assert.deepEqual(parseAllowCidrs('["10.0.0.5", "bad"]'), ["10.0.0.5/32"]);
   });
 
+  it("requires exactly one decimal prefix when a slash is present", () => {
+    for (const invalid of [
+      "192.0.2.0/",
+      "192.0.2.0/24/1",
+      "192.0.2.0/2e1",
+      "192.0.2.0/-1",
+    ]) {
+      assert.equal(normalizeIpv4Cidr(invalid), null);
+    }
+    for (let prefix = 0; prefix <= 32; prefix++) {
+      const cidr = "192.0.2.0/" + prefix;
+      assert.equal(normalizeIpv4Cidr(cidr), cidr);
+    }
+  });
+
   it("creates stable firewall chain names for agent rules", () => {
     const id = "12345678-1234-1234-1234-123456789abc";
     assert.equal(firewallChainName(id), "RB_APP_1234567812341234");
