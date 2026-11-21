@@ -25,7 +25,6 @@ const workerImageVersion = '2';
 @Injectable()
 export class ContainerImageGappsWorkerService {
   private readonly logger = new Logger(ContainerImageGappsWorkerService.name);
-  private workerImagePromise?: Promise<void>;
 
   constructor(
     private readonly config: ConfigService,
@@ -44,15 +43,11 @@ export class ContainerImageGappsWorkerService {
     revision: string,
     signal: AbortSignal,
   ) {
-    let temporaryPath: string | null = null;
-    let completed = false;
-
+    signal.throwIfAborted();
+    await this.ensureWorkerImage(signal);
+    signal.throwIfAborted();
+    const packageDestination = await this.cache.createTemporaryPath(jobId);
     try {
-      signal.throwIfAborted();
-      await this.ensureWorkerImage(signal);
-      signal.throwIfAborted();
-      const packageDestination = await this.cache.createTemporaryPath(jobId);
-      temporaryPath = packageDestination;
       await rm(packageDestination, { force: true });
       await this.worker.run({
         image: this.config.getOrThrow<string>('app.gappsPatcher.image'),
@@ -70,26 +65,14 @@ export class ContainerImageGappsWorkerService {
           ),
       });
       signal.throwIfAborted();
-      completed = true;
       return packageDestination;
-    } finally {
-      if (!completed && temporaryPath) {
-        await this.cache.removeTemporary(temporaryPath);
-      }
+    } catch (error) {
+      await this.cache.removeTemporary(packageDestination);
+      throw error;
     }
   }
 
-  private ensureWorkerImage(signal: AbortSignal) {
-    if (!this.workerImagePromise) {
-      this.workerImagePromise = this.buildWorkerImage(signal).catch((error) => {
-        this.workerImagePromise = undefined;
-        throw error;
-      });
-    }
-    return this.workerImagePromise;
-  }
-
-  private async buildWorkerImage(signal: AbortSignal) {
+  private async ensureWorkerImage(signal: AbortSignal) {
     const image = this.config.getOrThrow<string>('app.gappsPatcher.image');
     if (await this.images.imageExists(image)) {
       const inspect = await this.images.inspectImage(image);

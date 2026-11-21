@@ -23,17 +23,22 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
     androidVersion: '16',
     sourceRepository: 'repo',
   } as GappsBuildPresetDto;
-  const setup = (run: (request: DockerGappsWorkerRequest) => Promise<void>) =>
+  const setup = (
+    run: (request: DockerGappsWorkerRequest) => Promise<void>,
+    imageExists = async () => true,
+    buildImage = jest.fn(),
+  ) =>
     new ContainerImageGappsWorkerService(
       { getOrThrow: () => 'worker:test' } as unknown as ConfigService,
       { run, hasUnstoppedWorkers: async () => false },
       {
-        imageExists: async () => true,
+        imageExists,
+        buildImage,
         inspectImage: async () => ({
           Config: { Labels: { 'com.rebroid.gapps-patcher.version': '2' } },
         }),
       } as never,
-      {} as never,
+      { createFilesystemTar: () => Readable.from([]) } as never,
       {} as never,
       {
         createTemporaryPath: async () => destination,
@@ -90,5 +95,19 @@ describe('ContainerImageGappsWorkerService package transfer', () => {
       'code',
       'ENOENT',
     );
+  });
+
+  it('rebuilds a worker image pruned between package jobs', async () => {
+    const imageExists = jest
+      .fn()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const buildImage = jest.fn();
+    const service = setup(async () => {}, imageExists, buildImage);
+    const signal = new AbortController().signal;
+    await service.buildPackage('first', preset, 'revision', signal);
+    expect(buildImage).not.toHaveBeenCalled();
+    await service.buildPackage('second', preset, 'revision', signal);
+    expect(buildImage).toHaveBeenCalledTimes(1);
   });
 });
