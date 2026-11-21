@@ -8,7 +8,7 @@ from PIL import Image
 import pytest
 
 from ocr_sidecar import runtime as runtime_module
-from ocr_sidecar.runtime import OcrRuntime
+from ocr_sidecar.runtime import OcrRuntime, decode_paddle_detections
 
 
 def test_parallel_inference_uses_distinct_warmed_predictors(monkeypatch):
@@ -112,3 +112,25 @@ def test_shutdown_cancels_retry_backoff(monkeypatch):
 
     asyncio.run(exercise())
     assert Paddle.attempts == 1
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_single_detection_has_the_same_geometry_as_a_full_page(wrapped):
+    row = [[[10, 5], [40, 15]], ["  Total  ", 0.95]]
+    raw = [[row]] if wrapped else [row]
+    assert decode_paddle_detections(raw, 100, 50) == [{
+        "text": "Total", "confidence": 0.95,
+        "bounds": {"left": 0.1, "top": 0.1, "width": pytest.approx(0.3), "height": pytest.approx(0.2)},
+    }]
+
+
+def test_skips_invalid_predictor_rows_without_losing_valid_text():
+    box = [[0, 0], [80, 20]]
+    rows = [
+        [box, ["incomplete", None]],
+        [None, ["missing box", 0.9]],
+        [[["unknown", 0], [20, 10]], ["invalid point", 0.7]],
+        [box, [None, 0.8]],
+        [box, ["valid", 0.99]],
+    ]
+    assert [row["text"] for row in decode_paddle_detections([rows], 100, 50)] == ["valid"]

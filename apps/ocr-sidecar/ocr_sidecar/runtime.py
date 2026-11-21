@@ -141,29 +141,44 @@ class OcrRuntime:
 
 
 def decode_paddle_detections(raw_result: Any, width: int, height: int) -> list[TextDetection]:
-    batches = raw_result[0] if isinstance(raw_result, list) and len(raw_result) == 1 else raw_result
-    detections: list[TextDetection] = []
-    for item in batches or []:
-        if not isinstance(item, (list, tuple)) or len(item) < 2:
-            continue
-        box, text_conf = item[:2]
-        if not isinstance(text_conf, (list, tuple)) or len(text_conf) < 2:
-            continue
-        text = " ".join(str(text_conf[0]).split())
-        confidence = float(text_conf[1])
-        points = [point for point in box if isinstance(point, (list, tuple)) and len(point) >= 2]
-        if not text or not isfinite(confidence) or not points:
-            continue
-        xs, ys = [float(point[0]) for point in points], [float(point[1]) for point in points]
-        if not all(isfinite(value) for value in (*xs, *ys)):
-            continue
-        left, top = max(0.0, min(xs) / width), max(0.0, min(ys) / height)
-        right, bottom = min(1.0, max(xs) / width), min(1.0, max(ys) / height)
-        if right <= left or bottom <= top:
-            continue
-        detections.append({
-            "text": text,
-            "confidence": max(0.0, min(1.0, confidence)),
-            "bounds": {"left": left, "top": top, "width": right - left, "height": bottom - top},
-        })
-    return detections
+    rows = raw_result
+    if isinstance(rows, list) and len(rows) == 1:
+        # A single-image result can wrap a page of rows or contain just one row.
+        single = _decode_detection(rows[0], width, height)
+        if single is not None:
+            return [single]
+        rows = rows[0]
+    if not isinstance(rows, (list, tuple)):
+        return []
+    return [detection for row in rows if (detection := _decode_detection(row, width, height)) is not None]
+
+
+def _decode_detection(row: Any, width: int, height: int) -> TextDetection | None:
+    if not isinstance(row, (list, tuple)) or len(row) < 2:
+        return None
+    box, prediction = row[:2]
+    if not isinstance(box, (list, tuple)) or not isinstance(prediction, (list, tuple)) or len(prediction) < 2:
+        return None
+    if not isinstance(prediction[0], str):
+        return None
+    text = " ".join(prediction[0].split())
+    points = [point for point in box if isinstance(point, (list, tuple)) and len(point) >= 2]
+    if not text or not points:
+        return None
+    try:
+        confidence = float(prediction[1])
+        xs = [float(point[0]) for point in points]
+        ys = [float(point[1]) for point in points]
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not all(isfinite(value) for value in (confidence, *xs, *ys)):
+        return None
+    left, top = max(0.0, min(xs) / width), max(0.0, min(ys) / height)
+    right, bottom = min(1.0, max(xs) / width), min(1.0, max(ys) / height)
+    if right <= left or bottom <= top:
+        return None
+    return {
+        "text": text,
+        "confidence": max(0.0, min(1.0, confidence)),
+        "bounds": {"left": left, "top": top, "width": right - left, "height": bottom - top},
+    }
