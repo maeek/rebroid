@@ -163,7 +163,7 @@ export class AndroidAppsProvisioningApkService {
     }
 
     app.apkPackageName = packageName;
-    await this.writer.save(app);
+    await this.writer.setApkPackageName(app.id, packageName);
     await this.logs.append(app.id, 'Launching installed APK', {
       packageName,
     });

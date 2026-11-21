@@ -312,11 +312,12 @@ describe('Android application runtime observations', () => {
       networkPolicyEnabled: false,
       networkPolicyAllowCidrs: '["192.0.2.0/24"]',
     });
-    await repository.save({ ...stale, name: 'Renamed' }, true);
-    await repository.save(stale);
+    await repository.updateRuntimePreparation(stale.id, {
+      savedProfilesJson: '[]',
+    });
     await expect(apps.findOneByOrFail({ id: stale.id })).resolves.toMatchObject(
       {
-        name: 'Renamed',
+        name: stale.name,
         networkPolicyEnabled: false,
         networkPolicyAllowCidrs: '["192.0.2.0/24"]',
         networkPolicyRevision: 1,

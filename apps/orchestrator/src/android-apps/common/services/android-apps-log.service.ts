@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   appendFile,
@@ -25,6 +25,7 @@ type RuntimeLogPatch = Partial<{
 
 @Injectable()
 export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePort {
+  private readonly logger = new Logger(AndroidAppsLogService.name);
   private readonly logDir: string;
 
   constructor(private readonly config: ConfigService) {
@@ -33,9 +34,16 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
 
   /** Writes one event line to the app log file. */
   async append(applicationId: string, message: string, context?: unknown) {
-    const line = this.formatLine(message, context);
-    await mkdir(this.logDir, { recursive: true });
-    await appendFile(this.logPath(applicationId), `${line}\n`, 'utf-8');
+    try {
+      const line = this.formatLine(message, context);
+      await mkdir(this.logDir, { recursive: true });
+      await appendFile(this.logPath(applicationId), `${line}\n`, 'utf-8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException)?.code ?? 'unknown';
+      this.logger.warn(
+        `Could not write app lifecycle log for ${applicationId} (${code}).`,
+      );
+    }
   }
 
   /** Writes lifecycle changes to the app log file. */

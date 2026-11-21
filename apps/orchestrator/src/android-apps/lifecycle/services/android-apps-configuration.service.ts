@@ -147,12 +147,9 @@ export class AndroidAppsConfigurationService {
     if (uploadedApk) {
       this.applicationFactory.applyUploadedApk(app, uploadedApk);
     }
-    const reservation = await this.transitions.createProvisionJob(
-      app,
-      maxOpenApps,
-    );
-    this.backgroundJobs.schedule(reservation, () =>
-      this.provisioning.provision(reservation),
+    await this.backgroundJobs.submit(
+      this.transitions.createProvisionJob(app, maxOpenApps),
+      (reservation) => this.provisioning.provision(reservation),
     );
     await this.logs.append(app.id, 'Application record created', {
       name: app.name,
@@ -236,32 +233,34 @@ export class AndroidAppsConfigurationService {
         );
       }
     }
-    const app = await this.reconciler.reconcileOne(stored);
-    await this.assertRuntimeNotRecreating(app);
-    const containerArgs =
-      dto.containerArgs === undefined
-        ? undefined
-        : applyRedroidDefaultContainerArgs(
-            app.containerImage,
-            dto.containerArgs,
-            app.runtimeKind,
-          );
-    const recreate = this.runtimePreparation.shouldRecreateContainerOnUpdate(
-      app,
-      { ...dto, containerArgs },
-    );
-
-    if (renamed) app.name = name;
-    if (dto.inactivityTimeoutSeconds !== undefined) {
-      app.inactivityTimeoutSeconds = dto.inactivityTimeoutSeconds;
-    }
-    if (dto.memoryLimitMb !== undefined) app.memoryLimitMb = dto.memoryLimitMb;
-    if (dto.cpuLimitCpus !== undefined) app.cpuLimitCpus = dto.cpuLimitCpus;
-    if (containerArgs !== undefined) app.containerArgs = containerArgs;
-    if (recreate) {
-      await this.runtimePreparation.markContainerForRecreation(app);
-    }
-    return this.writer.saveAndDecorate(app, renamed);
+    const saved = await this.transitions.updateConfiguration(id, (app) => {
+      const containerArgs =
+        dto.containerArgs === undefined
+          ? undefined
+          : applyRedroidDefaultContainerArgs(
+              app.containerImage,
+              dto.containerArgs,
+              app.runtimeKind,
+            );
+      const recreate = this.runtimePreparation.shouldRecreateContainerOnUpdate(
+        app,
+        { ...dto, containerArgs },
+      );
+      return {
+        name: renamed ? name : undefined,
+        inactivityTimeoutSeconds: dto.inactivityTimeoutSeconds,
+        memoryLimitMb: dto.memoryLimitMb,
+        cpuLimitCpus: dto.cpuLimitCpus,
+        containerArgs,
+        recreateContainerOnNextStart:
+          recreate &&
+          (app.containerId ||
+            app.status === AndroidApplicationStatus.Provisioning)
+            ? true
+            : undefined,
+      };
+    });
+    return this.queries.decorate(saved);
   }
 
   private async ownerNameKeys(ownerUserId: string | null, exceptId?: string) {
@@ -314,23 +313,38 @@ export class AndroidAppsConfigurationService {
   }
 
   async updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {
-    const app = await this.reconciler.reconcileById(id);
-    this.assertMutable(app);
-    await this.apks.withReference(dto.uploadedApkId, async (uploadedApk) => {
-      if (uploadedApk.ownerUserId !== app.ownerUserId) {
-        throw new ConflictException(
-          'Uploaded APK does not belong to this application owner.',
-        );
-      }
-      await this.assertRuntimeNotRecreating(app);
-      if (this.backgroundJobs.hasWork(id)) {
-        throw new ConflictException(
-          'Wait for the active application job before changing the attached APK.',
-        );
-      }
-      this.applicationFactory.applyUploadedApk(app, uploadedApk);
-      await this.writer.save(app);
-    });
+    const current = await this.reconciler.reconcileById(id);
+    this.assertMutable(current);
+    const app = await this.apks.withReference(
+      dto.uploadedApkId,
+      async (uploadedApk) => {
+        if (uploadedApk.ownerUserId !== current.ownerUserId) {
+          throw new ConflictException(
+            'Uploaded APK does not belong to this application owner.',
+          );
+        }
+        if (this.backgroundJobs.hasWork(id)) {
+          throw new ConflictException(
+            'Wait for the active application job before changing the attached APK.',
+          );
+        }
+        return this.transitions.updateConfiguration(id, (stored) => {
+          this.applicationFactory.applyUploadedApk(stored, uploadedApk);
+          const {
+            uploadedApkId,
+            apkFilePath,
+            apkOriginalName,
+            apkPackageName,
+          } = stored;
+          return {
+            uploadedApkId,
+            apkFilePath,
+            apkOriginalName,
+            apkPackageName,
+          };
+        });
+      },
+    );
 
     if (app.status !== AndroidApplicationStatus.Running) {
       return this.queries.decorate(app);

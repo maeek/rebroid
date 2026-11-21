@@ -60,6 +60,25 @@ const allowedStatusTransitions: Record<
 
 type JobPayload = Record<string, unknown> | undefined;
 
+type RuntimeConfigurationUsed = Pick<
+  AndroidApplication,
+  'containerArgs' | 'memoryLimitMb' | 'cpuLimitCpus'
+>;
+
+type ConfigurationPatch = Partial<
+  RuntimeConfigurationUsed &
+    Pick<
+      AndroidApplication,
+      | 'name'
+      | 'inactivityTimeoutSeconds'
+      | 'uploadedApkId'
+      | 'apkFilePath'
+      | 'apkOriginalName'
+      | 'apkPackageName'
+      | 'recreateContainerOnNextStart'
+    >
+>;
+
 const openStatuses = [
   AndroidApplicationStatus.Provisioning,
   AndroidApplicationStatus.Running,
@@ -88,6 +107,34 @@ export class AndroidAppsLifecycleTransitionService {
     if (await this.hasRecreateJob(applicationId)) {
       throw new ConflictException('Application runtime is being recreated.');
     }
+  }
+
+  updateConfiguration(
+    applicationId: string,
+    prepare: (app: AndroidApplication) => ConfigurationPatch,
+  ) {
+    return this.transaction(async (manager) => {
+      const app = await this.getApplication(manager, applicationId);
+      if (
+        app.status === AndroidApplicationStatus.Removing ||
+        app.status === AndroidApplicationStatus.Removed
+      ) {
+        throw new ConflictException(
+          'Applications being removed cannot be updated.',
+        );
+      }
+      this.assertRecreateNotActive(
+        await manager
+          .getRepository(AndroidAppLifecycleJob)
+          .findOneBy({ applicationId }),
+      );
+      const patch = prepare(app);
+      if (!Object.values(patch).some((value) => value !== undefined))
+        return app;
+      const rows = manager.getRepository(AndroidApplication);
+      await rows.update(applicationId, patch);
+      return rows.findOneByOrFail({ id: applicationId });
+    });
   }
 
   async createProvisionJob(app: AndroidApplication, maxOpenApps?: number) {
@@ -157,9 +204,9 @@ export class AndroidAppsLifecycleTransitionService {
       );
     });
     if (kind === AndroidAppLifecycleJobKind.Remove) {
-      await this.snapshots.deleteIfStale(applicationId);
+      await this.clearSnapshot(applicationId);
     }
-    await this.logs.appendLifecycle(applicationId, patch);
+    this.recordLifecycle(applicationId, patch);
     return reservation;
   }
 
@@ -190,7 +237,7 @@ export class AndroidAppsLifecycleTransitionService {
         }),
       );
     });
-    if (next) await this.logs.appendLifecycle(applicationId, patch);
+    if (next) this.recordLifecycle(applicationId, patch);
     return next;
   }
 
@@ -269,7 +316,7 @@ export class AndroidAppsLifecycleTransitionService {
       return true;
     });
     if (changed) {
-      await this.logs.appendLifecycle(applicationId, patch);
+      this.recordLifecycle(applicationId, patch);
     }
     return changed;
   }
@@ -299,7 +346,7 @@ export class AndroidAppsLifecycleTransitionService {
       return true;
     });
     if (changed) {
-      await this.logs.appendLifecycle(applicationId, patch);
+      this.recordLifecycle(applicationId, patch);
     }
     return changed;
   }
@@ -307,6 +354,7 @@ export class AndroidAppsLifecycleTransitionService {
   async updateProgress(
     reservation: AndroidAppLifecycleReservation,
     patch: AndroidApplicationLifecyclePatch,
+    configurationUsed?: RuntimeConfigurationUsed,
   ) {
     const { applicationId } = reservation;
     const changed = await this.transaction(async (manager) => {
@@ -329,11 +377,17 @@ export class AndroidAppsLifecycleTransitionService {
         return false;
       }
       this.applyPatch(app, patch);
+      if (configurationUsed) {
+        app.recreateContainerOnNextStart =
+          app.containerArgs !== configurationUsed.containerArgs ||
+          app.memoryLimitMb !== configurationUsed.memoryLimitMb ||
+          app.cpuLimitCpus !== configurationUsed.cpuLimitCpus;
+      }
       await manager.getRepository(AndroidApplication).save(app);
       return true;
     });
     if (changed) {
-      await this.logs.appendLifecycle(applicationId, patch);
+      this.recordLifecycle(applicationId, patch);
     }
     return changed;
   }
@@ -381,8 +435,8 @@ export class AndroidAppsLifecycleTransitionService {
       await jobs.delete({ applicationId });
       return wasRunning && app.status !== AndroidApplicationStatus.Running;
     });
-    if (leftRunning) await this.snapshots.deleteIfStale(applicationId);
-    await this.logs.appendLifecycle(applicationId, patch);
+    if (leftRunning) await this.clearSnapshot(applicationId);
+    this.recordLifecycle(applicationId, patch);
   }
 
   private assertRecreateNotActive(job: AndroidAppLifecycleJob | null) {
@@ -400,7 +454,7 @@ export class AndroidAppsLifecycleTransitionService {
       this.applyPatch(app, patch);
       await manager.getRepository(AndroidApplication).save(app);
     });
-    await this.logs.appendLifecycle(applicationId, patch);
+    this.recordLifecycle(applicationId, patch);
   }
 
   private recordLifecycle(

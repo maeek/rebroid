@@ -97,25 +97,6 @@ export class AndroidAppsRuntimePreparationService {
     );
   }
 
-  async markContainerForRecreation(app: AndroidApplication) {
-    if (!app.containerId) {
-      app.recreateContainerOnNextStart = false;
-      return;
-    }
-
-    if (app.status === AndroidApplicationStatus.Running) {
-      app.recreateContainerOnNextStart = true;
-      app.statusMessage =
-        'Runtime settings changed. Stop and start the app to recreate the managed container.';
-      return;
-    }
-
-    await this.removeManagedContainer(app);
-    app.recreateContainerOnNextStart = false;
-    app.statusMessage =
-      'Runtime settings changed. A new container will be created on next start.';
-  }
-
   async prepareRuntimeProfile(
     app: AndroidApplication,
     dto: StartAndroidApplicationDto,
@@ -145,7 +126,7 @@ export class AndroidAppsRuntimePreparationService {
     if (!profileChanged) {
       if (nextSavedProfilesJson !== app.savedProfilesJson) {
         app.savedProfilesJson = nextSavedProfilesJson;
-        await this.writer.save(app);
+        await this.writer.saveFields(app, 'savedProfilesJson');
       }
       return;
     }
@@ -156,7 +137,14 @@ export class AndroidAppsRuntimePreparationService {
     app.profileName = nextProfileName;
     app.savedProfilesJson = nextSavedProfilesJson;
     app.volumeName = nextVolumeName;
-    await this.writer.save(app);
+    await this.writer.saveFields(
+      app,
+      'profileMode',
+      'profileName',
+      'volumeName',
+      'containerId',
+      'savedProfilesJson',
+    );
   }
 
   async deleteSavedPersistentProfile(
@@ -213,7 +201,7 @@ export class AndroidAppsRuntimePreparationService {
     }
     await this.resources.removeVolume(volumeName);
     app.savedProfilesJson = result.savedProfilesJson;
-    await this.writer.save(app);
+    await this.writer.saveFields(app, 'savedProfilesJson');
   }
 
   private async assertProfileStorageIdentity(
@@ -263,7 +251,7 @@ export class AndroidAppsRuntimePreparationService {
 
     if (!app.containerId) {
       app.recreateContainerOnNextStart = false;
-      await this.writer.save(app);
+      await this.writer.saveFields(app, 'recreateContainerOnNextStart');
       return;
     }
 
@@ -278,7 +266,11 @@ export class AndroidAppsRuntimePreparationService {
 
     await this.removeManagedContainer(app);
     app.recreateContainerOnNextStart = false;
-    await this.writer.save(app);
+    await this.writer.saveFields(
+      app,
+      'containerId',
+      'recreateContainerOnNextStart',
+    );
   }
 
   async prepareRuntimeDefaults(app: AndroidApplication) {
@@ -299,7 +291,7 @@ export class AndroidAppsRuntimePreparationService {
       (isRedroidRuntime(app.containerImage, app.runtimeKind) &&
         nextContainerArgs === stripManagedRedroidGpuArgs(previousContainerArgs))
     ) {
-      await this.writer.save(app);
+      await this.writer.saveFields(app, 'containerArgs');
       return;
     }
 
@@ -310,7 +302,12 @@ export class AndroidAppsRuntimePreparationService {
       app.recreateContainerOnNextStart = true;
       app.statusMessage =
         'Runtime boot defaults changed. Stop and start the app to recreate the managed container.';
-      await this.writer.save(app);
+      await this.writer.saveFields(
+        app,
+        'containerArgs',
+        'recreateContainerOnNextStart',
+        'statusMessage',
+      );
       return;
     }
 
@@ -328,7 +325,13 @@ export class AndroidAppsRuntimePreparationService {
     app.recreateContainerOnNextStart = false;
     app.statusMessage =
       'Runtime boot defaults changed. A new container will be created on next start.';
-    await this.writer.save(app);
+    await this.writer.saveFields(
+      app,
+      'containerArgs',
+      'containerId',
+      'recreateContainerOnNextStart',
+      'statusMessage',
+    );
   }
 
   async recoverStaleProvisioningForStart(app: AndroidApplication) {
@@ -357,7 +360,15 @@ export class AndroidAppsRuntimePreparationService {
       'Previous provisioning run was stale. A fresh start will be attempted.';
     app.provisioningCompletedAt = new Date();
     app.lastStoppedAt = new Date();
-    await this.writer.save(app);
+    await this.writer.saveFields(
+      app,
+      'containerId',
+      'status',
+      'lifecycleStage',
+      'statusMessage',
+      'provisioningCompletedAt',
+      'lastStoppedAt',
+    );
     return true;
   }
 
@@ -377,7 +388,14 @@ export class AndroidAppsRuntimePreparationService {
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
     app.statusMessage =
       'Previous runtime container failed. A fresh container will be created.';
-    await this.writer.save(app);
+    await this.writer.saveFields(
+      app,
+      'containerId',
+      'status',
+      'lifecycleStage',
+      'statusMessage',
+      'recreateContainerOnNextStart',
+    );
   }
 
   async removeManagedContainer(app: AndroidApplication) {
@@ -413,7 +431,12 @@ export class AndroidAppsRuntimePreparationService {
       app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
       app.statusMessage = 'Stop failed. Runtime container is still running.';
       await this.logs.append(app.id, 'Stop failed', { error: message });
-      await this.writer.save(app);
+      await this.writer.saveFields(
+        app,
+        'status',
+        'lifecycleStage',
+        'statusMessage',
+      );
       return false;
     } catch (inspectError) {
       this.logger.warn(

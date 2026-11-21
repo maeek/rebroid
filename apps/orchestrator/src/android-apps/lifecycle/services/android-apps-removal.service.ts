@@ -45,22 +45,24 @@ export class AndroidAppsRemovalService {
         );
       }
     } else {
-      const reservation = await this.backgroundJobs.interrupt(id, () =>
-        this.transitions.beginJob(
-          id,
-          AndroidAppLifecycleJobKind.Remove,
-          {
-            status: AndroidApplicationStatus.Removing,
-            lifecycleStage: AndroidApplicationLifecycleStage.Removing,
-            statusMessage:
-              'Removing application container and network resources.',
-            removeDataOnRemoval: removeData,
-          },
-          { removeData },
-          true,
+      await this.backgroundJobs.submit(
+        this.backgroundJobs.interrupt(id, () =>
+          this.transitions.beginJob(
+            id,
+            AndroidAppLifecycleJobKind.Remove,
+            {
+              status: AndroidApplicationStatus.Removing,
+              lifecycleStage: AndroidApplicationLifecycleStage.Removing,
+              statusMessage:
+                'Removing application container and network resources.',
+              removeDataOnRemoval: removeData,
+            },
+            { removeData },
+            true,
+          ),
         ),
+        (reservation) => this.removeInBackground(reservation),
       );
-      this.resume(reservation);
       await this.logs.append(id, 'Remove requested', {
         removeData,
         containerId: app.containerId,

@@ -55,17 +55,20 @@ export class AndroidAppsApkInstallLifecycleService {
       return;
     }
 
-    const reservation = current
-      ? await this.transitions.handoffJob(
+    const pending = current
+      ? this.transitions.handoffJob(
           current,
           AndroidAppLifecycleJobKind.InstallApk,
           patch,
         )
-      : await this.transitions.beginJob(
+      : this.transitions.beginJob(
           app.id,
           AndroidAppLifecycleJobKind.InstallApk,
           patch,
         );
+    const reservation = await this.backgroundJobs.submit(pending, (accepted) =>
+      this.completeInBackground(accepted),
+    );
     if (!reservation) {
       throw new ConflictException(
         `Application "${app.id}" no longer owns the expected lifecycle job.`,
@@ -73,7 +76,6 @@ export class AndroidAppsApkInstallLifecycleService {
     }
 
     Object.assign(app, patch);
-    this.resume(reservation);
   }
 
   resume(reservation: AndroidAppLifecycleReservation) {

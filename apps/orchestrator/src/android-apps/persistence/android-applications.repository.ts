@@ -36,6 +36,21 @@ type NetworkPolicyState = Pick<
   AndroidApplication,
   'networkPolicyStatus' | 'networkPolicyMessage' | 'networkPolicyAppliedAt'
 >;
+export type RuntimePreparationFields = Pick<
+  AndroidApplication,
+  | 'containerArgs'
+  | 'containerId'
+  | 'lifecycleStage'
+  | 'lastStoppedAt'
+  | 'profileMode'
+  | 'profileName'
+  | 'provisioningCompletedAt'
+  | 'recreateContainerOnNextStart'
+  | 'savedProfilesJson'
+  | 'status'
+  | 'statusMessage'
+  | 'volumeName'
+>;
 
 @Injectable()
 export class AndroidApplicationsRepository
@@ -50,15 +65,22 @@ export class AndroidApplicationsRepository
     return this.applications.create(values);
   }
 
-  async save(app: AndroidApplication, updateName = false) {
-    // Only the policy command can update settings and advance their revision.
-    const changes: Partial<AndroidApplication> = { ...app };
-    if (!updateName) delete changes.name;
-    delete changes.networkPolicyEnabled;
-    delete changes.networkPolicyAllowCidrs;
-    delete changes.networkPolicyRevision;
-    const saved = await this.applications.save(changes);
-    return Object.assign(app, saved);
+  updateRuntimePreparation(
+    id: string,
+    changes: Partial<RuntimePreparationFields>,
+  ) {
+    return this.applications.update(
+      {
+        id,
+        status: Not(
+          In([
+            AndroidApplicationStatus.Removing,
+            AndroidApplicationStatus.Removed,
+          ]),
+        ),
+      },
+      changes,
+    );
   }
 
   updateApkPackageName(applicationId: string, apkPackageName: string) {

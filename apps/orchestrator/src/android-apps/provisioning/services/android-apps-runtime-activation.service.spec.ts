@@ -182,6 +182,7 @@ describe('AndroidAppsRuntimeActivationService', () => {
           renderDevice: '/dev/dri/renderD128',
         },
       }),
+      expect.objectContaining({ containerArgs: app.containerArgs }),
     );
   });
 

@@ -18,7 +18,9 @@ const makeService = () => {
       })),
   };
   const state = {
-    save: jest.fn().mockImplementation(async (app: AndroidApplication) => app),
+    saveFields: jest
+      .fn()
+      .mockImplementation(async (app: AndroidApplication) => app),
   };
   const service = new AndroidAppsRuntimePreparationService(
     {} as never,
@@ -59,11 +61,12 @@ it('cleans up stored GPU flags without replacing the existing container', async 
     service.shouldRecreateContainerOnUpdate(app, { containerArgs: args }),
   ).toBe(false);
   await service.prepareRuntimeDefaults(app);
-  expect(state.save).toHaveBeenCalledWith(
+  expect(state.saveFields).toHaveBeenCalledWith(
     expect.objectContaining({
       containerId: 'existing',
       containerArgs: args,
     }),
+    'containerArgs',
   );
 });
 
@@ -85,7 +88,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
         { mode: ApplicationProfileMode.Persistent, name: 'default' },
       ]),
     );
-    expect(state.save).toHaveBeenCalledWith(app);
+    expect(state.saveFields).toHaveBeenCalledWith(app, 'savedProfilesJson');
   });
 
   it('rejects deleting the active persistent profile', async () => {
@@ -96,7 +99,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       service.deleteSavedPersistentProfile(app, 'default'),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(resources.removeVolume).not.toHaveBeenCalled();
-    expect(state.save).not.toHaveBeenCalled();
+    expect(state.saveFields).not.toHaveBeenCalled();
   });
 
   it('rejects deleting a missing profile', async () => {
@@ -107,7 +110,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       service.deleteSavedPersistentProfile(app, 'missing'),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(resources.removeVolume).not.toHaveBeenCalled();
-    expect(state.save).not.toHaveBeenCalled();
+    expect(state.saveFields).not.toHaveBeenCalled();
   });
 
   it('rejects deleting temporary profiles', async () => {
@@ -124,7 +127,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       service.deleteSavedPersistentProfile(app, 'temp'),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(resources.removeVolume).not.toHaveBeenCalled();
-    expect(state.save).not.toHaveBeenCalled();
+    expect(state.saveFields).not.toHaveBeenCalled();
   });
 
   it('persists the profile removal when the Docker volume is already missing', async () => {
@@ -135,7 +138,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
     await service.deleteSavedPersistentProfile(app, 'work');
 
     expect(resources.removeVolume).toHaveBeenCalledWith('rebroid-profile-work');
-    expect(state.save).toHaveBeenCalledWith(app);
+    expect(state.saveFields).toHaveBeenCalledWith(app, 'savedProfilesJson');
   });
 
   it('preserves an active volume reached by a differently spelled saved profile', async () => {
@@ -148,7 +151,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       service.deleteSavedPersistentProfile(app, 'work'),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(resources.removeVolume).not.toHaveBeenCalled();
-    expect(state.save).not.toHaveBeenCalled();
+    expect(state.saveFields).not.toHaveBeenCalled();
   });
 
   it('preserves storage shared by two inactive legacy profiles', async () => {
@@ -214,7 +217,7 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       'rebroid-profile-archived',
     );
     expect(app.profileName).toBe('default');
-    expect(state.save).not.toHaveBeenCalled();
+    expect(state.saveFields).not.toHaveBeenCalled();
   });
 
   it('admits a new persistent name with an unused volume identity', async () => {
@@ -225,6 +228,13 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
       'rebroid-profile-archive',
     );
     expect(app.volumeName).toBe('rebroid-profile-archive');
-    expect(state.save).toHaveBeenCalledWith(app);
+    expect(state.saveFields).toHaveBeenCalledWith(
+      app,
+      'profileMode',
+      'profileName',
+      'volumeName',
+      'containerId',
+      'savedProfilesJson',
+    );
   });
 });

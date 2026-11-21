@@ -16,7 +16,7 @@ const setup = () => {
     } as never,
     networkPolicy as never,
     {} as never,
-    { save: async (app: AndroidApplication) => app } as never,
+    { saveFields: async () => {} } as never,
   );
   const app = {
     id: 'app-1',

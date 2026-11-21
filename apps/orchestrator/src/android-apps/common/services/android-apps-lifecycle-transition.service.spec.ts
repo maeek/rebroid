@@ -12,7 +12,6 @@ import {
   AndroidAppLifecycleJobStatus,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLifecycleTransitionService } from './android-apps-lifecycle-transition.service';
-
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
 import { AndroidAppsPowerService } from '../../lifecycle/services/android-apps-power.service';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
@@ -22,6 +21,7 @@ import { AndroidAppsStateWriter } from './android-apps-state-writer.service';
 import { AndroidAppsRuntimeOperationGate } from './android-apps-runtime-operation-gate.service';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 import { InactivityService } from './inactivity.service';
+import { LifecycleBackgroundJobRunner } from '../../lifecycle/services/lifecycle-background-job-runner.service';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 
 describe('committed application changes', () => {
@@ -65,6 +65,55 @@ describe('committed application changes', () => {
 
   afterEach(async () => {
     await database.destroy();
+  });
+
+  it('dispatches a committed Recreate and completes it despite failed diagnostics', async () => {
+    const runner = new LifecycleBackgroundJobRunner(
+      { maxConcurrentJobs: 1 } as never,
+      new AndroidAppsProvisioningTrackerService(),
+    );
+    let complete!: () => void;
+    const finished = new Promise<void>((resolve) => {
+      complete = resolve;
+    });
+    const worker = jest.fn(async (reservation: AndroidAppLifecycleJob) => {
+      expect(await transitions.claimJob(reservation)).toBe(true);
+      expect(
+        await transitions.completeJob(reservation, {
+          status: AndroidApplicationStatus.Running,
+          lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+        }),
+      ).toBe(true);
+      complete();
+    });
+    await runner.submit(
+      transitions.beginJob(app.id, AndroidAppLifecycleJobKind.Recreate, {
+        status: AndroidApplicationStatus.Provisioning,
+      }),
+      (reservation) => worker(reservation as AndroidAppLifecycleJob),
+    );
+    await finished;
+    expect(worker).toHaveBeenCalledTimes(1);
+    expect(appendLifecycle).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves a newer viewer observation and refuses to reinsert a deleted app', async () => {
+    const rows = database.getRepository(AndroidApplication);
+    const observed = new Date('2026-01-01T00:00:00Z');
+    await rows.update(app.id, { lastScrcpyActivityAt: observed });
+    await expect(
+      transitions.updateConfiguration(app.id, () => ({ name: 'Renamed' })),
+    ).resolves.toMatchObject({
+      name: 'Renamed',
+      lastScrcpyActivityAt: observed,
+    });
+    await rows.delete(app.id);
+    await expect(
+      transitions.updateConfiguration(app.id, () => ({
+        name: 'Delayed rename',
+      })),
+    ).rejects.toThrow('not found');
+    await expect(rows.findOneBy({ id: app.id })).resolves.toBeNull();
   });
 
   it.each([
@@ -220,6 +269,35 @@ describe('committed application changes', () => {
       status: AndroidApplicationStatus.Stopped,
       lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
       containerId: null,
+    });
+  });
+
+  it('keeps replacement intent when runtime creation used older settings', async () => {
+    const reservation = await transitions.beginJob(
+      app.id,
+      AndroidAppLifecycleJobKind.Start,
+      { status: AndroidApplicationStatus.Provisioning },
+    );
+    await transitions.claimJob(reservation);
+    await transitions.updateConfiguration(app.id, () => ({
+      memoryLimitMb: 1024,
+      recreateContainerOnNextStart: true,
+    }));
+    await transitions.updateProgress(
+      reservation,
+      { containerId: 'new-container' },
+      {
+        containerArgs: app.containerArgs,
+        memoryLimitMb: app.memoryLimitMb,
+        cpuLimitCpus: app.cpuLimitCpus,
+      },
+    );
+    await expect(
+      database.getRepository(AndroidApplication).findOneBy({ id: app.id }),
+    ).resolves.toMatchObject({
+      containerId: 'new-container',
+      memoryLimitMb: 1024,
+      recreateContainerOnNextStart: true,
     });
   });
 });

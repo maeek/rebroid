@@ -28,6 +28,15 @@ export class LifecycleBackgroundJobRunner {
     return this.scheduled.has(applicationId);
   }
 
+  async submit(
+    reservation: Promise<AndroidAppLifecycleReservation | null>,
+    operation: (accepted: AndroidAppLifecycleReservation) => Promise<void>,
+  ) {
+    const accepted = await reservation;
+    if (accepted) this.schedule(accepted, () => operation(accepted));
+    return accepted;
+  }
+
   schedule(
     reservation: AndroidAppLifecycleReservation,
     operation: () => Promise<void>,

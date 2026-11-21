@@ -109,13 +109,16 @@ export class AndroidAppsPowerService {
       provisioningStartedAt: new Date(),
       provisioningCompletedAt: null,
     };
-    const reservation = await this.transitions.beginJob(
-      id,
-      AndroidAppLifecycleJobKind.Start,
-      patch,
-      undefined,
-      true,
-      maxOpenApps,
+    await this.backgroundJobs.submit(
+      this.transitions.beginJob(
+        id,
+        AndroidAppLifecycleJobKind.Start,
+        patch,
+        undefined,
+        true,
+        maxOpenApps,
+      ),
+      (reservation) => this.startLifecycle.startInBackground(reservation),
     );
     Object.assign(app, patch);
     await this.logs.append(id, 'Start requested', {
@@ -124,9 +127,6 @@ export class AndroidAppsPowerService {
       existingContainerId: app.containerId,
       image: app.containerImage,
     });
-    this.backgroundJobs.schedule(reservation, () =>
-      this.startLifecycle.startInBackground(reservation),
-    );
     return this.queries.decorate(app);
   }
 
@@ -141,23 +141,23 @@ export class AndroidAppsPowerService {
       this.features.assertEnabled('feature.firewall');
     }
 
-    const reservation = await this.transitions.beginJob(
-      id,
-      AndroidAppLifecycleJobKind.Recreate,
-      {
-        status: AndroidApplicationStatus.Provisioning,
-        lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
-        statusMessage: 'Recreating the application container and network.',
-        lastError: null,
-        provisioningStartedAt: new Date(),
-        provisioningCompletedAt: null,
-      },
-      undefined,
-      true,
-      maxOpenApps,
-    );
-    this.backgroundJobs.schedule(reservation, () =>
-      this.startLifecycle.startInBackground(reservation),
+    await this.backgroundJobs.submit(
+      this.transitions.beginJob(
+        id,
+        AndroidAppLifecycleJobKind.Recreate,
+        {
+          status: AndroidApplicationStatus.Provisioning,
+          lifecycleStage: AndroidApplicationLifecycleStage.ContainerStarting,
+          statusMessage: 'Recreating the application container and network.',
+          lastError: null,
+          provisioningStartedAt: new Date(),
+          provisioningCompletedAt: null,
+        },
+        undefined,
+        true,
+        maxOpenApps,
+      ),
+      (reservation) => this.startLifecycle.startInBackground(reservation),
     );
     return this.queries.getStored(id);
   }

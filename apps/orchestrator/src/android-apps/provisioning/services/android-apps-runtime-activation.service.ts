@@ -242,11 +242,15 @@ export class AndroidAppsRuntimeActivationService {
       ? { containerId: container.id, ...configuration.rendering }
       : null;
     app.recreateContainerOnNextStart = false;
-    const recorded = await this.transitions.updateProgress(reservation, {
-      containerId: container.id,
-      appliedRendering: app.appliedRendering,
-      recreateContainerOnNextStart: false,
-    });
+    const recorded = await this.transitions.updateProgress(
+      reservation,
+      { containerId: container.id, appliedRendering: app.appliedRendering },
+      {
+        containerArgs: app.containerArgs,
+        memoryLimitMb: app.memoryLimitMb,
+        cpuLimitCpus: app.cpuLimitCpus,
+      },
+    );
     if (!recorded)
       throw new Error('Application activation is no longer reserved.');
     await this.logs.append(

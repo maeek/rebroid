@@ -4,7 +4,10 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
-import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import {
+  AndroidApplicationsRepository,
+  type RuntimePreparationFields,
+} from '../../persistence/android-applications.repository';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
 import { viewerActivityRuntimeKey } from '../utils/android-runtime-identity';
@@ -35,19 +38,41 @@ export class AndroidAppsStateWriter {
     private readonly snapshots: AndroidAppRuntimeSnapshotsRepository,
   ) {}
 
-  save(app: AndroidApplication) {
-    return this.applications.save(app);
-  }
-
-  async saveAndDecorate(app: AndroidApplication, updateName = false) {
-    const saved = await this.applications.save(app, updateName);
-    return this.status.decorateApplication(saved);
+  async saveFields(
+    app: AndroidApplication,
+    ...fields: (keyof RuntimePreparationFields)[]
+  ) {
+    const changes: Partial<RuntimePreparationFields> = {};
+    for (const field of fields) Object.assign(changes, { [field]: app[field] });
+    const result = await this.applications.updateRuntimePreparation(
+      app.id,
+      changes,
+    );
+    if (result.affected !== 1)
+      throw new ConflictException(
+        'Application is no longer available for runtime preparation.',
+      );
   }
 
   async saveRuntimeReplacement(app: AndroidApplication) {
-    const saved = await this.saveAndDecorate(app);
+    await this.saveFields(
+      app,
+      'profileMode',
+      'profileName',
+      'volumeName',
+      'containerId',
+      'status',
+      'lifecycleStage',
+      'statusMessage',
+      'lastStoppedAt',
+    );
     await this.snapshots.deleteIfStale(app.id);
-    return saved;
+    const saved = await this.applications.findById(app.id);
+    if (!saved)
+      throw new ConflictException(
+        'Application is no longer available for runtime preparation.',
+      );
+    return this.status.decorateApplication(saved);
   }
 
   async saveReconciledRuntime(
