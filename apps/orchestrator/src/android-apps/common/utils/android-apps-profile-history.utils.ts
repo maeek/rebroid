@@ -8,32 +8,38 @@ export interface AndroidApplicationSavedProfile {
 export const parseSavedProfiles = (
   raw: string | null | undefined,
 ): AndroidApplicationSavedProfile[] => {
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(raw ?? '[]') as AndroidApplicationSavedProfile[];
-    const seen = new Set<string>();
-    return parsed
-      .filter(
-        (profile) =>
-          (profile.mode === ApplicationProfileMode.Persistent ||
-            profile.mode === ApplicationProfileMode.Temporary) &&
-          typeof profile.name === 'string' &&
-          profile.name.trim(),
-      )
-      .map((profile) => ({
-        mode: profile.mode,
-        name: profile.name.trim(),
-      }))
-      .filter((profile) => {
-        const key = `${profile.mode}:${profile.name}`;
-        if (seen.has(key)) {
-          return false;
-        }
-        seen.add(key);
-        return true;
-      });
+    parsed = JSON.parse(raw ?? '[]');
   } catch {
     return [];
   }
+  if (!Array.isArray(parsed)) return [];
+
+  const seen = new Set<string>();
+  const profiles: AndroidApplicationSavedProfile[] = [];
+  for (const item of parsed as unknown[]) {
+    if (
+      !item ||
+      typeof item !== 'object' ||
+      !('name' in item) ||
+      !('mode' in item)
+    )
+      continue;
+    const { mode } = item;
+    if (
+      typeof item.name !== 'string' ||
+      (mode !== ApplicationProfileMode.Persistent &&
+        mode !== ApplicationProfileMode.Temporary)
+    )
+      continue;
+    const name = item.name.trim();
+    const key = `${mode}:${name}`;
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    profiles.push({ mode, name });
+  }
+  return profiles;
 };
 
 export const rememberSavedProfile = (
@@ -41,19 +47,15 @@ export const rememberSavedProfile = (
   profile: AndroidApplicationSavedProfile,
 ) => {
   const name = profile.name.trim() || 'default';
-  const profiles = [{ mode: profile.mode, name }, ...parseSavedProfiles(raw)];
-  const seen = new Set<string>();
-  let temporaryProfiles = 0;
-  return JSON.stringify(
-    profiles.filter((item) => {
-      const key = `${item.mode}:${item.name}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      if (item.mode === ApplicationProfileMode.Persistent) return true;
-      temporaryProfiles += 1;
-      return temporaryProfiles <= 24;
-    }),
-  );
+  let temporaryProfiles =
+    profile.mode === ApplicationProfileMode.Temporary ? 1 : 0;
+  const history = parseSavedProfiles(raw).filter((item) => {
+    if (item.mode === profile.mode && item.name === name) return false;
+    if (item.mode === ApplicationProfileMode.Persistent) return true;
+    temporaryProfiles += 1;
+    return temporaryProfiles <= 24;
+  });
+  return JSON.stringify([{ mode: profile.mode, name }, ...history]);
 };
 
 export const forgetSavedProfile = (
@@ -62,19 +64,12 @@ export const forgetSavedProfile = (
 ) => {
   const name = profile.name.trim();
   const profiles = parseSavedProfiles(raw);
-  let removed = false;
-  const savedProfiles = profiles.filter((item) => {
-    const matches = item.mode === profile.mode && item.name === name;
-    if (matches) {
-      removed = true;
-      return false;
-    }
-
-    return true;
-  });
+  const savedProfiles = profiles.filter(
+    (item) => item.mode !== profile.mode || item.name !== name,
+  );
 
   return {
-    removed,
+    removed: savedProfiles.length !== profiles.length,
     savedProfilesJson: JSON.stringify(savedProfiles),
   };
 };

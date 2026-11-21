@@ -9,6 +9,7 @@ describe('android apps profile history utils', () => {
   it('parses valid saved profiles and removes duplicates', () => {
     const raw = JSON.stringify([
       { mode: ApplicationProfileMode.Persistent, name: ' default ' },
+      null,
       { mode: ApplicationProfileMode.Persistent, name: 'default' },
       { mode: ApplicationProfileMode.Temporary, name: 'temporary' },
       { mode: 'invalid', name: 'bad' },
@@ -23,6 +24,7 @@ describe('android apps profile history utils', () => {
 
   it('returns an empty profile list for corrupted JSON', () => {
     expect(parseSavedProfiles('not-json')).toEqual([]);
+    expect(parseSavedProfiles('{"profiles": []}')).toEqual([]);
   });
 
   it('remembers a trimmed profile at the front', () => {
@@ -43,26 +45,33 @@ describe('android apps profile history utils', () => {
     ]);
   });
 
-  it('keeps persistent identities when temporary history rolls over', () => {
-    const persistent = {
-      mode: ApplicationProfileMode.Persistent,
-      name: 'work',
-    };
-    const temporary = Array.from({ length: 25 }, (_, index) => ({
-      mode: ApplicationProfileMode.Temporary,
-      name: `temporary-${index}`,
-    }));
-    const saved = parseSavedProfiles(
-      rememberSavedProfile(JSON.stringify([...temporary, persistent]), {
+  it.each([
+    ApplicationProfileMode.Temporary,
+    ApplicationProfileMode.Persistent,
+  ])(
+    'keeps persistent identities when remembering a %s profile at the history limit',
+    (mode) => {
+      const persistent = {
         mode: ApplicationProfileMode.Persistent,
-        name: 'new',
-      }),
-    );
-    expect(saved).toContainEqual(persistent);
-    expect(
-      saved.filter(({ mode }) => mode === ApplicationProfileMode.Temporary),
-    ).toHaveLength(24);
-  });
+        name: 'work',
+      };
+      const temporary = Array.from({ length: 25 }, (_, index) => ({
+        mode: ApplicationProfileMode.Temporary,
+        name: `temporary-${index}`,
+      }));
+      const saved = parseSavedProfiles(
+        rememberSavedProfile(JSON.stringify([...temporary, persistent]), {
+          mode,
+          name: 'temporary-12',
+        }),
+      );
+      expect(saved).toContainEqual(persistent);
+      expect(saved[0]).toEqual({ mode, name: 'temporary-12' });
+      expect(
+        saved.filter(({ mode }) => mode === ApplicationProfileMode.Temporary),
+      ).toHaveLength(24);
+    },
+  );
 
   it('forgets a saved persistent profile by trimmed name', () => {
     const raw = JSON.stringify([
