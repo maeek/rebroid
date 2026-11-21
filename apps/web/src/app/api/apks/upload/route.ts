@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { orchestratorApkUploadsClient } from '@/server/orchestrator/applications/apk-client'
 import { OrchestratorRequestError } from '@/server/orchestrator/request'
 import { consumeRateLimit } from '@/server/rate-limit/in-memory'
@@ -8,7 +9,6 @@ import { getApkRouteUser } from '../apk-route-auth'
 
 export const runtime = 'nodejs'
 const maxApkUploadBytes = 512 * 1024 * 1024
-const maxMultipartOverheadBytes = 1024 * 1024
 
 export const POST = async (request: NextRequest) => {
   const { user, response } = await getApkRouteUser()
@@ -22,11 +22,9 @@ export const POST = async (request: NextRequest) => {
   try {
     const upload = prepareStreamingMultipartUpload(request, {
       maxBytes: maxApkUploadBytes,
-      multipartOverheadBytes: maxMultipartOverheadBytes,
       missingMessage: 'Multipart APK file is required',
       tooLargeMessage: 'APK upload exceeds the 512 MB limit.'
     })
-    if (!upload.ok) return upload.response
 
     const uploaded = await orchestratorApkUploadsClient.uploadApk(
       upload.body,
@@ -48,6 +46,8 @@ export const POST = async (request: NextRequest) => {
     })
     return NextResponse.json(uploaded)
   } catch (error) {
+    if (error instanceof PublicActionError)
+      return NextResponse.json({ message: error.message }, { status: error.status })
     const status = error instanceof OrchestratorRequestError ? error.status : 500
     const code = error instanceof OrchestratorRequestError ? error.details?.code : undefined
     const messages: Record<string, string> = {

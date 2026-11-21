@@ -1,70 +1,80 @@
-import { ReadableStream as NodeReadableStream } from 'node:stream/web'
-import { NextRequest } from 'next/server'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { prepareStreamingMultipartUpload, StreamingUploadTooLargeError } from './streaming-upload'
+import { describe, expect, it } from 'vitest'
+import { enforceStreamingLimit, prepareStreamingMultipartUpload } from './streaming-upload'
 
-const request = (body: ReadableStream<Uint8Array> | null, headers: Record<string, string>) =>
-  ({ body, headers: new Headers(headers) }) as NextRequest
+const request = (body: Request['body'], headers: Record<string, string>) => ({
+  body,
+  headers: new Headers(headers)
+})
 
 const options = {
   maxBytes: 4,
-  multipartOverheadBytes: 0,
   missingMessage: 'missing',
   tooLargeMessage: 'too large'
 }
 
-beforeAll(() => {
-  Object.defineProperty(globalThis, 'ReadableStream', {
-    configurable: true,
-    value: NodeReadableStream
-  })
-  Object.defineProperty(Response, 'json', {
-    configurable: true,
-    value: (body: unknown, init?: ResponseInit) =>
-      new Response(JSON.stringify(body), {
-        ...init,
-        headers: { 'content-type': 'application/json', ...init?.headers }
-      })
-  })
-})
-
 describe('prepareStreamingMultipartUpload', () => {
   it('rejects invalid content types and known oversized requests', () => {
-    const body = new ReadableStream<Uint8Array>()
-    const invalid = prepareStreamingMultipartUpload(request(body, { 'content-type': 'application/json' }), options)
-    expect(invalid.ok).toBe(false)
-    if (!invalid.ok) expect(invalid.response.status).toBe(400)
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>()
+    expect(() =>
+      prepareStreamingMultipartUpload(request(body, { 'content-type': 'application/json' }), options)
+    ).toThrow(expect.objectContaining({ status: 400, message: 'missing' }))
 
-    const oversized = prepareStreamingMultipartUpload(
+    expect(() =>
+      prepareStreamingMultipartUpload(
+        request(body, {
+          'content-type': 'multipart/form-data; boundary=test',
+          'content-length': String(1024 * 1024 + 5)
+        }),
+        options
+      )
+    ).toThrow(expect.objectContaining({ status: 413, message: 'too large' }))
+  })
+
+  it('accepts a multipart body exactly at the advertised maximum plus framing allowance', async () => {
+    const size = 1024 * 1024 + options.maxBytes
+    const body = new Response(new Uint8Array(size)).body
+    const upload = prepareStreamingMultipartUpload(
       request(body, {
         'content-type': 'multipart/form-data; boundary=test',
-        'content-length': '5'
+        'content-length': String(size)
       }),
       options
     )
-    expect(oversized.ok).toBe(false)
-    if (!oversized.ok) expect(oversized.response.status).toBe(413)
+    expect((await new Response(upload.body).arrayBuffer()).byteLength).toBe(size)
   })
 
   it('streams chunks and stops an unknown-length oversized body', async () => {
-    const source = new ReadableStream<Uint8Array>({
+    const source = new ReadableStream<Uint8Array<ArrayBuffer>>({
       start(controller) {
         controller.enqueue(new Uint8Array([1, 2, 3]))
-        controller.enqueue(new Uint8Array([4, 5, 6]))
+        controller.enqueue(new Uint8Array(1024 * 1024 + 2))
       }
     })
     const prepared = prepareStreamingMultipartUpload(
       request(source, { 'content-type': 'multipart/form-data; boundary=test' }),
       options
     )
-    expect(prepared.ok).toBe(true)
-    if (!prepared.ok) return
 
     const reader = prepared.body.getReader()
     await expect(reader.read()).resolves.toEqual({
       done: false,
       value: new Uint8Array([1, 2, 3])
     })
-    await expect(reader.read()).rejects.toBeInstanceOf(StreamingUploadTooLargeError)
+    await expect(reader.read()).rejects.toMatchObject({ status: 413, message: 'too large' })
+  })
+})
+
+it('reports the size limit even when the source fails to cancel', async () => {
+  const source = new ReadableStream<Uint8Array<ArrayBuffer>>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(5))
+    },
+    cancel() {
+      throw new Error('source already closed')
+    }
+  })
+
+  await expect(enforceStreamingLimit(source, 4, 'too large').getReader().read()).rejects.toMatchObject({
+    message: 'too large'
   })
 })

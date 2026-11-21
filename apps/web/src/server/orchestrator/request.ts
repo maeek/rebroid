@@ -1,4 +1,5 @@
 import 'server-only'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { logger } from '@/server/observability/logger'
 import { getRequestId } from '@/server/observability/request-id'
 import { getOrchestratorApiUrl } from '@/server/orchestrator/config'
@@ -109,6 +110,8 @@ const fetchResponse = async (path: string, init?: OrchestratorRequestInit) => {
       signal
     })
   } catch (error) {
+    if (error instanceof PublicActionError) throw error
+    if (error instanceof Error && error.cause instanceof PublicActionError) throw error.cause
     throw transportError(error, path, method, requestId, signal)
   }
 

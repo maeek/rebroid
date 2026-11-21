@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordAuditEvent } from '@/server/audit/events'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { loadFeatureFlags } from '@/server/orchestrator/features'
 import { orchestratorPlatformClient } from '@/server/orchestrator/platform/client'
@@ -9,11 +10,11 @@ import { prepareStreamingMultipartUpload } from '@/server/upload-proxy/streaming
 export const runtime = 'nodejs'
 
 const maxUploadBytes = 65 * 1024 * 1024
-const maxMultipartOverheadBytes = 1024 * 1024
 const defaultUploadFailureMessage = 'Build context upload failed.'
 const orchestratorTransportPrefix = 'Orchestrator request failed:'
 
 const uploadErrorResponse = (error: unknown) => {
+  if (error instanceof PublicActionError) return { status: error.status, message: error.message }
   if (error instanceof OrchestratorRequestError) {
     if (error.message.startsWith(orchestratorTransportPrefix)) {
       return {
@@ -62,11 +63,9 @@ export const POST = async (request: NextRequest) => {
 
     const upload = prepareStreamingMultipartUpload(request, {
       maxBytes: maxUploadBytes,
-      multipartOverheadBytes: maxMultipartOverheadBytes,
       missingMessage: 'Multipart build context file is required.',
       tooLargeMessage: 'Build context upload exceeds the 65 MB limit.'
     })
-    if (!upload.ok) return upload.response
 
     const uploaded = await orchestratorPlatformClient.uploadImageBuildContextFile(
       upload.body,

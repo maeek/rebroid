@@ -4,7 +4,7 @@ import { maxAppIconRequestBytes, setInitialStoredAppIcon } from '@/server/app-ic
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { runRouteHandler } from '@/server/http/route-handler'
 import { getOwnedApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
-import { enforceStreamingLimit, StreamingUploadTooLargeError } from '@/server/upload-proxy/streaming-upload'
+import { enforceStreamingLimit } from '@/server/upload-proxy/streaming-upload'
 import { isApplicationId } from '@/shared/model/application-id'
 
 const iconInput = z.object({ icon: z.string().min(1) }).strict()
@@ -17,9 +17,7 @@ export const PATCH = (request: Request, context: { params: Promise<{ id: string 
     const bytes =
       request.body && enforceStreamingLimit(request.body, maxAppIconRequestBytes, 'The app icon is too large.')
     const payload: unknown = await new Response(bytes).json().catch((error: unknown) => {
-      if (error instanceof StreamingUploadTooLargeError) {
-        throw new PublicActionError(error.message, { code: 'validation', status: 413 })
-      }
+      if (error instanceof PublicActionError) throw error
       throw new PublicActionError('An app icon is required.', { code: 'validation', status: 400 })
     })
     const input = iconInput.safeParse(payload)

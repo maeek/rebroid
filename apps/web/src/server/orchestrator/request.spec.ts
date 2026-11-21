@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi, type MockedFunction } from 'vitest'
+import { PublicActionError } from '@/server/errors/public-action-error'
 
 const okResponse = (body: unknown = { ok: true }) =>
   new Response(JSON.stringify(body), {
@@ -113,6 +114,14 @@ describe('orchestrator request helpers', () => {
 
     expect(getFetchInit().headers).toMatchObject({ 'content-type': contentType })
     expect(getFetchInit()).toMatchObject({ body, duplex: 'half' })
+  })
+
+  it('preserves the local validation error when fetch rejects a streaming request body', async () => {
+    const { streamRequest } = await import('./request')
+    const error = new PublicActionError('Upload too large', { code: 'validation', status: 413 })
+    vi.mocked(global.fetch).mockRejectedValue(new TypeError('fetch failed', { cause: error }))
+
+    await expect(streamRequest('/apks', 'POST', new ReadableStream(), 'multipart/form-data')).rejects.toBe(error)
   })
 
   it('uses upstream validation messages when requests fail', async () => {
