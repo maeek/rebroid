@@ -39,7 +39,7 @@ import { sortApps, type AppsListSortMode } from '@/shared/model/applications/app
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { filterGalleryApps, type AppsGalleryOwnership } from '../model/apps-gallery-filter'
-import type { AppsListContextValue, BulkAction, PendingAppAction } from './apps-list-context'
+import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppAction } from './apps-list-context'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
@@ -79,7 +79,9 @@ export const useAppsListController = ({
   const [sortMode, setSortMode] = useState<AppsListSortMode>('name-asc')
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null)
   const [pendingAppAction, setPendingAppAction] = useState<PendingAppAction | null>(null)
-  const [isBulkWorking, setIsBulkWorking] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<BulkAppProgress | null>(null)
+  const bulkInFlight = useRef(false)
+  const isBulkWorking = bulkProgress !== null
   const pendingRefreshOverridesRef = useRef<Map<string, AppsListRefreshOverride>>(new Map())
   const hiddenRemovingIdsRef = useRef<Set<string>>(new Set())
   const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
@@ -185,10 +187,8 @@ export const useAppsListController = ({
     }
   }
 
-  const requestDeletion = async (app: AppDefinition) => {
-    const acknowledgement = unwrapActionResult(
-      await requestApplicationDeletionAction(app.id, settings.removeDataOnDelete)
-    )
+  const requestDeletion = async (app: AppDefinition, removeDataOnDelete: boolean) => {
+    const acknowledgement = unwrapActionResult(await requestApplicationDeletionAction(app.id, removeDataOnDelete))
     if (acknowledgement.deleted) removeApp(app.id)
     else updateApp(optimisticRemovingApp(app), true, app.updatedAt.getTime())
     return app.id
@@ -197,7 +197,7 @@ export const useAppsListController = ({
   const deleteApp = async (app: AppDefinition) => {
     try {
       updateApp(optimisticRemovingApp(app), true)
-      await requestDeletion(app)
+      await requestDeletion(app, settings.removeDataOnDelete)
       notifyRecentAppsUpdated()
     } catch (error) {
       updateApp(app)
@@ -257,94 +257,77 @@ export const useAppsListController = ({
 
   const finishBulkAction = (requestedApps: AppDefinition[], results: PromiseSettledResult<unknown>[]) => {
     const failedIds = requestedApps.filter((_, index) => results[index]?.status === 'rejected').map(app => app.id)
-    setIsBulkWorking(false)
     setBulkAction(null)
     if (failedIds.length > 0) setSelectedIds(new Set(failedIds))
     else exitManageMode()
   }
 
-  const handleBulkStop = async (appsToStop: AppDefinition[]) => {
-    setIsBulkWorking(true)
-    appsToStop.forEach(app => {
-      updateApp(optimisticStoppingApp(app), true)
-    })
+  const confirmBulkAction = async () => {
+    if (!bulkAction || activeBulkApps.length === 0 || bulkInFlight.current) return
+    const requestedApps = activeBulkApps
+    const removeDataOnDelete = settings.removeDataOnDelete
+    const stopping = bulkAction === 'stop'
+    bulkInFlight.current = true
+    setBulkProgress({ apps: requestedApps, removeDataOnDelete, accepted: 0, failed: 0 })
+    const updateProgress = (outcome: 'accepted' | 'failed') => {
+      setBulkProgress(current => current && { ...current, [outcome]: current[outcome] + 1 })
+    }
 
-    const results = await Promise.allSettled(
-      appsToStop.map(async app => {
-        const command = unwrapActionResult(await requestApplicationStopAction(app.id))
-        return applyApplicationPowerAcknowledgement(app, command)
-      })
-    )
+    try {
+      const optimisticApp = stopping ? optimisticStoppingApp : optimisticRemovingApp
+      requestedApps.forEach(app => updateApp(optimisticApp(app), true))
+      const results = await Promise.allSettled(
+        requestedApps.map(async app => {
+          try {
+            if (stopping) {
+              const command = unwrapActionResult(await requestApplicationStopAction(app.id))
+              updateApp(applyApplicationPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
+            } else {
+              await requestDeletion(app, removeDataOnDelete)
+            }
+            updateProgress('accepted')
+            return app.id
+          } catch (error) {
+            updateApp(app)
+            updateProgress('failed')
+            throw error
+          }
+        })
+      )
 
-    results.forEach((result, index) => {
-      const originalApp = appsToStop[index]
-
-      if (!originalApp) {
-        return
-      }
-
-      if (result.status === 'fulfilled') {
-        updateApp(result.value, true, originalApp.updatedAt.getTime())
-        return
-      }
-
-      updateApp(originalApp)
-    })
-
-    toast(summarizeBulkStopAppsResult(results))
-    if (results.some(result => result.status === 'fulfilled')) notifyRecentAppsUpdated()
-
-    finishBulkAction(appsToStop, results)
-  }
-
-  const handleBulkDelete = async (appsToDelete: AppDefinition[]) => {
-    setIsBulkWorking(true)
-    appsToDelete.forEach(app => {
-      updateApp(optimisticRemovingApp(app), true)
-    })
-
-    const results = await Promise.allSettled(appsToDelete.map(requestDeletion))
-    const acceptedIds = fulfilledBulkDeleteAppIds(results)
-    if (acceptedIds.length > 0) notifyRecentAppsUpdated()
-
-    appsToDelete.forEach((app, index) => {
-      if (results[index]?.status === 'rejected') {
-        updateApp(app)
-      }
-    })
-
-    toast(summarizeBulkDeleteAppsResult(results, acceptedIds))
-
-    finishBulkAction(appsToDelete, results)
+      if (results.some(result => result.status === 'fulfilled')) notifyRecentAppsUpdated()
+      toast(
+        stopping
+          ? summarizeBulkStopAppsResult(results)
+          : summarizeBulkDeleteAppsResult(results, fulfilledBulkDeleteAppIds(results))
+      )
+      finishBulkAction(requestedApps, results)
+    } finally {
+      bulkInFlight.current = false
+      setBulkProgress(null)
+    }
   }
 
   const contextValue: AppsListContextValue = {
     activeBulkApps,
     allSelected,
     bulkAction,
+    bulkProgress,
     canStop,
     canDelete,
     closeBulkAction: () => {
-      if (!isBulkWorking) {
+      if (!bulkInFlight.current) {
         setBulkAction(null)
       }
     },
-    confirmBulkAction: async () => {
-      if (bulkAction === 'stop') {
-        await handleBulkStop(activeBulkApps)
-        return
-      }
-
-      if (bulkAction === 'delete') {
-        await handleBulkDelete(activeBulkApps)
-      }
-    },
+    confirmBulkAction,
     deleteApp,
     deletableSelectedCount: deletableSelectedApps.length,
     exitManageMode,
     isBulkWorking,
     isManaging,
     openBulkAction: action => {
+      if (bulkInFlight.current) return
       if (action === 'stop' ? stoppableSelectedApps.length > 0 : deletableSelectedApps.length > 0) {
         setBulkAction(action)
       }

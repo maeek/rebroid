@@ -37,6 +37,7 @@ export const AppsListBulkDialog = () => {
   const {
     activeBulkApps,
     bulkAction,
+    bulkProgress,
     closeBulkAction,
     closePendingAppAction,
     confirmBulkAction,
@@ -48,20 +49,22 @@ export const AppsListBulkDialog = () => {
 
   const selectedAction = bulkAction ?? 'delete'
   const pendingAction = pendingAppAction?.action ?? 'delete'
-  const appCount = activeBulkApps.length
+  const confirmedApps = bulkProgress?.apps ?? activeBulkApps
+  const appCount = confirmedApps.length
 
   return (
     <>
       <ConfirmMutationDialog
         open={bulkAction !== null}
         title={`${dialogActions[selectedAction].verb} ${appCount} selected ${pluralizeApps(appCount)}?`}
-        description={getDescription(selectedAction, removeDataOnDelete, true)}
+        description={getDescription(selectedAction, bulkProgress?.removeDataOnDelete ?? removeDataOnDelete, true)}
         details={
-          appCount > 0 ? { label: 'Selected apps', content: activeBulkApps.map(app => app.name).join(', ') } : undefined
+          appCount > 0 ? { label: 'Selected apps', content: confirmedApps.map(app => app.name).join(', ') } : undefined
         }
         tone={dialogActions[selectedAction].tone}
         confirmLabel={actionLabels[selectedAction].plural}
-        pendingLabel={bulkAction === 'stop' ? 'Stopping…' : 'Deleting…'}
+        confirmDisabled={appCount === 0}
+        pendingLabel={bulkAction === 'stop' ? 'Sending stop requests…' : 'Sending delete requests…'}
         pending={isBulkWorking}
         onOpenChange={open => {
           if (!open) {
@@ -69,7 +72,18 @@ export const AppsListBulkDialog = () => {
           }
         }}
         onConfirm={() => void confirmBulkAction()}
-      />
+      >
+        {bulkProgress ? (
+          <p
+            role='status'
+            aria-atomic='true'
+            className='text-sm tabular-nums text-foreground-muted'
+          >
+            {bulkProgress.accepted} accepted · {appCount - bulkProgress.accepted - bulkProgress.failed} pending ·{' '}
+            {bulkProgress.failed} failed
+          </p>
+        ) : null}
+      </ConfirmMutationDialog>
       <ConfirmMutationDialog
         open={pendingAppAction !== null}
         title={`${dialogActions[pendingAction].verb} ${pendingAppAction?.app.name ?? 'selected app'}?`}

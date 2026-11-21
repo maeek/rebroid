@@ -4,11 +4,18 @@ import type { AppsListSortMode } from '@/shared/model/applications/app-sort'
 
 export type BulkAction = 'stop' | 'delete'
 export type PendingAppAction = { action: BulkAction; app: AppDefinition }
+export type BulkAppProgress = {
+  apps: AppDefinition[]
+  removeDataOnDelete: boolean
+  accepted: number
+  failed: number
+}
 
 export type AppsListContextValue = {
   activeBulkApps: AppDefinition[]
   allSelected: boolean
   bulkAction: BulkAction | null
+  bulkProgress: BulkAppProgress | null
   canStop: boolean
   canDelete: boolean
   closeBulkAction: () => void

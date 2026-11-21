@@ -95,7 +95,7 @@ describe('apps list selection model', () => {
       { status: 'rejected', reason: new Error('failed') }
     ] satisfies PromiseSettledResult<unknown>[]
 
-    expect(summarizeBulkStopAppsResult(fulfilledResults)).toEqual({ title: 'Selected apps stopped' })
+    expect(summarizeBulkStopAppsResult(fulfilledResults)).toEqual({ title: 'Stop requested for selected apps' })
     expect(summarizeBulkStopAppsResult(mixedResults)).toEqual({
       title: 'Some apps could not be stopped',
       description: '1 stop request failed.',

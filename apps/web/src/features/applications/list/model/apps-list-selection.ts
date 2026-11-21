@@ -56,12 +56,12 @@ export const summarizeBulkStopAppsResult = (results: PromiseSettledResult<unknow
   if (failedCount > 0) {
     return {
       title: 'Some apps could not be stopped',
-      description: `${failedCount} stop request failed.`,
+      description: `${failedCount} stop ${failedCount === 1 ? 'request' : 'requests'} failed.`,
       variant: 'danger'
     }
   }
 
-  return { title: 'Selected apps stopped' }
+  return { title: 'Stop requested for selected apps' }
 }
 
 export const summarizeBulkDeleteAppsResult = (
@@ -73,7 +73,7 @@ export const summarizeBulkDeleteAppsResult = (
   if (failedCount > 0) {
     return {
       title: 'Some apps could not be deleted',
-      description: `${failedCount} delete request failed.`,
+      description: `${failedCount} delete ${failedCount === 1 ? 'request' : 'requests'} failed.`,
       variant: 'danger'
     }
   }
