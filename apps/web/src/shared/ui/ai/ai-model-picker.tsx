@@ -3,13 +3,9 @@
 import { useState, type ReactNode } from 'react'
 import { Disclosure, DisclosureSummary } from '@/components/ui/disclosure'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { AiModelCatalogFields } from './ai-model-catalog-fields'
 import { AiModelMenu } from './ai-model-menu'
-import {
-  AiModelPickerHealthFooter,
-  AiModelPickerReadonlyChip,
-  AiModelPickerTrigger,
-  VisionModelFields
-} from './ai-model-picker-parts'
+import { AiModelPickerHealthFooter, AiModelPickerReadonlyChip, AiModelPickerTrigger } from './ai-model-picker-parts'
 import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 
 type CatalogModel = AutomationAiModelCatalogProvider['models'][number]
@@ -110,12 +106,13 @@ export const AiModelPicker = ({
               </DisclosureSummary>
               <div className='grid gap-4 pb-2 pt-3'>
                 {visionCatalog.length > 0 && onVisionProviderChange && onVisionModelChange ? (
-                  <VisionModelFields
-                    visionCatalog={visionCatalog}
-                    selectedVisionProvider={selectedVisionProvider}
-                    selectedVisionModel={selectedVisionModel}
-                    onVisionProviderChange={onVisionProviderChange}
-                    onVisionModelChange={onVisionModelChange}
+                  <AiModelCatalogFields
+                    vision
+                    catalog={visionCatalog}
+                    selectedProvider={selectedVisionProvider}
+                    selectedModel={selectedVisionModel}
+                    onProviderChange={onVisionProviderChange}
+                    onModelChange={onVisionModelChange}
                   />
                 ) : null}
                 {advanced}

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox'
 import { automationActionPresentation } from '@/shared/model/workflow-action-presentation'
-import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
+import { AiModelCatalogFields } from '@/shared/ui/ai/ai-model-catalog-fields'
+import { AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { NumberField, SelectField, TextField } from '../shared/action-fields'
 import { AdvancedActionFields } from '../shared/advanced-action-fields'
@@ -147,19 +148,24 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
         summary={providerId || modelId || visionProviderId || visionModelId ? 'Model overrides' : undefined}
         open={unavailableModels.length > 0 && !modelSelection.isLoadingCatalog}
       >
-        <AiModelPickerFields
-          catalog={modelSelection.primaryCatalog}
-          selectedProvider={modelSelection.selectedProvider}
-          selectedModel={modelSelection.selectedModel}
-          selectedVisionProvider={modelSelection.selectedVisionProvider}
-          selectedVisionModel={modelSelection.selectedVisionModel}
-          visionCatalog={modelSelection.visionCatalog}
-          isLoadingCatalog={modelSelection.isLoadingCatalog}
-          onProviderChange={modelSelection.setProviderId}
-          onModelChange={modelSelection.setModelId}
-          onVisionProviderChange={modelSelection.setVisionProviderId}
-          onVisionModelChange={modelSelection.setVisionModelId}
-        />
+        <div className='grid gap-3'>
+          <AiModelCatalogFields
+            catalog={modelSelection.primaryCatalog}
+            selectedProvider={modelSelection.selectedProvider}
+            selectedModel={modelSelection.selectedModel}
+            isLoadingCatalog={modelSelection.isLoadingCatalog}
+            onProviderChange={modelSelection.setProviderId}
+            onModelChange={modelSelection.setModelId}
+          />
+          <AiModelCatalogFields
+            vision
+            catalog={modelSelection.visionCatalog}
+            selectedProvider={modelSelection.selectedVisionProvider}
+            selectedModel={modelSelection.selectedVisionModel}
+            onProviderChange={modelSelection.setVisionProviderId}
+            onModelChange={modelSelection.setVisionModelId}
+          />
+        </div>
         <AiModelPickerHealthFooter
           health={modelSelection.health}
           isCheckingHealth={modelSelection.isCheckingHealth}
