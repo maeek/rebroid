@@ -4,6 +4,7 @@ export const visibleChatTurnEvents = (turn: ChatTurn) =>
   turn.events.filter(event => event.type !== 'heartbeat' && event.message.trim().length > 0)
 
 export const chatTurnTitle = (turn: ChatTurn) => {
+  if (turn.status === 'waiting-for-history') return 'Waiting for chat history'
   if (turn.status === 'queued') return 'Queued'
   if (turn.status === 'starting') return 'Starting'
   if (turn.status === 'running') return 'Running'

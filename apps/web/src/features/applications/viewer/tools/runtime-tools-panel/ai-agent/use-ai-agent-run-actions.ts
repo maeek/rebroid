@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useConfirmedFeedback } from '@/hooks/use-confirmed-feedback'
 import {
@@ -22,10 +22,12 @@ export const useAiAgentRunActions = ({
   appendRunEvents,
   app,
   conversationVersionRef,
+  historyReady,
   modelIsValid,
   onRunStarted,
   prompt,
   queuedTurn,
+  reloadHistory,
   runSequencesRef,
   selectedModel,
   selectedProvider,
@@ -41,10 +43,12 @@ export const useAiAgentRunActions = ({
   appendRunEvents: AppendRunEvents
   app: AppDefinition
   conversationVersionRef: RefObject<number>
+  historyReady: boolean
   modelIsValid: boolean
   onRunStarted?: (run: AutomationRun) => void
   prompt: string
   queuedTurn: ChatTurn | undefined
+  reloadHistory: () => void
   runSequencesRef: RefObject<Map<string, number>>
   selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
   selectedProvider: AutomationAiModelCatalogProvider | undefined
@@ -60,6 +64,13 @@ export const useAiAgentRunActions = ({
   const [isCanceling, setIsCanceling] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const pendingStart = useRef<Promise<AutomationRun> | null>(null)
+  const waitingStart = useRef<{
+    id: string
+    version: number
+    draft?: string
+    profileMode: AppDefinition['profileMode']
+    profileName: AppDefinition['profileName']
+  } | null>(null)
   const clearing = useRef(false)
   const cancelingRunIdRef = useRef<string | null>(null)
 
@@ -133,6 +144,30 @@ export const useAiAgentRunActions = ({
     ]
   )
 
+  const sendTurn = async (turn: ChatTurn, version: number, draft?: string) => {
+    const accepted = await startTurn(turn, conversationBeforeTurn(turn.id, turns))
+    if (version !== submissionVersion.current) return
+    if (accepted) submission.confirm('Message sent')
+    else if (accepted === false && draft !== undefined) setPrompt(current => current || draft)
+  }
+
+  const waitingTurn = turns.find(turn => turn.status === 'waiting-for-history')
+  const resumeSend = useEffectEvent(() => {
+    const waiting = waitingStart.current
+    if (!waiting || waitingTurn?.id !== waiting.id || clearing.current) return
+    waitingStart.current = null
+    const profileChanged = waiting.profileMode !== app.profileMode || waiting.profileName !== app.profileName
+    if (activeTurn || pendingStart.current || !app.running || !modelIsValid || profileChanged) {
+      setTurns(current => current.map(turn => (turn.id === waiting.id ? { ...turn, status: 'queued' } : turn)))
+      return
+    }
+    void sendTurn(waitingTurn, waiting.version, waiting.draft)
+  })
+
+  useEffect(() => {
+    if (historyReady && waitingTurn) resumeSend()
+  }, [historyReady, waitingTurn])
+
   const submitPrompt = async (
     promptText: string,
     options: { rawShellPolicy?: ChatTurn['rawShellPolicy']; clearComposer?: boolean } = {}
@@ -141,32 +176,38 @@ export const useAiAgentRunActions = ({
     if (!app.running || !text || !modelIsValid || clearing.current) return
     submission.reset()
     const version = ++submissionVersion.current
-    const shouldQueue = Boolean(activeTurn || queuedTurn || pendingStart.current)
+    const shouldQueue = Boolean(activeTurn || queuedTurn || pendingStart.current || waitingStart.current)
+    let status: ChatTurn['status'] = 'starting'
+    if (shouldQueue) status = 'queued'
+    else if (!historyReady) status = 'waiting-for-history'
     const nextTurn = createPromptTurn({
       id: crypto.randomUUID(),
       prompt: text,
-      shouldQueue,
+      status,
       rawShellPolicy: options.rawShellPolicy
     })
+    const draft = options.clearComposer ? promptText : undefined
+    if (status === 'waiting-for-history') {
+      waitingStart.current = {
+        id: nextTurn.id,
+        version,
+        draft,
+        profileMode: app.profileMode,
+        profileName: app.profileName
+      }
+    }
     setTurns(current => [...current, nextTurn])
     if (options.clearComposer) setPrompt('')
-    if (!shouldQueue) {
-      const accepted = await startTurn(nextTurn, conversationBeforeTurn(nextTurn.id, turns))
-      if (version !== submissionVersion.current) return
-      if (accepted) submission.confirm('Message sent')
-      else if (accepted === false && options.clearComposer) {
-        setPrompt(current => current || promptText)
-      }
-    } else {
-      submission.confirm('Task queued')
-    }
+    if (status === 'starting') await sendTurn(nextTurn, version, draft)
+    if (status === 'queued') submission.confirm('Task queued')
   }
 
   const submit = async () => {
     await submitPrompt(prompt, { clearComposer: true })
   }
 
-  const canRunQueuedTurn = app.running && modelIsValid && !isClearing && !activeTurn && Boolean(queuedTurn)
+  const canRunQueuedTurn =
+    historyReady && app.running && modelIsValid && !isClearing && !activeTurn && !waitingTurn && Boolean(queuedTurn)
   const runQueuedTurn = async () => {
     if (!canRunQueuedTurn || !queuedTurn) return
     await startTurn(queuedTurn, conversationBeforeTurn(queuedTurn.id, turns))
@@ -225,6 +266,7 @@ export const useAiAgentRunActions = ({
   const clearConversation = async () => {
     if (clearing.current) return
     clearing.current = true
+    waitingStart.current = null
     submissionVersion.current += 1
     submission.reset()
     conversationVersionRef.current += 1
@@ -240,6 +282,7 @@ export const useAiAgentRunActions = ({
     } finally {
       clearing.current = false
       setIsClearing(false)
+      if (!historyReady) reloadHistory()
     }
   }
 

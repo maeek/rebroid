@@ -82,7 +82,7 @@ describe('ai agent chat session model', () => {
     const stale = turn({ id: 'stale', run: run({ id: 'run-1' }), prompt: 'Old' })
     const fresh = turn({ id: 'fresh', run: run({ id: 'run-1' }), prompt: 'New' })
 
-    expect(mergeHistoryTurns([draft, stale], [fresh])).toEqual([draft, fresh])
+    expect(mergeHistoryTurns([draft, stale], [fresh])).toEqual([fresh, draft])
   })
 
   it('finds the latest active history turn', () => {
@@ -125,16 +125,16 @@ describe('ai agent chat session model', () => {
   })
 
   it('creates prompt turns with the requested queue state', () => {
-    expect(createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: false })).toMatchObject({
+    expect(createPromptTurn({ id: 'turn', prompt: 'Go', status: 'starting' })).toMatchObject({
       id: 'turn',
       status: 'starting'
     })
-    expect(createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: true })).toMatchObject({
+    expect(createPromptTurn({ id: 'turn', prompt: 'Go', status: 'queued' })).toMatchObject({
       id: 'turn',
       status: 'queued'
     })
     expect(
-      createPromptTurn({ id: 'turn', prompt: 'Go', shouldQueue: false, rawShellPolicy: 'allowlisted' })
+      createPromptTurn({ id: 'turn', prompt: 'Go', status: 'starting', rawShellPolicy: 'allowlisted' })
     ).toMatchObject({ rawShellPolicy: 'allowlisted' })
   })
 })

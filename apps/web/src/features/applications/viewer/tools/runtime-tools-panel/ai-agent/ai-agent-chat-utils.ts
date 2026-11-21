@@ -10,7 +10,8 @@ export const MAX_AD_HOC_AI_TIMEOUT_MINUTES = AUTOMATION_AI_RUN_MAX_TIMEOUT_MS / 
 export const clampAdHocTimeoutMinutes = (value: number) =>
   Math.min(MAX_AD_HOC_AI_TIMEOUT_MINUTES, Math.max(1, Math.trunc(value || 1)))
 
-export type ChatTurnStatus = 'queued' | 'starting' | 'running' | 'canceling' | 'success' | 'failed' | 'canceled'
+export type ChatTurnStatus =
+  'waiting-for-history' | 'queued' | 'starting' | 'running' | 'canceling' | 'success' | 'failed' | 'canceled'
 
 export interface ChatTurn {
   id: string

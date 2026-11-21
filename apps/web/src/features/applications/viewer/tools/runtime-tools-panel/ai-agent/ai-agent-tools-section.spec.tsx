@@ -67,6 +67,8 @@ const chatSession = (
   clearConversation: () => Promise.resolve(undefined),
   error: null,
   health: null,
+  historyLoadFailed: false,
+  retryHistory: vi.fn(),
   isCanceling: false,
   isCheckingHealth: false,
   isClearing: false,
@@ -110,6 +112,23 @@ describe('AiAgentToolsSection', () => {
     expect(screen.getByLabelText('Loading AI chat history')).toBeTruthy()
     expect(screen.getByPlaceholderText('Describe a task for this Android device…')).toBeTruthy()
     expect(screen.getByText('No model')).toBeTruthy()
+  })
+
+  it('keeps the submitted prompt visible during history loading and a failed history read', () => {
+    const retryHistory = vi.fn()
+    const turns: ReturnType<typeof useAiAgentChatSession>['turns'] = [
+      { id: 'waiting', prompt: 'Open settings', status: 'waiting-for-history', run: null, events: [] }
+    ]
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ isLoadingHistory: true, turns, retryHistory }))
+    const view = render(<AiAgentToolsSection app={app} />)
+    expect(screen.getByText('Open settings')).toBeVisible()
+    expect(screen.getByText('Waiting for chat history')).toBeVisible()
+
+    vi.mocked(useAiAgentChatSession).mockReturnValue(chatSession({ historyLoadFailed: true, turns, retryHistory }))
+    view.rerender(<AiAgentToolsSection app={app} />)
+    expect(screen.getByText('Open settings')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry history' }))
+    expect(retryHistory).toHaveBeenCalledOnce()
   })
 
   it('shows an empty ready state when there are no turns', () => {

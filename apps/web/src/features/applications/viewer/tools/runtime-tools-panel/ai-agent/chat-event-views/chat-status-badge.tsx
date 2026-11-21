@@ -27,6 +27,6 @@ export const ChatStatusBadge = ({
         !blocked && (status === 'running' || status === 'starting') ? 'motion-safe:animate-pulse' : ''
       )}
     />
-    {children}
+    <span aria-live='polite'>{children}</span>
   </Badge>
 )

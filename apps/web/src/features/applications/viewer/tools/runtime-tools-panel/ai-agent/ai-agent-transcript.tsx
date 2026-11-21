@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react'
 import { IconArrowDown } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
+import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChatTurnView } from './ai-agent-chat-events'
 import type { ChatTurn } from './ai-agent-chat-utils'
@@ -42,6 +43,7 @@ export const AiAgentTranscript = ({
   canSaveWorkflow,
   draftingRunId,
   isLoadingHistory,
+  historyLoadFailed = false,
   onApproveEscalation,
   onSaveWorkflow,
   onTranscriptScroll,
@@ -52,11 +54,13 @@ export const AiAgentTranscript = ({
   canRunQueuedTurn = false,
   suggestions,
   isAtBottom = true,
-  onScrollToLatest
+  onScrollToLatest,
+  onRetryHistory
 }: {
   canSaveWorkflow: boolean
   draftingRunId: string | null
   isLoadingHistory: boolean
+  historyLoadFailed?: boolean
   onApproveEscalation: (program: string) => void
   onSaveWorkflow: (turn: ChatTurn) => void
   onTranscriptScroll: () => void
@@ -68,6 +72,7 @@ export const AiAgentTranscript = ({
   suggestions?: ReactNode
   isAtBottom?: boolean
   onScrollToLatest?: () => void
+  onRetryHistory?: () => void
 }) => (
   <div className='relative flex min-h-0 flex-1 flex-col'>
     <div
@@ -82,28 +87,46 @@ export const AiAgentTranscript = ({
     >
       <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-1'>
         {isLoadingHistory ? <AiAgentTranscriptSkeleton /> : null}
-        {!isLoadingHistory && turns.length === 0 ? <AiAgentEmptyTranscript suggestions={suggestions} /> : null}
-        {!isLoadingHistory
-          ? turns.map(turn => {
-              let queueMessage = 'Queued behind earlier tasks.'
-              if (turn.id === nextQueuedId) {
-                if (activeTask) queueMessage = 'Queued behind the current task.'
-                else if (canRunQueuedTurn) queueMessage = 'Ready to run. Choose Run next task when you’re ready.'
-                else queueMessage = 'This task is next in the queue.'
-              }
-              return (
-                <ChatTurnView
-                  key={turn.id}
-                  turn={turn}
-                  queueMessage={queueMessage}
-                  canSaveWorkflow={canSaveWorkflow}
-                  isSavingWorkflow={draftingRunId === turn.run?.id}
-                  onApproveEscalation={onApproveEscalation}
-                  onSaveWorkflow={onSaveWorkflow}
-                />
-              )
-            })
-          : null}
+        {historyLoadFailed ? (
+          <Notice
+            tone='warning'
+            title='Chat history could not be loaded'
+            description={turns.length > 0 ? 'Your pending messages are still here.' : undefined}
+            actions={
+              onRetryHistory ? (
+                <Button
+                  variant='secondary'
+                  size='sm'
+                  onClick={onRetryHistory}
+                >
+                  Retry history
+                </Button>
+              ) : null
+            }
+          />
+        ) : null}
+        {!isLoadingHistory && !historyLoadFailed && turns.length === 0 ? (
+          <AiAgentEmptyTranscript suggestions={suggestions} />
+        ) : null}
+        {turns.map(turn => {
+          let queueMessage = 'Queued behind earlier tasks.'
+          if (turn.id === nextQueuedId) {
+            if (activeTask) queueMessage = 'Queued behind the current task.'
+            else if (canRunQueuedTurn) queueMessage = 'Ready to run. Choose Run next task when you’re ready.'
+            else queueMessage = 'This task is next in the queue.'
+          }
+          return (
+            <ChatTurnView
+              key={turn.id}
+              turn={turn}
+              queueMessage={queueMessage}
+              canSaveWorkflow={canSaveWorkflow}
+              isSavingWorkflow={draftingRunId === turn.run?.id}
+              onApproveEscalation={onApproveEscalation}
+              onSaveWorkflow={onSaveWorkflow}
+            />
+          )
+        })}
       </div>
     </div>
     {!isAtBottom && onScrollToLatest ? (

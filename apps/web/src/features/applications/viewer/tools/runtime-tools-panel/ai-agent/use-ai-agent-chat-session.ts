@@ -47,11 +47,10 @@ export const useAiAgentChatSession = ({
   const activeTurn = findActiveChatTurn(turns)
   const queuedTurn = turns.find(turn => turn.status === 'queued')
 
-  const isLoadingHistory = useAiAgentHistory({
+  const { historyStatus, retryHistory } = useAiAgentHistory({
     appId: app.id,
     conversationVersionRef,
     runSequencesRef,
-    setError,
     setTurns
   })
   const { isAtBottom, onTranscriptScroll, scrollToLatest, transcriptRef } = useAiAgentTranscriptScroll(turns)
@@ -82,9 +81,11 @@ export const useAiAgentChatSession = ({
     appendRunEvents,
     app,
     conversationVersionRef,
-    modelIsValid: modelIsValid && !isLoadingHistory,
+    historyReady: historyStatus === 'ready',
+    modelIsValid,
     onRunStarted,
     prompt,
+    reloadHistory: retryHistory,
     queuedTurn,
     runSequencesRef,
     selectedModel,
@@ -112,7 +113,9 @@ export const useAiAgentChatSession = ({
     isCanceling,
     isCheckingHealth,
     isClearing,
-    isLoadingHistory,
+    isLoadingHistory: historyStatus === 'loading',
+    historyLoadFailed: historyStatus === 'failed',
+    retryHistory,
     isAtBottom,
     primaryCatalog,
     prompt,

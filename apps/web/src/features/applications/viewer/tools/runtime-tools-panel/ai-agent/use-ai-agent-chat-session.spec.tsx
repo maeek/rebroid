@@ -96,6 +96,65 @@ describe('useAiAgentChatSession', () => {
     })
   })
 
+  it('holds the first Send locally and dispatches it with restored context after a history retry', async () => {
+    type History = Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>
+    const initial = Promise.withResolvers<History>()
+    const retry = Promise.withResolvers<History>()
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction)
+      .mockReturnValueOnce(initial.promise)
+      .mockReturnValueOnce(retry.promise)
+    vi.mocked(actions.runAdHocAiAutomationAction).mockResolvedValue({ ...run, id: 'new-run' })
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+
+    act(() => result.current.setPrompt('Open settings'))
+    await act(() => result.current.submit())
+    expect(result.current.turns.map(turn => [turn.prompt, turn.status])).toEqual([
+      ['Open settings', 'waiting-for-history']
+    ])
+    expect(result.current.prompt).toBe('')
+    expect(actions.runAdHocAiAutomationAction).not.toHaveBeenCalled()
+
+    await act(() => {
+      initial.reject(new Error('Unavailable'))
+      return initial.promise.catch(() => undefined)
+    })
+    expect(result.current.historyLoadFailed).toBe(true)
+    expect(result.current.turns[0]?.prompt).toBe('Open settings')
+
+    act(() => result.current.retryHistory())
+    await act(() => {
+      retry.resolve([{ run, events: [userEvent] }])
+      return retry.promise
+    })
+    await waitFor(() => expect(actions.runAdHocAiAutomationAction).toHaveBeenCalledTimes(1))
+    const sent = vi.mocked(actions.runAdHocAiAutomationAction).mock.lastCall?.[0]
+    expect(sent?.prompt).toBe('Open settings')
+    expect(sent?.conversation).toEqual([{ role: 'user', content: 'Find Downloads' }])
+    expect(result.current.turns.map(turn => turn.prompt)).toEqual(['Find Downloads', 'Open settings'])
+  })
+
+  it('keeps local submission order and requires Run next when history restores an active task', async () => {
+    const history = Promise.withResolvers<Awaited<ReturnType<typeof actions.listAdHocAiAutomationRunHistoryAction>>>()
+    vi.mocked(actions.listAdHocAiAutomationRunHistoryAction).mockReturnValueOnce(history.promise)
+    const { result } = renderHook(() => useAiAgentChatSession({ app }))
+
+    await act(async () => {
+      await result.current.submitPrompt('First')
+      await result.current.submitPrompt('Second')
+    })
+    await act(() => {
+      history.resolve([{ run: { ...run, status: 'running' }, events: [userEvent] }])
+      return history.promise
+    })
+    expect(result.current.turns.map(turn => [turn.prompt, turn.status])).toEqual([
+      ['Find Downloads', 'running'],
+      ['First', 'queued'],
+      ['Second', 'queued']
+    ])
+    expect(result.current.canRunQueuedTurn).toBe(false)
+    expect(actions.runAdHocAiAutomationAction).not.toHaveBeenCalled()
+  })
+
   it('restores a failed prompt without reporting acceptance', async () => {
     vi.mocked(actions.runAdHocAiAutomationAction).mockRejectedValue(new Error('Unable to start'))
     const { result } = renderHook(() => useAiAgentChatSession({ app }))

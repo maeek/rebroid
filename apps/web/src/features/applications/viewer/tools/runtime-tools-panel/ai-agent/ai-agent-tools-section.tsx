@@ -64,6 +64,7 @@ export const AiAgentConversation = ({
     clearConversation,
     error,
     health,
+    historyLoadFailed,
     isCanceling,
     isCheckingHealth,
     isClearing,
@@ -75,6 +76,7 @@ export const AiAgentConversation = ({
     onTranscriptScroll,
     scrollToLatest,
     recheckHealth,
+    retryHistory,
     runQueuedTurn,
     selectedModel,
     selectedProvider,
@@ -110,7 +112,7 @@ export const AiAgentConversation = ({
   )
 
   const suggestions = useAiAgentPromptSuggestions({
-    visible: !isLoadingHistory && !activeTurn && turns.length === 0,
+    visible: !isLoadingHistory && !historyLoadFailed && !activeTurn && turns.length === 0,
     app,
     contextualSuggestionsEnabled,
     fallbackSuggestions,
@@ -166,7 +168,8 @@ export const AiAgentConversation = ({
 
   const canceling = isCanceling || activeTurn?.status === 'canceling'
   const starting = activeTurn?.status === 'starting' && !showCancelRun
-  const sendLabel = queuedTurn ? 'Queue message' : 'Send message'
+  const sendLabel =
+    queuedTurn || turns.some(turn => turn.status === 'waiting-for-history') ? 'Queue message' : 'Send message'
   let actionLabel = sendLabel
   if (activeTurn) actionLabel = 'Stop'
   if (starting) actionLabel = 'Starting task'
@@ -191,6 +194,8 @@ export const AiAgentConversation = ({
           canSaveWorkflow={canSaveWorkflow && Boolean(planning.provider && planning.model && draftWorkflowFromRun)}
           draftingRunId={draftingRunId}
           isLoadingHistory={isLoadingHistory}
+          historyLoadFailed={historyLoadFailed}
+          onRetryHistory={retryHistory}
           onApproveEscalation={approveEscalation}
           onSaveWorkflow={completedTurn => void saveTurnAsWorkflow(completedTurn)}
           onTranscriptScroll={onTranscriptScroll}

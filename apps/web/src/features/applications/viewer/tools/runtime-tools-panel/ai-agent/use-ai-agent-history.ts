@@ -12,23 +12,27 @@ export const useAiAgentHistory = ({
   appId,
   conversationVersionRef,
   runSequencesRef,
-  setError,
   setTurns
 }: {
   appId: string
   conversationVersionRef: RefObject<number>
   runSequencesRef: RefObject<Map<string, number>>
-  setError: (error: string | null) => void
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
 }) => {
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
+  const [attempt, setAttempt] = useState(0)
+
+  const retryHistory = () => {
+    setStatus('loading')
+    setAttempt(current => current + 1)
+  }
 
   useEffect(() => {
     let cancelled = false
     const version = conversationVersionRef.current
 
     const loadHistory = async () => {
-      setIsLoadingHistory(true)
+      setStatus('loading')
       try {
         const history = await listAdHocAiAutomationRunHistoryAction(appId, 20)
         const loadedTurns = history.map(item => chatTurnFromRun(item.run, item.events))
@@ -38,13 +42,10 @@ export const useAiAgentHistory = ({
           runSequencesRef.current.set(runId, Math.max(sequence, runSequencesRef.current.get(runId) ?? 0))
         }
         setTurns(current => mergeHistoryTurns(current, orderedTurns))
-      } catch (historyError) {
+        setStatus('ready')
+      } catch {
         if (cancelled || version !== conversationVersionRef.current) return
-        setError(historyError instanceof Error ? historyError.message : 'AI chat history could not be loaded.')
-      } finally {
-        if (!cancelled) {
-          setIsLoadingHistory(false)
-        }
+        setStatus('failed')
       }
     }
 
@@ -53,7 +54,7 @@ export const useAiAgentHistory = ({
     return () => {
       cancelled = true
     }
-  }, [appId, conversationVersionRef, runSequencesRef, setError, setTurns])
+  }, [appId, attempt, conversationVersionRef, runSequencesRef, setTurns])
 
-  return isLoadingHistory
+  return { historyStatus: status, retryHistory }
 }

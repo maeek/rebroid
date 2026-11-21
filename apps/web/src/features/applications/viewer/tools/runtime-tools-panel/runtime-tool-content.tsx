@@ -38,6 +38,7 @@ export const RuntimeToolContent = ({
   if (toolId === 'ai-agent') {
     return (
       <AiAgentToolsSection
+        key={app.id}
         app={app}
         canSaveWorkflow={isFeatureEnabled('feature.workflows') && hasPermission(permissions, 'automations:manage')}
         className={sectionClassName}

@@ -29,7 +29,7 @@ export const conversationBeforeTurn = (
   const priorTurns = index === -1 ? turns : turns.slice(0, index)
   return priorTurns
     .flatMap(turn => {
-      if (turn.status === 'queued') return []
+      if (turn.status === 'queued' || turn.status === 'waiting-for-history') return []
       const assistant = lastAssistantText(turn)
       return [
         { role: 'user' as const, content: turn.prompt },

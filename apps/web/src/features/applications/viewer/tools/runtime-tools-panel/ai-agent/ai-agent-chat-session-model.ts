@@ -32,7 +32,7 @@ export const mergeHistoryTurns = (current: ChatTurn[], history: ChatTurn[]) => {
     byRunId.set(turn.run.id, mergeRunEventsIntoTurns([latest], turn.run.id, [...loaded.events, ...turn.events])[0])
   }
   const loadedIds = new Set([...byRunId.values()].map(turn => turn.id))
-  return [...current.filter(turn => !turn.run && !loadedIds.has(turn.id)), ...byRunId.values()]
+  return [...byRunId.values(), ...current.filter(turn => !turn.run && !loadedIds.has(turn.id))]
 }
 
 export const latestEventSequence = (fallbackSequence: number, events: AutomationRunEvent[]) =>
@@ -63,17 +63,17 @@ export const findTerminalRunStatus = (events: AutomationRunEvent[]) =>
 export const createPromptTurn = ({
   id,
   prompt,
-  shouldQueue,
+  status,
   rawShellPolicy = 'deny'
 }: {
   id: string
   prompt: string
-  shouldQueue: boolean
+  status: 'queued' | 'starting' | 'waiting-for-history'
   rawShellPolicy?: ChatTurn['rawShellPolicy']
 }): ChatTurn => ({
   id,
   prompt,
-  status: shouldQueue ? 'queued' : 'starting',
+  status,
   run: null,
   events: [],
   rawShellPolicy

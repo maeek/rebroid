@@ -113,6 +113,8 @@ export const AiAgentPreview = () => {
         isCheckingHealth: false,
         isClearing: false,
         isLoadingHistory: state === 'loading',
+        historyLoadFailed: false,
+        retryHistory: noop,
         primaryCatalog: model ? [provider] : [],
         prompt,
         queuedTurn,
