@@ -82,14 +82,6 @@ export interface CreateDisplaySurfaceBody {
   dpi?: number;
 }
 
-export interface DisplayActionBody {
-  command?: string;
-}
-
-export interface DisplayClipboardBody {
-  text?: string;
-}
-
 export type DisplayControlRequest =
   | { id?: string; type: "action"; command?: string }
   | ({ id?: string; type: "keyboard" } & KeyboardControlPayload)

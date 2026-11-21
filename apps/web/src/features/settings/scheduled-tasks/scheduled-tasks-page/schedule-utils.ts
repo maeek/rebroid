@@ -5,15 +5,12 @@ import {
   defaultSchedule,
   scheduleLabel,
   scheduleToCron,
-  type ScheduleDraft,
   weekdays
 } from '@/shared/model/schedule/schedule-format'
 import type { FormState } from '@/features/settings/scheduled-tasks/scheduled-tasks-page/types'
 import type { ScheduledTask, ScheduledTaskActionType } from '@/shared/contracts/scheduled-task'
 
 export { cronToSchedule, dateLabel, defaultSchedule, scheduleLabel, scheduleToCron, weekdays }
-
-export type { ScheduleDraft }
 
 export const actionNeedsDanglingOnly = (type: ScheduledTaskActionType) => type === 'prune_images'
 

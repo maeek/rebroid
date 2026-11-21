@@ -21,45 +21,6 @@ export type SavedApplicationProfiles = ReturnType<typeof loadSavedApplicationPro
 
 export type SetSavedProfiles = (profiles: SavedApplicationProfiles) => void
 
-export type RuntimePowerControlsProps = {
-  app?: AppDefinition
-  canRunPrimary: boolean
-  isBusy: boolean
-  isRunningAction: boolean
-  menuActions: RuntimeMenuAction[]
-  menuDisabled: boolean
-  primaryVariant: 'primary' | 'secondary'
-  primaryLabel: string
-  primaryIcon: ReactNode
-  onPrimaryAction: () => void
-}
-
-export type StartProfileDialogProps = {
-  app?: AppDefinition
-  open: boolean
-  profileMode: ApplicationProfileMode
-  profileName: string
-  savedProfiles: SavedApplicationProfiles
-  isRunningAction: boolean
-  onOpenChange: (open: boolean) => void
-  onModeChange: (mode: ApplicationProfileMode) => void
-  onNameChange: (name: string) => void
-  onStart: () => void
-}
-
-export type RuntimePowerDialogsProps = StartProfileDialogProps & {
-  appName?: string
-  dialogDisabled: boolean
-  restartDialogOpen: boolean
-  stopDialogOpen: boolean
-  isRestartingAction: boolean
-  isStoppingAction: boolean
-  onRestartDialogOpenChange: (open: boolean) => void
-  onStopDialogOpenChange: (open: boolean) => void
-  onRestartConfirm: () => void
-  onStopConfirm: () => void
-}
-
 export type PowerActionRuntimeHandlersOptions = {
   app?: AppDefinition
   canRestart: boolean

@@ -60,15 +60,6 @@ export type TouchPoint = {
   y: number;
 };
 
-export type DisplayDecoder = {
-  appendVideoFrame: (
-    frame: import("./media-frame.js").ViewerMediaFrame,
-  ) => Promise<void> | void;
-  reset: () => void;
-  hasFrames: () => boolean;
-  debugState: () => JsonRecord;
-};
-
 export type DisplayTransport = {
   connect: () => Promise<void>;
   scheduleReconnect: () => void;

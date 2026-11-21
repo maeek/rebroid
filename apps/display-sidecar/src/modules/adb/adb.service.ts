@@ -41,14 +41,6 @@ export interface UiDumpDiagnostics {
   rawNodeCount: number;
 }
 
-export interface UiDumpResult {
-  status: "available" | "failed";
-  xml?: string;
-  error?: string;
-  diagnostics?: UiDumpDiagnostics;
-  attempts: UiDumpDiagnostics[];
-}
-
 const KEY_EVENTS: Partial<Record<ViewerCommand, string>> = {
   back: "KEYCODE_BACK",
   home: "KEYCODE_HOME",
