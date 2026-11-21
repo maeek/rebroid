@@ -5,7 +5,6 @@ import 'server-only'
 import { freshWebSchema, webSchemaVersion } from './schema'
 
 let database: Database.Database | undefined
-let openedPath: string | undefined
 
 const databasePath = () =>
   process.env.WEB_DATABASE_PATH || join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'web.sqlite')
@@ -24,29 +23,35 @@ const incompatibleSchemaError = (version: number) =>
 
 export const getDatabase = () => {
   const path = databasePath()
-  if (database && openedPath === path) return database
+  if (database?.open && database.name === path) return database
 
-  database?.close()
   mkdirSync(dirname(path), { recursive: true })
   const client = new Database(path)
-  client.pragma('journal_mode = WAL')
-  client.pragma('foreign_keys = ON')
-  const version = client.pragma('user_version', { simple: true }) as number
-
-  if (version === 0 && applicationTableCount(client) === 0) {
-    client.exec(freshWebSchema)
-  } else if (version !== webSchemaVersion) {
+  try {
+    client.pragma('journal_mode = WAL')
+    client.pragma('foreign_keys = ON')
+    const readVersion = () => client.pragma('user_version', { simple: true }) as number
+    if (readVersion() !== webSchemaVersion) {
+      client
+        .transaction(() => {
+          const version = readVersion()
+          if (version === webSchemaVersion) return
+          if (version !== 0 || applicationTableCount(client) !== 0) throw incompatibleSchemaError(version)
+          client.exec(freshWebSchema)
+        })
+        .immediate()
+    }
+  } catch (error) {
     client.close()
-    throw incompatibleSchemaError(version)
+    throw error
   }
 
+  database?.close()
   database = client
-  openedPath = path
   return client
 }
 
 export const resetDatabaseForTests = () => {
   database?.close()
   database = undefined
-  openedPath = undefined
 }

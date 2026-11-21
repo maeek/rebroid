@@ -74,6 +74,33 @@ describe('fresh web database', () => {
     expect(() => getDatabase()).toThrow('pnpm reset:all-state -- --execute')
   })
 
+  it('rolls back an interrupted schema creation and can retry', () => {
+    const probe = new Database(process.env.WEB_DATABASE_PATH)
+    try {
+      probe.exec('CREATE VIEW users AS SELECT 1 AS id')
+      expect(() => getDatabase()).toThrow()
+      expect(probe.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all()).toEqual([])
+      probe.exec('DROP VIEW users')
+      expect(getDatabase().prepare('SELECT COUNT(*) FROM users').pluck().get()).toBe(0)
+    } finally {
+      probe.close()
+    }
+  })
+
+  it('keeps the previous database usable when switching paths fails', () => {
+    const original = process.env.WEB_DATABASE_PATH!
+    const first = getDatabase()
+    process.env.WEB_DATABASE_PATH = join(tempDirectory, 'other.sqlite')
+    const legacy = new Database(process.env.WEB_DATABASE_PATH)
+    legacy.pragma('user_version = 2')
+    legacy.close()
+
+    expect(() => getDatabase()).toThrow('Unsupported web database schema version 2')
+    process.env.WEB_DATABASE_PATH = original
+    expect(getDatabase()).toBe(first)
+    expect(getDatabase().prepare('SELECT 1').pluck().get()).toBe(1)
+  })
+
   it('stores settings transactionally', async () => {
     await Promise.all([
       saveWebSettings({ removeDataOnDelete: false }),
