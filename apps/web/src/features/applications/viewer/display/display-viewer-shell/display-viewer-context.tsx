@@ -188,7 +188,7 @@ export const useDisplayViewerSurface = (surface: DisplayViewerSurface) => {
   }
 }
 
-export const useDisplayViewerControls = (surfaceId?: string) => {
+export const useDisplayViewerControls = () => {
   const {
     activeSurface,
     applicationId,
@@ -199,12 +199,14 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     keyboardCaptureEnabled,
     orderedSurfaces,
     setActiveSurfaceId,
+    streamStatuses,
     surfaceViewportElementsRef,
     toggleFullscreen,
     toggleKeyboardCapture,
-    viewerActions
+    viewerActions,
+    viewerRetry
   } = useDisplayViewerContext()
-  const surface = orderedSurfaces.find(item => item.id === surfaceId) ?? activeSurface ?? orderedSurfaces[0]
+  const surface = activeSurface ?? orderedSurfaces[0]
 
   const toggleSurfaceFullscreen = () => {
     if (!surface) {
@@ -224,6 +226,8 @@ export const useDisplayViewerControls = (surfaceId?: string) => {
     keyboardCaptureEnabled,
     runtimeAvailable: controlsEnabled,
     surfaceId: surface?.id,
+    frameKey: surface ? `${surface.src}:${viewerRetry.frameGenerations[surface.id] ?? 0}` : undefined,
+    streamBlocked: Boolean(surface && streamStatuses[surface.id]?.blocking),
     onCaptureScreenshot: viewerActions.captureScreenshot,
     onOpenPopout: surface ? () => openViewerPopout(applicationId, surface) : undefined,
     onToggleFullscreen: toggleSurfaceFullscreen,

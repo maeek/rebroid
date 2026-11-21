@@ -3,6 +3,8 @@ import type { ApplicationViewerControlCommand } from '@/shared/contracts/applica
 
 export type SendControl = (command: ApplicationViewerControlCommand) => void
 
+export type ControlCommandState = (command: ApplicationViewerControlCommand) => boolean
+
 export type ControlIconRenderer = (command: ApplicationViewerControlCommand, icon: ReactNode) => ReactNode
 
 export type IconControl = {

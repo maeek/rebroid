@@ -22,6 +22,8 @@ export const StandardViewerControls = () => {
     canCaptureScreenshot,
     canControl,
     controlsDisabled,
+    commandDisabled,
+    isCommandPending,
     controlIcon,
     isCapturing,
     keyboardCaptureEnabled,
@@ -41,7 +43,8 @@ export const StandardViewerControls = () => {
         buttonClassName={standardControlButtonClassName}
         className={standardControlGroupClassName}
         controls={navigationControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
@@ -49,7 +52,8 @@ export const StandardViewerControls = () => {
         buttonClassName={standardControlButtonClassName}
         className={standardControlGroupClassName}
         controls={volumeControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
@@ -58,7 +62,8 @@ export const StandardViewerControls = () => {
         buttonVariant='secondary'
         className='contents'
         controls={displayControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
@@ -70,7 +75,8 @@ export const StandardViewerControls = () => {
       />
       <AndroidPanelsMenu
         buttonClassName={standardControlButtonClassName}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         sendControl={sendControl}
       />
       <Visible when={runtimeAvailable && canCaptureScreenshot}>

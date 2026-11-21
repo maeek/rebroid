@@ -13,19 +13,22 @@ import { AndroidPanelsMenu } from '@/features/applications/viewer/display/viewer
 export const MiniPlayerToolbar = ({
   appId,
   surfaceId,
-  disabled
+  disabled,
+  frameKey
 }: {
   appId: string
   surfaceId: string
   disabled: boolean
+  frameKey: string
 }) => {
-  const { controlsDisabled, pendingCommand, sendControl } = useViewerControlSender({
+  const { commandDisabled, isCommandPending, sendControl } = useViewerControlSender({
     appId,
     surfaceId,
+    frameKey,
     baseControlsDisabled: disabled
   })
   const controlIcon = (command: Parameters<typeof sendControl>[0], icon: React.ReactNode) =>
-    renderControlIcon(pendingCommand, command, icon)
+    renderControlIcon(isCommandPending(command), icon)
   return (
     <div
       role='group'
@@ -35,26 +38,30 @@ export const MiniPlayerToolbar = ({
       <IconCommandGroup
         className='flex flex-col items-center rounded-control bg-control p-0.5'
         controls={navigationControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
       <IconCommandGroup
         className='flex flex-col items-center rounded-control bg-control p-0.5'
         controls={volumeControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
       <IconCommandGroup
         className='flex flex-col items-center rounded-control bg-control p-0.5'
         controls={displayControls}
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         controlIcon={controlIcon}
         sendControl={sendControl}
       />
       <AndroidPanelsMenu
-        controlsDisabled={controlsDisabled}
+        commandDisabled={commandDisabled}
+        isCommandPending={isCommandPending}
         sendControl={sendControl}
       />
     </div>

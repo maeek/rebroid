@@ -10,6 +10,7 @@ import { useDisplayViewerSurface } from '@/features/applications/viewer/display/
 import { usePinnedViewerRegistration } from '@/features/applications/viewer/display/display-viewer-shell/hooks/use-pinned-viewer-registration'
 import { IconActionButton } from '@/features/applications/viewer/display/display-viewer-shell/surface/icon-action-button'
 import { SurfaceChrome } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
+import { ViewerStreamOverlay } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-stream-overlay'
 import { DisplayViewerVisibility } from '@/features/applications/viewer/display/display-viewer-visibility'
 import { ViewerControlBar } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-bar'
 import { cn } from '@/lib/utils'
@@ -175,26 +176,17 @@ export const SurfacePanel = ({
                   />
                 )}
               </div>
-              {!managed && streamStatus?.blocking ? (
-                <div className='absolute inset-0 overflow-auto transform-gpu bg-background'>
-                  <StateView
-                    className='py-4'
-                    kind='error'
-                    scope='immersive'
-                    headingLevel={2}
-                    title='Live display paused'
-                    description='The connection to the app screen was interrupted.'
-                    detail={retryError ?? undefined}
-                    actions={[
-                      {
-                        label: 'Retry display',
-                        onClick: onRetry,
-                        pending: isRetrying,
-                        pendingLabel: 'Reopening display…'
-                      }
-                    ]}
-                  />
-                </div>
+              {!managed ? (
+                <ViewerStreamOverlay
+                  status={streamStatus}
+                  retryError={retryError}
+                  retryAction={{
+                    label: 'Retry display',
+                    onClick: onRetry,
+                    pending: isRetrying,
+                    pendingLabel: 'Reopening display…'
+                  }}
+                />
               ) : null}
             </div>
             {miniPlayer ? (
@@ -216,7 +208,7 @@ export const SurfacePanel = ({
             surface={surface}
             isClosing={isClosing}
             isFullscreen={fullscreenSurface}
-            streamStatus={streamStatus}
+            streamStatus={streamStatus?.blocking ? undefined : streamStatus}
             onClose={onClose}
             onOpenPopout={onOpenPopout}
             onToggleFullscreen={() => {
@@ -233,17 +225,10 @@ export const SurfacePanel = ({
           )}
           style={{ maxHeight: Math.max(32, workspaceHeight - 16 - displayHeaderSpace) }}
         >
-          {isActive && !isFloating ? <ViewerControlBar surfaceId={surface.id} /> : null}
+          {isActive && !isFloating ? <ViewerControlBar /> : null}
         </div>
       ) : null}
-      {fullscreenHost &&
-        createPortal(
-          <ViewerControlBar
-            mode='floating'
-            surfaceId={surface.id}
-          />,
-          fullscreenHost
-        )}
+      {fullscreenHost && createPortal(<ViewerControlBar mode='floating' />, fullscreenHost)}
     </section>
   )
 }

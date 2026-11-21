@@ -95,7 +95,7 @@ it('keeps the device frame and settings when a session is unavailable and can re
 
   const frame = screen.getByRole('region', { name: 'Android display' })
   const display = within(frame)
-  expect(display.getByText('Starting live display')).toBeVisible()
+  expect(display.getByText('Opening display session…')).toBeVisible()
   const settings = display.getByRole('button', { name: 'Streaming settings' })
   expect(settings).toBeVisible()
   const aspectRatio = frame.style.aspectRatio
@@ -107,7 +107,7 @@ it('keeps the device frame and settings when a session is unavailable and can re
   expect(settings).toBeVisible()
 
   fireEvent.click(display.getByRole('button', { name: 'Try again' }))
-  expect(display.getByText('Starting live display')).toBeVisible()
+  expect(display.getByText('Opening display session…')).toBeVisible()
   expect(openSession).toHaveBeenNthCalledWith(2, previewApp.id)
   expect(await display.findByText('Rebroid could not start a display session.')).toBeVisible()
 })
@@ -134,7 +134,7 @@ it('retries after a long boot and stops when the same runtime’s Ready deadline
 
     await act(() => vi.advanceTimersByTimeAsync(0))
     expect(openSession).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Starting live display')).toBeVisible()
+    expect(screen.getByText('Opening display session…')).toBeVisible()
     await act(() => vi.advanceTimersByTimeAsync(3_000))
     expect(openSession).toHaveBeenCalledTimes(2)
     await act(() => vi.advanceTimersByTimeAsync(12_000))

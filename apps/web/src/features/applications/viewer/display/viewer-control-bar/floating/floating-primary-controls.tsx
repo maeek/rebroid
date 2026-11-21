@@ -21,6 +21,8 @@ export const FloatingPrimaryControls = ({ buttonClassName }: { buttonClassName: 
     canCaptureScreenshot,
     canControl,
     controlsDisabled,
+    commandDisabled,
+    isCommandPending,
     controlIcon,
     isCapturing,
     keyboardCaptureEnabled,
@@ -39,7 +41,8 @@ export const FloatingPrimaryControls = ({ buttonClassName }: { buttonClassName: 
             buttonClassName={buttonClassName}
             className='contents'
             controls={fullscreenCommands}
-            controlsDisabled={controlsDisabled}
+            commandDisabled={commandDisabled}
+            isCommandPending={isCommandPending}
             controlIcon={controlIcon}
             sendControl={sendControl}
           />

@@ -22,10 +22,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Visible } from '@/components/ui/visible'
-import { panelControls } from '@/features/applications/viewer/display/viewer-control-bar/commands/command-groups'
+import {
+  panelControls,
+  renderControlIcon
+} from '@/features/applications/viewer/display/viewer-control-bar/commands/command-groups'
 import { IconButtonTooltip } from '@/features/applications/viewer/display/viewer-control-bar/controls/icon-button-tooltip'
 import { cn } from '@/lib/utils'
-import type { SendControl } from '@/features/applications/viewer/display/viewer-control-bar/types'
+import type { ControlCommandState, SendControl } from '@/features/applications/viewer/display/viewer-control-bar/types'
 
 const ControlButton = ({
   label,
@@ -131,11 +134,13 @@ export const PopoutButton = ({ className, onOpenPopout }: { className?: string; 
 
 export const AndroidPanelsMenu = ({
   buttonClassName,
-  controlsDisabled,
+  commandDisabled,
+  isCommandPending,
   sendControl
 }: {
   buttonClassName?: string
-  controlsDisabled: boolean
+  commandDisabled: ControlCommandState
+  isCommandPending: ControlCommandState
   sendControl: SendControl
 }) => (
   <DropdownMenu>
@@ -145,11 +150,15 @@ export const AndroidPanelsMenu = ({
           <Button
             size='icon-md'
             variant='secondary'
-            disabled={controlsDisabled}
+            disabled={panelControls.every(({ command }) => commandDisabled(command))}
+            aria-busy={panelControls.some(({ command }) => isCommandPending(command)) || undefined}
             aria-label='Android panels'
             className={buttonClassName}
           >
-            <IconAdjustmentsHorizontal className='size-4' />
+            {renderControlIcon(
+              panelControls.some(({ command }) => isCommandPending(command)),
+              <IconAdjustmentsHorizontal className='size-4' />
+            )}
           </Button>
         </TooltipTrigger>
       </DropdownMenuTrigger>
@@ -162,6 +171,7 @@ export const AndroidPanelsMenu = ({
         {panelControls.map(({ command, label }) => (
           <DropdownMenuItem
             key={command}
+            disabled={commandDisabled(command)}
             onClick={() => sendControl(command)}
           >
             {label}

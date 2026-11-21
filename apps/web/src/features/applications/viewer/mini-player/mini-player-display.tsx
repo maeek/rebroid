@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useId, useState } from 'react'
 import { DisplayViewerFrame } from '@/features/applications/viewer/display/display-viewer-frame'
+import { StreamStatusIndicator } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { ViewerClipboard } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-clipboard'
+import { ViewerStreamOverlay } from '@/features/applications/viewer/display/display-viewer-shell/surface/viewer-stream-overlay'
 import { ViewerActivityKeepalive } from '@/features/applications/viewer/display/viewer-activity-keepalive'
 import { appResourceHref } from '@/shared/model/applications/app-resource-links'
-import { StateView } from '@/shared/ui/state-view'
 import { DesktopMiniPlayer } from './desktop-mini-player'
 import { MiniPlayerToolbar } from './mini-player-toolbar'
 import { useDockedViewerPosition } from './use-docked-viewer-position'
@@ -43,7 +44,7 @@ export const MiniPlayerDisplay = ({
   const status = stream?.key === frameKey ? stream.status : undefined
   const size = (stream?.key === frameKey ? stream.size : undefined) ?? viewer.displaySize
   const compact = floating && !expanded
-  const blocked = Boolean(status?.blocking && status.code !== 'reconnecting')
+  const blocked = Boolean(status?.blocking)
   const controlSurface = floating ? controlRoute : viewer.surface.id
   const [fullscreen, setFullscreen] = useState(false)
   const position = useDockedViewerPosition(viewer.element, floating, fullscreen)
@@ -129,11 +130,14 @@ export const MiniPlayerDisplay = ({
         <MiniPlayerToolbar
           appId={viewer.appId}
           surfaceId={controlRoute}
+          frameKey={frameKey}
           disabled={!viewer.canControl || status?.code !== 'session-ready'}
         />
       }
     >
-      {floating && !blocked && <ViewerActivityKeepalive applicationId={viewer.appId} />}
+      {floating && (!blocked || status?.code === 'reconnecting') && (
+        <ViewerActivityKeepalive applicationId={viewer.appId} />
+      )}
       <div
         className='h-full w-full'
         inert={blocked || hidden}
@@ -152,27 +156,25 @@ export const MiniPlayerDisplay = ({
           onStreamMetrics={onMetrics}
         />
       </div>
-      {status && blocked && (
-        <div className='absolute inset-0 overflow-auto transform-gpu bg-surface-panel'>
-          <StateView
-            kind='error'
-            scope='immersive'
-            title='Live display paused'
-            description={status.message}
-            detail={viewer.retryError ?? undefined}
-            actions={[
-              viewer.element.isConnected
-                ? {
-                    label: 'Retry display',
-                    onClick: viewer.onRetry,
-                    pending: viewer.retrying,
-                    pendingLabel: 'Reopening display…'
-                  }
-                : { label: 'Open viewer', href: appResourceHref(viewer.appId) }
-            ]}
-          />
+      <ViewerStreamOverlay
+        status={status}
+        retryError={viewer.retryError}
+        retryAction={
+          viewer.element.isConnected
+            ? {
+                label: 'Retry display',
+                onClick: viewer.onRetry,
+                pending: viewer.retrying,
+                pendingLabel: 'Reopening display…'
+              }
+            : { label: 'Open viewer', href: appResourceHref(viewer.appId) }
+        }
+      />
+      {floating && !blocked && status?.code === 'reconnecting' ? (
+        <div className='absolute bottom-2 left-2'>
+          <StreamStatusIndicator status={status} />
         </div>
-      )}
+      ) : null}
     </DesktopMiniPlayer>
   )
 }

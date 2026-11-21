@@ -15,20 +15,30 @@ vi.mock('../../viewer-control-bar/viewer-control-bar', () => ({ ViewerControlBar
 vi.mock('@/hooks/use-desktop-viewport', () => ({ useDesktopViewport: () => true }))
 vi.mock('../../display-viewer-frame', () => ({
   DisplayViewerFrame: ({ onStreamStatus }: { onStreamStatus: (status: ViewerStreamStatus) => void }) => (
-    <button
-      type='button'
-      onClick={() =>
-        onStreamStatus({
-          code: 'stream-error',
-          severity: 'error',
-          blocking: true,
-          message: 'WebRTC stopped after 3 recovery attempts: NetworkError when attempting to fetch resource',
-          transport: 'webrtc'
-        })
-      }
-    >
-      Report terminal failure
-    </button>
+    <>
+      <button
+        type='button'
+        onClick={() =>
+          onStreamStatus({ code: 'reconnecting', severity: 'warning', blocking: true, message: 'Socket closed' })
+        }
+      >
+        Report reconnecting
+      </button>
+      <button
+        type='button'
+        onClick={() =>
+          onStreamStatus({
+            code: 'stream-error',
+            severity: 'error',
+            blocking: true,
+            message: 'WebRTC stopped after 3 recovery attempts: NetworkError when attempting to fetch resource',
+            transport: 'webrtc'
+          })
+        }
+      >
+        Report terminal failure
+      </button>
+    </>
   )
 }))
 
@@ -63,6 +73,10 @@ it('offers an in-place retry with pending feedback and replaces only the failed 
   )
   const { rerender } = render(viewer(1))
   const failedConsumer = screen.getByRole('button', { name: 'Report terminal failure' })
+  fireEvent.click(screen.getByRole('button', { name: 'Report reconnecting' }))
+  expect(screen.getByRole('status')).toHaveTextContent('Reconnecting…')
+  expect(screen.queryByRole('button', { name: 'Retry display' })).not.toBeInTheDocument()
+  expect(failedConsumer).toBeInTheDocument()
   fireEvent.click(failedConsumer)
   expect(screen.getByRole('alert')).toHaveTextContent('Live display paused')
   fireEvent.click(screen.getByRole('button', { name: 'Retry display' }))

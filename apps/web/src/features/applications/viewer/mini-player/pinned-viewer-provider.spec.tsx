@@ -5,6 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
 import { DisplayViewerProvider } from '../display/display-viewer-shell/display-viewer-context'
 import { SurfacePanel } from '../display/display-viewer-shell/surface/surface-panel'
+import { ViewerControlProvider } from '../display/viewer-control-bar/viewer-control-context'
 import { usePinnedViewer, type DockedViewer } from './pinned-viewer-context'
 import { PinnedViewerProvider } from './pinned-viewer-provider'
 
@@ -145,10 +146,12 @@ it('keeps the SurfacePanel iframe and window through docking, restore, and fulls
               initialKeyboardCaptureEnabled: false
             }}
           >
-            <SurfacePanel
-              surface={surface}
-              showName={false}
-            />
+            <ViewerControlProvider>
+              <SurfacePanel
+                surface={surface}
+                showName={false}
+              />
+            </ViewerControlProvider>
           </DisplayViewerProvider>
         ) : null}
       </PinnedViewerProvider>

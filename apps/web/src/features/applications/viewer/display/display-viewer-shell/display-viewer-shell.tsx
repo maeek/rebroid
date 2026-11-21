@@ -11,6 +11,7 @@ import { MobileDisplaySelector } from '@/features/applications/viewer/display/di
 import { StreamStatusIndicator } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-chrome'
 import { SurfacePanel } from '@/features/applications/viewer/display/display-viewer-shell/surface/surface-panel'
 import { MobileViewerControls } from '@/features/applications/viewer/display/viewer-control-bar/mobile/mobile-viewer-controls'
+import { ViewerControlProvider } from '@/features/applications/viewer/display/viewer-control-bar/viewer-control-context'
 import { usePinnedViewer } from '@/features/applications/viewer/mini-player/pinned-viewer-context'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { DisplayViewerLayout } from './display-viewer-layout'
@@ -54,74 +55,75 @@ export const DisplayViewerShell = ({
   const selector = compact && <MobileDisplaySelector canAddDisplay={canAddDisplay} />
 
   return (
-    <DisplayViewerLayout
-      className={className}
-      scrollRef={scrollContainerRef}
-      onScroll={handleWorkspaceScroll}
-      multipleDisplays={multipleDisplays}
-      compact={compact}
-      stageNotice={compact && status && !status.blocking ? <StreamStatusIndicator status={status} /> : null}
-      bottomControls={
-        compact &&
-        activeSurface && (
-          <MobileViewerControls
-            surfaceId={activeSurface.id}
-            controlsEnabled={controlsEnabled}
-            onFullscreen={() =>
-              activeSurface.kind === 'main' && (pinnedViewer?.requestFullscreen(applicationId) ?? false)
-            }
-            actions={
+    <ViewerControlProvider>
+      <DisplayViewerLayout
+        className={className}
+        scrollRef={scrollContainerRef}
+        onScroll={handleWorkspaceScroll}
+        multipleDisplays={multipleDisplays}
+        compact={compact}
+        stageNotice={compact && status && !status.blocking ? <StreamStatusIndicator status={status} /> : null}
+        bottomControls={
+          compact &&
+          activeSurface && (
+            <MobileViewerControls
+              controlsEnabled={controlsEnabled}
+              onFullscreen={() =>
+                activeSurface.kind === 'main' && (pinnedViewer?.requestFullscreen(applicationId) ?? false)
+              }
+              actions={
+                <>
+                  {clipboard}
+                  {streamingSettings}
+                </>
+              }
+            />
+          )
+        }
+        switcher={
+          compactSwitcher && (
+            <DisplaySwitcher
+              activeSurfaceId={activeSurface?.id}
+              surfaces={orderedSurfaces}
+              onSelect={setActiveSurfaceId}
+            />
+          )
+        }
+        toolbar={
+          <>
+            {miniPlayerEnabled ? (
+              <div
+                ref={anchorRef}
+                aria-hidden='true'
+                className='pointer-events-none absolute top-0 size-px'
+              />
+            ) : null}
+            {headerSlot && selector ? createPortal(selector, headerSlot) : null}
+            {!headerSlot && selector ? <div className='flex shrink-0 justify-end px-2'>{selector}</div> : null}
+            {!compact && canAddDisplay ? (
+              <AddVirtualDisplay
+                pending={viewerActions.isAddingDisplay}
+                onAdd={viewerActions.addDisplay}
+              />
+            ) : null}
+          </>
+        }
+      >
+        {orderedSurfaces.map(surface => (
+          <SurfacePanel
+            key={surface.id}
+            surface={surface}
+            showName={!multipleDisplays && surface.kind === 'virtual'}
+            chromeActions={
               <>
-                {clipboard}
-                {streamingSettings}
+                {surface.id === activeSurface?.id ? clipboard : null}
+                {surface.kind === 'main' ? streamingSettings : null}
               </>
             }
+            onDockMiniPlayer={floating && surface.id === activeSurface?.id ? dockPlayer : undefined}
           />
-        )
-      }
-      switcher={
-        compactSwitcher && (
-          <DisplaySwitcher
-            activeSurfaceId={activeSurface?.id}
-            surfaces={orderedSurfaces}
-            onSelect={setActiveSurfaceId}
-          />
-        )
-      }
-      toolbar={
-        <>
-          {miniPlayerEnabled ? (
-            <div
-              ref={anchorRef}
-              aria-hidden='true'
-              className='pointer-events-none absolute top-0 size-px'
-            />
-          ) : null}
-          {headerSlot && selector ? createPortal(selector, headerSlot) : null}
-          {!headerSlot && selector ? <div className='flex shrink-0 justify-end px-2'>{selector}</div> : null}
-          {!compact && canAddDisplay ? (
-            <AddVirtualDisplay
-              pending={viewerActions.isAddingDisplay}
-              onAdd={viewerActions.addDisplay}
-            />
-          ) : null}
-        </>
-      }
-    >
-      {orderedSurfaces.map(surface => (
-        <SurfacePanel
-          key={surface.id}
-          surface={surface}
-          showName={!multipleDisplays && surface.kind === 'virtual'}
-          chromeActions={
-            <>
-              {surface.id === activeSurface?.id ? clipboard : null}
-              {surface.kind === 'main' ? streamingSettings : null}
-            </>
-          }
-          onDockMiniPlayer={floating && surface.id === activeSurface?.id ? dockPlayer : undefined}
-        />
-      ))}
-    </DisplayViewerLayout>
+        ))}
+      </DisplayViewerLayout>
+    </ViewerControlProvider>
   )
 }

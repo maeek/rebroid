@@ -17,11 +17,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { IconButtonTooltip } from '@/features/applications/viewer/display/viewer-control-bar/controls/icon-button-tooltip'
 import type {
+  ControlCommandState,
   ControlIconRenderer,
   IconControl,
   SendControl
 } from '@/features/applications/viewer/display/viewer-control-bar/types'
-import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const navigationControls: IconControl[] = [
   {
@@ -82,7 +82,8 @@ export const IconCommandGroup = ({
   buttonVariant = 'ghost',
   className,
   controls,
-  controlsDisabled,
+  commandDisabled,
+  isCommandPending,
   controlIcon,
   sendControl
 }: {
@@ -90,7 +91,8 @@ export const IconCommandGroup = ({
   buttonVariant?: 'ghost' | 'secondary'
   className: string
   controls: IconControl[]
-  controlsDisabled: boolean
+  commandDisabled: ControlCommandState
+  isCommandPending: ControlCommandState
   controlIcon: ControlIconRenderer
   sendControl: SendControl
 }) => (
@@ -103,7 +105,8 @@ export const IconCommandGroup = ({
         <Button
           size='icon-md'
           variant={buttonVariant}
-          disabled={controlsDisabled}
+          disabled={commandDisabled(command)}
+          aria-busy={isCommandPending(command) || undefined}
           onClick={() => sendControl(command)}
           aria-label={label}
           className={buttonClassName}
@@ -115,8 +118,16 @@ export const IconCommandGroup = ({
   </div>
 )
 
-export const renderControlIcon = (
-  pendingCommand: ApplicationViewerControlCommand | null,
-  command: ApplicationViewerControlCommand,
-  icon: ReactNode
-) => (pendingCommand === command ? <IconLoader2 className='size-4 animate-spin' /> : icon)
+export const renderControlIcon = (pending: boolean, icon: ReactNode) => (
+  <span
+    aria-hidden='true'
+    className='relative inline-flex size-4 shrink-0 items-center justify-center'
+  >
+    {icon}
+    {pending ? (
+      <span className='absolute -right-1 -bottom-1 grid size-3 place-items-center rounded-full bg-surface-editor text-primary'>
+        <IconLoader2 className='!size-2.5 motion-safe:animate-spin' />
+      </span>
+    ) : null}
+  </span>
+)

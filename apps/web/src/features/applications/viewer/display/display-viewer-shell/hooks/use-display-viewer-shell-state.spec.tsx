@@ -83,7 +83,7 @@ it.each(['webrtc', 'websocket'] as const)(
   }
 )
 
-it('reports a current nonblocking transport failure even after the transient status clears', () => {
+it('announces a reconnect until the current surface presents again', () => {
   vi.useFakeTimers()
   try {
     const onStreamIssue = vi.fn()
@@ -112,8 +112,10 @@ it('reports a current nonblocking transport failure even after the transient sta
     act(() => {
       vi.advanceTimersByTime(6_001)
     })
-    expect(result.current.streamStatuses.main).toBeUndefined()
+    expect(result.current.streamStatuses.main).toBe(current)
     expect(onStreamIssue).toHaveBeenCalledExactlyOnceWith('main', current)
+    act(() => result.current.setSurfaceStreamStatus('main', { ...current, code: 'session-ready' }))
+    expect(result.current.streamStatuses.main).toBeUndefined()
   } finally {
     vi.useRealTimers()
   }

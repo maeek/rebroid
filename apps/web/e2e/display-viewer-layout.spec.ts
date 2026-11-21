@@ -244,10 +244,19 @@ for (const display of ['Main display', 'Virtual display'] as const) {
       route.fulfill({
         contentType: 'text/html',
         body: `<!doctype html><body data-preview-display><script>
+          let backRequest
           window.addEventListener('message', ({ source, origin, data }) => {
             if (source !== parent || origin !== location.origin || data.type !== 'rebroid-viewer-control-event') return
             document.body.dataset.command = data.command
+            if (data.command === 'back') {
+              backRequest = data.requestId
+              return
+            }
             parent.postMessage({ type: 'rebroid-viewer-control-result', requestId: data.requestId, ok: true }, origin)
+          })
+          document.addEventListener('confirm-back', () => {
+            const result = { type: 'rebroid-viewer-control-result', requestId: backRequest, ok: true }
+            parent.postMessage(result, location.origin)
           })
         </script></body>`
       })
@@ -262,6 +271,8 @@ for (const display of ['Main display', 'Virtual display'] as const) {
     const src = display === 'Main display' ? '/preview-display-frame' : '/preview-display-frame?virtual'
     const frame = page.frameLocator(`iframe[src="${src}"]`).locator('body')
     await frame.evaluate(element => element.setAttribute('data-retained', 'true'))
+    await page.getByRole('group', { name: 'Device controls' }).getByRole('button', { name: 'Back', exact: true }).tap()
+    await expect(frame).toHaveAttribute('data-command', 'back')
     await page.getByRole('button', { name: 'Enter fullscreen' }).tap()
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true)
 
@@ -269,10 +280,16 @@ for (const display of ['Main display', 'Virtual display'] as const) {
     const handle = toolbar.getByRole('button', { name: 'Move viewer toolbar' })
     const exit = toolbar.getByRole('button', { name: 'Exit fullscreen' })
     const back = toolbar.getByRole('button', { name: 'Back', exact: true })
+    const home = toolbar.getByRole('button', { name: 'Home', exact: true })
     await expect(back).toBeVisible()
     await expect(handle).toHaveCSS('height', '44px')
-    await back.tap()
+    await expect(back).toHaveAttribute('aria-busy', 'true')
+    await expect(toolbar.getByRole('button', { name: 'Keyboard capture' })).toBeEnabled()
+    await home.tap()
+    await expect(home).toHaveAttribute('aria-busy', 'true')
     await expect(frame).toHaveAttribute('data-command', 'back')
+    await frame.evaluate(element => element.dispatchEvent(new Event('confirm-back', { bubbles: true })))
+    await expect(frame).toHaveAttribute('data-command', 'home')
     await toolbar.getByRole('button', { name: 'Hide toolbar' }).tap()
     await expect(back).toBeHidden()
     await expect(exit).toBeVisible()

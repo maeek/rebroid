@@ -21,30 +21,10 @@ import {
   volumeControls
 } from '../commands/command-groups'
 import { IconButtonTooltip } from '../controls/icon-button-tooltip'
-import { useViewerControlContext, ViewerControlProvider } from '../viewer-control-context'
+import { useViewerControlContext } from '../viewer-control-context'
 import { MobileViewerActionRows, mobileViewerActionRowClassName } from './mobile-viewer-action-rows'
 
 export const MobileViewerControls = ({
-  surfaceId,
-  controlsEnabled,
-  actions,
-  onFullscreen
-}: {
-  surfaceId: string
-  controlsEnabled: boolean
-  actions?: ReactNode
-  onFullscreen?: () => boolean
-}) => (
-  <ViewerControlProvider surfaceId={surfaceId}>
-    <MobileControlBar
-      controlsEnabled={controlsEnabled}
-      actions={actions}
-      onFullscreen={onFullscreen}
-    />
-  </ViewerControlProvider>
-)
-
-const MobileControlBar = ({
   controlsEnabled,
   actions,
   onFullscreen
@@ -53,7 +33,7 @@ const MobileControlBar = ({
   actions?: ReactNode
   onFullscreen?: () => boolean
 }) => {
-  const { canControl, controlsDisabled, controlIcon, fullscreen, onToggleFullscreen, sendControl } =
+  const { canControl, commandDisabled, isCommandPending, controlIcon, fullscreen, onToggleFullscreen, sendControl } =
     useViewerControlContext()
 
   return (
@@ -67,7 +47,8 @@ const MobileControlBar = ({
           className='flex items-center gap-1'
           buttonClassName='size-11'
           controls={navigationControls}
-          controlsDisabled={controlsDisabled}
+          commandDisabled={commandDisabled}
+          isCommandPending={isCommandPending}
           controlIcon={controlIcon}
           sendControl={sendControl}
         />
@@ -97,6 +78,8 @@ const MobileControlDrawer = ({ controlsEnabled, children }: { controlsEnabled: b
     canCaptureScreenshot,
     canControl,
     controlsDisabled,
+    commandDisabled,
+    isCommandPending,
     controlIcon,
     isCapturing,
     keyboardCaptureEnabled,
@@ -148,7 +131,8 @@ const MobileControlDrawer = ({ controlsEnabled, children }: { controlsEnabled: b
                   type='button'
                   variant='ghost'
                   className={mobileViewerActionRowClassName}
-                  disabled={controlsDisabled}
+                  disabled={commandDisabled(control.command)}
+                  aria-busy={isCommandPending(control.command) || undefined}
                   onClick={() => sendControl(control.command)}
                 >
                   {controlIcon(control.command, control.icon)}

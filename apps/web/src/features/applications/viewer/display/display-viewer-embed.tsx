@@ -106,7 +106,7 @@ const EmbeddedViewerFallback = ({
             <ViewerPlaceholderScreen
               app={app}
               placeholder={{
-                title: 'Starting live display',
+                title: 'Opening display session…',
                 description: loadingDescription,
                 toneClassName: 'text-primary',
                 Icon: IconLoader2,
@@ -310,7 +310,9 @@ export const DisplayViewerEmbed = ({
     return (
       <EmbeddedViewerFallback
         app={app}
-        loadingDescription={session ? 'Preparing the display session.' : 'Rebroid is opening the app screen.'}
+        loadingDescription={
+          session ? 'Waiting for the display service to be ready.' : 'Connecting to the live display service.'
+        }
         streamingSettings={streamingSettings}
         error={error}
         onRetry={() => {

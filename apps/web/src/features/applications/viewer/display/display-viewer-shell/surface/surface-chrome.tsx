@@ -23,7 +23,7 @@ const streamStatusLabel = (status: ViewerStreamStatus) => {
     return 'Audio disabled'
   }
   if (status.code === 'reconnecting') {
-    return 'Reconnecting'
+    return 'Reconnecting…'
   }
   if (status.code === 'video-stalled') {
     return 'Stream recovering'
@@ -39,6 +39,7 @@ export const StreamStatusIndicator = ({ status }: { status: ViewerStreamStatus }
     <Tooltip>
       <TooltipTrigger asChild>
         <span
+          role='status'
           className={cn(
             'flex h-5 min-w-0 items-center gap-1 rounded-full border px-1.5 text-[0.68rem] font-medium leading-none',
             isInfo ? 'border-primary/30 bg-primary/10 text-primary' : 'border-warning/40 bg-warning/10 text-warning'

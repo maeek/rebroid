@@ -20,7 +20,6 @@ import type {
 } from '@rebroid/android-application-core/viewer-stream'
 
 const transientStreamStatusCodes = new Set<ViewerStreamStatus['code']>([
-  'reconnecting',
   'first-frame-timeout',
   'video-stalled',
   'stream-error'
@@ -324,6 +323,7 @@ export const useDisplayViewerShellState = ({
 
     setStreamStatuses(current => {
       if (current[surfaceId]?.blocking && !status.blocking) return current
+      if (current[surfaceId]?.code === 'reconnecting' && status.code === 'audio-disabled') return current
       return { ...current, [surfaceId]: status }
     })
 
