@@ -138,6 +138,11 @@ export class ScrcpySessionDto {
   @ApiProperty()
   applicationId!: string;
 
+  @ApiPropertyOptional({
+    description: 'Opaque runtime version for viewer activity updates.',
+  })
+  activityRuntimeKey?: string;
+
   @ApiProperty({ enum: viewerTransports })
   transport!: ViewerTransport;
 

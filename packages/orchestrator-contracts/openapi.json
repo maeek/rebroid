@@ -1703,6 +1703,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationViewerActivityDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -8839,6 +8849,10 @@
           "applicationId": {
             "type": "string"
           },
+          "activityRuntimeKey": {
+            "type": "string",
+            "description": "Opaque runtime version for viewer activity updates."
+          },
           "transport": {
             "type": "string",
             "enum": [
@@ -12780,6 +12794,21 @@
         "required": [
           "applicationIds",
           "includeRunning"
+        ]
+      },
+      "ApplicationViewerActivityDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string"
+          },
+          "runtimeKey": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "runtimeKey"
         ]
       }
     }

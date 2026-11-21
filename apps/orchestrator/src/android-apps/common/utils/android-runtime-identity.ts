@@ -33,3 +33,20 @@ export const runtimeIdentityKey = (
 
 export const snapshotRuntimeKey = (app: RuntimeIdentity) =>
   createHash('sha256').update(runtimeIdentityKey(app)).digest('hex');
+
+export const viewerActivityRuntimeKey = (
+  app: Pick<
+    RuntimeIdentity,
+    'id' | 'ownerUserId' | 'containerId' | 'lastStartedAt'
+  >,
+) =>
+  createHash('sha256')
+    .update(
+      JSON.stringify([
+        app.id,
+        app.ownerUserId,
+        app.containerId,
+        app.lastStartedAt,
+      ]),
+    )
+    .digest('hex');

@@ -7,13 +7,31 @@ import { recordViewerActivityAction } from '@/server/orchestrator/applications/a
 
 const keepaliveIntervalMs = 30_000
 
-export const ViewerActivityKeepalive = ({ applicationId }: { applicationId: string }) => {
+export const ViewerActivityKeepalive = ({
+  applicationId,
+  runtimeKey
+}: {
+  applicationId: string
+  runtimeKey?: string
+}) =>
+  runtimeKey ? (
+    <ViewerActivityTimer
+      key={runtimeKey}
+      applicationId={applicationId}
+      runtimeKey={runtimeKey}
+    />
+  ) : null
+
+const ViewerActivityTimer = ({ applicationId, runtimeKey }: { applicationId: string; runtimeKey: string }) => {
   useVisibilityAwareInterval({
     immediate: true,
     intervalMs: keepaliveIntervalMs,
     stopOnError: true,
     task: async () => {
-      await recordViewerActivityAction(applicationId)
+      const result = await recordViewerActivityAction(applicationId, runtimeKey).catch(() => null)
+      if (result && !result.ok && result.error.status && result.error.status < 500 && result.error.status !== 429) {
+        throw new Error(result.error.message)
+      }
     }
   })
 

@@ -2860,6 +2860,8 @@ export interface components {
         };
         ScrcpySessionDto: {
             applicationId: string;
+            /** @description Opaque runtime version for viewer activity updates. */
+            activityRuntimeKey?: string;
             /** @enum {string} */
             transport: "webrtc" | "websocket";
             udid: string;
@@ -3995,6 +3997,10 @@ export interface components {
             /** @description Locale for the natural name ordering. */
             locale?: string;
         };
+        ApplicationViewerActivityDto: {
+            ownerUserId: string;
+            runtimeKey: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -5121,7 +5127,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicationViewerActivityDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {

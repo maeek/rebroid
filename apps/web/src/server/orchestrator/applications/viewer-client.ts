@@ -21,9 +21,10 @@ export const orchestratorAppViewerClient = {
     return emptyRequest<ScrcpySession>(`${applicationPath(id)}/viewer/session${suffix}`)
   },
 
-  recordViewerActivity(id: string) {
-    return emptyRequest<{ id: string; lastScrcpyActivityAt: string }>(`${applicationPath(id)}/viewer/activity`, {
-      method: 'POST'
+  recordViewerActivity(id: string, ownerUserId: string, runtimeKey: string) {
+    return jsonRequest<{ id: string; lastScrcpyActivityAt: string }>(`${applicationPath(id)}/viewer/activity`, 'POST', {
+      ownerUserId,
+      runtimeKey
     })
   },
 

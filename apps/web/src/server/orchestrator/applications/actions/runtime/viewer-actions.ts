@@ -4,14 +4,11 @@ import { runSafeAction } from '@/server/actions/safe-action'
 import { recordAuditEvent } from '@/server/audit/events'
 import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
+import { getCurrentUserContext } from '../../../current-user'
 import { sanitizeScrcpySessionForUser } from '../../safety'
 import { orchestratorAppViewerClient } from '../../viewer-client'
-import { issueViewerGrant } from '../../viewer-grant-access'
-import {
-  assertCanUseOwnedApplicationRuntime,
-  ownedRuntimeControlMessage,
-  ownedRuntimeMessage
-} from '../common/action-helpers'
+import { assertViewerRevocationComplete, issueViewerGrant } from '../../viewer-grant-access'
+import { assertCanUseOwnedApplicationRuntime, ownedRuntimeControlMessage } from '../common/action-helpers'
 import type { ApplicationViewerControlCommand } from '@/shared/contracts/application'
 
 export const getScrcpySessionAction = async (id: string) =>
@@ -25,10 +22,18 @@ export const getScrcpySessionAction = async (id: string) =>
     { fallbackMessage: 'Could not open the live display session.', logLabel: 'Open display session' }
   )
 
-export const recordViewerActivityAction = async (id: string) => {
-  await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
-  return orchestratorAppViewerClient.recordViewerActivity(id)
-}
+export const recordViewerActivityAction = async (id: string, runtimeKey: string) =>
+  runSafeAction(
+    async () => {
+      const user = await getCurrentUserContext()
+      assertViewerRevocationComplete(user.ownerUserId)
+      if (typeof runtimeKey !== 'string' || !/^[a-f0-9]{64}$/.test(runtimeKey)) {
+        throw new PublicActionError('Invalid viewer runtime.', { code: 'validation', status: 400 })
+      }
+      await orchestratorAppViewerClient.recordViewerActivity(id, user.ownerUserId, runtimeKey)
+    },
+    { fallbackMessage: 'Could not record viewer activity.', logLabel: 'Record viewer activity' }
+  )
 
 export const sendApplicationViewerControlAction = async (id: string, command: ApplicationViewerControlCommand) => {
   const { app, user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeControlMessage)

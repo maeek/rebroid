@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiOkResponse,
   ApiOperation,
@@ -9,6 +17,7 @@ import {
   ApplicationViewerControlDto,
   ApplicationViewerControlResponseDto,
 } from '../../contracts/application-viewer-control';
+import { ApplicationViewerActivityDto } from '../dto/application-viewer-activity.dto';
 import { DisplaySessionDto, ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsViewerService } from '../services/android-apps-viewer.service';
 
@@ -33,6 +42,7 @@ export class AndroidAppsViewerController {
   }
 
   @Post(':id/viewer/activity')
+  @HttpCode(200)
   @ApiOperation({
     summary: 'Refresh viewer activity for inactivity timeout tracking.',
   })
@@ -46,8 +56,11 @@ export class AndroidAppsViewerController {
       },
     },
   })
-  viewerActivity(@Param('id') id: string) {
-    return this.viewer.recordViewerActivity(id);
+  viewerActivity(
+    @Param('id') id: string,
+    @Body() dto: ApplicationViewerActivityDto,
+  ) {
+    return this.viewer.recordViewerActivity(id, dto);
   }
 
   @Post(':id/viewer/control')

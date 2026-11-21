@@ -91,7 +91,6 @@ describe('orchestrator OpenAPI domain contract', () => {
   it('does not document request bodies for bodyless mutations', () => {
     expectNoRequestBody('/api/v1/apps/{id}/lifecycle/stop', 'post');
     expectNoRequestBody('/api/v1/apps/{id}/runtime/screenshot', 'post');
-    expectNoRequestBody('/api/v1/apps/{id}/viewer/activity', 'post');
     expectNoRequestBody('/api/v1/network-policies/reconcile', 'post');
     expectNoRequestBody('/api/v1/platform/docker/networks/{id}', 'delete');
     expectNoRequestBody('/api/v1/platform/docker/images/{id}', 'delete');
@@ -99,6 +98,23 @@ describe('orchestrator OpenAPI domain contract', () => {
       '/api/v1/platform/display-sidecar/sessions/{id}',
       'delete',
     );
+  });
+
+  it('requires the authenticated web account and runtime version for viewer activity', () => {
+    const activity = document.paths['/api/v1/apps/{id}/viewer/activity']?.post;
+    expect(activity?.requestBody).toMatchObject({
+      required: true,
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/ApplicationViewerActivityDto' },
+        },
+      },
+    });
+    expect(
+      document.components.schemas.ApplicationViewerActivityDto,
+    ).toMatchObject({
+      required: expect.arrayContaining(['ownerUserId', 'runtimeKey']),
+    });
   });
 
   it('exposes a bodyless runtime recreation command with a conflict response', () => {

@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance-repository'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { getCurrentUserContext } from '../current-user'
 import { updateNetworkPolicyAction } from './actions/configuration/network-policy-actions'
 import { deleteApplicationRuntimeFileAction } from './actions/runtime/file-actions'
 import { getApplicationLogsAction } from './actions/runtime/log-actions'
+import { recordViewerActivityAction } from './actions/runtime/viewer-actions'
 import { orchestratorAppRuntimeClient } from './runtime-client'
 import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
+vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingViewerRevocation: vi.fn(() => false) }))
 vi.mock('../current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('../features', () => ({ requireFeature: vi.fn() }))
 vi.mock('../shared', () => ({ revalidateApplicationDetail: vi.fn(), revalidateApplicationList: vi.fn() }))
@@ -42,6 +45,31 @@ describe('application action URL selectors', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
+  })
+
+  it('posts viewer activity with the authenticated account and no full application read', async () => {
+    const runtimeKey = 'a'.repeat(64)
+    await expect(recordViewerActivityAction(appId, runtimeKey)).resolves.toMatchObject({ ok: true })
+    expect(fetchUpstream).toHaveBeenCalledExactlyOnceWith(
+      `http://orchestrator.test/api/v1/apps/${appId}/viewer/activity`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ ownerUserId: 'owner-1', runtimeKey })
+      })
+    )
+  })
+
+  it('withholds viewer activity during account revocation or for a malformed runtime key', async () => {
+    await expect(recordViewerActivityAction(appId, 'invalid')).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'validation' }
+    })
+    vi.mocked(hasPendingViewerRevocation).mockReturnValueOnce(true)
+    await expect(recordViewerActivityAction(appId, 'a'.repeat(64))).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'upstream_unavailable', status: 503 }
+    })
+    expect(fetchUpstream).not.toHaveBeenCalled()
   })
 
   it('rejects a log source that would change the application in the upstream URL', async () => {

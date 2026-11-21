@@ -7,6 +7,8 @@ import { AndroidAppsQueryService } from '../../common/services/android-apps-quer
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
+import { viewerActivityRuntimeKey } from '../../common/utils/android-runtime-identity';
+import type { ApplicationViewerActivityDto } from '../dto/application-viewer-activity.dto';
 import { ScrcpySessionDto } from '../dto/scrcpy-session.dto';
 import { AndroidAppsDisplaySidecarService } from './android-apps-display-sidecar.service';
 import {
@@ -63,6 +65,9 @@ export class AndroidAppsViewerService {
 
     return {
       applicationId: app.id,
+      ...(displaySession && {
+        activityRuntimeKey: viewerActivityRuntimeKey(app),
+      }),
       transport: app.scrcpyTransport,
       udid,
       proxyRemote,
@@ -125,14 +130,16 @@ export class AndroidAppsViewerService {
   }
 
   /** Saves the latest viewer activity time. */
-  async recordViewerActivity(id: string) {
-    const app = await this.getRunningRuntimeApp(id);
-    const observedAt = await this.writer.recordViewerActivity(app);
-
-    return {
-      id: app.id,
-      lastScrcpyActivityAt: observedAt.toISOString(),
-    };
+  async recordViewerActivity(
+    id: string,
+    activity: ApplicationViewerActivityDto,
+  ) {
+    const observedAt = await this.writer.recordOwnedViewerActivity(
+      id,
+      activity.ownerUserId,
+      activity.runtimeKey,
+    );
+    return { id, lastScrcpyActivityAt: observedAt.toISOString() };
   }
 
   /** Sends one control action to the viewer runtime. */

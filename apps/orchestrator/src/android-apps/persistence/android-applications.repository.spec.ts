@@ -6,6 +6,8 @@ import {
   AndroidApplicationStatus,
 } from '../contracts/android-application-status';
 import { AndroidAppsQueryService } from '../common/services/android-apps-query.service';
+import { AndroidAppsStateWriter } from '../common/services/android-apps-state-writer.service';
+import { viewerActivityRuntimeKey } from '../common/utils/android-runtime-identity';
 import { AndroidAppsStatusService } from '../common/services/android-apps-status.service';
 import { AndroidApplicationsRepository } from './android-applications.repository';
 
@@ -153,6 +155,70 @@ describe('Android application runtime observations', () => {
     expect(navigation.map(({ id }) => id)).toEqual([firstRunning, rows[4].id]);
     expect(navigation[0].containerImage).toBeUndefined();
     expect(navigation[0].statusMessage).toBeUndefined();
+  });
+
+  it('records viewer activity only for the owner and the current runtime version', async () => {
+    const app = await makeApp();
+    await apps.update(app.id, { ownerUserId: 'owner' });
+    const expected = { ...app, ownerUserId: 'owner' };
+    const writer = new AndroidAppsStateWriter(
+      repository,
+      new AndroidAppsStatusService(),
+      {} as never,
+    );
+    const key = viewerActivityRuntimeKey(expected);
+    await expect(
+      writer.recordOwnedViewerActivity(app.id, 'another-owner', key),
+    ).rejects.toMatchObject({ status: 403 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      lastScrcpyActivityAt: null,
+    });
+    const first = await writer.recordOwnedViewerActivity(app.id, 'owner', key);
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      lastScrcpyActivityAt: first,
+    });
+
+    const next = {
+      lastStartedAt: new Date(first.getTime() + 1),
+      lastScrcpyActivityAt: null,
+    };
+    await apps.update(app.id, next);
+    await expect(
+      writer.recordOwnedViewerActivity(app.id, 'owner', key),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject(
+      next,
+    );
+  });
+
+  it('leaves a replacement runtime untouched when the viewer read races with the write', async () => {
+    const app = await makeApp();
+    const expected = { ...app, ownerUserId: 'owner' };
+    await apps.update(app.id, { ownerUserId: 'owner' });
+    const updateViewerActivity =
+      repository.updateViewerActivity.bind(repository);
+    jest
+      .spyOn(repository, 'updateViewerActivity')
+      .mockImplementationOnce(async (...args) => {
+        await apps.update(app.id, { containerId: 'new-runtime' });
+        return updateViewerActivity(...args);
+      });
+    const writer = new AndroidAppsStateWriter(
+      repository,
+      new AndroidAppsStatusService(),
+      {} as never,
+    );
+    await expect(
+      writer.recordOwnedViewerActivity(
+        app.id,
+        'owner',
+        viewerActivityRuntimeKey(expected),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    await expect(apps.findOneByOrFail({ id: app.id })).resolves.toMatchObject({
+      containerId: 'new-runtime',
+      lastScrcpyActivityAt: null,
+    });
   });
 
   it('hydrates only the owner’s running and recent candidates with summary fields', async () => {

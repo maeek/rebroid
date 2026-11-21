@@ -1,8 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
+import { viewerActivityRuntimeKey } from '../utils/android-runtime-identity';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
 export type AndroidApplicationLifecyclePatch = Partial<
@@ -81,6 +86,45 @@ export class AndroidAppsStateWriter {
     const observedAt = new Date();
     await this.applications.updateViewerActivity(app, observedAt);
     return observedAt;
+  }
+
+  async recordOwnedViewerActivity(
+    id: string,
+    ownerUserId: string,
+    runtimeKey: string,
+  ) {
+    const requireRuntime = async () => {
+      const runtime = await this.applications.findOwnedViewerActivityRuntime(
+        id,
+        ownerUserId,
+      );
+      if (!runtime)
+        throw new ForbiddenException(
+          'Viewer activity requires application ownership.',
+        );
+      if (
+        runtime.status !== AndroidApplicationStatus.Running ||
+        !runtime.containerId ||
+        viewerActivityRuntimeKey(runtime) !== runtimeKey
+      ) {
+        throw new ConflictException(
+          'The display session runtime is no longer current.',
+        );
+      }
+      return runtime;
+    };
+
+    const runtime = await requireRuntime();
+    const observedAt = new Date();
+    const result = await this.applications.updateViewerActivity(
+      runtime,
+      observedAt,
+      ownerUserId,
+    );
+    if (result.affected === 1) return observedAt;
+    const current = await requireRuntime();
+    // A concurrent heartbeat may already have recorded the same or a later time.
+    return current.lastScrcpyActivityAt ?? observedAt;
   }
 
   async recordViewerNetworkPolicy(

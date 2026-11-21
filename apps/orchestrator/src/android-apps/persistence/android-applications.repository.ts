@@ -89,10 +89,29 @@ export class AndroidApplicationsRepository
     return this.applications.update(applicationId, patch);
   }
 
-  updateViewerActivity(runtime: ViewerRuntime, observedAt: Date) {
+  findOwnedViewerActivityRuntime(id: string, ownerUserId: string) {
+    return this.applications.findOne({
+      where: { id, ownerUserId },
+      select: {
+        id: true,
+        ownerUserId: true,
+        status: true,
+        containerId: true,
+        lastStartedAt: true,
+        lastScrcpyActivityAt: true,
+      },
+    });
+  }
+
+  updateViewerActivity(
+    runtime: ViewerRuntime,
+    observedAt: Date,
+    ownerUserId?: string,
+  ) {
     return this.applications.update(
       {
         ...this.runningViewerRuntime(runtime),
+        ...(ownerUserId !== undefined && { ownerUserId }),
         lastScrcpyActivityAt: Or(IsNull(), LessThan(observedAt)),
       },
       { lastScrcpyActivityAt: observedAt },

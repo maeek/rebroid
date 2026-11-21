@@ -86,8 +86,9 @@ Sidebar reads return only navigation fields and usually limit running results be
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.
 Viewer activity and policy observations update only their own fields and are scoped to the observed
-runtime. The web console uses lifecycle acknowledgements for immediate feedback and follows the
-application state to observe queued removal and startup completion.
+runtime. Viewer heartbeats carry an opaque runtime version, and the orchestrator checks it with
+the authenticated account's ownership before recording activity. The web console uses lifecycle acknowledgements
+for immediate feedback and follows the application state to observe queued removal and startup completion.
 The web service records metadata cleanup before requesting app removal. A bounded worker confirms
 deletion before removing icon and recent-app metadata and retries pending work after a restart.
 The owning lifecycle services and file-placement rules are listed in [AGENTS.md](../AGENTS.md).

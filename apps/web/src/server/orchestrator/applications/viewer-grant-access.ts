@@ -17,7 +17,7 @@ import { viewerCapabilitiesFor } from './viewer-capabilities'
 import { orchestratorAppViewerClient } from './viewer-client'
 import type { CurrentUserContext } from './actions/common/action-helpers'
 
-const assertViewerRevocationComplete = (userId: string) => {
+export const assertViewerRevocationComplete = (userId: string) => {
   if (hasPendingViewerRevocation(userId)) {
     throw new PublicActionError('Viewer access is being updated. Try again shortly.', {
       code: 'upstream_unavailable',

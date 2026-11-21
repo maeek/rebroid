@@ -210,11 +210,6 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
     return this.viewer.scrcpySession(id);
   }
 
-  /** Updates the last viewer activity time. */
-  recordViewerActivity(id: string) {
-    return this.viewer.recordViewerActivity(id);
-  }
-
   /** Reads recent container logs. */
   containerLogs(id: string, tail = 300) {
     return this.runtime.containerLogs(id, tail);

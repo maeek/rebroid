@@ -136,7 +136,10 @@ export const MiniPlayerDisplay = ({
       }
     >
       {floating && (!blocked || status?.code === 'reconnecting') && (
-        <ViewerActivityKeepalive applicationId={viewer.appId} />
+        <ViewerActivityKeepalive
+          applicationId={viewer.appId}
+          runtimeKey={viewer.session.value.activityRuntimeKey}
+        />
       )}
       <div
         className='h-full w-full'

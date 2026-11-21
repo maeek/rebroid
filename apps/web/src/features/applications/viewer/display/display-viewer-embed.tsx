@@ -338,7 +338,12 @@ export const DisplayViewerEmbed = ({
 
   return (
     <div className='relative flex h-[var(--app-viewer-height)] min-h-0 w-full flex-col overflow-hidden'>
-      {!mainDisplayPinned && <ViewerActivityKeepalive applicationId={session.applicationId} />}
+      {!mainDisplayPinned && (
+        <ViewerActivityKeepalive
+          applicationId={session.applicationId}
+          runtimeKey={session.activityRuntimeKey}
+        />
+      )}
       <Visible when={!session.viewerTargetConnected}>
         <div className='pointer-events-none absolute left-3 right-3 top-10 z-20 rounded-control border border-warning/(--feedback-border-opacity) bg-warning/10 px-3 py-2 text-xs text-warning backdrop-blur-md'>
           Viewer connection could not be confirmed yet.
