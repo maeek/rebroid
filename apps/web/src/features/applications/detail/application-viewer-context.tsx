@@ -23,7 +23,7 @@ import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
 import type { ApplicationDetailRefresh } from '@/shared/contracts/application'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 import type { ViewerStreamMetricsV4, ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
 

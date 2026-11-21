@@ -10,7 +10,7 @@ import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestra
 import { AppManageIconPanel, type AppManageIconPanelProps } from './app-manage-icon-panel'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { UploadedApk } from '@/shared/contracts/application'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 type AppManageGeneralSettingsProps = {
   app?: AppDefinition
@@ -42,7 +42,7 @@ export const AppManageGeneralSettings = ({
   const [pendingApkName, setPendingApkName] = useState<string | null>(null)
   const [apkUploadProgress, setApkUploadProgress] = useState<number | null>(null)
   const [apkError, setApkError] = useState<string>()
-  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
+  const settings = useOrchestratorUiSettings(initialSettings)
   const router = useRouter()
   const replaceApk = async (apk: UploadedApk) => {
     setApkError(undefined)

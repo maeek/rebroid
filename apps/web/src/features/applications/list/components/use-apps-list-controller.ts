@@ -40,7 +40,7 @@ import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestra
 import { filterGalleryApps, type AppsGalleryOwnership } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppAction } from './apps-list-context'
 import type { AppGalleryItem, ApplicationGalleryRow } from '@/shared/contracts/application-gallery'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const listApplications = () => getBff<ApplicationGalleryRow[]>('/api/bff/apps/gallery')
 
@@ -75,7 +75,7 @@ export const useAppsListController = ({
   const isBulkWorking = bulkProgress !== null
   const pendingRefreshOverridesRef = useRef<Map<string, AppsListRefreshOverride>>(new Map())
   const hiddenRemovingIdsRef = useRef<Set<string>>(new Set())
-  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
+  const settings = useOrchestratorUiSettings(initialSettings)
   const refreshIntervalMs = getAppsRefreshIntervalMs(apps, settings.appListRefreshIntervalSeconds * 1000)
 
   const setStatusFilter = (status: AppsGalleryStatus) => {

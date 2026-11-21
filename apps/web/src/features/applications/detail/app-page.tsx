@@ -17,7 +17,7 @@ import { AppViewerPane } from './app-viewer-pane'
 import { AppWorkspaceContent } from './app-workspace-content'
 import { ApplicationViewerProvider, useApplicationViewerContext } from './application-viewer-context'
 import type { InspectedContainerCommand } from '@/features/applications/manage/app-manage-technical-details'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 
 export const AppViewerPage = ({

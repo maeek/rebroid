@@ -12,7 +12,7 @@ import { unwrapActionResult } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const AppViewerDeleteAction = ({
   app,
@@ -26,7 +26,7 @@ export const AppViewerDeleteAction = ({
   const [open, setOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
-  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
+  const settings = useOrchestratorUiSettings(initialSettings)
   const isProvisioning = app?.status === 'provisioning'
   const deleteImpact = isProvisioning
     ? 'Rebroid stops setup and removes the partially created app.'

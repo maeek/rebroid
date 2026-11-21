@@ -1,22 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getBff, sendBff } from '@/lib/http/bff'
+import { sendBff } from '@/lib/http/bff'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import type {
   AiUiSettings,
   GeneralUiSettings,
   OrchestratorUiSettings,
   RuntimeUiSettingsPatch
-} from '@/shared/model/settings/orchestrator-ui-settings'
-
-export type {
-  AiUiSettings,
-  GeneralUiSettings,
-  OrchestratorUiSettings,
-  OptionalServicesUiSettings,
-  RuntimeAdminUiSettings,
-  RuntimeUiSettings
 } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const maxApkCookieName = 'rebroid_max_apk_size_mb'
@@ -34,9 +25,6 @@ const applySettings = (settings: OrchestratorUiSettings) => {
   dispatchSettingsUpdated(settings)
   return settings
 }
-
-const getOrchestratorUiSettings = async () =>
-  applySettings(await getBff<OrchestratorUiSettings>('/api/bff/preferences/ui-settings'))
 
 const persistSettings = async (body: unknown) =>
   applySettings(await sendBff<OrchestratorUiSettings>('/api/bff/preferences/ui-settings', body))
@@ -61,22 +49,14 @@ export const resetOrchestratorUiSettings = async (): Promise<OrchestratorUiSetti
   return persistSettings({ operation: 'reset-runtime' })
 }
 
-export const useOrchestratorUiSettings = (
-  initialSettings?: OrchestratorUiSettings,
-  options?: { refreshOnMount?: boolean }
-) => {
-  const [settings, setSettings] = useState(initialSettings ?? defaultOrchestratorUiSettings)
-  const shouldRefreshOnMount = options?.refreshOnMount ?? initialSettings === undefined
+export const useOrchestratorUiSettings = (initialSettings = defaultOrchestratorUiSettings) => {
+  const [settings, setSettings] = useState(initialSettings)
 
   useEffect(() => {
-    setSettings(initialSettings ?? defaultOrchestratorUiSettings)
+    setSettings(initialSettings)
   }, [initialSettings])
 
   useEffect(() => {
-    if (shouldRefreshOnMount) {
-      void getOrchestratorUiSettings().then(nextSettings => setSettings(nextSettings))
-    }
-
     const onSettingsUpdated = (event: Event) => {
       const customEvent = event as CustomEvent<OrchestratorUiSettings>
       const nextSettings = customEvent.detail ?? defaultOrchestratorUiSettings
@@ -85,7 +65,7 @@ export const useOrchestratorUiSettings = (
 
     window.addEventListener('orchestrator-settings-updated', onSettingsUpdated)
     return () => window.removeEventListener('orchestrator-settings-updated', onSettingsUpdated)
-  }, [shouldRefreshOnMount])
+  }, [])
 
   return settings
 }

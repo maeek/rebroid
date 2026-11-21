@@ -48,7 +48,7 @@ import { useCreateAppMediaDraft } from './hooks/use-create-app-media-draft'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
 import type { PlatformImage } from '@/shared/contracts/platform'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 export const CreateAppForm = ({
   images,
@@ -69,7 +69,7 @@ export const CreateAppForm = ({
 }) => {
   const topLoader = useTopLoader()
   const createFormId = useId()
-  const settings = useOrchestratorUiSettings(initialSettings, { refreshOnMount: false })
+  const settings = useOrchestratorUiSettings(initialSettings)
   const [formValues, setFormValues] = useState<CreateAppFormValues>(() => {
     const initial = getInitialCreateAppFormValues(settings)
     return {

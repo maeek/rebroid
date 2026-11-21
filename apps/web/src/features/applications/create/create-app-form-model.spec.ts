@@ -8,7 +8,7 @@ import {
 } from './create-app-form-model'
 import type { CreateAppFormValues } from './create-app-form.types'
 import type { UploadedApk } from '@/shared/contracts/application'
-import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
 const settings = {
   defaultContainerImage: 'redroid/redroid:13.0.0',
