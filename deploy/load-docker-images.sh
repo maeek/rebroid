@@ -5,32 +5,13 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 input_dir="${1:-${script_dir}/docker-images}"
 
-resolve_container_engine() {
-  if [[ -n "${CONTAINER_ENGINE_BIN:-}" ]]; then
-    printf '%s\n' "${CONTAINER_ENGINE_BIN}"
-    return
-  fi
-
-  if [[ -n "${PODMAN_BIN:-}" ]]; then
-    printf '%s\n' "${PODMAN_BIN}"
-    return
-  fi
-
-  if command -v docker >/dev/null 2>&1; then
-    command -v docker
-    return
-  fi
-
-  if command -v podman >/dev/null 2>&1; then
-    command -v podman
-    return
-  fi
-
-  echo "Docker or Podman is required." >&2
-  exit 1
-}
-
-container_engine="$(resolve_container_engine)"
+container_engine="${CONTAINER_ENGINE_BIN:-${PODMAN_BIN:-}}"
+if [[ -z "${container_engine}" ]]; then
+  container_engine="$(command -v docker || command -v podman)" || {
+    echo "Docker or Podman is required." >&2
+    exit 1
+  }
+fi
 
 while read -r archive_name image_name; do
   [[ -n "${archive_name}" ]] || continue

@@ -316,8 +316,10 @@ Pre-release state is not migrated automatically. Read the
 To build and move the Rebroid service images and Google Play patch worker, use
 [`save-docker-images.sh`](../deploy/save-docker-images.sh) and
 [`load-docker-images.sh`](../deploy/load-docker-images.sh). Both accept an optional archive
-directory and support `CONTAINER_ENGINE_BIN` to select the engine. Load the archives on the
-deployment host, then start the prebuilt stack from the repository root.
+directory and support `CONTAINER_ENGINE_BIN` to select the engine. Each export replaces its
+archive after the engine finishes writing it. A failed export preserves the previous copy of
+that image. Load the archives on the deployment host, then start the prebuilt stack from the
+repository root.
 
 The archives carry the Rebroid images. The deployment host still needs access to the Android
 runtime images and any OCR models or Google Play packages it will use.
