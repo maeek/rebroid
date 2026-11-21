@@ -5,23 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"strings"
 	"time"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
 )
-
-func run(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage)) error {
-	return runPeer(parent, commands, video, audio, emit, webrtc.SettingEngine{})
-}
-
-func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
-	attempt := newPeerLifetime(parent, commands, video, audio)
-	defer attempt.shutdown()
-	return servePeer(attempt, emit, setting)
-}
 
 func servePeer(attempt *peerLifetime, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
 	ctx, stop := attempt.ctx, attempt.stop

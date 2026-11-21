@@ -14,6 +14,12 @@ import (
 	"github.com/pion/webrtc/v4"
 )
 
+func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
+	attempt := newPeerLifetime(parent, commands, video, audio)
+	defer attempt.shutdown()
+	return servePeer(attempt, emit, setting)
+}
+
 func receive[T any](t *testing.T, messages <-chan T) T {
 	t.Helper()
 	select {
@@ -211,7 +217,9 @@ func TestCancelClosesBlockedOfferRead(t *testing.T) {
 	defer writer.Close()
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan error, 1)
-	go func() { result <- run(ctx, commands, nil, nil, func(stdoutMessage) {}) }()
+	go func() {
+		result <- runPeer(ctx, commands, nil, nil, func(stdoutMessage) {}, webrtc.SettingEngine{})
+	}()
 	cancel()
 	if err := receive(t, result); err != nil {
 		t.Fatal(err)

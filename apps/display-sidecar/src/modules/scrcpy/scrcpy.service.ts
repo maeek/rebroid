@@ -1015,10 +1015,6 @@ export class ScrcpyService implements OnModuleDestroy {
     return Boolean(active && !active.socket.destroyed && active.socket.writable);
   }
 
-  usesStreamControl() {
-    return this.config.scrcpyControlChannel;
-  }
-
   shouldWaitForStreamControl(sessionId: string) {
     return (
       this.config.scrcpyControlChannel &&
@@ -1029,10 +1025,6 @@ export class ScrcpyService implements OnModuleDestroy {
 
   private streamControlEnabled(options: ScrcpyStreamOptions) {
     return this.config.scrcpyControlChannel && options.control !== false;
-  }
-
-  isStreamingSession(sessionId: string) {
-    return this.sources.has(sessionId);
   }
 
   sendViewerAction(sessionId: string, command: ViewerCommand) {
