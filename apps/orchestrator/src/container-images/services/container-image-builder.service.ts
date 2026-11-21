@@ -104,7 +104,7 @@ export class ContainerImageBuilderService {
   }
 
   private async build(job: ContainerImageBuildJob, signal: AbortSignal) {
-    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
+    await this.jobs.updateBuildDetails(job.id, { phase: 'building_image' });
     signal.throwIfAborted();
 
     const contextFileIds = JSON.parse(job.contextFileIdsJson) as string[];

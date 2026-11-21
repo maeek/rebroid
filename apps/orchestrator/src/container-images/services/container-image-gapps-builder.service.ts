@@ -192,7 +192,7 @@ export class ContainerImageGappsBuilderService
     const androidVersion = job.androidVersion as SupportedGappsAndroidVersion;
     const preset = this.presets.getPreset(androidVersion);
 
-    await this.jobs.updateGappsDetails(job, { phase: 'pulling_base' });
+    await this.jobs.updateBuildDetails(id, { phase: 'pulling_base' });
     signal.throwIfAborted();
     await this.images.pullImage(job.baseImage, (message) => {
       this.jobs.recordProgress(id, message);
@@ -216,26 +216,25 @@ export class ContainerImageGappsBuilderService
       androidVersion,
       startup,
     );
-    await this.jobs.updateGappsDetails(job, {
+    await this.jobs.updateBuildDetails(id, {
       resolvedBaseDigest,
       dockerfile: pinnedDockerfile,
+      phase: 'resolving_sources',
     });
-
-    await this.jobs.updateGappsDetails(job, { phase: 'resolving_sources' });
     signal.throwIfAborted();
     const revision = await this.sources.resolveRevision(preset.sourceBranch);
-    await this.jobs.updateGappsDetails(job, { sourceRevision: revision });
+    await this.jobs.updateBuildDetails(id, { mindTheGappsRevision: revision });
     let cached = await this.cache.findVerified(androidVersion, revision);
     let packagePath: string;
     if (cached) {
-      await this.jobs.updateGappsDetails(job, {
+      await this.jobs.updateBuildDetails(id, {
         cacheState: 'hit',
         packageSha256: cached.sha256,
       });
       await this.jobs.appendLog(id, 'Using verified cached GApps package.');
       packagePath = cached.packagePath;
     } else {
-      await this.jobs.updateGappsDetails(job, {
+      await this.jobs.updateBuildDetails(id, {
         phase: 'building_gapps',
         cacheState: 'miss',
       });
@@ -250,13 +249,13 @@ export class ContainerImageGappsBuilderService
       const packageSha256 = await this.cache.calculateSha256(
         staging.temporaryPackage,
       );
-      await this.jobs.updateGappsDetails(job, {
+      await this.jobs.updateBuildDetails(id, {
         packageSha256,
       });
       packagePath = staging.temporaryPackage;
     }
 
-    await this.jobs.updateGappsDetails(job, { phase: 'validating_payload' });
+    await this.jobs.updateBuildDetails(id, { phase: 'validating_payload' });
     signal.throwIfAborted();
     const workDirectory = await this.packages.extract(packagePath, id);
     staging.workDirectory = workDirectory;
@@ -270,16 +269,15 @@ export class ContainerImageGappsBuilderService
         revision,
       );
       staging.temporaryPackage = null;
-      await this.jobs.updateGappsDetails(job, {
+      await this.jobs.updateBuildDetails(id, {
         cacheState: 'built',
         packageSha256: cached.sha256,
       });
     }
-    await this.jobs.updateGappsDetails(job, {
+    await this.jobs.updateBuildDetails(id, {
       validationResults: { payload: payloadValidation },
+      phase: 'building_image',
     });
-
-    await this.jobs.updateGappsDetails(job, { phase: 'building_image' });
     signal.throwIfAborted();
     await this.buildImage(
       job.id,
@@ -289,7 +287,7 @@ export class ContainerImageGappsBuilderService
       signal,
     );
 
-    await this.jobs.updateGappsDetails(job, { phase: 'validating_image' });
+    await this.jobs.updateBuildDetails(id, { phase: 'validating_image' });
     signal.throwIfAborted();
     const inspect = await this.images.inspectImage(job.targetImage);
     const imageValidation = this.validateImage(
@@ -298,7 +296,7 @@ export class ContainerImageGappsBuilderService
       inspect,
       startup,
     );
-    await this.jobs.updateGappsDetails(job, {
+    await this.jobs.updateBuildDetails(id, {
       validationResults: {
         payload: payloadValidation,
         image: imageValidation,

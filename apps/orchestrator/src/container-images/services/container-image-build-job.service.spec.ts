@@ -170,14 +170,25 @@ describe('ContainerImageBuildJobService', () => {
       const queued = await service.getJob('build');
       await expect(service.markRunning(queued)).resolves.toBe(true);
       await expect(service.markRunning(queued)).resolves.toBe(false);
+      await service.updateBuildDetails(queued.id, {
+        phase: 'validating_payload',
+        mindTheGappsRevision: 'source-revision',
+        validationResults: { payload: { valid: true } },
+      });
       await expect(service.markCancelled(queued)).resolves.toMatchObject({
         status: 'cancelled',
       });
+      await expect(
+        service.updateBuildDetails(queued.id, { phase: 'building_image' }),
+      ).rejects.toThrow('no longer running');
       await expect(service.markRunning(queued)).resolves.toBe(false);
       await expect(
         service.markSucceeded(queued, 'sha256:ignored'),
       ).resolves.toMatchObject({
         status: 'cancelled',
+        phase: 'validating_payload',
+        mindTheGappsRevision: 'source-revision',
+        validationResults: { payload: { valid: true } },
         imageId: null,
       });
     } finally {

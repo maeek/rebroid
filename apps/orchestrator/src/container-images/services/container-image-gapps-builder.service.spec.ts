@@ -293,7 +293,7 @@ const createQueuedBuild = (
         row.status = 'cancelled';
       return { ...row };
     }),
-    updateGappsDetails: jest.fn(),
+    updateBuildDetails: jest.fn(),
     appendLog: jest.fn(),
     recordProgress: jest.fn(),
     markSucceeded: jest.fn(async ({ id }: ContainerImageBuildJob) => {

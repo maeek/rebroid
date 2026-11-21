@@ -5,7 +5,6 @@ import { getErrorMessage } from '../../common/error-message';
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
 import type { ContainerImageBuildStatus } from '../entities/container-image-build-status';
 import type {
-  ContainerImageBuildCacheState,
   ContainerImageBuildKind,
   ContainerImageGappsBuildPhase,
 } from '../entities/container-image-gapps-build';
@@ -165,38 +164,28 @@ export class ContainerImageBuildJobService {
     });
   }
 
-  updateGappsDetails(
-    job: ContainerImageBuildJob,
-    values: {
-      phase?: ContainerImageGappsBuildPhase;
-      resolvedBaseDigest?: string;
-      sourceRevision?: string;
-      packageSha256?: string;
-      cacheState?: ContainerImageBuildCacheState;
-      validationResults?: Record<string, unknown>;
-      dockerfile?: string;
-    },
+  async updateBuildDetails(
+    id: string,
+    details: Partial<
+      Pick<
+        ContainerImageBuildJob,
+        | 'phase'
+        | 'resolvedBaseDigest'
+        | 'mindTheGappsRevision'
+        | 'packageSha256'
+        | 'cacheState'
+        | 'validationResults'
+        | 'dockerfile'
+      >
+    >,
   ) {
-    const patch: Partial<ContainerImageBuildJob> = {};
-    if (values.phase) patch.phase = values.phase;
-    if (values.resolvedBaseDigest) {
-      patch.resolvedBaseDigest = values.resolvedBaseDigest;
+    const result = await this.jobs.update(
+      { id, status: 'running' },
+      details as Parameters<Repository<ContainerImageBuildJob>['update']>[1],
+    );
+    if (result.affected !== 1) {
+      throw new Error(`Image build ${id} is no longer running.`);
     }
-    if (values.sourceRevision) {
-      patch.mindTheGappsRevision = values.sourceRevision;
-    }
-    if (values.packageSha256) patch.packageSha256 = values.packageSha256;
-    if (values.cacheState) patch.cacheState = values.cacheState;
-    if (values.validationResults) {
-      patch.validationResults = values.validationResults;
-    }
-    if (values.dockerfile) patch.dockerfile = values.dockerfile;
-    return this.jobs
-      .update(
-        { id: job.id, status: In(unfinishedStatuses) },
-        patch as Parameters<Repository<ContainerImageBuildJob>['update']>[1],
-      )
-      .then(() => this.getJob(job.id));
   }
 
   async markCancelled(job: ContainerImageBuildJob) {

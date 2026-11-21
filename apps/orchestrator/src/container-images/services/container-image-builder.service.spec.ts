@@ -12,7 +12,7 @@ it('fails and releases a Dockerfile build if the initial phase write fails', asy
     createQueuedJob: jest.fn().mockResolvedValue(job),
     getJob: jest.fn().mockResolvedValue(job),
     markRunning: jest.fn().mockResolvedValue(true),
-    updateGappsDetails: jest
+    updateBuildDetails: jest
       .fn()
       .mockRejectedValue(new Error('phase write failed')),
     markFailed: jest.fn(async () => {
