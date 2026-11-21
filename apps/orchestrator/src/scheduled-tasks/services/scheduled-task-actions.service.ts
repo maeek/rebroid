@@ -158,12 +158,7 @@ export class ScheduledTaskActionsService {
         description:
           'Prune stopped containers, unused networks, dangling images, and unused volumes.',
         normalizePayload: () => null,
-        run: async () => ({
-          containers: await this.prune.pruneContainers(),
-          networks: await this.prune.pruneNetworks(),
-          images: await this.prune.pruneImages(true),
-          volumes: await this.prune.pruneVolumes(),
-        }),
+        run: () => this.prune.pruneAll(),
       },
       {
         type: ScheduledTaskActionType.CleanRuntimeLogs,

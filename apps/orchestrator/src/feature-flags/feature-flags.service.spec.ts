@@ -1,4 +1,3 @@
-import { ConflictException } from '@nestjs/common';
 import type { StoredOrchestratorSettings } from '../settings/orchestrator-settings-store';
 import { featureFlagDefinitions } from './feature-flag.registry';
 import {
@@ -128,7 +127,7 @@ describe('FeatureFlagsService', () => {
     });
   });
 
-  it('uses stable errors for disabled and unknown features', async () => {
+  it('uses stable errors for disabled, unknown and duplicate features', async () => {
     const store = new SettingsStoreStub(settings());
     const service = new FeatureFlagsService(store as never, config as never);
     await service.onModuleInit();
@@ -139,9 +138,21 @@ describe('FeatureFlagsService', () => {
     await expect(
       service.update({
         revision: 0,
-        changes: [{ key: 'feature.unknown', enabled: true }],
+        changes: [{ key: 'constructor', enabled: true }],
       } as never),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).rejects.toMatchObject({ response: { code: 'unknown_feature' } });
+    await expect(
+      service.update({
+        revision: 0,
+        changes: [
+          { key: 'feature.ocr', enabled: false },
+          { key: 'feature.ocr', enabled: true },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      response: { code: 'feature_dependency_conflict' },
+    });
+    expect(store.updateSettings).not.toHaveBeenCalled();
   });
 
   it('restores runtime defaults with a new revision', async () => {

@@ -136,7 +136,7 @@ export const consumeOpenAiResponsesStream = async (
   for await (const event of readProviderSseEvents(body)) {
     switch (event.type) {
       case 'response.output_text.delta':
-        if (typeof event.delta !== 'string') break;
+        if (typeof event.delta !== 'string' || !event.delta) break;
         streamedCharacters += event.delta.length;
         if (streamedCharacters > providerStreamLimits.contentCharacters) {
           throw new ProviderResponseLimitError('assistant content size');

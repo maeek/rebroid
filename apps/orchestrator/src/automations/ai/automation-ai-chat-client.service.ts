@@ -91,7 +91,7 @@ export class AutomationAiChatClientService {
                 body,
                 format: providerStreamFormat(provider),
                 officialOpenAi: isOfficialOpenAiProvider(provider),
-                onUpdate: ({ contentDelta }) => onDelta(contentDelta),
+                onContentDelta: onDelta,
               }),
         );
       };
@@ -169,7 +169,6 @@ export class AutomationAiChatClientService {
     };
 
     const result = await consume(async (contentDelta) => {
-      if (!contentDelta) return;
       pendingDelta += contentDelta;
       await flush(false);
     });

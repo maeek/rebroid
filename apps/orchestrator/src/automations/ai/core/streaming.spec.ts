@@ -11,8 +11,8 @@ describe('automation AI streaming', () => {
         'data: {"choices":[{"delta":{"content":"settings"}}]}\n\n',
         'data: [DONE]\n\n',
       ]),
-      onUpdate: ({ contentDelta }) => {
-        if (contentDelta) deltas.push(contentDelta);
+      onContentDelta: (delta) => {
+        deltas.push(delta);
       },
     });
 
@@ -62,7 +62,9 @@ describe('automation AI streaming', () => {
   });
 
   it('separates llama.cpp reasoning deltas from the public tool decision', async () => {
+    const onContentDelta = jest.fn();
     const result = await consumeChatCompletionStream({
+      onContentDelta,
       body: streamFromText([
         'data: {"choices":[{"delta":{"reasoning_content":"Need one grounded action."}}]}\n\n',
         `data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"decision","type":"function","function":{"name":"${DEVICE_DECISION_TOOL_NAME}","arguments":"{\\"kind\\":\\"finish\\",\\"status\\":\\"blocked\\",\\"finalText\\":\\"No target.\\",\\"evidenceIds\\":[],\\"completedSubgoalIds\\":[]}"}}]}}]}\n\n`,
@@ -71,6 +73,7 @@ describe('automation AI streaming', () => {
       ]),
     });
 
+    expect(onContentDelta).not.toHaveBeenCalled();
     assert.equal(result.reasoningPresent, true);
     assert.equal(result.content, '');
     assert.equal(result.finishReason, 'tool_calls');
@@ -80,7 +83,9 @@ describe('automation AI streaming', () => {
   });
 
   it('normalizes Ollama native NDJSON thinking and tool calls', async () => {
+    const onContentDelta = jest.fn();
     const result = await consumeChatCompletionStream({
+      onContentDelta,
       format: 'ollama-ndjson',
       body: streamFromText([
         '{"message":{"role":"assistant","thinking":"Inspect snapshot"},"done":false}\n',
@@ -88,6 +93,7 @@ describe('automation AI streaming', () => {
       ]),
     });
 
+    expect(onContentDelta).not.toHaveBeenCalled();
     assert.equal(result.reasoningPresent, true);
     assert.equal(result.usage?.totalTokens, 50);
     assert.equal(result.toolCalls[0]?.id, 'ollama_call_0');

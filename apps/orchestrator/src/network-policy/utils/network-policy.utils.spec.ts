@@ -1,6 +1,5 @@
 import {
   extractHostname,
-  networkPolicyChainName,
   normalizeIpv4Cidr,
   parseAllowCidrs,
   uniqueStrings,
@@ -22,8 +21,5 @@ describe('network policy utils', () => {
     expect(extractHostname('example.internal:8080')).toBe('example.internal');
     expect(extractHostname('')).toBeNull();
     expect(uniqueStrings(['a', 'b', 'a'])).toEqual(['a', 'b']);
-    expect(networkPolicyChainName('12345678-1234-1234-1234-123456789abc')).toBe(
-      'rebroid-123456781234123412341234',
-    );
   });
 });

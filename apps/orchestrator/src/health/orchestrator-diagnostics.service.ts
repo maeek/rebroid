@@ -17,11 +17,14 @@ import type { ServiceHealthDto } from './dto/health-response.dto';
 import { OcrSidecarHealthService } from './ocr-sidecar-health.service';
 
 const SUMMARY_PROBE_FRESHNESS_MS = 5_000;
+const RUNTIME_PROBE_FRESHNESS_MS = 60_000;
 
 class SummaryProbe<T> {
   private pending?: Promise<T>;
   private sample?: { value: T; expiresAt: number };
   private revision = 0;
+
+  constructor(private readonly freshnessMs = SUMMARY_PROBE_FRESHNESS_MS) {}
 
   invalidate() {
     this.revision += 1;
@@ -29,7 +32,8 @@ class SummaryProbe<T> {
     this.sample = undefined;
   }
 
-  read(collect: () => Promise<T>): Promise<T> {
+  read(useCache: boolean, collect: () => Promise<T>): Promise<T> {
+    if (!useCache) return collect();
     if (this.sample && this.sample.expiresAt > Date.now()) {
       return Promise.resolve(this.sample.value);
     }
@@ -41,7 +45,7 @@ class SummaryProbe<T> {
         if (revision === this.revision) {
           this.sample = {
             value,
-            expiresAt: Date.now() + SUMMARY_PROBE_FRESHNESS_MS,
+            expiresAt: Date.now() + this.freshnessMs,
           };
         }
         return value;
@@ -56,6 +60,10 @@ class SummaryProbe<T> {
 
 @Injectable()
 export class OrchestratorDiagnosticsService implements OnModuleDestroy {
+  private readonly dockerAvailability = new SummaryProbe<ServiceHealthDto>();
+  private readonly runtime = new SummaryProbe<ServiceHealthDto>(
+    RUNTIME_PROBE_FRESHNESS_MS,
+  );
   private readonly display = new SummaryProbe<ServiceHealthDto>();
   private readonly firewall = new SummaryProbe<FirewallAgentResponse>();
   private readonly ocr = new SummaryProbe<ServiceHealthDto>();
@@ -97,21 +105,19 @@ export class OrchestratorDiagnosticsService implements OnModuleDestroy {
 
   private async collect(summary: boolean) {
     const [docker, display, firewall, ocr] = await Promise.all([
-      summary ? this.docker.dockerHealthSummary() : this.docker.dockerHealth(),
-      summary
-        ? this.display.read(() => this.docker.displaySidecarSummaryHealth())
-        : this.docker.displaySidecarHealth(),
-      summary
-        ? this.firewall.read(() => this.firewallHealth())
-        : this.firewallHealth(),
-      summary
-        ? this.ocr.read(() => this.ocrSidecar.health())
-        : this.ocrSidecar.health(),
+      this.dockerAvailability.read(summary, () => this.docker.dockerHealth()),
+      this.display.read(summary, () =>
+        summary
+          ? this.docker.displaySidecarSummaryHealth()
+          : this.docker.displaySidecarHealth(),
+      ),
+      this.firewall.read(summary, () => this.firewallHealth()),
+      this.ocr.read(summary, () => this.ocrSidecar.health()),
     ]);
     const runtime = docker.ok
-      ? await (summary
-          ? this.docker.runtimeSuitabilityHealthSummary()
-          : this.docker.runtimeSuitabilityHealth())
+      ? await this.runtime.read(summary, () =>
+          this.docker.runtimeSuitabilityHealth(),
+        )
       : {
           ok: false,
           status: 'offline' as const,

@@ -1,9 +1,14 @@
 import { MetricsService } from '../../metrics/metrics.service';
 import { AndroidApplicationStatus } from '../../android-apps/contracts/android-application-status';
 import { ApplicationProfileMode } from '../../android-apps/contracts/application-profile-mode';
-import { AutomationRunStatus } from '../entities/automation-run.entity';
+import {
+  AutomationRunStatus,
+  AutomationRunTrigger,
+} from '../entities/automation-run.entity';
+import { Automation } from '../entities/automation.entity';
 import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
+import { AutomationRunnerService } from './automation-runner.service';
 import { AutomationRunnerTargetService } from './automation-runner-target.service';
 import { AutomationRunStartPolicy } from './automation-runner-options';
 
@@ -72,6 +77,7 @@ const createExecution = ({
     emitWhileQueued: jest.fn(),
   };
   const ephemeral = { delete: jest.fn() };
+  const metrics = new MetricsService();
   const service = new AutomationRunExecutionService(
     runs as never,
     events as never,
@@ -89,12 +95,13 @@ const createExecution = ({
       { assertAllowed } as never,
     ),
     ephemeral as never,
-    new MetricsService(),
+    metrics,
   );
   return {
     service,
     events,
     ephemeral,
+    metrics,
     getTarget,
     start,
     executeSteps,
@@ -359,6 +366,60 @@ describe('AutomationRunExecutionService', () => {
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
   });
 
+  it('keeps the active gauge balanced when cancellation precedes the running transition response', async () => {
+    const running = {
+      ...queuedRun,
+      status: AutomationRunStatus.Running,
+      startedAt: new Date(),
+    };
+    const canceled = { ...running, status: AutomationRunStatus.Canceled };
+    const { service, events, metrics, ephemeral, executeSteps } =
+      createExecution();
+    const runningPersisted = deferred<void>();
+    const releaseRunningResponse = deferred<void>();
+    events.transitionRun
+      .mockImplementationOnce(async () => {
+        runningPersisted.resolve();
+        await releaseRunningResponse.promise;
+        return running;
+      })
+      .mockResolvedValueOnce(canceled);
+    const runner = new AutomationRunnerService(
+      { findMetadataByOwnerAndId: async () => running } as never,
+      { ...events, enqueueRun: async () => queuedRun } as never,
+      ephemeral as never,
+      service,
+      metrics,
+      { assertEnabled: jest.fn() } as never,
+    );
+    const executionFinished = deferred<void>();
+    ephemeral.delete.mockImplementation(() => executionFinished.resolve());
+    const workflow = Object.assign(new Automation(), runnable.entity, {
+      definitionJson: JSON.stringify(runnable.definition),
+    });
+    await runner.enqueue(workflow, AutomationRunTrigger.Manual, {
+      targetApplicationId: target.id,
+    });
+    await runningPersisted.promise;
+    await expect(
+      runner.cancel(queuedRun.ownerUserId, queuedRun.id),
+    ).resolves.toBe(canceled);
+
+    const beforeRelease = await metrics.registry.metrics();
+    releaseRunningResponse.resolve();
+    await executionFinished.promise;
+    const afterRelease = await metrics.registry.metrics();
+    expect(beforeRelease).toContain('rebroid_automation_active_runs 0\n');
+    expect(afterRelease).toContain('rebroid_automation_active_runs 0\n');
+    expect(afterRelease).toContain(
+      'rebroid_automation_runs_total{trigger="manual",outcome="canceled"} 1\n',
+    );
+    expect(afterRelease).toContain(
+      'rebroid_automation_run_duration_seconds_count{trigger="manual",outcome="canceled"} 1\n',
+    );
+    expect(executeSteps).not.toHaveBeenCalled();
+  });
+
   it('does not overwrite a cancellation that wins the terminal transition', async () => {
     const running = {
       ...queuedRun,
@@ -394,13 +455,27 @@ describe('AutomationRunExecutionService', () => {
       status: AutomationRunStatus.Success,
       completedAt: new Date(),
     };
-    const { service, events } = createExecution();
+    const { service, events, metrics, executeSteps } = createExecution();
+    const stepsEntered = deferred<void>();
+    const result = deferred<{ failed: boolean }>();
+    executeSteps.mockImplementation(() => {
+      stepsEntered.resolve();
+      return result.promise;
+    });
     events.transitionRun
       .mockResolvedValueOnce(running)
       .mockResolvedValueOnce(completed);
 
-    await service.execute(runInput());
+    const execution = service.execute(runInput());
+    await stepsEntered.promise;
+    const duringExecution = await metrics.registry.metrics();
+    result.resolve({ failed: false });
+    await execution;
 
+    expect(duringExecution).toContain('rebroid_automation_active_runs 1\n');
+    await expect(metrics.registry.metrics()).resolves.toContain(
+      'rebroid_automation_active_runs 0\n',
+    );
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
       expect.objectContaining({ status: AutomationRunStatus.Success }),

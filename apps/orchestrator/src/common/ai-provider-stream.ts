@@ -35,13 +35,6 @@ interface ChatCompletionTimings {
   cacheTokens?: number;
 }
 
-interface ChatCompletionStreamUpdate {
-  contentDelta: string;
-  reasoningDelta: string;
-  toolCallDeltas: ChatToolCallDelta[];
-  finishReason?: string;
-}
-
 interface ChatToolCallDelta {
   index: number;
   id?: string;
@@ -75,12 +68,12 @@ export const consumeChatCompletionStream = async ({
   body,
   format = 'openai-sse',
   officialOpenAi = false,
-  onUpdate,
+  onContentDelta,
 }: {
   body: ReadableStream<Uint8Array>;
   format?: ChatStreamFormat;
   officialOpenAi?: boolean;
-  onUpdate?: (update: ChatCompletionStreamUpdate) => Promise<void> | void;
+  onContentDelta?: (delta: string) => Promise<void> | void;
 }): Promise<ChatCompletionStreamResult> => {
   const pendingToolCalls = new Map<number, PendingToolCall>();
   let content = '';
@@ -111,24 +104,14 @@ export const consumeChatCompletionStream = async ({
     ) {
       throw new ProviderResponseLimitError('assistant content size');
     }
-    if (update.contentDelta) content += update.contentDelta;
     if (update.reasoningDelta) reasoningPresent = true;
     if (update.finishReason) finishReason = update.finishReason;
     if (update.usage) usage = update.usage;
     if (update.timings) timings = update.timings;
     mergeToolCallDeltas(pendingToolCalls, update.toolCallDeltas);
-    if (
-      update.contentDelta ||
-      update.reasoningDelta ||
-      update.toolCallDeltas.length > 0 ||
-      update.finishReason
-    ) {
-      await onUpdate?.({
-        contentDelta: update.contentDelta,
-        reasoningDelta: update.reasoningDelta,
-        toolCallDeltas: update.toolCallDeltas,
-        ...(update.finishReason ? { finishReason: update.finishReason } : {}),
-      });
+    if (update.contentDelta) {
+      content += update.contentDelta;
+      await onContentDelta?.(update.contentDelta);
     }
   }
 

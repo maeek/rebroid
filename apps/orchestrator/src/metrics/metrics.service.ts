@@ -137,8 +137,9 @@ export class MetricsService {
     });
   }
 
-  automationRunStarted() {
+  beginAutomationRunExecution() {
     this.automationActiveRuns.inc();
+    return () => this.automationActiveRuns.dec();
   }
 
   automationRunFinished(
@@ -146,9 +147,6 @@ export class MetricsService {
     outcome: string,
     startedAt: Date | null,
   ) {
-    if (startedAt) {
-      this.automationActiveRuns.dec();
-    }
     this.automationRuns.inc({ trigger, outcome });
     if (startedAt) {
       this.automationRunDurations.observe(

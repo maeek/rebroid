@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import {
   buildLaunchPackageCommand,
   buildPmInstallCommand,
@@ -21,6 +22,24 @@ describe('android APK provisioning utils', () => {
       'pm install -r -t -g -S "$apk_size" - < "$apk_path"',
     );
     expect(command).toContain('run_with_timeout 180');
+  });
+
+  it('reports the staged install exit code before retrying the streamed install', () => {
+    const script = [
+      'pm() {',
+      '  if [ "$5" = "-S" ]; then',
+      '    echo "streamed install succeeded"',
+      '    return 0',
+      '  fi',
+      '  return 23',
+      '}',
+      buildPmInstallCommand(__filename),
+    ].join('\n');
+    const result = spawnSync('sh', ['-c', script], { encoding: 'utf8' });
+
+    expect(result.stderr).toContain('staged file failed with exit code 23');
+    expect(result.stdout).toContain('streamed install succeeded');
+    expect(result.status).toBe(0);
   });
 
   it('builds the launch command for a package name', () => {

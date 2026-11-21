@@ -6,7 +6,5 @@ export interface DockerHealthPort {
   dockerHealth(): Promise<ServiceHealth>;
   runtimeSuitabilityHealth(): Promise<ServiceHealth>;
   displaySidecarHealth(): Promise<ServiceHealth>;
-  dockerHealthSummary(): Promise<ServiceHealth>;
-  runtimeSuitabilityHealthSummary(): Promise<ServiceHealth>;
   displaySidecarSummaryHealth(): Promise<ServiceHealth>;
 }

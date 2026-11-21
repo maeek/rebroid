@@ -49,6 +49,7 @@ export class AutomationRunExecutionService {
   ) {}
 
   async execute(input: AutomationRunExecutionInput) {
+    let endExecution: (() => void) | undefined;
     let runnable: Awaited<
       ReturnType<AutomationRunnableResolverService['resolve']>
     > = null;
@@ -108,7 +109,7 @@ export class AutomationRunExecutionService {
         input.abortSignal.aborted
       )
         return;
-      this.metrics.automationRunStarted();
+      endExecution = this.metrics.beginAutomationRunExecution();
 
       const state: AutomationExecutionState = {
         app: target,
@@ -178,6 +179,7 @@ export class AutomationRunExecutionService {
         `Automation run ${input.runId} failed unexpectedly: ${getErrorMessage(error)}`,
       );
     } finally {
+      endExecution?.();
       this.ephemeralAutomations.delete(
         runnable?.ephemeral ? runnable.entity.id : input.automationId,
       );

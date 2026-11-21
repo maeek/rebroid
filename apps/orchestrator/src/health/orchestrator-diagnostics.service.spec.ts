@@ -5,8 +5,6 @@ const disabled = { ok: true, status: 'disabled', message: 'Disabled' } as const;
 
 const setup = () => {
   const docker = {
-    dockerHealthSummary: jest.fn().mockResolvedValue(healthy),
-    runtimeSuitabilityHealthSummary: jest.fn().mockResolvedValue(healthy),
     displaySidecarSummaryHealth: jest.fn().mockResolvedValue(healthy),
     dockerHealth: jest.fn().mockResolvedValue(healthy),
     runtimeSuitabilityHealth: jest.fn().mockResolvedValue(healthy),
@@ -46,20 +44,46 @@ it('coalesces concurrent summaries and reuses recent probes while full diagnosti
   await Promise.all([diagnostics.read(true), diagnostics.read(true)]);
   jest.advanceTimersByTime(4_999);
   await diagnostics.read(true);
+  expect(docker.dockerHealth).toHaveBeenCalledTimes(1);
+  expect(docker.runtimeSuitabilityHealth).toHaveBeenCalledTimes(1);
   expect(docker.displaySidecarSummaryHealth).toHaveBeenCalledTimes(1);
   expect(firewall.health).toHaveBeenCalledTimes(1);
   expect(ocr.health).toHaveBeenCalledTimes(1);
 
   await diagnostics.read(false);
+  expect(docker.dockerHealth).toHaveBeenCalledTimes(2);
+  expect(docker.runtimeSuitabilityHealth).toHaveBeenCalledTimes(2);
   expect(docker.displaySidecarHealth).toHaveBeenCalledTimes(1);
   expect(firewall.health).toHaveBeenCalledTimes(2);
   expect(ocr.health).toHaveBeenCalledTimes(2);
 
   jest.advanceTimersByTime(1);
   await diagnostics.read(true);
+  expect(docker.dockerHealth).toHaveBeenCalledTimes(3);
+  expect(docker.runtimeSuitabilityHealth).toHaveBeenCalledTimes(2);
   expect(docker.displaySidecarSummaryHealth).toHaveBeenCalledTimes(2);
   expect(firewall.health).toHaveBeenCalledTimes(3);
   expect(ocr.health).toHaveBeenCalledTimes(3);
+});
+
+it('uses a 60-second runtime summary only while Docker is reachable', async () => {
+  jest.useFakeTimers();
+  const { diagnostics, docker } = setup();
+  await diagnostics.read(true);
+
+  jest.advanceTimersByTime(5_000);
+  docker.dockerHealth.mockResolvedValueOnce({ ...healthy, ok: false });
+  expect((await diagnostics.read(true)).services.runtime.status).toBe(
+    'offline',
+  );
+
+  jest.advanceTimersByTime(54_999);
+  expect((await diagnostics.read(true)).runtime).toBe(true);
+  expect(docker.runtimeSuitabilityHealth).toHaveBeenCalledTimes(1);
+
+  jest.advanceTimersByTime(1);
+  await diagnostics.read(true);
+  expect(docker.runtimeSuitabilityHealth).toHaveBeenCalledTimes(2);
 });
 
 it('fences a pending probe after a settings change and reports the current feature state', async () => {

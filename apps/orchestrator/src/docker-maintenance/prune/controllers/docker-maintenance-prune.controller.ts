@@ -52,17 +52,7 @@ export class DockerMaintenancePruneController {
       'Prune stopped containers, unused networks, dangling images, and unused volumes.',
   })
   @ApiCreatedResponse({ type: DockerPruneAllResponseDto })
-  async pruneAll() {
-    const containers = await this.prune.pruneContainers();
-    const networks = await this.prune.pruneNetworks();
-    const images = await this.prune.pruneImages(true);
-    const volumes = await this.prune.pruneVolumes();
-
-    return {
-      containers,
-      networks,
-      images,
-      volumes,
-    };
+  pruneAll() {
+    return this.prune.pruneAll();
   }
 }

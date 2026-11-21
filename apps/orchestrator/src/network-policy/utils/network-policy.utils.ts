@@ -1,5 +1,4 @@
 export {
-  networkPolicyChainName,
   normalizeIpv4Cidr,
   parseAllowCidrs,
 } from '@rebroid/firewall-policy-core/policy';

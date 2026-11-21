@@ -5,4 +5,10 @@ export interface DockerPlatformPrunePort {
   pruneContainers(): Promise<unknown>;
   pruneNetworks(): Promise<unknown>;
   pruneVolumes(): Promise<unknown>;
+  pruneAll(): Promise<{
+    containers: unknown;
+    networks: unknown;
+    images: unknown;
+    volumes: unknown;
+  }>;
 }

@@ -42,10 +42,6 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     private readonly inventory: DockerInventoryService,
   ) {}
 
-  get hasPendingDockerWork() {
-    return this.engine.hasPendingDockerWork;
-  }
-
   get inventoryRevision() {
     return this.engine.currentInventoryRevision;
   }
@@ -206,10 +202,8 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
    * Returns the samples available before the sweep deadline and their coverage.
    */
   async getManagedContainerResourceUsage(
-    containers?: ManagedContainerSummary[],
+    containers: ManagedContainerSummary[],
   ) {
-    const managedContainers =
-      containers ?? (await this.listManagedContainers());
     const totals: ManagedContainerResourceSample = {
       cpuUsagePercent: 0,
       memoryUsageBytes: 0,
@@ -227,7 +221,7 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     const now = performance.now();
     const remaining: ManagedContainerSummary[] = [];
     const runningIds = new Set<string>();
-    for (const container of managedContainers) {
+    for (const container of containers) {
       if (container.state !== 'running') continue;
       runningIds.add(container.id);
       const cached = this.stats.get(container.id);

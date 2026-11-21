@@ -8,7 +8,6 @@ import type {
 export const DOCKER_RESOURCE_RUNTIME = Symbol('DOCKER_RESOURCE_RUNTIME');
 
 export interface DockerResourceRuntimePort {
-  readonly hasPendingDockerWork: boolean;
   readonly inventoryRevision: number;
   engineSummary(): Promise<{
     id?: string;
@@ -39,6 +38,6 @@ export interface DockerResourceRuntimePort {
     containerId: string,
   ): Promise<ContainerResourceUsage>;
   getManagedContainerResourceUsage(
-    containers?: ManagedContainerSummary[],
+    containers: ManagedContainerSummary[],
   ): Promise<ManagedContainerResourceSample>;
 }

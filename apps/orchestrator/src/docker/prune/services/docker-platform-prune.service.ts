@@ -6,6 +6,15 @@ import type { DockerPlatformPrunePort } from '../../contracts/docker-platform-pr
 export class DockerPlatformPruneService implements DockerPlatformPrunePort {
   constructor(private readonly engine: DockerEngineService) {}
 
+  async pruneAll() {
+    return {
+      containers: await this.pruneContainers(),
+      networks: await this.pruneNetworks(),
+      images: await this.pruneImages(true),
+      volumes: await this.pruneVolumes(),
+    };
+  }
+
   async pruneImages(danglingOnly = true) {
     return this.engine.mutate(
       () =>

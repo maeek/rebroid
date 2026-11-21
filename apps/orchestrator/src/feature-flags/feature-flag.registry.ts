@@ -1,15 +1,3 @@
-export const featureFlagKeys = [
-  'feature.ocr',
-  'feature.firewall',
-  'feature.image-builder',
-  'feature.display-virtual',
-  'feature.ai',
-  'feature.workflows',
-  'feature.resource-quota',
-  'feature.display-webrtc',
-] as const;
-
-export type FeatureFlagKey = (typeof featureFlagKeys)[number];
 export type FeatureFlagControl = 'runtime' | 'deployment';
 export type FeatureDisablePolicy =
   'block_new' | 'drain_active' | 'stop_active' | 'restart_required';
@@ -23,7 +11,6 @@ export const featureOwners = [
 ] as const;
 
 export interface FeatureFlagDefinition {
-  key: FeatureFlagKey;
   description: string;
   owner: (typeof featureOwners)[number];
   control: FeatureFlagControl;
@@ -36,9 +23,8 @@ export interface FeatureFlagDefinition {
   supportConfigKey?: string;
 }
 
-export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
-  {
-    key: 'feature.ocr',
+const definitions = {
+  'feature.ocr': {
     description: 'OCR-backed automation perception.',
     owner: 'automations',
     control: 'runtime',
@@ -50,8 +36,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     conflicts: [],
     supportConfigKey: 'app.ocr.baseUrl',
   },
-  {
-    key: 'feature.firewall',
+  'feature.firewall': {
     description: 'Host firewall policy enforcement.',
     owner: 'network-policy',
     control: 'runtime',
@@ -63,8 +48,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     conflicts: [],
     supportConfigKey: 'app.firewallAgent.socketPath',
   },
-  {
-    key: 'feature.image-builder',
+  'feature.image-builder': {
     description: 'Custom and managed container image builds.',
     owner: 'container-images',
     control: 'runtime',
@@ -75,8 +59,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-  {
-    key: 'feature.display-virtual',
+  'feature.display-virtual': {
     description: 'Experimental virtual display sessions.',
     owner: 'display',
     control: 'runtime',
@@ -87,8 +70,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-  {
-    key: 'feature.ai',
+  'feature.ai': {
     description: 'AI providers, device-agent tasks, and workflow drafting.',
     owner: 'automations',
     control: 'runtime',
@@ -99,8 +81,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-  {
-    key: 'feature.workflows',
+  'feature.workflows': {
     description: 'Workflow editing, manual runs, and scheduled triggers.',
     owner: 'automations',
     control: 'runtime',
@@ -111,8 +92,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-  {
-    key: 'feature.resource-quota',
+  'feature.resource-quota': {
     description: 'Per-user open app, CPU, memory, and session limits.',
     owner: 'android-apps',
     control: 'runtime',
@@ -123,8 +103,7 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-  {
-    key: 'feature.display-webrtc',
+  'feature.display-webrtc': {
     description: 'Live viewer streaming over WebRTC.',
     owner: 'display',
     control: 'runtime',
@@ -135,12 +114,22 @@ export const featureFlagDefinitions: readonly FeatureFlagDefinition[] = [
     dependencies: [],
     conflicts: [],
   },
-] as const;
+} as const;
 
-const knownKeys = new Set<string>(featureFlagKeys);
+export type FeatureFlagKey = keyof typeof definitions;
+export const featureFlagRegistry: Readonly<
+  Record<FeatureFlagKey, FeatureFlagDefinition>
+> = definitions;
+export const featureFlagKeys = Object.keys(
+  featureFlagRegistry,
+) as FeatureFlagKey[];
+export const featureFlagDefinitions = featureFlagKeys.map((key) => ({
+  key,
+  ...featureFlagRegistry[key],
+}));
 
 export const isFeatureFlagKey = (value: string): value is FeatureFlagKey =>
-  knownKeys.has(value);
+  Object.hasOwn(featureFlagRegistry, value);
 
 export const defaultRuntimeFeatureFlagValues = (
   getSupportConfig: (key: string) => unknown,

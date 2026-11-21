@@ -15,6 +15,7 @@ import type {
 import {
   defaultRuntimeFeatureFlagValues,
   featureFlagDefinitions,
+  featureFlagRegistry,
   isFeatureFlagKey,
   type FeatureFlagDefinition,
   type FeatureFlagKey,
@@ -120,16 +121,20 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   async update(dto: UpdateFeatureFlagsDto) {
     const seen = new Set<FeatureFlagKey>();
     for (const change of dto.changes) {
-      if (!isFeatureFlagKey(change.key) || seen.has(change.key)) {
+      if (!isFeatureFlagKey(change.key)) {
         throw new ConflictException({
           statusCode: 409,
-          code: seen.has(change.key)
-            ? 'feature_dependency_conflict'
-            : 'unknown_feature',
+          code: 'unknown_feature',
           feature: change.key,
-          message: seen.has(change.key)
-            ? `Feature ${change.key} was changed more than once.`
-            : `Unknown feature ${change.key}.`,
+          message: `Unknown feature ${change.key}.`,
+        });
+      }
+      if (seen.has(change.key)) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'feature_dependency_conflict',
+          feature: change.key,
+          message: `Feature ${change.key} was changed more than once.`,
         });
       }
       seen.add(change.key);
@@ -150,9 +155,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
       const values = { ...persisted.values };
       let changed = false;
       for (const change of dto.changes) {
-        const definition: FeatureFlagDefinition | undefined =
-          featureFlagDefinitions.find(({ key }) => key === change.key);
-        if (!definition) continue;
+        const definition = featureFlagRegistry[change.key];
         if (definition.control === 'deployment') {
           throw new ConflictException({
             statusCode: 409,
@@ -161,7 +164,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
             message: `${change.key} is controlled by the deployment.`,
           });
         }
-        if (change.enabled && !this.isSupported(change.key)) {
+        if (change.enabled && !this.isSupported(definition)) {
           throw new ConflictException({
             statusCode: 409,
             code: 'feature_unsupported',
@@ -208,7 +211,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
   ): FeatureSnapshot {
     const states = {} as Record<FeatureFlagKey, FeatureFlagStateDto>;
     for (const definition of featureFlagDefinitions) {
-      const supported = this.isSupported(definition.key);
+      const supported = this.isSupported(definition);
       const enabled =
         definition.control === 'deployment'
           ? definition.defaultEnabled
@@ -251,11 +254,8 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private isSupported(key: FeatureFlagKey) {
-    const definition = featureFlagDefinitions.find(
-      (candidate) => candidate.key === key,
-    );
-    return definition?.supportConfigKey
+  private isSupported(definition: FeatureFlagDefinition) {
+    return definition.supportConfigKey
       ? Boolean(this.config.get<string>(definition.supportConfigKey))
       : true;
   }

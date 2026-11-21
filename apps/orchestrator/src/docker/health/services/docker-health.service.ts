@@ -12,16 +12,6 @@ import type { DockerHealthPort } from '../../contracts/docker-health.port';
 
 @Injectable()
 export class DockerHealthService implements DockerHealthPort {
-  private dockerHealthSummaryRequest: Promise<ServiceHealth> | null = null;
-  private dockerHealthSummaryCache: {
-    value: ServiceHealth;
-    expiresAt: number;
-  } | null = null;
-  private runtimeSummaryRequest: Promise<ServiceHealth> | null = null;
-  private runtimeSummaryCache: {
-    value: ServiceHealth;
-    expiresAt: number;
-  } | null = null;
   constructor(
     private readonly engine: DockerEngineService,
     private readonly sidecar: DockerSidecarService,
@@ -138,48 +128,7 @@ export class DockerHealthService implements DockerHealthPort {
     return this.sidecar.health();
   }
 
-  dockerHealthSummary() {
-    return this.cachedHealth(
-      'dockerHealthSummaryRequest',
-      'dockerHealthSummaryCache',
-      5_000,
-      () => this.dockerHealth(),
-    );
-  }
-
-  runtimeSuitabilityHealthSummary() {
-    return this.cachedHealth(
-      'runtimeSummaryRequest',
-      'runtimeSummaryCache',
-      60_000,
-      () => this.runtimeSuitabilityHealth(),
-    );
-  }
-
   displaySidecarSummaryHealth() {
     return this.sidecar.shallowHealth();
-  }
-
-  private cachedHealth(
-    requestKey: 'dockerHealthSummaryRequest' | 'runtimeSummaryRequest',
-    cacheKey: 'dockerHealthSummaryCache' | 'runtimeSummaryCache',
-    ttlMs: number,
-    collect: () => Promise<ServiceHealth>,
-  ) {
-    const cached = this[cacheKey];
-    if (cached && cached.expiresAt > Date.now())
-      return Promise.resolve(cached.value);
-    const existing = this[requestKey];
-    if (existing) return existing;
-    const pending = collect()
-      .then((value) => {
-        this[cacheKey] = { value, expiresAt: Date.now() + ttlMs };
-        return value;
-      })
-      .finally(() => {
-        if (this[requestKey] === pending) this[requestKey] = null;
-      });
-    this[requestKey] = pending;
-    return pending;
   }
 }
