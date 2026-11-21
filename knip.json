@@ -2,7 +2,7 @@
   "ignoreDependencies": ["openapi-typescript", "tw-animate-css"],
   "workspaces": {
     "apps/web": {
-      "entry": ["src/app/**/*.{ts,tsx}"],
+      "entry": ["src/app/**/*.{ts,tsx}", "src/test/server-only.ts"],
       "project": ["src/**/*.{ts,tsx}"]
     },
     "apps/orchestrator": {
@@ -10,7 +10,12 @@
       "project": ["src/**/*.ts"]
     },
     "apps/display-sidecar": {
-      "entry": ["src/main.ts", "src/modules/display/viewer/src/app.ts"],
+      "entry": [
+        "src/main.ts",
+        "src/modules/display/viewer/src/app.ts",
+        "src/**/*.spec.ts"
+      ],
+      "ignoreBinaries": ["go"],
       "project": ["src/**/*.ts"]
     },
     "apps/firewall-agent": {
