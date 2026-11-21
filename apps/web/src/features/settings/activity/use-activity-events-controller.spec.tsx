@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useActivityEventsController } from './use-activity-events-controller'
 import type { ActivityEventsTableProps } from './activity-types'
 
-const { push } = vi.hoisted(() => ({ push: vi.fn<(url: string) => void>() }))
+const { push } = vi.hoisted(() => ({ push: vi.fn<(url: string, options: { scroll: boolean }) => void>() }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }))
 vi.mock('@/server/audit/actions', () => ({ purgeAllAuditEventsAction: vi.fn(), saveAuditRetentionAction: vi.fn() }))
 const props: ActivityEventsTableProps = {
@@ -19,19 +19,19 @@ describe('embedded application activity navigation', () => {
   it('keeps search, sorting, pagination, and reset on the app activity tab', () => {
     const { result } = renderHook(() => useActivityEventsController(props))
     act(() => result.current.setFilterValue('search', 'start'))
-    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/app\/app-1\?.*view=activity/))
+    expect(push).toHaveBeenLastCalledWith(expect.stringMatching(/^\/app\/app-1\?.*view=activity/), { scroll: false })
     act(() => result.current.pushParams({ page: 2 }))
-    expect(push).toHaveBeenLastCalledWith(expect.stringContaining('page=2'))
+    expect(push).toHaveBeenLastCalledWith(expect.stringContaining('page=2'), { scroll: false })
     act(() => result.current.setSorting([{ id: 'action', desc: false }]))
-    expect(push).toHaveBeenLastCalledWith(expect.stringContaining('sort=action%3Aasc'))
+    expect(push).toHaveBeenLastCalledWith(expect.stringContaining('sort=action%3Aasc'), { scroll: false })
     act(() => result.current.resetFilters())
-    expect(push).toHaveBeenLastCalledWith('/app/app-1?view=activity')
+    expect(push).toHaveBeenLastCalledWith('/app/app-1?view=activity', { scroll: false })
   })
   it('preserves global audit navigation outside an app', () => {
     const globalProps = { ...props, application: undefined, filters: {} }
     const { result } = renderHook(() => useActivityEventsController(globalProps))
     act(() => result.current.resetFilters())
-    expect(push).toHaveBeenLastCalledWith('/security/audit-log')
+    expect(push).toHaveBeenLastCalledWith('/security/audit-log', { scroll: false })
   })
   it('keeps export scoped to this app', () => {
     const { result } = renderHook(() => useActivityEventsController(props))

@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { useContainerDetailController } from '@/features/platform/details/runtime-container-detail/use-container-detail-controller'
-import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
+import type { PlatformContainerDetails } from '@/shared/contracts/platform'
 
 type ContainerDetailContextValue = {
   controller: ReturnType<typeof useContainerDetailController>
@@ -14,14 +14,12 @@ const ContainerDetailContext = createContext<ContainerDetailContextValue | null>
 
 export const ContainerDetailProvider = ({
   children,
-  details,
-  initialLogs
+  details
 }: {
   children: ReactNode
   details: PlatformContainerDetails
-  initialLogs?: PlatformContainerLog
 }) => {
-  const controller = useContainerDetailController({ container: details.container, initialLogs })
+  const controller = useContainerDetailController({ container: details.container })
 
   return <ContainerDetailContext.Provider value={{ controller, details }}>{children}</ContainerDetailContext.Provider>
 }

@@ -34,6 +34,7 @@ const ActivityEventsContent = () => {
         <DataGridWorkspace
           columnsInToolbar
           disabled={loading}
+          updating={controller.isNavigating}
           search={controller.localFilters.search ?? ''}
           appliedSearch={filters.search ?? ''}
           searchPlaceholder={application ? 'Search activity' : 'Search audit log'}

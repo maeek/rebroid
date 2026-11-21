@@ -74,13 +74,14 @@ describe('PlatformServicesPage', () => {
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
     expect(screen.queryByText('Configured')).not.toBeInTheDocument()
   })
-  it('shows Display as a service row linking to Casting', () => {
+  it('shows Display as a service row linking to Casting', async () => {
+    const links = Promise.withResolvers<{ display: { id: string; name: string } }>()
     render(
       <FeatureFlagsProvider manifest={manifest}>
         <PlatformServicesPage
           initialSettings={defaultOrchestratorUiSettings}
           initialHealth={servicesPreviewHealth}
-          containers={{ display: { id: 'display-id', name: 'rebroid-display-sidecar' } }}
+          pendingContainers={links.promise}
         />
       </FeatureFlagsProvider>
     )
@@ -91,7 +92,11 @@ describe('PlatformServicesPage', () => {
     expect(displayRow).toHaveTextContent('Healthy')
     expect(displayRow).toHaveTextContent('Managed internally')
     expect(sessionsLink.getAttribute('href')).toBe('/platform/casting')
-    const containerLink = within(displayRow).getByRole('link', { name: 'Open Docker container for Display service' })
+    expect(within(displayRow).queryByRole('link', { name: 'View logs for Display service' })).toBeNull()
+    links.resolve({ display: { id: 'display-id', name: 'rebroid-display-sidecar' } })
+    const containerLink = await within(displayRow).findByRole('link', {
+      name: 'Open Docker container for Display service'
+    })
     const logsLink = within(displayRow).getByRole('link', { name: 'View logs for Display service' })
     expect(containerLink).toHaveAttribute('href', '/runtime/containers/display-id')
     expect(logsLink).toHaveAttribute('href', '/runtime/containers/display-id?view=logs')

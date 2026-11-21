@@ -20,18 +20,19 @@ vi.mock('@/features/platform/metrics/docker-metrics-dashboard', () => ({
 }))
 
 describe('infrastructure service availability', () => {
-  it('links from the orchestrator connection to its container Logs tab', () => {
+  it('links from the orchestrator connection to its container Logs tab', async () => {
     render(
       <InfrastructureServicePage
         serviceId='orchestrator'
         initialHealth={servicesPreviewHealth}
         apiUrl='http://orchestrator:4100'
-        container={{ id: 'orchestrator-id', name: 'rebroid-orchestrator' }}
+        pendingContainers={Promise.resolve({ orchestrator: { id: 'orchestrator-id', name: 'rebroid-orchestrator' } })}
       />
     )
     expect(within(screen.getByRole('banner')).getByRole('status')).toHaveTextContent('Healthy')
     expect(screen.queryByText('Orchestrator API is responding.')).toBeNull()
     const connection = screen.getByRole('region', { name: 'Connection' })
+    await within(connection).findByRole('link', { name: 'View logs' })
     const links = within(connection).getAllByRole('link')
     expect(links.map(link => link.textContent)).toEqual([
       'rebroid-orchestrator',

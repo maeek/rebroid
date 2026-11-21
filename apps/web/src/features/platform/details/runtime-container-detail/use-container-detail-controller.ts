@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   actionDialogCopy,
@@ -11,17 +11,12 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import {
-  getPlatformContainerLogsAction,
   getPlatformContainerStatsAction,
   removePlatformContainerAction,
   stopPlatformContainerAction
 } from '@/server/orchestrator/platform/container-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
-import type {
-  PlatformContainerDetails,
-  PlatformContainerLog,
-  PlatformContainerStats
-} from '@/shared/contracts/platform'
+import type { PlatformContainerDetails, PlatformContainerStats } from '@/shared/contracts/platform'
 
 const useContainerStats = (container: PlatformContainerDetails['container']) => {
   const {
@@ -42,32 +37,6 @@ const useContainerStats = (container: PlatformContainerDetails['container']) => 
     : null
 
   return { stats, statsError, isRefreshingStats, refreshStats }
-}
-
-const useContainerLogs = (containerId: string, initialLogs?: PlatformContainerLog) => {
-  const [logs, setLogs] = useState(initialLogs)
-  const [isRefreshingLogs, setIsRefreshingLogs] = useState(false)
-
-  useEffect(() => {
-    setLogs(initialLogs)
-  }, [containerId, initialLogs])
-
-  const refreshLogs = async () => {
-    setIsRefreshingLogs(true)
-    try {
-      setLogs(await getPlatformContainerLogsAction(containerId))
-    } catch (error) {
-      toast({
-        title: 'Could not refresh logs',
-        description: getDisplayErrorMessage(error),
-        variant: 'danger'
-      })
-    } finally {
-      setIsRefreshingLogs(false)
-    }
-  }
-
-  return { logs, isRefreshingLogs, refreshLogs }
 }
 
 const useContainerActions = (container: PlatformContainerDetails['container']) => {
@@ -118,16 +87,9 @@ const useContainerActions = (container: PlatformContainerDetails['container']) =
   return { pendingAction, isActing, forceRemove, setForceRemove, setPendingAction, runAction, closeActionDialog }
 }
 
-export const useContainerDetailController = ({
-  initialLogs,
-  container
-}: {
-  initialLogs?: PlatformContainerLog
-  container: PlatformContainerDetails['container']
-}) => {
+export const useContainerDetailController = ({ container }: { container: PlatformContainerDetails['container'] }) => {
   const stats = useContainerStats(container)
-  const logs = useContainerLogs(container.id, initialLogs)
   const actions = useContainerActions(container)
 
-  return { ...stats, ...logs, ...actions }
+  return { ...stats, ...actions }
 }

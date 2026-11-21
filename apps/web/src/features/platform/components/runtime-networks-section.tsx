@@ -36,6 +36,7 @@ export const RuntimeNetworksSection = ({
     search,
     setSearch,
     query,
+    isNavigating,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedNetworks,
@@ -121,6 +122,7 @@ export const RuntimeNetworksSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          updating={isNavigating}
           columnsInToolbar
           search={search}
           appliedSearch={gridQuery.q ?? ''}

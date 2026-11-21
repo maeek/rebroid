@@ -37,6 +37,7 @@ export const RuntimeContainersSection = ({
     search,
     setSearch,
     query,
+    isNavigating,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedContainers,
@@ -158,6 +159,7 @@ export const RuntimeContainersSection = ({
         </Visible>
 
         <DataGridWorkspace
+          updating={isNavigating}
           columnsInToolbar
           search={search}
           appliedSearch={gridQuery.q ?? ''}

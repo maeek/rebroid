@@ -22,14 +22,13 @@ export async function RuntimeContainerDetailPageEntry({
 
   const result = await readOrchestratorPage(() => loadRuntimeContainerDetailPageData(id, view), { allowMissing: true })
   if (result.ok) {
-    const { details, logs, logReadLimitExceeded } = result.data
+    const { details, pendingLogs } = result.data
 
     return (
       <RuntimeContainerDetail
         view={view}
         details={details}
-        initialLogs={logs}
-        logReadLimitExceeded={logReadLimitExceeded}
+        pendingLogs={pendingLogs}
       />
     )
   }

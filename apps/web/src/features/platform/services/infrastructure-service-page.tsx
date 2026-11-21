@@ -7,22 +7,24 @@ import { dockerRuntimeHealth } from '@/shared/model/diagnostics/service-health'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { DockerOperationLimitsSection } from './docker-operation-limits-section'
 import { InfrastructureServiceLayout } from './infrastructure-service-layout'
-import type { OrchestratorHealth, ServiceContainer } from '@/shared/contracts/diagnostics'
+import { ServiceContainerLinksStatus, useServiceContainerLinks } from './service-container-links-status'
+import type { OrchestratorHealth, ServiceContainers } from '@/shared/contracts/diagnostics'
 
 export const InfrastructureServicePage = ({
   serviceId,
   initialHealth,
   apiUrl,
-  container,
+  pendingContainers,
   requestId
 }: {
   serviceId: 'orchestrator' | 'docker'
   initialHealth: OrchestratorHealth | null
   apiUrl?: string
-  container?: ServiceContainer
+  pendingContainers?: Promise<ServiceContainers | null>
   requestId?: string
 }) => {
   const router = useRouter()
+  const containerLinks = useServiceContainerLinks(pendingContainers)
   const [refreshKey, setRefreshKey] = useState(0)
   const [refreshing, startRefresh] = useTransition()
   const [metricsRefresh, setMetricsRefresh] = useState({ pending: false, succeeded: true })
@@ -44,7 +46,14 @@ export const InfrastructureServicePage = ({
     <InfrastructureServiceLayout
       serviceId={serviceId}
       apiUrl={apiUrl}
-      container={container}
+      container={containerLinks.containers?.orchestrator}
+      connectionStatus={
+        <ServiceContainerLinksStatus
+          {...containerLinks}
+          refreshing={refreshing}
+          onRetry={refresh}
+        />
+      }
       actions={
         <PlatformPageRefreshButton
           refreshResult={{ version: initialHealth, succeeded: canReadDiagnostics && metricsRefresh.succeeded }}

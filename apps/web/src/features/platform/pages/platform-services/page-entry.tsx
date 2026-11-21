@@ -17,7 +17,7 @@ const PlatformServicesContent = async ({ searchParams }: { searchParams?: Promis
         initialHealth={data.initialHealth}
         requestId={data.requestId}
         apiUrl={data.initialSettings.orchestratorApiUrl}
-        container={data.containers.orchestrator}
+        pendingContainers={data.pendingContainers}
       />
     )
   }
@@ -26,7 +26,7 @@ const PlatformServicesContent = async ({ searchParams }: { searchParams?: Promis
       initialHealth={data.initialHealth}
       initialSettings={data.initialSettings}
       requestId={data.requestId}
-      containers={data.containers}
+      pendingContainers={data.pendingContainers}
     />
   )
 }

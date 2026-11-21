@@ -20,6 +20,7 @@ export const InfrastructureServiceLayout = ({
   diagnostics,
   apiUrl,
   container,
+  connectionStatus,
   loading = false
 }: {
   serviceId: 'orchestrator' | 'docker'
@@ -30,6 +31,7 @@ export const InfrastructureServiceLayout = ({
   diagnostics?: ReactNode
   apiUrl?: string
   container?: ServiceContainer
+  connectionStatus?: ReactNode
   loading?: boolean
 }) => (
   <ServiceDetailLayout
@@ -72,6 +74,7 @@ export const InfrastructureServiceLayout = ({
           showContainerLink={false}
           relatedLinks={orchestratorRelatedLinks}
         />
+        {connectionStatus}
       </Section>
     )}
   </ServiceDetailLayout>

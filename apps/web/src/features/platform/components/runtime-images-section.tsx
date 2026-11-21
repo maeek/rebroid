@@ -32,6 +32,7 @@ export const RuntimeImagesSection = ({
     search,
     setSearch,
     query,
+    isNavigating,
     selectedIds,
     setSelectedIds,
     selectedItems: selectedImages,
@@ -127,6 +128,7 @@ export const RuntimeImagesSection = ({
         contentClassName='gap-4'
       >
         <DataGridWorkspace
+          updating={isNavigating}
           columnsInToolbar
           search={search}
           appliedSearch={gridQuery.q ?? ''}

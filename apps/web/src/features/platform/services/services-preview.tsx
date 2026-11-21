@@ -99,9 +99,9 @@ export const InfrastructureServicePreview = ({
     serviceId={serviceId}
     initialHealth={unavailable ? null : servicesPreviewHealth}
     apiUrl='http://orchestrator:4100'
-    container={
+    pendingContainers={
       serviceId === 'orchestrator' && !unavailable
-        ? { id: 'preview-orchestrator-container', name: 'rebroid-orchestrator' }
+        ? Promise.resolve({ orchestrator: { id: 'preview-orchestrator-container', name: 'rebroid-orchestrator' } })
         : undefined
     }
   />

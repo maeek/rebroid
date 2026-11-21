@@ -23,7 +23,9 @@ export const SystemResourcesContent = ({
   refreshSystem = () => Promise.resolve(),
   isRefreshingResources = false,
   refreshResources = () => Promise.resolve(),
-  loading = false
+  loading = false,
+  systemLoading = loading,
+  resourcesLoading = loading
 }: {
   systemUtilization?: SystemStats
   resources?: SystemResources
@@ -34,6 +36,8 @@ export const SystemResourcesContent = ({
   isRefreshingResources?: boolean
   refreshResources?: () => Promise<void>
   loading?: boolean
+  systemLoading?: boolean
+  resourcesLoading?: boolean
 }) => (
   <StandardPage className='gap-2'>
     <PageHeader
@@ -42,7 +46,7 @@ export const SystemResourcesContent = ({
       title='System overview'
     />
     <PageContent>
-      {!loading && systemError && resourcesError && !systemUtilization && !resources ? (
+      {!systemLoading && !resourcesLoading && systemError && resourcesError && !systemUtilization && !resources ? (
         <StateView
           scope='page'
           headingLevel={2}
@@ -93,10 +97,10 @@ export const SystemResourcesContent = ({
                   }
                 />
               ) : null}
-              {loading || systemUtilization ? (
+              {systemLoading || systemUtilization ? (
                 <DetailsTable
                   systemUtilization={systemUtilization}
-                  loading={loading}
+                  loading={systemLoading}
                 />
               ) : null}
             </Section>
@@ -145,23 +149,23 @@ export const SystemResourcesContent = ({
               <Visible when={!resourcesError || Boolean(resources)}>
                 <ManagedContainerDetailsTable
                   resources={resources}
-                  loading={loading || !resources}
+                  loading={resourcesLoading || !resources}
                 />
               </Visible>
             </Section>
           </div>
           <Visible when={!resourcesError || Boolean(resources)}>
             <PlatformResources
-              loading={loading || !resources}
+              loading={resourcesLoading || !resources}
               resources={resources}
               isRefreshing={isRefreshingResources}
               onRefresh={refreshResources}
             />
           </Visible>
-          {loading || systemUtilization ? (
+          {systemLoading || systemUtilization ? (
             <SystemResourceCharts
               stats={systemUtilization}
-              loading={loading}
+              loading={systemLoading}
             />
           ) : null}
         </>

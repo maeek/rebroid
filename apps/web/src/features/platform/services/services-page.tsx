@@ -8,6 +8,7 @@ import { dockerRuntimeHealth, serviceHealthState } from '@/shared/model/diagnost
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { PageLoadFailure } from '@/shared/ui/page/page-load-failure'
+import { ServiceContainerLinksStatus, useServiceContainerLinks } from './service-container-links-status'
 import { serviceDetails, serviceMeta, visibleOptionalServiceIds } from './service-definitions'
 import { ServicesGrid } from './services-grid'
 import { ServicesPageLayout } from './services-page-layout'
@@ -18,12 +19,12 @@ import type { OrchestratorUiSettings } from '@/shared/model/settings/orchestrato
 export const PlatformServicesPage = ({
   initialHealth,
   initialSettings,
-  containers,
+  pendingContainers,
   requestId
 }: {
   initialHealth: OrchestratorHealth | null
   initialSettings: OrchestratorUiSettings
-  containers?: ServiceContainers
+  pendingContainers?: Promise<ServiceContainers | null>
   requestId?: string
 }) => {
   const router = useRouter()
@@ -32,6 +33,9 @@ export const PlatformServicesPage = ({
   const [hasLoaded, setHasLoaded] = useState(!unavailable)
   if (!unavailable && !hasLoaded) setHasLoaded(true)
   const { getFeature } = useFeatureFlags()
+  const containerLinks = useServiceContainerLinks(pendingContainers)
+  const { containers } = containerLinks
+  const refresh = () => startRefresh(() => router.refresh())
 
   const serviceRows = useMemo<ServiceRow[]>(() => {
     const { services } = initialSettings
@@ -110,7 +114,7 @@ export const PlatformServicesPage = ({
         <PlatformPageRefreshButton
           refreshResult={{ version: initialHealth, succeeded: !unavailable }}
           isRefreshing={refreshing}
-          onRefresh={() => startRefresh(() => router.refresh())}
+          onRefresh={refresh}
         />
       }
     >
@@ -123,6 +127,11 @@ export const PlatformServicesPage = ({
           {requestId ? <p className='text-xs text-foreground-muted'>Reference: {requestId}</p> : null}
         </Notice>
       ) : null}
+      <ServiceContainerLinksStatus
+        {...containerLinks}
+        refreshing={refreshing}
+        onRetry={refresh}
+      />
       <ServicesGrid
         disabled={unavailable}
         rows={serviceRows}

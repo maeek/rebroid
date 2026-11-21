@@ -39,6 +39,7 @@ export type DataGridWorkspaceProps = {
   refresh?: ReactNode
   notice?: ReactNode
   disabled?: boolean
+  updating?: boolean
   toolbarLayout?: 'spread' | 'compact'
   columnsInToolbar?: boolean
   children: ReactNode
@@ -83,6 +84,7 @@ export const DataGridWorkspace = ({
   refresh,
   notice,
   disabled = false,
+  updating,
   toolbarLayout = 'spread',
   columnsInToolbar = false,
   children,
@@ -198,6 +200,16 @@ export const DataGridWorkspace = ({
               onReset={onResetFilters}
               onBeforeRemove={() => filterTriggerRef.current?.focus()}
             />
+          ) : null}
+          {updating !== undefined ? (
+            <div
+              role={updating && !disabled ? 'status' : undefined}
+              aria-live='polite'
+              aria-atomic='true'
+              className='min-h-5 text-xs leading-5 text-foreground-muted'
+            >
+              {updating && !disabled ? 'Updating results…' : ''}
+            </div>
           ) : null}
         </div>
 

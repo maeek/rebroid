@@ -99,17 +99,18 @@ const loadConnectionContainers = async (health: OrchestratorHealth | null) => {
     () => orchestratorPlatformClient.listPlatformContainers(AbortSignal.timeout(2_000)),
     { allowMissing: true }
   )
-  return result.ok && Array.isArray(result.data) ? result.data : []
+  return result.ok && Array.isArray(result.data) ? result.data : null
 }
 
-export const loadServiceContainers = async (
+export const readServiceContainers = async (
   health: OrchestratorHealth | null,
   {
     displayHealth = health?.services.display,
     settings
   }: { displayHealth?: ServiceHealth; settings?: Partial<OptionalServicesUiSettings> } = {}
-): Promise<ServiceContainers> => {
+): Promise<ServiceContainers | null> => {
   const containers = await loadConnectionContainers(health)
+  if (containers === null) return null
   if (!containers.length) return {}
 
   return resolveServiceContainers(containers, {
@@ -121,10 +122,13 @@ export const loadServiceContainers = async (
   })
 }
 
+export const loadServiceContainers = async (...args: Parameters<typeof readServiceContainers>) =>
+  (await readServiceContainers(...args)) ?? {}
+
 export const loadEndpointContainerId = async (health: OrchestratorHealth, endpoint: string) => {
   const host = endpointHost(endpoint)
   if (!host) return undefined
 
   const containers = await loadConnectionContainers(health)
-  return findUnique(containers, container => container.names.includes(host))?.id
+  return findUnique(containers ?? [], container => container.names.includes(host))?.id
 }

@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getPlatformContainerLogsAction } from '@/server/orchestrator/platform/container-actions'
+import { actionError, actionOk, type ActionResult } from '@/shared/actions/action-result'
 import { RuntimeContainerDetail } from './runtime-container-detail'
-import type { PlatformContainerDetails } from '@/shared/contracts/platform'
+import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 const { details } = vi.hoisted(() => ({
@@ -68,8 +70,8 @@ vi.mock('./container-detail-context', () => ({
   useContainerDetailControllerContext: () => ({ setPendingAction: vi.fn() })
 }))
 vi.mock('./live-resources-section', () => ({ LiveResourcesSection: () => <div>Live resources</div> }))
-vi.mock('./container-logs-section', () => ({
-  ContainerLogsSection: () => <section aria-label='Container logs'>Logs</section>
+vi.mock('@/server/orchestrator/platform/container-actions', () => ({
+  getPlatformContainerLogsAction: vi.fn()
 }))
 vi.mock('./container-action-dialog', () => ({ ContainerActionDialog: () => null }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
@@ -83,14 +85,13 @@ describe('container resource details', () => {
       <RuntimeContainerDetail
         view={view}
         details={details}
-        initialLogs={{ source: 'container', collectedAt: '2026-01-01', output: '' }}
       />
     )
 
   it('hides stopped-container metrics and links related resources with raw inspect already visible', () => {
     page()
     expect(screen.queryByText('Live resources')).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Container logs' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Logs' })).toBeNull()
     expect(
       within(screen.getByRole('region', { name: 'Overview' })).queryByRole('button', { name: 'Remove' })
     ).toBeNull()
@@ -113,13 +114,41 @@ describe('container resource details', () => {
 
   it('opens logs in a dedicated linked destination', () => {
     page('logs')
-    expect(screen.getByRole('region', { name: 'Container logs' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Logs' })).toBeVisible()
     expect(screen.queryByRole('region', { name: 'Overview' })).toBeNull()
     expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute(
       'href',
       '/runtime/containers/container-id?view=logs'
     )
     expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('keeps the container header and last available log tail through a failed read and retry', async () => {
+    const initial = Promise.withResolvers<ActionResult<PlatformContainerLog>>()
+    const log: PlatformContainerLog = { source: 'container', collectedAt: '2026-01-01', output: 'Ready to serve' }
+    vi.mocked(getPlatformContainerLogsAction)
+      .mockResolvedValueOnce(actionOk(log))
+      .mockResolvedValueOnce(actionError({ message: 'Docker unavailable', requestId: 'docker-ref' }))
+    render(
+      <RuntimeContainerDetail
+        details={details}
+        view='logs'
+        pendingLogs={initial.promise}
+      />
+    )
+
+    expect(screen.getByRole('heading', { name: 'runtime' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Logs' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeDisabled()
+    initial.resolve(actionError({ message: 'Log tail too large', status: 413 }))
+    expect(await screen.findByText('Container log tail exceeds the read limit')).toBeVisible()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    expect(await screen.findByText('Ready to serve')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    expect(await screen.findByText(/Showing the last collected log tail/)).toBeVisible()
+    expect(screen.getByText('Ready to serve')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'runtime' })).toBeVisible()
   })
 
   it('opens the Terminal tab and prevents connection to an exited container', () => {

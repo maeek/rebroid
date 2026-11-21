@@ -14,28 +14,24 @@ import { ContainerDetailLayout } from './container-detail-layout'
 import { ContainerResourceHeader } from './container-resource-header'
 import { RelatedResourcesSection } from './related-container-sections'
 import { ContainerTerminalSection } from './terminal/container-terminal-section'
+import type { ActionResult } from '@/shared/actions/action-result'
 import type { PlatformContainerDetails, PlatformContainerLog } from '@/shared/contracts/platform'
 import type { ContainerResourceView } from '@/shared/model/container-resource-href'
 
 export const RuntimeContainerDetail = ({
   details,
-  initialLogs,
-  logReadLimitExceeded,
+  pendingLogs,
   view = 'overview'
 }: {
   details: PlatformContainerDetails
   view?: ContainerResourceView
-  initialLogs?: PlatformContainerLog
-  logReadLimitExceeded?: boolean
+  pendingLogs?: Promise<ActionResult<PlatformContainerLog>>
 }) => {
   return (
-    <ContainerDetailProvider
-      details={details}
-      initialLogs={initialLogs}
-    >
+    <ContainerDetailProvider details={details}>
       <RuntimeContainerDetailContent
         view={view}
-        logReadLimitExceeded={logReadLimitExceeded}
+        pendingLogs={pendingLogs}
       />
     </ContainerDetailProvider>
   )
@@ -43,10 +39,10 @@ export const RuntimeContainerDetail = ({
 
 const RuntimeContainerDetailContent = ({
   view,
-  logReadLimitExceeded
+  pendingLogs
 }: {
   view: ContainerResourceView
-  logReadLimitExceeded?: boolean
+  pendingLogs?: Promise<ActionResult<PlatformContainerLog>>
 }) => {
   const { details } = useContainerDetailContext()
   const container = details.container
@@ -58,7 +54,13 @@ const RuntimeContainerDetailContent = ({
         id={container.id}
         view={view}
       >
-        {view === 'logs' ? <ContainerLogsSection logReadLimitExceeded={logReadLimitExceeded} /> : null}
+        {view === 'logs' ? (
+          <ContainerLogsSection
+            key={container.id}
+            containerId={container.id}
+            pendingLogs={pendingLogs}
+          />
+        ) : null}
         {view === 'terminal' ? <ContainerTerminalSection /> : null}
         {view === 'overview' ? (
           <>

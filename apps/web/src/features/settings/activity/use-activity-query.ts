@@ -51,7 +51,7 @@ export const useActivityQuery = ({
     },
     hrefFor,
     searchFrom: next => next.search,
-    navigate: href => router.push(href)
+    navigate: href => router.push(href, { scroll: false })
   })
 
   const pushParams = (patch: QueryPatch) => {

@@ -31,7 +31,9 @@ export const orchestratorPlatformClient = {
 
   getPlatformContainerLogs(id: string, tail = 500) {
     const query = new URLSearchParams({ tail: String(tail) })
-    return emptyRequest<PlatformContainerLog>(`/platform/docker/containers/${id}/logs?${query.toString()}`)
+    return emptyRequest<PlatformContainerLog>(
+      `/platform/docker/containers/${encodeURIComponent(id)}/logs?${query.toString()}`
+    )
   },
 
   getPlatformContainerStats(id: string) {

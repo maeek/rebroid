@@ -2,7 +2,7 @@ import { getOrchestratorBaseUrl } from '@/server/orchestrator/config'
 import { getOrchestratorHealthSummaryAction } from '@/server/orchestrator/diagnostics/actions'
 import { getRequiredServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
-import { loadServiceContainers } from '@/server/orchestrator/platform/service-containers'
+import { readServiceContainers } from '@/server/orchestrator/platform/service-containers'
 import { firstSearchParamValue } from '@/shared/model/search-params'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 
@@ -28,6 +28,8 @@ export const loadPlatformServicesPageData = async (searchParams?: Promise<Servic
       requestId = settings.failure.requestId
     }
   }
-  const containers = await loadServiceContainers(initialHealth, { settings: initialSettings.services })
-  return { initialSettings, initialHealth, requestedServiceId, requestId, containers }
+  const pendingContainers = initialHealth?.services.docker?.ok
+    ? readServiceContainers(initialHealth, { settings: initialSettings.services })
+    : undefined
+  return { initialSettings, initialHealth, requestedServiceId, requestId, pendingContainers }
 }

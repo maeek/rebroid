@@ -37,6 +37,29 @@ describe('resource outage scope', () => {
     expect(screen.getByText('Orchestrator resources unavailable')).toBeVisible()
   })
 
+  it('shows ready Docker metrics while the host sample is loading', () => {
+    render(
+      <SystemResourcesContent
+        systemLoading
+        resources={{
+          hostMemoryBytes: null,
+          hostCpuCores: null,
+          dockerRootAvailableBytes: null,
+          containersTotal: 24,
+          containersRunning: 2,
+          containersStopped: 22,
+          managedContainersCpuUsagePercent: 0,
+          managedContainersMemoryUsageBytes: 0,
+          containerStatsCollectedAt: null,
+          containers: []
+        }}
+      />
+    )
+    expect(screen.getByRole('region', { name: 'Host system' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Managed containers' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Managed inventory' })).toHaveTextContent('24')
+  })
+
   it('uses the same ghost style for a pending host retry and an idle container retry', () => {
     const resources: SystemResources = {
       hostMemoryBytes: null,

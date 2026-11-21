@@ -23,10 +23,14 @@ export const getPlatformContainerAction = async (id: string) => {
   return { ...details, container: container ?? details.container }
 }
 
-export const getPlatformContainerLogsAction = async (id: string, tail = 500) => {
-  await requireAdminUser()
-  return orchestratorPlatformClient.getPlatformContainerLogs(id, tail)
-}
+export const getPlatformContainerLogsAction = async (id: string) =>
+  runSafeAction(
+    async () => {
+      await requireAdminUser()
+      return orchestratorPlatformClient.getPlatformContainerLogs(id, 500)
+    },
+    { fallbackMessage: 'Could not load container logs.', logLabel: 'getPlatformContainerLogsAction failed' }
+  )
 
 export const getPlatformContainerStatsAction = async (id: string) => {
   await requireAdminUser()

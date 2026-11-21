@@ -21,6 +21,32 @@ describe('DataGridWorkspace', () => {
     expect(screen.getByText('Grid content')).toBeTruthy()
   })
 
+  it('announces a pending query without replacing rows or moving keyboard focus', () => {
+    const workspace = (updating: boolean, row: string) => (
+      <DataGridWorkspace
+        search=''
+        searchPlaceholder='Search rows'
+        onSearchChange={() => undefined}
+        onSearch={() => undefined}
+        updating={updating}
+      >
+        <button type='button'>{row}</button>
+      </DataGridWorkspace>
+    )
+    const { rerender } = render(workspace(false, 'Previous row'))
+    const search = screen.getByRole('searchbox')
+    search.focus()
+    rerender(workspace(true, 'Previous row'))
+    expect(screen.getByRole('status')).toHaveTextContent('Updating results…')
+    expect(screen.getByRole('button', { name: 'Previous row' })).toBeEnabled()
+    expect(search).toHaveFocus()
+
+    rerender(workspace(false, 'Updated row'))
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Updated row' })).toBeVisible()
+    expect(search).toHaveFocus()
+  })
+
   it('describes empty rows using the applied search instead of unsubmitted text', () => {
     const onSearch = vi.fn()
     const renderWorkspace = (appliedSearch: string) => (

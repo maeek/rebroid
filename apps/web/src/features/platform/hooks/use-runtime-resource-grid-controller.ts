@@ -35,7 +35,7 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
   buildHref: (input: RuntimeResourceGridHrefInput<TQuery>) => string
 }) => {
   const router = useRouter()
-  const { query, searchDraft, setSearchDraft, submit } = useRoutedGridQuery({
+  const { query, searchDraft, setSearchDraft, isNavigating, submit } = useRoutedGridQuery({
     committedQuery: gridQuery,
     hrefFor: next => buildHref({ gridQuery: next, pageSize, patch: {} }),
     searchFrom: next => next.q,
@@ -66,6 +66,7 @@ export const useRuntimeResourceGridController = <TItem, TQuery extends RuntimeRe
     search: searchDraft,
     setSearch: setSearchDraft,
     query,
+    isNavigating,
     selectedIds,
     setSelectedIds,
     selectedItems,

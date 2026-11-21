@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { OrchestratorRequestError } from '@/server/orchestrator/request'
+import { actionError, actionOk, type ActionResult } from '@/shared/actions/action-result'
 import { loadRuntimeContainerDetailPageData } from './page-data.server'
 
 const { getContainer, getLogs } = vi.hoisted(() => ({ getContainer: vi.fn(), getLogs: vi.fn() }))
@@ -12,7 +12,7 @@ describe('container section loading', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getContainer.mockResolvedValue({ container: { names: ['runtime'], shortId: 'container' } })
-    getLogs.mockResolvedValue({ output: 'ready' })
+    getLogs.mockResolvedValue(actionOk({ output: 'ready' }))
   })
 
   it('does not request logs for the overview', async () => {
@@ -24,16 +24,17 @@ describe('container section loading', () => {
   it('loads logs immediately for the logs destination', async () => {
     const result = await loadRuntimeContainerDetailPageData('container', 'logs')
     expect(getLogs).toHaveBeenCalledWith('container')
-    expect(result.logs).toEqual({ output: 'ready' })
+    await expect(result.pendingLogs).resolves.toEqual(actionOk({ output: 'ready' }))
   })
 
-  it('keeps the container details available when the log tail exceeds the read limit', async () => {
-    getLogs.mockRejectedValueOnce(new OrchestratorRequestError('Log limit exceeded', 413))
+  it('returns container details while logs are pending and confines log failure to that section', async () => {
+    const logs = Promise.withResolvers<ActionResult<{ output: string }>>()
+    getLogs.mockReturnValueOnce(logs.promise)
 
-    await expect(loadRuntimeContainerDetailPageData('container', 'logs')).resolves.toMatchObject({
-      name: 'runtime',
-      logReadLimitExceeded: true,
-      logs: undefined
-    })
+    const result = await loadRuntimeContainerDetailPageData('container', 'logs')
+    expect(result.details.container.names).toEqual(['runtime'])
+    const failure = actionError({ message: 'Log limit exceeded', status: 413 })
+    logs.resolve(failure)
+    await expect(result.pendingLogs).resolves.toEqual(failure)
   })
 })
