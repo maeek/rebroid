@@ -18,18 +18,14 @@ import { getErrorMessage } from '../../../common/error-message';
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
+import { ApplicationProfileStorage } from '../policies/application-profile-storage';
 import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
-import {
-  forgetSavedProfile,
-  parseSavedProfiles,
-  rememberSavedProfile,
-} from '../../common/utils/android-apps-profile-history.utils';
+import { rememberSavedProfile } from '../../common/utils/android-apps-profile-history.utils';
 import {
   applyRedroidDefaultContainerArgs,
   isRedroidRuntime,
@@ -61,18 +57,12 @@ export class AndroidAppsRuntimePreparationService {
     app: AndroidApplication,
     dto: SwitchApplicationProfileDto,
   ) {
-    const profileMode = dto.profileMode ?? app.profileMode;
-    const profileName = dto.profileName?.trim() || app.profileName || 'default';
-    await this.assertProfileStorageIdentity(app, profileMode, profileName);
+    const profile = await this.selectProfile(app, dto);
     await this.removeManagedContainer(app);
 
-    app.profileMode = profileMode;
-    app.profileName = profileName;
-    app.volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      app.profileName,
-    ).volumeName;
+    app.profileMode = profile.mode;
+    app.profileName = profile.name;
+    app.volumeName = profile.volumeName;
     app.status = AndroidApplicationStatus.Stopped;
     app.lifecycleStage = AndroidApplicationLifecycleStage.Stopped;
     app.statusMessage =
@@ -101,26 +91,14 @@ export class AndroidAppsRuntimePreparationService {
     app: AndroidApplication,
     dto: StartAndroidApplicationDto,
   ) {
-    const nextProfileMode = dto.profileMode ?? app.profileMode;
-    const nextProfileName =
-      dto.profileName?.trim() || app.profileName || 'default';
-    await this.assertProfileStorageIdentity(
-      app,
-      nextProfileMode,
-      nextProfileName,
-    );
-    const nextVolumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      nextProfileName,
-    ).volumeName;
+    const profile = await this.selectProfile(app, dto);
     const profileChanged =
-      nextProfileMode !== app.profileMode ||
-      nextProfileName !== app.profileName ||
-      nextVolumeName !== app.volumeName;
+      profile.mode !== app.profileMode ||
+      profile.name !== app.profileName ||
+      profile.volumeName !== app.volumeName;
     const nextSavedProfilesJson = rememberSavedProfile(app.savedProfilesJson, {
-      mode: nextProfileMode,
-      name: nextProfileName,
+      mode: profile.mode,
+      name: profile.name,
     });
 
     if (!profileChanged) {
@@ -133,10 +111,10 @@ export class AndroidAppsRuntimePreparationService {
 
     await this.removeManagedContainer(app);
 
-    app.profileMode = nextProfileMode;
-    app.profileName = nextProfileName;
+    app.profileMode = profile.mode;
+    app.profileName = profile.name;
     app.savedProfilesJson = nextSavedProfilesJson;
-    app.volumeName = nextVolumeName;
+    app.volumeName = profile.volumeName;
     await this.writer.saveFields(
       app,
       'profileMode',
@@ -151,97 +129,49 @@ export class AndroidAppsRuntimePreparationService {
     app: AndroidApplication,
     profileName: string,
   ) {
-    const name = profileName.trim();
-    if (!name) {
+    const plan = new ApplicationProfileStorage(
+      app,
+      this.networkIsolation,
+    ).planRemoval(profileName);
+    if (plan === 'missing')
       throw new NotFoundException('Saved profile not found.');
-    }
-
-    const activeProfileName = app.profileName || 'default';
-    if (
-      app.profileMode === ApplicationProfileMode.Persistent &&
-      activeProfileName === name
-    ) {
+    if (plan === 'active') {
       throw new ConflictException(
         'The active persistent profile cannot be deleted. Switch profiles before deleting it.',
       );
     }
-
-    const result = forgetSavedProfile(app.savedProfilesJson, {
-      mode: ApplicationProfileMode.Persistent,
-      name,
-    });
-    if (!result.removed) {
-      throw new NotFoundException('Saved profile not found.');
-    }
-
-    const volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      name,
-    ).volumeName;
-    const activeVolumeName =
-      app.volumeName ||
-      this.networkIsolation.namesFor(app.id, app.name, activeProfileName)
-        .volumeName;
-    const sharedProfile = parseSavedProfiles(app.savedProfilesJson).some(
-      (profile) =>
-        profile.mode === ApplicationProfileMode.Persistent &&
-        profile.name !== name &&
-        this.networkIsolation.namesFor(app.id, app.name, profile.name)
-          .volumeName === volumeName,
-    );
-    if (
-      sharedProfile ||
-      (app.profileMode === ApplicationProfileMode.Persistent &&
-        activeVolumeName === volumeName)
-    ) {
+    if (plan === 'shared') {
       throw new ConflictException(
         'This profile shares storage with another persistent profile. Its volume must be preserved.',
       );
     }
-    await this.resources.removeVolume(volumeName);
-    app.savedProfilesJson = result.savedProfilesJson;
+    await this.resources.removeVolume(plan.volumeName);
+    app.savedProfilesJson = plan.savedProfilesJson;
     await this.writer.saveFields(app, 'savedProfilesJson');
   }
 
-  private async assertProfileStorageIdentity(
+  private async selectProfile(
     app: AndroidApplication,
-    mode: ApplicationProfileMode,
-    name: string,
+    request: SwitchApplicationProfileDto | StartAndroidApplicationDto,
   ) {
-    if (mode !== ApplicationProfileMode.Persistent) return;
-    const profiles = parseSavedProfiles(app.savedProfilesJson).filter(
-      (profile) => profile.mode === ApplicationProfileMode.Persistent,
-    );
-    if (app.profileMode === ApplicationProfileMode.Persistent) {
-      profiles.push({
-        mode: app.profileMode,
-        name: app.profileName || 'default',
-      });
-    }
-    // Existing saved names retain access to their volumes.
-    if (profiles.some((profile) => profile.name === name)) return;
-    const volumeName = this.networkIsolation.namesFor(
-      app.id,
-      app.name,
-      name,
-    ).volumeName;
-    if (
-      profiles.some(
-        (profile) =>
-          this.networkIsolation.namesFor(app.id, app.name, profile.name)
-            .volumeName === volumeName,
-      )
-    ) {
+    const profile = new ApplicationProfileStorage(
+      app,
+      this.networkIsolation,
+    ).select(request);
+    if (profile.admission === 'shared') {
       throw new ConflictException(
         'A persistent profile already uses this storage name. Choose a name with a distinct spelling beyond case and punctuation.',
       );
     }
-    if (await this.resources.inspectVolume(volumeName)) {
+    if (
+      profile.admission === 'inspect' &&
+      (await this.resources.inspectVolume(profile.volumeName))
+    ) {
       throw new ConflictException(
         'A volume already exists for this profile name without a matching saved profile. Choose a different name to preserve the existing data.',
       );
     }
+    return profile;
   }
 
   async prepareContainerForRecreationOnStart(app: AndroidApplication) {

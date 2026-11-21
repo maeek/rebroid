@@ -15,7 +15,7 @@ import {
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { NetworkPolicyService } from '../../../network-policy/services/network-policy.service';
 import { AndroidApplication } from '../../android-application.entity';
-import { parseSavedProfiles } from '../../common/utils/android-apps-profile-history.utils';
+import { ApplicationProfileStorage } from '../policies/application-profile-storage';
 import { AndroidAppsRuntimeNetworkService } from '../../network/services/android-apps-runtime-network.service';
 import { AndroidAppsDisplaySidecarService } from '../../viewer/services/android-apps-display-sidecar.service';
 
@@ -52,14 +52,10 @@ export class AndroidAppsRemovalCleanupService {
       return;
     }
 
-    const volumeNames = new Set([
-      app.volumeName,
-      ...parseSavedProfiles(app.savedProfilesJson).map(
-        (profile) =>
-          this.networkIsolation.namesFor(app.id, app.name, profile.name)
-            .volumeName,
-      ),
-    ]);
+    const volumeNames = new ApplicationProfileStorage(
+      app,
+      this.networkIsolation,
+    ).trackedVolumes();
     await Promise.all(
       [...volumeNames].map((volumeName) =>
         this.resources.removeVolume(volumeName),

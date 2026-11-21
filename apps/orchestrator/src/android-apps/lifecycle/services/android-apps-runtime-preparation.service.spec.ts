@@ -220,6 +220,20 @@ describe('AndroidAppsRuntimePreparationService profile deletion', () => {
     expect(state.saveFields).not.toHaveBeenCalled();
   });
 
+  it('records a newly selected profile on start', async () => {
+    const { service, resources } = makeService();
+    const app = makeApp();
+    const previousHistory = app.savedProfilesJson;
+    await service.switchProfile(app, { profileName: 'archive' });
+    expect(app.savedProfilesJson).toBe(previousHistory);
+    await service.prepareRuntimeProfile(app, {});
+    expect(JSON.parse(app.savedProfilesJson!)[0]).toEqual({
+      mode: ApplicationProfileMode.Persistent,
+      name: 'archive',
+    });
+    expect(resources.inspectVolume).toHaveBeenCalledTimes(1);
+  });
+
   it('admits a new persistent name with an unused volume identity', async () => {
     const { service, resources, state } = makeService();
     const app = makeApp();
