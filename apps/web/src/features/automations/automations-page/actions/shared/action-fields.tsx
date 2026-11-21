@@ -89,6 +89,7 @@ export function TextField({
   field,
   description,
   placeholder,
+  multiline = false,
   maxLength,
   className,
   error,
@@ -97,12 +98,14 @@ export function TextField({
   label: string
   value: string
   placeholder?: string
+  multiline?: boolean
   maxLength?: number
   className?: string
   error?: string
   onChange: (value: string) => void
 } & FieldDetails) {
   const { property } = useAutomationField(field)
+  const Control = multiline ? Textarea : Input
   return (
     <FormField
       label={label}
@@ -114,50 +117,7 @@ export function TextField({
         field={field}
         label={label}
       >
-        <Input
-          value={value}
-          placeholder={placeholder}
-          maxLength={maxLength ?? (typeof property?.maxLength === 'number' ? property.maxLength : undefined)}
-          className={className}
-          onChange={event => onChange(event.target.value)}
-        />
-      </AutomationBoundControl>
-    </FormField>
-  )
-}
-
-export function TextareaField({
-  label,
-  value,
-  field,
-  description,
-  placeholder,
-  maxLength,
-  className,
-  error,
-  onChange
-}: {
-  label: string
-  value: string
-  placeholder?: string
-  maxLength?: number
-  className?: string
-  error?: string
-  onChange: (value: string) => void
-} & FieldDetails) {
-  const { property } = useAutomationField(field)
-  return (
-    <FormField
-      label={label}
-      description={description}
-      error={error}
-      layout='vertical'
-    >
-      <AutomationBoundControl
-        field={field}
-        label={label}
-      >
-        <Textarea
+        <Control
           value={value}
           placeholder={placeholder}
           maxLength={maxLength ?? (typeof property?.maxLength === 'number' ? property.maxLength : undefined)}

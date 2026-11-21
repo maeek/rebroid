@@ -1,4 +1,4 @@
-import { NoInputState, TextField, TextareaField } from './action-fields'
+import { NoInputState, TextField } from './action-fields'
 import { normalizeStringInput, stringInputValue } from './input-values'
 import type {
   AutomationActionCategory,
@@ -49,29 +49,23 @@ export const createTextAction = ({
     const value = stringInputValue(input, field)
     return maskSummary ? `${value.length} characters` : value || fieldDescription || ''
   },
-  renderEditor: ({ input, patchInput }) =>
-    multiline ? (
-      <TextareaField
-        field={field}
-        label={fieldLabel}
-        description={fieldDescription}
-        placeholder={placeholder}
-        value={stringInputValue(input, field)}
-        onChange={value => patchInput({ [field]: value })}
-      />
-    ) : (
+  renderEditor: ({ input, patchInput }) => {
+    const value = stringInputValue(input, field)
+    return (
       <TextField
         field={field}
         label={fieldLabel}
+        multiline={multiline}
         description={fieldDescription}
         placeholder={placeholder}
         error={
-          field === 'path' && stringInputValue(input, field) && !stringInputValue(input, field).startsWith('/')
+          !multiline && field === 'path' && value && !value.startsWith('/')
             ? 'Enter an absolute Android path beginning with /.'
             : undefined
         }
-        value={stringInputValue(input, field)}
-        onChange={value => patchInput({ [field]: value })}
+        value={value}
+        onChange={next => patchInput({ [field]: next })}
       />
     )
+  }
 })

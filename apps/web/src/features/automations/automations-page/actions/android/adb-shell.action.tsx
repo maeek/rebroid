@@ -1,4 +1,4 @@
-import { TextareaField } from '../shared/action-fields'
+import { TextField } from '../shared/action-fields'
 import { AdvancedActionFields } from '../shared/advanced-action-fields'
 import { DurationField } from '../shared/duration-field'
 import { normalizeStringInput, numberInputValue, stringInputValue } from '../shared/input-values'
@@ -16,7 +16,8 @@ export const adbShellAction: AutomationActionDefinition = {
   summary: input => (stringInputValue(input, 'command') ? 'Custom Android shell command' : 'Enter a command'),
   renderEditor: ({ input, patchInput }) => (
     <div className='grid gap-3'>
-      <TextareaField
+      <TextField
+        multiline
         field='command'
         label='Android shell command'
         placeholder='getprop ro.build.version.release…'

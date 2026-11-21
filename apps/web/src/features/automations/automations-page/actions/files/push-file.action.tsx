@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { actionInputBinding } from '@rebroid/automation-core/command-registry'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { TextareaField, TextField } from '../shared/action-fields'
+import { TextField } from '../shared/action-fields'
 import { AdvancedActionFields } from '../shared/advanced-action-fields'
 import { normalizeStringInput, stringInputValue } from '../shared/input-values'
 import type { AutomationActionDefinition } from '../automation-action-definition'
@@ -86,7 +86,8 @@ function PushFileFields({ input, patchInput }: Parameters<AutomationActionDefini
         open={Boolean(linked)}
         summary={linked ? 'Uses step output' : contents ? 'Embedded content' : undefined}
       >
-        <TextareaField
+        <TextField
+          multiline
           field='contentBase64'
           label='File contents (base64)'
           description='Paste encoded content or use the File content output of an earlier step.'

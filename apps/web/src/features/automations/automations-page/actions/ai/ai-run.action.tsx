@@ -7,7 +7,7 @@ import { MultiSelectCombobox } from '@/components/ui/multi-select-combobox'
 import { automationActionPresentation } from '@/shared/model/workflow-action-presentation'
 import { AiModelPickerFields, AiModelPickerHealthFooter } from '@/shared/ui/ai/ai-model-picker-parts'
 import { useAiModelCatalogSelection } from '@/shared/ui/ai/use-ai-model-catalog-selection'
-import { NumberField, SelectField, TextareaField } from '../shared/action-fields'
+import { NumberField, SelectField, TextField } from '../shared/action-fields'
 import { AdvancedActionFields } from '../shared/advanced-action-fields'
 import {
   defaultAiRunCapabilities,
@@ -75,7 +75,8 @@ const AiRunEditor = ({ commands, input, patchInput }: Parameters<AutomationActio
 
   return (
     <div className='grid gap-5'>
-      <TextareaField
+      <TextField
+        multiline
         field='prompt'
         label='Task for the device agent'
         placeholder='Open Android Settings and verify that the main screen appears…'
