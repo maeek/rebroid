@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useVisibilityAwareInterval } from '@/hooks/use-visibility-aware-interval'
+import { sendBff } from '@/lib/http/bff'
 import { activeRunStatuses, useAutomationRunEvents } from './use-automation-run-events'
 import type { AutomationRun, AutomationRunEventType } from '@/shared/contracts/automation'
 
@@ -20,12 +21,16 @@ type RefreshQueue = {
 }
 
 export const useWorkflowRunUpdates = (
-  run: Pick<AutomationRun, 'id' | 'status'>,
-  enabled: boolean,
+  run: Pick<AutomationRun, 'id' | 'status'> | undefined,
+  showEvents: boolean,
   refresh: () => Promise<unknown>
 ) => {
-  const feed = useAutomationRunEvents(run, enabled)
-  const active = enabled && activeRunStatuses.has(run.status)
+  const runId = run?.id ?? ''
+  const active = !!run && activeRunStatuses.has(run.status)
+  const feed = useAutomationRunEvents(run ?? { id: runId, status: 'queued' }, !!run && (active || showEvents))
+  const [cancellation, setCancellation] = useState<{ runId: string; error?: Error }>()
+  const canStop = !!run && activeRunStatuses.has(feed.status)
+  const currentCancellation = cancellation?.runId === runId ? cancellation : undefined
   const [failedRunId, setFailedRunId] = useState<string>()
   const queue = useRef<RefreshQueue | undefined>(undefined)
   const readRun = useRef(refresh)
@@ -63,25 +68,46 @@ export const useWorkflowRunUpdates = (
   }, [])
 
   useEffect(() => {
-    const current = { runId: run.id, pending: false, repeat: false } satisfies RefreshQueue
+    const current = { runId, pending: false, repeat: false } satisfies RefreshQueue
     queue.current = current
+    setCancellation(undefined)
     return () => {
       clearTimeout(queue.current?.timer)
       queue.current = undefined
     }
-  }, [run.id, active])
+  }, [runId, active])
 
-  const sequence = feed.events.findLast(event => event.runId === run.id && refreshEvents.has(event.type))?.sequence
+  const sequence = feed.events.findLast(event => event.runId === runId && refreshEvents.has(event.type))?.sequence
   useEffect(() => {
     if (active && sequence !== undefined) enqueue()
   }, [active, enqueue, sequence])
 
   useVisibilityAwareInterval({
-    enabled: active && (!feed.connected || !activeRunStatuses.has(feed.status) || failedRunId === run.id),
+    enabled: active && (!feed.connected || !activeRunStatuses.has(feed.status) || failedRunId === runId),
     intervalMs: 5_000,
     runOnFocus: false,
     task: () => enqueue()
   })
 
-  return feed
+  const stopping = canStop && !!currentCancellation && !currentCancellation.error
+  const stop = async () => {
+    if (!canStop || stopping) return
+    const current = queue.current
+    setCancellation({ runId })
+    try {
+      await sendBff(`/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`, {})
+    } catch (error) {
+      if (queue.current === current) {
+        setCancellation({ runId, error: error instanceof Error ? error : new Error('Could not stop workflow run') })
+      }
+      return
+    }
+    if (queue.current === current) {
+      await refresh().catch(() => {
+        if (queue.current === current) setFailedRunId(runId)
+      })
+    }
+  }
+
+  return { feed, active: canStop, stopping, stop, stopError: currentCancellation?.error }
 }

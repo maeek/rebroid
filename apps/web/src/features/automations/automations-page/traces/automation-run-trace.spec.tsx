@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
 import { AutomationRunTrace } from './automation-run-trace'
@@ -55,6 +55,29 @@ describe('workflow trace cancellation', () => {
       />
     )
     expect(screen.queryByRole('button', { name: /stop/i })).toBeNull()
+  })
+
+  it('keeps a previous run’s delayed cancellation response out of the selected run', async () => {
+    const pending = Promise.withResolvers<AutomationRun>()
+    vi.mocked(sendBff).mockReturnValue(pending.promise)
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    const view = (id: string) => (
+      <AutomationRunTrace
+        run={{ ...run, id }}
+        refresh={refresh}
+        showTargetId={false}
+      />
+    )
+    const { rerender } = render(view('first'))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop run' }))
+    rerender(view('second'))
+    await act(async () => {
+      pending.reject(new Error('Unavailable'))
+      await pending.promise.catch(() => undefined)
+    })
+    expect(screen.queryByText('Could not stop the run')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Stop run' })).toBeEnabled()
+    expect(refresh).not.toHaveBeenCalled()
   })
 
   it('allows retry after a failed stop request', async () => {

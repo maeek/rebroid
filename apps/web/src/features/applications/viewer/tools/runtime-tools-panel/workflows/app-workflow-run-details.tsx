@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { IconArrowUpRight, IconFileText, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
 import { useApplicationViewerApp } from '@/features/applications/detail/application-viewer-context'
-import { getBff, sendBff } from '@/lib/http/bff'
+import { getBff } from '@/lib/http/bff'
 import { ActionResultError } from '@/shared/actions/action-result'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
@@ -22,13 +22,11 @@ import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-sum
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
 import { StateView } from '@/shared/ui/state-view'
-import { workflowRunDuration, workflowRunIsActive, workflowRunTriggerLabels } from './app-workflow-run-presentation'
+import { workflowRunDuration, workflowRunTriggerLabels } from './app-workflow-run-presentation'
 import type { ApplicationWorkflowRun } from '@/shared/contracts/application-workflow-history'
-import type { AutomationRun } from '@/shared/contracts/automation'
 
 export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; runId: string }) {
   const { permissions } = useApplicationViewerApp()
-  const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
   const [tab, setTab] = useState('summary')
   const query = useQuery({
     queryKey: ['application-workflow-run', endpoint, runId],
@@ -36,21 +34,12 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
     refetchOnMount: 'always',
     retry: false
   })
-  const stop = useMutation({
-    mutationFn: () => sendBff<AutomationRun>(`/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`, {}),
-    onSuccess: result => {
-      setCancelRequestedRunId(result.id)
-      return query.refetch()
-    }
-  })
   const accessLost =
     query.error instanceof ActionResultError &&
     ['unauthenticated', 'forbidden', 'not_found'].includes(query.error.failure.code)
   const run = accessLost ? undefined : query.data
-  const feed = useWorkflowRunUpdates(
-    { id: runId, status: run?.status ?? 'queued' },
-    run !== undefined && (tab === 'events' || workflowRunIsActive(run.status)),
-    () => query.refetch({ throwOnError: true })
+  const { feed, active, stopping, stop, stopError } = useWorkflowRunUpdates(run, tab === 'events', () =>
+    query.refetch({ throwOnError: true })
   )
   if (!run) {
     const unavailable = query.error instanceof ActionResultError && query.error.failure.code === 'not_found'
@@ -66,9 +55,6 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
       <AppWorkflowRunDetailsLoading />
     )
   }
-
-  const active = workflowRunIsActive(feed.status)
-  const stopping = active && (stop.isPending || cancelRequestedRunId === run.id)
 
   return (
     <Section
@@ -102,7 +88,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
               size='sm'
               pending={stopping}
               pendingLabel='Stopping…'
-              onClick={() => stop.mutate()}
+              onClick={() => void stop()}
             >
               <IconPlayerStop />
               Stop run
@@ -117,10 +103,10 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
           tone='warning'
         />
       ) : null}
-      {stop.error ? (
+      {stopError ? (
         <Notice
           title='Could not stop workflow run'
-          description={stop.error.message}
+          description={stopError.message}
           tone='danger'
         />
       ) : null}

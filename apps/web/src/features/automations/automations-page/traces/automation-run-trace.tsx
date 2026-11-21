@@ -1,6 +1,6 @@
 'use client'
 
-import { useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { IconFileText, IconListCheck, IconListDetails, IconPlayerStop } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,6 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs'
-import { sendBff } from '@/lib/http/bff'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
@@ -63,28 +62,9 @@ export function AutomationRunTrace({
 }) {
   const [tab, setTab] = useState('summary')
   const [ocrStep, setOcrStep] = useState<{ stepId: string; path?: string | null }>()
-  const [stopError, setStopError] = useState(false)
-  const [stopPending, startStopping] = useTransition()
-  const [cancelRequestedRunId, setCancelRequestedRunId] = useState<string | null>(null)
   const failedRow = useRef<HTMLTableRowElement>(null)
   const jumpToFailure = useRef(false)
-  const activeSnapshot = run.status === 'queued' || run.status === 'running'
-  const feed = useWorkflowRunUpdates(run, activeSnapshot || tab === 'events', refresh)
-  const active = feed.status === 'queued' || feed.status === 'running'
-  const stopping = active && (stopPending || cancelRequestedRunId === run.id)
-  const stop = () => {
-    setStopError(false)
-    startStopping(async () => {
-      try {
-        await sendBff(`/api/bff/automations/runs/${encodeURIComponent(run.id)}/cancel`, {})
-      } catch {
-        setStopError(true)
-        return
-      }
-      setCancelRequestedRunId(run.id)
-      await refresh().catch(() => undefined)
-    })
-  }
+  const { feed, active, stopping, stop, stopError } = useWorkflowRunUpdates(run, tab === 'events', refresh)
   const failureIndex = run.stepResults.findIndex(step => step.status === 'failed')
   const failedStep = run.stepResults[failureIndex]
   const authorizationFailure = workflowAuthorizationFailure(run.failureCode)
@@ -111,7 +91,7 @@ export function AutomationRunTrace({
               size='sm'
               pending={stopping}
               pendingLabel='Stopping…'
-              onClick={stop}
+              onClick={() => void stop()}
             >
               <IconPlayerStop className='size-4' /> Stop run
             </MutationButton>
