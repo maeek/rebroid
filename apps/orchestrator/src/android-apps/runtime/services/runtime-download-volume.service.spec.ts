@@ -81,6 +81,15 @@ describe('RuntimeDownloadVolumeService', () => {
     );
   });
 
+  it('rejects an inaccessible volume instead of creating its reported mountpoint', async () => {
+    const mountpoint = join(tempDir, 'engine-only-volume');
+    resources.inspectVolume.mockResolvedValue({ Mountpoint: mountpoint });
+    await expect(
+      service.storeStream(app, Readable.from(['body']), 'file.txt', {}),
+    ).rejects.toThrow('Persistent profile storage is unavailable');
+    await expect(stat(mountpoint)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('stores streams and reports byte counts', async () => {
     const result = await service.storeStream(
       app,

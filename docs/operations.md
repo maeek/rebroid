@@ -159,6 +159,14 @@ orchestrator keeps up to 8 MiB of encoded previews for 30 seconds, and checks th
 and current runtime before returning a preview. Filesystems that report coarse change timestamps
 use fresh previews. Upload, rename, and delete invalidate previews for that runtime.
 
+## Persistent profile downloads
+
+Uploads to a stopped profile require the engine's volume mountpoint to be accessible inside
+the orchestrator. The default Compose deployment exposes the engine socket and keeps profile
+mountpoints on the engine host. Start the profile to transfer files through its running container.
+When the mountpoint is accessible, the orchestrator creates the Android Downloads directory inside
+it and publishes each file after the upload finishes.
+
 ## Stored state
 
 The orchestrator creates its SQLite schema with a single migration at startup. Prerelease schema

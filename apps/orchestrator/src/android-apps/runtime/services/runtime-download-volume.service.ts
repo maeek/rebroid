@@ -1,4 +1,9 @@
-import { Inject, ConflictException, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  ConflictException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { constants } from 'node:fs';
 import {
   access,
@@ -27,6 +32,9 @@ import {
   runtimeDownloadTooLarge,
 } from '../utils/runtime-download-limit';
 
+const downloadSubdirectories = ['media', '0', 'Download'];
+const unavailableVolumeMessage =
+  'Persistent profile storage is unavailable to the orchestrator.';
 const persistentDownloadRequiredMessage =
   'Temporary profiles can only transfer files while the app is running.';
 
@@ -91,7 +99,6 @@ export class RuntimeDownloadVolumeService {
       throw new ConflictException(persistentDownloadRequiredMessage);
     }
 
-    await mkdir(directory, { recursive: true });
     const targetPath = join(directory, fileName);
     const sizeBytes = await this.uploads.withStagedFile(
       stream,
@@ -200,9 +207,31 @@ export class RuntimeDownloadVolumeService {
 
     const volume = await this.resources.inspectVolume(volumeName);
     if (!volume?.Mountpoint) {
+      if (options.create)
+        throw new ServiceUnavailableException(unavailableVolumeMessage);
       return null;
     }
+    if (!options.create)
+      return join(volume.Mountpoint, ...downloadSubdirectories);
 
-    return join(volume.Mountpoint, 'media', '0', 'Download');
+    let directory = volume.Mountpoint;
+    try {
+      // The engine owns the mountpoint. Create only the directories inside it.
+      for (const segment of downloadSubdirectories) {
+        directory = join(directory, segment);
+        await mkdir(directory).catch(async (error: NodeJS.ErrnoException) => {
+          if (
+            error.code !== 'EEXIST' ||
+            !(await lstat(directory)).isDirectory()
+          )
+            throw error;
+        });
+      }
+    } catch (cause) {
+      throw new ServiceUnavailableException(unavailableVolumeMessage, {
+        cause,
+      });
+    }
+    return directory;
   }
 }
