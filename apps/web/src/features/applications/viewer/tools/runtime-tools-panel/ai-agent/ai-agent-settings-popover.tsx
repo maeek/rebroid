@@ -2,54 +2,24 @@ import { FormField } from '@/components/ui/form-field'
 import { NumericUnitInput } from '@/components/ui/numeric-unit-input'
 import { AiModelPicker } from '@/shared/ui/ai/ai-model-picker'
 import { MAX_AD_HOC_AI_TIMEOUT_MINUTES } from './ai-agent-chat-utils'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
+import type { useAiAgentModelSettings } from './use-ai-agent-model-settings'
 
-export const AiAgentSettingsPopover = ({
-  adHocTimeoutMinutes,
-  catalog,
-  health,
-  isCheckingHealth,
-  onRecheckHealth,
-  selectedModel,
-  selectedProvider,
-  selectedVisionModel,
-  selectedVisionProvider,
-  selectPrimaryModel,
-  setVisionModelId,
-  setVisionProviderId,
-  setTimeoutMinutesInput,
-  timeoutMinutesInput,
-  visionCatalog
-}: {
-  adHocTimeoutMinutes: number
-  catalog: AutomationAiModelCatalogProvider[]
-  health: AutomationAiProviderHealth | null
-  isCheckingHealth: boolean
-  onRecheckHealth: () => void
-  selectedModel: AutomationAiModelCatalogProvider['models'][number] | undefined
-  selectedProvider: AutomationAiModelCatalogProvider | undefined
-  selectedVisionModel: AutomationAiModelCatalogProvider['models'][number] | undefined
-  selectedVisionProvider: AutomationAiModelCatalogProvider | undefined
-  selectPrimaryModel: (providerId: string, modelId: string) => void
-  setVisionModelId: (modelId: string) => void
-  setVisionProviderId: (providerId: string) => void
-  setTimeoutMinutesInput: (value: string) => void
-  timeoutMinutesInput: string
-  visionCatalog: AutomationAiModelCatalogProvider[]
-}) => (
+type ModelSettings = Omit<ReturnType<typeof useAiAgentModelSettings>, 'modelIsValid'>
+
+export const AiAgentSettingsPopover = ({ settings }: { settings: ModelSettings }) => (
   <AiModelPicker
-    catalog={catalog}
-    selectedProvider={selectedProvider}
-    selectedModel={selectedModel}
-    selectedVisionProvider={selectedVisionProvider}
-    selectedVisionModel={selectedVisionModel}
-    visionCatalog={visionCatalog}
-    health={health}
-    isCheckingHealth={isCheckingHealth}
-    onSelectModel={selectPrimaryModel}
-    onVisionProviderChange={setVisionProviderId}
-    onVisionModelChange={setVisionModelId}
-    onRecheckHealth={onRecheckHealth}
+    catalog={settings.primaryCatalog}
+    selectedProvider={settings.selectedProvider}
+    selectedModel={settings.selectedModel}
+    selectedVisionProvider={settings.selectedVisionProvider}
+    selectedVisionModel={settings.selectedVisionModel}
+    visionCatalog={settings.visionCatalog}
+    health={settings.health}
+    isCheckingHealth={settings.isCheckingHealth}
+    onSelectModel={settings.selectPrimaryModel}
+    onVisionProviderChange={settings.setVisionProviderId}
+    onVisionModelChange={settings.setVisionModelId}
+    onRecheckHealth={() => void settings.recheckHealth()}
     advanced={
       <FormField
         label='Run time limit'
@@ -64,11 +34,11 @@ export const AiAgentSettingsPopover = ({
           min={1}
           max={MAX_AD_HOC_AI_TIMEOUT_MINUTES}
           step={1}
-          value={timeoutMinutesInput}
-          onBlur={() => setTimeoutMinutesInput(String(adHocTimeoutMinutes))}
+          value={settings.timeoutMinutesInput}
+          onBlur={() => settings.setTimeoutMinutesInput(String(settings.adHocTimeoutMinutes))}
           onChange={event => {
             const value = event.target.value
-            if (/^\d{0,3}$/.test(value)) setTimeoutMinutesInput(value)
+            if (/^\d{0,3}$/.test(value)) settings.setTimeoutMinutesInput(value)
           }}
         />
       </FormField>

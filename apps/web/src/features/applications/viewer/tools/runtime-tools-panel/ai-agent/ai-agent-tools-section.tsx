@@ -55,48 +55,40 @@ export const AiAgentConversation = ({
   const fallbackSuggestions = useMemo(() => aiAgentPromptPresets(app), [app])
   const {
     activeTurn,
-    adHocTimeoutMinutes,
-    adHocTimeoutMs,
+    modelSettings,
     canSubmit,
     canRunQueuedTurn,
     cancelRun,
-    catalog,
     clearConversation,
     error,
-    health,
     historyLoadFailed,
     isCanceling,
-    isCheckingHealth,
     isClearing,
     isLoadingHistory,
     isAtBottom,
-    primaryCatalog,
     prompt,
     queuedTurn,
     onTranscriptScroll,
     scrollToLatest,
-    recheckHealth,
     retryHistory,
     runQueuedTurn,
-    selectedModel,
-    selectedProvider,
-    selectedVisionModel,
-    selectedVisionProvider,
-    selectionMessage,
-    selectPrimaryModel,
     setPrompt,
-    setVisionModelId,
-    setVisionProviderId,
-    setTimeoutMinutesInput,
     showCancelRun,
     submissionFeedback,
     submit,
     submitPrompt,
-    timeoutMinutesInput,
     transcriptRef,
-    turns,
-    visionCatalog
+    turns
   } = session
+  const {
+    adHocTimeoutMs,
+    catalog,
+    selectedModel,
+    selectedProvider,
+    selectedVisionModel,
+    selectedVisionProvider,
+    selectionMessage
+  } = modelSettings
 
   const preferredPlanningModelId = selectedModel?.roles.includes('planner') ? selectedModel.id : ''
   const planning = useMemo(
@@ -266,25 +258,7 @@ export const AiAgentConversation = ({
             onChange={setPrompt}
             onSubmit={sendMessage}
             submitOnEnter={!activeTurn}
-            modelControl={
-              <AiAgentSettingsPopover
-                adHocTimeoutMinutes={adHocTimeoutMinutes}
-                catalog={primaryCatalog}
-                health={health}
-                isCheckingHealth={isCheckingHealth}
-                onRecheckHealth={() => void recheckHealth()}
-                selectedModel={selectedModel}
-                selectedProvider={selectedProvider}
-                selectedVisionModel={selectedVisionModel}
-                selectedVisionProvider={selectedVisionProvider}
-                selectPrimaryModel={selectPrimaryModel}
-                setVisionModelId={setVisionModelId}
-                setVisionProviderId={setVisionProviderId}
-                setTimeoutMinutesInput={setTimeoutMinutesInput}
-                timeoutMinutesInput={timeoutMinutesInput}
-                visionCatalog={visionCatalog}
-              />
-            }
+            modelControl={<AiAgentSettingsPopover settings={modelSettings} />}
             actions={
               <AiComposerAction
                 label={actionLabel}

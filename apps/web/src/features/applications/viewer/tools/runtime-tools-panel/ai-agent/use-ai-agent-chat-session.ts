@@ -21,27 +21,8 @@ export const useAiAgentChatSession = ({
   const [error, setError] = useState<string | null>(null)
   const runSequencesRef = useRef(new Map<string, number>())
   const conversationVersionRef = useRef(0)
-  const {
-    adHocTimeoutMinutes,
-    adHocTimeoutMs,
-    catalog,
-    health,
-    isCheckingHealth,
-    modelIsValid,
-    primaryCatalog,
-    recheckHealth,
-    selectedModel,
-    selectedProvider,
-    selectedVisionModel,
-    selectedVisionProvider,
-    selectionMessage,
-    selectPrimaryModel,
-    setVisionModelId,
-    setVisionProviderId,
-    setTimeoutMinutesInput,
-    timeoutMinutesInput,
-    visionCatalog
-  } = useAiAgentModelSettings()
+  const { modelIsValid, ...modelSettings } = useAiAgentModelSettings()
+  const { adHocTimeoutMs, selectedModel, selectedProvider, selectedVisionModel, selectedVisionProvider } = modelSettings
 
   const activeTurn = findActiveChatTurn(turns)
   const queuedTurn = turns.find(turn => turn.status === 'queued')
@@ -52,7 +33,7 @@ export const useAiAgentChatSession = ({
     runSequencesRef,
     setTurns
   })
-  const { isAtBottom, onTranscriptScroll, scrollToLatest, transcriptRef } = useAiAgentTranscriptScroll(turns)
+  const transcriptScroll = useAiAgentTranscriptScroll(turns)
 
   const appendRunEvents = useCallback((runId: string, nextEvents: AutomationRunEvent[]) => {
     if (nextEvents.length === 0) return
@@ -62,19 +43,7 @@ export const useAiAgentChatSession = ({
   }, [])
 
   useAiAgentRunStream({ runId: activeTurn?.run?.id, appendRunEvents, conversationVersionRef, runSequencesRef })
-  const {
-    submissionFeedback,
-    canSubmit,
-    canRunQueuedTurn,
-    cancelRun,
-    clearConversation,
-    isCanceling,
-    isClearing,
-    runQueuedTurn,
-    showCancelRun,
-    submit,
-    submitPrompt
-  } = useAiAgentRunActions({
+  const actions = useAiAgentRunActions({
     activeTurn,
     adHocTimeoutMs,
     appendRunEvents,
@@ -98,47 +67,17 @@ export const useAiAgentChatSession = ({
   })
 
   return {
+    ...actions,
+    ...transcriptScroll,
     activeTurn,
-    adHocTimeoutMinutes,
-    adHocTimeoutMs,
-    submissionFeedback,
-    canSubmit,
-    canRunQueuedTurn,
-    cancelRun,
-    catalog,
-    clearConversation,
     error,
-    health,
-    isCanceling,
-    isCheckingHealth,
-    isClearing,
     isLoadingHistory: historyStatus === 'loading',
     historyLoadFailed: historyStatus === 'failed',
-    retryHistory,
-    isAtBottom,
-    primaryCatalog,
+    modelSettings,
     prompt,
     queuedTurn,
-    recheckHealth,
-    runQueuedTurn,
-    selectedModel,
-    selectedProvider,
-    selectedVisionModel,
-    selectedVisionProvider,
-    selectionMessage,
-    selectPrimaryModel,
+    retryHistory,
     setPrompt,
-    setVisionModelId,
-    setVisionProviderId,
-    setTimeoutMinutesInput,
-    showCancelRun,
-    submit,
-    submitPrompt,
-    timeoutMinutesInput,
-    onTranscriptScroll,
-    scrollToLatest,
-    transcriptRef,
-    turns,
-    visionCatalog
+    turns
   }
 }

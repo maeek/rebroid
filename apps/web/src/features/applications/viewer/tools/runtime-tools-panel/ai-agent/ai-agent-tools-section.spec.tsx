@@ -54,51 +54,60 @@ const app: AppDefinition = {
   savedProfiles: []
 }
 
-const chatSession = (
-  patch: Partial<ReturnType<typeof useAiAgentChatSession>> = {}
-): ReturnType<typeof useAiAgentChatSession> => ({
+type ChatSession = ReturnType<typeof useAiAgentChatSession>
+
+const chatSession = ({
+  modelSettings,
+  ...patch
+}: Partial<Omit<ChatSession, 'modelSettings'>> & {
+  modelSettings?: Partial<ChatSession['modelSettings']>
+} = {}): ChatSession => ({
+  modelSettings: {
+    adHocTimeoutMinutes: 5,
+    adHocTimeoutMs: 300_000,
+    catalog: [],
+    health: null,
+    isCheckingHealth: false,
+    primaryCatalog: [],
+    recheckHealth: () => Promise.resolve(undefined),
+    selectedModel: undefined,
+    selectedProvider: undefined,
+    selectedVisionModel: undefined,
+    selectedVisionProvider: undefined,
+    selectionMessage: 'Configure an enabled AI provider and model before sending.',
+    selectPrimaryModel: vi.fn(),
+    setTimeoutMinutesInput: vi.fn(),
+    setVisionModelId: vi.fn(),
+    setVisionProviderId: vi.fn(),
+    timeoutMinutesInput: '5',
+    visionCatalog: [],
+    isLoadingCatalog: false,
+    ...modelSettings
+  },
   activeTurn: null,
-  adHocTimeoutMinutes: 5,
-  adHocTimeoutMs: 300_000,
   canSubmit: false,
   canRunQueuedTurn: false,
   cancelRun: () => Promise.resolve(undefined),
-  catalog: [],
   clearConversation: () => Promise.resolve(undefined),
   error: null,
-  health: null,
   historyLoadFailed: false,
   retryHistory: vi.fn(),
   isCanceling: false,
-  isCheckingHealth: false,
   isClearing: false,
   isLoadingHistory: false,
   isAtBottom: true,
   scrollToLatest: vi.fn(),
   onTranscriptScroll: vi.fn(),
-  primaryCatalog: [],
   prompt: '',
   queuedTurn: undefined,
-  recheckHealth: () => Promise.resolve(undefined),
   runQueuedTurn: () => Promise.resolve(undefined),
-  selectedModel: undefined,
-  selectedProvider: undefined,
-  selectedVisionModel: undefined,
-  selectedVisionProvider: undefined,
-  selectionMessage: 'Configure an enabled AI provider and model before sending.',
-  selectPrimaryModel: vi.fn(),
   setPrompt: vi.fn(),
-  setTimeoutMinutesInput: vi.fn(),
-  setVisionModelId: vi.fn(),
-  setVisionProviderId: vi.fn(),
   showCancelRun: undefined,
   submissionFeedback: null,
   submit: () => Promise.resolve(undefined),
   submitPrompt: () => Promise.resolve(undefined),
-  timeoutMinutesInput: '5',
   transcriptRef: createRef<HTMLDivElement>(),
   turns: [],
-  visionCatalog: [],
   ...patch
 })
 
@@ -278,19 +287,21 @@ describe('AiAgentToolsSection', () => {
     }
     vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
-        selectedProvider,
-        selectedModel,
-        catalog: [
+        modelSettings: {
           selectedProvider,
-          {
-            id: 'planner-provider',
-            label: 'Planning',
-            kind: 'ollama',
-            models: [
-              { ...selectedModel, id: 'planner:exact', roles: ['controller', 'planner'], defaultFor: ['planner'] }
-            ]
-          }
-        ]
+          selectedModel,
+          catalog: [
+            selectedProvider,
+            {
+              id: 'planner-provider',
+              label: 'Planning',
+              kind: 'ollama',
+              models: [
+                { ...selectedModel, id: 'planner:exact', roles: ['controller', 'planner'], defaultFor: ['planner'] }
+              ]
+            }
+          ]
+        }
       })
     )
 
@@ -318,14 +329,16 @@ describe('AiAgentToolsSection', () => {
     Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
     vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
-        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
-        selectedModel: {
-          id: 'model_1',
-          label: 'Model',
-          roles: ['planner'],
-          enabled: true,
-          defaultFor: ['planner'],
-          settings: {}
+        modelSettings: {
+          selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
+          selectedModel: {
+            id: 'model_1',
+            label: 'Model',
+            roles: ['planner'],
+            enabled: true,
+            defaultFor: ['planner'],
+            settings: {}
+          }
         },
         turns: [
           {
@@ -362,14 +375,16 @@ describe('AiAgentToolsSection', () => {
     >(() => Promise.resolve({ suggestions: [] }))
     vi.mocked(useAiAgentChatSession).mockReturnValue(
       chatSession({
-        selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
-        selectedModel: {
-          id: 'model_1',
-          label: 'Model',
-          roles: ['planner'],
-          enabled: true,
-          defaultFor: ['planner'],
-          settings: {}
+        modelSettings: {
+          selectedProvider: { id: 'provider_1', label: 'Provider', kind: 'ollama', models: [] },
+          selectedModel: {
+            id: 'model_1',
+            label: 'Model',
+            roles: ['planner'],
+            enabled: true,
+            defaultFor: ['planner'],
+            settings: {}
+          }
         }
       })
     )

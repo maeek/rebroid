@@ -71,6 +71,7 @@ describe('useAiAgentChatSession', () => {
       catalog: [],
       health: null,
       isCheckingHealth: false,
+      isLoadingCatalog: false,
       modelIsValid: true,
       primaryCatalog: [],
       recheckHealth: vi.fn<() => Promise<void>>(() => Promise.resolve()),

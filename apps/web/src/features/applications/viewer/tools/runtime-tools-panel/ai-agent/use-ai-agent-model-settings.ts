@@ -5,17 +5,6 @@ import {
 } from '@/server/orchestrator/settings/actions'
 import { useAiModelCatalogSelection, type AiModelSelectionPatch } from '@/shared/ui/ai/use-ai-model-catalog-selection'
 import { clampAdHocTimeoutMinutes, DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES } from './ai-agent-chat-utils'
-import type { AutomationAiModelCatalogProvider, AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
-
-const isValidAgentModel = (
-  provider: AutomationAiModelCatalogProvider | undefined,
-  model: AutomationAiModelCatalogProvider['models'][number] | undefined,
-  health: AutomationAiProviderHealth | null
-) => {
-  if (!provider || !model) return false
-  if (health && health.status !== 'ok') return false
-  return true
-}
 
 export const useAiAgentModelSettings = () => {
   const [timeoutMinutesInput, setTimeoutMinutesInput] = useState(String(DEFAULT_AD_HOC_AI_TIMEOUT_MINUTES))
@@ -31,12 +20,10 @@ export const useAiAgentModelSettings = () => {
     if (patch.visionModelId !== undefined) setVisionModelId(patch.visionModelId)
   }, [])
 
-  const loadCatalog = useCallback(() => listAutomationAiModelCatalogAction(), [])
-
   const modelSelection = useAiModelCatalogSelection({
     checkHealth: checkAutomationAiProviderHealthAction,
     role: 'controller',
-    loadCatalog,
+    loadCatalog: listAutomationAiModelCatalogAction,
     modelId,
     onSelectionChange: patchSelection,
     providerId,
@@ -44,22 +31,8 @@ export const useAiAgentModelSettings = () => {
     visionProviderId
   })
 
-  const {
-    catalog,
-    health,
-    isCheckingHealth,
-    primaryCatalog,
-    selectedModel,
-    selectedProvider,
-    selectedVisionModel,
-    selectedVisionProvider,
-    selectPrimaryModel,
-    setVisionModelId: setSelectedVisionModelId,
-    setVisionProviderId: setSelectedVisionProviderId,
-    visionCatalog
-  } = modelSelection
-
-  const modelIsValid = isValidAgentModel(selectedProvider, selectedModel, health)
+  const { selectedProvider, selectedModel, health } = modelSelection
+  const modelIsValid = Boolean(selectedProvider && selectedModel && (!health || health.status === 'ok'))
   const adHocTimeoutMinutes = clampAdHocTimeoutMinutes(Number(timeoutMinutesInput))
   const adHocTimeoutMs = adHocTimeoutMinutes * 60_000
 
@@ -71,24 +44,12 @@ export const useAiAgentModelSettings = () => {
   }, [health, selectedModel, selectedProvider])
 
   return {
+    ...modelSelection,
     adHocTimeoutMinutes,
     adHocTimeoutMs,
-    catalog,
-    health,
-    isCheckingHealth,
     modelIsValid,
-    primaryCatalog,
-    recheckHealth: modelSelection.recheckHealth,
-    selectedModel,
-    selectedProvider,
-    selectedVisionModel,
-    selectedVisionProvider,
     selectionMessage,
-    selectPrimaryModel,
-    setVisionModelId: setSelectedVisionModelId,
-    setVisionProviderId: setSelectedVisionProviderId,
     setTimeoutMinutesInput,
-    timeoutMinutesInput,
-    visionCatalog
+    timeoutMinutesInput
   }
 }
