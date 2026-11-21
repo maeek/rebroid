@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { mergeAppsListRefresh } from './apps-list-refresh'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
-const app = (id: string, overrides: Partial<AppDefinition> = {}): AppDefinition =>
+const app = (id: string, overrides: Partial<AppGalleryItem> = {}): AppGalleryItem =>
   ({
     id,
     name: id,
@@ -12,7 +12,7 @@ const app = (id: string, overrides: Partial<AppDefinition> = {}): AppDefinition 
     lifecycleStage: 'running',
     updatedAt: new Date(0),
     ...overrides
-  }) as AppDefinition
+  }) as AppGalleryItem
 
 describe('apps list refresh model', () => {
   it('preserves local icon and owner labels while filtering hidden removals', () => {
@@ -53,8 +53,7 @@ describe('apps list refresh model', () => {
     const refreshedApps = [app('active'), app('expired')]
     const activeOverride = app('active', {
       status: 'stopped',
-      lifecycleStage: 'stopping',
-      statusMessage: 'Stopping app.'
+      lifecycleStage: 'stopping'
     })
 
     const result = mergeAppsListRefresh({

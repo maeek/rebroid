@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
-import { applicationPreview } from '@/shared/testing/application-preview'
+import { toAppGalleryItem } from '@/shared/contracts/application-gallery'
+import { galleryPreviewApplications } from '../apps-gallery-preview-data'
 import { filterGalleryApps } from './apps-gallery-filter'
 import { deriveAppsListSelection, retainVisibleSelectedIds } from './apps-list-selection'
 
-const base = mapAndroidApplicationToAppDefinition(applicationPreview)
+const base = toAppGalleryItem(galleryPreviewApplications[1])
 const apps = [
   {
     ...base,

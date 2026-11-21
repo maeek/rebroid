@@ -4,7 +4,7 @@ import { isAppInProgress } from '@/shared/model/applications/app-gallery-status'
 import { getAppStatusLabel } from '@/shared/model/applications/app-status-label'
 import { AppGalleryCard } from '@/shared/ui/app-icon/app-gallery-card'
 import { useAppsListContext } from './apps-list-context'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
 export const AppsListItem = ({
   app,
@@ -15,7 +15,7 @@ export const AppsListItem = ({
   canDelete,
   canViewSnapshot = false
 }: {
-  app: AppDefinition
+  app: AppGalleryItem
   showOwner?: boolean
   canClone?: boolean
   canStart: boolean

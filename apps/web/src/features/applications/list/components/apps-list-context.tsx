@@ -1,18 +1,18 @@
 import { createContext, useContext } from 'react'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 import type { AppsListSortMode } from '@/shared/model/applications/app-sort'
 
 export type BulkAction = 'stop' | 'delete'
-export type PendingAppAction = { action: BulkAction; app: AppDefinition }
+export type PendingAppAction = { action: BulkAction; app: AppGalleryItem }
 export type BulkAppProgress = {
-  apps: AppDefinition[]
+  apps: AppGalleryItem[]
   removeDataOnDelete: boolean
   accepted: number
   failed: number
 }
 
 export type AppsListContextValue = {
-  activeBulkApps: AppDefinition[]
+  activeBulkApps: AppGalleryItem[]
   allSelected: boolean
   bulkAction: BulkAction | null
   bulkProgress: BulkAppProgress | null
@@ -20,7 +20,7 @@ export type AppsListContextValue = {
   canDelete: boolean
   closeBulkAction: () => void
   confirmBulkAction: () => Promise<void>
-  deleteApp: (app: AppDefinition) => Promise<void>
+  deleteApp: (app: AppGalleryItem) => Promise<void>
   deletableSelectedCount: number
   exitManageMode: () => void
   isBulkWorking: boolean
@@ -34,9 +34,9 @@ export type AppsListContextValue = {
   selectedIds: Set<string>
   selectionCount: number
   setSortMode: (sortMode: AppsListSortMode) => void
-  startApp: (app: AppDefinition) => Promise<void>
+  startApp: (app: AppGalleryItem) => Promise<void>
   startManaging: (initialId?: string) => void
-  stopApp: (app: AppDefinition) => Promise<void>
+  stopApp: (app: AppGalleryItem) => Promise<void>
   sortMode: AppsListSortMode
   stoppableSelectedCount: number
   toggleSelected: (id: string) => void

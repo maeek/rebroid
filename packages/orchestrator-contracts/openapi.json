@@ -5979,6 +5979,74 @@
           "apk-uploads"
         ]
       }
+    },
+    "/api/v1/apps/gallery": {
+      "get": {
+        "operationId": "AndroidAppsController_listGallery",
+        "parameters": [
+          {
+            "name": "ownerUserId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "user_123",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AndroidApplicationGalleryRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
+    },
+    "/api/v1/apps/navigation": {
+      "post": {
+        "operationId": "AndroidAppsController_listNavigation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListAndroidApplicationNavigationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AndroidApplicationNavigationRowDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
     }
   },
   "info": {
@@ -12551,6 +12619,167 @@
           "changed",
           "skipped",
           "bytesFreed"
+        ]
+      },
+      "AndroidApplicationGalleryRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "image_checking",
+              "image_pulling",
+              "volume_creating",
+              "network_creating",
+              "orchestrator_network_connecting",
+              "container_creating",
+              "container_starting",
+              "android_booting",
+              "apk_installing",
+              "ready",
+              "stopping",
+              "stopped",
+              "removing",
+              "removed",
+              "error"
+            ]
+          },
+          "containerImage": {
+            "type": "string"
+          },
+          "apkPackageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "ownerUserId",
+          "status",
+          "lifecycleStage",
+          "containerImage",
+          "apkPackageName",
+          "updatedAt"
+        ]
+      },
+      "AndroidApplicationNavigationRowDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "provisioning",
+              "running",
+              "stopped",
+              "error",
+              "removing",
+              "removed"
+            ]
+          },
+          "lifecycleStage": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "image_checking",
+              "image_pulling",
+              "volume_creating",
+              "network_creating",
+              "orchestrator_network_connecting",
+              "container_creating",
+              "container_starting",
+              "android_booting",
+              "apk_installing",
+              "ready",
+              "stopping",
+              "stopped",
+              "removing",
+              "removed",
+              "error"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "ownerUserId",
+          "status",
+          "lifecycleStage"
+        ]
+      },
+      "ListAndroidApplicationNavigationDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "applicationIds": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "includeRunning": {
+            "type": "boolean"
+          },
+          "excludeIds": {
+            "maxItems": 512,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "runningLimit": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale for the natural name ordering."
+          }
+        },
+        "required": [
+          "applicationIds",
+          "includeRunning"
         ]
       }
     }

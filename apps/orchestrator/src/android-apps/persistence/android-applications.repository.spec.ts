@@ -106,6 +106,55 @@ describe('Android application runtime observations', () => {
       }),
     );
 
+  it('projects gallery rows and ranks running navigation after ownership and dismissal filters', async () => {
+    const rows = await apps.save(
+      ['App 10', 'App 2', 'App 1', 'App 0', 'Recent only', 'app 02'].map(
+        (name, index) =>
+          apps.create({
+            name,
+            ownerUserId: index === 3 ? 'another-owner' : 'owner',
+            status:
+              index === 4
+                ? AndroidApplicationStatus.Stopped
+                : AndroidApplicationStatus.Running,
+            containerName: `private-runtime-${index}`,
+            containerImage: 'fixture',
+            networkName: `private-network-${index}`,
+            volumeName: `private-volume-${index}`,
+            apkFilePath: '/private/test.apk',
+            networkPolicyAllowCidrs: '[]',
+            savedProfilesJson: '[]',
+          }),
+      ),
+    );
+    const status = new AndroidAppsStatusService();
+    const queries = new AndroidAppsQueryService(repository, status);
+    const gallery = await queries.listGallery({ ownerUserId: 'owner' });
+    expect(gallery).toHaveLength(5);
+    expect(gallery.map(({ name }) => name)).not.toContain('App 0');
+    for (const galleryRow of gallery) {
+      expect(galleryRow.updatedAt).toBeInstanceOf(Date);
+      expect(galleryRow.containerName).toBeUndefined();
+      expect(galleryRow.apkFilePath).toBeUndefined();
+      expect(galleryRow.networkName).toBeUndefined();
+    }
+    const navigation = await queries.listNavigation({
+      ownerUserId: 'owner',
+      applicationIds: [rows[4].id, rows[2].id],
+      excludeIds: [rows[2].id],
+      includeRunning: true,
+      runningLimit: 1,
+      locale: 'en',
+    });
+    // Numeric, case-insensitive ties are resolved by ID, as in the web sidebar.
+    const firstRunning = [rows[1].id, rows[5].id].sort((left, right) =>
+      left.localeCompare(right),
+    )[0];
+    expect(navigation.map(({ id }) => id)).toEqual([firstRunning, rows[4].id]);
+    expect(navigation[0].containerImage).toBeUndefined();
+    expect(navigation[0].statusMessage).toBeUndefined();
+  });
+
   it('hydrates only the owner’s running and recent candidates with summary fields', async () => {
     const [running, recent, otherOwner, stopped] = await apps.save(
       Array.from({ length: 100 }, (_, index) =>

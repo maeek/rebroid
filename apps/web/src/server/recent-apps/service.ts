@@ -8,11 +8,10 @@ import { navigationAppsLimit } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { selectNavigationAppEntries, selectRecentlyOpenedAppEntries } from './navigation'
 import { listDismissedRecentAppIds, listStoredRecentApps } from './store'
-import type { AndroidApplicationSummary } from '@/shared/contracts/application'
 import type { RecentApp } from '@/shared/contracts/recent-app'
 
 const toRecentApp = async (
-  app: AndroidApplicationSummary,
+  app: Pick<RecentApp, 'id' | 'name'> & { currentStatus: RecentApp['status'] },
   openedAt: number,
   statusLabel: string | null
 ): Promise<RecentApp> => ({
@@ -31,16 +30,23 @@ const listVisibleApps = async (recentOnly: boolean): Promise<RecentApp[]> => {
   if (recentOnly && recent.length === 0) return []
 
   const dismissedIds = recentOnly ? undefined : listDismissedRecentAppIds(user.ownerUserId)
-  const apps = await orchestratorAppCatalogClient.listApplicationSummaries(ownerUserId, {
+  // Large dismissal histories fall back to the same narrow projection and local selection.
+  const canExcludeUpstream = dismissedIds !== undefined && dismissedIds.size <= 512
+  const apps = await orchestratorAppCatalogClient.listApplicationNavigation({
+    ...(ownerUserId && { ownerUserId }),
     applicationIds: recent.map(app => app.id),
-    includeRunning: !recentOnly
+    includeRunning: !recentOnly,
+    ...(canExcludeUpstream && {
+      excludeIds: [...dismissedIds],
+      runningLimit: navigationAppsLimit,
+      locale: Intl.Collator().resolvedOptions().locale
+    })
   })
   const navigationApps = recentOnly
     ? selectRecentlyOpenedAppEntries(apps, recent)
     : selectNavigationAppEntries(
         apps.filter(app => !dismissedIds?.has(app.id)),
-        recent,
-        navigationAppsLimit
+        recent
       )
   const otherOwnerIds = new Set<string>()
   for (const { app } of navigationApps) {

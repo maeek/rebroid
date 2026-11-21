@@ -1,12 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
-import { previewApp } from '@/features/applications/detail/app-resource-preview-data'
 import {
   requestApplicationDeletionAction,
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { actionOk } from '@/shared/actions/action-result'
+import { toAppGalleryItem } from '@/shared/contracts/application-gallery'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
+import { galleryPreviewApplications } from '../apps-gallery-preview-data'
 import { AppsListBulkDialog } from './apps-list-bulk-dialog'
 import { AppsListProvider, type BulkAction } from './apps-list-context'
 import { useAppsListController } from './use-apps-list-controller'
@@ -21,7 +22,7 @@ vi.mock('@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 }))
 
 const apps = ['Alpha', 'Beta', 'Gamma'].map(name => ({
-  ...previewApp,
+  ...toAppGalleryItem(galleryPreviewApplications[0]),
   id: name,
   name,
   status: 'running' as const,

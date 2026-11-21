@@ -1,41 +1,24 @@
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
 import { withStoredAppIcons } from '@/features/applications/icons/enrich'
-import { orchestratorAppCatalogClient } from '@/server/orchestrator/applications/catalog-client'
+import { toActionError } from '@/server/actions/safe-action'
+import { getRequestId } from '@/server/observability/request-id'
+import { listApplicationGallery } from '@/server/orchestrator/applications/application-gallery-query'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { getServerOrchestratorUiSettings } from '@/server/orchestrator/get-server-ui-settings'
-import { getOwnerDisplayName, getVisibleOwnerDisplayNames } from '@/server/users/owner-display-names'
+import { toAppGalleryItem } from '@/shared/contracts/application-gallery'
 import { hasPermission } from '@/shared/permissions/permissions'
 
 export const getAppsListPageData = async () => {
   const initialSettingsPromise = getServerOrchestratorUiSettings()
   const user = await getCurrentUserContext()
-  const ownerUserId = user.isPlatformAdmin ? undefined : user.ownerUserId
-  const ownerNamesPromise = getVisibleOwnerDisplayNames(user)
   let orchestratorError: string | null = null
-  const appsPromise = orchestratorAppCatalogClient
-    .listApplications(ownerUserId)
-    .then(items => items.map(mapAndroidApplicationToAppDefinition))
-    .catch(error => {
-      orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'
+  const appsPromise = listApplicationGallery(user)
+    .then(rows => withStoredAppIcons(rows.map(toAppGalleryItem)))
+    .catch(async error => {
+      const failure = toActionError(error, await getRequestId(), 'Could not load applications.')
+      orchestratorError = `${failure.message} Reference: ${failure.requestId}`
       return []
     })
-  const [initialSettings, ownerNames, baseApps] = await Promise.all([
-    initialSettingsPromise,
-    ownerNamesPromise,
-    appsPromise
-  ])
-  const apps = await Promise.resolve(baseApps)
-    .then(items =>
-      items.map(app => ({
-        ...app,
-        ownerDisplayName: getOwnerDisplayName(ownerNames, app.ownerUserId)
-      }))
-    )
-    .then(withStoredAppIcons)
-    .catch(error => {
-      orchestratorError = error instanceof Error ? error.message : 'The orchestrator API is not responding.'
-      return []
-    })
+  const [initialSettings, apps] = await Promise.all([initialSettingsPromise, appsPromise])
 
   return {
     apps,

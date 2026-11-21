@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, LessThan, Not, Or, Repository } from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationSummariesDto } from '../common/dto/list-android-application-summaries.dto';
+import { ListAndroidApplicationNavigationDto } from '../common/dto/list-android-application-navigation.dto';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
@@ -10,6 +11,14 @@ import type {
   AndroidAppsRuntimeInventoryPort,
   RestrictedRuntimePolicyTarget,
 } from '../contracts/android-apps-runtime-inventory.port';
+
+const applicationNavigationColumns = {
+  id: true,
+  name: true,
+  ownerUserId: true,
+  status: true,
+  lifecycleStage: true,
+} as const;
 
 type ViewerRuntime = Pick<
   AndroidApplication,
@@ -147,6 +156,41 @@ export class AndroidApplicationsRepository
     return this.applications.find({
       where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  findForGallery(query: ListAndroidApplicationsDto) {
+    return this.applications.find({
+      select: {
+        ...applicationNavigationColumns,
+        containerImage: true,
+        apkPackageName: true,
+        updatedAt: true,
+      },
+      where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  findForNavigation(query: ListAndroidApplicationNavigationDto) {
+    const owner = query.ownerUserId ? { ownerUserId: query.ownerUserId } : {};
+    const candidates = [];
+    if (query.applicationIds.length) {
+      const excluded = new Set(query.excludeIds);
+      const ids = query.applicationIds.filter((id) => !excluded.has(id));
+      if (ids.length) candidates.push({ ...owner, id: In(ids) });
+    }
+    if (query.includeRunning) {
+      candidates.push({
+        ...owner,
+        status: AndroidApplicationStatus.Running,
+        ...(query.excludeIds?.length && { id: Not(In(query.excludeIds)) }),
+      });
+    }
+    if (!candidates.length) return Promise.resolve([]);
+    return this.applications.find({
+      select: applicationNavigationColumns,
+      where: candidates,
     });
   }
 

@@ -1,14 +1,14 @@
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
 export type AppsListRefreshOverride = {
-  app: AppDefinition
+  app: AppGalleryItem
   expiresAt: number | null
   acknowledgedAfter?: number
 }
 
 type MergeAppsListRefreshInput = {
-  currentApps: AppDefinition[]
-  refreshedApps: AppDefinition[]
+  currentApps: AppGalleryItem[]
+  refreshedApps: AppGalleryItem[]
   hiddenRemovingIds: ReadonlySet<string>
   pendingOverrides: ReadonlyMap<string, AppsListRefreshOverride>
   nowMs: number

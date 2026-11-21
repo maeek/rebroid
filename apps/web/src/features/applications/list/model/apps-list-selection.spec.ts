@@ -6,9 +6,9 @@ import {
   summarizeBulkDeleteAppsResult,
   summarizeBulkStopAppsResult
 } from './apps-list-selection'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
-const app = (id: string, overrides: Partial<AppDefinition> = {}): AppDefinition =>
+const app = (id: string, overrides: Partial<AppGalleryItem> = {}): AppGalleryItem =>
   ({
     id,
     name: id,
@@ -16,7 +16,7 @@ const app = (id: string, overrides: Partial<AppDefinition> = {}): AppDefinition 
     status: 'stopped',
     ownerUserId: 'owner-1',
     ...overrides
-  }) as unknown as AppDefinition
+  }) as unknown as AppGalleryItem
 
 describe('apps list selection model', () => {
   it('retains only selected ids still present in visible apps', () => {

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { galleryPreviewApplications } from '../src/features/applications/list/apps-gallery-preview-data'
+import { actionOk } from '../src/shared/actions/action-result'
 
 const recentApps = [
   { id: 'recent-2', name: 'Warehouse scanner', openedAt: 200, status: 'stopped' },
@@ -14,17 +15,17 @@ const recentApps = [
 ]
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/applications', route => route.fulfill({ json: galleryPreviewApplications }))
+  await page.route('**/api/bff/apps/gallery', route => route.fulfill({ json: actionOk(galleryPreviewApplications) }))
 })
 
 test('gallery hover previews show full portrait and landscape screenshots', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.route('**/api/applications', route =>
+  await page.route('**/api/bff/apps/gallery', route =>
     route.fulfill({
-      json: galleryPreviewApplications.map(app =>
-        app.id === 'gallery-app-1'
-          ? { ...app, status: { ...app.status, currentStatus: 'running', lifecycleStage: 'ready' } }
-          : app
+      json: actionOk(
+        galleryPreviewApplications.map(app =>
+          app.id === 'gallery-app-1' ? { ...app, status: 'running', lifecycleStage: 'ready' } : app
+        )
       )
     })
   )
@@ -183,13 +184,12 @@ test('a shared status URL opens the matching apps and can be cleared', async ({ 
 
 test('the in-progress URL includes stopping apps alongside provisioning and removal', async ({ page }) => {
   const apps = galleryPreviewApplications.map((app, index) => {
-    if (index === 1)
-      return { ...app, status: { ...app.status, currentStatus: 'provisioning', lifecycleStage: 'queued' } }
-    if (index === 2) return { ...app, status: { ...app.status, currentStatus: 'running', lifecycleStage: 'stopping' } }
-    if (index === 3) return { ...app, status: { ...app.status, currentStatus: 'removing', lifecycleStage: 'removing' } }
+    if (index === 1) return { ...app, status: 'provisioning', lifecycleStage: 'queued' }
+    if (index === 2) return { ...app, status: 'running', lifecycleStage: 'stopping' }
+    if (index === 3) return { ...app, status: 'removing', lifecycleStage: 'removing' }
     return app
   })
-  await page.route('**/api/applications', route => route.fulfill({ json: apps }))
+  await page.route('**/api/bff/apps/gallery', route => route.fulfill({ json: actionOk(apps) }))
   await page.goto('/skeleton-contract-test?editor=apps-gallery&status=working')
   const tiles = page.locator('[data-app-tile]')
   await expect(tiles).toHaveCount(3)

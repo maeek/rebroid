@@ -9,7 +9,7 @@ import type { AndroidApplicationSummary } from '@/shared/contracts/application'
 
 vi.mock('@/server/app-icons/store', () => ({ getStoredAppIcon: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/catalog-client', () => ({
-  orchestratorAppCatalogClient: { listApplicationSummaries: vi.fn() }
+  orchestratorAppCatalogClient: { listApplicationNavigation: vi.fn() }
 }))
 vi.mock('@/server/orchestrator/current-user', () => ({ getCurrentUserContext: vi.fn() }))
 vi.mock('@/server/users/owner-display-names', async importOriginal => ({
@@ -36,7 +36,7 @@ beforeEach(() => {
     { id: 'inaccessible', openedAt: 400 },
     { id: 'newest', openedAt: 300 }
   ])
-  vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+  vi.mocked(orchestratorAppCatalogClient.listApplicationNavigation).mockResolvedValue([
     summary('older'),
     summary('newest'),
     summary('unvisited', 'running')
@@ -50,7 +50,7 @@ describe('authorized recent application reads', () => {
     await expect(listRecentlyOpenedApps()).rejects.toThrow('Unauthorized')
 
     expect(listStoredRecentApps).not.toHaveBeenCalled()
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).not.toHaveBeenCalled()
+    expect(orchestratorAppCatalogClient.listApplicationNavigation).not.toHaveBeenCalled()
     expect(getStoredAppIcon).not.toHaveBeenCalled()
   })
 
@@ -58,7 +58,8 @@ describe('authorized recent application reads', () => {
     const apps = await listRecentlyOpenedApps()
 
     expect(listStoredRecentApps).toHaveBeenCalledWith('signed-in-user')
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledExactlyOnceWith('signed-in-user', {
+    expect(orchestratorAppCatalogClient.listApplicationNavigation).toHaveBeenCalledExactlyOnceWith({
+      ownerUserId: 'signed-in-user',
       applicationIds: ['older', 'inaccessible', 'newest'],
       includeRunning: false
     })
@@ -71,7 +72,7 @@ describe('authorized recent application reads', () => {
 
     await expect(listRecentlyOpenedApps()).resolves.toEqual([])
 
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).not.toHaveBeenCalled()
+    expect(orchestratorAppCatalogClient.listApplicationNavigation).not.toHaveBeenCalled()
     expect(getVisibleOwnerDisplayNames).not.toHaveBeenCalled()
   })
 
@@ -83,7 +84,7 @@ describe('authorized recent application reads', () => {
       permissions: { 'applications:create': true }
     })
     vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map([['another-user', 'Operations']]))
-    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+    vi.mocked(orchestratorAppCatalogClient.listApplicationNavigation).mockResolvedValue([
       { ...summary('older'), ownerUserId: 'signed-in-user' },
       { ...summary('newest', 'error'), ownerUserId: 'another-user' },
       summary('unvisited', 'running')
@@ -93,7 +94,7 @@ describe('authorized recent application reads', () => {
       { id: 'newest', ownerDisplayName: 'Operations', canClone: true, canStart: false, statusLabel: 'Error' },
       { id: 'older', ownerDisplayName: null, canClone: false }
     ])
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenCalledWith(undefined, {
+    expect(orchestratorAppCatalogClient.listApplicationNavigation).toHaveBeenCalledWith({
       applicationIds: ['older', 'inaccessible', 'newest'],
       includeRunning: false
     })
@@ -105,9 +106,13 @@ describe('authorized recent application reads', () => {
 
   it('keeps the sidebar running-first selection distinct from overview visit order', async () => {
     expect((await listVisibleRecentApps()).map(app => app.id)).toEqual(['unvisited', 'newest', 'older'])
-    expect(orchestratorAppCatalogClient.listApplicationSummaries).toHaveBeenLastCalledWith('signed-in-user', {
+    expect(orchestratorAppCatalogClient.listApplicationNavigation).toHaveBeenLastCalledWith({
+      ownerUserId: 'signed-in-user',
       applicationIds: ['older', 'inaccessible', 'newest'],
-      includeRunning: true
+      includeRunning: true,
+      excludeIds: [],
+      runningLimit: 5,
+      locale: Intl.Collator().resolvedOptions().locale
     })
     expect((await listRecentlyOpenedApps()).map(app => app.id)).toEqual(['newest', 'older'])
   })
@@ -119,7 +124,7 @@ describe('authorized recent application reads', () => {
       isPlatformAdmin: true,
       permissions: { 'applications:capture-screenshot': true }
     })
-    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+    vi.mocked(orchestratorAppCatalogClient.listApplicationNavigation).mockResolvedValue([
       { ...summary('older', 'running'), ownerUserId: user.ownerUserId },
       { ...summary('newest', 'running'), ownerUserId: 'another-user' }
     ])
@@ -143,7 +148,7 @@ describe('authorized recent application reads', () => {
     })
     vi.mocked(listDismissedRecentAppIds).mockReturnValue(new Set(['unvisited']))
     vi.mocked(getVisibleOwnerDisplayNames).mockResolvedValue(new Map([['another-user', 'Operations']]))
-    vi.mocked(orchestratorAppCatalogClient.listApplicationSummaries).mockResolvedValue([
+    vi.mocked(orchestratorAppCatalogClient.listApplicationNavigation).mockResolvedValue([
       { ...summary('older'), ownerUserId: 'signed-in-user' },
       { ...summary('newest'), ownerUserId: 'another-user' },
       summary('unvisited', 'running')

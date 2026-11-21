@@ -1,9 +1,9 @@
-import { AppDefinition } from '@/features/applications/domain/app-definition'
 import { getStoredAppIcon } from '@/server/app-icons/store'
 
-export const withStoredAppIcon = async (app: AppDefinition): Promise<AppDefinition> => ({
+export const withStoredAppIcon = async <T extends { id: string; icon: string | null }>(app: T): Promise<T> => ({
   ...app,
   icon: (await getStoredAppIcon(app.id)) ?? app.icon
 })
 
-export const withStoredAppIcons = async (apps: AppDefinition[]) => Promise.all(apps.map(withStoredAppIcon))
+export const withStoredAppIcons = async <T extends { id: string; icon: string | null }>(apps: T[]) =>
+  Promise.all(apps.map(withStoredAppIcon))

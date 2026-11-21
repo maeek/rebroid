@@ -1,11 +1,8 @@
 import { startTransition, useCallback, useEffect, useMemo, useOptimistic, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import {
-  applyApplicationPowerAcknowledgement,
-  mapAndroidApplicationToAppDefinition
-} from '@/features/applications/domain/app-mapper'
 import { getAppsRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import {
+  applyGalleryPowerAcknowledgement,
   optimisticRemovingApp,
   optimisticStartingApp,
   optimisticStoppingApp
@@ -24,12 +21,14 @@ import {
 import { usePollingQuery } from '@/hooks/use-polling-query'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { getBff } from '@/lib/http/bff'
 import {
   requestApplicationDeletionAction,
   requestApplicationStartAction,
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { toAppGalleryItem } from '@/shared/contracts/application-gallery'
 import {
   appGalleryStatusParam,
   parseAppGalleryStatus,
@@ -40,18 +39,10 @@ import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { useOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import { filterGalleryApps, type AppsGalleryOwnership } from '../model/apps-gallery-filter'
 import type { AppsListContextValue, BulkAction, BulkAppProgress, PendingAppAction } from './apps-list-context'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplication } from '@/shared/contracts/application'
+import type { AppGalleryItem, ApplicationGalleryRow } from '@/shared/contracts/application-gallery'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
-const listApplications = async () => {
-  const response = await fetch('/api/applications', { cache: 'no-store' })
-  if (!response.ok) {
-    throw new Error('Could not refresh applications.')
-  }
-
-  return response.json() as Promise<AndroidApplication[]>
-}
+const listApplications = () => getBff<ApplicationGalleryRow[]>('/api/bff/apps/gallery')
 
 export const useAppsListController = ({
   canStop,
@@ -63,7 +54,7 @@ export const useAppsListController = ({
   canStop: boolean
   canDelete: boolean
   currentOwnerUserId: string
-  yourApps: AppDefinition[]
+  yourApps: AppGalleryItem[]
   initialSettings: OrchestratorUiSettings
 }) => {
   const refreshOverrideTimeoutMs = 60_000
@@ -111,7 +102,7 @@ export const useAppsListController = ({
     { intervalMs: refreshIntervalMs }
   )
 
-  const applyRefresh = useCallback((refreshed: AppDefinition[], useRefreshedPresentation = false) => {
+  const applyRefresh = useCallback((refreshed: AppGalleryItem[], useRefreshedPresentation = false) => {
     setApps(current => {
       const { apps: nextApps, expiredOverrideIds } = mergeAppsListRefresh({
         currentApps: current,
@@ -133,10 +124,10 @@ export const useAppsListController = ({
   }, [applyRefresh, yourApps])
 
   useEffect(() => {
-    if (refreshedApps) applyRefresh(refreshedApps.map(mapAndroidApplicationToAppDefinition))
+    if (refreshedApps) applyRefresh(refreshedApps.map(toAppGalleryItem))
   }, [applyRefresh, refreshedApps])
 
-  const updateApp = (updatedApp: AppDefinition, preserveDuringRefresh = false, acknowledgedAfter?: number) => {
+  const updateApp = (updatedApp: AppGalleryItem, preserveDuringRefresh = false, acknowledgedAfter?: number) => {
     if (preserveDuringRefresh) {
       pendingRefreshOverridesRef.current.set(updatedApp.id, {
         app: updatedApp,
@@ -156,11 +147,11 @@ export const useAppsListController = ({
     setApps(current => current.filter(item => item.id !== appId))
   }
 
-  const startApp = async (app: AppDefinition) => {
+  const startApp = async (app: AppGalleryItem) => {
     try {
       updateApp(optimisticStartingApp(app), true)
       const command = unwrapActionResult(await requestApplicationStartAction(app.id))
-      updateApp(applyApplicationPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
+      updateApp(applyGalleryPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
     } catch (error) {
       updateApp(app)
       toast({
@@ -171,11 +162,11 @@ export const useAppsListController = ({
     }
   }
 
-  const stopApp = async (app: AppDefinition) => {
+  const stopApp = async (app: AppGalleryItem) => {
     try {
       updateApp(optimisticStoppingApp(app), true)
       const command = unwrapActionResult(await requestApplicationStopAction(app.id))
-      updateApp(applyApplicationPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
+      updateApp(applyGalleryPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
       notifyRecentAppsUpdated()
     } catch (error) {
       updateApp(app)
@@ -187,14 +178,14 @@ export const useAppsListController = ({
     }
   }
 
-  const requestDeletion = async (app: AppDefinition, removeDataOnDelete: boolean) => {
+  const requestDeletion = async (app: AppGalleryItem, removeDataOnDelete: boolean) => {
     const acknowledgement = unwrapActionResult(await requestApplicationDeletionAction(app.id, removeDataOnDelete))
     if (acknowledgement.deleted) removeApp(app.id)
     else updateApp(optimisticRemovingApp(app), true, app.updatedAt.getTime())
     return app.id
   }
 
-  const deleteApp = async (app: AppDefinition) => {
+  const deleteApp = async (app: AppGalleryItem) => {
     try {
       updateApp(optimisticRemovingApp(app), true)
       await requestDeletion(app, settings.removeDataOnDelete)
@@ -255,7 +246,7 @@ export const useAppsListController = ({
     setSelectedIds(new Set(visibleApps.map(app => app.id)))
   }
 
-  const finishBulkAction = (requestedApps: AppDefinition[], results: PromiseSettledResult<unknown>[]) => {
+  const finishBulkAction = (requestedApps: AppGalleryItem[], results: PromiseSettledResult<unknown>[]) => {
     const failedIds = requestedApps.filter((_, index) => results[index]?.status === 'rejected').map(app => app.id)
     setBulkAction(null)
     if (failedIds.length > 0) setSelectedIds(new Set(failedIds))
@@ -281,7 +272,7 @@ export const useAppsListController = ({
           try {
             if (stopping) {
               const command = unwrapActionResult(await requestApplicationStopAction(app.id))
-              updateApp(applyApplicationPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
+              updateApp(applyGalleryPowerAcknowledgement(app, command), true, app.updatedAt.getTime())
             } else {
               await requestDeletion(app, removeDataOnDelete)
             }

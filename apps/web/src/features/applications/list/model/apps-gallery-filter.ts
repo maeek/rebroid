@@ -1,9 +1,9 @@
 import { isAppInProgress, type AppsGalleryStatus } from '@/shared/model/applications/app-gallery-status'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
 export type AppsGalleryOwnership = 'all' | 'mine' | 'others'
 
-export const filterGalleryApps = (apps: AppDefinition[], search: string, status: AppsGalleryStatus) => {
+export const filterGalleryApps = (apps: AppGalleryItem[], search: string, status: AppsGalleryStatus) => {
   const query = search.trim().toLocaleLowerCase()
   return apps.filter(app => {
     let matchesStatus = status === 'all' || app.status === status

@@ -1,42 +1,33 @@
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { ApplicationPowerAcknowledgement } from '@/shared/contracts/application'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
-export const optimisticStartingApp = (app: AppDefinition): AppDefinition => ({
+export const applyGalleryPowerAcknowledgement = (
+  app: AppGalleryItem,
+  command: ApplicationPowerAcknowledgement
+): AppGalleryItem => ({
+  ...app,
+  running: command.status === 'running',
+  status: command.status,
+  lifecycleStage: command.lifecycleStage
+})
+
+export const optimisticStartingApp = (app: AppGalleryItem): AppGalleryItem => ({
   ...app,
   running: false,
   status: 'provisioning',
-  lifecycleStage: 'container_starting',
-  statusMessage: 'Starting app.',
-  statusDetail: {
-    code: 'container_starting',
-    title: 'Starting container',
-    description: 'Starting app.',
-    tone: 'progress'
-  }
+  lifecycleStage: 'container_starting'
 })
 
-export const optimisticStoppingApp = (app: AppDefinition): AppDefinition => ({
+export const optimisticStoppingApp = (app: AppGalleryItem): AppGalleryItem => ({
   ...app,
   running: false,
   status: 'stopped',
-  lifecycleStage: 'stopping',
-  statusMessage: 'Stopping app.',
-  statusDetail: {
-    code: 'stopping',
-    title: 'Stopping app',
-    description: 'Stopping app.',
-    tone: 'progress'
-  }
+  lifecycleStage: 'stopping'
 })
 
-export const optimisticRemovingApp = (app: AppDefinition): AppDefinition => ({
+export const optimisticRemovingApp = (app: AppGalleryItem): AppGalleryItem => ({
   ...app,
+  running: false,
   status: 'removing',
-  lifecycleStage: 'removing',
-  statusMessage: 'Removing app.',
-  statusDetail: {
-    code: 'removing',
-    title: 'Removing app',
-    description: 'Removing app.',
-    tone: 'progress'
-  }
+  lifecycleStage: 'removing'
 })

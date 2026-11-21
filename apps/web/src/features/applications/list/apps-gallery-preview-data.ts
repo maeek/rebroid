@@ -1,4 +1,5 @@
 import { applicationPreview } from '@/shared/testing/application-preview'
+import type { ApplicationGalleryRow } from '@/shared/contracts/application-gallery'
 
 const names = [
   'Inventory worker',
@@ -11,10 +12,14 @@ const names = [
   'Field service'
 ]
 
-export const galleryPreviewApplications = names.map((name, index) => ({
-  ...applicationPreview,
+export const galleryPreviewApplications: ApplicationGalleryRow[] = names.map((name, index) => ({
   id: `gallery-app-${index}`,
   name,
-  status: { ...applicationPreview.status, currentStatus: index === 0 ? ('error' as const) : ('stopped' as const) },
-  ownerUserId: index === 7 ? 'another-owner' : applicationPreview.ownerUserId
+  status: index === 0 ? 'error' : 'stopped',
+  lifecycleStage: applicationPreview.status.lifecycleStage,
+  ownerUserId: index === 7 ? 'another-owner' : applicationPreview.ownerUserId,
+  ownerDisplayName: index === 7 ? 'Operations team' : 'You',
+  containerImage: applicationPreview.runtime.image,
+  apkPackageName: applicationPreview.apk.packageName,
+  updatedAt: applicationPreview.updatedAt
 }))

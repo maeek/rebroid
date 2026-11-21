@@ -10,6 +10,7 @@ import { AndroidAppsRuntimeStateReconciler } from '../services/android-apps-runt
 import { AndroidAppsController } from './android-apps.controller';
 
 describe('application summary query', () => {
+  const listNavigation = jest.fn().mockResolvedValue([]);
   const listSummaries = jest.fn().mockResolvedValue([]);
   let server: NestFastifyApplication;
 
@@ -18,7 +19,10 @@ describe('application summary query', () => {
       controllers: [AndroidAppsController],
       providers: [
         { provide: AndroidAppsLifecycleService, useValue: {} },
-        { provide: AndroidAppsQueryService, useValue: { listSummaries } },
+        {
+          provide: AndroidAppsQueryService,
+          useValue: { listSummaries, listNavigation },
+        },
         { provide: AndroidAppsRuntimeStateReconciler, useValue: {} },
       ],
     }).compile();
@@ -63,5 +67,30 @@ describe('application summary query', () => {
 
     expect(result.statusCode).toBe(400);
     expect(listSummaries).not.toHaveBeenCalled();
+  });
+
+  it('validates the navigation projection request and returns a normal read response', async () => {
+    const request = {
+      applicationIds: [],
+      includeRunning: true,
+      runningLimit: 5,
+      locale: 'en-US',
+    };
+    const response = await server.inject({
+      method: 'POST',
+      url: '/apps/navigation',
+      payload: request,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(listNavigation).toHaveBeenCalledWith(request);
+
+    listNavigation.mockClear();
+    const invalid = await server.inject({
+      method: 'POST',
+      url: '/apps/navigation',
+      payload: { ...request, runningLimit: 6 },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(listNavigation).not.toHaveBeenCalled();
   });
 });

@@ -12,7 +12,7 @@ import { AppsListEmptyState } from './components/apps-list-empty-state'
 import { AppsListHeader } from './components/apps-list-header'
 import { AppsListItem } from './components/apps-list-item'
 import { useAppsListController } from './components/use-apps-list-controller'
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 
 export const AppsList = ({
@@ -33,7 +33,7 @@ export const AppsList = ({
   canDelete?: boolean
   canFilterByOwner: boolean
   canViewSnapshots?: boolean
-  yourApps: AppDefinition[]
+  yourApps: AppGalleryItem[]
   currentOwnerUserId: string
   initialSettings: OrchestratorUiSettings
   orchestratorError?: string | null

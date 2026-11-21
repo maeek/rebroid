@@ -1,4 +1,4 @@
-import type { AppDefinition } from '@/features/applications/domain/app-definition'
+import type { AppGalleryItem } from '@/shared/contracts/application-gallery'
 
 type AppsListBulkAction = 'stop' | 'delete'
 
@@ -8,7 +8,7 @@ type AppsListOperationToast = {
   variant?: 'danger'
 }
 
-export const retainVisibleSelectedIds = (apps: AppDefinition[], selectedIds: Set<string>) => {
+export const retainVisibleSelectedIds = (apps: AppGalleryItem[], selectedIds: Set<string>) => {
   const visibleIds = new Set(apps.map(app => app.id))
 
   return new Set([...selectedIds].filter(id => visibleIds.has(id)))
@@ -22,7 +22,7 @@ export const deriveAppsListSelection = ({
   canDelete,
   bulkAction
 }: {
-  apps: AppDefinition[]
+  apps: AppGalleryItem[]
   selectedIds: Set<string>
   currentOwnerUserId: string
   canStop: boolean

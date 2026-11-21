@@ -48,6 +48,20 @@ export const orchestratorAppCatalogClient = {
     return emptyRequest<AndroidApplication[]>(`/apps${suffix}`)
   },
 
+  listApplicationGallery(ownerUserId?: string) {
+    const suffix = ownerUserId ? `?${new URLSearchParams({ ownerUserId })}` : ''
+    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationGalleryRowDto'][]>(`/apps/gallery${suffix}`)
+  },
+
+  async listApplicationNavigation(query: OrchestratorApiSchemas['ListAndroidApplicationNavigationDto']) {
+    const rows = await jsonRequest<OrchestratorApiSchemas['AndroidApplicationNavigationRowDto'][]>(
+      '/apps/navigation',
+      'POST',
+      query
+    )
+    return rows.map(({ status, ...row }) => ({ ...row, currentStatus: status }))
+  },
+
   reconcileApplication(id: string) {
     return jsonRequest<AndroidAppRuntimeReconciliation>(`${applicationPath(id)}/runtime-state/reconcile`, 'POST', {})
   },

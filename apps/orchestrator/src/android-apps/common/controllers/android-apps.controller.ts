@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -19,6 +20,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApplicationCommandResultDto } from '../dto/application-command-result.dto';
+import {
+  AndroidApplicationGalleryRowDto,
+  AndroidApplicationNavigationRowDto,
+} from '../dto/android-application-catalog-row.dto';
+import { ListAndroidApplicationNavigationDto } from '../dto/list-android-application-navigation.dto';
 import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
 import { AndroidApplicationViewerRuntimeDto } from '../dto/android-application-viewer-runtime.dto';
 import {
@@ -161,6 +167,23 @@ export class AndroidAppsController {
   async list(@Query() query: ListAndroidApplicationsDto) {
     return (await this.queries.listStored(query)).map((app) =>
       AndroidApplicationResponseDto.fromEntity(app),
+    );
+  }
+
+  @Get('gallery')
+  @ApiOkResponse({ type: AndroidApplicationGalleryRowDto, isArray: true })
+  async listGallery(@Query() query: ListAndroidApplicationsDto) {
+    return (await this.queries.listGallery(query)).map((app) =>
+      AndroidApplicationGalleryRowDto.fromEntity(app),
+    );
+  }
+
+  @Post('navigation')
+  @HttpCode(200)
+  @ApiOkResponse({ type: AndroidApplicationNavigationRowDto, isArray: true })
+  async listNavigation(@Body() query: ListAndroidApplicationNavigationDto) {
+    return (await this.queries.listNavigation(query)).map((app) =>
+      AndroidApplicationNavigationRowDto.fromEntity(app),
     );
   }
 
