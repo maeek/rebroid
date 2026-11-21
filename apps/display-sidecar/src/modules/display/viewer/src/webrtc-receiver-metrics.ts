@@ -1,3 +1,11 @@
+import type {
+  DisplaySizePresentation,
+  FrameAcknowledgementStatus,
+  ViewerEffectiveProfile,
+  ViewerStreamMetricsV4,
+} from "@rebroid/android-application-core/viewer-stream";
+import type { ViewerRelayMetrics } from "./types.js";
+
 type WebrtcReceiverTotals = {
   bytesReceived: number;
   framesReceived: number;
@@ -5,6 +13,33 @@ type WebrtcReceiverTotals = {
   jitterBufferDelay: number;
   jitterBufferEmittedCount: number;
 };
+
+// Keep recent presentation gaps bounded even when getStats stops responding.
+const maxFrameGapSamples = 240;
+
+export class WebrtcFrameGapSamples {
+  private readonly gaps: number[] = [];
+  private nextIndex = 0;
+
+  add(gapMs: number): void {
+    this.gaps[this.nextIndex] = gapMs;
+    this.nextIndex = (this.nextIndex + 1) % maxFrameGapSamples;
+  }
+
+  takeSummary() {
+    this.gaps.sort((left, right) => left - right);
+    const length = this.gaps.length;
+    const summary = {
+      frameGapP50Ms: this.gaps.at(Math.ceil(length * 0.5) - 1),
+      frameGapP95Ms: this.gaps.at(Math.ceil(length * 0.95) - 1),
+      frameGapP99Ms: this.gaps.at(Math.ceil(length * 0.99) - 1),
+      frameGapMaxMs: this.gaps.at(-1),
+    };
+    this.gaps.length = 0;
+    this.nextIndex = 0;
+    return summary;
+  }
+}
 
 export type WebrtcIntervalSample = {
   receiver: WebrtcReceiverTotals;
@@ -125,5 +160,146 @@ export function calculateWebrtcIntervalMetrics(
       0,
       current.droppedFrames - previous.droppedFrames,
     ),
+  };
+}
+
+type WebrtcMetricsReportInput = {
+  displaySizePresentation?: DisplaySizePresentation;
+  receiverStats: ReturnType<typeof readWebrtcReceiverStats>;
+  intervalMetrics: ReturnType<typeof calculateWebrtcIntervalMetrics>;
+  gapMetrics: ReturnType<WebrtcFrameGapSamples["takeSummary"]>;
+  relayMetrics: ViewerRelayMetrics | null;
+  effectiveProfile: ViewerEffectiveProfile;
+  presentedFrames?: number;
+  frameAcknowledgement: FrameAcknowledgementStatus;
+  frameAcknowledgementsSent: number;
+  jitterBufferTargetMs: number;
+  freezeCount: number;
+  reconnectCount: number;
+  mainThreadLongTaskCount: number;
+  width?: number;
+  height?: number;
+  consumerGeneration: number;
+  negotiatedProfileLevelId?: string;
+  collectedAt: number;
+};
+
+export function buildWebrtcMetricsReport({
+  displaySizePresentation,
+  receiverStats,
+  intervalMetrics,
+  gapMetrics,
+  relayMetrics,
+  effectiveProfile,
+  presentedFrames,
+  frameAcknowledgement,
+  frameAcknowledgementsSent,
+  jitterBufferTargetMs,
+  freezeCount,
+  reconnectCount,
+  mainThreadLongTaskCount,
+  width,
+  height,
+  consumerGeneration,
+  negotiatedProfileLevelId,
+  collectedAt,
+}: WebrtcMetricsReportInput): ViewerStreamMetricsV4 {
+  const {
+    receiver: { framesReceived: receivedFrames, framesDecoded: decodedFrames },
+    droppedFrames,
+    packetsLost,
+    nackCount,
+    pliCount,
+    networkJitterMs,
+    roundTripTimeMs,
+  } = receiverStats;
+  const {
+    receivedFps,
+    decodedFps,
+    presentedFps,
+    wireBitrateMbps,
+    jitterQueueDepthMs,
+  } = intervalMetrics;
+  return {
+    version: 4,
+    transport: "webrtc",
+    displaySizePresentation,
+    sourceFps: relayMetrics?.sourceFps,
+    relayIngressFps: relayMetrics?.sourceFps,
+    bridgeInputFps: relayMetrics?.bridgeInputFps,
+    rtpSentFps: relayMetrics?.rtpSentFps,
+    receivedFps,
+    receivedFrames,
+    decodedFrames,
+    presentedFrames,
+    receiverPacketsLost: packetsLost,
+    receiverNackCount: nackCount,
+    receiverPliCount: pliCount,
+    frameAcknowledgement,
+    frameAcknowledgementsSent,
+    consumerAttemptId: relayMetrics?.consumerAttemptId,
+    sourceCodecGeneration: relayMetrics?.sourceCodecGeneration,
+    videoResetGeneration: relayMetrics?.videoResetGeneration,
+    videoResetCompletedGeneration: relayMetrics?.videoResetCompletedGeneration,
+    videoResetElapsedMs: relayMetrics?.videoResetElapsedMs,
+    videoResetCount: relayMetrics?.videoResetCount,
+    decodedFps,
+    drawnFps: presentedFps,
+    presentedFps,
+    wireBitrateMbps,
+    sourceBitrateMbps: relayMetrics?.sourceBitrateMbps,
+    sourceFrameSizeP95Bytes: relayMetrics?.sourceFrameSizeP95Bytes,
+    keyFrameSizeBytes: relayMetrics?.keyFrameSizeBytes,
+    sourceInterFrameP95Ms: relayMetrics?.sourceInterFrameP95Ms,
+    networkInterArrivalJitterP95Ms: networkJitterMs,
+    ...gapMetrics,
+    relayQueueDepthMs: relayMetrics?.queueDepthMs,
+    relayP95Ms: relayMetrics?.relayP95Ms,
+    relayP99Ms: relayMetrics?.relayP99Ms,
+    rtpPacketizationP95Ms: relayMetrics?.rtpPacketizationP95Ms,
+    rtpWriteP95Ms: relayMetrics?.rtpWriteP95Ms,
+    rtpSendErrors: relayMetrics?.rtpSendErrors,
+    eventLoopUtilization: relayMetrics?.eventLoopUtilization,
+    gcPauseP95Ms: relayMetrics?.gcPauseP95Ms,
+    decoderQueueDepth: 0,
+    pendingRenderFrames: 0,
+    webrtcJitterBufferDepthMs: jitterQueueDepthMs,
+    jitterBufferTargetMs,
+    relayDroppedFrames: relayMetrics?.droppedFrames ?? 0,
+    decodeDroppedFrames: droppedFrames ?? 0,
+    presentationDroppedFrames: 0,
+    freezeCount,
+    reconnectCount,
+    roundTripTimeMs: roundTripTimeMs ?? relayMetrics?.bridgeRoundTripTimeMs,
+    packetsLost: packetsLost ?? relayMetrics?.bridgePacketsLost,
+    nackCount: relayMetrics?.bridgeNackCount ?? nackCount,
+    pliCount: relayMetrics?.bridgePliCount ?? pliCount,
+    retransmittedPackets: relayMetrics?.retransmittedPackets,
+    retransmittedBytes: relayMetrics?.retransmittedBytes,
+    packetsDiscardedOnSend: relayMetrics?.packetsDiscardedOnSend,
+    rtpSendDelayMs: relayMetrics?.rtpSendDelayMs,
+    mainThreadLongTaskCount,
+    width,
+    height,
+    renderer: "webrtc-video",
+    decoderPreference: "native",
+    h264ProfileLevelId: relayMetrics?.h264ProfileLevelId,
+    negotiatedH264ProfileLevelId: negotiatedProfileLevelId,
+    sourceAttemptId: relayMetrics?.sourceAttemptId,
+    consumerGeneration,
+    effectiveProfile: {
+      ...effectiveProfile,
+      actualEncoder: relayMetrics?.actualEncoder,
+      width: relayMetrics?.width,
+      height: relayMetrics?.height,
+      pixelRate:
+        relayMetrics?.width && relayMetrics.height
+          ? relayMetrics.width * relayMetrics.height * effectiveProfile.maxFps
+          : undefined,
+      h264ProfileLevelId: relayMetrics?.h264ProfileLevelId,
+      negotiatedH264ProfileLevelId: negotiatedProfileLevelId,
+      sourceAttemptId: relayMetrics?.sourceAttemptId,
+    },
+    collectedAt,
   };
 }

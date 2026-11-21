@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   calculateWebrtcIntervalMetrics,
   readWebrtcReceiverStats,
+  WebrtcFrameGapSamples,
 } from "../dist/modules/display/viewer/assets/webrtc-receiver-metrics.js";
 
 const previousSample = {
@@ -17,6 +18,23 @@ const previousSample = {
   droppedFrames: 2,
   sampledAt: 1_000,
 };
+
+test("WebRTC bounds gaps between successful stats polls to the latest 240 samples", () => {
+  const gaps = new WebrtcFrameGapSamples();
+  for (let index = 0; index < 500; index += 1) gaps.add(1_000);
+  for (let gap = 1; gap <= 240; gap += 1) gaps.add(gap);
+
+  assert.deepEqual(gaps.takeSummary(), {
+    frameGapP50Ms: 120,
+    frameGapP95Ms: 228,
+    frameGapP99Ms: 238,
+    frameGapMaxMs: 240,
+  });
+  assert.equal(gaps.takeSummary().frameGapMaxMs, undefined);
+
+  gaps.add(16);
+  assert.equal(gaps.takeSummary().frameGapP95Ms, 16);
+});
 
 test("WebRTC samples local video counters and calculates interval metrics", () => {
   const stats = [

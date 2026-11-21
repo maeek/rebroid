@@ -95,7 +95,7 @@ test("idle acknowledgement falls back safely without metadata or a writable chan
 import {
   AdaptiveJitterBufferController,
   WebrtcPresentationProgress,
-} from "../dist/modules/display/viewer/assets/webrtc-stream.js";
+} from "../dist/modules/display/viewer/assets/webrtc-metrics-monitor.js";
 
 test("WebRTC defers presentation reconnect while the encoder reset is pending", () => {
   const progress = new WebrtcPresentationProgress();

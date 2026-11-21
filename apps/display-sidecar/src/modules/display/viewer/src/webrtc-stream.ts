@@ -1,4 +1,11 @@
-import type { ViewerEffectiveProfile } from "@rebroid/android-application-core/viewer-stream";
+import {
+  PermanentWebrtcError,
+  preferH264PacketizationModeOne,
+  requestWebrtcAnswer,
+  waitForConnected,
+  waitForIceGathering,
+  WebrtcSessionExpiredError,
+} from "./webrtc-negotiation.js";
 import type {
   ControlChannel,
   PageLifecycle,
@@ -8,17 +15,15 @@ import type {
 } from "./types.js";
 import { configuredStreamProfile } from "./config.js";
 import { DisplaySizePresentationTracker } from "./display-size-presentation.js";
-import { WebrtcIdlePresentation } from "./webrtc-idle-presentation.js";
 import {
-  calculateWebrtcIntervalMetrics,
-  readWebrtcReceiverStats,
-  type WebrtcIntervalSample,
-} from "./webrtc-receiver-metrics.js";
+  AdaptiveJitterBufferController,
+  startWebrtcMetricsMonitor,
+  videoFrameCallbackApi,
+} from "./webrtc-metrics-monitor.js";
 import type { ViewerPresentation } from "./viewer-presentation.js";
 import {
   emitViewerSessionExpired,
   emitViewerSessionReady,
-  emitViewerStreamMetrics,
   emitViewerStreamStatus,
 } from "./stream-status.js";
 
@@ -32,207 +37,8 @@ type WebrtcStreamOptions = {
   getRelayMetrics: () => ViewerRelayMetrics | null;
 };
 
-type WebrtcAnswer = {
-  transport?: string;
-  codec?: string;
-  sdp?: string;
-  iceServers?: string[];
-  profileLevelId?: string;
-};
-
-type VideoFrameCallbackMetadata = {
-  presentedFrames?: number;
-  mediaTime?: number;
-  rtpTimestamp?: number;
-  width?: number;
-  height?: number;
-};
-
-type VideoWithFrameCallback = HTMLVideoElement & {
-  requestVideoFrameCallback?: (
-    callback: (now: number, metadata: VideoFrameCallbackMetadata) => void,
-  ) => number;
-  cancelVideoFrameCallback?: (handle: number) => void;
-};
-
-const webrtcMetricsIntervalMs = 1_000;
 const webrtcRetryDelaysMs = [300, 750, 1_500] as const;
 const iceDisconnectedGraceMs = 5_000;
-const minimumJitterBufferTargetMs = 20;
-const maximumJitterBufferTargetMs = 40;
-const jitterBufferTargetStepMs = 10;
-
-class PermanentWebrtcError extends Error {}
-class WebrtcSessionExpiredError extends PermanentWebrtcError {}
-
-export class AdaptiveJitterBufferController {
-  private readonly receivers = new Set<
-    RTCRtpReceiver & { jitterBufferTarget?: number }
-  >();
-  private stableSamples = 0;
-  private targetMs = minimumJitterBufferTargetMs;
-
-  add(receiver: RTCRtpReceiver): void {
-    const controlled = receiver as RTCRtpReceiver & {
-      jitterBufferTarget?: number;
-    };
-    this.receivers.add(controlled);
-    this.apply(controlled);
-  }
-
-  sample(frameGapP95Ms: number | undefined, droppedFrames: number): void {
-    if (
-      droppedFrames > 0 ||
-      (frameGapP95Ms !== undefined && frameGapP95Ms > 40)
-    ) {
-      this.stableSamples = 0;
-      this.setTarget(
-        Math.min(
-          maximumJitterBufferTargetMs,
-          this.targetMs + jitterBufferTargetStepMs,
-        ),
-      );
-      return;
-    }
-    if (frameGapP95Ms === undefined || frameGapP95Ms > 25) {
-      this.stableSamples = 0;
-      return;
-    }
-    this.stableSamples += 1;
-    if (this.stableSamples >= 10) {
-      this.stableSamples = 0;
-      this.setTarget(
-        Math.max(
-          minimumJitterBufferTargetMs,
-          this.targetMs - jitterBufferTargetStepMs,
-        ),
-      );
-    }
-  }
-
-  target(): number {
-    return this.targetMs;
-  }
-
-  private setTarget(targetMs: number): void {
-    if (targetMs === this.targetMs) {
-      return;
-    }
-    this.targetMs = targetMs;
-    for (const receiver of this.receivers) {
-      this.apply(receiver);
-    }
-  }
-
-  private apply(
-    receiver: RTCRtpReceiver & { jitterBufferTarget?: number },
-  ): void {
-    if (!("jitterBufferTarget" in receiver)) {
-      return;
-    }
-    try {
-      receiver.jitterBufferTarget = this.targetMs;
-    } catch {
-      this.receivers.delete(receiver);
-    }
-  }
-}
-
-export function preferH264PacketizationModeOne(
-  transceiver: RTCRtpTransceiver,
-): void {
-  const codecs = RTCRtpReceiver.getCapabilities("video")?.codecs.filter(
-    (codec) =>
-      codec.mimeType.toLowerCase() === "video/h264" &&
-      /(?:^|;)\s*packetization-mode=1(?:;|$)/i.test(codec.sdpFmtpLine ?? ""),
-  );
-  if (!codecs?.length || !transceiver.setCodecPreferences) {
-    return;
-  }
-  transceiver.setCodecPreferences(codecs);
-}
-
-function waitForIceGathering(
-  peer: RTCPeerConnection,
-  signal: AbortSignal,
-): Promise<void> {
-  if (peer.iceGatheringState === "complete") {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    const finish = () => {
-      clearTimeout(timeout);
-      peer.removeEventListener("icegatheringstatechange", checkState);
-      signal.removeEventListener("abort", finish);
-      resolve();
-    };
-    const checkState = () => {
-      if (peer.iceGatheringState === "complete") finish();
-    };
-    const timeout = window.setTimeout(finish, 1_500);
-    peer.addEventListener("icegatheringstatechange", checkState);
-    signal.addEventListener("abort", finish, { once: true });
-    if (signal.aborted) finish();
-  });
-}
-
-function waitForConnected(
-  peer: RTCPeerConnection,
-  signal: AbortSignal,
-): Promise<void> {
-  if (
-    peer.connectionState === "connected" ||
-    peer.iceConnectionState === "connected" ||
-    peer.iceConnectionState === "completed"
-  ) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve, reject) => {
-    signal.throwIfAborted();
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      reject(new Error("WebRTC did not connect in time."));
-    }, 6_000);
-    const cleanup = () => {
-      clearTimeout(timeout);
-      peer.removeEventListener("connectionstatechange", checkState);
-      peer.removeEventListener("iceconnectionstatechange", checkState);
-      signal.removeEventListener("abort", onAbort);
-    };
-    const onAbort = () => {
-      cleanup();
-      reject(signal.reason);
-    };
-    const checkState = () => {
-      if (
-        peer.connectionState === "connected" ||
-        peer.iceConnectionState === "connected" ||
-        peer.iceConnectionState === "completed"
-      ) {
-        cleanup();
-        resolve();
-      }
-      if (
-        peer.connectionState === "failed" ||
-        peer.connectionState === "closed" ||
-        peer.iceConnectionState === "failed" ||
-        peer.iceConnectionState === "closed"
-      ) {
-        const state =
-          peer.connectionState === "failed" || peer.connectionState === "closed"
-            ? peer.connectionState
-            : peer.iceConnectionState;
-        cleanup();
-        reject(new Error(`WebRTC connection ${state}.`));
-      }
-    };
-    peer.addEventListener("connectionstatechange", checkState);
-    peer.addEventListener("iceconnectionstatechange", checkState);
-    signal.addEventListener("abort", onAbort, { once: true });
-    checkState();
-  });
-}
-
 function waitForFirstVideoFrame(
   video: HTMLVideoElement,
   signal: AbortSignal,
@@ -292,81 +98,6 @@ function closePeer(
 ): void {
   clearVideo(video);
   peer?.close();
-}
-
-function videoTracks(video: HTMLVideoElement): MediaStreamTrack[] {
-  return video.srcObject instanceof MediaStream
-    ? video.srcObject.getVideoTracks()
-    : [];
-}
-
-function videoFrameCallbackApi(video: HTMLVideoElement) {
-  const candidate = video as unknown as VideoWithFrameCallback;
-  const request =
-    typeof candidate.requestVideoFrameCallback === "function"
-      ? candidate.requestVideoFrameCallback.bind(candidate)
-      : null;
-  const cancel =
-    typeof candidate.cancelVideoFrameCallback === "function"
-      ? candidate.cancelVideoFrameCallback.bind(candidate)
-      : null;
-  return { request, cancel };
-}
-
-export class WebrtcPresentationProgress {
-  private sampled = false;
-  private source: ViewerRelayMetrics | null = null;
-  private presentedFrames: number | undefined;
-  private receivedFrames = 0;
-  private decodedFrames = 0;
-  private stalledSamples = 0;
-
-  sample(
-    source: ViewerRelayMetrics | null,
-    presentedFrames: number | undefined,
-    receivedFrames: number,
-    decodedFrames: number,
-    visible: boolean,
-    waitingForVideoReset = false,
-  ) {
-    const previousSource = this.source;
-    const freshSource = source !== null && source !== previousSource;
-    const decodedAdvanced = decodedFrames > this.decodedFrames;
-    const inputAdvanced =
-      (freshSource &&
-        (source.sourceVideoFrames ?? 0) >
-          (previousSource?.sourceVideoFrames ?? 0)) ||
-      receivedFrames > this.receivedFrames ||
-      decodedAdvanced;
-    // Without presentation counters we can still detect an upstream stall.
-    const outputAdvanced =
-      presentedFrames === undefined
-        ? decodedAdvanced
-        : presentedFrames > (this.presentedFrames ?? 0);
-    this.source = source;
-    this.presentedFrames = presentedFrames;
-    this.receivedFrames = receivedFrames;
-    this.decodedFrames = decodedFrames;
-
-    if (!this.sampled) {
-      this.sampled = true;
-      return { freeze: false, stalled: false, idle: true };
-    }
-    if (!visible || outputAdvanced || !inputAdvanced) {
-      this.stalledSamples = 0;
-      return {
-        freeze: false,
-        stalled: false,
-        idle: !visible || (!inputAdvanced && !outputAdvanced),
-      };
-    }
-    this.stalledSamples += 1;
-    return {
-      freeze: presentedFrames !== undefined && this.stalledSamples === 2,
-      stalled: this.stalledSamples >= 3 && !waitingForVideoReset,
-      idle: false,
-    };
-  }
 }
 
 function waitForTrack(
@@ -431,265 +162,6 @@ async function playVideoWithAutoplayFallback(
     video.muted = true;
     await video.play().catch(() => undefined);
   }
-}
-
-function percentile(values: number[], percentileValue: number) {
-  if (values.length === 0) {
-    return undefined;
-  }
-  const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.max(
-    0,
-    Math.min(sorted.length - 1, Math.ceil(sorted.length * percentileValue) - 1),
-  );
-  return sorted[index];
-}
-
-function startWebrtcMetricsMonitor(
-  peer: RTCPeerConnection,
-  video: HTMLVideoElement,
-  effectiveProfile: ViewerEffectiveProfile,
-  getRelayMetrics: () => ViewerRelayMetrics | null,
-  consumerGeneration: number,
-  getReconnectCount: () => number,
-  jitterController: AdaptiveJitterBufferController,
-  negotiatedProfileLevelId: string | undefined,
-  onStall: () => void,
-  waitingForVideoReset: () => boolean,
-  reliableChannel: RTCDataChannel,
-  displaySizePresentation: DisplaySizePresentationTracker,
-): () => void {
-  const frameCallback = videoFrameCallbackApi(video);
-  let stopped = false;
-  let frameCallbackHandle: number | null = null;
-  let presentedFrames = 0;
-  let previousSample: WebrtcIntervalSample = {
-    receiver: {
-      bytesReceived: 0,
-      framesReceived: 0,
-      framesDecoded: 0,
-      jitterBufferDelay: 0,
-      jitterBufferEmittedCount: 0,
-    },
-    droppedFrames: 0,
-    sampledAt: performance.now(),
-  };
-  let lastPresentedAt: number | null = null;
-  let frameGapsMs: number[] = [];
-  let freezeCount = 0;
-  let sampling = false;
-  let sourceActive = false;
-  const progress = new WebrtcPresentationProgress();
-  const idlePresentation = new WebrtcIdlePresentation();
-  const tracks = videoTracks(video);
-  for (const track of tracks) track.addEventListener("ended", onStall);
-  let mainThreadLongTaskCount = 0;
-  const longTaskObserver =
-    "PerformanceObserver" in window
-      ? new PerformanceObserver((entries) => {
-          mainThreadLongTaskCount += entries.getEntries().length;
-        })
-      : null;
-  try {
-    longTaskObserver?.observe({ type: "longtask", buffered: true });
-  } catch {
-    longTaskObserver?.disconnect();
-  }
-
-  const requestNextFrame = () => {
-    if (stopped || !frameCallback.request) {
-      return;
-    }
-    frameCallbackHandle = frameCallback.request((at, metadata) => {
-      if (stopped) return;
-      displaySizePresentation.present(
-        {
-          width: metadata.width ?? video.videoWidth,
-          height: metadata.height ?? video.videoHeight,
-        },
-        at,
-      );
-      const now = performance.now();
-      idlePresentation.presented(metadata.rtpTimestamp, now);
-      if (lastPresentedAt !== null && sourceActive && !document.hidden) {
-        frameGapsMs.push(now - lastPresentedAt);
-      }
-      lastPresentedAt = now;
-      presentedFrames += 1;
-      requestNextFrame();
-    });
-  };
-
-  requestNextFrame();
-
-  const timer = window.setInterval(() => {
-    if (sampling || stopped) return;
-    sampling = true;
-    const now = performance.now();
-    idlePresentation.sample(reliableChannel, now);
-    const frameAcknowledgement = idlePresentation.diagnostics();
-    const statsRequest = peer.getStats().catch(() => null);
-    void statsRequest.then((stats) => {
-      sampling = false;
-      if (stopped || !stats) return;
-      const {
-        receiver,
-        droppedFrames,
-        packetsLost,
-        nackCount,
-        pliCount,
-        networkJitterMs,
-        roundTripTimeMs,
-      } = readWebrtcReceiverStats(stats, previousSample.receiver);
-      const { framesReceived: receivedFrames, framesDecoded: decodedFrames } =
-        receiver;
-      const relayMetrics = getRelayMetrics();
-      const quality = frameCallback.request
-        ? undefined
-        : video.getVideoPlaybackQuality?.();
-      let presentedFrameCount = frameCallback.request
-        ? presentedFrames
-        : undefined;
-      if (quality) {
-        presentedFrameCount =
-          quality.totalVideoFrames - quality.droppedVideoFrames;
-      }
-      const currentSample: WebrtcIntervalSample = {
-        receiver,
-        presentedFrames: presentedFrameCount,
-        droppedFrames: droppedFrames ?? previousSample.droppedFrames,
-        sampledAt: now,
-      };
-      const {
-        receivedFps,
-        decodedFps,
-        presentedFps,
-        wireBitrateMbps,
-        jitterQueueDepthMs,
-        droppedFramesDelta,
-      } = calculateWebrtcIntervalMetrics(previousSample, currentSample);
-      const presentation = progress.sample(
-        relayMetrics,
-        presentedFrameCount,
-        receivedFrames,
-        decodedFrames,
-        !document.hidden,
-        waitingForVideoReset(),
-      );
-      sourceActive = !presentation.idle;
-      if (presentation.idle) lastPresentedAt = null;
-      if (presentation.freeze) freezeCount += 1;
-
-      const gaps = frameGapsMs;
-      const frameGapP95Ms = percentile(gaps, 0.95);
-      jitterController.sample(frameGapP95Ms, droppedFramesDelta);
-
-      emitViewerStreamMetrics({
-        version: 4,
-        transport: "webrtc",
-        displaySizePresentation: displaySizePresentation.snapshot(),
-        sourceFps: relayMetrics?.sourceFps,
-        relayIngressFps: relayMetrics?.sourceFps,
-        bridgeInputFps: relayMetrics?.bridgeInputFps,
-        rtpSentFps: relayMetrics?.rtpSentFps,
-        receivedFps,
-        receivedFrames,
-        decodedFrames,
-        presentedFrames: presentedFrameCount,
-        receiverPacketsLost: packetsLost,
-        receiverNackCount: nackCount,
-        receiverPliCount: pliCount,
-        frameAcknowledgement: frameCallback.request
-          ? frameAcknowledgement.status
-          : "callback-unavailable",
-        frameAcknowledgementsSent: frameAcknowledgement.sentCount,
-        consumerAttemptId: relayMetrics?.consumerAttemptId,
-        sourceCodecGeneration: relayMetrics?.sourceCodecGeneration,
-        videoResetGeneration: relayMetrics?.videoResetGeneration,
-        videoResetCompletedGeneration:
-          relayMetrics?.videoResetCompletedGeneration,
-        videoResetElapsedMs: relayMetrics?.videoResetElapsedMs,
-        videoResetCount: relayMetrics?.videoResetCount,
-        decodedFps,
-        drawnFps: presentedFps,
-        presentedFps,
-        wireBitrateMbps,
-        sourceBitrateMbps: relayMetrics?.sourceBitrateMbps,
-        sourceFrameSizeP95Bytes: relayMetrics?.sourceFrameSizeP95Bytes,
-        keyFrameSizeBytes: relayMetrics?.keyFrameSizeBytes,
-        sourceInterFrameP95Ms: relayMetrics?.sourceInterFrameP95Ms,
-        networkInterArrivalJitterP95Ms: networkJitterMs,
-        frameGapP50Ms: percentile(gaps, 0.5),
-        frameGapP95Ms,
-        frameGapP99Ms: percentile(gaps, 0.99),
-        frameGapMaxMs: gaps.length > 0 ? Math.max(...gaps) : undefined,
-        relayQueueDepthMs: relayMetrics?.queueDepthMs,
-        relayP95Ms: relayMetrics?.relayP95Ms,
-        relayP99Ms: relayMetrics?.relayP99Ms,
-        rtpPacketizationP95Ms: relayMetrics?.rtpPacketizationP95Ms,
-        rtpWriteP95Ms: relayMetrics?.rtpWriteP95Ms,
-        rtpSendErrors: relayMetrics?.rtpSendErrors,
-        eventLoopUtilization: relayMetrics?.eventLoopUtilization,
-        gcPauseP95Ms: relayMetrics?.gcPauseP95Ms,
-        decoderQueueDepth: 0,
-        pendingRenderFrames: 0,
-        webrtcJitterBufferDepthMs: jitterQueueDepthMs,
-        jitterBufferTargetMs: jitterController.target(),
-        relayDroppedFrames: relayMetrics?.droppedFrames ?? 0,
-        decodeDroppedFrames: droppedFrames ?? 0,
-        presentationDroppedFrames: 0,
-        freezeCount,
-        reconnectCount: getReconnectCount(),
-        roundTripTimeMs: roundTripTimeMs ?? relayMetrics?.bridgeRoundTripTimeMs,
-        packetsLost: packetsLost ?? relayMetrics?.bridgePacketsLost,
-        nackCount: relayMetrics?.bridgeNackCount ?? nackCount,
-        pliCount: relayMetrics?.bridgePliCount ?? pliCount,
-        retransmittedPackets: relayMetrics?.retransmittedPackets,
-        retransmittedBytes: relayMetrics?.retransmittedBytes,
-        packetsDiscardedOnSend: relayMetrics?.packetsDiscardedOnSend,
-        rtpSendDelayMs: relayMetrics?.rtpSendDelayMs,
-        mainThreadLongTaskCount,
-        width: video.videoWidth || undefined,
-        height: video.videoHeight || undefined,
-        renderer: "webrtc-video",
-        decoderPreference: "native",
-        h264ProfileLevelId: relayMetrics?.h264ProfileLevelId,
-        negotiatedH264ProfileLevelId: negotiatedProfileLevelId,
-        sourceAttemptId: relayMetrics?.sourceAttemptId,
-        consumerGeneration,
-        effectiveProfile: {
-          ...effectiveProfile,
-          actualEncoder: relayMetrics?.actualEncoder,
-          width: relayMetrics?.width,
-          height: relayMetrics?.height,
-          pixelRate:
-            relayMetrics?.width && relayMetrics.height
-              ? relayMetrics.width *
-                relayMetrics.height *
-                effectiveProfile.maxFps
-              : undefined,
-          h264ProfileLevelId: relayMetrics?.h264ProfileLevelId,
-          negotiatedH264ProfileLevelId: negotiatedProfileLevelId,
-          sourceAttemptId: relayMetrics?.sourceAttemptId,
-        },
-        collectedAt: Date.now(),
-      });
-
-      previousSample = currentSample;
-      frameGapsMs = [];
-      if (presentation.stalled) onStall();
-    });
-  }, webrtcMetricsIntervalMs);
-
-  return () => {
-    stopped = true;
-    window.clearInterval(timer);
-    if (frameCallbackHandle !== null && frameCallback.cancel) {
-      frameCallback.cancel(frameCallbackHandle);
-    }
-    longTaskObserver?.disconnect();
-    for (const track of tracks) track.removeEventListener("ended", onStall);
-  };
 }
 
 export function createWebrtcStream({
@@ -1028,82 +500,25 @@ export function createWebrtcStream({
       observeDisplaySize(connection, currentGeneration, trackReady);
 
       const offerAt = performance.timeOrigin + performance.now();
-      const response = await fetch(
-        `/rebroid/display/public/sessions/${encodeURIComponent(config.sessionId)}/webrtc/offer`,
-        {
-          method: "POST",
-          signal,
-          headers: {
-            "content-type": "application/json",
-            "x-rebroid-viewer-id": viewerId,
-          },
-          body: JSON.stringify({
-            sdp: connection.localDescription?.sdp ?? offer.sdp,
-            bitrate: Number(
-              config.params.get("bitrate") ?? config.streamDefaults.bitrate,
-            ),
-            maxFps: Number(
-              config.params.get("maxFps") ?? config.streamDefaults.maxFps,
-            ),
-            maxSize: Number(
-              config.params.get("maxSize") ?? config.streamDefaults.maxSize,
-            ),
-            iFrameInterval: Number(
-              config.params.get("iFrameInterval") ??
-                config.streamDefaults.iFrameInterval,
-            ),
-            audio: config.audio,
-          }),
-        },
+      const answer = await requestWebrtcAnswer(
+        config.sessionId,
+        config,
+        viewerId,
+        connection.localDescription?.sdp ?? offer.sdp,
+        signal,
       );
-      if (!response.ok) {
-        let detail = `WebRTC offer failed: ${response.status}`;
-        let code: unknown;
-        try {
-          const payload = (await response.json()) as {
-            code?: unknown;
-            message?: unknown;
-          };
-          if (typeof payload.message === "string") {
-            detail = payload.message;
-          }
-          if (typeof payload.code === "string") {
-            code = payload.code;
-            detail = `${payload.code}: ${detail}`;
-          }
-        } catch {
-          // Keep the bounded HTTP status diagnostic.
+      if (answer.transport === "websocket") {
+        if (isCurrent()) {
+          const url = new URL(location.href);
+          url.searchParams.set("transport", "websocket");
+          location.replace(url.href);
+        } else {
+          connection.close();
         }
-        if (response.status === 409 && code === "feature_disabled") {
-          if (isCurrent()) {
-            const url = new URL(location.href);
-            url.searchParams.set("transport", "websocket");
-            location.replace(url.href);
-          } else {
-            connection.close();
-          }
-          return;
-        }
-        if (response.status === 404 && code === "display_session_unavailable") {
-          throw new WebrtcSessionExpiredError(detail);
-        }
-        if (
-          response.status >= 400 &&
-          response.status < 500 &&
-          code !== "display_profile_in_use"
-        ) {
-          throw new PermanentWebrtcError(detail);
-        }
-        throw new Error(detail);
-      }
-      const attemptId = response.headers?.get("x-rebroid-webrtc-attempt");
-      const answer = (await response.json()) as WebrtcAnswer;
-      if (!answer.sdp) {
-        throw new Error("WebRTC answer was missing SDP.");
+        return;
       }
       signal.throwIfAborted();
-      if (attemptId && /^[a-z0-9-]{1,64}$/i.test(attemptId))
-        consumerAttemptId = attemptId;
+      consumerAttemptId = answer.attemptId;
       controlChannel.useDataChannels(
         reliableChannel,
         movementChannel,
@@ -1111,7 +526,7 @@ export function createWebrtcStream({
         (remainingMs) => {
           videoResetDeadline = performance.now() + Math.min(remainingMs, 3_000);
         },
-        response.headers?.get("x-rebroid-viewer-control") !== "0",
+        answer.canControl,
       );
       failureStage = "connection";
       await connection.setRemoteDescription({
@@ -1141,20 +556,21 @@ export function createWebrtcStream({
       stopSizeObservation?.();
       stopSizeObservation = null;
       stopMetricsMonitor?.();
-      stopMetricsMonitor = startWebrtcMetricsMonitor(
-        connection,
+      stopMetricsMonitor = startWebrtcMetricsMonitor({
+        peer: connection,
         video,
-        configuredStreamProfile(config, "webrtc"),
+        effectiveProfile: configuredStreamProfile(config, "webrtc"),
         getRelayMetrics,
-        currentGeneration,
-        () => reconnectCount,
+        consumerGeneration: currentGeneration,
+        getReconnectCount: () => reconnectCount,
         jitterController,
-        answer.profileLevelId,
-        () => recoverCurrent("WebRTC video stopped presenting frames."),
-        () => performance.now() < videoResetDeadline,
+        negotiatedProfileLevelId: answer.profileLevelId,
+        onStall: () =>
+          recoverCurrent("WebRTC video stopped presenting frames."),
+        waitingForVideoReset: () => performance.now() < videoResetDeadline,
         reliableChannel,
         displaySizePresentation,
-      );
+      });
     } catch (error) {
       if (isCurrent()) {
         const reason =
