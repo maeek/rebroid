@@ -15,7 +15,6 @@ import {
 import { NetworkIsolationService } from '../../../network-isolation/network-isolation.service';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
-import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
 import { isRuntimeDownloadFileName } from '../utils/android-apps-runtime-file.utils';
@@ -41,11 +40,8 @@ export class RuntimeDownloadVolumeService {
     private readonly uploads: RuntimeUploadStreamService,
   ) {}
 
-  async listFiles(
-    app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
-  ) {
-    const directory = await this.getDirectory(app, query);
+  async listFiles(app: AndroidApplication, profileName: string | null) {
+    const directory = await this.getDirectory(app, profileName);
     if (!directory) {
       return [];
     }
@@ -82,9 +78,11 @@ export class RuntimeDownloadVolumeService {
     app: AndroidApplication,
     stream: Readable,
     fileName: string,
-    query: ApplicationRuntimeFilesQueryDto,
+    profileName: string | null,
   ): Promise<ApplicationRuntimeFileUploadDto> {
-    const directory = await this.getDirectory(app, query, { create: true });
+    const directory = await this.getDirectory(app, profileName, {
+      create: true,
+    });
     if (!directory) {
       stream.resume();
       throw new ConflictException(persistentDownloadRequiredMessage);
@@ -121,9 +119,9 @@ export class RuntimeDownloadVolumeService {
   async readFile(
     app: AndroidApplication,
     fileName: string,
-    query: ApplicationRuntimeFilesQueryDto,
+    profileName: string | null,
   ) {
-    const directory = await this.getRequiredDirectory(app, query);
+    const directory = await this.getRequiredDirectory(app, profileName);
 
     const file = await open(
       join(directory, fileName),
@@ -166,9 +164,9 @@ export class RuntimeDownloadVolumeService {
 
   private async getRequiredDirectory(
     app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
+    profileName: string | null,
   ) {
-    const directory = await this.getDirectory(app, query);
+    const directory = await this.getDirectory(app, profileName);
     if (!directory) {
       throw new ConflictException(persistentDownloadRequiredMessage);
     }
@@ -178,10 +176,9 @@ export class RuntimeDownloadVolumeService {
 
   private async getDirectory(
     app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
+    profileName: string | null,
     options: { create?: boolean } = {},
   ) {
-    const profileName = this.paths.persistentProfileName(app, query);
     if (!profileName) {
       return null;
     }

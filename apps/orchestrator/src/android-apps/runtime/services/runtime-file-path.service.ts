@@ -1,9 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { posix } from 'node:path';
-import { ApplicationProfileMode } from '../../contracts/application-profile-mode';
-import { AndroidApplicationStatus } from '../../contracts/android-application-status';
-import { AndroidApplication } from '../../android-application.entity';
-import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 
 @Injectable()
 export class RuntimeFilePathService {
@@ -49,34 +45,6 @@ export class RuntimeFilePathService {
     if (path === this.dataDirectory) {
       throw new ConflictException('The runtime data root cannot be changed.');
     }
-  }
-
-  shouldUseRunningContainer(
-    app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
-  ) {
-    const profileMode = query.profileMode ?? app.profileMode;
-    const profileName =
-      query.profileName?.trim() || app.profileName || 'default';
-
-    return (
-      app.containerId &&
-      app.status === AndroidApplicationStatus.Running &&
-      profileMode === app.profileMode &&
-      profileName === (app.profileName || 'default')
-    );
-  }
-
-  persistentProfileName(
-    app: AndroidApplication,
-    query: ApplicationRuntimeFilesQueryDto,
-  ) {
-    const profileMode = query.profileMode ?? app.profileMode;
-    if (profileMode !== ApplicationProfileMode.Persistent) {
-      return null;
-    }
-
-    return query.profileName?.trim() || app.profileName || 'default';
   }
 
   shellQuote(value: string) {

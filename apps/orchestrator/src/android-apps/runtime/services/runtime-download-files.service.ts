@@ -18,6 +18,7 @@ import {
   parseDownloadFiles,
   sanitizeRuntimeFileName,
 } from '../utils/android-apps-runtime-file.utils';
+import { runtimeDownloadTarget } from '../utils/runtime-download-target';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
@@ -42,11 +43,12 @@ export class RuntimeDownloadFilesService {
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
     const app = await this.reconciler.reconcileById(id);
-    if (this.paths.shouldUseRunningContainer(app, query)) {
-      return this.listRunningDownloadFiles(app);
+    const target = runtimeDownloadTarget(app, query);
+    if (target.kind === 'container') {
+      return this.listRunningDownloadFiles(target.containerId);
     }
 
-    return this.volumes.listFiles(app, query);
+    return this.volumes.listFiles(app, target.profileName);
   }
 
   async uploadDownloadFile(
@@ -67,38 +69,37 @@ export class RuntimeDownloadFilesService {
   ) {
     const app = await this.reconciler.reconcileById(id);
     const safeFileName = sanitizeRuntimeFileName(fileName);
-    if (!this.paths.shouldUseRunningContainer(app, query)) {
-      const content = await this.volumes.readFile(app, safeFileName, query);
-      return this.downloadResult(safeFileName, content);
-    }
-
-    const content = await readRuntimeDownload(
-      this.archive,
-      app.containerId!,
-      `${this.paths.downloadDirectory}/${safeFileName}`,
-    );
-
-    return this.downloadResult(safeFileName, content);
+    const target = runtimeDownloadTarget(app, query);
+    const content =
+      target.kind === 'volume'
+        ? await this.volumes.readFile(app, safeFileName, target.profileName)
+        : await readRuntimeDownload(
+            this.archive,
+            target.containerId,
+            `${this.paths.downloadDirectory}/${safeFileName}`,
+          );
+    return {
+      name: safeFileName,
+      mimeType: 'application/octet-stream',
+      dataUrl: `data:application/octet-stream;base64,${content.toString('base64')}`,
+    };
   }
 
-  private async listRunningDownloadFiles(app: AndroidApplication) {
-    const { stdout } = await this.exec.execInContainerWithOutput(
-      app.containerId!,
+  private async listRunningDownloadFiles(containerId: string) {
+    const { stdout } = await this.exec.execInContainerWithOutput(containerId, [
+      'sh',
+      '-lc',
       [
-        'sh',
-        '-lc',
-        [
-          `dir="${this.paths.downloadDirectory}"`,
-          'mkdir -p "$dir"',
-          'find "$dir" -maxdepth 1 -type f -print 2>/dev/null | while IFS= read -r file; do',
-          'name=${file##*/}',
-          'size=$(stat -c %s "$file" 2>/dev/null || wc -c < "$file" 2>/dev/null || echo 0)',
-          'modified=$(stat -c %Y "$file" 2>/dev/null || echo 0)',
-          'printf "%s\\t%s\\t%s\\n" "$name" "$size" "$modified"',
-          'done',
-        ].join('\n'),
-      ],
-    );
+        `dir="${this.paths.downloadDirectory}"`,
+        'mkdir -p "$dir"',
+        'find "$dir" -maxdepth 1 -type f -print 2>/dev/null | while IFS= read -r file; do',
+        'name=${file##*/}',
+        'size=$(stat -c %s "$file" 2>/dev/null || wc -c < "$file" 2>/dev/null || echo 0)',
+        'modified=$(stat -c %Y "$file" 2>/dev/null || echo 0)',
+        'printf "%s\\t%s\\t%s\\n" "$name" "$size" "$modified"',
+        'done',
+      ].join('\n'),
+    ]);
 
     return parseDownloadFiles(stdout, this.paths.downloadDirectory);
   }
@@ -110,19 +111,31 @@ export class RuntimeDownloadFilesService {
     query: ApplicationRuntimeFilesQueryDto,
   ) {
     const fileName = sanitizeRuntimeFileName(originalName);
-    if (!this.paths.shouldUseRunningContainer(app, query)) {
-      return this.volumes.storeStream(app, stream, fileName, query);
+    const target = runtimeDownloadTarget(app, query);
+    if (target.kind === 'volume') {
+      return this.volumes.storeStream(
+        app,
+        stream,
+        fileName,
+        target.profileName,
+      );
     }
 
-    return this.storeRunningDownloadFileStream(app, stream, fileName);
+    return this.storeRunningDownloadFileStream(
+      app.id,
+      target.containerId,
+      stream,
+      fileName,
+    );
   }
 
   private async storeRunningDownloadFileStream(
-    app: AndroidApplication,
+    appId: string,
+    containerId: string,
     stream: Readable,
     fileName: string,
   ): Promise<ApplicationRuntimeFileUploadDto> {
-    await this.exec.execInContainer(app.containerId!, [
+    await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
       `mkdir -p ${this.paths.shellQuote(this.paths.downloadDirectory)}`,
@@ -132,13 +145,13 @@ export class RuntimeDownloadFilesService {
       stream,
       async (tempPath) => {
         await this.archive.copyFileToContainer(
-          app.containerId!,
+          containerId,
           tempPath,
           this.paths.downloadDirectory,
           fileName,
         );
-        await this.prepareRunningDownloadFile(app, fileName);
-        this.scanRunningDownloadFileInBackground(app, fileName);
+        await this.prepareRunningDownloadFile(containerId, fileName);
+        this.scanRunningDownloadFileInBackground(appId, containerId, fileName);
       },
     );
 
@@ -146,12 +159,12 @@ export class RuntimeDownloadFilesService {
   }
 
   private async prepareRunningDownloadFile(
-    app: AndroidApplication,
+    containerId: string,
     fileName: string,
   ) {
     const filePath = `${this.paths.downloadDirectory}/${fileName}`;
 
-    await this.exec.execInContainer(app.containerId!, [
+    await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
       [
@@ -164,25 +177,23 @@ export class RuntimeDownloadFilesService {
   }
 
   private scanRunningDownloadFileInBackground(
-    app: AndroidApplication,
+    appId: string,
+    containerId: string,
     fileName: string,
   ) {
-    void this.scanRunningDownloadFile(app, fileName).catch((error) => {
-      void this.logs.append(app.id, 'Uploaded file media scan failed', {
+    void this.scanRunningDownloadFile(containerId, fileName).catch((error) => {
+      void this.logs.append(appId, 'Uploaded file media scan failed', {
         fileName,
         error: error instanceof Error ? error.message : String(error),
       });
     });
   }
 
-  private async scanRunningDownloadFile(
-    app: AndroidApplication,
-    fileName: string,
-  ) {
+  private async scanRunningDownloadFile(containerId: string, fileName: string) {
     const filePath = `${this.paths.downloadDirectory}/${fileName}`;
     const publicPath = `/sdcard/Download/${fileName}`;
 
-    await this.exec.execInContainer(app.containerId!, [
+    await this.exec.execInContainer(containerId, [
       'sh',
       '-lc',
       [
@@ -212,13 +223,5 @@ export class RuntimeDownloadFilesService {
         'run_with_timeout 20 scan_file || true',
       ].join('\n'),
     ]);
-  }
-
-  private downloadResult(fileName: string, content: Buffer) {
-    return {
-      name: fileName,
-      mimeType: 'application/octet-stream',
-      dataUrl: `data:application/octet-stream;base64,${content.toString('base64')}`,
-    };
   }
 }

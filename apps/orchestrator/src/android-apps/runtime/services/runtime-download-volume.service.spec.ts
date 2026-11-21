@@ -56,14 +56,19 @@ describe('RuntimeDownloadVolumeService', () => {
 
   it('lists files in the persistent download directory', async () => {
     const directory = join(tempDir, 'media', '0', 'Download');
-    await service.storeStream(app, Readable.from(['z']), 'zeta.txt', {});
-    await service.storeStream(app, Readable.from(['alpha']), 'alpha.txt', {});
+    await service.storeStream(app, Readable.from(['z']), 'zeta.txt', 'default');
+    await service.storeStream(
+      app,
+      Readable.from(['alpha']),
+      'alpha.txt',
+      'default',
+    );
     await mkdir(join(directory, 'nested-directory'));
     await writeFile(join(directory, ' alpha.txt '), 'different file');
     await writeFile(join(directory, ' '), 'blank name');
     await symlink('alpha.txt', join(directory, 'linked.txt'));
 
-    const files = await service.listFiles(app, {});
+    const files = await service.listFiles(app, 'default');
 
     expect(files.map((file) => file.name)).toEqual(['alpha.txt', 'zeta.txt']);
     expect(files[0]).toMatchObject({
@@ -75,7 +80,12 @@ describe('RuntimeDownloadVolumeService', () => {
   });
 
   it('creates the volume before writing uploads', async () => {
-    await service.storeStream(app, Readable.from(['body']), 'upload.txt', {});
+    await service.storeStream(
+      app,
+      Readable.from(['body']),
+      'upload.txt',
+      'default',
+    );
 
     await expect(
       readFile(join(tempDir, 'media', '0', 'Download', 'upload.txt'), 'utf8'),
@@ -90,7 +100,7 @@ describe('RuntimeDownloadVolumeService', () => {
     const mountpoint = join(tempDir, 'engine-only-volume');
     resources.inspectVolume.mockResolvedValue({ Mountpoint: mountpoint });
     await expect(
-      service.storeStream(app, Readable.from(['body']), 'file.txt', {}),
+      service.storeStream(app, Readable.from(['body']), 'file.txt', 'default'),
     ).rejects.toThrow('Persistent profile storage is unavailable');
     await expect(stat(mountpoint)).rejects.toMatchObject({ code: 'ENOENT' });
   });
@@ -100,7 +110,7 @@ describe('RuntimeDownloadVolumeService', () => {
       app,
       Readable.from(['hello', ' ', 'world']),
       'stream.txt',
-      {},
+      'default',
     );
 
     expect(result).toMatchObject({
@@ -117,7 +127,12 @@ describe('RuntimeDownloadVolumeService', () => {
   });
 
   it('keeps the previous download when its replacement stream fails', async () => {
-    await service.storeStream(app, Readable.from(['original']), 'file.txt', {});
+    await service.storeStream(
+      app,
+      Readable.from(['original']),
+      'file.txt',
+      'default',
+    );
     const incomplete = Readable.from(
       (async function* () {
         yield Buffer.from('partial');
@@ -126,10 +141,10 @@ describe('RuntimeDownloadVolumeService', () => {
     );
 
     await expect(
-      service.storeStream(app, incomplete, 'file.txt', {}),
+      service.storeStream(app, incomplete, 'file.txt', 'default'),
     ).rejects.toThrow('upload interrupted');
 
-    await expect(service.readFile(app, 'file.txt', {})).resolves.toEqual(
+    await expect(service.readFile(app, 'file.txt', 'default')).resolves.toEqual(
       Buffer.from('original'),
     );
     await expect(
@@ -138,12 +153,22 @@ describe('RuntimeDownloadVolumeService', () => {
   });
 
   it('retains file permissions when replacing an existing download', async () => {
-    await service.storeStream(app, Readable.from(['original']), 'file.txt', {});
+    await service.storeStream(
+      app,
+      Readable.from(['original']),
+      'file.txt',
+      'default',
+    );
     const path = join(tempDir, 'media', '0', 'Download', 'file.txt');
     await chmod(path, 0o640);
     const { uid, gid } = await stat(path);
 
-    await service.storeStream(app, Readable.from(['new']), 'file.txt', {});
+    await service.storeStream(
+      app,
+      Readable.from(['new']),
+      'file.txt',
+      'default',
+    );
 
     const replaced = await stat(path);
     expect(replaced).toMatchObject({ uid, gid });
@@ -152,18 +177,21 @@ describe('RuntimeDownloadVolumeService', () => {
   });
 
   it('reads persistent download files', async () => {
-    await service.storeStream(app, Readable.from(['content']), 'read.txt', {});
+    await service.storeStream(
+      app,
+      Readable.from(['content']),
+      'read.txt',
+      'default',
+    );
 
-    await expect(service.readFile(app, 'read.txt', {})).resolves.toEqual(
+    await expect(service.readFile(app, 'read.txt', 'default')).resolves.toEqual(
       Buffer.from('content'),
     );
   });
 
   it('rejects writes for non-persistent profile queries', async () => {
     await expect(
-      service.storeStream(app, Readable.from(['body']), 'upload.txt', {
-        profileMode: ApplicationProfileMode.Temporary,
-      }),
+      service.storeStream(app, Readable.from(['body']), 'upload.txt', null),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 });

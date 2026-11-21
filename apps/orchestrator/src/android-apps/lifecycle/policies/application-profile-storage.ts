@@ -1,3 +1,4 @@
+import { selectApplicationProfile } from '../../common/utils/application-profile-selection';
 import {
   parseSavedProfiles,
   forgetSavedProfile,
@@ -31,8 +32,7 @@ export class ApplicationProfileStorage {
     profileMode?: ApplicationProfileMode;
     profileName?: string | null;
   }) {
-    const mode = request.profileMode ?? this.app.profileMode;
-    const name = request.profileName?.trim() || this.activeName;
+    const { mode, name } = selectApplicationProfile(this.app, request);
     const volumeName = this.volumeFor(name);
     const admission = this.admission(mode, name, volumeName);
     return { mode, name, volumeName, admission };
@@ -95,7 +95,7 @@ export class ApplicationProfileStorage {
   }
 
   private get activeName() {
-    return this.app.profileName || 'default';
+    return selectApplicationProfile(this.app).name;
   }
 
   private volumeFor(name: string) {
