@@ -77,7 +77,10 @@ describe('application action URL selectors', () => {
 
     await expect(getApplicationLogsAction(appId, source)).rejects.toMatchObject({ code: 'validation' })
     expect(fetchUpstream).toHaveBeenCalledTimes(1)
-    expect(fetchUpstream).toHaveBeenCalledWith(`http://orchestrator.test/api/v1/apps/${appId}`, expect.anything())
+    expect(fetchUpstream).toHaveBeenCalledWith(
+      `http://orchestrator.test/api/v1/apps/${appId}/viewer-runtime`,
+      expect.anything()
+    )
   })
 
   it('routes a supported log request to the authorized application', async () => {

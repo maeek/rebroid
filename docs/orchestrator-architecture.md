@@ -89,6 +89,8 @@ The Apps gallery uses the same owner-scoped row projection for its initial rende
 Sidebar reads return only navigation fields and usually limit running results before sending rows to the web app.
 The application detail page polls for lifecycle state and retrieves configuration when its revision changes.
 Both responses use the current account's ownership and backend-detail permissions.
+Live application log reads use the stored runtime reference. Lifecycle files and Docker streams have bounded tails.
+ADB log requests also bound the command and cancel it when the sidecar client disconnects.
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.
 System resource overviews share aggregate work by Docker inventory revision. Docker stats sweeps rotate

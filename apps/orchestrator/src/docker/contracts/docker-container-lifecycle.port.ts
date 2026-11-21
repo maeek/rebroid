@@ -23,6 +23,11 @@ export interface DockerContainerLifecyclePort {
     tail?: number,
     options?: DockerOperationOptions,
   ): Promise<string>;
+  getBoundedContainerLogs(
+    containerId: string,
+    tail: number,
+    maxBytes: number,
+  ): Promise<string>;
   startContainer(
     containerId: string,
     options?: DockerOperationOptions,

@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import {
+  Injectable,
+  InternalServerErrorException,
+  PayloadTooLargeException,
+} from "@nestjs/common";
 import { type ChildProcessByStdio, spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import { SidecarConfigService } from "../shared/sidecar-config.service";
@@ -29,15 +33,27 @@ export class AdbCommandRunner {
   text(
     args: string[],
     timeoutMs: number,
-    options: { rejectOnNonZero?: boolean; signal?: AbortSignal } = {},
+    options: {
+      rejectOnNonZero?: boolean;
+      signal?: AbortSignal;
+      maxOutputBytes?: number;
+    } = {},
   ) {
     const rejectOnNonZero = options.rejectOnNonZero ?? true;
     return this.run(
       args,
       timeoutMs,
-      this.config.adbTextOutputMaxBytes,
+      Math.min(
+        options.maxOutputBytes ?? Infinity,
+        this.config.adbTextOutputMaxBytes,
+      ),
       options.signal,
     ).then(({ stdout, stderr, exitCode }) => {
+      if (options.maxOutputBytes !== undefined && stdout.truncatedBytes > 0) {
+        throw new PayloadTooLargeException(
+          "ADB command output exceeds the byte limit.",
+        );
+      }
       const result = {
         stdout: this.toString(stdout),
         stderr: this.toString(stderr),

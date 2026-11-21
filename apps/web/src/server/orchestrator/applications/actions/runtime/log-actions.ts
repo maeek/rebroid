@@ -4,10 +4,10 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { orchestratorAppRuntimeClient, type ApplicationLogSource } from '../../runtime-client'
 import { sanitizeApplicationLogForUser } from '../../safety'
-import { assertCanUseOwnedApplicationRuntime, ownedRuntimeMessage } from '../common/action-helpers'
+import { requireOwnedRuntimeContext, ownedRuntimeMessage } from '../common/action-helpers'
 
 export const getApplicationLogsAction = async (id: string, source: ApplicationLogSource, tail = 300) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(id, ownedRuntimeMessage)
+  const user = await requireOwnedRuntimeContext(id, ownedRuntimeMessage)
   if (!hasPermission(user.permissions, 'applications:view-logs')) {
     throw new PublicActionError('You do not have permission to view logs.', { code: 'forbidden', status: 403 })
   }

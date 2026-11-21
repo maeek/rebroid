@@ -1,13 +1,7 @@
+import { constants } from 'node:fs';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  appendFile,
-  mkdir,
-  readdir,
-  readFile,
-  rm,
-  stat,
-} from 'node:fs/promises';
+import { appendFile, mkdir, readdir, open, rm, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { getErrorMessage } from '../../../common/error-message';
 import type { AndroidAppsRuntimeLogMaintenancePort } from '../../contracts/android-apps-runtime-log-maintenance.port';
@@ -15,6 +9,11 @@ import {
   AndroidApplicationLifecycleStage,
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
+
+import {
+  applicationLogMaxBytes,
+  normalizeApplicationLogTail,
+} from '../utils/application-log-tail';
 
 type RuntimeLogPatch = Partial<{
   status: AndroidApplicationStatus;
@@ -70,9 +69,38 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
   /** Reads the latest lines from the app log file. */
   async read(applicationId: string, tail = 300) {
     try {
-      const content = await readFile(this.logPath(applicationId), 'utf-8');
-      const lines = content.split('\n').filter(Boolean);
-      return lines.slice(-this.clampTail(tail)).join('\n');
+      const lineLimit = normalizeApplicationLogTail(tail);
+      const file = await open(
+        this.logPath(applicationId),
+        constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+      );
+      try {
+        const stats = await file.stat();
+        if (!stats.isFile()) return 'Application event log is unavailable.';
+        const notice = '[Older log output omitted by the byte limit.]';
+        const clipped = stats.size > applicationLogMaxBytes;
+        const start = clipped
+          ? stats.size - applicationLogMaxBytes + Buffer.byteLength(notice)
+          : 0;
+        const buffer = Buffer.alloc(stats.size - start);
+        const { bytesRead } = await file.read(buffer, 0, buffer.length, start);
+        const firstBreak = clipped
+          ? buffer.subarray(0, bytesRead).indexOf(0x0a)
+          : -1;
+        const firstLine =
+          clipped && firstBreak < 0 ? bytesRead : firstBreak + 1;
+        const lines = buffer
+          .toString('utf-8', firstLine, bytesRead)
+          .split('\n')
+          .filter(Boolean);
+        const output = lines.slice(-lineLimit).join('\n');
+        if (clipped && lines.length < lineLimit) {
+          return output ? `${notice}\n${output}` : notice;
+        }
+        return output;
+      } finally {
+        await file.close();
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return 'No orchestrator events have been recorded for this application yet.';
@@ -146,14 +174,5 @@ export class AndroidAppsLogService implements AndroidAppsRuntimeLogMaintenancePo
     }
 
     return 'Lifecycle updated';
-  }
-
-  /** Keeps the requested tail size in a safe range. */
-  private clampTail(tail: number) {
-    if (!Number.isFinite(tail)) {
-      return 300;
-    }
-
-    return Math.max(1, Math.min(Math.trunc(tail), 2000));
   }
 }

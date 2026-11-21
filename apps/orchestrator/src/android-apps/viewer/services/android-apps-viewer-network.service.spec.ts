@@ -457,6 +457,7 @@ describe('shared viewer target preparation', () => {
     const fetch = jest
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(Response.json({ output: '' }))
+      .mockResolvedValueOnce(Response.json({ output: 'x'.repeat(512 * 1024) }))
       .mockResolvedValueOnce(
         Response.json({ message: 'Invalid command' }, { status: 422 }),
       )
@@ -468,6 +469,9 @@ describe('shared viewer target preparation', () => {
 
     await bootstrap.scrcpySession(runtime.id);
     await adb.logcat(runtime, 300);
+    await expect(adb.logcat(runtime, 300)).resolves.toMatchObject({
+      output: 'The ADB log tail exceeds the byte limit. Request fewer lines.',
+    });
     await expect(adb.logcat(runtime, 300)).rejects.toThrow('Invalid command');
     await adb.logcat(runtime, 300);
     expect(sidecar.ensureSidecarOnNetwork).toHaveBeenCalledTimes(1);
@@ -477,7 +481,7 @@ describe('shared viewer target preparation', () => {
     await expect(adb.logcat(runtime, 300)).rejects.toThrow('ADB unavailable');
     await adb.logcat(runtime, 300);
     expect(sidecar.connectAdb).toHaveBeenCalledTimes(2);
-    expect(fetch).toHaveBeenCalledTimes(5);
+    expect(fetch).toHaveBeenCalledTimes(6);
   });
 
   it('coalesces in-flight preparation while allowing one waiter to cancel', async () => {

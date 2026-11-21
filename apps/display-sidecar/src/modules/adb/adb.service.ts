@@ -136,10 +136,22 @@ export class AdbService {
     return state;
   }
 
-  async logcat(udid: string, tail = 300) {
-    return this.adb(
+  async logcat(
+    udid: string,
+    tail = 300,
+    {
+      timeoutMs = 20_000,
+      ...options
+    }: {
+      timeoutMs?: number;
+      signal?: AbortSignal;
+      maxOutputBytes?: number;
+    } = {},
+  ) {
+    return this.runner.text(
       ["-s", udid, "logcat", "-d", "-v", "threadtime", "-t", String(tail)],
-      20_000,
+      timeoutMs,
+      options,
     );
   }
 

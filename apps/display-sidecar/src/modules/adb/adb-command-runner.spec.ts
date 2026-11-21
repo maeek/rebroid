@@ -34,6 +34,15 @@ test("ADB command runner bounds binary output", async () => {
   );
 });
 
+test("ADB command runner rejects a log tail above its per-command limit", async () => {
+  await assert.rejects(
+    runner().text(["-e", "process.stdout.write('12345')"], 1_000, {
+      maxOutputBytes: 4,
+    }),
+    /output exceeds the byte limit/,
+  );
+});
+
 test("ADB command runner rejects a process terminated by a signal", async () => {
   await assert.rejects(
     runner().text(["-e", "process.kill(process.pid, 'SIGTERM')"], 1_000, {

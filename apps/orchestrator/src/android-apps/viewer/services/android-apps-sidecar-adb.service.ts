@@ -4,7 +4,10 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { DisplaySidecarApiSchemas } from '@rebroid/display-sidecar-contracts';
 import { z } from 'zod';
-import { readBoundedResponseBody } from '../../../common/bounded-response-body';
+import {
+  readBoundedResponseBody,
+  ResponseBodyLimitError,
+} from '../../../common/bounded-response-body';
 import {
   displaySidecarJsonHeaders,
   displaySidecarUrl,
@@ -307,10 +310,17 @@ export class AndroidAppsSidecarAdbService {
   async logcat(app: AndroidApplication, tail: number) {
     return this.request<{ source: 'adb'; collectedAt: string; output: string }>(
       app,
-      `/logcat?tail=${Math.max(1, Math.min(tail, 2000))}`,
-      {},
+      `/logcat?tail=${tail}`,
+      { signal: AbortSignal.timeout(8_000), maxResponseBytes: 512 * 1024 },
       'transport',
-    );
+    ).catch((error: unknown) => {
+      if (!(error instanceof ResponseBodyLimitError)) throw error;
+      return {
+        source: 'adb' as const,
+        collectedAt: new Date().toISOString(),
+        output: 'The ADB log tail exceeds the byte limit. Request fewer lines.',
+      };
+    });
   }
 
   async screenshot(app: AndroidApplication, signal?: AbortSignal) {
@@ -396,6 +406,7 @@ export class AndroidAppsSidecarAdbService {
     );
     const headers = displaySidecarJsonHeaders(this.config, init);
     const transportFailure = (error: unknown): never => {
+      if (error instanceof ResponseBodyLimitError) throw error;
       if (!init.signal?.aborted || awaitMutation)
         this.viewerNetwork.invalidateViewerTarget(target);
       throw new ConflictException(

@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   Param,
+  PayloadTooLargeException,
   Post,
   Put,
   Query,
@@ -125,12 +126,29 @@ export class AdbController {
   @ApiOperation({ summary: "Read recent Android logcat output through ADB." })
   @ApiQuery({ name: "tail", required: false, example: 300 })
   @ApiOkResponse({ type: AdbLogcatDto })
-  async logcat(@Param("udid") udid: string, @Query("tail") tail?: string) {
-    const result = await this.adb.logcat(udid, clampTail(tail));
+  async logcat(
+    @Param("udid") udid: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+    @Query("tail") tail?: string,
+  ) {
+    const output = await whileClientConnected(reply, async (signal) => {
+      try {
+        return (
+          await this.adb.logcat(udid, clampTail(tail), {
+            signal,
+            timeoutMs: 7_000,
+            maxOutputBytes: 256 * 1024,
+          })
+        ).stdout;
+      } catch (error) {
+        if (!(error instanceof PayloadTooLargeException)) throw error;
+        return "The ADB log tail exceeds the byte limit. Request fewer lines.";
+      }
+    });
     return {
       source: "adb" as const,
       collectedAt: new Date().toISOString(),
-      output: result.stdout,
+      output,
     };
   }
 
