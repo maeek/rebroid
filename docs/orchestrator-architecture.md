@@ -83,6 +83,8 @@ and guarded progress, handoff, and completion apply only while the reservation s
 Normal list/get operations read stored state only. Docker reconciliation is an explicit operation.
 The Apps gallery uses the same owner-scoped row projection for its initial render and refreshes.
 Sidebar reads return only navigation fields and usually limit running results before sending rows to the web app.
+The diagnostics summary shares recent sidecar probes across callers and invalidates
+firewall and OCR samples after settings changes. Full diagnostics still probes on request.
 Viewer activity and policy observations update only their own fields and are scoped to the observed
 runtime. The web console uses lifecycle acknowledgements for immediate feedback and follows the
 application state to observe queued removal and startup completion.

@@ -61,6 +61,21 @@ export class SettingsService {
     );
   }
 
+  subscribeDiagnosticInputs(listener: () => void) {
+    let previous: string | undefined;
+    return this.store.subscribe(({ services, featureFlags }) => {
+      const current = JSON.stringify([
+        services.firewall,
+        services.ocr,
+        featureFlags.values['feature.firewall'],
+        featureFlags.values['feature.ocr'],
+      ]);
+      if (current === previous) return;
+      previous = current;
+      listener();
+    });
+  }
+
   /**
    * Merges partial updates through normalization so persisted values always stay in range.
    */
