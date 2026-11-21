@@ -24,7 +24,7 @@ describe('AutomationRunEventBus', () => {
     const repository = {
       latestSequence: jest.fn().mockResolvedValue(2),
       listReplayPage: jest.fn().mockReturnValue(replay),
-      append: jest.fn().mockResolvedValue(event(2)),
+      appendWhileRunning: jest.fn().mockResolvedValue(event(2)),
     } as unknown as AutomationRunEventsRepository;
     const bus = new AutomationRunEventBus(repository);
     const received: number[] = [];
@@ -35,7 +35,7 @@ describe('AutomationRunEventBus', () => {
       0,
       (record) => received.push(record.sequence),
     );
-    await bus.emit({
+    await bus.emitWhileRunning({
       runId: 'run-1',
       ownerUserId: 'owner-1',
       type: 'run.started',
@@ -52,13 +52,13 @@ describe('AutomationRunEventBus', () => {
     const repository = {
       latestSequence: jest.fn().mockResolvedValue(1002),
       listReplayPage: jest.fn(),
-      append: jest.fn().mockResolvedValue(event(1003)),
+      appendWhileRunning: jest.fn().mockResolvedValue(event(1003)),
     };
     const bus = new AutomationRunEventBus(repository as never);
     repository.listReplayPage
       .mockResolvedValueOnce(page)
       .mockImplementationOnce(async () => {
-        await bus.emit({
+        await bus.emitWhileRunning({
           runId: 'run-1',
           ownerUserId: 'owner-1',
           type: 'run.started',
@@ -87,7 +87,7 @@ describe('AutomationRunEventBus', () => {
       latestSequence: jest.fn().mockResolvedValue(0),
       listForRun: jest.fn().mockResolvedValue([]),
       deleteForRuns: jest.fn().mockResolvedValue(undefined),
-      append: jest
+      appendWhileRunning: jest
         .fn()
         .mockResolvedValueOnce({ ...event(1), ownerUserId: 'owner-2' })
         .mockResolvedValueOnce(event(2)),
@@ -101,12 +101,12 @@ describe('AutomationRunEventBus', () => {
       (record) => received.push(record.sequence),
     );
 
-    await bus.emit({
+    await bus.emitWhileRunning({
       runId: 'run-1',
       ownerUserId: 'owner-2',
       type: 'run.queued',
     });
-    await bus.emit({
+    await bus.emitWhileRunning({
       runId: 'run-1',
       ownerUserId: 'owner-1',
       type: 'run.started',

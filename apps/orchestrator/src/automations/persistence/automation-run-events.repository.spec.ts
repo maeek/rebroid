@@ -11,7 +11,10 @@ import type { AutomationStepResult } from '../runner/automation-runner.types';
 import { AutomationPersistenceQueue } from './automation-persistence-queue';
 import { AutomationRunsRepository } from './automation-runs.repository';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
-import { AutomationRunEventsRepository } from './automation-run-events.repository';
+import {
+  AutomationRunEventsRepository,
+  AutomationRunTargetConflictError,
+} from './automation-run-events.repository';
 
 it('projects the original prompt and terminal outcome past the first event page', async () => {
   const database = await new SerializedSqliteDataSource({
@@ -101,7 +104,100 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
   return { db, runs, events, run };
 };
 
-it('publishes repeat admission only while the owning run is active', async () => {
+it('translates a duplicate target reservation and preserves event constraint failures', async () => {
+  const { db, events, run } = await createRunPersistence();
+  try {
+    const input = {
+      automationId: run.automationId,
+      automationTriggerId: null,
+      ownerUserId: run.ownerUserId,
+      targetApplicationId: run.targetApplicationId,
+      targetProfileMode: null,
+      targetProfileName: null,
+      trigger: run.trigger,
+    };
+    await expect(events.enqueueRun(input)).rejects.toBeInstanceOf(
+      AutomationRunTargetConflictError,
+    );
+
+    await db.query(`CREATE TRIGGER duplicate_event_sequence AFTER INSERT ON automation_run_events
+      WHEN NEW.type = 'run.queued' BEGIN
+        INSERT INTO automation_run_events (id, runId, ownerUserId, sequence, type, message, dataJson)
+        VALUES ('fixture', NEW.runId, NEW.ownerUserId, NEW.sequence, 'run.queued', '', '{}');
+      END`);
+    await expect(
+      events.enqueueRun({ ...input, targetApplicationId: 'available' }),
+    ).rejects.toMatchObject({ code: 'SQLITE_CONSTRAINT_UNIQUE' });
+    await expect(
+      db.query(
+        "SELECT id FROM automation_runs WHERE targetApplicationId = 'available'",
+      ),
+    ).resolves.toEqual([]);
+  } finally {
+    await db.destroy();
+  }
+});
+
+it('rolls back admission when its prompt cannot be written and commits the initial history together', async () => {
+  const { db, events, run } = await createRunPersistence();
+  try {
+    const bus = new AutomationRunEventBus(events);
+    const input = {
+      automationId: run.automationId,
+      automationTriggerId: null,
+      ownerUserId: run.ownerUserId,
+      targetApplicationId: 'another-app',
+      targetProfileMode: null,
+      targetProfileName: null,
+      trigger: AutomationRunTrigger.Manual,
+    };
+    const prompt = { prompt: 'Open settings', clientMessageId: 'turn-1' };
+    await db.query(`CREATE TRIGGER reject_prompt BEFORE INSERT ON automation_run_events
+      WHEN NEW.type = 'ai.user.message' BEGIN SELECT RAISE(ABORT, 'fixture rejected prompt'); END`);
+    await expect(bus.enqueueRun(input, prompt)).rejects.toThrow(
+      'fixture rejected prompt',
+    );
+    expect(
+      await db.query(
+        'SELECT id FROM automation_runs WHERE targetApplicationId = ?',
+        [input.targetApplicationId],
+      ),
+    ).toEqual([]);
+    expect(await db.query('SELECT type FROM automation_run_events')).toEqual(
+      [],
+    );
+    await db.query('DROP TRIGGER reject_prompt');
+
+    const queued = await bus.enqueueRun(input, prompt);
+    expect(queued).toMatchObject({
+      status: AutomationRunStatus.Queued,
+      lastEventSequence: 2,
+    });
+    await bus.transitionRun(queued.id, {
+      status: AutomationRunStatus.Canceled,
+      completedAt: new Date(),
+      error: 'Canceled by user.',
+    });
+    await expect(
+      bus.listPage(queued.ownerUserId, queued.id, 0),
+    ).resolves.toMatchObject({
+      events: [
+        { type: 'run.queued', sequence: 1 },
+        {
+          type: 'ai.user.message',
+          sequence: 2,
+          message: prompt.prompt,
+          data: { clientMessageId: prompt.clientMessageId },
+        },
+        { type: 'run.canceled', sequence: 3 },
+      ],
+    });
+  } finally {
+    await db.destroy();
+  }
+});
+
+it('publishes step admission only while the owning run is active', async () => {
   const { db, events, run } = await createRunPersistence();
   try {
     const bus = new AutomationRunEventBus(events);
@@ -116,20 +212,48 @@ it('publishes repeat admission only while the owning run is active', async () =>
       bus.emitWhileRunning({ ...event, ownerUserId: 'another-user' }),
     ).resolves.toBe(false);
     await expect(bus.emitWhileRunning(event)).resolves.toBe(true);
-    await bus.transitionRun(
-      run.id,
-      [AutomationRunStatus.Running],
-      {
-        status: AutomationRunStatus.Canceled,
-        completedAt: new Date(),
-        error: null,
-      },
-      { type: 'run.canceled' },
-    );
+    await bus.transitionRun(run.id, {
+      status: AutomationRunStatus.Canceled,
+      completedAt: new Date(),
+      error: null,
+    });
     await expect(bus.emitWhileRunning(event)).resolves.toBe(false);
     expect(received.mock.calls.map(([item]) => item.type)).toEqual([
       'step.started',
       'run.canceled',
+    ]);
+  } finally {
+    await db.destroy();
+  }
+});
+
+it('publishes preparation only while the owning run remains queued', async () => {
+  const { db, events, run } = await createRunPersistence(
+    AutomationRunStatus.Queued,
+  );
+  try {
+    const bus = new AutomationRunEventBus(events);
+    const received = jest.fn();
+    bus.subscribe(run.id, received);
+    const progress = {
+      runId: run.id,
+      ownerUserId: run.ownerUserId,
+      type: 'run.preparing' as const,
+    };
+    await bus.emitWhileQueued({ ...progress, ownerUserId: 'another-owner' });
+    await bus.emitWhileQueued(progress);
+    await bus.transitionRun(run.id, {
+      status: AutomationRunStatus.Canceled,
+      completedAt: new Date(),
+      error: null,
+    });
+    await bus.emitWhileQueued(progress);
+
+    expect(
+      received.mock.calls.map(([event]) => [event.type, event.sequence]),
+    ).toEqual([
+      ['run.preparing', 1],
+      ['run.canceled', 2],
     ]);
   } finally {
     await db.destroy();
@@ -160,7 +284,7 @@ it('publishes workflow history after an unrelated SQLite rollback and preserves 
     const bus = new AutomationRunEventBus(events);
     const received = jest.fn();
     bus.subscribe(run.id, received);
-    const event = bus.emit({
+    const event = bus.emitWhileRunning({
       runId: run.id,
       ownerUserId: run.ownerUserId,
       type: 'step.started',
@@ -173,7 +297,7 @@ it('publishes workflow history after an unrelated SQLite rollback and preserves 
 
     resume();
     await rolledBack;
-    await expect(event).resolves.toMatchObject({ sequence: 1 });
+    await expect(event).resolves.toBe(true);
     await ordinary;
     expect(received).toHaveBeenCalledTimes(1);
     expect(
@@ -203,18 +327,13 @@ it('commits the start event with the runtime profile and rolls both back on fail
     bus.subscribe(run.id, received);
     const startedAt = new Date();
     const start = () =>
-      bus.transitionRun(
-        run.id,
-        [AutomationRunStatus.Queued],
-        {
-          status: AutomationRunStatus.Running,
-          startedAt,
-          targetProfileMode: 'persistent',
-          targetProfileName: 'default',
-          error: null,
-        },
-        { type: 'run.started' },
-      );
+      bus.transitionRun(run.id, {
+        status: AutomationRunStatus.Running,
+        startedAt,
+        targetProfileMode: 'persistent',
+        targetProfileName: 'default',
+        error: null,
+      });
     await db.query(`CREATE TRIGGER reject_event BEFORE INSERT ON automation_run_events
       BEGIN SELECT RAISE(ABORT, 'fixture rejected event'); END`);
     await expect(start()).rejects.toThrow('fixture rejected event');
@@ -229,16 +348,11 @@ it('commits the start event with the runtime profile and rolls both back on fail
 
     const [started, canceled] = await Promise.all([
       start(),
-      bus.transitionRun(
-        run.id,
-        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-        {
-          status: AutomationRunStatus.Canceled,
-          completedAt: new Date(),
-          error: 'Canceled by user.',
-        },
-        { type: 'run.canceled' },
-      ),
+      bus.transitionRun(run.id, {
+        status: AutomationRunStatus.Canceled,
+        completedAt: new Date(),
+        error: 'Canceled by user.',
+      }),
     ]);
     expect(started).toMatchObject({
       status: AutomationRunStatus.Running,
@@ -272,17 +386,11 @@ it('rolls back a terminal status and sequence when event insertion fails, then p
     const finish = (
       status: AutomationRunStatus.Success | AutomationRunStatus.Canceled,
     ) =>
-      bus.transitionRun(
-        run.id,
-        [AutomationRunStatus.Running],
-        { status, completedAt: new Date(), error: null },
-        {
-          type:
-            status === AutomationRunStatus.Success
-              ? 'run.completed'
-              : 'run.canceled',
-        },
-      );
+      bus.transitionRun(run.id, {
+        status,
+        completedAt: new Date(),
+        error: null,
+      });
     await db.query(`CREATE TRIGGER reject_event BEFORE INSERT ON automation_run_events
       BEGIN SELECT RAISE(ABORT, 'fixture rejected event'); END`);
     await expect(finish(AutomationRunStatus.Success)).rejects.toThrow(
@@ -321,15 +429,18 @@ it('rolls back a terminal status and sequence when event insertion fails, then p
 it('reads the failure code and request ID from the owner’s terminal event', async () => {
   const { db, events, run } = await createRunPersistence();
   try {
-    await events.append({
-      runId: run.id,
-      ownerUserId: run.ownerUserId,
-      type: 'run.failed',
-      data: {
+    await events.transitionRun(
+      run.id,
+      {
+        status: AutomationRunStatus.Failed,
+        error: 'Unavailable',
+        completedAt: new Date(),
+      },
+      {
         code: 'authorization_unreachable',
         requestId: 'authorization-request-1',
       },
-    });
+    );
     await expect(
       events.findFailureDetails(run.ownerUserId, run.id),
     ).resolves.toEqual({
@@ -348,7 +459,7 @@ it('bounds HTTP history and WebSocket replay by payload bytes', async () => {
   const { db, events, run } = await createRunPersistence();
   try {
     const append = (text: string) =>
-      events.append({
+      events.appendWhileRunning({
         runId: run.id,
         ownerUserId: run.ownerUserId,
         type: 'step.progress',
@@ -441,16 +552,11 @@ it('projects ordered step results through the run and fences writes after cancel
     await db.query('DROP TRIGGER reject_event');
     await expect(record(first)).resolves.toBe(true);
     await expect(record(second)).resolves.toBe(true);
-    const canceled = await events.transitionRun(
-      run.id,
-      [AutomationRunStatus.Running],
-      {
-        status: AutomationRunStatus.Canceled,
-        completedAt: new Date(),
-        error: 'Canceled by user.',
-      },
-      { type: 'run.canceled' },
-    );
+    const canceled = await events.transitionRun(run.id, {
+      status: AutomationRunStatus.Canceled,
+      completedAt: new Date(),
+      error: 'Canceled by user.',
+    });
     await expect(record(result('late'))).resolves.toBe(false);
     expect(received.mock.calls.map(([event]) => event)).toMatchObject([
       { sequence: 1, type: 'step.completed', stepId: 'first' },

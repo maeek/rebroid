@@ -6,8 +6,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { AppAutomationRunAction } from '@/features/applications/viewer/actions/app-automation-run-action'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import { AppWorkflowRunDetails, AppWorkflowRunDetailsLoading } from './app-workflow-run-details'
 import { AppWorkflowRunHistory } from './app-workflow-run-history'
+import type { ApplicationWorkflowRun } from '@/shared/contracts/application-workflow-history'
 
 const noop = () => undefined
 
@@ -24,9 +26,20 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
     const query = new URLSearchParams(search)
     if (id) query.set('run', id)
     else query.delete('run')
-    return `${pathname}?${query}`
+    return query.size ? `${pathname}?${query}` : pathname
   }
-  const selectRun = (id: string | null) => window.history.pushState(null, '', href(id))
+  const selectRun = (id: string) => {
+    afterClosingBackEntry(() => {
+      window.history.pushState({ rebroidRunHistory: href(null) }, '', href(id))
+    })
+  }
+
+  const returnToHistory = () => {
+    const destination = href(null)
+    const state = window.history.state as { rebroidRunHistory?: string } | null
+    if (state?.rebroidRunHistory === destination) window.history.back()
+    else window.history.replaceState(null, '', destination)
+  }
 
   useEffect(() => {
     const previousRun = previousRunRef.current
@@ -54,7 +67,12 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
           onOpen={selectRun}
           launch={
             <AppAutomationRunAction
-              onRunStarted={run => {
+              onRunStarted={(run, workflowName) => {
+                queryClient.setQueryData<ApplicationWorkflowRun>(['application-workflow-run', endpoint, run.id], {
+                  ...run,
+                  stepResults: [],
+                  automationName: workflowName
+                })
                 selectRun(run.id)
                 void queryClient.invalidateQueries({
                   queryKey: ['application-workflow-runs', endpoint],
@@ -72,7 +90,7 @@ export function AppWorkflowsSection({ appId }: { appId: string }) {
             variant='ghost'
             size='sm'
             className='justify-self-start'
-            onClick={() => selectRun(null)}
+            onClick={returnToHistory}
           >
             <IconArrowLeft />
             Run history

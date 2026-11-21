@@ -1,5 +1,6 @@
 export type AutomationRunEventType =
   | 'run.queued'
+  | 'run.preparing'
   | 'run.started'
   | 'run.completed'
   | 'run.failed'

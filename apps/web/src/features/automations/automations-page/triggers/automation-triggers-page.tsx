@@ -40,7 +40,7 @@ import { AutomationTriggersTable } from './automation-triggers-table'
 import { AutomationTriggersToolbar } from './automation-triggers-toolbar'
 import type { TriggerFormState } from './automation-trigger-types'
 import type { AutomationTriggersPageProps } from '../editor/types'
-import type { AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
+import type { AutomationRun, AutomationTrigger, AutomationTriggersGridQuery } from '@/shared/contracts/automation'
 
 export function AutomationTriggersPage({
   initialApplications,
@@ -59,6 +59,8 @@ export function AutomationTriggersPage({
   const [formOpen, setFormOpen] = useState(false)
   const toggleFeedback = useImmediateSave()
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [triggerRuns, setTriggerRuns] = useState<ReadonlyMap<string, AutomationRun | null>>(() => new Map())
+  const enqueuingTriggers = useRef(new Set<string>())
   const mutationPending = useRef(false)
   const [bulkPending, setBulkPending] = useState<'enable' | 'disable' | 'delete' | null>(null)
   const [saving, setSaving] = useState(false)
@@ -74,6 +76,16 @@ export function AutomationTriggersPage({
 
   useEffect(() => {
     setSelectedIds(current => retainVisibleTriggerSelection(triggersPage.items, current))
+    setTriggerRuns(current => {
+      const observed = triggersPage.items.filter(trigger => {
+        const receipt = current.get(trigger.id)
+        return receipt && (trigger.lastRunId === receipt.id || (trigger.lastRunAt ?? '') > receipt.createdAt)
+      })
+      if (observed.length === 0) return current
+      const next = new Map(current)
+      for (const trigger of observed) next.delete(trigger.id)
+      return next
+    })
   }, [triggersPage.items])
 
   const automationById = useMemo(
@@ -207,26 +219,28 @@ export function AutomationTriggersPage({
   }
 
   const runNow = async (trigger: AutomationTrigger) => {
-    if (mutationPending.current) return
-    mutationPending.current = true
-    setBusyId(trigger.id)
+    if (mutationPending.current || enqueuingTriggers.current.has(trigger.id)) return
+    const previousRun = triggerRuns.get(trigger.id)
+    enqueuingTriggers.current.add(trigger.id)
+    setTriggerRuns(current => new Map(current).set(trigger.id, null))
     try {
       const run = await runAutomationTriggerAction(trigger.id)
+      setTriggerRuns(current => new Map(current).set(trigger.id, run))
       router.refresh()
-      toast({
-        title: 'Workflow queued',
-        description: `Run ${run.id.slice(0, 8)} was added to the queue.`,
-        variant: 'success'
-      })
     } catch (error) {
+      setTriggerRuns(current => {
+        const next = new Map(current)
+        if (previousRun) next.set(trigger.id, previousRun)
+        else next.delete(trigger.id)
+        return next
+      })
       toast({
         title: 'Could not run trigger',
         description: getDisplayErrorMessage(error),
         variant: 'danger'
       })
     } finally {
-      mutationPending.current = false
-      setBusyId(null)
+      enqueuingTriggers.current.delete(trigger.id)
     }
   }
 
@@ -340,6 +354,7 @@ export function AutomationTriggersPage({
             selectedIds={selectedIds}
             sorting={sorting}
             triggers={triggersPage.items}
+            triggerRuns={triggerRuns}
             onDelete={setPendingDelete}
             onDeleteSelected={() => setBulkDeleteOpen(true)}
             onDisableSelected={() => updateSelectedEnabled(false)}

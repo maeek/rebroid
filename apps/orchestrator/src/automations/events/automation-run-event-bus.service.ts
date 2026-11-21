@@ -17,16 +17,23 @@ export class AutomationRunEventBus {
     this.emitter.setMaxListeners(200);
   }
 
-  async emit(input: AutomationRunEventInput) {
-    const event = await this.events.append(input);
-    this.publish(event);
-    return event;
+  async enqueueRun(
+    ...args: Parameters<AutomationRunEventsRepository['enqueueRun']>
+  ) {
+    const { run, events } = await this.events.enqueueRun(...args);
+    for (const event of events) this.publish(event);
+    return run;
   }
 
   async emitWhileRunning(input: AutomationRunEventInput) {
     const event = await this.events.appendWhileRunning(input);
     if (event) this.publish(event);
     return event !== null;
+  }
+
+  async emitWhileQueued(input: AutomationRunEventInput) {
+    const event = await this.events.appendWhileQueued(input);
+    if (event) this.publish(event);
   }
 
   async transitionRun(

@@ -73,6 +73,7 @@ interface RunEventSubscription {
   isLive?: () => boolean
   onEvents: (events: AutomationRunEvent[]) => void
   onReady?: () => void
+  onDisconnect?: () => void
   onError?: (reason: 'unavailable' | 'invalid-event') => void
 }
 
@@ -83,6 +84,7 @@ export const subscribeToRunEvents = ({
   isLive,
   onEvents,
   onReady,
+  onDisconnect,
   onError
 }: RunEventSubscription) => {
   const controller = new AbortController()
@@ -143,6 +145,7 @@ export const subscribeToRunEvents = ({
       connection.onclose = () => {
         if (socket !== connection) return
         socket = null
+        if (current() && live()) onDisconnect?.()
         reconnect()
       }
     } catch (error) {

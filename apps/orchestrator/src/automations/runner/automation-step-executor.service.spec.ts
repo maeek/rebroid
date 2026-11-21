@@ -19,7 +19,7 @@ const stepOptions = {
 
 const createService = ({
   registryExecute = jest.fn(),
-  recordActionStarted = jest.fn(),
+  recordActionStarted = jest.fn().mockResolvedValue(true),
   recordActionCompleted = jest.fn().mockResolvedValue(true),
   recordStepFailed = jest.fn().mockResolvedValue(true),
   recordControlCompleted = jest.fn().mockResolvedValue(true),

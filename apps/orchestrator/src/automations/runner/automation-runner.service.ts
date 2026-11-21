@@ -5,13 +5,17 @@ import {
   Logger,
   NotFoundException,
   OnApplicationBootstrap,
+  OnModuleDestroy,
 } from '@nestjs/common';
+import { setTimeout as delay } from 'node:timers/promises';
 import { Automation } from '../entities/automation.entity';
 import {
   AutomationRunStatus,
   AutomationRunTrigger,
+  type AutomationRun,
 } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationRunTargetConflictError } from '../persistence/automation-run-events.repository';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
 import type {
@@ -22,12 +26,16 @@ import { EphemeralAutomationRegistryService } from './ephemeral-automation-regis
 import { RunnableAutomation } from './automation-runnable';
 import { AutomationDefinition } from '@rebroid/automation-core/definition';
 import { MetricsService } from '../../metrics/metrics.service';
+import { getErrorMessage } from '../../common/error-message';
 
 const terminalStatuses = new Set<AutomationRunStatus>([
   AutomationRunStatus.Success,
   AutomationRunStatus.Failed,
   AutomationRunStatus.Canceled,
 ]);
+const cancellationWriteRetryDelaysMs = [50, 250];
+const cancellationRecoveryInitialDelayMs = 1_000;
+const cancellationRecoveryMaxDelayMs = 30_000;
 
 type ActiveRun = {
   abortController: AbortController;
@@ -35,9 +43,16 @@ type ActiveRun = {
 };
 
 @Injectable()
-export class AutomationRunnerService implements OnApplicationBootstrap {
+export class AutomationRunnerService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(AutomationRunnerService.name);
   private readonly activeRuns = new Map<string, ActiveRun>();
+  private readonly pendingCancellations = new Map<
+    string,
+    Promise<AutomationRun | null>
+  >();
+  private readonly shutdown = new AbortController();
 
   constructor(
     private readonly runs: AutomationRunsRepository,
@@ -51,17 +66,16 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
   async onApplicationBootstrap() {
     const message = 'Automation stopped because the orchestrator restarted.';
     for (const run of await this.runs.listAllActive()) {
-      await this.events.transitionRun(
-        run.id,
-        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-        {
-          status: AutomationRunStatus.Failed,
-          completedAt: new Date(),
-          error: message,
-        },
-        { type: 'run.failed', message },
-      );
+      await this.events.transitionRun(run.id, {
+        status: AutomationRunStatus.Failed,
+        completedAt: new Date(),
+        error: message,
+      });
     }
+  }
+
+  onModuleDestroy() {
+    this.shutdown.abort();
   }
 
   enqueue(
@@ -107,6 +121,8 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
   ) {
     const targetApplicationId = options.targetApplicationId;
     if (!targetApplicationId) {
+      if (runnable.ephemeral)
+        this.ephemeralAutomations.delete(runnable.entity.id);
       throw new ConflictException(
         'A target application is required to run an automation.',
       );
@@ -114,8 +130,8 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
 
     let run;
     try {
-      run = await this.runs.save(
-        this.runs.create({
+      run = await this.events.enqueueRun(
+        {
           automationId: runnable.entity.id,
           automationTriggerId: options.automationTriggerId ?? null,
           ownerUserId: runnable.entity.ownerUserId,
@@ -123,62 +139,17 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
           targetProfileMode: options.targetProfileMode ?? null,
           targetProfileName: options.targetProfileName ?? null,
           trigger,
-          status: AutomationRunStatus.Queued,
-          createdAt: new Date(),
-          startedAt: null,
-          completedAt: null,
-          error: null,
-          lastEventSequence: 0,
-        }),
+        },
+        userMessage,
       );
     } catch (error) {
       if (runnable.ephemeral) {
         this.ephemeralAutomations.delete(runnable.entity.id);
       }
-      if (this.isUniqueConstraint(error)) {
+      if (error instanceof AutomationRunTargetConflictError) {
         throw new ConflictException(
           `An automation run is already active for target application "${targetApplicationId}".`,
         );
-      }
-      throw error;
-    }
-
-    try {
-      await this.events.emit({
-        runId: run.id,
-        ownerUserId: run.ownerUserId,
-        type: 'run.queued',
-        message: 'Automation queued.',
-        data: { automationId: runnable.entity.id, trigger },
-      });
-      if (userMessage) {
-        await this.events.emit({
-          runId: run.id,
-          ownerUserId: run.ownerUserId,
-          type: 'ai.user.message',
-          message: userMessage.prompt,
-          data: { clientMessageId: userMessage.clientMessageId ?? null },
-        });
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await this.events.transitionRun(
-        run.id,
-        [AutomationRunStatus.Queued],
-        {
-          status: AutomationRunStatus.Failed,
-          completedAt: new Date(),
-          error: message,
-        },
-        { type: 'run.failed', message },
-      );
-      this.metrics.automationRunFinished(
-        trigger,
-        AutomationRunStatus.Failed,
-        null,
-      );
-      if (runnable.ephemeral) {
-        this.ephemeralAutomations.delete(runnable.entity.id);
       }
       throw error;
     }
@@ -194,39 +165,84 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     }
     if (terminalStatuses.has(run.status)) return run;
 
+    const canceled = await (this.pendingCancellations.get(runId) ??
+      this.beginCancellation(runId));
+    return (
+      canceled ??
+      (await this.runs.findMetadataByOwnerAndId(ownerUserId, runId)) ??
+      run
+    );
+  }
+
+  private beginCancellation(runId: string) {
     // A queued run can be canceled while enqueue is still publishing its event.
-    const alreadyTracked = this.activeRuns.has(run.id);
-    const active = this.getOrCreateActiveRun(run.id);
-    try {
+    const alreadyTracked = this.activeRuns.has(runId);
+    const active = this.getOrCreateActiveRun(runId);
+    const cancellation = Promise.resolve().then(async () => {
       active.abortController.abort();
       // Keep the run's reservation while admitted Android operations settle.
       await Promise.allSettled(active.pendingTargetWork);
-      const canceled = await this.events.transitionRun(
-        run.id,
-        [AutomationRunStatus.Queued, AutomationRunStatus.Running],
-        {
-          status: AutomationRunStatus.Canceled,
-          completedAt: new Date(),
-          error: 'Canceled by user.',
-        },
-        { type: 'run.canceled', message: 'Automation canceled.' },
-      );
-      if (!canceled) {
-        return (
-          (await this.runs.findMetadataByOwnerAndId(ownerUserId, runId)) ?? run
-        );
+      return this.persistCancellation(runId);
+    });
+    this.pendingCancellations.set(runId, cancellation);
+    void cancellation
+      .catch((error: unknown) => this.recoverCancellation(runId, error))
+      .finally(() => {
+        this.pendingCancellations.delete(runId);
+        if (!alreadyTracked && this.activeRuns.get(runId) === active) {
+          this.activeRuns.delete(runId);
+        }
+      });
+    return cancellation;
+  }
+
+  private async persistCancellation(runId: string) {
+    const { signal } = this.shutdown;
+    for (const delayMs of cancellationWriteRetryDelaysMs) {
+      signal.throwIfAborted();
+      try {
+        return await this.writeCancellation(runId);
+      } catch {
+        await delay(delayMs, undefined, { signal });
       }
+    }
+    signal.throwIfAborted();
+    return this.writeCancellation(runId);
+  }
+
+  private async recoverCancellation(runId: string, error: unknown) {
+    const { signal } = this.shutdown;
+    if (signal.aborted) return;
+    this.logger.warn(
+      `Retrying cancellation write for automation run ${runId}: ${getErrorMessage(error)}`,
+    );
+    let delayMs = cancellationRecoveryInitialDelayMs;
+    while (!signal.aborted) {
+      try {
+        await delay(delayMs, undefined, { signal, ref: false });
+        signal.throwIfAborted();
+        await this.writeCancellation(runId);
+        return;
+      } catch {
+        delayMs = Math.min(delayMs * 2, cancellationRecoveryMaxDelayMs);
+      }
+    }
+  }
+
+  private async writeCancellation(runId: string) {
+    const canceled = await this.events.transitionRun(runId, {
+      status: AutomationRunStatus.Canceled,
+      completedAt: new Date(),
+      error: 'Canceled by user.',
+    });
+    if (canceled) {
       this.metrics.automationRunFinished(
         canceled.trigger,
         canceled.status,
         canceled.startedAt,
       );
-      return canceled;
-    } finally {
-      if (!alreadyTracked && this.activeRuns.get(run.id) === active) {
-        this.activeRuns.delete(run.id);
-      }
     }
+    return canceled;
   }
 
   private dispatch(
@@ -277,15 +293,5 @@ export class AutomationRunnerService implements OnApplicationBootstrap {
     };
     this.activeRuns.set(runId, active);
     return active;
-  }
-
-  private isUniqueConstraint(error: unknown) {
-    if (!error || typeof error !== 'object') return false;
-    const candidate = error as { code?: unknown; message?: unknown };
-    return (
-      candidate.code === 'SQLITE_CONSTRAINT_UNIQUE' ||
-      (typeof candidate.message === 'string' &&
-        candidate.message.includes('automation_runs_active_target_unique'))
-    );
   }
 }

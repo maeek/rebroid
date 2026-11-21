@@ -454,7 +454,7 @@ describe('AppModule', () => {
     const events = app.get(AutomationRunEventsRepository);
     const appended = await Promise.all(
       Array.from({ length: 20 }, (_, index) =>
-        events.append({
+        events.appendWhileRunning({
           runId,
           ownerUserId: 'owner-1',
           type: 'step.progress',
@@ -463,7 +463,7 @@ describe('AppModule', () => {
       ),
     );
     expect(
-      appended.map((event) => event.sequence).sort((a, b) => a - b),
+      appended.map((event) => event?.sequence ?? 0).sort((a, b) => a - b),
     ).toEqual(Array.from({ length: 20 }, (_, index) => index + 1));
     await expect(
       events.listReplayPage('owner-1', runId, 10, Number.MAX_SAFE_INTEGER),

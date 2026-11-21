@@ -25,6 +25,7 @@ type WorkflowRunResultProps = {
   error: string | null
   workflowId: string
   runId?: string | null
+  linkRun?: boolean
 }
 
 export const WorkflowRunStatus = ({ status }: { status: AutomationLastStatus }) =>
@@ -34,15 +35,22 @@ export const WorkflowRunStatus = ({ status }: { status: AutomationLastStatus }) 
     <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
   )
 
-export const WorkflowRunDetailsLink = ({ status, error, workflowId, runId }: Omit<WorkflowRunResultProps, 'at'>) => {
-  if (status !== 'failed' || (!runId && !error)) return null
+export const WorkflowRunDetailsLink = ({
+  status,
+  error,
+  workflowId,
+  runId,
+  linkRun
+}: Omit<WorkflowRunResultProps, 'at'>) => {
+  const failed = status === 'failed'
+  if (!(linkRun && runId) && !(failed && (runId || error))) return null
 
   return (
     <ResourceLink
       href={workflowTraceHref(workflowId, runId)}
       className='text-sm'
     >
-      {runId ? 'View failure' : 'Open run history'}
+      {failed && runId ? 'View failure' : runId ? 'Open run' : 'Open run history'}
     </ResourceLink>
   )
 }

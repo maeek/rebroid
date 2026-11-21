@@ -5,6 +5,7 @@ import {
   AutomationRunTrigger,
 } from '../entities/automation-run.entity';
 import { AutomationRunEventBus } from '../events/automation-run-event-bus.service';
+import { AutomationRunTargetConflictError } from '../persistence/automation-run-events.repository';
 import { AutomationRunsRepository } from '../persistence/automation-runs.repository';
 import { AutomationRunExecutionService } from './automation-run-execution.service';
 import { AutomationRunnerService } from './automation-runner.service';
@@ -19,6 +20,8 @@ const run = {
   status: AutomationRunStatus.Running,
   startedAt: new Date(),
 };
+
+const activeTargetConflict = new AutomationRunTargetConflictError();
 
 const deferred = () => {
   let resolve!: () => void;
@@ -41,7 +44,9 @@ const createService = (
     ...overrides.runs,
   } as unknown as AutomationRunsRepository;
   const events = {
-    emit: jest.fn().mockResolvedValue(undefined),
+    enqueueRun: jest
+      .fn()
+      .mockResolvedValue({ ...run, status: AutomationRunStatus.Queued }),
     transitionRun: jest.fn(),
     ...overrides.events,
   } as unknown as AutomationRunEventBus;
@@ -95,7 +100,7 @@ describe('AutomationRunnerService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('converts the active-target unique constraint into a conflict', async () => {
+  it('reports a target reservation conflict to the caller', async () => {
     const definition = {
       apiVersion: 'rebroid.io/v1alpha1',
       kind: 'Automation',
@@ -108,11 +113,8 @@ describe('AutomationRunnerService', () => {
       entity: { id: 'ephemeral-1', ownerUserId: 'owner-1' },
     };
     const { service, ephemeral } = createService({
-      runs: {
-        create: jest.fn().mockReturnValue({}),
-        save: jest.fn().mockRejectedValue({
-          code: 'SQLITE_CONSTRAINT_UNIQUE',
-        }),
+      events: {
+        enqueueRun: jest.fn().mockRejectedValue(activeTargetConflict),
       },
       ephemeral: {
         create: jest.fn().mockReturnValue(runnable),
@@ -129,6 +131,26 @@ describe('AutomationRunnerService', () => {
       ),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(ephemeral.delete).toHaveBeenCalledWith('ephemeral-1');
+  });
+
+  it('preserves an event sequence error from the admission transaction', async () => {
+    const error = Object.assign(
+      new Error(
+        'UNIQUE constraint failed: automation_run_events.runId, automation_run_events.sequence',
+      ),
+      { code: 'SQLITE_CONSTRAINT_UNIQUE' },
+    );
+    const { service, execution } = createService({
+      events: { enqueueRun: jest.fn().mockRejectedValue(error) },
+    });
+    const automation = { ...run, definitionJson: '{}' } as never;
+
+    await expect(
+      service.enqueue(automation, AutomationRunTrigger.Manual, {
+        targetApplicationId: run.targetApplicationId,
+      }),
+    ).rejects.toBe(error);
+    expect(execution.execute).not.toHaveBeenCalled();
   });
 
   it('records the ad hoc prompt before dispatching an ephemeral run', async () => {
@@ -150,10 +172,7 @@ describe('AutomationRunnerService', () => {
       startedAt: null,
     };
     const { service, events, execution } = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockResolvedValue(queued),
-      },
+      events: { enqueueRun: jest.fn().mockResolvedValue(queued) },
       ephemeral: {
         create: jest.fn().mockReturnValue(runnable),
         delete: jest.fn(),
@@ -171,19 +190,13 @@ describe('AutomationRunnerService', () => {
     ).resolves.toBe(queued);
     await Promise.resolve();
 
-    expect(events.emit).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'run.queued' }),
+    expect(events.enqueueRun).toHaveBeenCalledWith(
+      expect.objectContaining({ automationId: 'ephemeral-1' }),
+      { prompt: 'Open settings', clientMessageId: 'turn-1' },
     );
-    expect(events.emit).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'ai.user.message',
-        message: 'Open settings',
-        data: { clientMessageId: 'turn-1' },
-      }),
-    );
-    expect(jest.mocked(events.emit).mock.invocationCallOrder[1]).toBeLessThan(
-      jest.mocked(execution.execute).mock.invocationCallOrder[0],
-    );
+    expect(
+      jest.mocked(events.enqueueRun).mock.invocationCallOrder[0],
+    ).toBeLessThan(jest.mocked(execution.execute).mock.invocationCallOrder[0]);
     expect(execution.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         runId: queued.id,
@@ -204,10 +217,7 @@ describe('AutomationRunnerService', () => {
     };
     const queued = { ...run, status: AutomationRunStatus.Queued };
     const success = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockResolvedValue(queued),
-      },
+      events: { enqueueRun: jest.fn().mockResolvedValue(queued) },
     });
     await expect(
       success.service.enqueue(
@@ -220,9 +230,8 @@ describe('AutomationRunnerService', () => {
     ).resolves.toBe(queued);
 
     const failure = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockRejectedValue(new Error('database offline')),
+      events: {
+        enqueueRun: jest.fn().mockRejectedValue(new Error('database offline')),
       },
     });
     await expect(
@@ -236,7 +245,7 @@ describe('AutomationRunnerService', () => {
     ).rejects.toThrow('database offline');
   });
 
-  it('fails the reservation when its queued event cannot be persisted', async () => {
+  it('never dispatches when the admission transaction fails', async () => {
     const definition = {
       apiVersion: 'rebroid.io/v1alpha1',
       kind: 'Automation',
@@ -248,24 +257,8 @@ describe('AutomationRunnerService', () => {
       ephemeral: true,
       entity: { id: 'ephemeral-1', ownerUserId: 'owner-1' },
     };
-    const queued = {
-      ...run,
-      status: AutomationRunStatus.Queued,
-      startedAt: null,
-    };
-    const transition = jest.fn().mockResolvedValue({
-      ...queued,
-      status: AutomationRunStatus.Failed,
-    });
-    const { service, ephemeral } = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockResolvedValue(queued),
-      },
-      events: {
-        emit: jest.fn().mockRejectedValue('event failed'),
-        transitionRun: transition,
-      },
+    const { service, ephemeral, execution, events } = createService({
+      events: { enqueueRun: jest.fn().mockRejectedValue('event failed') },
       ephemeral: {
         create: jest.fn().mockReturnValue(runnable),
         delete: jest.fn(),
@@ -280,15 +273,8 @@ describe('AutomationRunnerService', () => {
         { targetApplicationId: 'app-1' },
       ),
     ).rejects.toBe('event failed');
-    expect(transition).toHaveBeenCalledWith(
-      queued.id,
-      [AutomationRunStatus.Queued],
-      expect.objectContaining({
-        status: AutomationRunStatus.Failed,
-        error: 'event failed',
-      }),
-      expect.objectContaining({ type: 'run.failed' }),
-    );
+    expect(events.transitionRun).not.toHaveBeenCalled();
+    expect(execution.execute).not.toHaveBeenCalled();
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
   });
 
@@ -311,9 +297,7 @@ describe('AutomationRunnerService', () => {
     await expect(service.cancel('owner-1', 'run-1')).resolves.toBe(canceled);
     expect(events.transitionRun).toHaveBeenCalledWith(
       run.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Canceled }),
-      expect.objectContaining({ type: 'run.canceled' }),
     );
 
     await expect(service.cancel('owner-1', 'run-1')).resolves.toBe(canceled);
@@ -321,7 +305,7 @@ describe('AutomationRunnerService', () => {
   });
 
   it.each(['admitTargetStart', 'admitTargetWork'] as const)(
-    'holds the target reservation during cancellation until %s settles',
+    'drains %s before cancellation and retries a failed cancellation write',
     async (admit) => {
       const automation = {
         ...run,
@@ -332,10 +316,13 @@ describe('AutomationRunnerService', () => {
       const startEntered = deferred();
       const startResponse = deferred();
       const abortReceived = deferred();
-      const transition = jest.fn(() => {
-        reserved = undefined;
-        return { ...queued, status: AutomationRunStatus.Canceled };
-      });
+      const transition = jest
+        .fn()
+        .mockRejectedValueOnce(new Error('SQLite write failed'))
+        .mockImplementation(() => {
+          reserved = undefined;
+          return { ...queued, status: AutomationRunStatus.Canceled };
+        });
       const execute = jest.fn(
         async (
           input: Parameters<AutomationRunExecutionService['execute']>[0],
@@ -352,16 +339,15 @@ describe('AutomationRunnerService', () => {
         },
       );
       const { service } = createService({
-        runs: {
-          create: jest.fn().mockReturnValue(queued),
-          save: jest.fn(() => {
-            if (reserved) throw { code: 'SQLITE_CONSTRAINT_UNIQUE' };
+        runs: { findMetadataByOwnerAndId: jest.fn(() => reserved) },
+        events: {
+          transitionRun: transition,
+          enqueueRun: jest.fn(() => {
+            if (reserved) throw activeTargetConflict;
             reserved = queued;
             return queued;
           }),
-          findMetadataByOwnerAndId: jest.fn(() => reserved),
         },
-        events: { transitionRun: transition },
         execution: { execute },
       });
       const enqueue = () =>
@@ -380,8 +366,47 @@ describe('AutomationRunnerService', () => {
       await expect(cancellation).resolves.toMatchObject({
         status: AutomationRunStatus.Canceled,
       });
+      expect(transition).toHaveBeenCalledTimes(2);
     },
   );
+
+  it('recovers cancellation after the request fails without another Cancel request', async () => {
+    const error = new Error('SQLite write failed');
+    const recovered = deferred();
+    const canceled = { ...run, status: AutomationRunStatus.Canceled };
+    const transitionRun = jest
+      .fn()
+      .mockRejectedValueOnce(error)
+      .mockRejectedValueOnce(error)
+      .mockRejectedValueOnce(error)
+      .mockImplementation(async () => {
+        recovered.resolve();
+        return canceled;
+      });
+    const { service } = createService({
+      runs: { findMetadataByOwnerAndId: jest.fn().mockResolvedValue(run) },
+      events: { transitionRun },
+    });
+
+    try {
+      const request = service.cancel(run.ownerUserId, run.id);
+      const concurrent = service.cancel(run.ownerUserId, run.id);
+      await Promise.all([
+        expect(request).rejects.toBe(error),
+        expect(concurrent).rejects.toBe(error),
+      ]);
+      expect(transitionRun).toHaveBeenCalledTimes(3);
+
+      await recovered.promise;
+      expect(transitionRun).toHaveBeenCalledTimes(4);
+      expect(transitionRun).toHaveBeenLastCalledWith(
+        run.id,
+        expect.objectContaining({ status: AutomationRunStatus.Canceled }),
+      );
+    } finally {
+      service.onModuleDestroy();
+    }
+  });
 
   it('shares a cancellation signal with dispatch while the queued event is still publishing', async () => {
     const automation = {
@@ -395,8 +420,6 @@ describe('AutomationRunnerService', () => {
     const cancelFinished = deferred();
     const { service, execution } = createService({
       runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockResolvedValue(queued),
         findMetadataByOwnerAndId: jest.fn().mockResolvedValue(queued),
       },
       events: {
@@ -405,9 +428,10 @@ describe('AutomationRunnerService', () => {
           await cancelFinished.promise;
           return { ...queued, status: AutomationRunStatus.Canceled };
         }),
-        emit: jest.fn().mockImplementationOnce(() => {
+        enqueueRun: jest.fn(async () => {
           queuedEventEntered.resolve();
-          return queuedEventFinished.promise;
+          await queuedEventFinished.promise;
+          return queued;
         }),
       },
     });
@@ -467,10 +491,7 @@ describe('AutomationRunnerService', () => {
       startedAt: null,
     };
     const { service, execution } = createService({
-      runs: {
-        create: jest.fn().mockReturnValue(queued),
-        save: jest.fn().mockResolvedValue(queued),
-      },
+      events: { enqueueRun: jest.fn().mockResolvedValue(queued) },
       ephemeral: { create: jest.fn().mockReturnValue(runnable) },
       execution: { execute: jest.fn().mockRejectedValue('dispatch failed') },
     });
@@ -503,9 +524,7 @@ describe('AutomationRunnerService', () => {
 
     expect(events.transitionRun).toHaveBeenCalledWith(
       run.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
-      expect.objectContaining({ type: 'run.failed' }),
     );
   });
 });

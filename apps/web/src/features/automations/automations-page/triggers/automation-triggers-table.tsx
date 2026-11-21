@@ -1,10 +1,12 @@
 'use client'
 
 import { createContext, useContext, useMemo } from 'react'
-import { IconEdit, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
+import { IconEdit, IconLoader2, IconPlayerPlayFilled, IconTrash } from '@tabler/icons-react'
 import { ContextMenuItem } from '@/components/ui/context-menu'
 import { MutationSwitch } from '@/components/ui/mutation-switch'
 import { cn } from '@/lib/utils'
+import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
+import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
 import { DataGridEmptyState } from '@/shared/ui/data-grid/data-grid-empty-state'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
@@ -14,7 +16,7 @@ import { AutomationTagBadge } from '../shared/automation-tag-badge'
 import { WorkflowRunResult } from '../shared/workflow-run-result'
 import { getScheduleCron } from './automation-trigger-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
-import type { AutomationOption, AutomationTrigger } from '@/shared/contracts/automation'
+import type { AutomationOption, AutomationRun, AutomationTrigger } from '@/shared/contracts/automation'
 import type { StateViewAction } from '@/shared/ui/state-view'
 import type { AutomationTag } from '@rebroid/automation-core/definition'
 import type { CellContext, ColumnDef, SortingState } from '@tanstack/react-table'
@@ -91,6 +93,7 @@ export function AutomationTriggersTable({
   selectedIds,
   sorting,
   triggers,
+  triggerRuns,
   onDelete,
   onDeleteSelected,
   onDisableSelected,
@@ -113,6 +116,7 @@ export function AutomationTriggersTable({
   selectedIds: Set<string>
   sorting: SortingState
   triggers: AutomationTrigger[]
+  triggerRuns?: ReadonlyMap<string, AutomationRun | null>
   onDelete: (trigger: AutomationTrigger) => void
   onDeleteSelected: () => void
   onDisableSelected: () => Promise<void>
@@ -219,15 +223,56 @@ export function AutomationTriggersTable({
         header: 'Last run',
         size: 176,
         meta: { compactSlot: 'details', label: 'Last run', skeleton: { kind: 'stacked' } },
-        cell: ({ row }) => (
-          <WorkflowRunResult
-            status={row.original.lastStatus}
-            at={row.original.lastRunAt}
-            error={row.original.lastError}
-            workflowId={row.original.automationId}
-            runId={row.original.lastRunId}
-          />
-        )
+        cell: ({ row }) => {
+          const trigger = row.original
+          const receipt = triggerRuns?.get(trigger.id)
+          if (receipt === null) {
+            return (
+              <span
+                role='status'
+                className='inline-flex items-center gap-1.5 text-sm text-foreground-muted'
+              >
+                <IconLoader2
+                  aria-hidden
+                  className='size-4 shrink-0 motion-safe:animate-spin'
+                />
+                Queueing…
+              </span>
+            )
+          }
+          if (receipt && trigger.lastRunId !== receipt.id && (trigger.lastRunAt ?? '') <= receipt.createdAt) {
+            return (
+              <div className='grid justify-items-start gap-1'>
+                <span role='status'>
+                  <AutomationRunStatusBadge
+                    status={receipt.status}
+                    runId={receipt.id}
+                  />
+                </span>
+                <DateTimeValue
+                  value={receipt.createdAt}
+                  compact
+                />
+                <ResourceLink
+                  href={workflowTraceHref(receipt.automationId, receipt.id)}
+                  className='text-sm'
+                >
+                  Open run
+                </ResourceLink>
+              </div>
+            )
+          }
+          return (
+            <WorkflowRunResult
+              status={trigger.lastStatus}
+              at={trigger.lastRunAt}
+              error={trigger.lastError}
+              workflowId={trigger.automationId}
+              runId={trigger.lastRunId}
+              linkRun
+            />
+          )
+        }
       },
       {
         id: 'enabled',
@@ -238,7 +283,7 @@ export function AutomationTriggersTable({
         cell: TriggerEnabledCell
       }
     ],
-    [applicationById, automationById, disabled, onEdit]
+    [applicationById, automationById, disabled, onEdit, triggerRuns]
   )
 
   return (
@@ -297,7 +342,7 @@ export function AutomationTriggersTable({
               </ContextMenuItem>
               {onRun ? (
                 <ContextMenuItem
-                  disabled={disabled}
+                  disabled={disabled || triggerRuns?.get(row.original.id) === null}
                   onSelect={() => void onRun(row.original)}
                 >
                   <IconPlayerPlayFilled className='size-4' />

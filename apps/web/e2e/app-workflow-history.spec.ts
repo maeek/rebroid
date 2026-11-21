@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type WebSocketRoute } from '@playwright/test'
 
 const id = '76e85cb0-135b-4ca0-9782-bcb7233b4672'
 const run = {
@@ -98,6 +98,8 @@ test('app run history survives reload and opens summary and events beside the sa
     })
   )
 
+  const previous = '/skeleton-contract-test?editor=console-shell'
+  await page.goto(previous)
   await page.goto(appUrl)
   const device = page.getByLabel('Android device')
   const expectDevicePane = async () => {
@@ -130,6 +132,11 @@ test('app run history survives reload and opens summary and events beside the sa
   await page.getByRole('button', { name: 'Run history', exact: true }).click()
   await expect(link).toBeFocused()
   await expect(search).toHaveValue('inventory')
+
+  await page.goBack()
+  await expect(page).toHaveURL(previous)
+  await page.goForward()
+  await expect(page).toHaveURL(appUrl)
 
   await link.click()
   await page.reload()
@@ -172,4 +179,72 @@ test('workflow loading keeps the device and the requested run view', async ({ pa
   await expectDevicePane()
   await expect(page.getByRole('heading', { name: 'Run details', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Run history', exact: true })).toBeDisabled()
+})
+
+test('Summary follows a cold workflow run and retains its live events across tabs', async ({ page }) => {
+  const socket = Promise.withResolvers<WebSocketRoute>()
+  await page.routeWebSocket('**/test-workflow-events', connection => socket.resolve(connection))
+  const ok = (data: unknown) => ({ json: { ok: true, requestId: 'test', data } })
+  let status = 'queued'
+  await page.route(`**/api/bff/applications/preview-app/workflow-runs/${id}`, route =>
+    route.fulfill(
+      ok({
+        ...run,
+        status,
+        completedAt: status === 'success' ? run.completedAt : null,
+        error: null,
+        failureCode: undefined,
+        failureRequestId: undefined
+      })
+    )
+  )
+  await page.route(`**/api/bff/automations/runs/${id}/events?*`, route =>
+    route.fulfill(
+      ok(
+        route.request().method() === 'POST'
+          ? { streamUrl: 'ws://127.0.0.1:3001/test-workflow-events' }
+          : { events: [], nextAfter: null }
+      )
+    )
+  )
+
+  await page.goto(`/skeleton-contract-test?editor=app-resource&view=workflows&run=${id}`)
+  await expect(page.getByText('Waiting in queue…')).toBeVisible()
+  const connection = await socket.promise
+  const publish = (
+    sequence: number,
+    type: string,
+    message: string,
+    data: Record<string, unknown> = {},
+    stepId?: string
+  ) =>
+    connection.send(
+      JSON.stringify({
+        type: 'event',
+        event: {
+          id: `test-event-${sequence}`,
+          runId: id,
+          sequence,
+          type,
+          message,
+          data,
+          stepId,
+          createdAt: run.createdAt
+        }
+      })
+    )
+
+  publish(1, 'run.preparing', 'Waiting for Android to be ready.', { phase: 'waiting-for-android' })
+  await expect(page.getByText('Waiting for Android…')).toBeVisible()
+  await page.getByRole('tab', { name: 'Events' }).click()
+  await expect(page.getByRole('log').getByText('Waiting for Android to be ready.')).toBeVisible()
+  await page.getByRole('tab', { name: 'Summary' }).click()
+  publish(2, 'run.started', 'Workflow started.')
+  publish(3, 'step.started', 'Starting android.launchPackage.', { uses: 'android.launchPackage' }, 'launch')
+  await expect(page.getByText('Running step · Launch app')).toBeVisible()
+
+  status = 'success'
+  publish(4, 'run.completed', 'Workflow completed.')
+  await expect(page.getByText('Completed', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Stop run' })).toHaveCount(0)
 })

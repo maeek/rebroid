@@ -69,6 +69,7 @@ const createExecution = ({
   };
   const events = {
     transitionRun: jest.fn(),
+    emitWhileQueued: jest.fn(),
   };
   const ephemeral = { delete: jest.fn() };
   const service = new AutomationRunExecutionService(
@@ -102,6 +103,54 @@ const createExecution = ({
 };
 
 describe('AutomationRunExecutionService', () => {
+  it('records target preparation before execution for a workflow that starts Android', async () => {
+    const startRequest = deferred<typeof stoppedTarget>();
+    const startEntered = deferred<void>();
+    const { service, events } = createExecution({
+      resolve: jest.fn().mockResolvedValue({ ...runnable, ephemeral: false }),
+      getTarget: jest
+        .fn()
+        .mockResolvedValueOnce(stoppedTarget)
+        .mockResolvedValueOnce(stoppedTarget)
+        .mockResolvedValue(target),
+      start: jest.fn(() => {
+        startEntered.resolve();
+        return startRequest.promise;
+      }),
+    });
+    events.transitionRun.mockResolvedValue({
+      ...queuedRun,
+      status: AutomationRunStatus.Running,
+    });
+
+    const execution = service.execute({
+      ...runInput(),
+      targetOptions: startIfNeeded,
+    });
+    await startEntered.promise;
+    expect(
+      events.emitWhileQueued.mock.calls.map(([event]) => event.data.phase),
+    ).toEqual(['checking-target', 'starting-app']);
+    expect(events.transitionRun).not.toHaveBeenCalled();
+
+    startRequest.resolve(stoppedTarget);
+    await execution;
+    expect(events.emitWhileQueued).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'run.preparing',
+        data: {
+          phase: 'waiting-for-android',
+          profileMode: ApplicationProfileMode.Persistent,
+          profileName: 'default',
+        },
+      }),
+    );
+    expect(events.transitionRun).toHaveBeenCalledWith(
+      queuedRun.id,
+      expect.anything(),
+    );
+  });
+
   it('attaches to an expected current profile without asking for a profile switch', async () => {
     const running = { ...target, profileName: 'test-profile' };
     const { service, events, assertAllowed, executeSteps, start } =
@@ -153,12 +202,11 @@ describe('AutomationRunExecutionService', () => {
     expect(executeSteps).not.toHaveBeenCalled();
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      expect.any(Array),
       expect.objectContaining({
         status: AutomationRunStatus.Failed,
         error: expect.stringContaining('must be running'),
       }),
-      expect.objectContaining({ type: 'run.failed' }),
+      undefined,
     );
   });
 
@@ -219,12 +267,11 @@ describe('AutomationRunExecutionService', () => {
     expect(executeSteps).not.toHaveBeenCalled();
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      expect.any(Array),
       expect.objectContaining({
         status: AutomationRunStatus.Failed,
         error: expect.stringContaining('profile "other"'),
       }),
-      expect.objectContaining({ type: 'run.failed' }),
+      undefined,
     );
   });
 
@@ -279,17 +326,13 @@ describe('AutomationRunExecutionService', () => {
     expect(executeSteps).not.toHaveBeenCalled();
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
-      expect.objectContaining({
-        type: 'run.failed',
-        data: {
-          requestId: 'auth-request-1',
-          code: 'authorization_rejected',
-          service: 'web',
-          httpStatus: 403,
-        },
-      }),
+      {
+        requestId: 'auth-request-1',
+        code: 'authorization_rejected',
+        service: 'web',
+        httpStatus: 403,
+      },
     );
   });
 
@@ -310,9 +353,8 @@ describe('AutomationRunExecutionService', () => {
 
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
-      expect.objectContaining({ type: 'run.failed' }),
+      undefined,
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
   });
@@ -334,9 +376,7 @@ describe('AutomationRunExecutionService', () => {
     expect(events.transitionRun).toHaveBeenNthCalledWith(
       1,
       queuedRun.id,
-      [AutomationRunStatus.Queued],
       expect.objectContaining({ status: AutomationRunStatus.Running }),
-      expect.objectContaining({ type: 'run.started' }),
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(runnable.entity.id);
   });
@@ -363,9 +403,7 @@ describe('AutomationRunExecutionService', () => {
 
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      [AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Success }),
-      expect.objectContaining({ type: 'run.completed' }),
     );
   });
 
@@ -382,9 +420,8 @@ describe('AutomationRunExecutionService', () => {
 
     expect(events.transitionRun).toHaveBeenCalledWith(
       queuedRun.id,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       expect.objectContaining({ status: AutomationRunStatus.Failed }),
-      expect.objectContaining({ type: 'run.failed' }),
+      undefined,
     );
     expect(ephemeral.delete).toHaveBeenCalledWith(queuedRun.automationId);
   });
@@ -395,58 +432,62 @@ describe('AutomationRunExecutionService', () => {
       abort: false,
       stepFailed: true,
       status: AutomationRunStatus.Failed,
-      event: 'run.failed',
     },
     {
       label: 'canceled',
       abort: true,
       stepFailed: false,
       status: AutomationRunStatus.Canceled,
-      event: 'run.canceled',
     },
-  ])('terminalizes a $label persisted run', async (scenario) => {
-    const controller = new AbortController();
-    const running = {
-      ...queuedRun,
-      status: AutomationRunStatus.Running,
-      startedAt: new Date(),
-      stepResultsJson: '[]',
-    };
-    const completed = { ...running, status: scenario.status };
-    const resolve = jest.fn().mockResolvedValue({
-      ...runnable,
-      ephemeral: false,
-    });
-    const executeSteps = jest.fn(
-      async (
-        _steps: unknown,
-        _state: unknown,
-        _run: unknown,
-        options: { isRunCanceled: () => boolean },
-      ) => {
-        if (scenario.abort) controller.abort();
-        expect(options.isRunCanceled()).toBe(scenario.abort);
-        return { failed: scenario.stepFailed };
-      },
-    );
-    const { service, events } = createExecution({
-      resolve,
-      executeSteps,
-    });
-    events.transitionRun
-      .mockResolvedValueOnce(running)
-      .mockResolvedValueOnce(completed);
+  ])(
+    'preserves the terminal outcome of a $label persisted run',
+    async (scenario) => {
+      const controller = new AbortController();
+      const running = {
+        ...queuedRun,
+        status: AutomationRunStatus.Running,
+        startedAt: new Date(),
+        stepResultsJson: '[]',
+      };
+      const completed = { ...running, status: scenario.status };
+      const resolve = jest.fn().mockResolvedValue({
+        ...runnable,
+        ephemeral: false,
+      });
+      const executeSteps = jest.fn(
+        async (
+          _steps: unknown,
+          _state: unknown,
+          _run: unknown,
+          options: { isRunCanceled: () => boolean },
+        ) => {
+          if (scenario.abort) controller.abort();
+          expect(options.isRunCanceled()).toBe(scenario.abort);
+          return { failed: scenario.stepFailed };
+        },
+      );
+      const { service, events } = createExecution({
+        resolve,
+        executeSteps,
+      });
+      events.transitionRun
+        .mockResolvedValueOnce(running)
+        .mockResolvedValueOnce(completed);
 
-    await service.execute({
-      ...runInput(),
-      abortSignal: controller.signal,
-    });
+      await service.execute({
+        ...runInput(),
+        abortSignal: controller.signal,
+      });
 
-    expect(events.transitionRun).toHaveBeenCalledWith(
-      queuedRun.id,
-      [AutomationRunStatus.Running],
-      expect.objectContaining({ status: scenario.status }),
-      expect.objectContaining({ type: scenario.event }),
-    );
-  });
+      if (scenario.abort) {
+        // The command-facing runner owns cancellation after its drain completes.
+        expect(events.transitionRun).toHaveBeenCalledTimes(1);
+      } else {
+        expect(events.transitionRun).toHaveBeenCalledWith(
+          queuedRun.id,
+          expect.objectContaining({ status: scenario.status }),
+        );
+      }
+    },
+  );
 });

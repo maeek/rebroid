@@ -158,7 +158,7 @@ const createHarness = ({
     else perception.mockResolvedValueOnce(value);
   }
   const eventBus = {
-    emit: jest.fn(async (event: AutomationRunEventInput) => {
+    emitWhileRunning: jest.fn(async (event: AutomationRunEventInput) => {
       events.push(event);
       return {
         ...event,

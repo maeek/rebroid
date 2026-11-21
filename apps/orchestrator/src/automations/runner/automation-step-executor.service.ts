@@ -114,8 +114,8 @@ export class AutomationStepExecutorService {
     options: AutomationStepExecutionOptions,
   ): Promise<AutomationStepExecutionResult> {
     const occurrence = stepOccurrence(step.id, step.uses, options);
-    await this.recorder.recordActionStarted(run, occurrence);
-    if (runCanceled(run.id, options)) return stoppedExecution;
+    const started = await this.recorder.recordActionStarted(run, occurrence);
+    if (!started || runCanceled(run.id, options)) return stoppedExecution;
     let result: AutomationCommandResult;
     const pendingAiWork = new Set<Promise<unknown>>();
     const ocrExchanges =

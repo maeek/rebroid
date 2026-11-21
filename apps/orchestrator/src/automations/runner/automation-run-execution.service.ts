@@ -8,7 +8,10 @@ import { AutomationExecutionState } from './automation-runner-execution.types';
 import { AutomationStepExecutorService } from './automation-step-executor.service';
 import { EphemeralAutomationRegistryService } from './ephemeral-automation-registry.service';
 import { MetricsService } from '../../metrics/metrics.service';
-import { AutomationRunnerTargetService } from './automation-runner-target.service';
+import {
+  AutomationRunnerTargetService,
+  type AutomationTargetPreparationPhase,
+} from './automation-runner-target.service';
 import { AutomationAuthorizationError } from './automation-run-authorization.service';
 import type {
   AdmitAutomationTargetStart,
@@ -24,6 +27,12 @@ interface AutomationRunExecutionInput {
   admitTargetStart: AdmitAutomationTargetStart;
   admitTargetWork: AdmitAutomationTargetWork;
 }
+
+const preparationMessages: Record<AutomationTargetPreparationPhase, string> = {
+  'checking-target': 'Checking the app and profile.',
+  'starting-app': 'Starting the app with the selected profile.',
+  'waiting-for-android': 'Waiting for Android to be ready.',
+};
 
 @Injectable()
 export class AutomationRunExecutionService {
@@ -66,25 +75,34 @@ export class AutomationRunExecutionService {
         options: input.targetOptions,
         abortSignal: input.abortSignal,
         admitTargetStart: input.admitTargetStart,
+        onPreparationPhase: runnable.ephemeral
+          ? undefined
+          : async (phase, profile) => {
+              if (input.abortSignal.aborted) return;
+              try {
+                await this.events.emitWhileQueued({
+                  runId: queuedRun.id,
+                  ownerUserId: queuedRun.ownerUserId,
+                  type: 'run.preparing',
+                  message: preparationMessages[phase],
+                  data: { phase, ...profile },
+                });
+              } catch {
+                this.logger.warn(
+                  `Could not record target preparation for automation run ${queuedRun.id}.`,
+                );
+              }
+            },
       });
       if (input.abortSignal.aborted) return;
 
-      const run = await this.events.transitionRun(
-        queuedRun.id,
-        [AutomationRunStatus.Queued],
-        {
-          status: AutomationRunStatus.Running,
-          targetProfileMode: target.profileMode,
-          targetProfileName: target.profileName || 'default',
-          startedAt: new Date(),
-          error: null,
-        },
-        {
-          type: 'run.started',
-          message: 'Automation started.',
-          data: { automationId: runnable.entity.id },
-        },
-      );
+      const run = await this.events.transitionRun(queuedRun.id, {
+        status: AutomationRunStatus.Running,
+        targetProfileMode: target.profileMode,
+        targetProfileName: target.profileName || 'default',
+        startedAt: new Date(),
+        error: null,
+      });
       if (
         run?.status !== AutomationRunStatus.Running ||
         input.abortSignal.aborted
@@ -113,25 +131,16 @@ export class AutomationRunExecutionService {
           isRunCanceled: () => input.abortSignal.aborted,
         },
       );
+      if (input.abortSignal.aborted) return;
       const failed = execution.failed;
-      const status = input.abortSignal.aborted
-        ? AutomationRunStatus.Canceled
-        : failed
-          ? AutomationRunStatus.Failed
-          : AutomationRunStatus.Success;
-      const completed = await this.events.transitionRun(
-        run.id,
-        [AutomationRunStatus.Running],
-        {
-          status,
-          completedAt: new Date(),
-          error: failed ? run.error : null,
-        },
-        {
-          type: terminalEventType(status),
-          message: terminalMessage(status, run.error),
-        },
-      );
+      const status = failed
+        ? AutomationRunStatus.Failed
+        : AutomationRunStatus.Success;
+      const completed = await this.events.transitionRun(run.id, {
+        status,
+        completedAt: new Date(),
+        error: failed ? run.error : null,
+      });
       if (!completed) return;
 
       this.metrics.automationRunFinished(
@@ -142,7 +151,7 @@ export class AutomationRunExecutionService {
     } catch (error) {
       if (input.abortSignal.aborted) return;
       const run = await this.runs.findById(input.runId);
-      if (run) {
+      if (run && !input.abortSignal.aborted) {
         const failed = await this.failActiveRun(
           run.id,
           getErrorMessage(error),
@@ -182,26 +191,12 @@ export class AutomationRunExecutionService {
   ) {
     return this.events.transitionRun(
       runId,
-      [AutomationRunStatus.Queued, AutomationRunStatus.Running],
       {
         status: AutomationRunStatus.Failed,
         completedAt: new Date(),
         error: message,
       },
-      { type: 'run.failed', message, ...(data ? { data } : {}) },
+      data,
     );
   }
 }
-
-const terminalEventType = (status: AutomationRunStatus) => {
-  if (status === AutomationRunStatus.Canceled) return 'run.canceled';
-  if (status === AutomationRunStatus.Failed) return 'run.failed';
-  return 'run.completed';
-};
-
-const terminalMessage = (status: AutomationRunStatus, error: string | null) => {
-  if (status === AutomationRunStatus.Canceled) return 'Automation canceled.';
-  if (status === AutomationRunStatus.Failed)
-    return error ?? 'Automation failed.';
-  return 'Automation completed.';
-};

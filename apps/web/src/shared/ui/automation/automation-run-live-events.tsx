@@ -8,7 +8,6 @@ import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
-import { subscribeToRunEvents } from '@/shared/model/run-event-delivery'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import {
   AutomationRunStatusBadge,
@@ -18,18 +17,8 @@ import { WorkflowOcrExchangeDetails } from '@/shared/ui/automation/workflow-ocr-
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { JsonViewer } from '@/shared/ui/json-viewer'
 import { StateView } from '@/shared/ui/state-view'
-import type { AutomationRun, AutomationRunEvent, AutomationRunStatus } from '@/shared/contracts/automation'
-
-const activeStatuses = new Set<AutomationRunStatus>(['queued', 'running'])
-const terminalStatuses = new Set<AutomationRunStatus>(['success', 'failed', 'canceled'])
-
-const statusFromEvent = (event: AutomationRunEvent): AutomationRunStatus | null => {
-  if (event.type === 'run.started') return 'running'
-  if (event.type === 'run.completed') return 'success'
-  if (event.type === 'run.failed') return 'failed'
-  if (event.type === 'run.canceled') return 'canceled'
-  return null
-}
+import { activeRunStatuses, useAutomationRunEvents } from './use-automation-run-events'
+import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 const eventPresentation = (type: AutomationRunEvent['type']) => {
   if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') {
@@ -137,16 +126,7 @@ const runTimeLabel = (run: Pick<AutomationRun, 'startedAt' | 'createdAt'>) =>
     timeStyle: 'short'
   }).format(new Date(run.startedAt ?? run.createdAt))
 
-export function AutomationRunLiveEvents({
-  run,
-  compact = false,
-  showHeader = true,
-  allowCancel = true,
-  presentation = 'panel',
-  ocrStep,
-  onClearOcrStep,
-  onStatusChange
-}: {
+type RunEventsPanelProps = {
   run: Pick<AutomationRun, 'id' | 'status' | 'trigger' | 'startedAt' | 'createdAt'>
   compact?: boolean
   showHeader?: boolean
@@ -154,77 +134,45 @@ export function AutomationRunLiveEvents({
   presentation?: 'panel' | 'flat'
   ocrStep?: { stepId: string; path?: string | null }
   onClearOcrStep?: () => void
-  onStatusChange?: (status: AutomationRun['status']) => void
-}) {
-  const [events, setEvents] = useState<AutomationRunEvent[]>([])
-  const [localStatus, setLocalStatus] = useState<AutomationRunStatus>(run.status)
+}
+
+export function AutomationRunLiveEvents({
+  onStatusChange,
+  ...props
+}: RunEventsPanelProps & { onStatusChange?: (status: AutomationRun['status']) => void }) {
+  const feed = useAutomationRunEvents(props.run, true, onStatusChange)
+  return (
+    <AutomationRunEventsPanel
+      {...props}
+      feed={feed}
+    />
+  )
+}
+
+export function AutomationRunEventsPanel({
+  run,
+  feed,
+  compact = false,
+  showHeader = true,
+  allowCancel = true,
+  presentation = 'panel',
+  ocrStep,
+  onClearOcrStep
+}: RunEventsPanelProps & { feed: ReturnType<typeof useAutomationRunEvents> }) {
+  const { events, status: localStatus, streamError, hasLoadedEvents, applyStatus } = feed
   const [isCanceling, setIsCanceling] = useState(false)
-  const [streamError, setStreamError] = useState<string | null>(null)
-  const [hasLoadedEvents, setHasLoadedEvents] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const error = cancelError ?? streamError
   const cancelingRunIdRef = useRef<string | null>(null)
-  const statusRef = useRef<AutomationRunStatus>(run.status)
-  const onStatusChangeRef = useRef(onStatusChange)
   const runId = run.id
   const flat = presentation === 'flat'
-  const recorded = flat && terminalStatuses.has(run.status)
 
   useEffect(() => {
-    onStatusChangeRef.current = onStatusChange
-  }, [onStatusChange])
-
-  useEffect(() => {
-    statusRef.current = run.status
-    setLocalStatus(run.status)
-    if (terminalStatuses.has(run.status) || cancelingRunIdRef.current !== run.id) {
+    if (!activeRunStatuses.has(localStatus) || cancelingRunIdRef.current !== runId) {
       cancelingRunIdRef.current = null
       setIsCanceling(false)
     }
-  }, [run.id, run.status])
-
-  useEffect(() => {
-    setEvents([])
-    setStreamError(null)
-    setHasLoadedEvents(false)
-
-    const applyStatus = (status: AutomationRunStatus) => {
-      statusRef.current = status
-      setLocalStatus(status)
-      onStatusChangeRef.current?.(status)
-      if (terminalStatuses.has(status)) {
-        cancelingRunIdRef.current = null
-        setIsCanceling(false)
-      }
-    }
-
-    const appendEvents = (nextEvents: AutomationRunEvent[]) => {
-      setEvents(current => {
-        const byId = new Map(current.map(event => [event.id, event]))
-        for (const event of nextEvents) {
-          byId.set(event.id, event)
-        }
-        return [...byId.values()].sort((left, right) => left.sequence - right.sequence)
-      })
-      for (const event of nextEvents) {
-        if (terminalStatuses.has(statusRef.current)) break
-        const nextStatus = statusFromEvent(event)
-        if (nextStatus) applyStatus(nextStatus)
-      }
-    }
-
-    return subscribeToRunEvents({
-      runId,
-      isLive: () => activeStatuses.has(statusRef.current),
-      onEvents: appendEvents,
-      onReady: () => {
-        setStreamError(null)
-        setHasLoadedEvents(true)
-      },
-      onError: reason => {
-        if (reason === 'invalid-event') setStreamError('A live event could not be read.')
-        else setStreamError(recorded ? 'Could not load recorded events.' : 'Live updates are temporarily unavailable.')
-      }
-    })
-  }, [recorded, runId])
+  }, [localStatus, runId])
 
   const visibleEvents = useMemo(
     () =>
@@ -242,29 +190,26 @@ export function AutomationRunLiveEvents({
   )
 
   const cancel = async () => {
-    if (isCanceling || cancelingRunIdRef.current === runId || !activeStatuses.has(localStatus)) return
+    if (isCanceling || cancelingRunIdRef.current === runId || !activeRunStatuses.has(localStatus)) return
     cancelingRunIdRef.current = runId
     setIsCanceling(true)
-    setStreamError(null)
+    setCancelError(null)
     try {
       const canceledRun = await sendBff<AutomationRun>(
         `/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`,
         {}
       )
-      statusRef.current = canceledRun.status
-      setLocalStatus(canceledRun.status)
-      onStatusChangeRef.current?.(canceledRun.status)
+      applyStatus(canceledRun.status)
     } catch {
       cancelingRunIdRef.current = null
-      setStreamError('The run could not be stopped.')
-    } finally {
-      if (terminalStatuses.has(statusRef.current) || cancelingRunIdRef.current === null) setIsCanceling(false)
+      setCancelError('The run could not be stopped.')
+      setIsCanceling(false)
     }
   }
 
   const displayStatus: AutomationRunDisplayStatus = isCanceling ? 'canceling' : localStatus
-  const canCancel = allowCancel && activeStatuses.has(localStatus)
-  const waitingForEvents = !hasLoadedEvents || activeStatuses.has(localStatus)
+  const canCancel = allowCancel && activeRunStatuses.has(localStatus)
+  const waitingForEvents = !hasLoadedEvents || activeRunStatuses.has(localStatus)
   const emptyEventTitle = ocrStep ? 'No OCR exchange recorded' : 'No recorded events'
   const emptyEventDescription = ocrStep ? undefined : 'Use Summary to inspect the run outcome.'
 
@@ -338,27 +283,29 @@ export function AutomationRunLiveEvents({
             : cn('grid gap-1.5 overflow-auto transform-gpu p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')
         }
       >
-        {flat && !streamError && visibleEvents.length === 0 ? (
+        {flat && !error && visibleEvents.length === 0 ? (
           <StateView
             scope='section'
             kind={waitingForEvents ? 'loading' : 'empty'}
             title={waitingForEvents ? 'Waiting for events' : emptyEventTitle}
             description={
-              activeStatuses.has(localStatus) ? 'Events will appear as the workflow runs.' : emptyEventDescription
+              activeRunStatuses.has(localStatus) ? 'Events will appear as the workflow runs.' : emptyEventDescription
             }
           />
         ) : null}
         {!flat && visibleEvents.length === 0 ? (
           <div className='flex min-h-28 flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/15 text-center'>
             <span className='flex size-8 items-center justify-center rounded-full bg-primary/8 text-primary'>
-              <IconActivity className={cn('size-4', activeStatuses.has(localStatus) && 'animate-pulse')} />
+              <IconActivity
+                className={cn('size-4', activeRunStatuses.has(localStatus) && 'motion-safe:animate-pulse')}
+              />
             </span>
             <div>
               <p className='text-sm font-medium text-foreground'>
-                {activeStatuses.has(localStatus) ? 'Waiting for activity' : 'No recorded events'}
+                {activeRunStatuses.has(localStatus) ? 'Waiting for activity' : 'No recorded events'}
               </p>
               <p className='mt-0.5 text-xs text-foreground-muted'>
-                {activeStatuses.has(localStatus)
+                {activeRunStatuses.has(localStatus)
                   ? 'New events will appear here as the run progresses.'
                   : 'Use the run summary and step results to inspect this completed execution.'}
               </p>
@@ -391,15 +338,15 @@ export function AutomationRunLiveEvents({
                 </div>
               )
             })}
-        {streamError && flat ? (
+        {error && flat ? (
           <Notice
             tone='warning'
-            description={streamError}
+            description={error}
           />
         ) : null}
-        {streamError && !flat ? (
+        {error && !flat ? (
           <div className='rounded-panel border border-warning/(--feedback-border-opacity) bg-warning/8 px-3 py-2 text-xs text-warning'>
-            {streamError}
+            {error}
           </div>
         ) : null}
       </div>

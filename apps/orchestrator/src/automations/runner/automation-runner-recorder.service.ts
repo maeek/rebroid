@@ -104,8 +104,8 @@ export class AutomationRunnerRecorderService {
     };
   }
 
-  async recordActionStarted(run: AutomationRun, step: StepOccurrence) {
-    await this.events.emit({
+  recordActionStarted(run: AutomationRun, step: StepOccurrence) {
+    return this.events.emitWhileRunning({
       runId: run.id,
       ownerUserId: run.ownerUserId,
       type: 'step.started',

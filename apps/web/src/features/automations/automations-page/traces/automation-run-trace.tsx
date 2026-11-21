@@ -13,7 +13,9 @@ import { TabsList, TabsPanel, TabsRoot, TabsTrigger } from '@/components/ui/tabs
 import { sendBff } from '@/lib/http/bff'
 import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentation'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
-import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
+import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
+import { useAutomationRunEvents } from '@/shared/ui/automation/use-automation-run-events'
+import { WorkflowRunProgress } from '@/shared/ui/automation/workflow-run-progress'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { DetailFields } from '@/shared/ui/detail-fields'
@@ -60,13 +62,15 @@ export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; 
   const failedRow = useRef<HTMLTableRowElement>(null)
   const jumpToFailure = useRef(false)
   const router = useRouter()
-  const active = run.status === 'queued' || run.status === 'running'
+  const activeSnapshot = run.status === 'queued' || run.status === 'running'
+  const feed = useAutomationRunEvents(run, activeSnapshot || tab === 'events', () => router.refresh())
+  const active = feed.status === 'queued' || feed.status === 'running'
   const stopping = active && (stopPending || cancelRequestedRunId === run.id)
   useEffect(() => {
-    if (!active) return
+    if (!activeSnapshot) return
     const interval = window.setInterval(() => router.refresh(), 5000)
     return () => window.clearInterval(interval)
-  }, [active, router])
+  }, [activeSnapshot, router])
   const stop = () => {
     setStopError(false)
     startStopping(async () => {
@@ -141,6 +145,15 @@ export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; 
         value='summary'
         className='grid min-w-0 gap-5'
       >
+        {tab === 'summary' ? (
+          <WorkflowRunProgress
+            runId={run.id}
+            status={feed.status}
+            events={feed.events}
+            stopping={stopping}
+            streamError={feed.streamError}
+          />
+        ) : null}
         {run.status === 'failed' ? (
           <Notice
             tone='danger'
@@ -305,8 +318,9 @@ export function AutomationRunTrace({ run, showTargetId }: { run: AutomationRun; 
       </TabsPanel>
       <TabsPanel value='events'>
         {tab === 'events' ? (
-          <AutomationRunLiveEvents
+          <AutomationRunEventsPanel
             run={run}
+            feed={feed}
             presentation='flat'
             showHeader={false}
             allowCancel={false}

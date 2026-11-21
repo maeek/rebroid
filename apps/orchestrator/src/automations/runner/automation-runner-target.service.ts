@@ -20,6 +20,9 @@ type TargetProfile = {
   profileName: string;
 };
 
+export type AutomationTargetPreparationPhase =
+  'checking-target' | 'starting-app' | 'waiting-for-android';
+
 const matchesProfile = (
   app: AndroidAutomationApplication,
   profile: TargetProfile,
@@ -42,6 +45,7 @@ export class AutomationRunnerTargetService {
     options,
     abortSignal,
     admitTargetStart,
+    onPreparationPhase,
   }: {
     ownerUserId: string;
     targetApplicationId: string;
@@ -49,7 +53,13 @@ export class AutomationRunnerTargetService {
     options: AutomationRunTargetOptions;
     abortSignal: AbortSignal;
     admitTargetStart: AdmitAutomationTargetStart;
+    onPreparationPhase?: (
+      phase: AutomationTargetPreparationPhase,
+      profile?: TargetProfile,
+    ) => Promise<void>;
   }) {
+    abortSignal.throwIfAborted();
+    if (onPreparationPhase) await onPreparationPhase('checking-target');
     abortSignal.throwIfAborted();
     const initial = await this.apps.get(targetApplicationId);
     abortSignal.throwIfAborted();
@@ -115,9 +125,13 @@ export class AutomationRunnerTargetService {
       );
     }
 
+    if (onPreparationPhase) await onPreparationPhase('starting-app', profile);
     await admitTargetStart(() =>
       this.apps.start(targetApplicationId, profileOverride, maxOpenApps),
     );
+    abortSignal.throwIfAborted();
+    if (onPreparationPhase)
+      await onPreparationPhase('waiting-for-android', profile);
     const app = await this.waitForRunningTarget(
       targetApplicationId,
       abortSignal,

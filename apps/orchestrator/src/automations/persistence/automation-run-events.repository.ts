@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository, type EntityManager } from 'typeorm';
+import {
+  DataSource,
+  In,
+  QueryFailedError,
+  Repository,
+  type EntityManager,
+} from 'typeorm';
 import { AutomationRunEvent } from '../entities/automation-run-event.entity';
 import type {
   AutomationRunEventInput,
@@ -16,6 +22,20 @@ import type { AutomationStepResult } from '../runner/automation-runner.types';
 
 const eventPageSize = 1_000;
 const replayPageBytes = 1024 * 1024;
+
+export class AutomationRunTargetConflictError extends Error {}
+
+function isActiveTargetConflict(error: unknown) {
+  if (!(error instanceof QueryFailedError)) return false;
+  const driverError: Error & { code?: string } = error.driverError;
+  return (
+    driverError.code === 'SQLITE_CONSTRAINT_UNIQUE' &&
+    (driverError.message ===
+      'UNIQUE constraint failed: automation_runs.targetApplicationId' ||
+      driverError.message ===
+        "UNIQUE constraint failed: index 'automation_runs_active_target_unique'")
+  );
+}
 
 type RunTransition =
   | {
@@ -34,6 +54,53 @@ type RunTransition =
       error: string | null;
     };
 
+type QueuedRun = Pick<
+  AutomationRun,
+  | 'automationId'
+  | 'automationTriggerId'
+  | 'ownerUserId'
+  | 'targetApplicationId'
+  | 'targetProfileMode'
+  | 'targetProfileName'
+  | 'trigger'
+>;
+
+function transitionSources(status: RunTransition['status']) {
+  switch (status) {
+    case AutomationRunStatus.Running:
+      return [AutomationRunStatus.Queued];
+    case AutomationRunStatus.Success:
+      return [AutomationRunStatus.Running];
+    default:
+      return [AutomationRunStatus.Queued, AutomationRunStatus.Running];
+  }
+}
+
+function transitionEvent(
+  patch: RunTransition,
+  automationId: string,
+  data?: Record<string, unknown>,
+): Omit<AutomationRunEventInput, 'runId' | 'ownerUserId'> {
+  switch (patch.status) {
+    case AutomationRunStatus.Running:
+      return {
+        type: 'run.started',
+        message: 'Automation started.',
+        data: { automationId },
+      };
+    case AutomationRunStatus.Canceled:
+      return { type: 'run.canceled', message: 'Automation canceled.' };
+    case AutomationRunStatus.Failed:
+      return {
+        type: 'run.failed',
+        message: patch.error ?? 'Automation failed.',
+        data,
+      };
+    case AutomationRunStatus.Success:
+      return { type: 'run.completed', message: 'Automation completed.' };
+  }
+}
+
 @Injectable()
 export class AutomationRunEventsRepository {
   constructor(
@@ -45,20 +112,77 @@ export class AutomationRunEventsRepository {
     private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
   ) {}
 
-  append(input: AutomationRunEventInput) {
-    return this.persistEvent(async (manager) =>
-      toRecord(await this.appendInTransaction(manager, input)),
-    );
+  enqueueRun(
+    input: QueuedRun,
+    userMessage?: { prompt: string; clientMessageId?: string },
+  ) {
+    return this.persistEvent(async (manager) => {
+      const runs = manager.getRepository(AutomationRun);
+      const reservation = runs.create({
+        ...input,
+        status: AutomationRunStatus.Queued,
+        createdAt: new Date(),
+        startedAt: null,
+        completedAt: null,
+        error: null,
+        lastEventSequence: 0,
+      });
+      let run: AutomationRun;
+      try {
+        run = await runs.save(reservation);
+      } catch (error) {
+        if (isActiveTargetConflict(error)) {
+          throw new AutomationRunTargetConflictError(
+            'An automation run already reserves this target.',
+            { cause: error },
+          );
+        }
+        throw error;
+      }
+      const identity = { runId: run.id, ownerUserId: run.ownerUserId };
+      const queued = await this.appendInTransaction(manager, {
+        ...identity,
+        type: 'run.queued',
+        message: 'Automation queued.',
+        data: { automationId: run.automationId, trigger: run.trigger },
+      });
+      const events = [toRecord(queued)];
+      if (userMessage) {
+        events.push(
+          toRecord(
+            await this.appendInTransaction(manager, {
+              ...identity,
+              type: 'ai.user.message',
+              message: userMessage.prompt,
+              data: { clientMessageId: userMessage.clientMessageId ?? null },
+            }),
+          ),
+        );
+      }
+      run.lastEventSequence = events[events.length - 1].sequence;
+      return { run, events };
+    });
   }
 
   appendWhileRunning(input: AutomationRunEventInput) {
+    return this.appendWhile(input, AutomationRunStatus.Running);
+  }
+
+  appendWhileQueued(input: AutomationRunEventInput) {
+    return this.appendWhile(input, AutomationRunStatus.Queued);
+  }
+
+  private appendWhile(
+    input: AutomationRunEventInput,
+    status: AutomationRunStatus,
+  ) {
     return this.persistEvent(async (manager) => {
-      const running = await manager.getRepository(AutomationRun).existsBy({
+      const matchesRun = await manager.getRepository(AutomationRun).existsBy({
         id: input.runId,
         ownerUserId: input.ownerUserId,
-        status: AutomationRunStatus.Running,
+        status,
       });
-      return running
+      return matchesRun
         ? toRecord(await this.appendInTransaction(manager, input))
         : null;
     });
@@ -82,20 +206,19 @@ export class AutomationRunEventsRepository {
 
   transitionRun(
     id: string,
-    expectedStatuses: AutomationRunStatus[],
     patch: RunTransition,
-    event: Omit<AutomationRunEventInput, 'runId' | 'ownerUserId'>,
+    data?: Record<string, unknown>,
   ) {
     return this.persistEvent(async (manager) => {
       const runs = manager.getRepository(AutomationRun);
       const updated = await runs.update(
-        { id, status: In(expectedStatuses) },
+        { id, status: In(transitionSources(patch.status)) },
         patch,
       );
       if (!updated.affected) return null;
       const run = await runs.findOneByOrFail({ id });
       const record = await this.appendInTransaction(manager, {
-        ...event,
+        ...transitionEvent(patch, run.automationId, data),
         runId: id,
         ownerUserId: run.ownerUserId,
       });

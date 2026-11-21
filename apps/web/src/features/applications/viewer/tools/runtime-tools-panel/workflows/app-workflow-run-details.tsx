@@ -14,8 +14,10 @@ import { workflowRunStepLabel } from '@/shared/model/workflow-action-presentatio
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { AutomationRunLiveEvents } from '@/shared/ui/automation/automation-run-live-events'
+import { AutomationRunEventsPanel } from '@/shared/ui/automation/automation-run-live-events'
 import { AutomationRunStatusBadge } from '@/shared/ui/automation/automation-run-status-badge'
+import { useAutomationRunEvents } from '@/shared/ui/automation/use-automation-run-events'
+import { WorkflowRunProgress } from '@/shared/ui/automation/workflow-run-progress'
 import { WorkflowRunSummaryPanel } from '@/shared/ui/automation/workflow-run-summary-panel'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { ResourceLink } from '@/shared/ui/resource-link'
@@ -31,6 +33,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
   const query = useQuery({
     queryKey: ['application-workflow-run', endpoint, runId],
     queryFn: ({ signal }) => getBff<ApplicationWorkflowRun>(`${endpoint}/${encodeURIComponent(runId)}`, signal),
+    refetchOnMount: 'always',
     refetchInterval: current => {
       const run = current.state.data
       return run && workflowRunIsActive(run.status) ? 3000 : false
@@ -45,6 +48,11 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
     }
   })
   const run = query.data
+  const feed = useAutomationRunEvents(
+    { id: runId, status: run?.status ?? 'queued' },
+    run !== undefined && (tab === 'events' || workflowRunIsActive(run.status)),
+    () => void query.refetch()
+  )
   if (!run) {
     const unavailable = query.error instanceof ActionResultError && query.error.failure.code === 'not_found'
     return query.error ? (
@@ -60,7 +68,8 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
     )
   }
 
-  const stopping = workflowRunIsActive(run.status) && (stop.isPending || cancelRequestedRunId === run.id)
+  const active = workflowRunIsActive(feed.status)
+  const stopping = active && (stop.isPending || cancelRequestedRunId === run.id)
 
   return (
     <Section
@@ -72,7 +81,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
         <div className='flex flex-wrap items-center gap-2'>
           <AutomationRunStatusBadge
             runId={run.id}
-            status={stopping ? 'canceling' : run.status}
+            status={stopping ? 'canceling' : feed.status}
           />
           {run.automationName && hasPermission(permissions, 'automations:manage') ? (
             <ResourceLink
@@ -87,7 +96,7 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
               />
             </ResourceLink>
           ) : null}
-          {workflowRunIsActive(run.status) ? (
+          {active ? (
             <MutationButton
               animate
               variant='secondary'
@@ -143,16 +152,25 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
           value='summary'
           className='grid min-w-0 gap-3'
         >
+          {tab === 'summary' ? (
+            <WorkflowRunProgress
+              runId={run.id}
+              status={feed.status}
+              events={feed.events}
+              stopping={stopping}
+              streamError={feed.streamError}
+            />
+          ) : null}
           <AppWorkflowRunSummary run={run} />
         </TabsPanel>
         <TabsPanel value='events'>
           {tab === 'events' ? (
-            <AutomationRunLiveEvents
+            <AutomationRunEventsPanel
               run={run}
+              feed={feed}
               presentation='flat'
               showHeader={false}
               allowCancel={false}
-              onStatusChange={() => void query.refetch()}
             />
           ) : null}
         </TabsPanel>

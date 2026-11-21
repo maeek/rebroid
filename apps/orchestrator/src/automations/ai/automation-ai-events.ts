@@ -2,7 +2,7 @@ import { AutomationRunEventBus } from '../events/automation-run-event-bus.servic
 import type { AutomationAiHarnessContext } from './automation-ai.types';
 
 type AutomationAiEventType = Parameters<
-  AutomationRunEventBus['emit']
+  AutomationRunEventBus['emitWhileRunning']
 >[0]['type'];
 
 export const emitAutomationAiEvent = (
@@ -12,7 +12,7 @@ export const emitAutomationAiEvent = (
   message: string,
   data: Record<string, unknown> = {},
 ) =>
-  events.emit({
+  events.emitWhileRunning({
     runId: context.runId,
     ownerUserId: context.ownerUserId,
     type,

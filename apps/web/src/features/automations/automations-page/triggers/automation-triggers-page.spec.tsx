@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAutomationTriggerAction,
   deleteAutomationTriggerAction,
+  runAutomationTriggerAction,
   updateAutomationTriggerAction
 } from '@/server/orchestrator/automations/automation-trigger-actions'
 import { applicationPreview } from '@/shared/testing/application-preview'
 import { previewWorkflowOption } from '@/shared/testing/automation-preview'
 import { AutomationTriggersPage } from './automation-triggers-page'
 import { AutomationTriggersPreview, previewTrigger } from './automation-triggers-preview'
+import type { AutomationRun } from '@/shared/contracts/automation'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -27,6 +29,45 @@ beforeEach(() => {
 })
 
 describe('Triggers editor workflow', () => {
+  it('acknowledges Run now in the row and links the accepted run before refresh', async () => {
+    const request = Promise.withResolvers<AutomationRun>()
+    vi.mocked(runAutomationTriggerAction).mockReturnValue(request.promise)
+    render(<AutomationTriggersPreview />)
+    const row = screen.getByRole('row', { name: /Morning inventory/ })
+    fireEvent.click(within(row).getByRole('button', { name: 'Open row actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Run now' }))
+    expect(within(row).getByText('Queueing…')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'New trigger' })).toBeEnabled()
+    expect(runAutomationTriggerAction).toHaveBeenCalledExactlyOnceWith(previewTrigger.id)
+
+    const { automationId, createdAt, id: automationTriggerId, ownerUserId, targetApplicationId } = previewTrigger
+    await act(() => {
+      request.resolve({
+        id: 'accepted-run',
+        automationId,
+        automationTriggerId,
+        ownerUserId,
+        targetApplicationId,
+        targetProfileMode: 'persistent',
+        targetProfileName: 'default',
+        trigger: 'manual',
+        status: 'queued',
+        createdAt,
+        updatedAt: createdAt,
+        startedAt: null,
+        completedAt: null,
+        stepResults: [],
+        error: null
+      })
+      return request.promise
+    })
+    expect(within(row).getByText('Queued', { exact: true })).toBeVisible()
+    expect(within(row).getByRole('link', { name: 'Open run' })).toHaveAttribute(
+      'href',
+      `/automations/${automationId}/traces?run=accepted-run`
+    )
+  })
+
   it.each([
     [true, 'Create app', '/apps/create'],
     [false, 'View apps', '/apps']
