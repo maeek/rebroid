@@ -38,7 +38,7 @@ describe('RuntimeDataFilesService', () => {
       containerId: 'container-1',
       status: AndroidApplicationStatus.Running,
     };
-    const reconciler = { reconcileById: jest.fn().mockResolvedValue(app) };
+    const reconciler = { requireRunningById: jest.fn().mockResolvedValue(app) };
     service = new RuntimeDataFilesService(
       archive as never,
       exec as never,

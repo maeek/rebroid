@@ -18,7 +18,8 @@ import {
 } from '../../../docker/contracts/docker-container-exec.port';
 import { ContainerCommandFailedException } from '../../../docker/docker.types';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
-import { AndroidApplication } from '../../android-application.entity';
+import type { AndroidApplication } from '../../android-application.entity';
+import type { RunningAndroidApplication } from '../../common/utils/running-application';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
@@ -53,7 +54,7 @@ export class RuntimeDataFilesService {
   ) {}
 
   async listFiles(id: string, requestedPath?: string) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const directory = this.paths.normalizeDataPath(requestedPath);
     const stdout = await this.runDataCommand(app, [
       `candidate=${this.paths.shellQuote(directory)}`,
@@ -109,7 +110,7 @@ export class RuntimeDataFilesService {
     requestedPath?: string,
     overwrite = false,
   ) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const directory = this.paths.normalizeDataPath(requestedPath);
     return this.uploads.consumeFileUpload(request, (stream, originalName) =>
       this.storeRunningFileStream(
@@ -127,7 +128,7 @@ export class RuntimeDataFilesService {
     requestedParentPath: string,
     value: string,
   ) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const parentPath = this.paths.normalizeDataPath(requestedParentPath);
     const name = this.paths.normalizeEntryName(value);
     const path = posix.join(parentPath, name);
@@ -146,7 +147,7 @@ export class RuntimeDataFilesService {
   }
 
   async renameFile(id: string, requestedPath: string, value: string) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const path = this.paths.normalizeDataPath(requestedPath);
     this.paths.assertMutablePath(path);
     const name = this.paths.normalizeEntryName(value);
@@ -166,7 +167,7 @@ export class RuntimeDataFilesService {
       'modified=$(stat -c %Y "$target" 2>/dev/null || echo 0)',
       'if [ "$type" = file ]; then size=$(stat -c %s "$target" 2>/dev/null || echo 0); else size=0; fi',
       'printf "%s\\t%s\\t%s" "$type" "$modified" "$size"',
-    ]).finally(() => this.previews.invalidate(app.containerId!));
+    ]).finally(() => this.previews.invalidate(app.containerId));
     const [type = 'file', modified = '0', size = '0'] = stdout.split('\t');
     return this.runtimeEntry(
       name,
@@ -178,7 +179,7 @@ export class RuntimeDataFilesService {
   }
 
   async deleteFile(id: string, requestedPath: string) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const path = this.paths.normalizeDataPath(requestedPath);
     this.paths.assertMutablePath(path);
     const stdout = await this.runDataCommand(app, [
@@ -190,7 +191,7 @@ export class RuntimeDataFilesService {
       'if [ -d "$source" ]; then type=directory; else [ -f "$source" ] || exit 44; type=file; fi',
       'rm -rf "$source"',
       'printf "%s" "$type"',
-    ]).finally(() => this.previews.invalidate(app.containerId!));
+    ]).finally(() => this.previews.invalidate(app.containerId));
     return {
       deleted: true,
       path,
@@ -202,14 +203,14 @@ export class RuntimeDataFilesService {
   }
 
   async previewFile(id: string, requestedPath?: string) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const path = this.paths.normalizeDataPath(requestedPath);
     this.paths.assertMutablePath(path);
     const runtime = previewRuntimeKey(app);
     const resolveFile = () => this.resolvePreviewFile(app, path);
     const file = await resolveFile();
     const content = await this.previews.read(
-      app.containerId!,
+      app.containerId,
       runtime,
       file,
       resolveFile,
@@ -226,7 +227,10 @@ export class RuntimeDataFilesService {
     return { content, mimeType: 'image/webp' };
   }
 
-  private async resolvePreviewFile(app: AndroidApplication, path: string) {
+  private async resolvePreviewFile(
+    app: RunningAndroidApplication,
+    path: string,
+  ) {
     const resolvedFile = await this.runDataCommand(app, [
       `candidate=${this.paths.shellQuote(path)}`,
       '[ -L "$candidate" ] && exit 41',
@@ -254,7 +258,7 @@ export class RuntimeDataFilesService {
   }
 
   async downloadRuntimeFile(id: string, requestedPath?: string) {
-    const app = await this.getRunningRuntimeApp(id);
+    const app = await this.reconciler.requireRunningById(id);
     const filePath = this.paths.normalizeDataPath(requestedPath);
     this.paths.assertMutablePath(filePath);
     const resolvedPath = (
@@ -269,7 +273,7 @@ export class RuntimeDataFilesService {
     ).trim();
     const content = await readRuntimeDownload(
       this.archive,
-      app.containerId!,
+      app.containerId,
       resolvedPath,
     );
 
@@ -281,7 +285,7 @@ export class RuntimeDataFilesService {
   }
 
   private async storeRunningFileStream(
-    app: AndroidApplication,
+    app: RunningAndroidApplication,
     stream: Readable,
     originalName: string,
     directory: string,
@@ -317,7 +321,7 @@ export class RuntimeDataFilesService {
         );
         try {
           await this.archive.copyFileToContainer(
-            app.containerId!,
+            app.containerId,
             tempPath,
             stagingDirectory,
             fileName,
@@ -328,7 +332,7 @@ export class RuntimeDataFilesService {
             stagingName,
             fileName,
             overwrite,
-          ).finally(() => this.previews.invalidate(app.containerId!));
+          ).finally(() => this.previews.invalidate(app.containerId));
         } finally {
           await this.removeUploadStagingDirectory(
             app,
@@ -351,7 +355,7 @@ export class RuntimeDataFilesService {
   }
 
   private async createUploadStagingDirectory(
-    app: AndroidApplication,
+    app: RunningAndroidApplication,
     directory: string,
     stagingName: string,
   ) {
@@ -364,7 +368,7 @@ export class RuntimeDataFilesService {
   }
 
   private async finalizeStagedUpload(
-    app: AndroidApplication,
+    app: RunningAndroidApplication,
     directory: string,
     stagingName: string,
     fileName: string,
@@ -395,7 +399,7 @@ export class RuntimeDataFilesService {
   }
 
   private async removeUploadStagingDirectory(
-    app: AndroidApplication,
+    app: RunningAndroidApplication,
     directory: string,
     stagingName: string,
   ) {
@@ -421,10 +425,13 @@ export class RuntimeDataFilesService {
     return `case "$${variable}" in /data|/data/*) ;; *) exit 41 ;; esac`;
   }
 
-  private async runDataCommand(app: AndroidApplication, lines: string[]) {
+  private async runDataCommand(
+    app: RunningAndroidApplication,
+    lines: string[],
+  ) {
     try {
       const { stdout } = await this.exec.execInContainerWithOutput(
-        app.containerId!,
+        app.containerId,
         ['sh', '-lc', lines.join('\n')],
       );
       return stdout;
@@ -472,16 +479,5 @@ export class RuntimeDataFilesService {
           ? new Date(modifiedSeconds * 1000).toISOString()
           : null,
     };
-  }
-
-  private async getRunningRuntimeApp(id: string) {
-    const app = await this.reconciler.reconcileById(id);
-    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
-      throw new ConflictException(
-        'Application must be running before using viewer runtime tools.',
-      );
-    }
-
-    return app;
   }
 }

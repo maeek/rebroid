@@ -1,11 +1,14 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { setTimeout as delay } from 'node:timers/promises';
 import { getErrorMessage } from '../../../common/error-message';
 import { ViewerTargetStatus } from '../../../docker/docker.types';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsStateWriter } from '../../common/services/android-apps-state-writer.service';
-import { AndroidApplicationStatus } from '../../contracts/android-application-status';
+import {
+  assertRunningApplication,
+  type RunningAndroidApplication,
+} from '../../common/utils/running-application';
 import type { ApplicationViewerControlCommand } from '../../contracts/application-viewer-control';
 import { viewerActivityRuntimeKey } from '../../common/utils/android-runtime-identity';
 import type { ApplicationViewerActivityDto } from '../dto/application-viewer-activity.dto';
@@ -83,9 +86,7 @@ export class AndroidAppsViewerService {
   }
 
   /** Retries the lazy sidecar attachment while a freshly started runtime settles. */
-  private async prepareViewerTarget(
-    app: Awaited<ReturnType<AndroidAppsViewerService['getRunningRuntimeApp']>>,
-  ) {
+  private async prepareViewerTarget(app: RunningAndroidApplication) {
     const maxAttempts = 3;
     let adbHost = app.containerName;
     let viewerTarget: ViewerTargetStatus | null = null;
@@ -198,12 +199,7 @@ export class AndroidAppsViewerService {
     // Viewer bootstrap already probes the runtime and sidecar. Avoid adding a
     // Docker reconciliation read to every iframe refresh and activity ping.
     const app = await this.queries.getStored(id);
-    if (!app.containerId || app.status !== AndroidApplicationStatus.Running) {
-      throw new ConflictException(
-        'Application must be running before using viewer runtime tools.',
-      );
-    }
-
+    assertRunningApplication(app);
     return app;
   }
 }

@@ -14,6 +14,7 @@ import {
   AndroidApplicationStatus,
 } from '../../contracts/android-application-status';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
+import { assertRunningApplication } from '../utils/running-application';
 import { shouldReconcileContainerState } from '../utils/android-apps-state.utils';
 import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
 import { AndroidAppsQueryService } from './android-apps-query.service';
@@ -48,6 +49,12 @@ export class AndroidAppsRuntimeStateReconciler {
 
   async reconcileById(id: string) {
     return this.reconcileOne(await this.queries.getStored(id));
+  }
+
+  async requireRunningById(id: string) {
+    const app = await this.reconcileById(id);
+    assertRunningApplication(app);
+    return app;
   }
 
   async reconcileBeforeStop(id: string) {
