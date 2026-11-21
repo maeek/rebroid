@@ -154,8 +154,3 @@ export const aiModelRoleLabel = (role: AiModelRole) => {
 }
 
 export const aiModelDisplayName = (model: AiCatalogModel | undefined) => model?.label || model?.id || 'No model'
-
-export const aiModelSubtitle = (provider: AiModelCatalogProvider | undefined, model: AiCatalogModel | undefined) => {
-  if (!provider || !model) return 'Configure AI'
-  return `${aiProviderKindLabel(provider.kind)} · ${provider.label}`
-}

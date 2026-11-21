@@ -29,9 +29,10 @@ describe('ApkStorageService', () => {
 
   it('streams an APK into content-addressed storage', async () => {
     const content = Buffer.from('apk-content');
-    const persisted = await storage.persistApkStream(
+    const persisted = await storage.withPersistedApk(
       Readable.from([content.subarray(0, 3), content.subarray(3)]),
       1024,
+      async (stored) => stored,
     );
 
     expect(persisted.sha256).toBe(
@@ -41,10 +42,12 @@ describe('ApkStorageService', () => {
   });
 
   it('removes temporary files when a stream exceeds its limit', async () => {
+    const publish = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
     await expect(
-      storage.persistApkStream(Readable.from([Buffer.alloc(16)]), 8),
+      storage.withPersistedApk(Readable.from([Buffer.alloc(16)]), 8, publish),
     ).rejects.toThrow('configured size limit');
 
+    expect(publish).not.toHaveBeenCalled();
     await expect(readdir(join(directory, 'apks'))).resolves.toEqual([]);
   });
 });

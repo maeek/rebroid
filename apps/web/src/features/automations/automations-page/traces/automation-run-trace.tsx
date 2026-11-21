@@ -323,9 +323,6 @@ export function AutomationRunTrace({
           <AutomationRunEventsPanel
             run={run}
             feed={feed}
-            presentation='flat'
-            showHeader={false}
-            allowCancel={false}
             ocrStep={ocrStep}
             onClearOcrStep={() => setOcrStep(undefined)}
           />

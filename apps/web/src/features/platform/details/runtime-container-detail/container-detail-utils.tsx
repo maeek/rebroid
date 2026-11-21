@@ -26,9 +26,6 @@ export const actionDialogCopy: Record<
   }
 }
 
-export const formatContainerNetworks = (networks: PlatformContainerDetails['container']['networks']) =>
-  networks.length > 0 ? networks.join(', ') : 'none'
-
 export const formatContainerPorts = (ports: PlatformContainerDetails['container']['ports']) =>
   ports.length > 0
     ? ports.map(port => `${port.ip ?? '*'}:${port.publicPort ?? '-'} -> ${port.privatePort}/${port.type}`).join(', ')

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   aiModelDisplayName,
-  aiModelSubtitle,
   aiProviderKindLabel,
   catalogByRole,
   nextCatalogProviderAndModel,
@@ -99,6 +98,5 @@ describe('AI model catalog', () => {
   it('formats picker labels', () => {
     expect(aiProviderKindLabel('openai-compatible')).toBe('OpenAI-compatible')
     expect(aiModelDisplayName(catalog[1].models[0])).toBe('Vision Default')
-    expect(aiModelSubtitle(catalog[1], catalog[1].models[0])).toBe('OpenAI-compatible · Vision Only')
   })
 })

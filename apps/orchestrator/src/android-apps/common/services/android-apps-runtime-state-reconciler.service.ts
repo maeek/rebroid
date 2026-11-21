@@ -60,12 +60,6 @@ export class AndroidAppsRuntimeStateReconciler {
     return this.reconcileOneWithResult(await this.queries.getStored(id));
   }
 
-  async reconcileMany(query: ListAndroidApplicationsDto) {
-    const apps = await this.queries.listStoredEntities(query);
-    const limit = pLimit(MAX_RECONCILIATION_CONCURRENCY);
-    return Promise.all(apps.map((app) => limit(() => this.reconcileOne(app))));
-  }
-
   async reconcileManyWithResults(query: ListAndroidApplicationsDto) {
     const apps = await this.queries.listStoredEntities(query);
     const limit = pLimit(MAX_RECONCILIATION_CONCURRENCY);

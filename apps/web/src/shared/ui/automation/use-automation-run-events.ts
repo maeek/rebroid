@@ -14,11 +14,7 @@ const statusFromEvent = (event: AutomationRunEvent): AutomationRunStatus | null 
   return null
 }
 
-export const useAutomationRunEvents = (
-  run: Pick<AutomationRun, 'id' | 'status'>,
-  enabled = true,
-  onStatusChange?: (status: AutomationRunStatus) => void
-) => {
+export const useAutomationRunEvents = (run: Pick<AutomationRun, 'id' | 'status'>, enabled = true) => {
   const { id: runId, status: serverStatus } = run
   const [events, setEvents] = useState<AutomationRunEvent[]>([])
   const [state, setState] = useState({ runId, status: serverStatus })
@@ -44,13 +40,11 @@ export const useAutomationRunEvents = (
     setState({ runId, status: serverStatus })
   }, [runId, serverStatus])
 
-  const applyStatus = (next: AutomationRunStatus) => {
+  const applyEventStatus = useEffectEvent((next: AutomationRunStatus) => {
     if (next === 'queued' || next === statusRef.current || !activeRunStatuses.has(statusRef.current)) return
     statusRef.current = next
     setState({ runId, status: next })
-    onStatusChange?.(next)
-  }
-  const applyEventStatus = useEffectEvent(applyStatus)
+  })
 
   useEffect(() => {
     setConnected(false)
@@ -91,5 +85,5 @@ export const useAutomationRunEvents = (
     })
   }, [enabled, runId])
 
-  return { status, events, streamError, hasLoadedEvents, connected, applyStatus }
+  return { status, events, streamError, hasLoadedEvents, connected }
 }

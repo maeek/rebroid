@@ -18,8 +18,6 @@ export const runtimeFileLocations = [
   { label: 'Documents', path: '/data/media/0/Documents' }
 ] as const
 
-export const parentRuntimePath = (path: string) => path.slice(0, path.lastIndexOf('/')) || runtimeFilesRootPath
-
 export const runtimePathParts = (path: string) => path.split('/').filter(Boolean)
 
 export const runtimePathForPartIndex = (pathParts: string[], index: number) =>

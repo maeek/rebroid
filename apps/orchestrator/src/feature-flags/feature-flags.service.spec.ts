@@ -80,14 +80,22 @@ describe('FeatureFlagsService', () => {
     expect(service.isEnabled('feature.ai')).toBe(false);
     expect(service.isEnabled('feature.workflows')).toBe(true);
     expect(service.isEnabled('feature.resource-quota')).toBe(true);
-    expect(service.getState('feature.display-webrtc')).toMatchObject({
+    expect(
+      service
+        .getManifest()
+        .features.find(({ key }) => key === 'feature.display-webrtc'),
+    ).toMatchObject({
       enabled: true,
       effective: false,
       syncStatus: 'pending',
     });
     service.markSynchronization('feature.display-webrtc', 0, 'applied');
     expect(service.isEnabled('feature.display-webrtc')).toBe(true);
-    expect(service.getState('feature.display-virtual')).toMatchObject({
+    expect(
+      service
+        .getManifest()
+        .features.find(({ key }) => key === 'feature.display-virtual'),
+    ).toMatchObject({
       enabled: false,
       disablePolicy: 'drain_active',
       lifecycle: 'permanent',
@@ -161,7 +169,9 @@ describe('FeatureFlagsService', () => {
     const reset = await service.reset(0);
     expect(reset.revision).toBe(1);
     for (const key of ['feature.ocr', 'feature.firewall'] as const) {
-      expect(service.getState(key)).toMatchObject({
+      expect(
+        service.getManifest().features.find((flag) => flag.key === key),
+      ).toMatchObject({
         enabled: false,
         supported: false,
         effective: false,

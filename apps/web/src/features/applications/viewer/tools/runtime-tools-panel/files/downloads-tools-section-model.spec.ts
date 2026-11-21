@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   filterAndSortRuntimeFiles,
-  parentRuntimePath,
   runtimeFileCanPreview,
   runtimeFileEntryDetail,
   runtimeFileNameError,
@@ -23,12 +22,10 @@ const runtimeFile = (override: Partial<ApplicationRuntimeFile>): ApplicationRunt
 })
 
 describe('downloads tools section model', () => {
-  it('builds runtime path breadcrumbs and parent paths', () => {
+  it('builds runtime path breadcrumbs', () => {
     expect(runtimeFilesRootPath).toBe('/data')
     expect(runtimePathParts('/data/downloads/screens')).toEqual(['data', 'downloads', 'screens'])
     expect(runtimePathForPartIndex(['data', 'downloads', 'screens'], 1)).toBe('/data/downloads')
-    expect(parentRuntimePath('/data/downloads/screens')).toBe('/data/downloads')
-    expect(parentRuntimePath('/data')).toBe('/data')
   })
 
   it('formats directory and file details', () => {

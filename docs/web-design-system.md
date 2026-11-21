@@ -62,7 +62,7 @@ UI text is at least `text-xs`.
 
 | Family             | Composition                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------ |
-| Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`; add `PageAside` for split workspaces. |
+| Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`. Use `StandardPageSplit` for split workspaces. |
 | Authentication     | `AuthPage` uses the console wordmark and theme controls. `AuthPanel` contains the form.    |
 | Immersive viewer   | `ImmersiveViewerPage` owns full-bleed media and floating controls.                         |
 

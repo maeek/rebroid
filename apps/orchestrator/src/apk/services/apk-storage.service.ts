@@ -2,14 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import {
-  link,
-  mkdir,
-  readdir,
-  stat,
-  unlink,
-  writeFile,
-} from 'node:fs/promises';
+import { link, mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -36,31 +29,6 @@ export class ApkStorageService {
     private readonly uploadedApks: UploadedApksRepository,
     private readonly config: ConfigService,
   ) {}
-
-  /**
-   * Persists APK bytes under a content-addressed filename.
-   * Existing files are treated as reusable shared storage.
-   */
-  async persistApk(sha256: string, content: Buffer) {
-    const uploadsDir = this.config.getOrThrow<string>('app.uploadsDir');
-    const apkDir = join(uploadsDir, 'apks');
-    await mkdir(apkDir, { recursive: true });
-    const filePath = join(apkDir, `${sha256}.apk`);
-    await this.withHash(sha256, () =>
-      writeFile(filePath, content, { flag: 'wx' }).catch(
-        (error: NodeJS.ErrnoException) => {
-          if (error.code !== 'EEXIST') {
-            throw error;
-          }
-        },
-      ),
-    );
-    return filePath;
-  }
-
-  persistApkStream(stream: Readable, maxBytes: number) {
-    return this.withPersistedApk(stream, maxBytes, async (stored) => stored);
-  }
 
   async withPersistedApk<T>(
     stream: Readable,

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatByteStatsValue,
-  formatContainerNetworks,
   formatContainerPorts,
   formatCpuStatsValue,
   getActionButtonLabel,
@@ -9,9 +8,7 @@ import {
 } from './container-detail-utils'
 
 describe('orchestrator container detail utilities', () => {
-  it('formats network and port summaries', () => {
-    expect(formatContainerNetworks([])).toBe('none')
-    expect(formatContainerNetworks(['app', 'bridge'])).toBe('app, bridge')
+  it('formats port summaries', () => {
     expect(formatContainerPorts([{ ip: null, publicPort: 8080, privatePort: 80, type: 'tcp' }])).toBe(
       '*:8080 -> 80/tcp'
     )

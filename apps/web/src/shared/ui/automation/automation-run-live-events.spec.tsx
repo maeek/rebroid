@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { getBff, sendBff } from '@/lib/http/bff'
-import { AutomationRunLiveEvents } from './automation-run-live-events'
+import { AutomationRunEventsPanel } from './automation-run-live-events'
+import { AutomationRunStatusBadge } from './automation-run-status-badge'
+import { useAutomationRunEvents } from './use-automation-run-events'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
 vi.mock('@/lib/http/bff', () => ({
@@ -40,32 +42,27 @@ const failedEvent: AutomationRunEvent = {
   createdAt: '2026-01-01T00:00:01.000Z'
 }
 
-describe('AutomationRunLiveEvents', () => {
-  it('keeps cancellation pending after acknowledgement until the run is terminal', async () => {
-    vi.mocked(getBff).mockImplementation(() => new Promise(() => undefined))
-    vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'running' })
-    const { rerender } = render(<AutomationRunLiveEvents run={run} />)
-    const stop = screen.getByRole('button', { name: 'Stop automation run' })
-    fireEvent.click(stop)
-    await waitFor(() => expect(sendBff).toHaveBeenCalledOnce())
-    await waitFor(() => expect(screen.getByText('Stopping')).toBeVisible())
-    expect(stop).toBeDisabled()
-    rerender(<AutomationRunLiveEvents run={{ ...run, status: 'canceled' }} />)
-    expect(await screen.findByText('Canceled')).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
-  })
+const RunEvents = ({
+  run: workflowRun,
+  ...props
+}: Omit<Parameters<typeof AutomationRunEventsPanel>[0], 'feed' | 'run'> & { run: AutomationRun }) => {
+  const feed = useAutomationRunEvents(workflowRun)
+  return (
+    <>
+      <AutomationRunStatusBadge
+        runId={workflowRun.id}
+        status={feed.status}
+      />
+      <AutomationRunEventsPanel
+        run={workflowRun}
+        feed={feed}
+        {...props}
+      />
+    </>
+  )
+}
 
-  it('allows retry after a failed cancellation without showing completion', async () => {
-    vi.mocked(getBff).mockImplementation(() => new Promise(() => undefined))
-    vi.mocked(sendBff).mockRejectedValue(new Error('Unavailable'))
-    render(<AutomationRunLiveEvents run={run} />)
-    const stop = screen.getByRole('button', { name: 'Stop automation run' })
-    fireEvent.click(stop)
-    expect(await screen.findByText('The run could not be stopped.')).toBeVisible()
-    expect(stop).toBeEnabled()
-    expect(screen.queryByText('Canceled')).toBeNull()
-  })
-
+describe('AutomationRunEventsPanel', () => {
   it('shows the OCR request and response for the selected step occurrence', async () => {
     const exchange: AutomationRunEvent = {
       ...failedEvent,
@@ -94,9 +91,8 @@ describe('AutomationRunLiveEvents', () => {
     })
     const clear = vi.fn()
     render(
-      <AutomationRunLiveEvents
+      <RunEvents
         run={{ ...run, status: 'success' }}
-        presentation='flat'
         ocrStep={{ stepId: 'locate', path: 'steps[0].iterations[2].steps[0]' }}
         onClearOcrStep={clear}
       />
@@ -111,28 +107,20 @@ describe('AutomationRunLiveEvents', () => {
     expect(clear).toHaveBeenCalledOnce()
   })
 
-  it('removes Stop and avoids opening a live socket after replay reaches a terminal status', async () => {
+  it('avoids opening a live socket after replay reaches a terminal status', async () => {
     vi.mocked(getBff).mockResolvedValue({ events: [failedEvent], nextAfter: null })
-    vi.mocked(sendBff).mockResolvedValue({ ...run, status: 'canceled' })
 
-    render(<AutomationRunLiveEvents run={run} />)
+    render(<RunEvents run={run} />)
 
     expect(await screen.findByText('Failed')).toBeTruthy()
     expect(screen.getByText('Provider returned an invalid decision.')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
     expect(sendBff).not.toHaveBeenCalled()
   })
   it('describes missing historical events without suggesting a completed run is still active', async () => {
     vi.mocked(getBff).mockResolvedValue({ events: [], nextAfter: null })
-    render(
-      <AutomationRunLiveEvents
-        run={{ ...run, status: 'failed' }}
-        allowCancel={false}
-      />
-    )
+    render(<RunEvents run={{ ...run, status: 'failed' }} />)
     expect(await screen.findByText('No recorded events')).toBeTruthy()
-    expect(screen.queryByText('Waiting for activity')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
+    expect(screen.queryByText('Waiting for events')).toBeNull()
   })
   it('reads every page of a recorded run using the last delivered sequence', async () => {
     vi.mocked(getBff)
@@ -144,7 +132,7 @@ describe('AutomationRunLiveEvents', () => {
         events: [{ ...failedEvent, id: 'event_terminal', sequence: 1001 }],
         nextAfter: null
       })
-    render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
+    render(<RunEvents run={{ ...run, status: 'failed' }} />)
 
     expect(await screen.findByText(failedEvent.message)).toBeTruthy()
     expect(screen.getByText('First page step')).toBeTruthy()
@@ -158,9 +146,8 @@ describe('AutomationRunLiveEvents', () => {
       events: [{ ...failedEvent, type: 'run.started', message: 'Earlier start event' }],
       nextAfter: null
     })
-    render(<AutomationRunLiveEvents run={{ ...run, status: 'failed' }} />)
+    render(<RunEvents run={{ ...run, status: 'failed' }} />)
     expect(await screen.findByText('Earlier start event')).toBeTruthy()
     expect(screen.getByText('Failed')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Stop automation run' })).toBeNull()
   })
 })

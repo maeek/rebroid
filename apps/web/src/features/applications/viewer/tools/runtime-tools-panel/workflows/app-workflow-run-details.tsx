@@ -167,9 +167,6 @@ export function AppWorkflowRunDetails({ endpoint, runId }: { endpoint: string; r
             <AutomationRunEventsPanel
               run={run}
               feed={feed}
-              presentation='flat'
-              showHeader={false}
-              allowCancel={false}
             />
           ) : null}
         </TabsPanel>

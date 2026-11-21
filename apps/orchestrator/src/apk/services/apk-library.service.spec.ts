@@ -1,8 +1,8 @@
 import { ConfigService } from '@nestjs/config';
-import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { Readable } from 'node:stream';
 import { DataSource } from 'typeorm';
 import { InitializeSqliteSchema1800000005000 } from '../../database/migrations/1800000005000-initialize-sqlite-schema';
 import { ApkBlockRule } from '../entities/apk-block-rule.entity';
@@ -63,19 +63,20 @@ describe('APK library', () => {
     packageName = 'com.example.stockroom',
   ) => {
     const content = Buffer.from(name);
-    const sha256 = createHash('sha256').update(content).digest('hex');
-    const filePath = await storage.persistApk(sha256, content);
-    const upload = await uploads.save(
-      uploads.create({
-        originalName: `${name}.apk`,
-        ownerUserId: owner,
-        packageName,
-        sha256,
-        filePath,
-        sizeBytes: content.length,
-      }),
+    const upload = await storage.withPersistedApk(
+      Readable.from([content]),
+      content.length,
+      (stored) =>
+        uploads.save(
+          uploads.create({
+            originalName: `${name}.apk`,
+            ownerUserId: owner,
+            packageName,
+            ...stored,
+          }),
+        ),
     );
-    return { upload, id: `sha256:${sha256}` };
+    return { upload, id: `sha256:${upload.sha256}` };
   };
 
   it('distinguishes exact and package blocks and retains rules after deleting shared bytes', async () => {

@@ -157,9 +157,10 @@ describe('APK catalog shared blob coordination', () => {
   });
 
   it('rechecks orphan candidates after an in-flight upload commits', async () => {
-    const orphan = await storage.persistApkStream(
+    const orphan = await storage.withPersistedApk(
       Readable.from([Buffer.from('apk-content')]),
       1024,
+      async (stored) => stored,
     );
     const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
     await utimes(orphan.filePath, old, old);

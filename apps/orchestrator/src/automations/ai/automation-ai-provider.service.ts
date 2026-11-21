@@ -10,10 +10,6 @@ export class AutomationAiProviderService {
     private readonly features: FeatureFlagsService,
   ) {}
 
-  async listProviders() {
-    return this.settings.listEnabledAiModelCatalog();
-  }
-
   async getProvider(
     providerId?: string,
     modelId?: string,

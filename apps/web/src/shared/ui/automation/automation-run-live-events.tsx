@@ -1,48 +1,23 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { IconActivity, IconPlayerStop, IconRobot } from '@tabler/icons-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Disclosure, DisclosureSummary, DisclosureChevron } from '@/components/ui/disclosure'
-import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
-import { sendBff } from '@/lib/http/bff'
 import { cn } from '@/lib/utils'
 import { workflowAuthorizationFailure, workflowRunFailureMessage } from '@/shared/model/workflow-run-failure'
-import {
-  AutomationRunStatusBadge,
-  type AutomationRunDisplayStatus
-} from '@/shared/ui/automation/automation-run-status-badge'
 import { WorkflowOcrExchangeDetails } from '@/shared/ui/automation/workflow-ocr-exchange-details'
 import { DateTimeValue } from '@/shared/ui/date-time-value'
 import { JsonViewer } from '@/shared/ui/json-viewer'
 import { StateView } from '@/shared/ui/state-view'
-import { activeRunStatuses, useAutomationRunEvents } from './use-automation-run-events'
+import { activeRunStatuses, type useAutomationRunEvents } from './use-automation-run-events'
 import type { AutomationRun, AutomationRunEvent } from '@/shared/contracts/automation'
 
-const eventPresentation = (type: AutomationRunEvent['type']) => {
-  if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') {
-    return {
-      row: 'border-danger/18 bg-danger/6 text-danger',
-      marker: 'bg-danger'
-    }
-  }
-  if (type === 'run.completed' || type === 'step.completed' || type === 'ai.tool.completed') {
-    return {
-      row: 'border-success/15 bg-success/5 text-foreground',
-      marker: 'bg-success'
-    }
-  }
-  if (type === 'run.started' || type === 'step.started' || type.startsWith('ai.model')) {
-    return {
-      row: 'border-primary/15 bg-primary/5 text-foreground',
-      marker: 'bg-primary'
-    }
-  }
-  return {
-    row: 'border-transparent text-foreground-muted',
-    marker: 'bg-foreground-muted/55'
-  }
+const eventMarkerColor = (type: AutomationRunEvent['type']) => {
+  if (type.endsWith('.failed') || type === 'ai.guardrail.triggered') return 'bg-danger'
+  if (type === 'run.completed' || type === 'step.completed' || type === 'ai.tool.completed') return 'bg-success'
+  if (type === 'run.started' || type === 'step.started' || type.startsWith('ai.model')) return 'bg-primary'
+  return 'bg-foreground-muted/55'
 }
 
 const textValue = (value: unknown) => (typeof value === 'string' ? value : '')
@@ -72,7 +47,7 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
           className='mt-0.5 size-4 shrink-0'
         />
         <span
-          className={cn('mt-1.5 size-2 shrink-0 rounded-full', eventPresentation(event.type).marker)}
+          className={cn('mt-1.5 size-2 shrink-0 rounded-full', eventMarkerColor(event.type))}
           aria-hidden
         />
         <span className='min-w-0 flex-1 [overflow-wrap:anywhere]'>{label}</span>
@@ -120,60 +95,18 @@ const ExpandableRunEvent = ({ event, startedAt }: { event: AutomationRunEvent; s
   )
 }
 
-const runTimeLabel = (run: Pick<AutomationRun, 'startedAt' | 'createdAt'>) =>
-  new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short'
-  }).format(new Date(run.startedAt ?? run.createdAt))
-
-type RunEventsPanelProps = {
-  run: Pick<AutomationRun, 'id' | 'status' | 'trigger' | 'startedAt' | 'createdAt'>
-  compact?: boolean
-  showHeader?: boolean
-  allowCancel?: boolean
-  presentation?: 'panel' | 'flat'
-  ocrStep?: { stepId: string; path?: string | null }
-  onClearOcrStep?: () => void
-}
-
-export function AutomationRunLiveEvents({
-  onStatusChange,
-  ...props
-}: RunEventsPanelProps & { onStatusChange?: (status: AutomationRun['status']) => void }) {
-  const feed = useAutomationRunEvents(props.run, true, onStatusChange)
-  return (
-    <AutomationRunEventsPanel
-      {...props}
-      feed={feed}
-    />
-  )
-}
-
 export function AutomationRunEventsPanel({
   run,
   feed,
-  compact = false,
-  showHeader = true,
-  allowCancel = true,
-  presentation = 'panel',
   ocrStep,
   onClearOcrStep
-}: RunEventsPanelProps & { feed: ReturnType<typeof useAutomationRunEvents> }) {
-  const { events, status: localStatus, streamError, hasLoadedEvents, applyStatus } = feed
-  const [isCanceling, setIsCanceling] = useState(false)
-  const [cancelError, setCancelError] = useState<string | null>(null)
-  const error = cancelError ?? streamError
-  const cancelingRunIdRef = useRef<string | null>(null)
-  const runId = run.id
-  const flat = presentation === 'flat'
-
-  useEffect(() => {
-    if (!activeRunStatuses.has(localStatus) || cancelingRunIdRef.current !== runId) {
-      cancelingRunIdRef.current = null
-      setIsCanceling(false)
-    }
-  }, [localStatus, runId])
-
+}: {
+  run: Pick<AutomationRun, 'id' | 'startedAt'>
+  feed: ReturnType<typeof useAutomationRunEvents>
+  ocrStep?: { stepId: string; path?: string | null }
+  onClearOcrStep?: () => void
+}) {
+  const { events, status, streamError, hasLoadedEvents } = feed
   const visibleEvents = useMemo(
     () =>
       events.filter(event => {
@@ -184,83 +117,18 @@ export function AutomationRunEventsPanel({
             (!ocrStep.path || event.data.path === ocrStep.path)
           )
         }
-        return event.type !== 'heartbeat' && (flat || event.message.trim().length > 0)
+        return event.type !== 'heartbeat'
       }),
-    [events, flat, ocrStep]
+    [events, ocrStep]
   )
 
-  const cancel = async () => {
-    if (isCanceling || cancelingRunIdRef.current === runId || !activeRunStatuses.has(localStatus)) return
-    cancelingRunIdRef.current = runId
-    setIsCanceling(true)
-    setCancelError(null)
-    try {
-      const canceledRun = await sendBff<AutomationRun>(
-        `/api/bff/automations/runs/${encodeURIComponent(runId)}/cancel`,
-        {}
-      )
-      applyStatus(canceledRun.status)
-    } catch {
-      cancelingRunIdRef.current = null
-      setCancelError('The run could not be stopped.')
-      setIsCanceling(false)
-    }
-  }
-
-  const displayStatus: AutomationRunDisplayStatus = isCanceling ? 'canceling' : localStatus
-  const canCancel = allowCancel && activeRunStatuses.has(localStatus)
-  const waitingForEvents = !hasLoadedEvents || activeRunStatuses.has(localStatus)
+  const active = activeRunStatuses.has(status)
+  const waitingForEvents = !hasLoadedEvents || active
   const emptyEventTitle = ocrStep ? 'No OCR exchange recorded' : 'No recorded events'
   const emptyEventDescription = ocrStep ? undefined : 'Use Summary to inspect the run outcome.'
 
   return (
-    <div
-      className={cn(
-        'grid min-h-0',
-        !flat &&
-          'overflow-hidden rounded-panel border border-surface-border/60 bg-surface-panel/45 shadow-[0_18px_48px_-38px_rgba(0,0,0,0.75)]'
-      )}
-    >
-      {showHeader ? (
-        <div className='flex flex-wrap items-center justify-between gap-3 border-b border-surface-border/50 bg-surface-band/24 px-4 py-3'>
-          <div className='flex min-w-0 items-center gap-3'>
-            <span className='flex size-9 shrink-0 items-center justify-center rounded-panel border border-primary/20 bg-primary/8 text-primary'>
-              <IconRobot className='size-4.5' />
-            </span>
-            <div className='min-w-0'>
-              <div className='truncate text-sm font-medium'>Run {runId.slice(0, 8)}</div>
-              <div className='mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-foreground-muted'>
-                <span className='capitalize'>{run.trigger}</span>
-                <span aria-hidden='true'>·</span>
-                <span className='truncate'>{runTimeLabel(run)}</span>
-              </div>
-            </div>
-          </div>
-          <div className='flex items-center gap-2'>
-            <AutomationRunStatusBadge
-              runId={run.id}
-              status={displayStatus}
-            />
-            {canCancel ? (
-              <MutationButton
-                animate
-                pending={isCanceling}
-                pendingLabel='Stopping…'
-                type='button'
-                variant='outline'
-                size='sm'
-                aria-label='Stop automation run'
-                disabled={isCanceling}
-                onClick={() => void cancel()}
-              >
-                <IconPlayerStop className='size-3.5' />
-                Stop
-              </MutationButton>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
+    <div className='grid min-h-0'>
       {ocrStep ? (
         <div className='flex flex-wrap items-center justify-between gap-2 pb-2'>
           <span className='text-sm font-medium'>OCR events for {ocrStep.stepId}</span>
@@ -275,79 +143,30 @@ export function AutomationRunEventsPanel({
       ) : null}
       <div
         role='log'
-        aria-label={`Events for run ${runId.slice(0, 8)}`}
+        aria-label={`Events for run ${run.id.slice(0, 8)}`}
         aria-live='polite'
-        className={
-          flat
-            ? 'grid min-w-0'
-            : cn('grid gap-1.5 overflow-auto transform-gpu p-3', compact ? 'max-h-[28rem]' : 'max-h-[32rem]')
-        }
+        className='grid min-w-0'
       >
-        {flat && !error && visibleEvents.length === 0 ? (
+        {!streamError && visibleEvents.length === 0 ? (
           <StateView
             scope='section'
             kind={waitingForEvents ? 'loading' : 'empty'}
             title={waitingForEvents ? 'Waiting for events' : emptyEventTitle}
-            description={
-              activeRunStatuses.has(localStatus) ? 'Events will appear as the workflow runs.' : emptyEventDescription
-            }
+            description={active ? 'Events will appear as the workflow runs.' : emptyEventDescription}
           />
         ) : null}
-        {!flat && visibleEvents.length === 0 ? (
-          <div className='flex min-h-28 flex-col items-center justify-center gap-2 rounded-panel border border-dashed border-surface-border/60 bg-surface-band/15 text-center'>
-            <span className='flex size-8 items-center justify-center rounded-full bg-primary/8 text-primary'>
-              <IconActivity
-                className={cn('size-4', activeRunStatuses.has(localStatus) && 'motion-safe:animate-pulse')}
-              />
-            </span>
-            <div>
-              <p className='text-sm font-medium text-foreground'>
-                {activeRunStatuses.has(localStatus) ? 'Waiting for activity' : 'No recorded events'}
-              </p>
-              <p className='mt-0.5 text-xs text-foreground-muted'>
-                {activeRunStatuses.has(localStatus)
-                  ? 'New events will appear here as the run progresses.'
-                  : 'Use the run summary and step results to inspect this completed execution.'}
-              </p>
-            </div>
-          </div>
-        ) : null}
-        {flat
-          ? visibleEvents.map(event => (
-              <ExpandableRunEvent
-                key={event.id}
-                event={event}
-                startedAt={run.startedAt}
-              />
-            ))
-          : visibleEvents.map(event => {
-              const rowStyle = eventPresentation(event.type)
-              return (
-                <div
-                  key={event.id}
-                  className={cn(
-                    'grid grid-cols-[2.25rem_0.5rem_minmax(0,1fr)] items-start gap-2 rounded-panel border px-2.5 py-2 text-xs transition-colors',
-                    rowStyle.row
-                  )}
-                >
-                  <span className='pt-px text-right font-mono text-xs text-foreground-muted/75'>
-                    {String(event.sequence).padStart(3, '0')}
-                  </span>
-                  <span className={cn('mt-1 size-1.5 rounded-full', rowStyle.marker)} />
-                  <span className='min-w-0 leading-5 break-words'>{eventLabel(event)}</span>
-                </div>
-              )
-            })}
-        {error && flat ? (
+        {visibleEvents.map(event => (
+          <ExpandableRunEvent
+            key={event.id}
+            event={event}
+            startedAt={run.startedAt}
+          />
+        ))}
+        {streamError ? (
           <Notice
             tone='warning'
-            description={error}
+            description={streamError}
           />
-        ) : null}
-        {error && !flat ? (
-          <div className='rounded-panel border border-warning/(--feedback-border-opacity) bg-warning/8 px-3 py-2 text-xs text-warning'>
-            {error}
-          </div>
         ) : null}
       </div>
     </div>

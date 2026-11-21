@@ -73,10 +73,6 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  getState(key: FeatureFlagKey) {
-    return this.snapshot.states[key];
-  }
-
   isEnabled(key: FeatureFlagKey) {
     return this.snapshot.states[key].effective;
   }

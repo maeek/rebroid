@@ -4,10 +4,6 @@ import { openAppQuotaHeaders, throwOpenAppQuotaError } from './open-app-quota'
 import type { ApplicationCommandResult, SwitchApplicationProfileInput } from '@/shared/contracts/application'
 
 export const orchestratorAppLifecycleClient = {
-  switchProfile(id: string, input: SwitchApplicationProfileInput) {
-    return jsonRequest<ApplicationCommandResult>(`${applicationPath(id)}/lifecycle/profile`, 'POST', input)
-  },
-
   deleteSavedProfile(id: string, profileName: string) {
     return emptyRequest<ApplicationCommandResult>(
       `${applicationPath(id)}/lifecycle/profiles/${encodeApplicationPathSegment(profileName)}`,

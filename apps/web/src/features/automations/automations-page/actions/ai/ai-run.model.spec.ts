@@ -5,12 +5,9 @@ import { parseStepInput } from '../../steps/shared/automation-step-utils'
 import {
   defaultAiRunCapabilities,
   defaultAiRunInput,
-  healthLabel,
-  nextAiRunCapabilities,
   selectableAiRunCommands,
   summarizeAiRunInput
 } from './ai-run.model'
-import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
@@ -91,7 +88,7 @@ spec:
     )
   })
 
-  it('shows permitted defaults and keeps explicit edits distinct from default selection', () => {
+  it('lists permitted defaults and excludes unsupported commands', () => {
     const commands = selectableAiRunCommands([
       command('ai.run'),
       command('android.adbShell'),
@@ -106,21 +103,5 @@ spec:
 
     expect(commands.map(item => item.uses)).toEqual(['android.getClipboard', 'android.wait', 'vision.locate'])
     expect(defaultAiRunCapabilities(commands)).toEqual(['android.getClipboard', 'android.wait', 'vision.locate'])
-    expect(nextAiRunCapabilities({ capabilities: undefined, commands, uses: 'android.wait', enabled: false })).toEqual([
-      'android.getClipboard',
-      'vision.locate'
-    ])
-    expect(
-      nextAiRunCapabilities({ capabilities: ['android.getClipboard'], commands, uses: 'android.wait', enabled: true })
-    ).toEqual(['android.getClipboard', 'android.wait'])
-    expect(
-      nextAiRunCapabilities({ capabilities: ['android.wait'], commands, uses: 'android.wait', enabled: false })
-    ).toEqual([])
-  })
-
-  it('labels provider health states for compact UI display', () => {
-    expect(healthLabel({ status: 'ok' } as AutomationAiProviderHealth)).toBe('Online')
-    expect(healthLabel({ status: 'disabled' } as AutomationAiProviderHealth)).toBe('Disabled')
-    expect(healthLabel({ status: 'error' } as AutomationAiProviderHealth)).toBe('Error')
   })
 })

@@ -28,8 +28,7 @@ const feed = (connected: boolean, events: AutomationRunEvent[] = [], status: Aut
     events,
     connected,
     streamError: null,
-    hasLoadedEvents: true,
-    applyStatus: vi.fn()
+    hasLoadedEvents: true
   })
 
 describe('workflow run refresh', () => {

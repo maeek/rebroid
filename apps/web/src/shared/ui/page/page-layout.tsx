@@ -28,7 +28,3 @@ export const PageContent = ({ children, className }: { children: ReactNode; clas
     {children}
   </div>
 )
-
-export const PageAside = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <aside className={cn('w-full shrink-0 lg:max-w-[26rem]', className)}>{children}</aside>
-)

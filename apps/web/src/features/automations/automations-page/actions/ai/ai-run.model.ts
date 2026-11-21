@@ -1,5 +1,4 @@
 import { isDefaultAiCapability, isSelectableAiCapability } from '@rebroid/automation-core/ai-run'
-import type { AutomationAiProviderHealth } from '@/shared/contracts/ai-provider'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 
 const defaultPrompt = 'Inspect the screen and complete the requested task.'
@@ -20,9 +19,6 @@ export const numberValue = (input: Record<string, unknown>, key: string, fallbac
 
 export const stringArrayValue = (input: Record<string, unknown>, key: string) =>
   Array.isArray(input[key]) ? input[key].filter((item): item is string => typeof item === 'string') : []
-
-export const healthLabel = (health: AutomationAiProviderHealth) =>
-  health.status === 'ok' ? 'Online' : health.status === 'disabled' ? 'Disabled' : 'Error'
 
 export const summarizeAiRunInput = (input: Record<string, unknown>) => {
   const prompt = stringValue(input, 'prompt').trim()
@@ -47,20 +43,3 @@ export const selectableAiRunCommands = (commands: AutomationCommand[]) =>
 
 export const defaultAiRunCapabilities = (commands: AutomationCommand[]) =>
   commands.filter(command => isDefaultAiCapability(command.uses)).map(command => command.uses)
-
-export const nextAiRunCapabilities = ({
-  capabilities,
-  commands,
-  enabled,
-  uses
-}: {
-  capabilities: string[] | undefined
-  commands: AutomationCommand[]
-  enabled: boolean
-  uses: string
-}) => {
-  const next = new Set(capabilities ?? defaultAiRunCapabilities(commands))
-  if (enabled) next.add(uses)
-  else next.delete(uses)
-  return Array.from(next)
-}
