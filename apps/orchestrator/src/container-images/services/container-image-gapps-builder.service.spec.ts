@@ -392,7 +392,12 @@ const createQueuedBuild = (
   };
   const service = new ContainerImageGappsBuilderService(
     jobService,
-    { getPreset: () => ({ sourceBranch: 'fixture' }) } as never,
+    {
+      getPreset: (androidVersion: string) => ({
+        androidVersion,
+        sourceBranch: 'fixture',
+      }),
+    } as never,
     { resolveRevision: () => 'fixture-revision' } as never,
     cache as never,
     packageWorker as never,

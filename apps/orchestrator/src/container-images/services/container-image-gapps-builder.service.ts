@@ -197,8 +197,8 @@ export class ContainerImageGappsBuilderService
     staging: GappsStaging,
   ) {
     const { id } = job;
-    const androidVersion = job.androidVersion as SupportedGappsAndroidVersion;
-    const preset = this.presets.getPreset(androidVersion);
+    const preset = this.presets.getPreset(job.androidVersion);
+    const { androidVersion } = preset;
 
     await this.jobs.updateBuildDetails(id, { phase: 'pulling_base' });
     signal.throwIfAborted();

@@ -18,39 +18,12 @@ const requiredDiskBytes = 10 * gibibyte;
 const requiredMemoryBytes = 3 * gibibyte;
 const recommendedCpuCount = 2;
 
-const presets: Record<SupportedGappsAndroidVersion, GappsBuildPresetDto> = {
-  '16': {
-    androidVersion: '16',
-    baseImage: 'redroid/redroid:16.0.0-latest',
-    sourceBranch: 'baklava',
-    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/baklava',
-    defaultTargetImage: 'local/redroid-gapps:16',
-  },
-  '15': {
-    androidVersion: '15',
-    baseImage: 'redroid/redroid:15.0.0-latest',
-    sourceBranch: 'vic',
-    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/vic',
-    defaultTargetImage: 'local/redroid-gapps:15',
-  },
-  '14': {
-    androidVersion: '14',
-    baseImage: 'redroid/redroid:14.0.0-latest',
-    sourceBranch: 'upsilon',
-    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/upsilon',
-    defaultTargetImage: 'local/redroid-gapps:14',
-  },
-  '13': {
-    androidVersion: '13',
-    baseImage: 'redroid/redroid:13.0.0-latest',
-    sourceBranch: 'tau',
-    sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
-    sourceLink: 'https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/tau',
-    defaultTargetImage: 'local/redroid-gapps:13',
-  },
+const sourceUrl = 'https://gitlab.com/MindTheGapps/vendor_gapps';
+const sourceBranches: Record<SupportedGappsAndroidVersion, string> = {
+  '16': 'baklava',
+  '15': 'vic',
+  '14': 'upsilon',
+  '13': 'tau',
 };
 
 @Injectable()
@@ -61,8 +34,21 @@ export class ContainerImageGappsPresetService {
     private readonly resources: DockerResourceRuntimePort,
   ) {}
 
-  getPreset(androidVersion: SupportedGappsAndroidVersion) {
-    return presets[androidVersion];
+  getPreset(version: string | null): GappsBuildPresetDto {
+    const androidVersion = supportedGappsAndroidVersions.find(
+      (supported) => supported === version,
+    );
+    if (!androidVersion)
+      throw new Error(`Unsupported Android version for GApps: ${version}.`);
+    const sourceBranch = sourceBranches[androidVersion];
+    return {
+      androidVersion,
+      baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
+      sourceRepository: `${sourceUrl}.git`,
+      sourceBranch,
+      sourceLink: `${sourceUrl}/-/tree/${sourceBranch}`,
+      defaultTargetImage: `local/redroid-gapps:${androidVersion}`,
+    };
   }
 
   async list(): Promise<GappsBuildPresetsResponseDto> {
@@ -95,7 +81,9 @@ export class ContainerImageGappsPresetService {
     }
 
     return {
-      presets: supportedGappsAndroidVersions.map((version) => presets[version]),
+      presets: supportedGappsAndroidVersions.map((version) =>
+        this.getPreset(version),
+      ),
       resources: {
         canBuild: diskRequirementMet && memoryRequirementMet,
         diskAvailableBytes,

@@ -8,6 +8,15 @@ describe('ContainerImageGappsPresetService', () => {
     {} as DockerResourceRuntimePort,
   );
 
+  it.each([null, '12'])(
+    'rejects unsupported persisted Android version %s',
+    (version) => {
+      expect(() => service.getPreset(version)).toThrow(
+        'Unsupported Android version',
+      );
+    },
+  );
+
   it.each([
     ['16', 'baklava'],
     ['15', 'vic'],
@@ -21,6 +30,7 @@ describe('ContainerImageGappsPresetService', () => {
         baseImage: `redroid/redroid:${androidVersion}.0.0-latest`,
         sourceBranch,
         sourceRepository: 'https://gitlab.com/MindTheGapps/vendor_gapps.git',
+        sourceLink: `https://gitlab.com/MindTheGapps/vendor_gapps/-/tree/${sourceBranch}`,
         defaultTargetImage: `local/redroid-gapps:${androidVersion}`,
       });
     },
