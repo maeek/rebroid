@@ -1,12 +1,11 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { createHash, randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { mkdir, rm, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Readable, Transform } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import type { Readable } from 'node:stream';
+import { writeHashedUpload } from '../../common/write-hashed-upload';
 import { In, Repository } from 'typeorm';
 import {
   type MultipartUploadRequest,
@@ -54,10 +53,7 @@ export class ContainerImageBuildContextService {
       maxBytes: this.maxUploadBytes,
       missingError: () =>
         new ConflictException('A build context file is required.'),
-      limitError: () =>
-        new ConflictException(
-          `Build context file exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
-        ),
+      limitError: () => this.limitError(),
       canceledError: () =>
         new ConflictException('Build context upload was cancelled.'),
       consume: (stream, originalName, limitExceeded) =>
@@ -78,37 +74,14 @@ export class ContainerImageBuildContextService {
   ) {
     const directory = await this.contextDirectory();
     const storedPath = join(directory, `${randomUUID()}.context`);
-    const hash = createHash('sha256');
-    const maxUploadBytes = this.maxUploadBytes;
-    let sizeBytes = 0;
-    const counter = new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
-        sizeBytes += chunk.length;
-        if (sizeBytes > maxUploadBytes) {
-          callback(
-            new ConflictException(
-              'Build context file exceeds the 64 MB limit.',
-            ),
-          );
-          return;
-        }
-        hash.update(chunk);
-        callback(null, chunk);
-      },
-    });
-
     try {
-      await pipeline(
+      const { sha256, sizeBytes } = await writeHashedUpload(
         stream,
-        counter,
-        createWriteStream(storedPath, { flags: 'wx' }),
+        storedPath,
+        this.maxUploadBytes,
+        () => this.limitError(),
       );
-      if (isRejected()) {
-        throw new ConflictException(
-          'Build context file exceeds the 64 MB limit.',
-        );
-      }
-      const sha256 = hash.digest('hex');
+      if (isRejected()) throw this.limitError();
       return await this.files.save(
         this.files.create({
           originalName,
@@ -122,6 +95,12 @@ export class ContainerImageBuildContextService {
       await unlink(storedPath).catch(() => undefined);
       throw error;
     }
+  }
+
+  private limitError() {
+    return new ConflictException(
+      `Build context file exceeds the ${this.maxUploadBytes / 1024 / 1024} MB limit.`,
+    );
   }
 
   private async contextDirectory() {

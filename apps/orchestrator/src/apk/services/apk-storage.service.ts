@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomUUID } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { link, mkdir, readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Readable, Transform } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import type { Readable } from 'node:stream';
+import { writeHashedUpload } from '../../common/write-hashed-upload';
 import { KeyedSerialQueue } from '../../common/keyed-serial-queue';
 import { UploadedApksRepository } from '../persistence/uploaded-apks.repository';
 
@@ -35,28 +34,14 @@ export class ApkStorageService {
   ): Promise<T> {
     const apkDir = await this.apkDirectory();
     const temporaryPath = join(apkDir, `.${randomUUID()}.upload`);
-    const hash = createHash('sha256');
-    let sizeBytes = 0;
-    const counter = new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
-        sizeBytes += chunk.length;
-        if (sizeBytes > maxBytes) {
-          callback(new Error('APK upload exceeds the configured size limit.'));
-          return;
-        }
-        hash.update(chunk);
-        callback(null, chunk);
-      },
-    });
-
     this.activeUploads.add(temporaryPath);
     try {
-      await pipeline(
+      const { sha256, sizeBytes } = await writeHashedUpload(
         stream,
-        counter,
-        createWriteStream(temporaryPath, { flags: 'wx' }),
+        temporaryPath,
+        maxBytes,
+        () => new Error('APK upload exceeds the configured size limit.'),
       );
-      const sha256 = hash.digest('hex');
       const filePath = join(apkDir, `${sha256}.apk`);
       return await this.withHash(sha256, async () => {
         await link(temporaryPath, filePath).catch(
