@@ -1,38 +1,38 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { AndroidAppsService } from '../android-apps.service';
+import { Cron } from '@nestjs/schedule';
+import { AndroidAppsQueryService } from './android-apps-query.service';
+import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
+import { getErrorMessage } from '../../../common/error-message';
 import { mapSettledWithConcurrency } from '../../../common/map-with-concurrency';
 
 @Injectable()
 export class InactivityService {
   private readonly logger = new Logger(InactivityService.name);
 
-  constructor(private readonly androidApps: AndroidAppsService) {}
+  constructor(
+    private readonly queries: AndroidAppsQueryService,
+    private readonly lifecycle: AndroidAppsLifecycleService,
+  ) {}
 
   /**
    * Stops running apps that have been idle longer than their configured timeout.
    * Activity is based on scrcpy refreshes, not generic container noise.
    */
-  @Cron(CronExpression.EVERY_MINUTE, {
+  // Offset the sweep from the minute-aligned runtime snapshot capture.
+  @Cron('30 * * * * *', {
     name: 'android-apps-inactivity-stop',
     waitForCompletion: true,
   })
   async stopInactiveApplications() {
-    const inactiveApplications =
-      await this.androidApps.findInactiveRunningApplications();
-
-    await mapSettledWithConcurrency(inactiveApplications, 4, async (app) => {
-      this.logger.log(
-        `Stopping inactive application container ${app.containerName} for application ${app.id}.`,
-      );
-      await this.androidApps.stop(app.id, {
-        reason: 'inactivity_timeout',
-        details: {
-          inactivityTimeoutSeconds: app.inactivityTimeoutSeconds,
-          lastScrcpyActivityAt: app.lastScrcpyActivityAt?.toISOString() ?? null,
-          lastStartedAt: app.lastStartedAt?.toISOString() ?? null,
-        },
-      });
+    const candidates = await this.queries.findInactiveRunningApplications();
+    await mapSettledWithConcurrency(candidates, 4, async (candidate) => {
+      try {
+        await this.lifecycle.stopIfInactive(candidate);
+      } catch (error) {
+        this.logger.warn(
+          `Could not stop inactive application ${candidate.id}: ${getErrorMessage(error)}`,
+        );
+      }
     });
   }
 }

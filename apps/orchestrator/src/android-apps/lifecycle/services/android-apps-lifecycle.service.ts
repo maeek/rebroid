@@ -3,6 +3,7 @@ import { CloneAndroidApplicationDto } from '../../common/dto/clone-android-appli
 import { CreateAndroidApplicationDto } from '../../common/dto/create-android-application.dto';
 import { RemoveAndroidApplicationDto } from '../../common/dto/remove-android-application.dto';
 import { UpdateAndroidApplicationDto } from '../../common/dto/update-android-application.dto';
+import type { InactivityCandidate } from '../../common/utils/android-apps-inactivity.utils';
 import { AndroidAppsRuntimeOperationGate } from '../../common/services/android-apps-runtime-operation-gate.service';
 import { StartAndroidApplicationDto } from '../dto/start-android-application.dto';
 import { SwitchApplicationProfileDto } from '../dto/switch-application-profile.dto';
@@ -77,6 +78,16 @@ export class AndroidAppsLifecycleService {
     options: { reason?: string; details?: Record<string, unknown> } = {},
   ) {
     return this.runRuntimeCommand(id, () => this.power.stop(id, options));
+  }
+
+  async stopIfInactive(candidate: InactivityCandidate) {
+    const { id } = candidate;
+    if (this.pendingCommands.has(id)) return;
+    await this.runCommand(id, () =>
+      this.runtimeOperations.runIfIdle(id, () =>
+        this.power.stopIfInactive(candidate),
+      ),
+    );
   }
 
   updateApk(id: string, dto: UpdateAndroidApplicationApkDto) {

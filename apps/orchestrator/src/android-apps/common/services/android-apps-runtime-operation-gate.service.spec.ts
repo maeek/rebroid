@@ -148,3 +148,28 @@ it('cancels an open terminal before draining it for Stop', async () => {
   await Promise.all([shell, stopping]);
   expect(stop).toHaveBeenCalledTimes(1);
 });
+
+it('defers an idle Stop while runtime work is admitted, leaving manual Stop free to interrupt', async () => {
+  const gate = new AndroidAppsRuntimeOperationGate(
+    { getStored: async () => target } as never,
+    { inspectContainer: async () => inspectRuntime() } as never,
+  );
+  const cancel = jest.fn();
+  const action = jest.fn();
+  const stop = jest.fn();
+  const pending = gate.withCurrentRuntime(
+    target,
+    undefined,
+    async () => {
+      action();
+    },
+    cancel,
+  );
+  await gate.runIfIdle(target.id, stop);
+  expect(stop).not.toHaveBeenCalled();
+  expect(cancel).not.toHaveBeenCalled();
+  await pending;
+  expect(action).toHaveBeenCalledTimes(1);
+  await gate.runIfIdle(target.id, stop);
+  expect(stop).toHaveBeenCalledTimes(1);
+});

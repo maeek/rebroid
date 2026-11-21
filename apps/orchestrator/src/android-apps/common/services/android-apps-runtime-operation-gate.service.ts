@@ -148,6 +148,17 @@ export class AndroidAppsRuntimeOperationGate {
     }
   }
 
+  async runIfIdle<T>(id: string, operation: () => Promise<T>) {
+    if (this.interrupting.has(id) || this.operations.has(id)) return;
+    // Admission and the fence are synchronous. There is no admitted work to cancel.
+    this.interrupting.add(id);
+    try {
+      return await operation();
+    } finally {
+      this.interrupting.delete(id);
+    }
+  }
+
   private runtimeChanged() {
     return new ConflictException(
       'The Android runtime changed during this workflow run.',

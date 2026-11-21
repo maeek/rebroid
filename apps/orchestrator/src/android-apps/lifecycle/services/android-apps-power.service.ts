@@ -2,6 +2,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import {
@@ -13,6 +14,10 @@ import { AndroidAppsLifecycleTransitionService } from '../../common/services/and
 import { AndroidAppsLogService } from '../../common/services/android-apps-log.service';
 import { AndroidAppsQueryService } from '../../common/services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
+import {
+  isCurrentInactiveRuntime,
+  type InactivityCandidate,
+} from '../../common/utils/android-apps-inactivity.utils';
 import { stoppedStatusMessage } from '../../common/utils/android-apps-status-message.utils';
 import {
   AndroidApplicationLifecycleStage,
@@ -31,6 +36,8 @@ type StopOptions = { reason?: string; details?: Record<string, unknown> };
 
 @Injectable()
 export class AndroidAppsPowerService {
+  private readonly logger = new Logger(AndroidAppsPowerService.name);
+
   constructor(
     @Inject(DOCKER_CONTAINER_LIFECYCLE)
     private readonly lifecycle: DockerContainerLifecyclePort,
@@ -169,6 +176,26 @@ export class AndroidAppsPowerService {
     );
   }
 
+  async stopIfInactive(candidate: InactivityCandidate) {
+    if (this.backgroundJobs.hasWork(candidate.id)) return;
+    const app = await this.queries.getStored(candidate.id);
+    if (!isCurrentInactiveRuntime(app, candidate, new Date())) return;
+
+    // Retain reconciliation for containers stopped or removed outside Rebroid.
+    await this.reconciler.reconcileOneWithResult(app, { afterDrain: true });
+    const admitted = await this.transitions.admitInactiveStop(candidate);
+    if (!admitted) return;
+    await this.finishStop(admitted, {
+      reason: 'inactivity_timeout',
+      details: {
+        inactivityTimeoutSeconds: admitted.inactivityTimeoutSeconds,
+        lastScrcpyActivityAt:
+          admitted.lastScrcpyActivityAt?.toISOString() ?? null,
+        lastStartedAt: admitted.lastStartedAt?.toISOString() ?? null,
+      },
+    });
+  }
+
   private async stopRuntime(id: string, options: StopOptions) {
     const app = await this.reconciler.reconcileBeforeStop(id);
     const needsDiscovery =
@@ -194,11 +221,21 @@ export class AndroidAppsPowerService {
         await this.transitions.markState(id, { containerId: container.Id });
       }
     }
-    await this.logs.append(id, 'Stop requested', {
-      containerId: app.containerId,
-      reason: options.reason ?? 'user_request',
-      ...(options.details ?? {}),
-    });
+    await this.finishStop(app, options);
+    return this.queries.decorate(await this.queries.getStored(id));
+  }
+
+  private async finishStop(app: AndroidApplication, options: StopOptions) {
+    const { id } = app;
+    try {
+      await this.logs.append(id, 'Stop requested', {
+        containerId: app.containerId,
+        reason: options.reason ?? 'user_request',
+        ...(options.details ?? {}),
+      });
+    } catch {
+      this.logger.warn(`Could not record Stop request for ${id}.`);
+    }
 
     if (app.containerId) {
       try {
@@ -229,7 +266,6 @@ export class AndroidAppsPowerService {
       containerId: app.containerId,
       recreateContainerOnNextStart: app.recreateContainerOnNextStart,
     });
-    return this.queries.decorate(await this.queries.getStored(id));
   }
 
   private assertRunnable(app: AndroidApplication) {

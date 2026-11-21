@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, LessThan, Not, Or, Repository } from 'typeorm';
+import {
+  In,
+  IsNull,
+  LessThan,
+  MoreThanOrEqual,
+  Not,
+  Or,
+  Repository,
+} from 'typeorm';
 import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationSummariesDto } from '../common/dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationNavigationDto } from '../common/dto/list-android-application-navigation.dto';
@@ -175,6 +183,22 @@ export class AndroidApplicationsRepository
     return this.applications.find({
       where: query.ownerUserId ? { ownerUserId: query.ownerUserId } : {},
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  findRunningWithInactivityTimeout() {
+    return this.applications.find({
+      select: {
+        id: true,
+        containerId: true,
+        lastStartedAt: true,
+        lastScrcpyActivityAt: true,
+        inactivityTimeoutSeconds: true,
+      },
+      where: {
+        status: AndroidApplicationStatus.Running,
+        inactivityTimeoutSeconds: MoreThanOrEqual(0),
+      },
     });
   }
 

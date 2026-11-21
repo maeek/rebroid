@@ -1,5 +1,5 @@
 import { FeatureFlagsService } from '../../../feature-flags/feature-flags.service';
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { DataSource, In, IsNull, type EntityManager } from 'typeorm';
 import { AndroidApplication } from '../../android-application.entity';
 import {
@@ -12,6 +12,10 @@ import {
   AndroidAppLifecycleJobStatus,
   type AndroidAppLifecycleReservation,
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
+import {
+  isCurrentInactiveRuntime,
+  type InactivityCandidate,
+} from '../utils/android-apps-inactivity.utils';
 import { AndroidAppsLogService } from './android-apps-log.service';
 import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
 import type { AndroidApplicationLifecyclePatch } from './android-apps-state-writer.service';
@@ -63,6 +67,9 @@ const openStatuses = [
 
 @Injectable()
 export class AndroidAppsLifecycleTransitionService {
+  private readonly logger = new Logger(
+    AndroidAppsLifecycleTransitionService.name,
+  );
   constructor(
     private readonly dataSource: DataSource,
     private readonly logs: AndroidAppsLogService,
@@ -331,6 +338,35 @@ export class AndroidAppsLifecycleTransitionService {
     return changed;
   }
 
+  async admitInactiveStop(expected: InactivityCandidate) {
+    const patch = {
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
+      statusMessage: 'Stopping application container.',
+    };
+    const admitted = await this.transaction(async (manager) => {
+      const applications = manager.getRepository(AndroidApplication);
+      const app = await applications.findOneBy({ id: expected.id });
+      if (
+        !app?.containerId ||
+        !isCurrentInactiveRuntime(app, expected, new Date()) ||
+        (await manager
+          .getRepository(AndroidAppLifecycleJob)
+          .existsBy({ applicationId: expected.id }))
+      ) {
+        return null;
+      }
+
+      await applications.update(app.id, patch);
+      return Object.assign(app, patch);
+    });
+    if (admitted) {
+      await this.clearSnapshot(admitted.id);
+      this.recordLifecycle(admitted.id, patch);
+    }
+    return admitted;
+  }
+
   async cancelActiveJob(
     applicationId: string,
     patch: AndroidApplicationLifecyclePatch,
@@ -365,6 +401,29 @@ export class AndroidAppsLifecycleTransitionService {
       await manager.getRepository(AndroidApplication).save(app);
     });
     await this.logs.appendLifecycle(applicationId, patch);
+  }
+
+  private recordLifecycle(
+    applicationId: string,
+    patch: AndroidApplicationLifecyclePatch,
+  ) {
+    void Promise.resolve()
+      .then(() => this.logs.appendLifecycle(applicationId, patch))
+      .catch(() =>
+        this.logger.warn(
+          `Could not record lifecycle transition for ${applicationId}.`,
+        ),
+      );
+  }
+
+  private async clearSnapshot(applicationId: string) {
+    try {
+      await this.snapshots.deleteIfStale(applicationId);
+    } catch {
+      this.logger.warn(
+        `Could not clear runtime snapshot for ${applicationId}.`,
+      );
+    }
   }
 
   private async getApplication(manager: EntityManager, applicationId: string) {

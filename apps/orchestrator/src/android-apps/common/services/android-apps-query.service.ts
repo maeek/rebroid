@@ -7,7 +7,10 @@ import { ListAndroidApplicationSummariesDto } from '../dto/list-android-applicat
 import { ListAndroidApplicationNavigationDto } from '../dto/list-android-application-navigation.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
 import { deriveApplicationError } from '../utils/android-apps-error-status.utils';
-import { latestRuntimeActivity } from '../utils/android-apps-inactivity.utils';
+import {
+  isRuntimeInactive,
+  type InactivityCandidate,
+} from '../utils/android-apps-inactivity.utils';
 import { deriveStatusDetail } from '../utils/android-apps-status-detail.utils';
 import { AndroidAppsStatusService } from './android-apps-status.service';
 
@@ -96,24 +99,16 @@ export class AndroidAppsQueryService {
     return this.applications.findByStatus(AndroidApplicationStatus.Running);
   }
 
-  async findInactiveRunningApplications(now = new Date()) {
-    const running = await this.listRunningApplications();
-
-    return running.filter((app) => {
-      if (app.inactivityTimeoutSeconds < 0) {
-        return false;
-      }
-
-      const lastActivity = latestRuntimeActivity(
-        app.lastScrcpyActivityAt,
-        app.lastStartedAt,
-      );
-      if (!lastActivity) {
-        return false;
-      }
-
-      const inactiveSeconds = (now.getTime() - lastActivity.getTime()) / 1000;
-      return inactiveSeconds >= app.inactivityTimeoutSeconds;
-    });
+  async findInactiveRunningApplications(
+    now = new Date(),
+  ): Promise<InactivityCandidate[]> {
+    const running = await this.applications.findRunningWithInactivityTimeout();
+    return running
+      .filter((app) => isRuntimeInactive(app, now))
+      .map(({ id, containerId, lastStartedAt }) => ({
+        id,
+        containerId,
+        lastStartedAt,
+      }));
   }
 }

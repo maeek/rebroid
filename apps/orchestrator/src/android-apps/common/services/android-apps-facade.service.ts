@@ -262,9 +262,4 @@ export class AndroidAppsFacadeService implements AndroidAppsAutomationPort {
   viewerControl(id: string, command: ApplicationViewerControlCommand) {
     return this.viewer.viewerControl(id, command);
   }
-
-  /** Finds running apps that have been idle too long. */
-  findInactiveRunningApplications(now = new Date()) {
-    return this.queries.findInactiveRunningApplications(now);
-  }
 }

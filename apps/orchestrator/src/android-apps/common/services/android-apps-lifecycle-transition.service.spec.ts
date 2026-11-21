@@ -13,6 +13,217 @@ import {
 } from '../../lifecycle/entities/android-app-lifecycle-job.entity';
 import { AndroidAppsLifecycleTransitionService } from './android-apps-lifecycle-transition.service';
 
+import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
+import { AndroidAppsPowerService } from '../../lifecycle/services/android-apps-power.service';
+import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import { AndroidAppsQueryService } from './android-apps-query.service';
+import { AndroidAppsRuntimeStateReconciler } from './android-apps-runtime-state-reconciler.service';
+import { AndroidAppsStateWriter } from './android-apps-state-writer.service';
+import { AndroidAppsRuntimeOperationGate } from './android-apps-runtime-operation-gate.service';
+import { AndroidAppsStatusService } from './android-apps-status.service';
+import { InactivityService } from './inactivity.service';
+import { AndroidAppsProvisioningTrackerService } from './android-apps-provisioning-tracker.service';
+
+describe('committed application changes', () => {
+  let database: SerializedSqliteDataSource;
+  let app: AndroidApplication;
+  let transitions: AndroidAppsLifecycleTransitionService;
+  let appendLifecycle: jest.Mock;
+
+  beforeEach(async () => {
+    database = await new SerializedSqliteDataSource({
+      type: 'better-sqlite3',
+      database: ':memory:',
+      entities: [AndroidApplication, AndroidAppLifecycleJob],
+      migrations: [InitializeSqliteSchema1800000005000],
+      migrationsRun: true,
+    }).initialize();
+    const rows = database.getRepository(AndroidApplication);
+    app = await rows.save(
+      rows.create({
+        name: 'Demo',
+        containerImage: 'fixture',
+        containerName: 'demo',
+        networkName: 'demo',
+        volumeName: 'demo',
+        networkPolicyAllowCidrs: '[]',
+        savedProfilesJson: '[]',
+        status: AndroidApplicationStatus.Stopped,
+        lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      }),
+    );
+    appendLifecycle = jest
+      .fn()
+      .mockRejectedValue(new Error('diagnostics offline'));
+    transitions = new AndroidAppsLifecycleTransitionService(
+      database,
+      { appendLifecycle } as never,
+      { isEnabled: () => false } as never,
+      { deleteIfStale: async () => {} } as never,
+    );
+  });
+
+  afterEach(async () => {
+    await database.destroy();
+  });
+
+  it.each([
+    ['viewer activity', { lastScrcpyActivityAt: new Date('2099-01-01') }],
+    ['disabled timeout', { inactivityTimeoutSeconds: -1 }],
+    ['extended timeout', { inactivityTimeoutSeconds: 3600 }],
+    ['replacement container', { containerId: 'next-container' }],
+    [
+      'restart in the same container',
+      { lastStartedAt: new Date('2099-01-01') },
+    ],
+  ] as const)(
+    'declines inactivity Stop after a change to %s',
+    async (_reason, change) => {
+      const rows = database.getRepository(AndroidApplication);
+      const candidate = {
+        id: app.id,
+        containerId: 'current-container',
+        lastStartedAt: new Date(Date.now() - 60_000),
+      };
+      await rows.update(app.id, {
+        ...candidate,
+        status: AndroidApplicationStatus.Running,
+        lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+        inactivityTimeoutSeconds: 30,
+      });
+
+      await rows.update(app.id, change);
+
+      await expect(
+        transitions.admitInactiveStop(candidate),
+      ).resolves.toBeNull();
+      await expect(rows.findOneByOrFail({ id: app.id })).resolves.toMatchObject(
+        {
+          ...change,
+          status: AndroidApplicationStatus.Running,
+        },
+      );
+      expect(appendLifecycle).not.toHaveBeenCalled();
+    },
+  );
+
+  it('admits an overdue runtime only once and leaves the last activity intact', async () => {
+    const rows = database.getRepository(AndroidApplication);
+    const candidate = {
+      id: app.id,
+      containerId: 'current-container',
+      lastStartedAt: new Date(Date.now() - 120_000),
+    };
+    const lastScrcpyActivityAt = new Date(Date.now() - 60_000);
+    await rows.update(app.id, {
+      ...candidate,
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      inactivityTimeoutSeconds: 30,
+      lastScrcpyActivityAt,
+    });
+
+    await expect(
+      transitions.admitInactiveStop(candidate),
+    ).resolves.toMatchObject({
+      ...candidate,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopping,
+      status: AndroidApplicationStatus.Stopped,
+      lastScrcpyActivityAt,
+    });
+    await expect(transitions.admitInactiveStop(candidate)).resolves.toBeNull();
+  });
+
+  it('stops only the still-idle runtime when the scheduled sweep reaches Docker', async () => {
+    const rows = database.getRepository(AndroidApplication);
+    const lastStartedAt = new Date(Date.now() - 120_000);
+    const lastScrcpyActivityAt = new Date();
+    await rows.update(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      containerId: 'current-container',
+      inactivityTimeoutSeconds: 30,
+      lastStartedAt,
+    });
+    const status = new AndroidAppsStatusService();
+    const applications = new AndroidApplicationsRepository(rows);
+    const queries = new AndroidAppsQueryService(applications, status);
+    const docker = {
+      getContainerRuntimeState: jest
+        .fn()
+        .mockImplementationOnce(async () => {
+          await rows.update(app.id, { lastScrcpyActivityAt });
+          return { exists: true, running: true };
+        })
+        .mockResolvedValue({ exists: true, running: true }),
+      stopContainer: jest.fn(),
+    };
+    const reconciler = new AndroidAppsRuntimeStateReconciler(
+      {} as never,
+      docker as never,
+      {} as never,
+      status,
+      queries,
+      new AndroidAppsStateWriter(applications, status, {
+        deleteIfStale: jest.fn(),
+      } as never),
+      new AndroidAppsProvisioningTrackerService(),
+    );
+    const power = new AndroidAppsPowerService(
+      docker as never,
+      {} as never,
+      { hasWork: () => false } as never,
+      {
+        append: jest.fn().mockRejectedValueOnce(new Error('log unavailable')),
+      } as never,
+      queries,
+      reconciler,
+      { releaseDisplaySessions: jest.fn() } as never,
+      {} as never,
+      {} as never,
+      transitions,
+      {} as never,
+    );
+    const lifecycle = new AndroidAppsLifecycleService(
+      {} as never,
+      power,
+      {} as never,
+      new AndroidAppsRuntimeOperationGate(queries, docker as never),
+    );
+    const sweep = new InactivityService(queries, lifecycle);
+
+    await sweep.stopInactiveApplications();
+    expect(docker.stopContainer).not.toHaveBeenCalled();
+    await expect(queries.getStored(app.id)).resolves.toMatchObject({
+      status: AndroidApplicationStatus.Running,
+      lastScrcpyActivityAt,
+    });
+
+    await rows.update(app.id, { lastScrcpyActivityAt: lastStartedAt });
+    await sweep.stopInactiveApplications();
+    expect(docker.stopContainer.mock.calls).toEqual([['current-container', 0]]);
+    await expect(queries.getStored(app.id)).resolves.toMatchObject({
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+    });
+
+    await rows.update(app.id, {
+      status: AndroidApplicationStatus.Running,
+      lifecycleStage: AndroidApplicationLifecycleStage.Ready,
+      containerId: null,
+      lastScrcpyActivityAt: lastStartedAt,
+    });
+    await sweep.stopInactiveApplications();
+    expect(docker.stopContainer).toHaveBeenCalledTimes(1);
+    expect(docker.getContainerRuntimeState).toHaveBeenCalledTimes(2);
+    await expect(queries.getStored(app.id)).resolves.toMatchObject({
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      containerId: null,
+    });
+  });
+});
+
 describe('open application admission', () => {
   it('allows one concurrent Create, Start or Recreate at the owner limit', async () => {
     const database = await new SerializedSqliteDataSource({

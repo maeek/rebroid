@@ -74,7 +74,9 @@ and guarded progress, handoff, and completion apply only while the reservation s
   must resolve to unused storage. Existing names that share a volume retain access. Deletion preserves
   any volume still referenced by another saved or active persistent profile.
 - **Stop** discards queued work and waits for in-flight runtime work to settle before looking up and stopping the
-  container. Cancellation releases the worker's wait on a shared image pull.
+  container. Cancellation releases the worker's wait on a shared image pull. The inactivity sweep
+  defers busy runtimes and admits Stop only after the database confirms the same runtime is still
+  running and overdue under its current timeout and viewer activity.
 - **Remove** drains existing work before reserving and performing bounded cleanup of runtime, network, volume, and
   viewer resources.
 - **Startup recovery** follows the persisted job kind. Missing or inconsistent reservations become explicit errors
