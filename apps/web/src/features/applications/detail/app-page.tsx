@@ -67,7 +67,7 @@ const AppViewerPageContent = ({
   activity?: ReactNode
   inspectedCommand?: InspectedContainerCommand | null
 }) => {
-  const { app, permissions } = useApplicationViewerContext()
+  const { app } = useApplicationViewerContext()
   const search = useSearchParams()
   const view = resolveAppResourceView(search.get('view'))
   const isDetailsView = viewMode === 'details'
@@ -89,8 +89,6 @@ const AppViewerPageContent = ({
           view={view}
           activity={activity}
           inspectedCommand={inspectedCommand}
-          app={app}
-          permissions={permissions}
         />
       </AppDeviceLayout>
     )
@@ -107,14 +105,10 @@ const AppViewerPageContent = ({
 const AppResourceBody = ({
   view,
   activity,
-  app,
-  permissions,
   inspectedCommand
 }: {
   view: ReturnType<typeof resolveAppResourceView>
   activity?: ReactNode
-  app: AppDefinition
-  permissions: PermissionMap
   inspectedCommand?: InspectedContainerCommand | null
 }) => {
   switch (view) {
@@ -123,12 +117,7 @@ const AppResourceBody = ({
     case 'network':
       return <AppNetworkPage />
     case 'profiles':
-      return (
-        <AppManageProfiles
-          app={app}
-          permissions={permissions}
-        />
-      )
+      return <AppManageProfiles />
     case 'ai-agent':
     case 'workflows':
     case 'files':

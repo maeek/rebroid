@@ -18,12 +18,11 @@ import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { useRemoveApplicationProfile } from '@/features/applications/manage/use-remove-application-profile'
 import { usePickerOptions } from '@/hooks/use-picker-options'
 import { toast } from '@/hooks/use-toast'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { getBff } from '@/lib/http/bff'
-import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
@@ -38,7 +37,8 @@ export const AppAutomationRunAction = ({
 }: {
   onRunStarted?: (run: AutomationRun, workflowName: string | null) => void
 }) => {
-  const { app, permissions, setApp } = useApplicationViewerContext()
+  const { app, permissions } = useApplicationViewerContext()
+  const removeProfile = useRemoveApplicationProfile()
   const mutationPending = useRef(false)
   const cancelButton = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
@@ -73,30 +73,9 @@ export const AppAutomationRunAction = ({
   const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
 
   const deleteProfile = async (deletedProfileName: string) => {
-    try {
-      const updated = mapAndroidApplicationToAppDefinition(
-        await deleteApplicationProfileAction(app.id, deletedProfileName)
-      )
-      setApp(current => ({
-        ...updated,
-        icon: current?.icon ?? updated.icon,
-        ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
-      }))
-      if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
-        setProfileName('default')
-      }
-      toast({
-        title: 'Profile removed',
-        description: `${deletedProfileName} was deleted with its saved data.`,
-        variant: 'success'
-      })
-    } catch (error) {
-      toast({
-        title: 'Could not remove profile',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
-      throw error
+    await removeProfile(deletedProfileName)
+    if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
+      setProfileName('default')
     }
   }
 

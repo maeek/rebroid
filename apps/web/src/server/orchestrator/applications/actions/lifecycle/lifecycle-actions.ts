@@ -8,14 +8,11 @@ import { runWebMaintenance } from '@/server/maintenance/web-maintenance'
 import { logger } from '@/server/observability/logger'
 import { isApplicationId } from '@/shared/model/application-id'
 import { hasPermission } from '@/shared/permissions/permissions'
-import { getCurrentUserContext } from '../../../current-user'
 import { revalidateApplicationDetail, revalidateApplicationList } from '../../../shared'
-import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { getEnforcedResourceQuota } from '../../resource-quota'
-import { enforceResourceQuotas, enforceSessionQuota, sanitizeAndroidApplicationForUser } from '../../safety'
+import { enforceResourceQuotas, enforceSessionQuota } from '../../safety'
 import {
-  assertCanAccessApplication,
   assertCanUseOwnedApplicationRuntime,
   getAccessibleApplication,
   ownedRuntimeControlMessage
@@ -136,31 +133,33 @@ export const recreateApplicationAction = async (id: string) =>
     { fallbackMessage: 'Make sure the app is stopped and try again.' }
   )
 
-export const deleteApplicationProfileAction = async (id: string, profileName: string) => {
-  await assertCanAccessApplication(id)
-  const user = await getCurrentUserContext()
-  if (!hasPermission(user.permissions, 'applications:delete')) {
-    throw new PublicActionError('You do not have permission to delete application profiles.', {
-      code: 'forbidden',
-      status: 403
-    })
-  }
-  const command = await orchestratorAppLifecycleClient.deleteSavedProfile(id, profileName)
-  recordAuditEvent({
-    actorUserId: user.ownerUserId,
-    actorLabel: user.ownerUserId,
-    category: 'application',
-    action: 'application.profile.delete',
-    resourceType: 'application',
-    resourceId: id,
-    resourceLabel: command.name,
-    details: { profileName }
-  })
-  revalidateApplicationList()
-  revalidateApplicationDetail(id)
-  const app = await orchestratorAppCatalogClient.getApplication(id)
-  return sanitizeAndroidApplicationForUser(app, user)
-}
+export const deleteApplicationProfileAction = async (id: string, profileName: string) =>
+  runSafeAction(
+    async () => {
+      assertValidApplicationId(id)
+      const { user } = await getAccessibleApplication(id)
+      if (!hasPermission(user.permissions, 'applications:delete')) {
+        throw new PublicActionError('You do not have permission to delete application profiles.', {
+          code: 'forbidden',
+          status: 403
+        })
+      }
+      const command = await orchestratorAppLifecycleClient.deleteSavedProfile(id, profileName)
+      recordAuditEvent({
+        actorUserId: user.ownerUserId,
+        actorLabel: user.ownerUserId,
+        category: 'application',
+        action: 'application.profile.delete',
+        resourceType: 'application',
+        resourceId: id,
+        resourceLabel: command.name,
+        details: { profileName }
+      })
+      revalidateApplicationList()
+      revalidateApplicationDetail(id)
+    },
+    { fallbackMessage: 'Could not remove the saved profile.' }
+  )
 
 export const requestApplicationDeletionAction = async (id: string, removeData = true) =>
   runSafeAction(

@@ -15,6 +15,7 @@ import { orchestratorAppCatalogClient } from '../../catalog-client'
 import { orchestratorAppLifecycleClient } from '../../lifecycle-client'
 import { requestApplicationCloneAction } from './clone-actions'
 import {
+  deleteApplicationProfileAction,
   requestApplicationDeletionAction,
   requestApplicationStartAction,
   requestApplicationStopAction
@@ -30,7 +31,7 @@ vi.mock('../../catalog-client', () => ({
   orchestratorAppCatalogClient: { getApplication: vi.fn(), deleteApplication: vi.fn(), cloneApplication: vi.fn() }
 }))
 vi.mock('../../lifecycle-client', () => ({
-  orchestratorAppLifecycleClient: { startApplication: vi.fn(), stopApplication: vi.fn() }
+  orchestratorAppLifecycleClient: { deleteSavedProfile: vi.fn(), startApplication: vi.fn(), stopApplication: vi.fn() }
 }))
 
 const id = '98a530d6-a45d-466a-9cb4-c023067c4971'
@@ -84,6 +85,34 @@ describe('application lifecycle acknowledgements', () => {
       expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledTimes(1)
     }
   )
+
+  it('acknowledges profile removal even when the next catalog read is unavailable', async () => {
+    vi.mocked(orchestratorAppLifecycleClient.deleteSavedProfile).mockResolvedValue({
+      id,
+      name: 'App',
+      status: 'stopped',
+      lifecycleStage: 'stopped',
+      message: null
+    })
+    await expect(deleteApplicationProfileAction(id, 'Work')).resolves.toMatchObject({ ok: true })
+    expect(orchestratorAppLifecycleClient.deleteSavedProfile).toHaveBeenCalledExactlyOnceWith(id, 'Work')
+    expect(orchestratorAppCatalogClient.getApplication).toHaveBeenCalledTimes(1)
+    expect(getCurrentUserContext).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['owner', 'forbidden'],
+    ['other-owner', 'not_found']
+  ])('checks profile deletion access for %s', async (ownerUserId, code) => {
+    vi.mocked(getCurrentUserContext).mockResolvedValue({
+      ownerUserId,
+      isPlatformAdmin: false,
+      permissions: {},
+      quotas: { maxOpenApps: null, maxSessionSeconds: null, maxMemoryMb: null, maxCpuCpus: null }
+    })
+    await expect(deleteApplicationProfileAction(id, 'Work')).resolves.toMatchObject({ ok: false, error: { code } })
+    expect(orchestratorAppLifecycleClient.deleteSavedProfile).not.toHaveBeenCalled()
+  })
 
   it('resumes metadata cleanup from disk after queued deletion outlives the request', async () => {
     const app = { id, ownerUserId: 'other-owner' } as AndroidApplication

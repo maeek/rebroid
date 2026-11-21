@@ -3,7 +3,7 @@
 import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { useRemoveApplicationProfile } from '@/features/applications/manage/use-remove-application-profile'
 import { usePowerActionProfileState } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import { usePowerActionRuntimeHandlers } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-actions'
 import {
@@ -11,8 +11,6 @@ import {
   usePowerActionViewState
 } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-view-state'
 import { useApplicationActionRunner } from '@/hooks/use-application-action-runner'
-import { toast } from '@/hooks/use-toast'
-import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { RuntimeMenuAction } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
@@ -58,7 +56,8 @@ type RuntimePowerActionContextValue = {
 const RuntimePowerActionContext = createContext<RuntimePowerActionContextValue | null>(null)
 
 export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }) => {
-  const { app, permissions, setApp } = useApplicationViewerContext()
+  const { app, permissions } = useApplicationViewerContext()
+  const removeProfile = useRemoveApplicationProfile()
   const canStart = hasPermission(permissions, 'applications:start')
   const canStop = hasPermission(permissions, 'applications:stop')
   const canSwitchProfile = hasPermission(permissions, 'applications:switch-profile')
@@ -95,30 +94,9 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
       return
     }
 
-    try {
-      const updated = mapAndroidApplicationToAppDefinition(
-        await deleteApplicationProfileAction(app.id, deletedProfileName)
-      )
-      setApp(current => ({
-        ...updated,
-        icon: current?.icon ?? updated.icon,
-        ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
-      }))
-      if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
-        setProfileName('default')
-      }
-      toast({
-        title: 'Profile removed',
-        description: `${deletedProfileName} was deleted with its saved data.`,
-        variant: 'success'
-      })
-    } catch (error) {
-      toast({
-        title: 'Could not remove profile',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
-      throw error
+    await removeProfile(deletedProfileName)
+    if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
+      setProfileName('default')
     }
   }
 

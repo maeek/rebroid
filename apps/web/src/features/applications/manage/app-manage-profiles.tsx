@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { IconDatabase, IconTrash } from '@tabler/icons-react'
-import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
@@ -11,28 +10,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { editorSectionClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { AppPageFailure } from '@/features/applications/components/app-page-failure'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
+import { useRemoveApplicationProfile } from '@/features/applications/manage/use-remove-application-profile'
 import { AppViewerHeading } from '@/features/applications/viewer/components/heading'
-import { toast } from '@/hooks/use-toast'
-import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { hasPermission, type PermissionMap } from '@/shared/permissions/permissions'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { hasPermission } from '@/shared/permissions/permissions'
 import { EditorPage } from '@/shared/ui/page/editor-page'
 import { PageContent } from '@/shared/ui/page/page-layout'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 
-export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; permissions: PermissionMap }) => {
-  const [currentApp, setCurrentApp] = useState(app)
+export const AppManageProfiles = () => {
+  const { app, permissions } = useApplicationViewerContext()
+  const removeProfile = useRemoveApplicationProfile()
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [profileToDelete, setProfileToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const router = useRouter()
   const canDeleteProfiles = hasPermission(permissions, 'applications:delete')
 
-  if (!currentApp) {
+  if (!app) {
     return <AppPageFailure />
   }
 
-  const persistentProfiles = currentApp.savedProfiles.filter(profile => profile.mode === 'persistent')
-  const activeProfileName = currentApp.profileMode === 'persistent' ? (currentApp.profileName ?? 'default') : null
+  const persistentProfiles = app.savedProfiles.filter(profile => profile.mode === 'persistent')
+  const activeProfileName = app.profileMode === 'persistent' ? (app.profileName ?? 'default') : null
 
   const deleteProfile = async () => {
     if (!profileToDelete || deleting) {
@@ -41,27 +41,10 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
 
     setDeleting(true)
     try {
-      const updated = mapAndroidApplicationToAppDefinition(
-        await deleteApplicationProfileAction(currentApp.id, profileToDelete)
-      )
-      setCurrentApp(current => ({
-        ...updated,
-        icon: current?.icon ?? updated.icon,
-        ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
-      }))
-      toast({
-        title: 'Profile removed',
-        description: `${profileToDelete} was deleted with its saved data.`,
-        variant: 'success'
-      })
+      await removeProfile(profileToDelete)
       setProfileToDelete(null)
-      router.refresh()
     } catch (error) {
-      toast({
-        title: 'Could not remove profile',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'danger'
-      })
+      setDeleteError(getDisplayErrorMessage(error))
     } finally {
       setDeleting(false)
     }
@@ -70,12 +53,15 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
   return (
     <EditorPage>
       <PageContent>
-        <AppViewerHeading app={currentApp} />
+        <AppViewerHeading app={app} />
         <AppProfilesSection
           profiles={persistentProfiles}
           activeProfileName={activeProfileName}
           canDeleteProfiles={canDeleteProfiles}
-          onRemove={setProfileToDelete}
+          onRemove={name => {
+            setDeleteError(null)
+            setProfileToDelete(name)
+          }}
         />
       </PageContent>
       <ConfirmMutationDialog
@@ -85,6 +71,7 @@ export const AppManageProfiles = ({ app, permissions }: { app?: AppDefinition; p
         description={`Permanently delete “${profileToDelete}” and its saved data.`}
         confirmLabel='Remove profile'
         pendingLabel='Removing…'
+        error={deleteError}
         pending={deleting}
         onConfirm={() => void deleteProfile()}
       />
