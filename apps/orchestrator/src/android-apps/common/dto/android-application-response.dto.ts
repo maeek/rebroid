@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  runtimeImageKinds,
   stripManagedRedroidGpuArgs,
   type RuntimeImageKind,
 } from '@rebroid/android-application-core/redroid-runtime';
@@ -84,7 +85,7 @@ export class AndroidApplicationRuntimeDto {
   @ApiProperty()
   image!: string;
 
-  @ApiProperty({ enum: ['redroid', 'generic'] })
+  @ApiProperty({ enum: runtimeImageKinds })
   kind!: RuntimeImageKind;
 
   @ApiProperty()

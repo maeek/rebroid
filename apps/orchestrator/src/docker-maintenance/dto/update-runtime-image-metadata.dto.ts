@@ -1,24 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageSignatureSpoofing,
+import {
+  runtimeImageKinds,
+  runtimeImageGmsModes,
+  runtimeImageSignatureSpoofingStates,
+  type RuntimeImageGmsMode,
+  type RuntimeImageKind,
+  type RuntimeImageSignatureSpoofing,
 } from '@rebroid/android-application-core/redroid-runtime';
 
-const runtimeKinds = ['redroid', 'generic'] as const;
-const gmsModes = ['none', 'microg', 'gapps'] as const;
-const signatureSpoofingStates = [
-  'not_applicable',
-  'external_required',
-  'present_unverified',
-  'verified',
-] as const;
-
 export class UpdateRuntimeImageMetadataDto {
-  @ApiPropertyOptional({ enum: runtimeKinds })
+  @ApiPropertyOptional({ enum: runtimeImageKinds })
   @IsOptional()
-  @IsIn(runtimeKinds)
+  @IsIn(runtimeImageKinds)
   runtimeKind?: RuntimeImageKind;
 
   @ApiPropertyOptional({ type: String, example: '14', nullable: true })
@@ -33,13 +27,13 @@ export class UpdateRuntimeImageMetadataDto {
   @MaxLength(32)
   architecture?: string | null;
 
-  @ApiPropertyOptional({ enum: gmsModes })
+  @ApiPropertyOptional({ enum: runtimeImageGmsModes })
   @IsOptional()
-  @IsIn(gmsModes)
+  @IsIn(runtimeImageGmsModes)
   gmsMode?: RuntimeImageGmsMode;
 
-  @ApiPropertyOptional({ enum: signatureSpoofingStates })
+  @ApiPropertyOptional({ enum: runtimeImageSignatureSpoofingStates })
   @IsOptional()
-  @IsIn(signatureSpoofingStates)
+  @IsIn(runtimeImageSignatureSpoofingStates)
   signatureSpoofing?: RuntimeImageSignatureSpoofing;
 }

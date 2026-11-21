@@ -6,10 +6,13 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageSignatureSpoofing,
+import {
+  runtimeImageKinds,
+  runtimeImageGmsModes,
+  runtimeImageSignatureSpoofingStates,
+  type RuntimeImageGmsMode,
+  type RuntimeImageKind,
+  type RuntimeImageSignatureSpoofing,
 } from '@rebroid/android-application-core/redroid-runtime';
 import type { RuntimeImageMetadataRecord } from '../../contracts/docker-image-runtime-metadata.port';
 
@@ -27,7 +30,7 @@ export class ContainerImageRuntimeMetadata implements RuntimeImageMetadataRecord
   @Column({ type: 'text', nullable: true })
   imageId!: string | null;
 
-  @ApiProperty({ enum: ['redroid', 'generic'] })
+  @ApiProperty({ enum: runtimeImageKinds })
   @Column({ default: 'generic' })
   runtimeKind!: RuntimeImageKind;
 
@@ -39,17 +42,12 @@ export class ContainerImageRuntimeMetadata implements RuntimeImageMetadataRecord
   @Column({ type: 'text', nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
+  @ApiProperty({ enum: runtimeImageGmsModes })
   @Column({ default: 'none' })
   gmsMode!: RuntimeImageGmsMode;
 
   @ApiProperty({
-    enum: [
-      'not_applicable',
-      'external_required',
-      'present_unverified',
-      'verified',
-    ],
+    enum: runtimeImageSignatureSpoofingStates,
   })
   @Column({ default: 'not_applicable' })
   signatureSpoofing!: RuntimeImageSignatureSpoofing;

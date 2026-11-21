@@ -8,10 +8,13 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageSignatureSpoofing,
+import {
+  runtimeImageKinds,
+  runtimeImageGmsModes,
+  runtimeImageSignatureSpoofingStates,
+  type RuntimeImageGmsMode,
+  type RuntimeImageKind,
+  type RuntimeImageSignatureSpoofing,
 } from '@rebroid/android-application-core/redroid-runtime';
 
 import { ContainerImageBuildJob } from '../entities/container-image-build-job.entity';
@@ -30,15 +33,6 @@ export class LatestContainerImageBuildDto {
   @ApiProperty({ type: () => ContainerImageBuildJob, nullable: true })
   job!: ContainerImageBuildJob | null;
 }
-
-const runtimeKinds = ['redroid', 'generic'] as const;
-const gmsModes = ['none', 'microg', 'gapps'] as const;
-const signatureSpoofingStates = [
-  'not_applicable',
-  'external_required',
-  'present_unverified',
-  'verified',
-] as const;
 
 export class CreateContainerImageRecipeDto {
   @ApiProperty({ example: 'Redroid 14 microG overlay' })
@@ -59,9 +53,9 @@ export class CreateContainerImageRecipeDto {
   @MaxLength(256)
   baseImage!: string;
 
-  @ApiPropertyOptional({ enum: runtimeKinds, default: 'redroid' })
+  @ApiPropertyOptional({ enum: runtimeImageKinds, default: 'redroid' })
   @IsOptional()
-  @IsIn(runtimeKinds)
+  @IsIn(runtimeImageKinds)
   runtimeKind?: RuntimeImageKind;
 
   @ApiPropertyOptional({ type: String, example: '14', nullable: true })
@@ -76,17 +70,17 @@ export class CreateContainerImageRecipeDto {
   @MaxLength(32)
   architecture?: string | null;
 
-  @ApiPropertyOptional({ enum: gmsModes, default: 'microg' })
+  @ApiPropertyOptional({ enum: runtimeImageGmsModes, default: 'microg' })
   @IsOptional()
-  @IsIn(gmsModes)
+  @IsIn(runtimeImageGmsModes)
   gmsMode?: RuntimeImageGmsMode;
 
   @ApiPropertyOptional({
-    enum: signatureSpoofingStates,
+    enum: runtimeImageSignatureSpoofingStates,
     default: 'external_required',
   })
   @IsOptional()
-  @IsIn(signatureSpoofingStates)
+  @IsIn(runtimeImageSignatureSpoofingStates)
   signatureSpoofing?: RuntimeImageSignatureSpoofing;
 
   @ApiProperty()

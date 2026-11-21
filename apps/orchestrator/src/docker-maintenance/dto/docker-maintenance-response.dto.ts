@@ -1,13 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageMetadataSource,
-  RuntimeImageSignatureSpoofing,
+import {
+  runtimeImageKinds,
+  runtimeImageGmsModes,
+  runtimeImageSignatureSpoofingStates,
+  type RuntimeImageGmsMode,
+  type RuntimeImageKind,
+  type RuntimeImageMetadataSource,
+  type RuntimeImageSignatureSpoofing,
 } from '@rebroid/android-application-core/redroid-runtime';
 
 export class RuntimeImageMetadataDto {
-  @ApiProperty({ enum: ['redroid', 'generic'] })
+  @ApiProperty({ enum: runtimeImageKinds })
   runtimeKind!: RuntimeImageKind;
 
   @ApiProperty({ type: String, nullable: true })
@@ -16,16 +19,11 @@ export class RuntimeImageMetadataDto {
   @ApiProperty({ type: String, nullable: true })
   architecture!: string | null;
 
-  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
+  @ApiProperty({ enum: runtimeImageGmsModes })
   gmsMode!: RuntimeImageGmsMode;
 
   @ApiProperty({
-    enum: [
-      'not_applicable',
-      'external_required',
-      'present_unverified',
-      'verified',
-    ],
+    enum: runtimeImageSignatureSpoofingStates,
   })
   signatureSpoofing!: RuntimeImageSignatureSpoofing;
 }

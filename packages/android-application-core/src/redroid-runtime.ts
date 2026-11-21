@@ -164,12 +164,19 @@ export const defaultRedroidDisplayProfileId: RedroidDisplayProfileId =
 
 export const redroidDefaultsLabel = redroidDefaultContainerArgs.join(" ");
 
-export type RuntimeImageKind = "redroid" | "generic";
+export const runtimeImageKinds = ["redroid", "generic"] as const;
+export const runtimeImageGmsModes = ["none", "microg", "gapps"] as const;
+export const runtimeImageSignatureSpoofingStates = [
+  "not_applicable",
+  "external_required",
+  "present_unverified",
+  "verified",
+] as const;
 
-export type RuntimeImageGmsMode = "none" | "microg" | "gapps";
-
+export type RuntimeImageKind = (typeof runtimeImageKinds)[number];
+export type RuntimeImageGmsMode = (typeof runtimeImageGmsModes)[number];
 export type RuntimeImageSignatureSpoofing =
-  "not_applicable" | "external_required" | "present_unverified" | "verified";
+  (typeof runtimeImageSignatureSpoofingStates)[number];
 
 export type RuntimeImageMetadataSource = "stored" | "labels" | "name";
 
@@ -210,15 +217,6 @@ export const defaultRedroidRuntimeImageMetadata: RuntimeImageMetadata = {
   gmsMode: "none",
   signatureSpoofing: "external_required",
 };
-
-const runtimeImageKinds = ["redroid", "generic"] as const;
-const runtimeImageGmsModes = ["none", "microg", "gapps"] as const;
-const runtimeImageSignatureSpoofingStates = [
-  "not_applicable",
-  "external_required",
-  "present_unverified",
-  "verified",
-] as const;
 
 const enumValue = <Value extends string>(
   value: string | null | undefined,

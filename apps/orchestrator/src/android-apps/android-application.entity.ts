@@ -6,7 +6,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { RuntimeImageKind } from '@rebroid/android-application-core/redroid-runtime';
+import {
+  runtimeImageKinds,
+  type RuntimeImageKind,
+} from '@rebroid/android-application-core/redroid-runtime';
 import {
   viewerTransport,
   viewerTransports,
@@ -206,7 +209,7 @@ export class AndroidApplication {
   @Column()
   containerImage!: string;
 
-  @ApiProperty({ enum: ['redroid', 'generic'], example: 'redroid' })
+  @ApiProperty({ enum: runtimeImageKinds, example: 'redroid' })
   @Column({ default: 'generic' })
   runtimeKind!: RuntimeImageKind;
 
