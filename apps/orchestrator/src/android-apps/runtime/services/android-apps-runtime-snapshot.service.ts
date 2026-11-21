@@ -7,7 +7,6 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 import {
   DOCKER_ENGINE,
   type DockerEnginePort,
@@ -18,7 +17,10 @@ import {
   AndroidAppsRuntimeOperationGate,
   AndroidRuntimeNotRunningError,
 } from '../../common/services/android-apps-runtime-operation-gate.service';
-import { snapshotRuntimeKey } from '../../common/utils/android-runtime-identity';
+import {
+  snapshotRuntimeKey,
+  type AndroidRuntimeIdentity,
+} from '../../common/utils/android-runtime-identity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidAppRuntimeSnapshotsRepository } from '../../persistence/android-app-runtime-snapshots.repository';
 import { AndroidAppsSidecarAdbService } from '../../viewer/services/android-apps-sidecar-adb.service';
@@ -30,10 +32,18 @@ import {
 
 const captureTimeoutMs = 12_000;
 const captureConcurrency = 4;
+const sweepTimeoutMs = 45_000;
+const previewDemandMs = 2 * 60_000;
+const maximumDemandEntries = 1_024;
 
 @Injectable()
 export class AndroidAppsRuntimeSnapshotService {
   private readonly logger = new Logger(AndroidAppsRuntimeSnapshotService.name);
+
+  private readonly demandedUntil = new Map<string, number>();
+  private readonly lastAttempt = new Map<string, number>();
+  private attempt = 0;
+  private sweep?: Promise<void>;
 
   constructor(
     private readonly queries: AndroidAppsQueryService,
@@ -48,18 +58,72 @@ export class AndroidAppsRuntimeSnapshotService {
     name: 'android-app-runtime-snapshots',
     waitForCompletion: true,
   })
-  async captureRunningApplications() {
-    const running = await this.queries.listRunningApplications();
-    const ownedRuntimes = running.filter(
-      (app) => app.ownerUserId && app.containerId,
+  captureRunningApplications() {
+    this.sweep ??= this.runSweep().finally(() => {
+      this.sweep = undefined;
+    });
+    return this.sweep;
+  }
+
+  @Cron('20 */5 * * * *', {
+    name: 'android-app-runtime-snapshot-prune',
+    waitForCompletion: true,
+  })
+  async pruneSnapshots() {
+    try {
+      const running = await this.queries.listOwnedRunningSnapshotTargets();
+      await this.snapshots.prune(new Set(running.map(({ id }) => id)));
+    } catch {
+      this.logger.warn('Could not prune runtime snapshots.');
+    }
+  }
+
+  private async runSweep() {
+    const signal = AbortSignal.timeout(sweepTimeoutMs);
+    const runtimes = await this.queries.listOwnedRunningSnapshotTargets();
+    const eligible = new Set(runtimes.map(({ id }) => id));
+    for (const id of this.lastAttempt.keys()) {
+      if (!eligible.has(id)) this.lastAttempt.delete(id);
+    }
+    const now = performance.now();
+    for (const [id, expires] of this.demandedUntil) {
+      if (!eligible.has(id) || expires <= now) this.demandedUntil.delete(id);
+    }
+    const ranked = [...runtimes].sort(
+      (left, right) =>
+        (this.lastAttempt.get(left.id) ?? 0) -
+        (this.lastAttempt.get(right.id) ?? 0),
     );
-    await this.snapshots
-      .prune(new Set(ownedRuntimes.map((app) => app.id)))
-      .catch(() => {
-        this.logger.warn('Could not prune runtime snapshots.');
-      });
-    await mapWithConcurrency(ownedRuntimes, captureConcurrency, (app) =>
-      this.capture(app),
+    const priority = ranked
+      .filter(({ id }) => this.demandedUntil.has(id))
+      .values();
+    const warm = ranked
+      .filter(({ id }) => !this.demandedUntil.has(id))
+      .values();
+    let preferDemand = true;
+
+    const next = () => {
+      const first = preferDemand ? priority : warm;
+      const second = preferDemand ? warm : priority;
+      preferDemand = !preferDemand;
+      const result = first.next();
+      if (!result.done) return result.value;
+      const alternate = second.next();
+      return alternate.done ? undefined : alternate.value;
+    };
+    const worker = async () => {
+      while (!signal.aborted) {
+        const runtime = next();
+        if (!runtime) return;
+        this.lastAttempt.set(runtime.id, ++this.attempt);
+        await this.capture(runtime, signal);
+      }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(captureConcurrency, runtimes.length) },
+        worker,
+      ),
     );
   }
 
@@ -76,6 +140,12 @@ export class AndroidAppsRuntimeSnapshotService {
       ) {
         throw this.unavailable();
       }
+      this.demandedUntil.delete(id);
+      if (this.demandedUntil.size >= maximumDemandEntries) {
+        const oldest = this.demandedUntil.keys().next();
+        if (!oldest.done) this.demandedUntil.delete(oldest.value);
+      }
+      this.demandedUntil.set(id, performance.now() + previewDemandMs);
       const snapshot = await this.snapshots.read(id);
       if (!snapshot || snapshot.runtimeKey !== snapshotRuntimeKey(app))
         throw this.unavailable();
@@ -110,13 +180,17 @@ export class AndroidAppsRuntimeSnapshotService {
     }
   }
 
-  private async capture(expected: AndroidApplication) {
-    const signal = AbortSignal.timeout(captureTimeoutMs);
+  private async capture(expected: AndroidRuntimeIdentity, sweep: AbortSignal) {
+    const signal = AbortSignal.any([
+      sweep,
+      AbortSignal.timeout(captureTimeoutMs),
+    ]);
     let previous: Awaited<
       ReturnType<AndroidAppRuntimeSnapshotsRepository['readMetadata']>
     > = null;
     try {
       previous = await this.snapshots.readMetadata(expected.id);
+      signal.throwIfAborted();
       await this.runtimeOperations.withCurrentRuntime(
         expected,
         signal,

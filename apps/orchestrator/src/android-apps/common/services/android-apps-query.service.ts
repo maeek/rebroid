@@ -95,8 +95,8 @@ export class AndroidAppsQueryService {
     return this.status.decorateApplication(app);
   }
 
-  listRunningApplications() {
-    return this.applications.findByStatus(AndroidApplicationStatus.Running);
+  listOwnedRunningSnapshotTargets() {
+    return this.applications.findOwnedRunningSnapshotTargets();
   }
 
   async findInactiveRunningApplications(

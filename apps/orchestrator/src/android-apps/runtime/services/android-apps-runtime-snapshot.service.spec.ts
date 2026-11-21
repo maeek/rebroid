@@ -50,7 +50,7 @@ describe('runtime snapshots', () => {
     );
     const queries = {
       getStored: jest.fn(async () => stored),
-      listRunningApplications: async () => [stored],
+      listOwnedRunningSnapshotTargets: async () => [stored],
     };
     inspectContainer.mockReset().mockImplementation(async () => ({
       Id: app.containerId,
@@ -91,6 +91,71 @@ describe('runtime snapshots', () => {
 
   afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
+  });
+
+  it('prioritizes authorized preview demand and stops admitting capture work at the sweep deadline', async () => {
+    jest.useFakeTimers();
+    const timeout = jest
+      .spyOn(AbortSignal, 'timeout')
+      .mockImplementation((ms) => {
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), ms);
+        return controller.signal;
+      });
+    const candidates = Array.from({ length: 7 }, (_, index) => ({
+      ...app,
+      id: String(index),
+    }));
+    const demanded = candidates[6];
+    const requested: string[] = [];
+    const captures: AndroidAppsRuntimeSnapshotService =
+      new AndroidAppsRuntimeSnapshotService(
+        {
+          getStored: async (id: string) =>
+            candidates.find((candidate) => candidate.id === id),
+          listOwnedRunningSnapshotTargets: async () => candidates,
+        } as never,
+        {
+          withCurrentRuntime: jest.fn(
+            async (_runtime: unknown, signal: AbortSignal) => {
+              if (signal.aborted) signal.throwIfAborted();
+              await new Promise((resolve) => setTimeout(resolve, 46_000));
+            },
+          ),
+        } as never,
+        {
+          read: jest.fn().mockResolvedValue(null),
+          readMetadata: jest.fn((id: string) => {
+            requested.push(id);
+            return Promise.resolve(null);
+          }),
+        } as never,
+        {} as never,
+        { isDockerNotFound: () => false } as never,
+      );
+    try {
+      await expect(
+        captures.read(candidates[5].id, 'other'),
+      ).rejects.toMatchObject({
+        status: 404,
+      });
+      await expect(captures.read(demanded.id, 'owner')).rejects.toMatchObject({
+        status: 404,
+      });
+      const first = captures.captureRunningApplications();
+      expect(captures.captureRunningApplications()).toBe(first);
+      await jest.advanceTimersByTimeAsync(46_000);
+      await first;
+      expect(requested).toEqual(['6', '0', '1', '2']);
+
+      const second = captures.captureRunningApplications();
+      await jest.advanceTimersByTimeAsync(46_000);
+      await second;
+      expect(requested.slice(4)).toEqual(['6', '3', '4', '5']);
+    } finally {
+      timeout.mockRestore();
+      jest.useRealTimers();
+    }
   });
 
   it('replaces the private file, downscales the image and checks the owner before reading', async () => {

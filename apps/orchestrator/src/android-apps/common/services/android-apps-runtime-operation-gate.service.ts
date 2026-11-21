@@ -10,7 +10,10 @@ import type {
   AndroidAutomationApplication,
   AndroidAutomationTarget,
 } from '../../contracts/android-apps-automation.port';
-import { runtimeIdentityKey } from '../utils/android-runtime-identity';
+import {
+  runtimeIdentityKey,
+  type AndroidRuntimeIdentity,
+} from '../utils/android-runtime-identity';
 import { AndroidAppsQueryService } from './android-apps-query.service';
 
 export class AndroidRuntimeNotRunningError extends ConflictException {}
@@ -45,7 +48,7 @@ export class AndroidAppsRuntimeOperationGate {
   }
 
   async withCurrentRuntime<T>(
-    expected: AndroidAutomationApplication,
+    expected: AndroidRuntimeIdentity,
     signal: AbortSignal | undefined,
     operation: (
       target: AndroidApplication & { containerStartedAt: string },
@@ -166,5 +169,5 @@ export class AndroidAppsRuntimeOperationGate {
   }
 }
 
-const workflowRuntimeKey = (app: AndroidAutomationApplication) =>
+const workflowRuntimeKey = (app: AndroidRuntimeIdentity) =>
   runtimeIdentityKey(app, app.profileName || 'default');

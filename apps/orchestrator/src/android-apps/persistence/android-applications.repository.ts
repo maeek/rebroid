@@ -13,6 +13,7 @@ import { AndroidApplication } from '../android-application.entity';
 import { ListAndroidApplicationSummariesDto } from '../common/dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationNavigationDto } from '../common/dto/list-android-application-navigation.dto';
 import { ListAndroidApplicationsDto } from '../common/dto/list-android-applications.dto';
+import type { AndroidRuntimeIdentity } from '../common/utils/android-runtime-identity';
 import type { AndroidAppsApkReferencesPort } from '../contracts/android-apps-apk-references.port';
 import { AndroidApplicationStatus } from '../contracts/android-application-status';
 import type {
@@ -208,6 +209,27 @@ export class AndroidApplicationsRepository
     });
   }
 
+  findOwnedRunningSnapshotTargets(): Promise<AndroidRuntimeIdentity[]> {
+    return this.applications.find({
+      select: {
+        id: true,
+        ownerUserId: true,
+        containerId: true,
+        lastStartedAt: true,
+        profileMode: true,
+        profileName: true,
+        containerName: true,
+        networkName: true,
+        adbPort: true,
+      },
+      where: {
+        status: AndroidApplicationStatus.Running,
+        ownerUserId: Not(IsNull()),
+        containerId: Not(IsNull()),
+      },
+    });
+  }
+
   findRunningWithInactivityTimeout() {
     return this.applications.find({
       select: {
@@ -314,10 +336,6 @@ export class AndroidApplicationsRepository
       select: { id: true, name: true },
       where: { ownerUserId: ownerUserId ?? IsNull() },
     });
-  }
-
-  findByStatus(status: AndroidApplicationStatus) {
-    return this.applications.findBy({ status });
   }
 
   async findExistingIds(ids: string[]) {

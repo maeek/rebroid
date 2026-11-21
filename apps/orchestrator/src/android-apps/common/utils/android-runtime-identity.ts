@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { AndroidApplication } from '../../android-application.entity';
 
-type RuntimeIdentity = Pick<
+export type AndroidRuntimeIdentity = Pick<
   AndroidApplication,
   | 'id'
   | 'ownerUserId'
@@ -16,7 +16,7 @@ type RuntimeIdentity = Pick<
 
 // Snapshot records persist a hash of this field order and raw profile name.
 export const runtimeIdentityKey = (
-  app: RuntimeIdentity,
+  app: AndroidRuntimeIdentity,
   profileName = app.profileName,
 ) =>
   JSON.stringify([
@@ -31,12 +31,12 @@ export const runtimeIdentityKey = (
     app.adbPort,
   ]);
 
-export const snapshotRuntimeKey = (app: RuntimeIdentity) =>
+export const snapshotRuntimeKey = (app: AndroidRuntimeIdentity) =>
   createHash('sha256').update(runtimeIdentityKey(app)).digest('hex');
 
 export const viewerActivityRuntimeKey = (
   app: Pick<
-    RuntimeIdentity,
+    AndroidRuntimeIdentity,
     'id' | 'ownerUserId' | 'containerId' | 'lastStartedAt'
   >,
 ) =>

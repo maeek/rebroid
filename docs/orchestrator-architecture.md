@@ -102,7 +102,9 @@ The owning lifecycle services and file-placement rules are listed in [AGENTS.md]
 
 ### Running application snapshots
 
-The orchestrator samples owned running apps once per minute through the display sidecar's ADB screenshot command. It
+The orchestrator gives each minute's capture sweep a 45-second budget and admits up to four concurrent captures.
+It rotates through owned running apps, alternating apps with an authorized preview request in the last two minutes
+with a background pass ordered by the oldest capture attempt. Captures use the display sidecar's ADB screenshot command. It
 reuses prepared ADB transport for up to five minutes when the verified container start time and address, policy
 revision, and observed sidecar generation still match. A failed transport request invalidates readiness for the next
 capture. Each capture verifies the Docker runtime again before publishing. The orchestrator
@@ -112,8 +114,8 @@ bounded header read. A completed capture atomically replaces the previous file, 
 last valid thumbnail for the current runtime.
 Stop clears the thumbnail when the app leaves the running state. Remove and runtime reconciliation also clear stale
 thumbnails. Cleanup checks the current application state or the observed snapshot record before deleting, so a delayed
-cleanup preserves a newer capture. Reads verify the current Docker container and start time. A capture pass removes
-snapshots for runtimes that stopped or restarted outside Rebroid, along with temporary
+cleanup preserves a newer capture. Reads verify the current Docker container and start time. A separate cleanup pass
+prunes snapshots for apps that are no longer eligible and temporary
 files left by an interrupted write. An existing thumbnail remains available after an orchestrator restart if the same
 Android runtime is still running.
 
