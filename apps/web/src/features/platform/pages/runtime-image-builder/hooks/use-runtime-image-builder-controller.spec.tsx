@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { toast } from '@/hooks/use-toast'
@@ -6,9 +7,11 @@ import { startImageBuildAction } from '@/server/orchestrator/platform/image-acti
 import { actionOk } from '@/shared/actions/action-result'
 import { defaultOrchestratorUiSettings } from '@/shared/model/settings/orchestrator-ui-settings'
 import { saveOrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
+import { uploadRuntimeImageContextFile } from '../upload-runtime-image-context-file'
 import { useRuntimeImageBuilderController } from './use-runtime-image-builder-controller'
 import type { ContainerImageBuildContextFile, ContainerImageBuildJob } from '@/shared/contracts/platform'
 
+vi.mock('../upload-runtime-image-context-file', () => ({ uploadRuntimeImageContextFile: vi.fn() }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn(), sendBff: vi.fn() }))
 vi.mock('@/server/orchestrator/platform/image-actions', () => ({
@@ -66,6 +69,50 @@ describe('useRuntimeImageBuilderController', () => {
     expect(buildInput?.contextFileIds).toEqual(['apk', 'permissions'])
     expect(result.current.buildSectionProps.activeJob?.status).toBe('queued')
     expect(toast).toHaveBeenCalledWith({ title: 'Build started', variant: 'success' })
+  })
+
+  it('reports context upload counts in Build status before the job is accepted', async () => {
+    const first = Promise.withResolvers<ContainerImageBuildContextFile>()
+    const second = Promise.withResolvers<ContainerImageBuildContextFile>()
+    const build = Promise.withResolvers<Awaited<ReturnType<typeof startImageBuildAction>>>()
+    vi.mocked(uploadRuntimeImageContextFile).mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    vi.mocked(startImageBuildAction).mockReturnValueOnce(build.promise)
+    const { result } = renderBuilder()
+    const input = document.createElement('input')
+    const files = [new File(['first'], 'first.txt'), new File(['second'], 'second.txt')]
+    Object.defineProperty(input, 'files', { value: files })
+
+    act(() => {
+      result.current.contextSectionProps.onFileInputChange({ currentTarget: input } as ChangeEvent<HTMLInputElement>)
+      result.current.recipeSectionProps.onPatchValues({ gmsMode: 'none' })
+      result.current.onDockerfileChange('FROM alpine:3\nCOPY first.txt second.txt /tmp/\n')
+    })
+    act(() => {
+      void result.current.startBuild()
+    })
+    expect(result.current.buildSectionProps).toMatchObject({
+      starting: true,
+      contextUpload: { completed: 0, total: 2 }
+    })
+    expect(startImageBuildAction).not.toHaveBeenCalled()
+
+    await act(async () => {
+      first.resolve({ id: 'first', contextPath: 'first.txt' } as ContainerImageBuildContextFile)
+      await first.promise
+    })
+    expect(result.current.buildSectionProps.contextUpload).toEqual({ completed: 1, total: 2 })
+    await act(async () => {
+      second.resolve({ id: 'second', contextPath: 'second.txt' } as ContainerImageBuildContextFile)
+      await second.promise
+    })
+    expect(result.current.buildSectionProps).toMatchObject({ starting: true, contextUpload: null })
+    expect(startImageBuildAction).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      build.resolve(actionOk(job('queued')))
+      await build.promise
+    })
+    expect(result.current.buildSectionProps).toMatchObject({ starting: false, activeJob: { status: 'queued' } })
   })
 
   it('exposes live progress and replaces it with the cancelled job', async () => {

@@ -322,6 +322,7 @@ export const useRuntimeImageBuilderController = ({
   return {
     canStart,
     isStarting,
+    startingLabel: isStarting && isUploadingDetectedContext ? 'Uploading context…' : 'Starting build…',
     isActiveJobRunning,
     startBuild,
     dockerfile: values.dockerfile,
@@ -368,6 +369,8 @@ export const useRuntimeImageBuilderController = ({
     },
     buildSectionProps: {
       activeJob,
+      starting: isStarting,
+      contextUpload: isStarting ? detectedContextUploadProgress : null,
       isActiveJobRunning,
       isCancelling,
       isSettingDefault,

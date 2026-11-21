@@ -10,10 +10,13 @@ import { StateTransition } from '@/components/ui/state-transition'
 import { DetailFields } from '@/shared/ui/detail-fields'
 import { PlatformResourceSection } from '@/shared/ui/platform/platform-resource-section'
 import { ResourceLink } from '@/shared/ui/resource-link'
+import type { UploadProgress } from '../model/dockerfile-context-types'
 import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
 export const BuildRunPanel = ({
   job,
+  starting = false,
+  contextUpload,
   running,
   cancelling,
   settingDefault = false,
@@ -24,6 +27,8 @@ export const BuildRunPanel = ({
   loading = false
 }: {
   job: ContainerImageBuildJob | null
+  starting?: boolean
+  contextUpload?: UploadProgress | null
   running: boolean
   cancelling: boolean
   settingDefault?: boolean
@@ -42,7 +47,7 @@ export const BuildRunPanel = ({
       title='Build status'
       contentClassName='gap-5'
       actions={
-        running ? (
+        running && !starting ? (
           <MutationButton
             type='button'
             variant='ghost'
@@ -60,7 +65,20 @@ export const BuildRunPanel = ({
         <Skeleton className='h-20 w-full' />
       ) : (
         <>
-          {job ? (
+          {starting ? (
+            <div
+              role='status'
+              aria-atomic='true'
+              className='grid gap-1 text-sm'
+            >
+              <p className='font-medium'>{contextUpload ? 'Uploading build context…' : 'Submitting build request…'}</p>
+              {contextUpload && contextUpload.total > 0 ? (
+                <p className='tabular-nums text-foreground-muted'>
+                  {contextUpload.completed} of {contextUpload.total} files uploaded
+                </p>
+              ) : null}
+            </div>
+          ) : job ? (
             <>
               <div
                 className='flex flex-wrap items-center gap-3'

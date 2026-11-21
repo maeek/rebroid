@@ -1,9 +1,12 @@
 import { BuildLogs } from '../ui/build-logs'
 import { BuildRunPanel } from '../ui/build-run-panel'
+import type { UploadProgress } from '../model/dockerfile-context-types'
 import type { ContainerImageBuildJob } from '@/shared/contracts/platform'
 
 type BuildSectionProps = {
   activeJob: ContainerImageBuildJob | null
+  starting?: boolean
+  contextUpload?: UploadProgress | null
   isActiveJobRunning: boolean
   isCancelling: boolean
   isSettingDefault?: boolean
@@ -14,6 +17,8 @@ type BuildSectionProps = {
 
 export const BuildSection = ({
   activeJob,
+  starting = false,
+  contextUpload,
   isActiveJobRunning,
   isCancelling,
   isSettingDefault = false,
@@ -24,6 +29,8 @@ export const BuildSection = ({
   <>
     <BuildRunPanel
       job={activeJob}
+      starting={starting}
+      contextUpload={contextUpload}
       running={isActiveJobRunning}
       cancelling={isCancelling}
       settingDefault={isSettingDefault}
@@ -32,7 +39,7 @@ export const BuildSection = ({
       createAppHref={`/apps/create?${new URLSearchParams({ image: activeJob?.targetImage ?? '' }).toString()}`}
       loading={loading}
     />
-    {activeJob ? (
+    {activeJob && !starting ? (
       <BuildLogs
         job={activeJob}
         running={isActiveJobRunning}

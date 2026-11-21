@@ -38,7 +38,7 @@ export const CustomBuilderContent = ({
         <MutationButton
           type='button'
           pending={builder.isStarting || builder.isActiveJobRunning}
-          pendingLabel={builder.isActiveJobRunning ? 'Build in progress' : 'Starting build…'}
+          pendingLabel={builder.isActiveJobRunning ? 'Build in progress' : builder.startingLabel}
           disabled={loading || !builder.canStart}
           onClick={() => void builder.startBuild()}
         >
