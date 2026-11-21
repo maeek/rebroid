@@ -2,9 +2,10 @@ import { Suspense } from 'react'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { RuntimeImagesPageClient, RuntimeImagesPageLoading } from '../../components/runtime-images-page-client'
-import { loadRuntimeImagesPageData, type ImagesSearchParams } from './page-data.server'
+import { loadRuntimeImagesPageData } from './page-data.server'
+import type { PlatformGridSearchParams } from '../platform-grid-search'
 
-const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promise<ImagesSearchParams> }) => {
+const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) => {
   const query = (await searchParams) ?? {}
   const result = await readOrchestratorPage(() => loadRuntimeImagesPageData(query))
 
@@ -27,7 +28,7 @@ const RuntimeImagesPageContent = async ({ searchParams }: { searchParams?: Promi
   )
 }
 
-export function RuntimeImagesPageEntry({ searchParams }: { searchParams?: Promise<ImagesSearchParams> }) {
+export function RuntimeImagesPageEntry({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) {
   return (
     <Suspense fallback={<RuntimeImagesPageLoading />}>
       <RuntimeImagesPageContent searchParams={searchParams} />

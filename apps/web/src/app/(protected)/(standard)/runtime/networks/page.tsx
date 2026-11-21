@@ -1,6 +1,6 @@
 import { RuntimeNetworksPageEntry } from '@/features/platform/pages/runtime-networks/page-entry'
-import type { NetworksSearchParams } from '@/features/platform/pages/runtime-networks/page-data.server'
+import type { PlatformGridSearchParams } from '@/features/platform/pages/platform-grid-search'
 
-export default function RuntimeNetworksPage({ searchParams }: { searchParams?: Promise<NetworksSearchParams> }) {
+export default function RuntimeNetworksPage({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) {
   return <RuntimeNetworksPageEntry searchParams={searchParams} />
 }

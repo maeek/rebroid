@@ -5,9 +5,10 @@ import {
   RuntimeContainersPageClient,
   RuntimeContainersPageLoading
 } from '../../components/runtime-containers-page-client'
-import { loadRuntimeContainersPageData, type ContainersSearchParams } from './page-data.server'
+import { loadRuntimeContainersPageData } from './page-data.server'
+import type { PlatformGridSearchParams } from '../platform-grid-search'
 
-const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: Promise<ContainersSearchParams> }) => {
+const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) => {
   const query = (await searchParams) ?? {}
   const result = await readOrchestratorPage(() => loadRuntimeContainersPageData(query))
 
@@ -30,7 +31,7 @@ const RuntimeContainersPageContent = async ({ searchParams }: { searchParams?: P
   )
 }
 
-export function RuntimeContainersPageEntry({ searchParams }: { searchParams?: Promise<ContainersSearchParams> }) {
+export function RuntimeContainersPageEntry({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) {
   return (
     <Suspense fallback={<RuntimeContainersPageLoading />}>
       <RuntimeContainersPageContent searchParams={searchParams} />

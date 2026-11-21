@@ -32,17 +32,20 @@ export type PlatformResourceOwnership = 'managed' | 'all'
 export type PlatformUsageFilter = 'all' | 'in-use' | 'unused' | 'unknown'
 export type PlatformAttachmentFilter = 'all' | 'attached' | 'unattached'
 
-export interface PlatformImagesGridQuery {
+interface PlatformGridQuery {
   page?: number
   pageSize?: number
   q?: string
   ownership?: PlatformResourceOwnership
+  sort?: string
+}
+
+export interface PlatformImagesGridQuery extends PlatformGridQuery {
   usage?: PlatformUsageFilter
   runtimeKind?: 'all' | 'redroid' | 'generic'
   androidVersion?: string
   architecture?: string
   gmsMode?: 'all' | 'none' | 'microg' | 'gapps'
-  sort?: string
 }
 
 export interface PlatformImagesGridPage {
@@ -56,16 +59,11 @@ export interface PlatformImagesGridPage {
   }
 }
 
-export interface PlatformContainersGridQuery {
-  page?: number
-  pageSize?: number
-  q?: string
-  ownership?: PlatformResourceOwnership
+export interface PlatformContainersGridQuery extends PlatformGridQuery {
   state?: string
   application?: string
   image?: string
   network?: string
-  sort?: string
 }
 
 export interface PlatformContainersGridPage {
@@ -83,16 +81,11 @@ export interface PlatformContainersGridPage {
   }
 }
 
-export interface PlatformNetworksGridQuery {
-  page?: number
-  pageSize?: number
-  q?: string
-  ownership?: PlatformResourceOwnership
+export interface PlatformNetworksGridQuery extends PlatformGridQuery {
   driver?: string
   dockerScope?: string
   trait?: 'all' | 'internal' | 'attachable' | 'ingress'
   attachment?: PlatformAttachmentFilter
-  sort?: string
 }
 
 export interface PlatformNetworksGridPage {

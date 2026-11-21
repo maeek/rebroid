@@ -2,9 +2,10 @@ import { Suspense } from 'react'
 import { readOrchestratorPage } from '@/server/orchestrator/orchestrator-page-read'
 import { PlatformRouteUnavailable } from '@/shared/ui/page/platform-route-unavailable'
 import { RuntimeNetworksPageClient, RuntimeNetworksPageLoading } from '../../components/runtime-networks-page-client'
-import { loadRuntimeNetworksPageData, type NetworksSearchParams } from './page-data.server'
+import { loadRuntimeNetworksPageData } from './page-data.server'
+import type { PlatformGridSearchParams } from '../platform-grid-search'
 
-const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Promise<NetworksSearchParams> }) => {
+const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) => {
   const query = (await searchParams) ?? {}
   const result = await readOrchestratorPage(() => loadRuntimeNetworksPageData(query))
 
@@ -27,7 +28,7 @@ const RuntimeNetworksPageContent = async ({ searchParams }: { searchParams?: Pro
   )
 }
 
-export function RuntimeNetworksPageEntry({ searchParams }: { searchParams?: Promise<NetworksSearchParams> }) {
+export function RuntimeNetworksPageEntry({ searchParams }: { searchParams?: Promise<PlatformGridSearchParams> }) {
   return (
     <Suspense fallback={<RuntimeNetworksPageLoading />}>
       <RuntimeNetworksPageContent searchParams={searchParams} />
