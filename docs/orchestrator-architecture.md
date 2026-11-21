@@ -43,6 +43,8 @@ Ports declare independent capabilities; they must not derive their types from co
 Creating, starting, recreating the runtime, installing an APK, or removing an app reserves one persisted lifecycle job.
 At most one job is active for an application. Each reservation has its own ID. The worker claims that ID,
 and guarded progress, handoff, and completion apply only while the reservation still belongs to that worker.
+The background job runner dispatches committed reservations. Diagnostic log writes report their own
+failures, and a failed log write cannot strand a reservation or reverse a committed transition.
 
 - **Create and start** share runtime activation: resolve the image, prepare boundaries, create or start
   the container, apply network policy, and wait for Android readiness.
@@ -87,6 +89,9 @@ The Apps gallery uses the same owner-scoped row projection for its initial rende
 Sidebar reads return only navigation fields and usually limit running results before sending rows to the web app.
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.
+Configuration commands write only the fields they own and reject changes to applications being removed.
+Runtime settings that require replacement record that intent for the next Start. If settings change
+during container creation, recording the new container preserves the replacement intent for the newer settings.
 Viewer activity and policy observations update only their own fields and are scoped to the observed
 runtime. Viewer heartbeats carry an opaque runtime version, and the orchestrator checks it with
 the authenticated account's ownership before recording activity. The web console uses lifecycle acknowledgements
@@ -277,6 +282,8 @@ These are correctness guarantees:
   `GET /api/v1/automations/runs/:runId/events/conversation`.
 - Workflow and trigger summaries use the newest queued run. Older runs can finish independently without replacing
   that summary. A trigger can also show a newer scheduled enqueue failure when the scheduler could not create a run.
+  Next-run bookkeeping failures are reported independently of run admission. Cron registrations follow
+  committed trigger changes and preserve an active timer when its expression is unchanged.
 
 ## AI decisions
 
@@ -320,6 +327,7 @@ APK storage serializes publication, catalog writes, and orphan removal for each 
 APK deletion commits the catalog change before unlinking shared bytes. Maintenance can retry
 orphaned file cleanup.
 Synchronous and asynchronous image pulls share admission and completion for the resolved image.
+Docker archive uploads own the input stream, tar body, and engine request through cancellation and cleanup.
 
 Settings persistence normalizes defaults; separate services own provider CRUD, connectivity checks,
 and downloads. Transport protocol stays independent from detected server flavor.

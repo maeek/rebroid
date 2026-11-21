@@ -902,4 +902,5 @@ Sidebar app shortcuts keep their highlight while the context menu is open. Right
 to open app actions or remove a shortcut from recent history. Removing a running shortcut hides it
 until the user opens the app again.
 Sidebar app shortcuts show an activity symbol while the app is running and a clock during lifecycle operations.
+In the collapsed rail, show the same states with a small corner dot and keep app icons centered at their full size.
 Keep shortcut row height consistent across statuses and Start action availability.

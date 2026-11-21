@@ -73,7 +73,7 @@ export const RecentAppLink = ({
       appId={app.id}
       appName={app.name}
       icon={app.icon}
-      className={cn('size-6 text-[0.6rem]', rail && showStatus && 'size-5 shrink-0')}
+      className='size-6 text-[0.6rem]'
     />
   )
 
@@ -135,6 +135,7 @@ export const RecentAppLink = ({
         ref={linkRef}
         href={href}
         aria-label={label}
+        aria-description={rail && showStatus ? statusLabel : undefined}
         aria-current={isActive ? 'page' : undefined}
         title={rail || canPreviewSnapshot ? undefined : label}
         onClick={event => {
@@ -154,8 +155,8 @@ export const RecentAppLink = ({
           <AppStatusIndicator
             status={status}
             label={statusLabel}
-            compact
-            className='ml-0.5'
+            variant='dot'
+            className='absolute top-0.5 right-0.5'
           />
         ) : null}
         {!rail ? (
@@ -187,7 +188,9 @@ export const RecentAppLink = ({
       </AppSnapshotPreview>
     )
   } else if (rail) {
-    entry = <NavigationHint label={label}>{trigger}</NavigationHint>
+    entry = (
+      <NavigationHint label={showStatus && statusLabel ? `${label} · ${statusLabel}` : label}>{trigger}</NavigationHint>
+    )
   }
 
   return (
@@ -261,7 +264,7 @@ export const RecentAppLink = ({
         <AppStatusIndicator
           status={status}
           label={statusLabel}
-          compact
+          variant='icon'
           className='mr-2'
         />
       ) : null}

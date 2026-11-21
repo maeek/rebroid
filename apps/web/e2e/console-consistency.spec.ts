@@ -2,6 +2,27 @@ import { expect, test } from '@playwright/test'
 
 const widths = [390, 768, 1440, 2048]
 
+test('collapsed app shortcuts keep full-size icons centered with corner status dots', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/skeleton-contract-test?editor=console-shell&recentApps=1')
+
+  const sidebar = page.getByRole('complementary', { name: 'Primary navigation' })
+  await sidebar.getByRole('button', { name: 'Collapse sidebar' }).click()
+  await expect(sidebar).toHaveCSS('width', '64px')
+  for (const name of ['Starting app', 'Stopped app', 'Running app']) {
+    const link = sidebar.getByRole('link', { name, exact: true })
+    const icon = link.getByText(name.slice(0, 3).toUpperCase(), { exact: true })
+    await expect(icon).toHaveCSS('width', '24px')
+    const [rowBox, iconBox] = await Promise.all([link.boundingBox(), icon.boundingBox()])
+    expect(Math.abs(iconBox!.x + iconBox!.width / 2 - rowBox!.x - rowBox!.width / 2)).toBeLessThan(1)
+  }
+  const running = sidebar.getByRole('link', { name: 'Running app', exact: true })
+  await expect(running).toHaveAccessibleDescription('Running')
+  const runningStatus = running.getByRole('img', { name: 'Running', exact: true })
+  await expect(runningStatus).toHaveCSS('position', 'absolute')
+  await expect(runningStatus).toHaveCSS('width', '6px')
+})
+
 test('app shortcuts keep equal row heights with a status symbol or Start action', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/skeleton-contract-test?editor=console-shell&recentApps=1')
