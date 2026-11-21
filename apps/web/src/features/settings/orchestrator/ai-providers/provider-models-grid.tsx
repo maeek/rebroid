@@ -5,6 +5,7 @@ import { ContextMenuItem } from '@/components/ui/context-menu'
 import { EditorFormContext } from '@/components/ui/editor-form-context'
 import { fieldValuesEqual } from '@/components/ui/field-changes'
 import { DraftFieldLabel } from '@/components/ui/modified-indicator'
+import { Notice } from '@/components/ui/notice'
 import { Section } from '@/components/ui/section'
 import { Switch } from '@/components/ui/switch'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -37,6 +38,8 @@ export type ProviderModelsGridProps = {
   isDownloadingModel: boolean
   isLoadingRemoteModels: boolean
   modelDownloads: Record<string, AutomationAiProviderModelDownload>
+  downloadLookup?: 'loading' | 'failed' | 'ready'
+  onRetryDownloadLookup?: () => void
   remoteModels: AutomationAiProviderRemoteModel[]
   remoteModelsError: string | null
   onLoadRemoteModels: () => void | Promise<void>
@@ -57,6 +60,8 @@ export const ProviderModelsGrid = ({
   isDownloadingModel,
   isLoadingRemoteModels,
   modelDownloads,
+  downloadLookup,
+  onRetryDownloadLookup,
   remoteModels,
   remoteModelsError,
   onLoadRemoteModels,
@@ -152,6 +157,10 @@ export const ProviderModelsGrid = ({
     `${model.id} ${model.label} ${modelPurposeText(model.roles)}`.toLowerCase().includes(search.trim().toLowerCase())
   )
 
+  const unconfiguredDownloads = Object.values(modelDownloads).filter(
+    download => !modelRows.some(model => model.id === download.modelId)
+  )
+
   const section = (
     <Section
       surface='plain'
@@ -173,6 +182,44 @@ export const ProviderModelsGrid = ({
         <p className='text-sm text-foreground-muted'>
           Save or discard changes before adding a model or checking health.
         </p>
+      ) : null}
+      {downloadLookup === 'loading' ? (
+        <p
+          role='status'
+          className='text-sm text-foreground-muted'
+        >
+          Checking model downloads…
+        </p>
+      ) : null}
+      {downloadLookup === 'failed' ? (
+        <Notice
+          tone='warning'
+          title='Could not check for active downloads'
+          actions={
+            <Button
+              variant='ghost'
+              onClick={onRetryDownloadLookup}
+            >
+              Try again
+            </Button>
+          }
+        />
+      ) : null}
+      {unconfiguredDownloads.length ? (
+        <ul
+          aria-label='Model downloads'
+          className='grid gap-2'
+        >
+          {unconfiguredDownloads.map(download => (
+            <li
+              key={download.id}
+              className='flex flex-wrap items-start justify-between gap-3 py-2'
+            >
+              <p className='min-w-0 break-all text-sm font-medium'>{download.modelId}</p>
+              <ProviderModelDownloadStatus download={download} />
+            </li>
+          ))}
+        </ul>
       ) : null}
       <DataGridWorkspace
         disabled={loading}

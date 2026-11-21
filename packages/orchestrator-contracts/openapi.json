@@ -511,6 +511,39 @@
         ]
       }
     },
+    "/api/v1/settings/ai-providers/{providerId}/models/downloads": {
+      "get": {
+        "operationId": "SettingsController_listActiveAiProviderModelDownloads",
+        "parameters": [
+          {
+            "name": "providerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AutomationAiProviderModelDownloadDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
     "/api/v1/settings/ai-providers/{providerId}/models/downloads/{downloadId}": {
       "get": {
         "operationId": "SettingsController_getAiProviderModelDownload",

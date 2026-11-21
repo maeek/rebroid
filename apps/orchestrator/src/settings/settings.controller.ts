@@ -155,6 +155,13 @@ export class SettingsController {
   }
 
   @RequiresFeature('feature.ai')
+  @Get('ai-providers/:providerId/models/downloads')
+  @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto, isArray: true })
+  listActiveAiProviderModelDownloads(@Param('providerId') providerId: string) {
+    return this.settings.listActiveAiProviderModelDownloads(providerId);
+  }
+
+  @RequiresFeature('feature.ai')
   @Get('ai-providers/:providerId/models/downloads/:downloadId')
   @ApiOkResponse({ type: AutomationAiProviderModelDownloadDto })
   getAiProviderModelDownload(

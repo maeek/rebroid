@@ -84,6 +84,12 @@ export const orchestratorSettingsClient = {
     )
   },
 
+  listActiveAiProviderModelDownloads(providerId: string) {
+    return emptyRequest<AutomationAiProviderModelDownload[]>(
+      `/settings/ai-providers/${encodeURIComponent(providerId)}/models/downloads`
+    )
+  },
+
   getAiProviderModelDownload(providerId: string, downloadId: string) {
     return emptyRequest<AutomationAiProviderModelDownload>(
       `/settings/ai-providers/${encodeURIComponent(providerId)}/models/downloads/${encodeURIComponent(downloadId)}`

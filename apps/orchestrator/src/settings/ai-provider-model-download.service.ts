@@ -1,11 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { readProviderJson } from '../common/ai-provider-http';
-import { readProviderStreamFrames } from '../common/ai-provider-stream';
 import {
   normalizeAiModel,
   normalizeDefaultModel,
@@ -14,13 +13,23 @@ import {
 import { AiProviderHealthService } from './ai-provider-health.service';
 import { OrchestratorSettingsStore } from './orchestrator-settings-store';
 import type { AutomationAiProviderModelDownloadDto } from './dto/automation-ai-provider-download.dto';
+import { downloadOllamaModel } from './ollama-model-download';
 
 type AutomationAiProviderModelDownloadJob =
   AutomationAiProviderModelDownloadDto;
 
+type ActiveDownload = {
+  endpoint: string;
+  job: AutomationAiProviderModelDownloadJob;
+};
+
+const maxFinishedDownloads = 128;
+const normalizeEndpoint = (baseUrl: string) => baseUrl.replace(/\/+$/, '');
+
 @Injectable()
 export class AiProviderModelDownloadService {
-  private readonly modelDownloads = new Map<
+  private readonly active = new Map<string, ActiveDownload>();
+  private readonly finished = new Map<
     string,
     AutomationAiProviderModelDownloadJob
   >();
@@ -48,14 +57,15 @@ export class AiProviderModelDownloadService {
     if (!id) {
       throw new BadRequestException('Model ID is required.');
     }
-    const existingJob = Array.from(this.modelDownloads.values()).find(
-      (job) =>
-        job.providerId === providerId &&
-        job.modelId === id &&
-        ['queued', 'running'].includes(job.status),
+    const endpoint = normalizeEndpoint(provider.baseUrl);
+    const existing = [...this.active.values()].find(
+      (download) =>
+        download.endpoint === endpoint &&
+        download.job.providerId === providerId &&
+        download.job.modelId === id,
     );
-    if (existingJob) {
-      return existingJob;
+    if (existing) {
+      return { ...existing.job };
     }
 
     const now = new Date().toISOString();
@@ -73,80 +83,55 @@ export class AiProviderModelDownloadService {
       updatedAt: now,
       finishedAt: null,
     };
-    this.modelDownloads.set(job.id, job);
-    void this.runDownload(job.id);
-    return job;
+    const download = { endpoint, job };
+    this.active.set(job.id, download);
+    const acknowledgement = { ...job };
+    void this.runDownload(download);
+    return acknowledgement;
+  }
+
+  listActive(providerId: string) {
+    return [...this.active.values()]
+      .filter(({ job }) => job.providerId === providerId)
+      .map(({ job }) => ({ ...job }));
   }
 
   get(providerId: string, downloadId: string) {
-    const job = this.modelDownloads.get(downloadId);
+    const job =
+      this.active.get(downloadId)?.job ?? this.finished.get(downloadId);
     if (!job || job.providerId !== providerId) {
       throw new NotFoundException(
         `AI model download "${downloadId}" was not found.`,
       );
     }
-    return job;
+    return { ...job };
   }
 
-  private async runDownload(downloadId: string) {
-    const job = this.modelDownloads.get(downloadId);
-    if (!job) {
-      return;
-    }
-
+  private async runDownload({ job, endpoint }: ActiveDownload) {
+    this.updateDownload(job, {
+      status: 'running',
+      message: 'Starting Ollama model download.',
+    });
     try {
-      this.updateDownload(downloadId, {
-        status: 'running',
-        message: 'Starting Ollama model download.',
-      });
-      const settings = await this.store.getStoredSettings();
-      const provider = settings.aiProviders.find(
-        (item) => item.id === job.providerId,
-      );
-      if (!provider) {
-        throw new NotFoundException(
-          `AI provider "${job.providerId}" was not found.`,
-        );
-      }
-      if (provider.kind !== 'ollama') {
-        throw new BadRequestException(
-          'Only Ollama providers support model downloads.',
-        );
-      }
-
-      const response = await fetch(
-        `${provider.baseUrl.replace(/\/+$/, '')}/api/pull`,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          signal: AbortSignal.timeout(30 * 60 * 1000),
-          body: JSON.stringify({ name: job.modelId, stream: true }),
+      await downloadOllamaModel(
+        endpoint,
+        job.modelId,
+        ({ message, total, completed, percent }) => {
+          this.updateDownload(job, {
+            message,
+            ...(total === undefined ? {} : { total }),
+            ...(completed === undefined ? {} : { completed }),
+            ...(percent === undefined ? {} : { percent }),
+          });
         },
       );
-      if (!response.ok) {
-        const body = (await readProviderJson(response)) as {
-          error?: unknown;
-          message?: unknown;
-        } | null;
-        const message =
-          typeof body?.error === 'string'
-            ? body.error
-            : typeof body?.message === 'string'
-              ? body.message
-              : `${response.status} ${response.statusText}`;
-        throw new BadRequestException(
-          `Ollama model download failed: ${message}`,
-        );
-      }
-      if (!response.body) {
-        throw new BadRequestException(
-          'Ollama model download did not return a progress stream.',
-        );
-      }
-
-      await this.readOllamaPullProgress(downloadId, response.body);
-      await this.addDownloadedModel(job.providerId, job.modelId, job.label);
-      this.updateDownload(downloadId, {
+      await this.addDownloadedModel(
+        job.providerId,
+        endpoint,
+        job.modelId,
+        job.label,
+      );
+      this.updateDownload(job, {
         status: 'completed',
         message: `Model "${job.modelId}" is downloaded.`,
         completed: null,
@@ -155,62 +140,31 @@ export class AiProviderModelDownloadService {
         finishedAt: new Date().toISOString(),
       });
     } catch (error) {
-      this.updateDownload(downloadId, {
+      this.updateDownload(job, {
         status: 'failed',
         message: this.health.errorMessage(error),
         finishedAt: new Date().toISOString(),
       });
+    } finally {
+      this.finished.set(job.id, job);
+      this.active.delete(job.id);
+      if (this.finished.size > maxFinishedDownloads) {
+        const oldest = this.finished.keys().next();
+        if (!oldest.done) this.finished.delete(oldest.value);
+      }
     }
-  }
-
-  private async readOllamaPullProgress(
-    downloadId: string,
-    body: ReadableStream<Uint8Array>,
-  ) {
-    for await (const line of readProviderStreamFrames(body, 'ollama-ndjson')) {
-      this.updateDownloadFromOllamaEvent(downloadId, line);
-    }
-  }
-
-  private updateDownloadFromOllamaEvent(downloadId: string, line: string) {
-    const event = JSON.parse(line) as {
-      completed?: unknown;
-      status?: unknown;
-      total?: unknown;
-    };
-    const total = typeof event.total === 'number' ? event.total : null;
-    const completed =
-      typeof event.completed === 'number' ? event.completed : null;
-    const percent =
-      total && completed !== null
-        ? Math.min(100, Math.max(0, Math.round((completed / total) * 100)))
-        : null;
-    this.updateDownload(downloadId, {
-      message:
-        typeof event.status === 'string' ? event.status : 'Downloading model.',
-      ...(total !== null ? { total } : {}),
-      ...(completed !== null ? { completed } : {}),
-      ...(percent !== null ? { percent } : {}),
-    });
   }
 
   private updateDownload(
-    downloadId: string,
+    job: AutomationAiProviderModelDownloadJob,
     patch: Partial<AutomationAiProviderModelDownloadJob>,
   ) {
-    const current = this.modelDownloads.get(downloadId);
-    if (!current) {
-      return;
-    }
-    this.modelDownloads.set(downloadId, {
-      ...current,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    });
+    Object.assign(job, patch, { updatedAt: new Date().toISOString() });
   }
 
   private async addDownloadedModel(
     providerId: string,
+    endpoint: string,
     modelId: string,
     label?: string,
   ) {
@@ -224,6 +178,14 @@ export class AiProviderModelDownloadService {
         );
       }
       const provider = settings.aiProviders[index];
+      if (
+        provider.kind !== 'ollama' ||
+        normalizeEndpoint(provider.baseUrl) !== endpoint
+      ) {
+        throw new ConflictException(
+          'The AI provider connection changed during the model download.',
+        );
+      }
       const existingIndex = provider.models.findIndex(
         (model) => model.id === modelId,
       );

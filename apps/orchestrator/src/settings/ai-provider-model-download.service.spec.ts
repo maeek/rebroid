@@ -51,6 +51,10 @@ describe('AiProviderModelDownloadService', () => {
       percent: 25,
     });
 
+    expect(service.listActive('local')).toEqual([
+      expect.objectContaining({ id: job.id, percent: 25 }),
+    ]);
+    expect(service.listActive('other')).toEqual([]);
     writer.enqueue(encoder.encode('{"status":"success"}'));
     writer.close();
     await setImmediate();
@@ -59,6 +63,7 @@ describe('AiProviderModelDownloadService', () => {
       status: 'completed',
       percent: 100,
     });
+    expect(service.listActive('local')).toEqual([]);
     expect(store.updateSettings).toHaveBeenCalledTimes(1);
   });
 
@@ -171,5 +176,81 @@ describe('AiProviderModelDownloadService', () => {
       status: 'failed',
       message: 'Ollama model download failed: model unavailable',
     });
+  });
+
+  it.each([
+    ['{"status":"pulling"}\n', 'without confirming success'],
+    [
+      '{"status":"success"}\n{"status":"pulling"}\n',
+      'without confirming success',
+    ],
+    ['{"status":"pulling"}\n{"error":"connection lost"}\n', 'connection lost'],
+  ])(
+    'leaves the catalog unchanged for an unsuccessful download',
+    async (body, message) => {
+      const { service, store } = setup(new Response(body));
+      const job = await service.download('local', 'model:tag');
+      await setImmediate();
+      expect(service.get('local', job.id)).toMatchObject({
+        status: 'failed',
+        message: expect.stringContaining(message),
+      });
+      expect(store.updateSettings).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects publication when the provider endpoint changes after admission', async () => {
+    let writer!: ReadableStreamDefaultController<Uint8Array>;
+    const { service, store } = setup(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            writer = controller;
+          },
+        }),
+      ),
+    );
+    const changed = {
+      aiProviders: [
+        normalizeAiProvider({
+          id: 'local',
+          label: 'Local',
+          kind: 'ollama',
+          baseUrl: 'http://another.test',
+          models: [],
+        }),
+      ],
+    };
+    store.updateSettings.mockImplementation(async (update) => update(changed));
+
+    const job = await service.download('local', 'model:tag');
+    expect(global.fetch).toHaveBeenCalledWith(
+      'http://ollama.test/api/pull',
+      expect.anything(),
+    );
+    writer.enqueue(new TextEncoder().encode('{"status":"success"}\n'));
+    writer.close();
+    await setImmediate();
+
+    expect(service.get('local', job.id)).toMatchObject({
+      status: 'failed',
+      message: expect.stringContaining('provider connection changed'),
+    });
+    expect(changed.aiProviders[0].models).toEqual([]);
+  });
+
+  it('evicts the oldest completed downloads from polling history', async () => {
+    const { service } = setup(new Response());
+    jest
+      .mocked(global.fetch)
+      .mockImplementation(async () => new Response('{"status":"success"}\n'));
+    const ids: string[] = [];
+    for (let index = 0; index < 129; index++) {
+      ids.push((await service.download('local', `model:${index}`)).id);
+      await setImmediate();
+    }
+    expect(() => service.get('local', ids[0])).toThrow('was not found');
+    expect(service.get('local', ids[1]).status).toBe('completed');
+    expect(service.listActive('local')).toEqual([]);
   });
 });

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
+import { getBff } from '@/lib/http/bff'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import {
   createAutomationAiProviderModelAction,
   downloadAutomationAiProviderModelAction,
@@ -26,6 +28,14 @@ import type {
   AutomationAiProviderRemoteModel
 } from '@/shared/contracts/ai-provider'
 
+const appendDownloadedModel = (current: ProviderFormState, modelId: string, label?: string): ProviderFormState =>
+  current.models.some(model => model.id === modelId)
+    ? current
+    : {
+        ...current,
+        models: normalizeModelDefaults([...current.models, { ...emptyModel(), id: modelId, label: label || modelId }])
+      }
+
 const controllerPlannerRoles = (): AutomationAiProviderModelRole[] => ['controller', 'planner']
 
 export const useAiProviderEditController = (initialProvider: AutomationAiProvider) => {
@@ -39,6 +49,10 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadingModel, setIsDownloadingModel] = useState(false)
   const [modelDownloads, setModelDownloads] = useState<Record<string, AutomationAiProviderModelDownload>>({})
+  const [downloadLookup, setDownloadLookup] = useState<'loading' | 'failed' | 'ready'>(
+    initialProvider.kind === 'ollama' ? 'loading' : 'ready'
+  )
+  const [downloadLookupAttempt, setDownloadLookupAttempt] = useState(0)
   const [remoteModels, setRemoteModels] = useState<AutomationAiProviderRemoteModel[]>([])
   const [isLoadingRemoteModels, setIsLoadingRemoteModels] = useState(false)
   const [remoteModelsError, setRemoteModelsError] = useState<string | null>(null)
@@ -145,6 +159,29 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     [initialProvider.id, isDirty, provider.models, router]
   )
 
+  useEffect(() => {
+    if (initialProvider.kind !== 'ollama') return
+    const lookup = new AbortController()
+    setDownloadLookup('loading')
+    void getBff<AutomationAiProviderModelDownload[]>(
+      `/api/bff/platform/ai-providers/${encodeURIComponent(initialProvider.id)}/model-downloads`,
+      lookup.signal
+    ).then(
+      jobs => {
+        if (lookup.signal.aborted) return
+        setModelDownloads(current => ({
+          ...Object.fromEntries(jobs.map(job => [job.modelId, job])),
+          ...current
+        }))
+        setDownloadLookup('ready')
+      },
+      () => {
+        if (!lookup.signal.aborted) setDownloadLookup('failed')
+      }
+    )
+    return () => lookup.abort()
+  }, [downloadLookupAttempt, initialProvider.id, initialProvider.kind])
+
   const downloadsRef = useRef(modelDownloads)
   useEffect(() => {
     downloadsRef.current = modelDownloads
@@ -177,10 +214,17 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
           if (updates.length === 0) return
           setModelDownloads(current => ({
             ...current,
-            ...Object.fromEntries(updates.map(download => [download.modelId, download]))
+            ...Object.fromEntries(
+              updates
+                .filter(download => current[download.modelId]?.id === download.id)
+                .map(download => [download.modelId, download])
+            )
           }))
           for (const next of updates) {
+            if (downloadsRef.current[next.modelId]?.id !== next.id) continue
             if (next.status === 'completed') {
+              setProvider(current => appendDownloadedModel(current, next.modelId, next.label))
+              setSavedProvider(current => appendDownloadedModel(current, next.modelId, next.label))
               toast({ title: 'AI model downloaded', description: next.modelId, variant: 'success' })
               router.refresh()
             }
@@ -231,22 +275,6 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
         label: label?.trim() || undefined
       })
       setModelDownloads(current => ({ ...current, [job.modelId]: job }))
-      const appendDownloadedModel = (current: ProviderFormState): ProviderFormState => {
-        if (current.models.some(model => model.id === normalizedModelId)) return current
-        return {
-          ...current,
-          models: normalizeModelDefaults([
-            ...current.models,
-            {
-              ...emptyModel(),
-              id: normalizedModelId,
-              label: label?.trim() || normalizedModelId
-            }
-          ])
-        }
-      }
-      setProvider(appendDownloadedModel)
-      setSavedProvider(appendDownloadedModel)
       toast({ title: 'AI model download started', description: normalizedModelId, variant: 'success' })
     } catch (error) {
       toast({
@@ -284,7 +312,7 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
       setSavedProvider(saved)
       toast({ title: 'AI provider updated', variant: 'success' })
       if (saved.id !== initialProvider.id) {
-        router.replace(`/platform/ai/${encodeURIComponent(saved.id)}`)
+        afterClosingBackEntry(() => router.replace(`/platform/ai/${encodeURIComponent(saved.id)}`))
       } else {
         router.refresh()
       }
@@ -312,6 +340,8 @@ export const useAiProviderEditController = (initialProvider: AutomationAiProvide
     discardChanges: () => setProvider(structuredClone(savedProvider)),
     loadRemoteModels,
     modelDownloads,
+    downloadLookup,
+    retryDownloadLookup: () => setDownloadLookupAttempt(current => current + 1),
     modelRows,
     provider,
     removeModel,

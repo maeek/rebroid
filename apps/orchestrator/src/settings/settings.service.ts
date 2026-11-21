@@ -180,6 +180,10 @@ export class SettingsService {
     return this.aiProviders.downloadProviderModel(providerId, modelId, label);
   }
 
+  listActiveAiProviderModelDownloads(providerId: string) {
+    return this.aiProviders.listActiveProviderModelDownloads(providerId);
+  }
+
   getAiProviderModelDownload(providerId: string, downloadId: string) {
     return this.aiProviders.getProviderModelDownload(providerId, downloadId);
   }

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   download: vi.fn(),
   progress: vi.fn(),
   list: vi.fn(),
+  lookup: vi.fn(),
   save: vi.fn(),
   refresh: vi.fn(),
   push: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('next/navigation', () => {
   const router = { refresh: mocks.refresh, replace: mocks.replace, push: mocks.push }
   return { useRouter: () => router }
 })
+vi.mock('@/lib/http/bff', () => ({ getBff: mocks.lookup }))
 vi.mock('@/hooks/use-toast', () => ({ toast: mocks.toast }))
 vi.mock('@/server/orchestrator/settings/actions', () => ({
   createAutomationAiProviderModelAction: mocks.add,
@@ -32,7 +34,10 @@ vi.mock('@/server/orchestrator/settings/actions', () => ({
 const provider = { ...emptyProvider(), id: 'local', label: 'Local', apiKey: '********' }
 
 describe('provider editor persistence', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.lookup.mockResolvedValue([])
+  })
   afterEach(() => vi.useRealTimers())
 
   it('keeps the connection draft across provider tabs and discards it only after confirmation', async () => {
@@ -120,6 +125,34 @@ describe('provider editor persistence', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
     expect(url).toHaveValue(provider.baseUrl)
     expect(url).not.toHaveAccessibleDescription(expect.stringContaining('Unsaved change'))
+  })
+
+  it('restores and watches an active Ollama download on entry without starting another download', async () => {
+    vi.useFakeTimers()
+    const job = {
+      id: 'restored',
+      providerId: 'local',
+      modelId: 'model:tag',
+      status: 'running',
+      message: 'Downloading layer',
+      percent: 25
+    }
+    mocks.lookup.mockResolvedValueOnce([job])
+    mocks.progress.mockResolvedValueOnce({ ...job, status: 'completed', percent: 100 })
+    const { result } = renderHook(() => useAiProviderEditController({ ...provider, kind: 'ollama' }))
+    await act(() => Promise.resolve())
+    expect(result.current.modelDownloads['model:tag']).toEqual(job)
+    expect(mocks.lookup).toHaveBeenCalledWith(
+      '/api/bff/platform/ai-providers/local/model-downloads',
+      expect.any(AbortSignal)
+    )
+    expect(mocks.download).not.toHaveBeenCalled()
+    expect(result.current.modelRows).toHaveLength(0)
+
+    await act(async () => vi.advanceTimersByTimeAsync(1500))
+    expect(mocks.progress).toHaveBeenCalledWith('local', 'restored')
+    expect(result.current.modelRows[0]?.id).toBe('model:tag')
+    expect(result.current.isDirty).toBe(false)
   })
 
   it('retries transient progress errors without failing the download or overlapping requests', async () => {
