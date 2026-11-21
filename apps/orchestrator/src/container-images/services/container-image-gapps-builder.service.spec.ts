@@ -19,6 +19,27 @@ const deferred = <T>() => {
 };
 
 describe('ContainerImageGappsBuilderService', () => {
+  it('publishes a newly built package against the checksum recorded before validation', async () => {
+    const build = createQueuedBuild('14');
+    build.cache.findVerified.mockResolvedValue(null);
+    build.packageWorker.buildPackage.mockResolvedValue('/temporary/package');
+    build.cache.calculateSha256.mockResolvedValue('recorded-sha256');
+
+    await build.service.onModuleInit();
+    await nextTurn();
+
+    expect(build.jobs.updateBuildDetails).toHaveBeenCalledWith('job-id', {
+      packageSha256: 'recorded-sha256',
+    });
+    expect(build.cache.promote).toHaveBeenCalledWith(
+      '/temporary/package',
+      '14',
+      'fixture-revision',
+      'recorded-sha256',
+    );
+    expect(build.jobs.markSucceeded).toHaveBeenCalled();
+  });
+
   it.each(supportedGappsAndroidVersions)(
     'keeps ReDroid init and its boot arguments for Android %s',
     async (androidVersion) => {
@@ -379,6 +400,8 @@ const createQueuedBuild = (
   );
   const cache = {
     clear: jest.fn(),
+    promote: jest.fn(),
+    calculateSha256: jest.fn(),
     findVerified: jest
       .fn()
       .mockResolvedValue({ sha256: 'checksum', packagePath: '/tmp/payload' }),

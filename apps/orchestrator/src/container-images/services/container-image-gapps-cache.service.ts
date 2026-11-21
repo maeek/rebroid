@@ -17,18 +17,6 @@ import {
 } from '../dto/gapps-build.dto';
 import { gappsTemporaryPackageDirectory } from '../utils/gapps-staging-paths';
 
-const cacheFileNames = (
-  androidVersion: SupportedGappsAndroidVersion,
-  revision: string,
-) => {
-  // Older Android 15 and 16 archives lack the compatible GSF used by the patch worker.
-  const stem =
-    androidVersion === '15' || androidVersion === '16'
-      ? `${revision}-gsf-compat-v1`
-      : revision;
-  return { packageFile: `${stem}.zip`, checksumFile: `${stem}.sha256` };
-};
-
 @Injectable()
 export class ContainerImageGappsCacheService {
   constructor(private readonly config: ConfigService) {}
@@ -37,13 +25,10 @@ export class ContainerImageGappsCacheService {
     androidVersion: SupportedGappsAndroidVersion,
     revision: string,
   ) {
-    const directory = await this.versionDirectory(androidVersion);
-    const { packageFile, checksumFile } = cacheFileNames(
+    const { packagePath, checksumPath } = await this.revisionPaths(
       androidVersion,
       revision,
     );
-    const packagePath = join(directory, packageFile);
-    const checksumPath = join(directory, checksumFile);
     try {
       const expected = (await readFile(checksumPath, 'utf8')).trim();
       const actual = await this.calculateSha256(packagePath);
@@ -72,16 +57,15 @@ export class ContainerImageGappsCacheService {
     temporaryPath: string,
     androidVersion: SupportedGappsAndroidVersion,
     revision: string,
+    expectedSha256: string,
   ) {
-    const directory = await this.versionDirectory(androidVersion);
-    const { packageFile, checksumFile } = cacheFileNames(
+    const { packagePath, checksumPath } = await this.revisionPaths(
       androidVersion,
       revision,
     );
-    const packagePath = join(directory, packageFile);
-    const checksumPath = join(directory, checksumFile);
     const sha256 = await this.calculateSha256(temporaryPath);
-    await rm(packagePath, { force: true });
+    if (sha256 !== expectedSha256)
+      throw new Error('GApps package changed during validation.');
     await rename(temporaryPath, packagePath);
     await writeFile(checksumPath, `${sha256}\n`, { mode: 0o600 });
     return { packagePath, sha256 };
@@ -91,18 +75,15 @@ export class ContainerImageGappsCacheService {
     androidVersion: SupportedGappsAndroidVersion,
     revision: string,
   ) {
-    const directory = await this.versionDirectory(androidVersion);
-    const { packageFile, checksumFile } = cacheFileNames(
+    const { directory, packagePath, checksumPath } = await this.revisionPaths(
       androidVersion,
       revision,
     );
-    const keep = new Set([packageFile, checksumFile]);
     await Promise.all(
       (await readdir(directory))
-        .filter((name) => !keep.has(name))
-        .map((name) =>
-          rm(join(directory, name), { recursive: true, force: true }),
-        ),
+        .map((name) => join(directory, name))
+        .filter((path) => path !== packagePath && path !== checksumPath)
+        .map((path) => rm(path, { recursive: true, force: true })),
     );
   }
 
@@ -116,12 +97,10 @@ export class ContainerImageGappsCacheService {
         `Unsupported GApps Android version. Supported versions: ${supportedGappsAndroidVersions.join(', ')}.`,
       );
     }
-    const directory = join(
-      this.config.getOrThrow<string>('app.uploadsDir'),
-      'image-build-gapps-cache',
-      androidVersion,
-    );
-    await rm(directory, { recursive: true, force: true });
+    await rm(this.versionDirectory(androidVersion), {
+      recursive: true,
+      force: true,
+    });
     return { androidVersion, cleared: true };
   }
 
@@ -129,23 +108,37 @@ export class ContainerImageGappsCacheService {
     return rm(path, { force: true });
   }
 
-  private async versionDirectory(androidVersion: SupportedGappsAndroidVersion) {
-    const directory = join(
+  private versionDirectory(androidVersion: string) {
+    return join(
       this.config.getOrThrow<string>('app.uploadsDir'),
       'image-build-gapps-cache',
       androidVersion,
     );
-    await mkdir(directory, { recursive: true });
-    return directory;
   }
 
-  calculateSha256(path: string) {
-    return new Promise<string>((resolve, reject) => {
-      const hash = createHash('sha256');
-      const stream = createReadStream(path);
-      stream.on('data', (chunk) => hash.update(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => resolve(hash.digest('hex')));
-    });
+  private async revisionPaths(
+    androidVersion: SupportedGappsAndroidVersion,
+    revision: string,
+  ) {
+    const directory = this.versionDirectory(androidVersion);
+    await mkdir(directory, { recursive: true });
+    // Older Android 15 and 16 archives lack the compatible GSF used by the patch worker.
+    const stem =
+      androidVersion === '15' || androidVersion === '16'
+        ? `${revision}-gsf-compat-v1`
+        : revision;
+    return {
+      directory,
+      packagePath: join(directory, `${stem}.zip`),
+      checksumPath: join(directory, `${stem}.sha256`),
+    };
+  }
+
+  async calculateSha256(path: string) {
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(path)) {
+      hash.update(chunk as Buffer);
+    }
+    return hash.digest('hex');
   }
 }

@@ -235,15 +235,13 @@ export class ContainerImageGappsBuilderService
       signal,
     );
     await this.jobs.updateBuildDetails(id, { mindTheGappsRevision: revision });
-    let cached = await this.cache.findVerified(androidVersion, revision);
-    let packagePath: string;
-    if (cached) {
+    let archive = await this.cache.findVerified(androidVersion, revision);
+    if (archive) {
       await this.jobs.updateBuildDetails(id, {
         cacheState: 'hit',
-        packageSha256: cached.sha256,
+        packageSha256: archive.sha256,
       });
       await this.jobs.appendLog(id, 'Using verified cached GApps package.');
-      packagePath = cached.packagePath;
     } else {
       await this.jobs.updateBuildDetails(id, {
         phase: 'building_gapps',
@@ -257,33 +255,29 @@ export class ContainerImageGappsBuilderService
         signal,
       );
       signal.throwIfAborted();
-      const packageSha256 = await this.cache.calculateSha256(
-        staging.temporaryPackage,
-      );
-      await this.jobs.updateBuildDetails(id, {
-        packageSha256,
-      });
-      packagePath = staging.temporaryPackage;
+      archive = {
+        packagePath: staging.temporaryPackage,
+        sha256: await this.cache.calculateSha256(staging.temporaryPackage),
+      };
+      await this.jobs.updateBuildDetails(id, { packageSha256: archive.sha256 });
     }
 
     await this.jobs.updateBuildDetails(id, { phase: 'validating_payload' });
     signal.throwIfAborted();
-    const workDirectory = await this.packages.extract(packagePath, id);
+    const workDirectory = await this.packages.extract(archive.packagePath, id);
     staging.workDirectory = workDirectory;
     signal.throwIfAborted();
     const payloadValidation = await this.packages.validate(workDirectory);
     signal.throwIfAborted();
     if (staging.temporaryPackage) {
-      cached = await this.cache.promote(
+      await this.cache.promote(
         staging.temporaryPackage,
         androidVersion,
         revision,
+        archive.sha256,
       );
       staging.temporaryPackage = null;
-      await this.jobs.updateBuildDetails(id, {
-        cacheState: 'built',
-        packageSha256: cached.sha256,
-      });
+      await this.jobs.updateBuildDetails(id, { cacheState: 'built' });
     }
     await this.jobs.updateBuildDetails(id, {
       validationResults: { payload: payloadValidation },
