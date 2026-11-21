@@ -1,13 +1,6 @@
 import { Inject, ConflictException, Injectable } from '@nestjs/common';
 import { constants, createWriteStream } from 'node:fs';
-import {
-  mkdir,
-  readdir,
-  open,
-  stat,
-  unlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, readdir, open, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -77,20 +70,6 @@ export class RuntimeDownloadVolumeService {
     return files
       .filter((file): file is NonNullable<typeof file> => Boolean(file))
       .sort((left, right) => left.name.localeCompare(right.name));
-  }
-
-  async storeBuffer(
-    app: AndroidApplication,
-    fileName: string,
-    buffer: Buffer,
-    query: ApplicationRuntimeFilesQueryDto,
-  ) {
-    const directory = await this.getRequiredDirectory(app, query, {
-      create: true,
-    });
-
-    await mkdir(directory, { recursive: true });
-    await writeFile(join(directory, fileName), buffer, { mode: 0o644 });
   }
 
   async storeStream(
@@ -175,9 +154,8 @@ export class RuntimeDownloadVolumeService {
   private async getRequiredDirectory(
     app: AndroidApplication,
     query: ApplicationRuntimeFilesQueryDto,
-    options: { create?: boolean } = {},
   ) {
-    const directory = await this.getDirectory(app, query, options);
+    const directory = await this.getDirectory(app, query);
     if (!directory) {
       throw new ConflictException(persistentDownloadRequiredMessage);
     }

@@ -10,7 +10,6 @@ import type {
   CloneApplicationInput,
   CreateAndroidApplicationInput,
   DeleteAndroidApplicationResponse,
-  AndroidAppRuntimeReconciliation,
   UpdateAndroidApplicationInput
 } from '@/shared/contracts/application'
 import type { OrchestratorApiSchemas } from '@rebroid/orchestrator-contracts'
@@ -60,10 +59,6 @@ export const orchestratorAppCatalogClient = {
       query
     )
     return rows.map(({ status, ...row }) => ({ ...row, currentStatus: status }))
-  },
-
-  reconcileApplication(id: string) {
-    return jsonRequest<AndroidAppRuntimeReconciliation>(`${applicationPath(id)}/runtime-state/reconcile`, 'POST', {})
   },
 
   listApplicationSummaries(

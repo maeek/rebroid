@@ -8,12 +8,6 @@ export type MultipartUploadRequest = Readable & {
   on: IncomingMessage['on'];
 };
 
-export type BufferedUploadFile = {
-  originalname: string;
-  buffer: Buffer;
-  size: number;
-};
-
 export const isMultipartUpload = (headers: IncomingHttpHeaders) => {
   const contentType = headers['content-type'];
   const value = Array.isArray(contentType) ? contentType[0] : contentType;

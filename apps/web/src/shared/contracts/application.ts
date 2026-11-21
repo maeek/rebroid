@@ -45,13 +45,6 @@ export type ApplicationViewerControlCommand = OrchestratorApiSchemas['Applicatio
 export type ApplicationViewerControlResponse = OrchestratorApiSchemas['ApplicationViewerControlResponseDto']
 export type ScrcpySession = OrchestratorApiSchemas['ScrcpySessionDto']
 export type DeleteAndroidApplicationResponse = OrchestratorApiSchemas['DeleteAndroidApplicationResponseDto']
-export type AndroidAppRuntimeReconciliation = OrchestratorApiSchemas['AndroidAppRuntimeReconciliationDto']
-
-export interface ApplicationRuntimeFilesProfileInput {
-  profileMode?: ApplicationProfileMode
-  profileName?: string
-}
-
 export interface CreateAndroidApplicationInput {
   name: string
   ownerUserId?: string

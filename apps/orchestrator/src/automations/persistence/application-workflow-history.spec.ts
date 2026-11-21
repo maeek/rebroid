@@ -26,18 +26,15 @@ it('pages persisted workflow runs by owner and app, retaining deleted workflow r
       definitionJson: '{}',
     });
     const save = (values: Partial<AutomationRun> = {}) =>
-      runs.save(
-        runs.create({
-          ownerUserId: 'owner',
-          targetApplicationId: 'app',
-          automationId: 'workflow',
-          trigger: AutomationRunTrigger.Manual,
-          status: AutomationRunStatus.Success,
-          stepResultsJson: '[]',
-          createdAt: new Date('2026-01-01T00:00:00Z'),
-          ...values,
-        }),
-      );
+      db.getRepository(AutomationRun).save({
+        ownerUserId: 'owner',
+        targetApplicationId: 'app',
+        automationId: 'workflow',
+        trigger: AutomationRunTrigger.Manual,
+        status: AutomationRunStatus.Success,
+        createdAt: new Date('2026-01-01T00:00:00Z'),
+        ...values,
+      });
     const completed = await save();
     const failed = await save({
       status: AutomationRunStatus.Failed,
@@ -130,19 +127,17 @@ it('prunes only expired finished workflows with their results and events', async
     const cutoff = new Date('2026-11-01T12:00:00Z');
     const old = new Date('2026-10-01T00:00:00Z');
     const save = async (id: string, values: Partial<AutomationRun> = {}) => {
-      await runs.save(
-        runs.create({
-          id,
-          ownerUserId: 'owner',
-          targetApplicationId: id,
-          automationId: 'deleted-workflow',
-          trigger: AutomationRunTrigger.Manual,
-          status: AutomationRunStatus.Success,
-          completedAt: old,
-          createdAt: old,
-          ...values,
-        }),
-      );
+      await db.getRepository(AutomationRun).save({
+        id,
+        ownerUserId: 'owner',
+        targetApplicationId: id,
+        automationId: 'deleted-workflow',
+        trigger: AutomationRunTrigger.Manual,
+        status: AutomationRunStatus.Success,
+        completedAt: old,
+        createdAt: old,
+        ...values,
+      });
       await events.insert({
         runId: id,
         ownerUserId: 'owner',

@@ -56,8 +56,8 @@ describe('RuntimeDownloadVolumeService', () => {
 
   it('lists files in the persistent download directory', async () => {
     const directory = join(tempDir, 'media', '0', 'Download');
-    await service.storeBuffer(app, 'zeta.txt', Buffer.from('z'), {});
-    await service.storeBuffer(app, 'alpha.txt', Buffer.from('alpha'), {});
+    await service.storeStream(app, Readable.from(['z']), 'zeta.txt', {});
+    await service.storeStream(app, Readable.from(['alpha']), 'alpha.txt', {});
     await mkdir(join(directory, 'nested-directory'));
 
     const files = await service.listFiles(app, {});
@@ -71,8 +71,8 @@ describe('RuntimeDownloadVolumeService', () => {
     });
   });
 
-  it('creates the volume before writing buffers', async () => {
-    await service.storeBuffer(app, 'upload.txt', Buffer.from('body'), {});
+  it('creates the volume before writing uploads', async () => {
+    await service.storeStream(app, Readable.from(['body']), 'upload.txt', {});
 
     await expect(
       readFile(join(tempDir, 'media', '0', 'Download', 'upload.txt'), 'utf8'),
@@ -105,7 +105,7 @@ describe('RuntimeDownloadVolumeService', () => {
   });
 
   it('reads persistent download files', async () => {
-    await service.storeBuffer(app, 'read.txt', Buffer.from('content'), {});
+    await service.storeStream(app, Readable.from(['content']), 'read.txt', {});
 
     await expect(service.readFile(app, 'read.txt', {})).resolves.toEqual(
       Buffer.from('content'),
@@ -114,7 +114,7 @@ describe('RuntimeDownloadVolumeService', () => {
 
   it('rejects writes for non-persistent profile queries', async () => {
     await expect(
-      service.storeBuffer(app, 'upload.txt', Buffer.from('body'), {
+      service.storeStream(app, Readable.from(['body']), 'upload.txt', {
         profileMode: ApplicationProfileMode.Temporary,
       }),
     ).rejects.toBeInstanceOf(ConflictException);

@@ -185,17 +185,14 @@ describe('workflow run summaries', () => {
     });
 
     const enqueue = (targetApplicationId: string) =>
-      runs.save(
-        runs.create({
-          automationId: 'workflow',
-          ownerUserId: 'owner',
-          targetApplicationId,
-          trigger: AutomationRunTrigger.Manual,
-          status: AutomationRunStatus.Queued,
-          createdAt: new Date('2026-01-02T00:00:00Z'),
-          stepResultsJson: '[]',
-        }),
-      );
+      db.getRepository(AutomationRun).save({
+        automationId: 'workflow',
+        ownerUserId: 'owner',
+        targetApplicationId,
+        trigger: AutomationRunTrigger.Manual,
+        status: AutomationRunStatus.Queued,
+        createdAt: new Date('2026-01-02T00:00:00Z'),
+      });
     const older = await enqueue('app-1');
     const newer = await enqueue('app-2');
 
@@ -268,17 +265,14 @@ describe('workflow run summaries', () => {
     expect(listDefinitions).not.toHaveBeenCalled();
 
     const enqueue = (createdAt: string) =>
-      runs.save(
-        runs.create({
-          automationId: 'workflow',
-          automationTriggerId: trigger.id,
-          ownerUserId: 'owner',
-          targetApplicationId: 'app',
-          trigger: AutomationRunTrigger.Schedule,
-          createdAt: new Date(createdAt),
-          stepResultsJson: '[]',
-        }),
-      );
+      db.getRepository(AutomationRun).save({
+        automationId: 'workflow',
+        automationTriggerId: trigger.id,
+        ownerUserId: 'owner',
+        targetApplicationId: 'app',
+        trigger: AutomationRunTrigger.Schedule,
+        createdAt: new Date(createdAt),
+      });
     await triggers.updateSchedule(trigger, new Date('2026-01-02T00:00:00Z'), {
       at: new Date('2026-01-01T00:00:00Z'),
       message: 'First enqueue rejected.',

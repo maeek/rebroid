@@ -23,16 +23,6 @@ export class AutomationRunsRepository implements WorkflowHistoryMaintenancePort 
     private readonly queue: AutomationPersistenceQueue = new AutomationPersistenceQueue(),
   ) {}
 
-  create(values: Partial<AutomationRun>) {
-    const run = this.runs.create(values);
-    run.stepResultsJson = '[]';
-    return run;
-  }
-
-  save(run: AutomationRun) {
-    return this.queue.run(() => this.runs.save(run));
-  }
-
   findById(id: string) {
     return this.runs.findOneBy({ id });
   }

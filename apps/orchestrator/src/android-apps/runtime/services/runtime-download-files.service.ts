@@ -1,9 +1,6 @@
-import { Inject, ConflictException, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Readable } from 'node:stream';
-import {
-  type BufferedUploadFile,
-  type MultipartUploadRequest,
-} from '../../../common/http-upload';
+import type { MultipartUploadRequest } from '../../../common/http-upload';
 import {
   DOCKER_CONTAINER_ARCHIVE,
   type DockerContainerArchivePort,
@@ -58,38 +55,6 @@ export class RuntimeDownloadFilesService {
     return this.uploads.consumeFileUpload(request, (stream, originalName) =>
       this.storeDownloadFileStream(app, stream, originalName, query),
     );
-  }
-
-  async uploadDownloadFileBuffer(
-    app: AndroidApplication,
-    file?: BufferedUploadFile,
-    query: ApplicationRuntimeFilesQueryDto = {},
-  ) {
-    if (!file) {
-      throw new ConflictException('A file upload is required.');
-    }
-
-    const fileName = this.paths.sanitizeFileName(file.originalname);
-    if (!this.paths.shouldUseRunningContainer(app, query)) {
-      await this.volumes.storeBuffer(app, fileName, file.buffer, query);
-      return this.volumes.uploadResult(fileName, file.size);
-    }
-
-    await this.exec.execInContainer(app.containerId!, [
-      'sh',
-      '-lc',
-      `mkdir -p ${this.paths.shellQuote(this.paths.downloadDirectory)}`,
-    ]);
-    await this.archive.copyBufferToContainer(
-      app.containerId!,
-      file.buffer,
-      this.paths.downloadDirectory,
-      fileName,
-    );
-    await this.prepareRunningDownloadFile(app, fileName);
-    this.scanRunningDownloadFileInBackground(app, fileName);
-
-    return this.volumes.uploadResult(fileName, file.size);
   }
 
   async downloadFile(

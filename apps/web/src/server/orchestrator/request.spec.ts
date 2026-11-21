@@ -104,15 +104,15 @@ describe('orchestrator request helpers', () => {
     expect(getFetchInit().body).toBe(JSON.stringify({ name: 'Work' }))
   })
 
-  it('lets the runtime set multipart boundaries for FormData requests', async () => {
-    const { formRequest } = await import('./request')
-    const form = new FormData()
-    form.set('file', new Blob(['hello']), 'hello.txt')
+  it('preserves the multipart boundary and body for streamed uploads', async () => {
+    const { streamRequest } = await import('./request')
+    const body = new ReadableStream<Uint8Array>()
+    const contentType = 'multipart/form-data; boundary=upload-boundary'
 
-    await formRequest('/apps/app-1/runtime/download-files', 'POST', form)
+    await streamRequest('/apps/app-1/runtime/data-files', 'POST', body, contentType)
 
-    expect(getFetchInit().headers).not.toHaveProperty('content-type')
-    expect(getFetchInit().body).toBe(form)
+    expect(getFetchInit().headers).toMatchObject({ 'content-type': contentType })
+    expect(getFetchInit()).toMatchObject({ body, duplex: 'half' })
   })
 
   it('uses upstream validation messages when requests fail', async () => {

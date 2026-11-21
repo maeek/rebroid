@@ -35,21 +35,6 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
     );
   }
 
-  copyBufferToContainer(
-    containerId: string,
-    content: Buffer,
-    targetDirectory: string,
-    targetFileName: string,
-  ) {
-    return this.copyStreamToContainer(
-      containerId,
-      Readable.from([content]),
-      targetDirectory,
-      targetFileName,
-      content.length,
-    );
-  }
-
   copyStreamToContainer(
     containerId: string,
     content: Readable,

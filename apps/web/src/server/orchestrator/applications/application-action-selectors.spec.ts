@@ -6,7 +6,7 @@ import { updateNetworkPolicyAction } from './actions/configuration/network-polic
 import { deleteApplicationRuntimeFileAction } from './actions/runtime/file-actions'
 import { getApplicationLogsAction } from './actions/runtime/log-actions'
 import { recordViewerActivityAction } from './actions/runtime/viewer-actions'
-import { orchestratorAppRuntimeClient } from './runtime-client'
+import { orchestratorAppLifecycleClient } from './lifecycle-client'
 import type { UpdateNetworkPolicyInput } from '@/shared/contracts/application'
 
 vi.mock('@/server/audit/events', () => ({ recordAuditEvent: vi.fn() }))
@@ -121,19 +121,21 @@ describe('application action URL selectors', () => {
     expect(fetchUpstream).not.toHaveBeenCalled()
   })
 
-  it('keeps a download filename containing URL punctuation in one path segment', async () => {
-    fetchUpstream.mockResolvedValueOnce(Response.json({ name: 'report #?.txt' }))
+  it('keeps a saved profile name containing URL punctuation in one path segment', async () => {
+    fetchUpstream.mockResolvedValueOnce(Response.json({}))
 
-    await orchestratorAppRuntimeClient.downloadFile(appId, 'report #?.txt')
+    await orchestratorAppLifecycleClient.deleteSavedProfile(appId, 'profile #?')
 
     expect(fetchUpstream).toHaveBeenCalledWith(
-      `http://orchestrator.test/api/v1/apps/${appId}/runtime/download-files/report%20%23%3F.txt`,
+      `http://orchestrator.test/api/v1/apps/${appId}/lifecycle/profiles/profile%20%23%3F`,
       expect.anything()
     )
   })
 
-  it('rejects a download filename that would collapse to a parent URL', () => {
-    expect(() => orchestratorAppRuntimeClient.downloadFile(appId, '..')).toThrow('Invalid application path selector.')
+  it('rejects a saved profile name that would collapse to a parent URL', () => {
+    expect(() => orchestratorAppLifecycleClient.deleteSavedProfile(appId, '..')).toThrow(
+      'Invalid application path selector.'
+    )
     expect(fetchUpstream).not.toHaveBeenCalled()
   })
 })

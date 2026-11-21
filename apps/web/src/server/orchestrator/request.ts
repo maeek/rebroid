@@ -67,17 +67,8 @@ const deadlineSignal = (signal: AbortSignal | null | undefined, timeoutMs: numbe
   return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal
 }
 
-const hasRequestBody = (init?: RequestInit) => init?.body !== undefined && init.body !== null
-
-const isFormDataBody = (body: BodyInit | null | undefined) =>
-  typeof FormData !== 'undefined' && body instanceof FormData
-
-const isStreamBody = (body: BodyInit | null | undefined) =>
-  typeof ReadableStream !== 'undefined' && body instanceof ReadableStream
-
 const defaultHeadersFor = (init: RequestInit | undefined, requestId: string) => {
-  const body = init?.body
-  const shouldSendJsonContentType = hasRequestBody(init) && !isFormDataBody(body) && !isStreamBody(body)
+  const shouldSendJsonContentType = typeof init?.body === 'string'
 
   return {
     accept: 'application/json',
@@ -179,18 +170,6 @@ export const jsonRequest = <T>(
     ...init,
     method,
     body: JSON.stringify(body)
-  })
-
-export const formRequest = <T>(
-  path: string,
-  method: 'POST' | 'PUT' | 'PATCH',
-  body: FormData,
-  init?: Omit<RequestInit, 'method' | 'body'>
-) =>
-  request<T>(path, {
-    ...init,
-    method,
-    body
   })
 
 export const streamRequest = <T>(

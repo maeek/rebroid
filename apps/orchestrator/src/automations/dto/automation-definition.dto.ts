@@ -8,17 +8,6 @@ export class AutomationTagDto {
   color!: string;
 }
 
-export class AutomationDefinitionStepDto {
-  @ApiProperty({ example: 'wake-device' })
-  id!: string;
-
-  @ApiProperty({ example: 'android.viewerCommand' })
-  uses!: string;
-
-  @ApiProperty({ type: Object, example: { command: 'wake' } })
-  with!: Record<string, unknown>;
-}
-
 export class AutomationDefinitionMetadataDto {
   @ApiProperty({ example: 'Prepare app environment' })
   name!: string;

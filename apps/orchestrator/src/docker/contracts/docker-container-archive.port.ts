@@ -16,12 +16,6 @@ export interface DockerContainerArchivePort {
     targetDirectory: string,
     targetFileName?: string,
   ): Promise<void>;
-  copyBufferToContainer(
-    containerId: string,
-    content: Buffer,
-    targetDirectory: string,
-    targetFileName: string,
-  ): Promise<void>;
   copyStreamToContainer(
     containerId: string,
     content: Readable,

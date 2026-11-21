@@ -1,5 +1,4 @@
-import { Injectable, PayloadTooLargeException } from '@nestjs/common';
-import type { BufferedUploadFile } from '../common/http-upload';
+import { Injectable } from '@nestjs/common';
 import type { DockerOperationLimits } from '../docker/contracts/docker-operation-limits';
 import type { AutomationAiProviderModelRole } from './contracts/ai-provider';
 import { AiProviderSettingsService } from './ai-provider-settings.service';
@@ -102,25 +101,6 @@ export class SettingsService {
       services: defaults.services,
     }));
     return this.store.toPublicSettings(updated);
-  }
-
-  /**
-   * Enforces the current APK upload size limit.
-   * This is a no-op when no file object is provided.
-   */
-  async assertApkSizeAllowed(file?: Pick<BufferedUploadFile, 'size'>) {
-    if (!file) {
-      return;
-    }
-
-    const settings = await this.getSettings();
-    const maxBytes = settings.maxApkUploadSizeMb * 1024 * 1024;
-
-    if (file.size > maxBytes) {
-      throw new PayloadTooLargeException(
-        `APK exceeds configured upload limit of ${settings.maxApkUploadSizeMb} MB.`,
-      );
-    }
   }
 
   async getMaxApkUploadBytes() {

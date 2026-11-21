@@ -106,10 +106,6 @@ export class AutomationCommandRegistryService implements OnModuleInit {
     }
   }
 
-  requiredPermissionsFor(uses: string) {
-    return this.get(uses).requiredPermissions;
-  }
-
   outputsFor(uses: string) {
     return normalizeCommandOutputs(this.get(uses).outputs);
   }

@@ -92,15 +92,13 @@ const createRunPersistence = async (status = AutomationRunStatus.Running) => {
     new MetricsService(),
     queue,
   );
-  const run = await runs.save(
-    runs.create({
-      ownerUserId: 'owner',
-      targetApplicationId: 'app',
-      automationId: 'workflow',
-      trigger: AutomationRunTrigger.Manual,
-      status,
-    }),
-  );
+  const run = await db.getRepository(AutomationRun).save({
+    ownerUserId: 'owner',
+    targetApplicationId: 'app',
+    automationId: 'workflow',
+    trigger: AutomationRunTrigger.Manual,
+    status,
+  });
   return { db, runs, events, run };
 };
 
@@ -534,7 +532,6 @@ it('projects ordered step results through the run and fences writes after cancel
         },
         outcome,
       );
-    expect(run.stepResultsJson).toBe('[]');
     const first = result('first');
     const second = result('second');
     await expect(

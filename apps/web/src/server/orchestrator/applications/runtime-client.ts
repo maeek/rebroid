@@ -1,13 +1,12 @@
 import { z } from 'zod'
 import { PublicActionError } from '@/server/errors/public-action-error'
-import { emptyRequest, formRequest, jsonRequest, responseRequest, streamRequest } from '../request'
-import { applicationPath, encodeApplicationPathSegment } from './application-path'
+import { emptyRequest, jsonRequest, responseRequest, streamRequest } from '../request'
+import { applicationPath } from './application-path'
 import type {
   ApplicationClipboard,
   ApplicationLog,
   ApplicationRuntimeFile,
   ApplicationRuntimeFileDownload,
-  ApplicationRuntimeFilesProfileInput,
   ApplicationRuntimeFileUpload,
   ApplicationScreenshot,
   CreateApplicationRuntimeDirectoryInput,
@@ -28,14 +27,6 @@ export const orchestratorAppRuntimeClient = {
     return emptyRequest<ApplicationLog>(
       `${applicationPath(id)}/runtime/logs/${encodeURIComponent(parsedSource.data)}?${query.toString()}`
     )
-  },
-
-  listDownloadFiles(id: string, input: ApplicationRuntimeFilesProfileInput = {}) {
-    const query = new URLSearchParams()
-    if (input.profileMode) query.set('profileMode', input.profileMode)
-    if (input.profileName) query.set('profileName', input.profileName)
-    const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<ApplicationRuntimeFile[]>(`${applicationPath(id)}/runtime/download-files${suffix}`)
   },
 
   listFiles(id: string, path = '/data', signal?: AbortSignal) {
@@ -79,18 +70,6 @@ export const orchestratorAppRuntimeClient = {
     )
   },
 
-  uploadDownloadFile(id: string, input: FormData, profile: ApplicationRuntimeFilesProfileInput = {}) {
-    const query = new URLSearchParams()
-    if (profile.profileMode) query.set('profileMode', profile.profileMode)
-    if (profile.profileName) query.set('profileName', profile.profileName)
-    const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return formRequest<ApplicationRuntimeFileUpload>(
-      `${applicationPath(id)}/runtime/download-files${suffix}`,
-      'POST',
-      input
-    )
-  },
-
   uploadDataFileStream(
     id: string,
     input: ReadableStream<Uint8Array>,
@@ -106,16 +85,6 @@ export const orchestratorAppRuntimeClient = {
       input,
       contentType,
       { signal }
-    )
-  },
-
-  downloadFile(id: string, fileName: string, input: ApplicationRuntimeFilesProfileInput = {}) {
-    const query = new URLSearchParams()
-    if (input.profileMode) query.set('profileMode', input.profileMode)
-    if (input.profileName) query.set('profileName', input.profileName)
-    const suffix = query.size > 0 ? `?${query.toString()}` : ''
-    return emptyRequest<ApplicationRuntimeFileDownload>(
-      `${applicationPath(id)}/runtime/download-files/${encodeApplicationPathSegment(fileName)}${suffix}`
     )
   },
 

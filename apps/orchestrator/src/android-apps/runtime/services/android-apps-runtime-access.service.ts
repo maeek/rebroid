@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  type BufferedUploadFile,
-  type MultipartUploadRequest,
-} from '../../../common/http-upload';
-import { AndroidApplication } from '../../android-application.entity';
+import type { MultipartUploadRequest } from '../../../common/http-upload';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { AndroidAppsRuntimeDeviceService } from './android-apps-runtime-device.service';
 import { AndroidAppsRuntimeDiagnosticsService } from './android-apps-runtime-diagnostics.service';
@@ -74,14 +70,6 @@ export class AndroidAppsRuntimeAccessService {
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
     return this.downloadFiles.uploadDownloadFile(id, request, query);
-  }
-
-  uploadDownloadFileBuffer(
-    app: AndroidApplication,
-    file?: BufferedUploadFile,
-    query: ApplicationRuntimeFilesQueryDto = {},
-  ) {
-    return this.downloadFiles.uploadDownloadFileBuffer(app, file, query);
   }
 
   downloadFile(

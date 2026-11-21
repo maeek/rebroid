@@ -67,16 +67,4 @@ export class NetworkIsolationService {
   async connectOrchestrator(networkName: string) {
     await this.networks.connectOrchestratorToNetwork(networkName);
   }
-
-  /**
-   * Removes the network boundary resources for an application profile.
-   */
-  async removeBoundary(
-    names: Pick<IsolatedRuntimeNames, 'networkName' | 'volumeName'>,
-  ) {
-    await Promise.all([
-      this.networks.removeNetwork(names.networkName),
-      this.resources.removeVolume(names.volumeName),
-    ]);
-  }
 }
