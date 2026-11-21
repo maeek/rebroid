@@ -6,8 +6,8 @@ export const getCurrentOwnerUserId = async () => {
   return user.id || user.name || 'admin'
 }
 
-export const getCurrentUserContext = cache(async () => {
-  const user = await getCurrentUser()
+export const getCurrentUserContext = cache(async (response?: 'api') => {
+  const user = response ? await getCurrentUser(response) : await getCurrentUser()
 
   return {
     ownerUserId: user.id || user.name || 'admin',

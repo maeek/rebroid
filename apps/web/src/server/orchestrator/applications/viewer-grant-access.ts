@@ -7,7 +7,7 @@ import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { requireFeature } from '../features'
 import {
-  assertCanUseOwnedApplicationRuntime,
+  requireOwnedRuntimeContext,
   getAccessibleApplication,
   ownedRuntimeControlMessage,
   ownedRuntimeMessage
@@ -37,7 +37,7 @@ export const issueViewerGrant = async <Grant>(
   surface: 'main' | 'virtual',
   mint: (capabilities: ReturnType<typeof viewerCapabilitiesFor>) => Promise<Grant>
 ) => {
-  const { user } = await assertCanUseOwnedApplicationRuntime(
+  const user = await requireOwnedRuntimeContext(
     id,
     surface === 'main' ? ownedRuntimeMessage : ownedRuntimeControlMessage
   )

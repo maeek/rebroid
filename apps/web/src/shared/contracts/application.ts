@@ -16,6 +16,12 @@ export type ApplicationPowerAcknowledgement = Pick<
   'status' | 'lifecycleStage' | 'message' | 'profile'
 >
 export type AndroidApplicationSummary = OrchestratorApiSchemas['AndroidApplicationSummaryResponseDto']
+export type AndroidApplicationDetailState = OrchestratorApiSchemas['AndroidApplicationDetailStateDto']
+export type ApplicationDetailRefresh = {
+  app: AndroidApplication | null
+  state: AndroidApplicationDetailState | null
+}
+
 export type AndroidApplicationStatus = AndroidApplication['status']['currentStatus']
 export type AndroidApplicationLifecycleStage = AndroidApplication['status']['lifecycleStage']
 export type AndroidApplicationStatusDetail = NonNullable<AndroidApplication['status']['detail']>

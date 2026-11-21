@@ -87,6 +87,8 @@ failures, and a failed log write cannot strand a reservation or reverse a commit
 Normal list/get operations read stored state only. Docker reconciliation is an explicit operation.
 The Apps gallery uses the same owner-scoped row projection for its initial render and refreshes.
 Sidebar reads return only navigation fields and usually limit running results before sending rows to the web app.
+The application detail page polls for lifecycle state and retrieves configuration when its revision changes.
+Both responses use the current account's ownership and backend-detail permissions.
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.
 Configuration commands write only the fields they own and reject changes to applications being removed.

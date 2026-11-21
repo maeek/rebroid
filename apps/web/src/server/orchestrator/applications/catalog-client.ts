@@ -82,6 +82,14 @@ export const orchestratorAppCatalogClient = {
     return emptyRequest<AndroidApplication>(applicationPath(id), { signal })
   },
 
+  refreshApplicationDetail(id: string, revision?: string, signal?: AbortSignal) {
+    const query = revision ? `?${new URLSearchParams({ revision })}` : ''
+    return emptyRequest<OrchestratorApiSchemas['AndroidApplicationDetailRefreshDto']>(
+      `${applicationPath(id)}/detail${query}`,
+      { signal }
+    )
+  },
+
   getViewerRuntime(id: string, signal?: AbortSignal) {
     return emptyRequest<OrchestratorApiSchemas['AndroidApplicationViewerRuntimeDto']>(
       `${applicationPath(id)}/viewer-runtime`,

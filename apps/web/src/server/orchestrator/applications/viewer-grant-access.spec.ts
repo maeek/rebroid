@@ -6,7 +6,7 @@ import { hasPendingViewerRevocation } from '@/server/persistence/web-maintenance
 import { revokeUserViewerSessions } from '@/server/users/revoke-viewer-sessions'
 import { defaultUserQuota } from '@/shared/permissions/permissions'
 import { requireFeature } from '../features'
-import { assertCanUseOwnedApplicationRuntime, getAccessibleApplication } from './actions/common/action-helpers'
+import { requireOwnedRuntimeContext, getAccessibleApplication } from './actions/common/action-helpers'
 import { orchestratorAppViewerClient } from './viewer-client'
 import { issueViewerGrant, loadViewerPageApplication } from './viewer-grant-access'
 import type { PublicUser } from '@/shared/contracts/auth-user'
@@ -18,7 +18,7 @@ vi.mock('@/server/persistence/web-maintenance-repository', () => ({ hasPendingVi
 vi.mock('@/server/users/revoke-viewer-sessions', () => ({ revokeUserViewerSessions: vi.fn() }))
 vi.mock('../features', () => ({ requireFeature: vi.fn() }))
 vi.mock('./actions/common/action-helpers', () => ({
-  assertCanUseOwnedApplicationRuntime: vi.fn(),
+  requireOwnedRuntimeContext: vi.fn(),
   getAccessibleApplication: vi.fn(),
   ownedRuntimeMessage: 'Viewer access requires ownership.',
   ownedRuntimeControlMessage: 'Viewer control requires ownership.'
@@ -47,9 +47,11 @@ describe('viewer grant issuance', () => {
     })
     vi.mocked(findActiveAccountSession).mockReturnValue({ lastActiveAt: 0, passwordChangeRequired: 0 })
     vi.mocked(userService.getUserById).mockResolvedValue(account)
-    vi.mocked(assertCanUseOwnedApplicationRuntime).mockResolvedValue({
-      app: { id: 'app' } as never,
-      user: { ownerUserId: 'user', isPlatformAdmin: false, permissions, quotas: defaultUserQuota }
+    vi.mocked(requireOwnedRuntimeContext).mockResolvedValue({
+      ownerUserId: 'user',
+      isPlatformAdmin: false,
+      permissions,
+      quotas: defaultUserQuota
     })
     vi.mocked(hasPendingViewerRevocation).mockReturnValue(false)
   })
@@ -127,7 +129,7 @@ describe('viewer grant issuance', () => {
     const opening = await loadViewerPageApplication('app')
     await expect(opening.openSession()).resolves.toMatchObject({ applicationId: 'app' })
     expect(getAccessibleApplication).toHaveBeenCalledExactlyOnceWith('app')
-    expect(assertCanUseOwnedApplicationRuntime).not.toHaveBeenCalled()
+    expect(requireOwnedRuntimeContext).not.toHaveBeenCalled()
     expect(userService.getUserById).toHaveBeenCalledWith('user')
 
     vi.mocked(getAccessibleApplication).mockResolvedValue({ app: { id: 'app', ownerUserId: 'other' } as never, user })

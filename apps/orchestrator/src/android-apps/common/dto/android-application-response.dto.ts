@@ -210,28 +210,17 @@ export class AndroidApplicationResponseDto {
   @ApiProperty()
   updatedAt!: string;
 
+  @ApiPropertyOptional({
+    description: 'Revision of stored app detail, excluding viewer activity.',
+  })
+  detailRevision?: string;
+
   static fromEntity(app: AndroidApplication): AndroidApplicationResponseDto {
     return {
       id: app.id,
       name: app.name,
       ownerUserId: app.ownerUserId,
-      status: {
-        currentStatus: app.status,
-        lifecycleStage: app.lifecycleStage,
-        message: app.statusMessage,
-        detail: app.statusDetail,
-        progress: app.imagePullProgress,
-        recreateRequired: app.recreateContainerOnNextStart,
-        lastScrcpyActivityAt: toIso(app.lastScrcpyActivityAt),
-        lastStartedAt: toIso(app.lastStartedAt),
-        lastStoppedAt: toIso(app.lastStoppedAt),
-        provisioningStartedAt: toIso(app.provisioningStartedAt),
-        provisioningCompletedAt: toIso(app.provisioningCompletedAt),
-      },
-      errors: {
-        lastError: app.lastError,
-        application: app.applicationError,
-      },
+      ...AndroidApplicationDetailStateDto.fromEntity(app),
       runtime: {
         image: app.containerImage,
         kind: app.runtimeKind,
@@ -279,7 +268,51 @@ export class AndroidApplicationResponseDto {
         uploadedApkId: app.uploadedApkId,
       },
       createdAt: toIso(app.createdAt) ?? new Date().toISOString(),
+    };
+  }
+}
+
+export class AndroidApplicationDetailStateDto {
+  @ApiProperty({ type: () => AndroidApplicationStatusResponseDto })
+  status!: AndroidApplicationStatusResponseDto;
+
+  @ApiProperty({ type: () => AndroidApplicationErrorResponseDto })
+  errors!: AndroidApplicationErrorResponseDto;
+
+  @ApiProperty()
+  updatedAt!: string;
+
+  static fromEntity(app: AndroidApplication): AndroidApplicationDetailStateDto {
+    return {
+      status: {
+        currentStatus: app.status,
+        lifecycleStage: app.lifecycleStage,
+        message: app.statusMessage,
+        detail: app.statusDetail,
+        progress: app.imagePullProgress,
+        recreateRequired: app.recreateContainerOnNextStart,
+        lastScrcpyActivityAt: toIso(app.lastScrcpyActivityAt),
+        lastStartedAt: toIso(app.lastStartedAt),
+        lastStoppedAt: toIso(app.lastStoppedAt),
+        provisioningStartedAt: toIso(app.provisioningStartedAt),
+        provisioningCompletedAt: toIso(app.provisioningCompletedAt),
+      },
+      errors: {
+        lastError: app.lastError,
+        application: app.applicationError,
+      },
       updatedAt: toIso(app.updatedAt) ?? new Date().toISOString(),
     };
   }
+}
+
+export class AndroidApplicationDetailRefreshDto {
+  @ApiProperty({ type: String, nullable: true })
+  ownerUserId!: string | null;
+
+  @ApiProperty({ type: AndroidApplicationDetailStateDto, nullable: true })
+  state!: AndroidApplicationDetailStateDto | null;
+
+  @ApiProperty({ type: AndroidApplicationResponseDto, nullable: true })
+  app!: AndroidApplicationResponseDto | null;
 }

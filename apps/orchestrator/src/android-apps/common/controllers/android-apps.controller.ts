@@ -16,6 +16,7 @@ import {
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiServiceUnavailableResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -25,7 +26,10 @@ import {
   AndroidApplicationNavigationRowDto,
 } from '../dto/android-application-catalog-row.dto';
 import { ListAndroidApplicationNavigationDto } from '../dto/list-android-application-navigation.dto';
-import { AndroidApplicationResponseDto } from '../dto/android-application-response.dto';
+import {
+  AndroidApplicationDetailRefreshDto,
+  AndroidApplicationResponseDto,
+} from '../dto/android-application-response.dto';
 import { AndroidApplicationViewerRuntimeDto } from '../dto/android-application-viewer-runtime.dto';
 import {
   AndroidAppRuntimeReconciliationDto,
@@ -230,11 +234,17 @@ export class AndroidAppsController {
     return { ownerUserId, status, containerId };
   }
 
+  @Get(':id/detail')
+  @ApiQuery({ name: 'revision', type: String, required: false })
+  @ApiOkResponse({ type: AndroidApplicationDetailRefreshDto })
+  refreshDetail(@Param('id') id: string, @Query('revision') known?: string) {
+    return this.queries.refreshDetail(id, known);
+  }
+
   @Get(':id')
   @ApiOkResponse({ type: AndroidApplicationResponseDto })
-  async get(@Param('id') id: string) {
-    const app = await this.queries.getStored(id);
-    return AndroidApplicationResponseDto.fromEntity(this.queries.decorate(app));
+  get(@Param('id') id: string) {
+    return this.queries.getDetail(id);
   }
 
   @Patch(':id')

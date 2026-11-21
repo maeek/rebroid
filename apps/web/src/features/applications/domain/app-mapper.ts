@@ -1,7 +1,53 @@
 import { AppDefinition } from '@/features/applications/domain/app-definition'
-import type { AndroidApplication, ApplicationPowerAcknowledgement } from '@/shared/contracts/application'
+import type {
+  AndroidApplication,
+  AndroidApplicationDetailState,
+  ApplicationDetailRefresh,
+  ApplicationPowerAcknowledgement
+} from '@/shared/contracts/application'
 
-const isApplicationRunning = (app: AndroidApplication) => app.status.currentStatus === 'running'
+export const mapApplicationDetailState = ({ status, errors, updatedAt }: AndroidApplicationDetailState) => ({
+  running: status.currentStatus === 'running',
+  status: status.currentStatus,
+  lifecycleStage: status.lifecycleStage,
+  statusMessage: status.message,
+  statusDetail: status.detail,
+  recreateContainerOnNextStart: status.recreateRequired,
+  lastError: errors.lastError,
+  lastStartedAt: status.lastStartedAt ? new Date(status.lastStartedAt) : undefined,
+  lastStoppedAt: status.lastStoppedAt ? new Date(status.lastStoppedAt) : undefined,
+  provisioningStartedAt: status.provisioningStartedAt ? new Date(status.provisioningStartedAt) : undefined,
+  provisioningCompletedAt: status.provisioningCompletedAt ? new Date(status.provisioningCompletedAt) : undefined,
+  updatedAt: new Date(updatedAt),
+  imagePullProgress: status.progress,
+  applicationError: errors.application
+})
+
+export const mergeApplicationDetailRefresh = (
+  current: AppDefinition,
+  { app, state }: ApplicationDetailRefresh,
+  requestedRevision?: string
+): AppDefinition => {
+  if (app) {
+    if (app.id !== current.id) return current
+    const detailsRevoked = current.detailRevision?.endsWith('.1') && app.detailRevision?.endsWith('.0')
+    if (
+      !detailsRevoked &&
+      (current.detailRevision !== requestedRevision || current.updatedAt > new Date(app.updatedAt))
+    ) {
+      return current
+    }
+    return {
+      ...mapAndroidApplicationToAppDefinition(app),
+      icon: current.icon,
+      ownerDisplayName: current.ownerDisplayName ?? app.ownerDisplayName
+    }
+  }
+  if (!state || current.detailRevision !== requestedRevision || current.updatedAt > new Date(state.updatedAt)) {
+    return current
+  }
+  return { ...current, ...mapApplicationDetailState(state) }
+}
 
 export const applyApplicationPowerAcknowledgement = (
   app: AppDefinition,
@@ -24,11 +70,7 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   id: app.id,
   name: app.name,
   icon: null,
-  running: isApplicationRunning(app),
-  status: app.status.currentStatus,
-  lifecycleStage: app.status.lifecycleStage,
-  statusMessage: app.status.message,
-  statusDetail: app.status.detail,
+  ...mapApplicationDetailState(app),
   ownerUserId: app.ownerUserId,
   ownerDisplayName: app.ownerDisplayName,
   containerImage: app.runtime.image,
@@ -43,7 +85,6 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   memoryLimitMb: app.runtime.resources.memoryLimitMb,
   cpuLimitCpus: app.runtime.resources.cpuLimitCpus,
   containerArgs: app.runtime.containerArgs,
-  recreateContainerOnNextStart: app.status.recreateRequired,
   networkPolicyEnabled: app.network.policy.enabled,
   networkPolicyAllowCidrs: app.network.policy.allowCidrs,
   networkPolicyResult: app.network.policy.result,
@@ -55,17 +96,8 @@ export const mapAndroidApplicationToAppDefinition = (app: AndroidApplication): A
   scrcpyTransport: app.runtime.scrcpyTransport,
   adbPort: app.runtime.adbPort,
   inactivityTimeoutSeconds: app.runtime.inactivityTimeoutSeconds,
-  lastError: app.errors.lastError,
-  lastStartedAt: app.status.lastStartedAt ? new Date(app.status.lastStartedAt) : undefined,
-  lastStoppedAt: app.status.lastStoppedAt ? new Date(app.status.lastStoppedAt) : undefined,
-  provisioningStartedAt: app.status.provisioningStartedAt ? new Date(app.status.provisioningStartedAt) : undefined,
-  provisioningCompletedAt: app.status.provisioningCompletedAt
-    ? new Date(app.status.provisioningCompletedAt)
-    : undefined,
   createdAt: new Date(app.createdAt),
-  updatedAt: new Date(app.updatedAt),
-  imagePullProgress: app.status.progress,
-  applicationError: app.errors.application,
+  detailRevision: app.detailRevision,
   apk: {
     version: app.apk.originalName ?? 'Unknown'
   },

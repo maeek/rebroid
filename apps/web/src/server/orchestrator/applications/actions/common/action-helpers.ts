@@ -32,6 +32,15 @@ export const assertCanUseOwnedApplicationRuntime = async (id: string, message: s
   return { app, user }
 }
 
+export const requireOwnedRuntimeContext = async (id: string, message: string) => {
+  const user = await getCurrentUserContext()
+  const target = await orchestratorAppCatalogClient.getViewerRuntime(id)
+  if (target.ownerUserId !== user.ownerUserId) {
+    throw new PublicActionError(message, { code: 'forbidden', status: 403 })
+  }
+  return user
+}
+
 export const ownedRuntimeMessage = 'Open this app as your own copy before using its live session.'
 
 export const ownedRuntimeControlMessage =

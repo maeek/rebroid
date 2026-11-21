@@ -3,9 +3,15 @@ import { throwNotFound } from '../../../common/not-found';
 import { AndroidApplication } from '../../android-application.entity';
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
+import {
+  AndroidApplicationDetailRefreshDto,
+  AndroidApplicationDetailStateDto,
+  AndroidApplicationResponseDto,
+} from '../dto/android-application-response.dto';
 import { ListAndroidApplicationSummariesDto } from '../dto/list-android-application-summaries.dto';
 import { ListAndroidApplicationNavigationDto } from '../dto/list-android-application-navigation.dto';
 import { ListAndroidApplicationsDto } from '../dto/list-android-applications.dto';
+import { androidAppDetailRevision } from '../utils/android-app-detail-revision';
 import { deriveApplicationError } from '../utils/android-apps-error-status.utils';
 import {
   isRuntimeInactive,
@@ -93,6 +99,38 @@ export class AndroidAppsQueryService {
 
   decorate(app: AndroidApplication) {
     return this.status.decorateApplication(app);
+  }
+
+  async getDetail(id: string): Promise<AndroidApplicationResponseDto> {
+    const app = await this.getStored(id);
+    return this.presentDetail(app, androidAppDetailRevision(app));
+  }
+
+  async refreshDetail(
+    id: string,
+    knownRevision?: string,
+  ): Promise<AndroidApplicationDetailRefreshDto> {
+    const app = await this.getStored(id);
+    const revision = androidAppDetailRevision(app);
+    if (revision === knownRevision) {
+      return {
+        ownerUserId: app.ownerUserId,
+        state: AndroidApplicationDetailStateDto.fromEntity(this.decorate(app)),
+        app: null,
+      };
+    }
+    return {
+      ownerUserId: app.ownerUserId,
+      state: null,
+      app: this.presentDetail(app, revision),
+    };
+  }
+
+  private presentDetail(app: AndroidApplication, detailRevision: string) {
+    return {
+      ...AndroidApplicationResponseDto.fromEntity(this.decorate(app)),
+      detailRevision,
+    };
   }
 
   listOwnedRunningSnapshotTargets() {

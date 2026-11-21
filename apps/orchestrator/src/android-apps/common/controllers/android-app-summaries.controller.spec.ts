@@ -4,14 +4,22 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { AndroidApplication } from '../../android-application.entity';
+import {
+  AndroidApplicationLifecycleStage,
+  AndroidApplicationStatus,
+} from '../../contracts/android-application-status';
 import { AndroidAppsLifecycleService } from '../../lifecycle/services/android-apps-lifecycle.service';
+import type { AndroidApplicationsRepository } from '../../persistence/android-applications.repository';
 import { AndroidAppsQueryService } from '../services/android-apps-query.service';
 import { AndroidAppsRuntimeStateReconciler } from '../services/android-apps-runtime-state-reconciler.service';
+import { AndroidAppsStatusService } from '../services/android-apps-status.service';
 import { AndroidAppsController } from './android-apps.controller';
 
 describe('application summary query', () => {
   const listNavigation = jest.fn().mockResolvedValue([]);
   const listSummaries = jest.fn().mockResolvedValue([]);
+  const getStored = jest.fn<Promise<AndroidApplication>, [string]>();
   let server: NestFastifyApplication;
 
   beforeAll(async () => {
@@ -21,7 +29,15 @@ describe('application summary query', () => {
         { provide: AndroidAppsLifecycleService, useValue: {} },
         {
           provide: AndroidAppsQueryService,
-          useValue: { listSummaries, listNavigation },
+          useValue: Object.assign(
+            new AndroidAppsQueryService(
+              {
+                findById: getStored,
+              } as unknown as AndroidApplicationsRepository,
+              new AndroidAppsStatusService(),
+            ),
+            { listSummaries, listNavigation },
+          ),
         },
         { provide: AndroidAppsRuntimeStateReconciler, useValue: {} },
       ],
@@ -92,5 +108,50 @@ describe('application summary query', () => {
     });
     expect(invalid.statusCode).toBe(400);
     expect(listNavigation).not.toHaveBeenCalled();
+  });
+
+  it('returns only lifecycle state until the application configuration changes', async () => {
+    const app = Object.assign(new AndroidApplication(), {
+      id: 'app-id',
+      name: 'Original name',
+      ownerUserId: 'owner',
+      status: AndroidApplicationStatus.Stopped,
+      lifecycleStage: AndroidApplicationLifecycleStage.Stopped,
+      savedProfilesJson: '[]',
+      networkPolicyAllowCidrs: '[]',
+      updatedAt: new Date('2026-11-01T00:00:00Z'),
+    });
+    getStored.mockResolvedValue(app);
+    const initial = await server.inject({ method: 'GET', url: '/apps/app-id' });
+    expect(initial.statusCode).toBe(200);
+    const { detailRevision } = initial.json<{ detailRevision: string }>();
+    expect(detailRevision).toMatch(/^[a-f0-9]{64}$/);
+    const url = `/apps/app-id/detail?revision=${detailRevision}`;
+    app.status = AndroidApplicationStatus.Running;
+    app.lifecycleStage = AndroidApplicationLifecycleStage.Ready;
+    app.updatedAt = new Date('2026-11-02T00:00:00Z');
+    app.lastScrcpyActivityAt = app.updatedAt;
+    const delta = await server.inject({ method: 'GET', url });
+    expect(delta.statusCode).toBe(200);
+    expect(delta.json()).toMatchObject({
+      ownerUserId: 'owner',
+      state: {
+        status: {
+          currentStatus: AndroidApplicationStatus.Running,
+          lastScrcpyActivityAt: app.updatedAt.toISOString(),
+        },
+      },
+      app: null,
+    });
+    app.name = 'Updated name';
+    const changed = await server.inject({ method: 'GET', url });
+    expect(changed.statusCode).toBe(200);
+    expect(changed.json()).toMatchObject({
+      state: null,
+      app: {
+        name: 'Updated name',
+        detailRevision: expect.not.stringMatching(detailRevision) as unknown,
+      },
+    });
   });
 });

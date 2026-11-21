@@ -6057,6 +6057,44 @@
           "apps"
         ]
       }
+    },
+    "/api/v1/apps/{id}/detail": {
+      "get": {
+        "operationId": "AndroidAppsController_refreshDetail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revision",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AndroidApplicationDetailRefreshDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "apps"
+        ]
+      }
     }
   },
   "info": {
@@ -8412,6 +8450,10 @@
           },
           "updatedAt": {
             "type": "string"
+          },
+          "detailRevision": {
+            "type": "string",
+            "description": "Revision of stored app detail, excluding viewer activity."
           }
         },
         "required": [
@@ -12809,6 +12851,57 @@
         "required": [
           "ownerUserId",
           "runtimeKey"
+        ]
+      },
+      "AndroidApplicationDetailRefreshDto": {
+        "type": "object",
+        "properties": {
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AndroidApplicationDetailStateDto"
+              }
+            ]
+          },
+          "app": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AndroidApplicationResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ownerUserId",
+          "state",
+          "app"
+        ]
+      },
+      "AndroidApplicationDetailStateDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AndroidApplicationStatusResponseDto"
+          },
+          "errors": {
+            "$ref": "#/components/schemas/AndroidApplicationErrorResponseDto"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "errors",
+          "updatedAt"
         ]
       }
     }

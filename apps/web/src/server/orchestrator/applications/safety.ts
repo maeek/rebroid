@@ -2,6 +2,7 @@ import { PublicActionError } from '@/server/errors/public-action-error'
 import { hasPermission, type PermissionMap, type ResourceQuota } from '@/shared/permissions/permissions'
 import type {
   AndroidApplication,
+  AndroidApplicationDetailState,
   ApplicationLog,
   CreateApplicationActionInput,
   ScrcpySession,
@@ -13,7 +14,7 @@ type AppSafetyContext = {
   quotas: ResourceQuota
 }
 
-const canViewBackendDetails = (context: AppSafetyContext) =>
+export const canViewBackendDetails = (context: AppSafetyContext) =>
   hasPermission(context.permissions, 'applications:view-backend-details')
 
 const redactBackendDetails = (value: string) =>
@@ -24,13 +25,14 @@ const redactBackendDetails = (value: string) =>
     .replace(/\b(?:sha256:)?[a-f0-9]{32,64}\b/gi, '[redacted identifier]')
     .replace(/(^|\s)\/(?:[^\s/]+\/)+[^\s]*/g, '$1[redacted path]')
 
-export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, context: AppSafetyContext) => {
-  if (canViewBackendDetails(context)) {
-    return app
-  }
-
+export const sanitizeApplicationDetailState = (
+  app: AndroidApplicationDetailState,
+  context: AppSafetyContext
+): AndroidApplicationDetailState => {
+  const { status, errors, updatedAt } = app
+  if (canViewBackendDetails(context)) return { status, errors, updatedAt }
   return {
-    ...app,
+    updatedAt,
     status: {
       ...app.status,
       message: app.status.message ? redactBackendDetails(app.status.message) : null,
@@ -53,7 +55,20 @@ export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, conte
             hint: app.errors.application.hint ? redactBackendDetails(app.errors.application.hint) : null
           }
         : null
-    },
+    }
+  }
+}
+
+export const sanitizeAndroidApplicationForUser = (app: AndroidApplication, context: AppSafetyContext) => {
+  const showDetails = canViewBackendDetails(context)
+  if (app.detailRevision) {
+    app = { ...app, detailRevision: `${app.detailRevision}.${showDetails ? '1' : '0'}` }
+  }
+  if (showDetails) return app
+
+  return {
+    ...app,
+    ...sanitizeApplicationDetailState(app, context),
     runtime: {
       ...app.runtime,
       containerName: 'Managed container',

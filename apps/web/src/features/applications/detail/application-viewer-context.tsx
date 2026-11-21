@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AppDefinition } from '@/features/applications/domain/app-definition'
-import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { mergeApplicationDetailRefresh } from '@/features/applications/domain/app-mapper'
 import { getAppRefreshIntervalMs } from '@/features/applications/domain/refresh'
 import {
   useStartupFirstFrame,
@@ -15,12 +16,13 @@ import {
   viewerSettingsFromDefaults,
   viewerSettingsStorageKey
 } from '@/features/applications/viewer/settings/viewer-settings'
-import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getApplicationAction } from '@/server/orchestrator/applications/actions/queries/get-application-action'
+import { getBff } from '@/lib/http/bff'
 import { rememberRecentAppAction } from '@/server/recent-apps/actions'
+import { ActionResultError } from '@/shared/actions/action-result'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { ViewerSettings } from '@/features/applications/viewer/settings/viewer-settings'
+import type { ApplicationDetailRefresh } from '@/shared/contracts/application'
 import type { OrchestratorUiSettings } from '@/shared/model/settings/use-orchestrator-ui-settings'
 import type { PermissionMap } from '@/shared/permissions/permissions'
 import type { ViewerStreamMetricsV4, ViewerFrameObservation } from '@rebroid/android-application-core/viewer-stream'
@@ -67,6 +69,9 @@ const isEditableElement = (target: EventTarget | null) => {
     target.isContentEditable
   )
 }
+
+const detailAccessLost = (error: unknown) =>
+  error instanceof ActionResultError && ['unauthenticated', 'forbidden', 'not_found'].includes(error.failure.code)
 
 export const ApplicationViewerProvider = ({
   app,
@@ -162,30 +167,39 @@ export const ApplicationViewerProvider = ({
     }
   }, [])
 
-  const { data: refreshedApp } = usePollingQuery(
-    ['applications', currentAppId],
-    () => getApplicationAction(currentAppId!),
-    {
-      enabled: Boolean(currentAppId),
-      intervalMs: refreshIntervalMs
-    }
-  )
+  const { data: refreshedApp, error } = useQuery({
+    queryKey: ['application-detail', currentOwnerUserId, currentAppId],
+    queryFn: async ({ signal }) => {
+      const revision = currentApp?.detailRevision
+      const query = revision ? `?${new URLSearchParams({ revision })}` : ''
+      const result = await getBff<ApplicationDetailRefresh>(
+        `/api/bff/applications/${encodeURIComponent(currentAppId!)}/detail${query}`,
+        signal
+      )
+      return { ...result, revision }
+    },
+    initialData: { app: null, state: null, revision: undefined },
+    enabled: Boolean(currentAppId),
+    refetchOnMount: false,
+    refetchInterval: refreshIntervalMs ?? false,
+    gcTime: 0,
+    retry: (count, failure) => count < 2 && !detailAccessLost(failure)
+  })
 
   useEffect(() => {
+    if (detailAccessLost(error)) {
+      setCurrentApp(current => (current?.id === currentAppId ? undefined : current))
+      return
+    }
     if (!refreshedApp) {
       return
     }
 
     setCurrentApp(current => {
-      const mapped = mapAndroidApplicationToAppDefinition(refreshedApp)
-      if (current?.id === mapped.id && current.updatedAt > mapped.updatedAt) return current
-      return {
-        ...mapped,
-        icon: current?.icon ?? mapped.icon,
-        ownerDisplayName: current?.ownerDisplayName ?? mapped.ownerDisplayName
-      }
+      if (!current || current.id !== currentAppId) return current
+      return mergeApplicationDetailRefresh(current, refreshedApp, refreshedApp.revision)
     })
-  }, [refreshedApp])
+  }, [currentAppId, error, refreshedApp])
 
   return (
     <ApplicationViewerContext.Provider

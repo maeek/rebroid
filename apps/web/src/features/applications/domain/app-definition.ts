@@ -50,6 +50,7 @@ export interface AppDefinition {
   provisioningCompletedAt?: Date
   createdAt: Date
   updatedAt: Date
+  detailRevision?: string
   imagePullProgress: AndroidImagePullProgress | null
   applicationError: AndroidApplicationError | null
   apk: {
