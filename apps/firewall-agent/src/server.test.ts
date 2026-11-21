@@ -183,6 +183,45 @@ test("policy removal validates the query after authorization and application ID 
   );
 });
 
+test("invalid policy data and internal failures retain distinct responses", async (context) => {
+  const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-errors-"));
+  context.after(() => rmSync(directory, { recursive: true, force: true }));
+  context.mock.method(console, "error", () => {});
+  const server = startTestServer(
+    new FirewallPolicyStore(join(directory, "policies.json")),
+    {
+      ...adapter,
+      reconcile(policies) {
+        if (policies.size) throw new Error("Invalid backend state");
+      },
+    },
+  );
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/reconcile", {
+      policies: [null],
+      startedAt: 1,
+    }),
+    400,
+  );
+  assert.equal(
+    await requestPolicy(server, "PUT", "/v1/policies/app-1", null),
+    400,
+  );
+  const policy = {
+    containerId: "example",
+    containerIp: "192.0.2.1",
+    allowCidrs: [],
+    generation: 1,
+  };
+  assert.deepEqual(
+    await requestAgent(server, "PUT", "/v1/policies/app-1", policy),
+    {
+      status: 500,
+      body: { message: "Firewall operation failed." },
+    },
+  );
+});
+
 test("server reports failed recovery and rejects authenticated policy commands", async (context) => {
   const directory = mkdtempSync(join(tmpdir(), "rebroid-firewall-server-"));
   context.after(() => rmSync(directory, { recursive: true, force: true }));

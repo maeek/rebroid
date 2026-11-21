@@ -8,5 +8,3 @@ export const parseJsonStringArray = (value: string) => {
     return [];
   }
 };
-
-export const uniqueStrings = (values: string[]) => [...new Set(values)];

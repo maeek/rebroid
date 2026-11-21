@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import {
-  type FirewallPolicy,
+  InvalidFirewallPolicyError,
+  isFirewallApplicationId,
   validatePolicies,
   validatePolicy,
 } from "@rebroid/firewall-policy-core/policy";
@@ -35,39 +36,30 @@ const authorized = (request: IncomingMessage, getSecret: () => string) => {
   );
 };
 
-const readJsonBody = (request: IncomingMessage) =>
-  new Promise<Partial<FirewallPolicy>>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let bytes = 0;
-    let settled = false;
-    const fail = (error: Error) => {
-      if (settled) return;
-      settled = true;
-      request.removeListener("data", onData);
+async function readJsonBody(
+  request: IncomingMessage,
+): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  let bytes = 0;
+  for await (const chunk of request.iterator({ destroyOnReturn: false })) {
+    bytes += chunk.byteLength;
+    if (bytes > maximumBodyBytes) {
       request.resume();
-      reject(error);
-    };
-    const onData = (chunk: Buffer) => {
-      bytes += chunk.byteLength;
-      if (bytes > maximumBodyBytes) {
-        fail(new RequestBodyTooLargeError("Request body is too large."));
-        return;
-      }
-      chunks.push(Buffer.from(chunk));
-    };
-    request.on("data", onData);
-    request.on("end", () => {
-      if (settled) return;
-      settled = true;
-      try {
-        const body = Buffer.concat(chunks).toString("utf8");
-        resolve(body ? JSON.parse(body) : {});
-      } catch {
-        reject(new InvalidRequestBodyError("Invalid JSON body."));
-      }
-    });
-    request.on("error", fail);
-  });
+      throw new RequestBodyTooLargeError("Request body is too large.");
+    }
+    chunks.push(chunk);
+  }
+  if (!bytes) return {};
+  let body: unknown;
+  try {
+    body = JSON.parse(Buffer.concat(chunks, bytes).toString("utf8"));
+  } catch {
+    throw new InvalidRequestBodyError("Invalid JSON body.");
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body))
+    throw new InvalidRequestBodyError("Invalid JSON body.");
+  return body as Record<string, unknown>;
+}
 
 interface FirewallAgentServerOptions {
   getSecret: () => string;
@@ -114,15 +106,19 @@ export const createFirewallAgentServer = ({
 
     try {
       if (request.url === "/v1/reconcile" && request.method === "PUT") {
-        const input = (await readJsonBody(request)) as {
-          policies?: Partial<FirewallPolicy>[];
-          startedAt: number;
-        };
+        const input = await readJsonBody(request);
         const desired = validatePolicies(input);
-        if (!Number.isSafeInteger(input.startedAt) || input.startedAt < 0) {
-          throw new Error("Invalid reconciliation timestamp.");
+        const { startedAt } = input;
+        if (
+          typeof startedAt !== "number" ||
+          !Number.isSafeInteger(startedAt) ||
+          startedAt < 0
+        ) {
+          throw new InvalidRequestBodyError(
+            "Invalid reconciliation timestamp.",
+          );
         }
-        if (commands.reconcile(desired, input.startedAt) === "stale") {
+        if (commands.reconcile(desired, startedAt) === "stale") {
           json(response, 409, { message: "Stale reconciliation timestamp." });
           return;
         }
@@ -141,7 +137,7 @@ export const createFirewallAgentServer = ({
       const applicationId = decodeURIComponent(match[1]);
       const refresh = Boolean(match[2]);
       if (request.method === "DELETE" && !refresh) {
-        if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{0,63}$/.test(applicationId)) {
+        if (!isFirewallApplicationId(applicationId)) {
           json(response, 400, { message: "Invalid application id." });
           return;
         }
@@ -201,9 +197,7 @@ export const createFirewallAgentServer = ({
       }
       if (
         error instanceof InvalidRequestBodyError ||
-        (error instanceof Error &&
-          (/^Invalid /.test(error.message) ||
-            error.message === "Only IPv4 CIDRs are supported."))
+        error instanceof InvalidFirewallPolicyError
       ) {
         json(response, 400, { message: error.message });
         return;

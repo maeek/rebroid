@@ -2,6 +2,8 @@ export { allowsBroadInternetAccess } from "./access/broad-internet";
 export { firewallChainName } from "./chains/chain-names";
 export { normalizeIpv4Cidr, parseAllowCidrs } from "./cidr/ipv4-cidr";
 export {
+  InvalidFirewallPolicyError,
+  isFirewallApplicationId,
   validatePolicies,
   validatePolicy,
 } from "./validation/policy-validation";
