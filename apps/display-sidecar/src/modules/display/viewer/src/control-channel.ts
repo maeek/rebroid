@@ -1,8 +1,13 @@
 import {
-  keyboardCaptureMessageType,
-  keyboardEventMessageType,
-  viewerControlMessageType,
-} from "./config.js";
+  dispatchDiscreteControl,
+  selectLiveControlChannel,
+  type LiveControlChannel,
+} from "./control-transport.js";
+import {
+  decodeControlReply,
+  decodeParentControlMessage,
+  isControlRecord,
+} from "./control-messages.js";
 import type { ControlChannel, JsonRecord, PageLifecycle } from "./types.js";
 import type { ViewerPresentation } from "./viewer-presentation.js";
 
@@ -12,9 +17,6 @@ type ControlChannelOptions = {
   presentation?: ViewerPresentation;
   onMessage?: (message: JsonRecord) => void;
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  Boolean(value) && typeof value === "object";
 
 export function createControlChannel({
   sessionId,
@@ -42,16 +44,14 @@ export function createControlChannel({
   let connectRequested = false;
   const activePointers = new Map<
     number,
-    { payload: JsonRecord; channel: RTCDataChannel | WebSocket }
+    { payload: JsonRecord; channel: LiveControlChannel }
   >();
 
-  const liveChannel = () => {
-    if (canControlRtc && reliableDataChannel?.readyState === "open")
-      return reliableDataChannel;
-    if (canControlWs && authorizedControlWs?.readyState === WebSocket.OPEN)
-      return authorizedControlWs;
-    return null;
-  };
+  const liveChannel = () =>
+    selectLiveControlChannel(
+      canControlRtc ? reliableDataChannel : null,
+      canControlWs ? authorizedControlWs : null,
+    );
   const canSendLiveInput = () => {
     if (!lifecycle.hasDemand()) return false;
     if (liveChannel()) return true;
@@ -66,44 +66,30 @@ export function createControlChannel({
     onCodecChanged?: () => void,
     onVideoReset?: (remainingMs: number) => void,
   ) => {
-    if (typeof data !== "string") return;
+    const reply = decodeControlReply(data);
+    if (!reply) return;
     try {
-      const reply: unknown = JSON.parse(data);
-      if (!isRecord(reply)) return;
-      if (reply.type === "control-ready") {
-        onReady?.(reply.canControl !== false);
-        return;
-      }
-      if (typeof reply.id === "string" && typeof reply.ok === "boolean") {
-        pending.get(reply.id)?.(
-          reply.ok && reply.executed !== false
-            ? undefined
-            : controlFailure(reply),
-        );
-      } else if (reply.type === "webrtc-codec-changed") {
-        if (
-          acceptStatus &&
-          data.length <= 256 &&
-          typeof reply.consumerAttemptId === "string" &&
-          reply.consumerAttemptId.length > 0 &&
-          reply.consumerAttemptId.length <= 128
-        ) {
-          onCodecChanged?.();
-        }
-      } else if (reply.type === "webrtc-video-reset") {
-        if (
-          acceptStatus &&
-          typeof reply.remainingMs === "number" &&
-          Number.isSafeInteger(reply.remainingMs) &&
-          reply.remainingMs > 0
-        ) {
-          onVideoReset?.(reply.remainingMs);
-        }
-      } else if (acceptStatus) {
-        onMessage?.(reply as JsonRecord);
+      switch (reply.kind) {
+        case "ready":
+          onReady?.(reply.canControl);
+          break;
+        case "result":
+          pending.get(reply.id)?.(
+            reply.executed ? undefined : controlFailure(reply.payload),
+          );
+          break;
+        case "codec-changed":
+          if (acceptStatus) onCodecChanged?.();
+          break;
+        case "video-reset":
+          if (acceptStatus) onVideoReset?.(reply.remainingMs);
+          break;
+        case "status":
+          if (acceptStatus) onMessage?.(reply.payload);
+          break;
       }
     } catch {
-      // Ignore messages that cannot be correlated with a control.
+      // Ignore rejected control notifications.
     }
   };
 
@@ -153,8 +139,7 @@ export function createControlChannel({
     payload: JsonRecord,
     signal: AbortSignal,
   ): Promise<void> {
-    if (!sessionId)
-      throw new Error("No viewer control session is available.");
+    if (!sessionId) throw new Error("No viewer control session is available.");
     const response = await fetch(
       `/rebroid/display/public/sessions/${encodeURIComponent(sessionId)}/${path}`,
       {
@@ -167,7 +152,7 @@ export function createControlChannel({
     const result: unknown = await response.json().catch(() => null);
     if (
       !response.ok ||
-      !isRecord(result) ||
+      !isControlRecord(result) ||
       result.ok !== true ||
       result.executed === false
     ) {
@@ -217,7 +202,8 @@ export function createControlChannel({
         authorizedControlWs = socket;
         finish(true);
       };
-      socket.onmessage = (event) => readReply(event.data, markReady, controlWs === socket);
+      socket.onmessage = (event) =>
+        readReply(event.data, markReady, controlWs === socket);
     });
     return socket;
   }
@@ -240,35 +226,29 @@ export function createControlChannel({
     if (inFlight + activePointers.size >= maxInFlight)
       throw new Error("The viewer control queue is full.");
     inFlight += 1;
-    const dispatchControl = (dispatch: (data: string) => void) => {
-      signal.throwIfAborted();
-      dispatch(JSON.stringify(payload));
-    };
     try {
-      const data = reliableDataChannel;
-      if (data && (await waitForOpen(data, "open", connectionWaitMs, signal))) {
-        signal.throwIfAborted();
-        return await sendAndConfirm(id, () =>
-          dispatchControl((message) => data.send(message)),
-        );
-      }
-      signal.throwIfAborted();
-      const ws = connectControlWs();
-      if (ws && (ws === authorizedControlWs || (await controlWsReady)) &&
-          ws.readyState === WebSocket.OPEN) {
-        signal.throwIfAborted();
-        return await sendAndConfirm(id, () =>
-          dispatchControl((message) => ws.send(message)),
-        );
-      }
-      signal.throwIfAborted();
-      await postPublic(fallbackPath, fallbackPayload ?? messagePayload, signal);
+      await dispatchDiscreteControl(
+        reliableDataChannel,
+        () => {
+          const socket = connectControlWs();
+          return {
+            socket,
+            ready: socket === authorizedControlWs || controlWsReady,
+          };
+        },
+        connectionWaitMs,
+        signal,
+        (channel) =>
+          sendAndConfirm(id, () => channel.send(JSON.stringify(payload))),
+        () =>
+          postPublic(fallbackPath, fallbackPayload ?? messagePayload, signal),
+      );
     } finally {
       inFlight -= 1;
     }
   }
 
-  function forgetClosedPointers(channel: RTCDataChannel | WebSocket) {
+  function forgetClosedPointers(channel: LiveControlChannel) {
     for (const [id, pointer] of activePointers) {
       if (pointer.channel === channel) activePointers.delete(id);
     }
@@ -354,25 +334,20 @@ export function createControlChannel({
     ) {
       return;
     }
-    const data = isRecord(event.data) ? event.data : {};
-    if (
-      data.type === keyboardCaptureMessageType &&
-      typeof data.enabled === "boolean"
-    ) {
-      keyboardCaptureEnabled = data.enabled;
+    const message = decodeParentControlMessage(event.data);
+    if (!message) return;
+    if (message.kind === "keyboard-capture") {
+      keyboardCaptureEnabled = message.enabled;
       return;
     }
-
-    if (
-      data.type === viewerControlMessageType &&
-      typeof data.command === "string"
-    ) {
+    if (message.kind === "action") {
+      const { command, requestId } = message;
       const reply = (error?: unknown) => {
-        if (typeof data.requestId !== "string") return;
+        if (requestId === undefined) return;
         window.parent.postMessage(
           {
             type: "rebroid-viewer-control-result",
-            requestId: data.requestId,
+            requestId,
             ok: error === undefined,
             message: error instanceof Error ? error.message : undefined,
           },
@@ -383,43 +358,24 @@ export function createControlChannel({
         reply(new Error("The mini-player is read-only while collapsed."));
         return;
       }
-      void send({ type: "action", command: data.command }, "actions", {
-        command: data.command,
-      }).then(() => reply(), reply);
+      void send({ type: "action", command }, "actions", { command }).then(
+        () => reply(),
+        reply,
+      );
       return;
     }
 
-    if (data.type !== keyboardEventMessageType || !lifecycle.hasDemand()) return;
-    const key =
-      typeof data.code === "string" && data.code ? data.code : data.key;
-    if (typeof key !== "string" || !key) return;
-    if (data.eventType === "keyup") {
+    if (!lifecycle.hasDemand()) return;
+    const { key, eventType, payload } = message;
+    if (eventType === "keyup") {
       if (!pressedKeys.delete(key)) return;
-    } else if (
-      data.eventType === "keydown" &&
-      keyboardCaptureEnabled &&
-      !presentation?.isCompact()
-    ) {
-      pressedKeys.add(key);
     } else {
-      return;
+      if (!keyboardCaptureEnabled || presentation?.isCompact()) return;
+      pressedKeys.add(key);
     }
-
-    const keyboardPayload: JsonRecord = {
-      eventType: typeof data.eventType === "string" ? data.eventType : "",
-      key: typeof data.key === "string" ? data.key : "",
-      code: typeof data.code === "string" ? data.code : "",
-      repeat: data.repeat === true,
-      altKey: data.altKey === true,
-      ctrlKey: data.ctrlKey === true,
-      metaKey: data.metaKey === true,
-      shiftKey: data.shiftKey === true,
-    };
-    send(
-      { type: "keyboard", ...keyboardPayload },
-      "keyboard",
-      keyboardPayload,
-    ).catch(() => undefined);
+    void send({ type: "keyboard", ...payload }, "keyboard", payload).catch(
+      () => undefined,
+    );
   });
 
   return {
@@ -479,45 +435,19 @@ export function createControlChannel({
 }
 
 function controlFailure(reply: unknown): Error {
-  if (isRecord(reply)) {
+  if (isControlRecord(reply)) {
     switch (reply.code) {
       case "control_reconnecting":
-        return new Error("Live controls are reconnecting. Try again in a moment.");
+        return new Error(
+          "Live controls are reconnecting. Try again in a moment.",
+        );
       case "control_not_dispatched":
         return new Error("The command was not sent to the display.");
       case "control_outcome_unknown":
-        return new Error("The display may have received the command. Check before retrying.");
+        return new Error(
+          "The display may have received the command. Check before retrying.",
+        );
     }
   }
   return new Error("The display did not execute the command.");
-}
-
-function waitForOpen(
-  channel: EventTarget & { readyState: string | number },
-  open: string | number,
-  waitMs: number,
-  signal: AbortSignal,
-): Promise<boolean> {
-  if (channel.readyState === open) return Promise.resolve(true);
-  if (
-    channel.readyState !== "connecting" &&
-    channel.readyState !== WebSocket.CONNECTING
-  ) {
-    return Promise.resolve(false);
-  }
-  return new Promise((resolve) => {
-    const finish = () => {
-      window.clearTimeout(timer);
-      channel.removeEventListener("open", finish);
-      channel.removeEventListener("close", finish);
-      channel.removeEventListener("error", finish);
-      signal.removeEventListener("abort", finish);
-      resolve(channel.readyState === open);
-    };
-    const timer = window.setTimeout(finish, waitMs);
-    channel.addEventListener("open", finish);
-    channel.addEventListener("close", finish);
-    channel.addEventListener("error", finish);
-    signal.addEventListener("abort", finish, { once: true });
-  });
 }
