@@ -150,6 +150,29 @@ describe('ContainerImageGappsBuilderService', () => {
     }
   });
 
+  it('waits for an admitted cache clear before using that Android version', async () => {
+    const build = createQueuedBuild('15');
+    const finishClear = deferred<void>();
+    build.cache.clear.mockReturnValueOnce(finishClear.promise);
+    const clear = build.service.clearCache('15');
+    try {
+      await build.service.onModuleInit();
+      await nextTurn();
+      expect(build.cache.findVerified).not.toHaveBeenCalled();
+      await expect(build.service.clearCache('15')).rejects.toThrow(
+        'active build',
+      );
+      await build.service.clearCache('14');
+      finishClear.resolve();
+      await clear;
+      await nextTurn();
+      expect(build.jobs.markSucceeded).toHaveBeenCalledTimes(1);
+    } finally {
+      finishClear.resolve();
+      build.service.onModuleDestroy();
+    }
+  });
+
   it('returns success when completion wins the cancellation race', async () => {
     const build = createQueuedBuild('15');
     const buildStarted = deferred<AbortSignal>();
@@ -355,6 +378,7 @@ const createQueuedBuild = (
     workerInventory,
   );
   const cache = {
+    clear: jest.fn(),
     findVerified: jest
       .fn()
       .mockResolvedValue({ sha256: 'checksum', packagePath: '/tmp/payload' }),

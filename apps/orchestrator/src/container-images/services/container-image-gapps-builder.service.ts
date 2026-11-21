@@ -7,6 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { getErrorMessage } from '../../common/error-message';
+import { KeyedSerialQueue } from '../../common/keyed-serial-queue';
 import {
   DOCKER_IMAGE_RUNTIME_METADATA,
   type DockerImageRuntimeMetadataPort,
@@ -59,6 +60,7 @@ export class ContainerImageGappsBuilderService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(ContainerImageGappsBuilderService.name);
+  private readonly cacheOperations = new KeyedSerialQueue<string | null>();
   private draining = false;
   private drainRequested = false;
   private retryTimer?: NodeJS.Timeout;
@@ -125,7 +127,9 @@ export class ContainerImageGappsBuilderService
         `Cannot clear Android ${androidVersion} cache during an active build.`,
       );
     }
-    return this.cache.clear(androidVersion);
+    return this.cacheOperations.run(androidVersion, () =>
+      this.cache.clear(androidVersion),
+    );
   }
 
   private scheduleDrain() {
@@ -178,7 +182,11 @@ export class ContainerImageGappsBuilderService
     };
     return this.lifecycle.run(
       job,
-      (signal) => this.build(job, signal, staging),
+      (signal) =>
+        this.cacheOperations.run(job.androidVersion, () => {
+          signal.throwIfAborted();
+          return this.build(job, signal, staging);
+        }),
       () => this.cleanupStaging(staging),
     );
   }
