@@ -7,6 +7,8 @@ import {
   readFile,
   rm,
   stat,
+  symlink,
+  writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -57,6 +59,9 @@ describe('RuntimeDownloadVolumeService', () => {
     await service.storeStream(app, Readable.from(['z']), 'zeta.txt', {});
     await service.storeStream(app, Readable.from(['alpha']), 'alpha.txt', {});
     await mkdir(join(directory, 'nested-directory'));
+    await writeFile(join(directory, ' alpha.txt '), 'different file');
+    await writeFile(join(directory, ' '), 'blank name');
+    await symlink('alpha.txt', join(directory, 'linked.txt'));
 
     const files = await service.listFiles(app, {});
 

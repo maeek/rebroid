@@ -5,15 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { constants } from 'node:fs';
-import {
-  access,
-  lstat,
-  mkdir,
-  readdir,
-  open,
-  rename,
-  stat,
-} from 'node:fs/promises';
+import { access, lstat, mkdir, readdir, open, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import {
@@ -26,6 +18,7 @@ import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
 import { RuntimeFilePathService } from './runtime-file-path.service';
 import { RuntimeUploadStreamService } from './runtime-upload-stream.service';
+import { isRuntimeDownloadFileName } from '../utils/android-apps-runtime-file.utils';
 import { mapWithConcurrency } from '../../../common/map-with-concurrency';
 import {
   maximumRuntimeDownloadBytes,
@@ -59,22 +52,20 @@ export class RuntimeDownloadVolumeService {
 
     let entries: string[];
     try {
-      entries = await readdir(directory);
+      entries = (await readdir(directory)).filter(isRuntimeDownloadFileName);
     } catch {
       return [];
     }
 
     const files = await mapWithConcurrency(entries, 16, async (name) => {
-      const safeName = this.paths.sanitizeFileName(name);
-      const path = join(directory, safeName);
-      const fileStat = await stat(path).catch(() => null);
+      const fileStat = await lstat(join(directory, name)).catch(() => null);
       if (!fileStat?.isFile()) {
         return null;
       }
 
       return {
-        name: safeName,
-        path: `${this.paths.downloadDirectory}/${safeName}`,
+        name,
+        path: `${this.paths.downloadDirectory}/${name}`,
         type: 'file' as const,
         sizeBytes: fileStat.size,
         itemCount: null,

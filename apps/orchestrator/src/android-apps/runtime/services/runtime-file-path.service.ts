@@ -4,7 +4,6 @@ import { ApplicationProfileMode } from '../../contracts/application-profile-mode
 import { AndroidApplicationStatus } from '../../contracts/android-application-status';
 import { AndroidApplication } from '../../android-application.entity';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
-import { sanitizeRuntimeFileName } from '../utils/android-apps-runtime-file.utils';
 
 @Injectable()
 export class RuntimeFilePathService {
@@ -25,10 +24,6 @@ export class RuntimeFilePathService {
       );
     }
     return normalized;
-  }
-
-  sanitizeFileName(value: string) {
-    return sanitizeRuntimeFileName(value);
   }
 
   normalizeEntryName(value: string) {

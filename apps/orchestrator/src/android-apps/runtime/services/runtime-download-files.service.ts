@@ -14,7 +14,10 @@ import { AndroidAppsLogService } from '../../common/services/android-apps-log.se
 import { AndroidAppsRuntimeStateReconciler } from '../../common/services/android-apps-runtime-state-reconciler.service';
 import { ApplicationRuntimeFileUploadDto } from '../dto/application-runtime-file.dto';
 import { ApplicationRuntimeFilesQueryDto } from '../dto/application-runtime-files-query.dto';
-import { parseDownloadFiles } from '../utils/android-apps-runtime-file.utils';
+import {
+  parseDownloadFiles,
+  sanitizeRuntimeFileName,
+} from '../utils/android-apps-runtime-file.utils';
 import { readRuntimeDownload } from '../utils/runtime-download-limit';
 import { RuntimeDownloadVolumeService } from './runtime-download-volume.service';
 import { RuntimeFilePathService } from './runtime-file-path.service';
@@ -63,7 +66,7 @@ export class RuntimeDownloadFilesService {
     query: ApplicationRuntimeFilesQueryDto = {},
   ) {
     const app = await this.reconciler.reconcileById(id);
-    const safeFileName = this.paths.sanitizeFileName(fileName);
+    const safeFileName = sanitizeRuntimeFileName(fileName);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
       const content = await this.volumes.readFile(app, safeFileName, query);
       return this.downloadResult(safeFileName, content);
@@ -106,7 +109,7 @@ export class RuntimeDownloadFilesService {
     originalName: string,
     query: ApplicationRuntimeFilesQueryDto,
   ) {
-    const fileName = this.paths.sanitizeFileName(originalName);
+    const fileName = sanitizeRuntimeFileName(originalName);
     if (!this.paths.shouldUseRunningContainer(app, query)) {
       return this.volumes.storeStream(app, stream, fileName, query);
     }

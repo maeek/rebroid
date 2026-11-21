@@ -1,19 +1,19 @@
 import { ConflictException } from '@nestjs/common';
 import { basename } from 'node:path';
 
+export const isRuntimeDownloadFileName = (name: string) =>
+  name.length > 0 &&
+  name === name.trim() &&
+  name !== '.' &&
+  name !== '..' &&
+  !name.includes('/') &&
+  !name.includes('\\') &&
+  !name.includes('\0');
+
 export const sanitizeRuntimeFileName = (fileName: string) => {
   const normalized = basename(fileName.replace(/\\/g, '/')).trim();
-  if (
-    !normalized ||
-    normalized === '.' ||
-    normalized === '..' ||
-    normalized.includes('/') ||
-    normalized.includes('\\') ||
-    normalized.includes('\0')
-  ) {
+  if (!isRuntimeDownloadFileName(normalized))
     throw new ConflictException('Invalid file name.');
-  }
-
   return normalized;
 };
 
