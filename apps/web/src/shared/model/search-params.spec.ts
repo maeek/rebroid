@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   firstSearchParamValue,
-  positiveIntegerSearchParam,
+  paginationFromSearchParams,
   serializeSortParam,
   validatedSearchParam
 } from './search-params'
@@ -25,7 +25,7 @@ describe('search parameter helpers', () => {
     ['1.8', 1],
     ['1000', 100]
   ])('normalizes bounded positive integer %j', (input, expected) => {
-    expect(positiveIntegerSearchParam(input, { fallback: 20, max: 100 })).toBe(expected)
+    expect(paginationFromSearchParams({ pageSize: input }).pageSize).toBe(expected)
   })
 
   it('accepts only allowlisted scalar values', () => {

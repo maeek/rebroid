@@ -1,4 +1,4 @@
-import { firstSearchParamValue, positiveIntegerSearchParam } from '@/shared/model/search-params'
+import { firstSearchParamValue } from '@/shared/model/search-params'
 import type {
   AuditEvent,
   AuditEventFilters,
@@ -56,11 +56,6 @@ export const auditFiltersFromSearchParams = (searchParams: AuditSearchParams): A
     to: isoDateParam(firstSearchParamValue(searchParams.to), 'end')
   }
 }
-
-export const auditPageFromSearchParams = (searchParams: AuditSearchParams) => ({
-  page: positiveIntegerSearchParam(searchParams.page, { fallback: 1 }),
-  pageSize: positiveIntegerSearchParam(searchParams.pageSize, { fallback: 20, max: 100 })
-})
 
 export const auditSortFromSearchParams = (searchParams: AuditSearchParams): AuditEventSort[] => {
   const sort = firstSearchParamValue(searchParams.sort)

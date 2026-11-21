@@ -1,4 +1,4 @@
-import { firstSearchParamValue, positiveIntegerSearchParam } from '@/shared/model/search-params'
+import { firstSearchParamValue, paginationFromSearchParams } from '@/shared/model/search-params'
 import type {
   PlatformContainersGridQuery,
   PlatformImagesGridQuery,
@@ -15,8 +15,7 @@ export const platformGridQueryFromSearchParams = (searchParams: PlatformGridSear
   const trait = firstSearchParamValue(searchParams.trait)
   const attachment = firstSearchParamValue(searchParams.attachment)
   return {
-    page: positiveIntegerSearchParam(searchParams.page, { fallback: 1 }),
-    pageSize: positiveIntegerSearchParam(searchParams.pageSize, { fallback: 20, max: 100 }),
+    ...paginationFromSearchParams(searchParams),
     q: firstSearchParamValue(searchParams.q)?.trim() || undefined,
     ownership: ownership === 'all' ? 'all' : 'managed',
     state: firstSearchParamValue(searchParams.state)?.trim() || undefined,
