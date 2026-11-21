@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+import { finished, pipeline } from 'node:stream/promises';
 import tar from 'tar-stream';
 import { DockerEngineService } from '../../docker-engine.service';
 import {
@@ -24,111 +24,80 @@ export class DockerContainerArchiveService implements DockerContainerArchivePort
     const { size } = await stat(sourcePath);
     await this.copyStreamToContainer(
       containerId,
-      createReadStream(sourcePath),
+      Readable.from(
+        (async function* () {
+          yield* createReadStream(sourcePath);
+        })(),
+      ),
       targetDirectory,
       targetFileName ?? basename(sourcePath),
       size,
     );
   }
 
-  async copyBufferToContainer(
+  copyBufferToContainer(
     containerId: string,
     content: Buffer,
     targetDirectory: string,
     targetFileName: string,
   ) {
-    await this.engine.longOperation(
-      'archive_upload',
-      `Upload archive to container ${containerId}`,
-      async (docker, signal) => {
-        const container = docker.getContainer(containerId);
-        const pack = tar.pack();
-        const archive = Readable.from(pack, { objectMode: false });
-        const abort = () =>
-          pack.destroy(new Error('Docker archive upload aborted.'));
-        signal.addEventListener('abort', abort, { once: true });
-        try {
-          await new Promise<void>((resolve, reject) => {
-            pack.entry(
-              {
-                name: targetFileName,
-                mode: 0o644,
-                size: content.length,
-              },
-              content,
-              (error) => {
-                if (error) {
-                  reject(error);
-                  return;
-                }
-
-                pack.finalize();
-                resolve();
-              },
-            );
-          });
-
-          await container.putArchive(archive, {
-            path: targetDirectory,
-            abortSignal: signal,
-          });
-        } finally {
-          signal.removeEventListener('abort', abort);
-        }
-      },
+    return this.copyStreamToContainer(
+      containerId,
+      Readable.from([content]),
+      targetDirectory,
+      targetFileName,
+      content.length,
     );
   }
 
-  async copyStreamToContainer(
+  copyStreamToContainer(
     containerId: string,
     content: Readable,
     targetDirectory: string,
     targetFileName: string,
     size?: number,
   ) {
-    await this.engine.longOperation(
+    return this.engine.longOperation(
       'archive_upload',
       `Upload archive to container ${containerId}`,
       async (docker, signal) => {
         const container = docker.getContainer(containerId);
         const pack = tar.pack();
+        const entry = pack.entry({ name: targetFileName, mode: 0o644, size });
         const archive = Readable.from(pack, { objectMode: false });
-        const abort = () => {
-          const error = new Error('Docker archive upload aborted.');
-          content.destroy(error);
-          pack.destroy(error);
+        const archiveDone = finished(archive, { cleanup: true });
+        const forwardPackError = (error: Error) => archive.destroy(error);
+        pack.on('error', forwardPackError);
+        const cancellation = new AbortController();
+        const transferSignal = AbortSignal.any([signal, cancellation.signal]);
+        const closeArchive = () => {
+          archive.destroy();
+          pack.destroy();
         };
-        signal.addEventListener('abort', abort, { once: true });
-        const archiveUpload = container
-          .putArchive(archive, {
-            path: targetDirectory,
-            abortSignal: signal,
-          })
-          .catch((error: unknown) => {
-            pack.destroy(
-              error instanceof Error ? error : new Error(String(error)),
-            );
-            throw error;
-          });
-        const entry = pack.entry({
-          name: targetFileName,
-          mode: 0o644,
-          size,
-        });
+        transferSignal.addEventListener('abort', closeArchive, { once: true });
 
+        const upload = Promise.resolve().then(() =>
+          container.putArchive(archive, {
+            path: targetDirectory,
+            abortSignal: transferSignal,
+          }),
+        );
+        const input = pipeline(content, entry, { signal: transferSignal }).then(
+          () => pack.finalize(),
+        );
         try {
-          await pipeline(content, entry);
-          pack.finalize();
-          await archiveUpload;
+          await Promise.all([input, archiveDone, upload]);
         } catch (error) {
-          pack.destroy(
-            error instanceof Error ? error : new Error(String(error)),
-          );
+          cancellation.abort(error);
+          await Promise.allSettled([input, archiveDone, upload]);
           throw error;
         } finally {
-          signal.removeEventListener('abort', abort);
+          transferSignal.removeEventListener('abort', closeArchive);
+          pack.off('error', forwardPackError);
         }
       },
+      undefined,
+      { waitForCleanup: true },
     );
   }
 
