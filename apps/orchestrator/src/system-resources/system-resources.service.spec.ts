@@ -100,6 +100,33 @@ describe('SystemResourcesService', () => {
     await expect(Promise.all([first, second])).resolves.toHaveLength(2);
   });
 
+  it('collects the new inventory for callers that arrive after a revision change', async () => {
+    let resolveContainers!: (containers: []) => void;
+    const held = new Promise<[]>((resolve) => {
+      resolveContainers = resolve;
+    });
+    let revision = 0;
+    const listManagedContainers = jest
+      .fn()
+      .mockReturnValueOnce(held)
+      .mockResolvedValue([{ id: 'new', state: 'running' }]);
+    const service = createService({
+      ...baseDocker,
+      get inventoryRevision() {
+        return revision;
+      },
+      listManagedContainers,
+    });
+    const old = service.getUsage();
+    revision++;
+    const next = service.getUsage();
+    expect(listManagedContainers).toHaveBeenCalledTimes(1);
+    resolveContainers([]);
+    await expect(old).resolves.toMatchObject({ containersTotal: 0 });
+    await expect(next).resolves.toMatchObject({ containersTotal: 1 });
+    expect(listManagedContainers).toHaveBeenCalledTimes(2);
+  });
+
   it('falls back to zeroed live stats when Docker stats collection fails', async () => {
     const service = createService({
       ...baseDocker,

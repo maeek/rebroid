@@ -94,6 +94,53 @@ describe('Docker resource inventory and stats', () => {
     expect(info).toHaveBeenCalledTimes(2);
   });
 
+  it('gives unvisited responsive containers priority after a sweep full of timeouts', async () => {
+    jest.useFakeTimers();
+    jest.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {
+      const deadline = new AbortController();
+      setTimeout(() => deadline.abort(), ms);
+      return deadline.signal;
+    });
+    const containers = Array.from({ length: 12 }, (_, i) => ({
+      id: i.toString(16).padStart(64, '0'),
+      name: String(i),
+      state: 'running',
+      status: 'Up',
+    }));
+    const visited: string[] = [];
+    const engine = {
+      docker: {
+        getContainer: (id: string) => ({
+          stats: () => {
+            visited.push(id);
+            if (Number.parseInt(id, 16) >= 8)
+              return Promise.resolve({ memory_stats: { usage: 4 } });
+            return new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('deadline')), 4_000),
+            );
+          },
+        }),
+      },
+      readStats: <T>(operation: (signal: AbortSignal) => Promise<T>) =>
+        operation(new AbortController().signal),
+    } as unknown as DockerEngineService;
+    const resources = new DockerResourceRuntimeService(
+      engine,
+      new DockerInventoryService(engine),
+    );
+    const first = resources.getManagedContainerResourceUsage(containers);
+    await jest.advanceTimersByTimeAsync(8_000);
+    await expect(first).resolves.toMatchObject({ sampledContainers: 0 });
+    expect(visited).toHaveLength(8);
+
+    const second = resources.getManagedContainerResourceUsage(containers);
+    await jest.advanceTimersByTimeAsync(8_000);
+    await expect(second).resolves.toMatchObject({ sampledContainers: 4 });
+    expect(visited.slice(8, 12)).toEqual(
+      containers.slice(8).map(({ id }) => id),
+    );
+  });
+
   it('returns the available usage and coverage when a sweep reaches its deadline', async () => {
     jest.useFakeTimers();
     jest.spyOn(AbortSignal, 'timeout').mockImplementation((ms) => {

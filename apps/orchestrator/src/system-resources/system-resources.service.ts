@@ -9,9 +9,10 @@ import {
 @Injectable()
 export class SystemResourcesService {
   private readonly logger = new Logger(SystemResourcesService.name);
-  private usageRequest: Promise<
-    Awaited<ReturnType<SystemResourcesService['collectUsage']>>
-  > | null = null;
+  private usageRequest?: {
+    revision: number;
+    result: ReturnType<SystemResourcesService['collectUsage']>;
+  };
   private dockerRootStatfsWarningShown = false;
 
   constructor(
@@ -22,18 +23,20 @@ export class SystemResourcesService {
   /**
    * Aggregates managed container counts and live resource usage.
    */
-  async getUsage() {
-    if (this.usageRequest) {
-      return this.usageRequest;
+  async getUsage(): ReturnType<SystemResourcesService['collectUsage']> {
+    const revision = this.docker.inventoryRevision;
+    const existing = this.usageRequest;
+    if (existing && existing.revision === revision) return existing.result;
+    if (existing) {
+      // Finish the old sweep before admitting a replacement to the Docker read queue.
+      await existing.result.catch(() => undefined);
+      return this.getUsage();
     }
-
-    const pending = this.collectUsage().finally(() => {
-      if (this.usageRequest === pending) {
-        this.usageRequest = null;
-      }
+    const result = this.collectUsage().finally(() => {
+      if (this.usageRequest?.result === result) this.usageRequest = undefined;
     });
-    this.usageRequest = pending;
-    return pending;
+    this.usageRequest = { revision, result };
+    return result;
   }
 
   private async collectUsage() {

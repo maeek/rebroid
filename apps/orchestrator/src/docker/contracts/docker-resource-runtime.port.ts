@@ -9,6 +9,7 @@ export const DOCKER_RESOURCE_RUNTIME = Symbol('DOCKER_RESOURCE_RUNTIME');
 
 export interface DockerResourceRuntimePort {
   readonly hasPendingDockerWork: boolean;
+  readonly inventoryRevision: number;
   engineSummary(): Promise<{
     id?: string;
     name?: string;

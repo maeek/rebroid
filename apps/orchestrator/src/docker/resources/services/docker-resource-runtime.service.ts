@@ -33,6 +33,8 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     string,
     { expiresAt: number; value: ContainerResourceUsage }
   >();
+  private readonly lastSweepAttempt = new Map<string, number>();
+  private sweepAttempt = 0;
   private capacityRequest?: Promise<HostCapacity>;
 
   constructor(
@@ -42,6 +44,10 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
 
   get hasPendingDockerWork() {
     return this.engine.hasPendingDockerWork;
+  }
+
+  get inventoryRevision() {
+    return this.engine.currentInventoryRevision;
   }
 
   async engineSummary() {
@@ -220,17 +226,22 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     };
     const now = performance.now();
     const remaining: ManagedContainerSummary[] = [];
+    const runningIds = new Set<string>();
     for (const container of managedContainers) {
       if (container.state !== 'running') continue;
+      runningIds.add(container.id);
       const cached = this.stats.get(container.id);
       if (cached && cached.expiresAt > now) addSample(cached.value);
       else remaining.push(container);
     }
-    // Refresh containers without recent samples first when the fleet outgrows a sweep.
+    for (const id of this.lastSweepAttempt.keys()) {
+      if (!runningIds.has(id)) this.lastSweepAttempt.delete(id);
+    }
+    // Timeouts also consume a turn, so repeatedly slow rows cannot starve later rows.
     remaining.sort(
       (a, b) =>
-        (this.stats.get(a.id)?.expiresAt ?? 0) -
-        (this.stats.get(b.id)?.expiresAt ?? 0),
+        (this.lastSweepAttempt.get(a.id) ?? 0) -
+        (this.lastSweepAttempt.get(b.id) ?? 0),
     );
     const containersToSample = remaining.values();
     const signal = AbortSignal.timeout(STATS_SWEEP_TIMEOUT_MS);
@@ -238,6 +249,7 @@ export class DockerResourceRuntimeService implements DockerResourceRuntimePort {
     const sampleContainers = async () => {
       for (const container of containersToSample) {
         if (signal.aborted) return;
+        this.lastSweepAttempt.set(container.id, ++this.sweepAttempt);
         try {
           const sample = await waitForOperation(
             this.getContainerResourceUsage(container.id),

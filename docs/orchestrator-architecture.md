@@ -91,6 +91,8 @@ The application detail page polls for lifecycle state and retrieves configuratio
 Both responses use the current account's ownership and backend-detail permissions.
 The diagnostics summary shares recent sidecar probes across callers and invalidates
 firewall and OCR samples after settings changes. Full diagnostics still probes on request.
+System resource overviews share aggregate work by Docker inventory revision. Docker stats sweeps rotate
+by last attempt, including failures, and report partial coverage when the sampling budget expires.
 Configuration commands write only the fields they own and reject changes to applications being removed.
 Runtime settings that require replacement record that intent for the next Start. If settings change
 during container creation, recording the new container preserves the replacement intent for the newer settings.
