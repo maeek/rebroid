@@ -1,5 +1,5 @@
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
-import type { ScrcpyAudioPacket } from "./scrcpy.types";
+import type { ScrcpyAudioPacket, ScrcpyVideoReset } from "./scrcpy.types";
 
 type Completion = (error?: Error, delivered?: boolean) => void;
 
@@ -7,6 +7,7 @@ interface PendingVideoPacket {
   packet: ScrcpyPacket;
   discontinuity: boolean;
   completion?: Completion;
+  reset?: ScrcpyVideoReset;
 }
 
 interface PendingAudioPacket {
@@ -69,6 +70,7 @@ export class GopAwareVideoQueue {
     private readonly write: (
       packet: ScrcpyPacket,
       discontinuity: boolean,
+      reset?: ScrcpyVideoReset,
     ) => Promise<void>,
     private readonly onResync: (timestampUs: bigint) => void,
     private readonly options: GopAwareVideoQueueOptions = {},
@@ -77,6 +79,7 @@ export class GopAwareVideoQueue {
   push(
     packet: ScrcpyPacket,
     completion?: Completion,
+    reset?: ScrcpyVideoReset,
   ): VideoQueueOverflow | void {
     if (this.closed) {
       completion?.(new Error("media queue is closed"));
@@ -102,7 +105,7 @@ export class GopAwareVideoQueue {
         this.checkRecoveryProgress(packet.timestampUs);
         return;
       }
-      this.enqueueResync(packet, completion);
+      this.enqueueResync(packet, completion, reset);
       return;
     }
 
@@ -116,11 +119,11 @@ export class GopAwareVideoQueue {
         this.overflow = overflow;
         return overflow;
       }
-      this.enqueueResync(packet, completion);
+      this.enqueueResync(packet, completion, reset);
       return;
     }
 
-    this.queue.push({ packet, discontinuity: false, completion });
+    this.queue.push({ packet, discontinuity: false, completion, reset });
     this.startDrain();
   }
 
@@ -154,16 +157,21 @@ export class GopAwareVideoQueue {
     };
   }
 
-  private enqueueResync(packet: ScrcpyPacket, completion?: Completion): void {
+  private enqueueResync(
+    packet: ScrcpyPacket,
+    completion?: Completion,
+    reset?: ScrcpyVideoReset,
+  ): void {
     this.overflow = undefined;
     this.recoveryStartTimestampUs = null;
     if (this.cachedConfig) {
       this.queue.push({
         packet: this.cachedConfig,
         discontinuity: true,
+        reset,
       });
     }
-    this.queue.push({ packet, discontinuity: true, completion });
+    this.queue.push({ packet, discontinuity: true, completion, reset });
     this.awaitingKeyFrame = false;
     this.onResync(packet.timestampUs);
     this.startDrain();
@@ -240,7 +248,7 @@ export class GopAwareVideoQueue {
         break;
       }
       try {
-        await this.write(pending.packet, pending.discontinuity);
+        await this.write(pending.packet, pending.discontinuity, pending.reset);
         pending.completion?.(undefined, true);
       } catch (error) {
         const failure = errorFrom(error);

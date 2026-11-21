@@ -77,9 +77,33 @@ test("disabled WebRTC rejects offers before probing or attaching a source", asyn
 });
 
 // Test the sidecar through the same private sockets as the Go bridge.
-const bridgeScript = (body: string) => `#!${process.execPath}
+const bridgeScript = (
+  body: string,
+  retire = "finish();",
+) => `#!${process.execPath}
 const fs = require("node:fs");
 const peers = new Map();
+const reply = (type, attemptId) => console.log(JSON.stringify({ type, attemptId }));
+const control = require("node:readline").createInterface({ input: process.stdin });
+control.on("line", (line) => {
+  const { type, attemptId } = JSON.parse(line);
+  const id = attemptId.replaceAll("-", "");
+  if (type === "register") {
+    if (peers.size >= Number(process.argv[4])) return reply("rejected", attemptId);
+    peers.set(id, []);
+    reply("registered", attemptId);
+  } else if (type === "retire") {
+    const streams = peers.get(id);
+    if (!streams) return;
+    streams.forEach(stream => stream.destroy());
+    const finish = () => {
+      peers.delete(id);
+      reply("released", attemptId);
+    };
+    ${retire}
+  }
+});
+control.on("close", () => process.exit(0));
 require("node:net").createServer({ allowHalfOpen: true }, (socket) => {
   socket.on("error", () => socket.destroy());
   socket.once("readable", function readHeader() {
@@ -89,11 +113,10 @@ require("node:net").createServer({ allowHalfOpen: true }, (socket) => {
       return;
     }
     const id = header.subarray(0, 16).toString("hex");
-    const streams = peers.get(id) ?? [];
-    peers.set(id, streams);
+    const streams = peers.get(id);
+    if (!streams) return socket.destroy();
     streams[header[16]] = socket;
     if (![0, 1, 2].every(index => streams[index])) return;
-    peers.delete(id);
     const [commands, video, audio] = streams;
     commands.on("end", () => streams.forEach(stream => stream.destroy()));
     const input = require("node:readline").createInterface({ input: commands });
@@ -101,8 +124,6 @@ require("node:net").createServer({ allowHalfOpen: true }, (socket) => {
     ${body}
   });
 }).listen(process.argv[2], () => console.log("ready"));
-process.stdin.resume();
-process.stdin.on("end", () => process.exit(0));
 `;
 
 const deferred = () => {
@@ -427,6 +448,197 @@ test("independent viewers can share a grant and retry at capacity without evicti
     detach.mock.calls.map(({ arguments: args }) => args[0]).sort(),
     [0, 1, 2],
   );
+});
+
+async function replacementFixture(t: TestContext) {
+  const directory = await mkdtemp(join(tmpdir(), "rebroid-webrtc-retirement-"));
+  const executable = join(directory, "bridge");
+  const retiring = join(directory, "retiring");
+  const release = join(directory, "release");
+  let codecGeneration = 0;
+  let bootstrapSource: ScrcpySourceStream | undefined;
+  const service = setup(
+    {
+      attachStream: ({ sink }: ScrcpyStreamOptions) =>
+        bootstrapSource?.attach(sink, { mode: "bootstrap" }) ?? {
+          awaitVideoBootstrap: async () => {
+            const generation = codecGeneration;
+            return {
+              profileLevelId: "42c01f",
+              sdpFmtpLine: "packetization-mode=1;profile-level-id=42c01f",
+              width: 720,
+              height: 1280,
+              isCurrent: () => codecGeneration === generation,
+            };
+          },
+          detach: () => undefined,
+        },
+    },
+    { sessionMaxActive: 1, webrtcBridgePath: executable },
+  );
+  t.after(async () => {
+    service.onModuleDestroy();
+    bootstrapSource?.close();
+    await rm(directory, { recursive: true, force: true });
+  });
+  await writeFile(
+    executable,
+    bridgeScript(
+      `input.once("line", () => send({ type: "answer", sdp: id }));`,
+      `
+fs.writeFileSync(${JSON.stringify(retiring)}, attemptId);
+const timer = setInterval(() => {
+  if (!fs.existsSync(${JSON.stringify(release)})) return;
+  clearInterval(timer);
+  finish();
+}, 10);
+`,
+    ),
+    { mode: 0o700 },
+  );
+  const request = {
+    ...offer,
+    sdp: [
+      "m=video 9 UDP/TLS/RTP/SAVPF 96",
+      "a=rtpmap:96 H264/90000",
+      "a=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+    ].join("\r\n"),
+  };
+  const forViewer = (id: string) => ({
+    ...request,
+    headers: { ...request.headers, "x-rebroid-viewer-id": id.repeat(32) },
+  });
+  const first = await service.createAnswer(request);
+  const sibling = await service.createAnswer(forViewer("b"));
+  return {
+    service,
+    request,
+    first,
+    sibling,
+    forViewer,
+    changeCodecGeneration: () => {
+      codecGeneration += 1;
+    },
+    waitForCodecBootstrap: () => {
+      bootstrapSource = new ScrcpySourceStream(
+        () => undefined,
+        () => undefined,
+        () => true,
+      );
+    },
+    confirmRetirement: () => writeFile(release, ""),
+    async waitForRetirement() {
+      const deadline = Date.now() + 3_000;
+      while (true) {
+        try {
+          await access(retiring);
+          return;
+        } catch (error) {
+          if (Date.now() >= deadline) throw error;
+          await delay(10);
+        }
+      }
+    },
+  };
+}
+
+test("the newest replacement waits for Go retirement and inherits the viewer slot", async (t) => {
+  const fixture = await replacementFixture(t);
+  const { service, request } = fixture;
+  const superseded = assert.rejects(service.createAnswer(request), /cancelled/);
+  void superseded.catch(() => undefined);
+  await fixture.waitForRetirement();
+
+  const replacement = service.createAnswer(request);
+  void replacement.catch(() => undefined);
+  await superseded;
+  const waiting = Symbol("waiting for Go");
+  assert.equal(await Promise.race([replacement, delay(25, waiting)]), waiting);
+  await assert.rejects(service.createAnswer(fixture.forViewer("c")), {
+    status: 429,
+  });
+  await fixture.confirmRetirement();
+  const answer = await replacement;
+  assert.notEqual(answer.sdp, fixture.first.sdp);
+  assert.notEqual(answer.sdp, fixture.sibling.sdp);
+  await assert.rejects(service.createAnswer(fixture.forViewer("c")), {
+    status: 429,
+  });
+});
+
+test("a timed-out replacement keeps the retiring peer counted until Go confirms", async (t) => {
+  const fixture = await replacementFixture(t);
+  const { service, request } = fixture;
+  const assertTimedOut = (answer: ReturnType<typeof service.createAnswer>) =>
+    assert.rejects(answer, {
+      response: {
+        statusCode: 503,
+        code: "display_peer_retirement_timeout",
+        message: "The previous WebRTC peer is still closing. Retry the offer.",
+      },
+    });
+  await assertTimedOut(service.createAnswer(request));
+  await assert.rejects(service.createAnswer(fixture.forViewer("c")), {
+    status: 429,
+  });
+  const waiting = Symbol("cleanup deadline restarted");
+  assert.equal(
+    await Promise.race([
+      assertTimedOut(service.createAnswer(request)),
+      delay(500, waiting, { ref: false }),
+    ]),
+    undefined,
+  );
+
+  await fixture.confirmRetirement();
+  const deadline = Date.now() + 3_000;
+  while (true) {
+    try {
+      assert.notEqual(
+        (await service.createAnswer(request)).sdp,
+        fixture.first.sdp,
+      );
+      break;
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      await delay(10);
+    }
+  }
+});
+
+test("a replacement cannot negotiate from a codec generation retired during peer cleanup", async (t) => {
+  const fixture = await replacementFixture(t);
+  const { service, request } = fixture;
+  const stale = assert.rejects(service.createAnswer(request), {
+    message:
+      "The video codec generation changed while waiting for WebRTC peer cleanup.",
+    status: 503,
+  });
+  void stale.catch(() => undefined);
+  await fixture.waitForRetirement();
+  fixture.changeCodecGeneration();
+  await fixture.confirmRetirement();
+  await stale;
+  assert.notEqual((await service.createAnswer(request)).sdp, fixture.first.sdp);
+});
+
+test("bootstrap timeout returns a retryable error while the previous peer is retiring", async (t) => {
+  const fixture = await replacementFixture(t);
+  const { service, request } = fixture;
+  fixture.waitForCodecBootstrap();
+  const replacement = assert.rejects(service.createAnswer(request), {
+    response: {
+      statusCode: 503,
+      code: "display_video_bootstrap_timeout",
+      message: "Timed out waiting 3000ms for H.264 configuration and IDR",
+    },
+  });
+  void replacement.catch(() => undefined);
+  await fixture.waitForRetirement();
+  await replacement;
+  await assert.rejects(service.createAnswer(fixture.forViewer("c")), {
+    status: 429,
+  });
 });
 
 test("the same viewer ID from a different authorized account session does not replace its peer", async (t) => {

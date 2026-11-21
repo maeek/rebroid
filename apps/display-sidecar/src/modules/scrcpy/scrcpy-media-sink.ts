@@ -11,6 +11,7 @@ import type {
   ScrcpyAudioPacket,
   ScrcpyMediaSink,
   ScrcpyMediaSinkSnapshot,
+  ScrcpyVideoReset,
 } from "./scrcpy.types";
 
 type BinaryWriter = (payload: Buffer) => Promise<void>;
@@ -21,7 +22,7 @@ export interface QueuedScrcpyMediaSinkOptions {
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   writeStatus: (payload: string) => void;
-  writeVideo: BinaryWriter;
+  writeVideo: (payload: Buffer, reset?: ScrcpyVideoReset) => Promise<void>;
   writeAudio: BinaryWriter;
   close: (code?: number, reason?: string) => void;
 }
@@ -36,7 +37,7 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
   private lastSourceTimestampUs: bigint | null = null;
   private videoSequence = 0;
   private audioSequence = 0;
-  private videoResetDeadlineMs = 0;
+  private videoReset?: ScrcpyVideoReset;
   private readonly audioQueue: BoundedAudioQueue;
   private readonly videoQueue: GopAwareVideoQueue;
   private closed = false;
@@ -62,17 +63,18 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
       ),
     );
     this.videoQueue = new GopAwareVideoQueue(
-      (packet, discontinuity) =>
+      (packet, discontinuity, reset) =>
         this.options.writeVideo(
           encodeRebroidMediaFrame(
             videoMediaFrame(packet, this.videoSequence++, discontinuity),
           ),
+          reset,
         ),
       (timestampUs) => this.audioQueue.discardBefore(timestampUs),
       {
         isVideoResetPending: () =>
-          this.videoResetDeadlineMs !== 0 &&
-          Date.now() < this.videoResetDeadlineMs,
+          this.videoReset !== undefined &&
+          Date.now() < this.videoReset.deadlineMs,
         onRecoveryTimeout: (error) => this.close(1011, error.message),
       },
     );
@@ -106,10 +108,10 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
     }
   }
 
-  waitForVideoReset(deadlineMs: number): void {
+  setVideoReset(reset?: ScrcpyVideoReset): void {
     if (!this.options.onVideoReset) return;
-    this.videoResetDeadlineMs = deadlineMs;
-    this.options.onVideoReset(deadlineMs);
+    this.videoReset = reset;
+    if (reset) this.options.onVideoReset(reset.deadlineMs);
   }
 
   writeVideo(
@@ -141,12 +143,16 @@ export class QueuedScrcpyMediaSink implements ScrcpyMediaSink {
       this.lastSourceTimestampUs = packet.timestampUs;
     }
     const enqueuedAt = performance.now();
-    return this.videoQueue.push(packet, (error, delivered) => {
-      if (!error && delivered) {
-        this.recordVideoRelayLatency(performance.now() - enqueuedAt);
-      }
-      completion?.(error, delivered);
-    });
+    return this.videoQueue.push(
+      packet,
+      (error, delivered) => {
+        if (!error && delivered) {
+          this.recordVideoRelayLatency(performance.now() - enqueuedAt);
+        }
+        completion?.(error, delivered);
+      },
+      this.videoReset,
+    );
   }
 
   writeAudio(

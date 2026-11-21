@@ -30,22 +30,27 @@ type pictureLossDecision struct {
 	trace       bool
 }
 
-func (recovery *videoRecovery) beginFrame(timestamp uint32) {
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
-	recovery.presentation = videoPresentation{timestamp: timestamp, valid: true}
+func (recovery *videoRecovery) beginFrame(timestamp uint32, unit videoAccessUnit) {
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
+	if recovery.generation == unit.generation {
+		recovery.presentation = videoPresentation{timestamp: timestamp, valid: true}
+	}
 }
 
-func (recovery *videoRecovery) finishFrame(now time.Time) {
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
-	recovery.presentation.writtenAt = now
-}
-
-func (recovery *videoRecovery) forgetPresentation() {
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
-	recovery.presentation = videoPresentation{}
+func (recovery *videoRecovery) finishFrame(unit videoAccessUnit, now time.Time) {
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
+	if unit.resumes {
+		recovery.episode = keyFrameRecovery{}
+	}
+	// Feedback received during a write must still fence subsequent deltas.
+	if recovery.generation == unit.generation {
+		if unit.resumes {
+			recovery.ready = true
+		}
+		recovery.presentation.writtenAt = now
+	}
 }
 
 // These messages terminate at this peer; they are never Android controls.
@@ -60,8 +65,8 @@ func (recovery *videoRecovery) consumePresentation(payload []byte, now time.Time
 		Timestamp *uint32 `json:"rtpTimestamp"`
 	}
 	valid := len(payload) <= 256 && json.Unmarshal(payload, &message) == nil && message.Timestamp != nil
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
 	recovery.ackReceived++
 	presentation := &recovery.presentation
 	if presentation.valid && presentation.presentedAt.IsZero() {
@@ -79,8 +84,8 @@ func (recovery *videoRecovery) consumePresentation(payload []byte, now time.Time
 }
 
 func (recovery *videoRecovery) requestPLI(now time.Time) pictureLossDecision {
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
 	presentation := recovery.presentation
 	decision := pictureLossDecision{
 		frameAge: -time.Millisecond, ackAge: -time.Millisecond,

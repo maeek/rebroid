@@ -1,6 +1,11 @@
 import { createConnection } from "node:net";
 import { StringDecoder } from "node:string_decoder";
 import type { Writable } from "node:stream";
+import type { ScrcpyVideoReset } from "../scrcpy/scrcpy.types";
+import {
+  dataChannelReplaceKey,
+  WebrtcCommandRelay,
+} from "./display-webrtc-command-relay";
 
 export type WebrtcBridgeMessage =
   | { type: "answer"; sdp: string }
@@ -36,8 +41,7 @@ export interface WebrtcBridge {
   }): void;
   sendOffer(offer: WebrtcBridgeOffer): void;
   sendDataChannel(payload: unknown): void;
-  waitForVideoReset(deadlineMs: number): void;
-  writeVideo(payload: Buffer): Promise<void>;
+  writeVideo(payload: Buffer, reset?: ScrcpyVideoReset): Promise<void>;
   writeAudio(payload: Buffer): Promise<void>;
   stopAudio(): void;
   close(): void;
@@ -50,6 +54,15 @@ const writeMedia = (input: Writable, payload: Buffer) =>
       else resolve();
     });
   });
+
+// Private video socket metadata. RBD1 media frames retain their own framing.
+const encodeVideoReset = (reset?: ScrcpyVideoReset): Buffer => {
+  const record = Buffer.alloc(24);
+  record.write("RBR1");
+  record.writeBigUInt64BE(BigInt(reset?.generation ?? 0), 8);
+  record.writeBigUInt64BE(BigInt(reset?.deadlineMs ?? 0), 16);
+  return record;
+};
 
 export const connectWebrtcBridge = (
   path: string,
@@ -65,8 +78,8 @@ export const connectWebrtcBridge = (
   };
   const streams = [openStream(0), openStream(1), openStream(2)] as const;
   const [commands, video, audio] = streams;
-  const send = (message: object) =>
-    commands.write(`${JSON.stringify(message)}\n`);
+  let videoResetGeneration: number | undefined;
+  const outbound = new WebrtcCommandRelay(commands);
 
   return {
     isOpen: () => !commands.destroyed,
@@ -103,11 +116,19 @@ export const connectWebrtcBridge = (
       video.on("error", onFailure);
       audio.on("error", onAudioFailure);
     },
-    sendOffer: send,
-    sendDataChannel: (payload) => send({ type: "datachannel", payload }),
-    waitForVideoReset: (deadlineMs) =>
-      send({ type: "video-reset", deadlineMs }),
-    writeVideo: (payload) => writeMedia(video, payload),
+    sendOffer: (offer) => outbound.send(offer),
+    sendDataChannel: (payload) =>
+      outbound.send(
+        { type: "datachannel", payload },
+        dataChannelReplaceKey(payload),
+      ),
+    writeVideo: async (payload, reset) => {
+      if (videoResetGeneration !== reset?.generation) {
+        await writeMedia(video, encodeVideoReset(reset));
+        videoResetGeneration = reset?.generation;
+      }
+      await writeMedia(video, payload);
+    },
     writeAudio: (payload) => writeMedia(audio, payload),
     stopAudio: () => audio.destroy(),
     close: () => {

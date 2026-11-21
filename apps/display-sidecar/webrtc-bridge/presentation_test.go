@@ -13,31 +13,41 @@ func acknowledgeFrame(recovery *videoRecovery, timestamp uint32, now time.Time) 
 	recovery.consumePresentation([]byte(fmt.Sprintf(`{"type":"video-frame-presented","rtpTimestamp":%d}`, timestamp)), now)
 }
 
+func recordWrittenFrame(recovery *videoRecovery, timestamp uint32, now time.Time) {
+	unit := videoAccessUnit{generation: recovery.generation}
+	recovery.beginFrame(timestamp, unit)
+	recovery.finishFrame(unit, now)
+}
+
 func TestIdlePictureLossReplayDoesNotRestartEncoder(t *testing.T) {
 	// Local browser replay of Android's short repeat burst: all 11 frames
 	// decoded, zero loss/NACKs, then a PLI ~4.2s after the burst began.
 	start := time.Unix(1_794_563_310, 0)
 	recovery := &videoRecovery{}
-	recovery.accept(mediaFrame{config: true, data: []byte{7}})
+	recovery.accept(mediaFrame{config: true, data: []byte{7}}, sourceVideoReset{}, start)
 	for i := 0; i <= 10; i++ {
 		frame := mediaFrame{timestampUs: uint64(i * 100_000), keyFrame: i == 0, data: []byte{1}}
-		if payload, err := recovery.accept(frame); err != nil || len(payload) == 0 {
+		now := start.Add(time.Duration(i) * 100 * time.Millisecond)
+		unit, err := recovery.accept(frame, sourceVideoReset{}, now)
+		if err != nil || len(unit.data) == 0 {
 			t.Fatalf("repeat frame %d rejected: %v", i, err)
 		}
-		recovery.beginFrame(uint32(i * 9_000))
-		recovery.finishFrame(start.Add(time.Duration(i) * 100 * time.Millisecond))
+		recovery.beginFrame(uint32(i*9_000), unit)
+		recovery.finishFrame(unit, now)
 	}
 	acknowledgeFrame(recovery, 90_000, start.Add(2*time.Second))
 	decision := recovery.requestPLI(start.Add(4_200 * time.Millisecond))
-	if decision.requested || !decision.idle() || recovery.generation.Load() != 0 {
+	if decision.requested || !decision.idle() || recovery.generation != 0 {
 		t.Fatalf("idle PLI restarted recovery: %+v", decision)
 	}
 	// The next changed screen must remain decodable without a reset/IDR.
-	if payload, err := recovery.accept(mediaFrame{timestampUs: 10_000_000, data: []byte{1}}); err != nil || len(payload) == 0 {
+	now := start.Add(10 * time.Second)
+	unit, err := recovery.accept(mediaFrame{timestampUs: 10_000_000, data: []byte{1}}, sourceVideoReset{}, now)
+	if err != nil || len(unit.data) == 0 {
 		t.Fatalf("idle PLI discarded the resumed delta frame: %v", err)
 	}
-	recovery.beginFrame(900_000)
-	recovery.finishFrame(start.Add(10 * time.Second))
+	recovery.beginFrame(900_000, unit)
+	recovery.finishFrame(unit, now)
 	if decision = recovery.requestPLI(start.Add(13 * time.Second)); !decision.requested || decision.idle() {
 		t.Fatal("a new unacknowledged frame must still request recovery")
 	}
@@ -75,15 +85,14 @@ func TestHostPictureLossResetLoopReplay(t *testing.T) {
 			for i, offsetMs := range offsetsMs {
 				pliAt := start.Add(time.Duration(offsetMs) * time.Millisecond)
 				timestamp := uint32((i + 1) * 90_000)
-				recovery.beginFrame(timestamp)
-				recovery.finishFrame(pliAt.Add(-4 * time.Second))
+				recordWrittenFrame(recovery, timestamp, pliAt.Add(-4*time.Second))
 				test.ack(recovery, timestamp, pliAt)
 				decision := recovery.requestPLI(pliAt)
 				if decision.evidence != test.evidence || !decision.trace {
 					t.Fatalf("at offset %d ms got %+v, want trace with evidence %s", offsetMs, decision, test.evidence)
 				}
 			}
-			if resets := recovery.generation.Load(); resets != test.resets {
+			if resets := recovery.generation; resets != test.resets {
 				t.Fatalf("got %d resets, want %d", resets, test.resets)
 			}
 		})
@@ -112,8 +121,7 @@ func TestPictureLossNeedsFreshExactIdlePresentation(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			recovery := &videoRecovery{}
-			recovery.beginFrame(42)
-			recovery.finishFrame(now.Add(-test.writtenAgo))
+			recordWrittenFrame(recovery, 42, now.Add(-test.writtenAgo))
 			recovery.consumePresentation([]byte(test.payload), now.Add(-test.ackAgo))
 			decision := recovery.requestPLI(now)
 			if decision.idle() != test.idle || decision.requested == test.idle {
@@ -130,14 +138,13 @@ func TestPresentationEvidenceInvalidation(t *testing.T) {
 		invalidate func(*videoRecovery)
 	}{
 		{"reset", func(r *videoRecovery) { r.request(now.Add(-2 * time.Second)) }},
-		{"new frame", func(r *videoRecovery) { r.beginFrame(43); r.finishFrame(now.Add(-3 * time.Second)) }},
-		{"configuration", func(r *videoRecovery) { r.accept(mediaFrame{config: true}) }},
-		{"discontinuity", func(r *videoRecovery) { r.accept(mediaFrame{discontinuity: true}) }},
+		{"new frame", func(r *videoRecovery) { recordWrittenFrame(r, 43, now.Add(-3*time.Second)) }},
+		{"configuration", func(r *videoRecovery) { r.accept(mediaFrame{config: true}, sourceVideoReset{}, now) }},
+		{"discontinuity", func(r *videoRecovery) { r.accept(mediaFrame{discontinuity: true}, sourceVideoReset{}, now) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			r := &videoRecovery{}
-			r.beginFrame(42)
-			r.finishFrame(now.Add(-4 * time.Second))
+			recordWrittenFrame(r, 42, now.Add(-4*time.Second))
 			acknowledgeFrame(r, 42, now.Add(-time.Second))
 			test.invalidate(r)
 			acknowledgeFrame(r, 42, now) // Late messages cannot restore invalidated evidence.
@@ -151,8 +158,7 @@ func TestPresentationEvidenceInvalidation(t *testing.T) {
 func TestIdlePLIMetricsAndFIRRecovery(t *testing.T) {
 	now := time.Now()
 	r := &videoRecovery{}
-	r.beginFrame(0xffffffff)
-	r.finishFrame(now.Add(-3 * time.Second))
+	recordWrittenFrame(r, 0xffffffff, now.Add(-3*time.Second))
 	acknowledgeFrame(r, 0xffffffff, now.Add(-time.Second))
 	metrics := &bridgeMetrics{}
 	var events []stdoutMessage
@@ -177,8 +183,7 @@ func TestIdlePLIMetricsAndFIRRecovery(t *testing.T) {
 func TestRepeatedAcknowledgementDoesNotExtendEvidence(t *testing.T) {
 	now := time.Now()
 	r := &videoRecovery{}
-	r.beginFrame(0)
-	r.finishFrame(now.Add(-5 * time.Second))
+	recordWrittenFrame(r, 0, now.Add(-5*time.Second))
 	acknowledgeFrame(r, 0, now.Add(-4*time.Second))
 	acknowledgeFrame(r, 0, now)
 	if decision := r.requestPLI(now); !decision.requested || decision.idle() {

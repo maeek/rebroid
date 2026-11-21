@@ -7,7 +7,7 @@ import (
 	"errors"
 	"io"
 	"strings"
-	"sync"
+	"time"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/webrtc/v4"
@@ -18,36 +18,14 @@ func run(parent context.Context, commands, video, audio io.ReadCloser, emit func
 }
 
 func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
-	ctx, stop := context.WithCancelCause(parent)
-	closeAudio := sync.OnceFunc(func() {
-		if audio != nil {
-			_ = audio.Close()
-		}
-	})
-	closeInputs := sync.OnceFunc(func() {
-		_ = commands.Close()
-		if video != nil {
-			_ = video.Close()
-		}
-		closeAudio()
-	})
-	stopInputs := context.AfterFunc(ctx, closeInputs)
-	var workers sync.WaitGroup
-	startWorker := func(work func()) {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
-			work()
-		}()
-	}
-	defer func() {
-		stop(nil)
-		stopInputs()
-		closeInputs()
-		workers.Wait()
-	}()
+	attempt := newPeerLifetime(parent, commands, video, audio)
+	defer attempt.shutdown()
+	return servePeer(attempt, emit, setting)
+}
 
-	reader := bufio.NewScanner(commands)
+func servePeer(attempt *peerLifetime, emit func(stdoutMessage), setting webrtc.SettingEngine) error {
+	ctx, stop := attempt.ctx, attempt.stop
+	reader := bufio.NewScanner(attempt.commands)
 	reader.Buffer(make([]byte, 4096), 1<<20)
 	if !reader.Scan() {
 		if ctx.Err() != nil {
@@ -91,10 +69,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	if err != nil {
 		return err
 	}
-	defer func() {
-		stop(nil)
-		_ = peer.Close()
-	}()
+	attempt.closePeer = peer.Close
 
 	metrics := &bridgeMetrics{}
 	recovery := &videoRecovery{}
@@ -117,7 +92,7 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	if err != nil {
 		return err
 	}
-	startWorker(func() { drainRTCP(videoSender, metrics, &metrics.videoFeedback, recovery, emit) })
+	attempt.startWorker(func() { drainRTCP(videoSender, metrics, &metrics.videoFeedback, recovery, emit) })
 
 	var audioTrack *webrtc.TrackLocalStaticRTP
 	if cfg.Audio {
@@ -133,13 +108,13 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 		if err != nil {
 			return err
 		}
-		startWorker(func() { drainRTCP(audioSender, metrics, &metrics.audioFeedback, nil, emit) })
+		attempt.startWorker(func() { drainRTCP(audioSender, metrics, &metrics.audioFeedback, nil, emit) })
 		emit(stdoutMessage{Type: "log", Message: "audio track negotiated"})
 	}
 
 	control := bindControlRelay(peer, recovery, emit)
-	startWorker(func() {
-		if err := relayDataChannel(ctx, control.opened, control.closed, control.messages); err != nil {
+	attempt.startWorker(func() {
+		if err := relayDataChannel(ctx, control.opened, control.closed, control.messages, time.Now); err != nil {
 			stop(withPeerFailure("reliable_control_relay_failed", err))
 		}
 	})
@@ -164,10 +139,8 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	if err := peer.SetLocalDescription(answer); err != nil {
 		return err
 	}
-	startWorker(func() {
-		stop(withPeerFailure("bridge_command_read_failed", readCommands(reader, func(payload []byte) error {
-			return control.messages.put(payload, dataChannelReplaceKey(payload))
-		}, recovery.waitForVideoReset)))
+	attempt.startWorker(func() {
+		stop(withPeerFailure("bridge_command_read_failed", readCommands(reader, control.enqueue)))
 	})
 
 	select {
@@ -180,28 +153,21 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 	}
 	emit(stdoutMessage{Type: "answer", SDP: peer.LocalDescription().SDP})
 
-	metricsDone := make(chan struct{})
-	go func() {
-		defer close(metricsDone)
+	attempt.startStats(func() {
 		reportBridgeMetrics(metrics, peer, ctx.Done(), emit)
-	}()
-	defer func() {
-		// Pion's GetStats reads peer state that Close modifies.
-		stop(nil)
-		<-metricsDone
-	}()
+	})
 
-	if video == nil {
+	if attempt.video == nil {
 		return errors.New("missing video fd")
 	}
 	if audioTrack == nil {
-		closeAudio()
-	} else if audio == nil {
+		attempt.closeAudio()
+	} else if attempt.audio == nil {
 		emit(stdoutMessage{Type: "audio-disabled", Message: "Audio input is unavailable."})
 	} else {
-		startWorker(func() {
-			defer closeAudio()
-			err := streamOpus(audio, audioTrack, metrics, timeline, emit)
+		attempt.startWorker(func() {
+			defer attempt.closeAudio()
+			err := streamOpus(attempt.audio, audioTrack, metrics, timeline, emit)
 			if ctx.Err() != nil {
 				return
 			}
@@ -217,8 +183,8 @@ func runPeer(parent context.Context, commands, video, audio io.ReadCloser, emit 
 		})
 	}
 
-	startWorker(func() {
-		err := streamH264(video, videoTrack, metrics, recovery, timeline, emit)
+	attempt.startWorker(func() {
+		err := streamH264(attempt.video, videoTrack, metrics, recovery, timeline, emit)
 		stop(withPeerFailure("video_relay_failed", err))
 	})
 	<-ctx.Done()

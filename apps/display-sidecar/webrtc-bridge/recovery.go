@@ -3,38 +3,43 @@ package main
 import (
 	"errors"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 const keyFrameRecoveryPTSUs = uint64(1_500_000)
 
 type videoRecovery struct {
-	requestMu       sync.Mutex
-	lastRequest     time.Time
-	generation      atomic.Uint64
-	resetDeadlineMs atomic.Int64
-	presentation    videoPresentation
-	lastPLITrace    time.Time
-	ackReceived     uint64
-	ackMatched      uint64
+	mu                sync.Mutex
+	lastRequest       time.Time
+	generation        uint64
+	presentation      videoPresentation
+	lastPLITrace      time.Time
+	ackReceived       uint64
+	ackMatched        uint64
+	config            []byte
+	ready             bool
+	episode           keyFrameRecovery
+	lastConsumedReset uint64
+}
 
-	// Only the video worker touches the recovery episode and cached configuration.
-	seenGeneration  uint64
-	config          []byte
-	ready           bool
+type keyFrameRecovery struct {
 	dropped         bool
 	firstDroppedPTS uint64
+	lastDroppedPTS  uint64
+	resetDeadlineMs int64
+}
+
+type videoAccessUnit struct {
+	data       []byte
+	config     []byte
+	generation uint64
+	resumes    bool
 }
 
 func (recovery *videoRecovery) request(now time.Time) bool {
-	recovery.requestMu.Lock()
-	defer recovery.requestMu.Unlock()
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
 	return recovery.requestLocked(now)
-}
-
-func (recovery *videoRecovery) waitForVideoReset(deadlineMs int64) {
-	recovery.resetDeadlineMs.Store(deadlineMs)
 }
 
 func (recovery *videoRecovery) requestLocked(now time.Time) bool {
@@ -43,46 +48,64 @@ func (recovery *videoRecovery) requestLocked(now time.Time) bool {
 	}
 	recovery.lastRequest = now
 	recovery.presentation = videoPresentation{}
-	recovery.generation.Add(1)
+	recovery.generation++
+	recovery.ready = false
 	return true
 }
 
-func (recovery *videoRecovery) accept(frame mediaFrame) ([]byte, error) {
-	if generation := recovery.generation.Load(); generation != recovery.seenGeneration {
-		recovery.seenGeneration = generation
+func (recovery *videoRecovery) accept(frame mediaFrame, reset sourceVideoReset, now time.Time) (videoAccessUnit, error) {
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
+	if frame.config || frame.discontinuity {
+		recovery.presentation = videoPresentation{}
 		recovery.ready = false
 	}
 	if frame.config {
-		recovery.forgetPresentation()
 		recovery.config = frame.data
-		recovery.ready = false
-		return nil, nil
+		return videoAccessUnit{}, nil
 	}
-	if frame.discontinuity {
-		recovery.forgetPresentation()
-		recovery.ready = false
-	}
-	if !recovery.ready && (!frame.keyFrame || len(recovery.config) == 0) {
-		if !recovery.dropped {
-			recovery.firstDroppedPTS = frame.timestampUs
-			recovery.dropped = true
-		}
-		if recoveryExpiredPTS(recovery.firstDroppedPTS, frame.timestampUs) {
-			if deadline := recovery.resetDeadlineMs.Load(); deadline == 0 || time.Now().UnixMilli() >= deadline {
-				return nil, errors.New("RBD1 video PTS advanced without a recovery keyframe")
+	if !recovery.ready {
+		episode := &recovery.episode
+		if reset.generation > recovery.lastConsumedReset {
+			recovery.lastConsumedReset = reset.generation
+			if episode.resetDeadlineMs == 0 && now.UnixMilli() < reset.deadlineMs {
+				episode.resetDeadlineMs = reset.deadlineMs
 			}
 		}
-		return nil, nil
+		if !frame.keyFrame || len(recovery.config) == 0 {
+			return videoAccessUnit{}, episode.drop(frame.timestampUs, now)
+		}
 	}
 
-	recovery.ready = true
-	recovery.dropped = false
-	if !frame.keyFrame {
-		return frame.data, nil
+	unit := videoAccessUnit{data: frame.data, generation: recovery.generation, resumes: !recovery.ready}
+	if frame.keyFrame {
+		unit.config = recovery.config
 	}
-	payload := make([]byte, 0, len(recovery.config)+len(frame.data))
-	payload = append(payload, recovery.config...)
-	return append(payload, frame.data...), nil
+	return unit, nil
+}
+
+func (recovery *videoRecovery) rejectUnwrittenFrame(pts uint64, now time.Time) error {
+	recovery.mu.Lock()
+	defer recovery.mu.Unlock()
+	if recovery.ready {
+		return nil
+	}
+	return recovery.episode.drop(pts, now)
+}
+
+func (episode *keyFrameRecovery) drop(pts uint64, now time.Time) error {
+	if !episode.dropped {
+		episode.firstDroppedPTS = pts
+		episode.dropped = true
+	}
+	advancing := pts > episode.lastDroppedPTS
+	episode.lastDroppedPTS = pts
+	deadline := episode.resetDeadlineMs
+	if advancing && recoveryExpiredPTS(episode.firstDroppedPTS, pts) &&
+		(deadline == 0 || now.UnixMilli() >= deadline) {
+		return errors.New("RBD1 video PTS advanced without a recovery keyframe")
+	}
+	return nil
 }
 
 func recoveryExpiredPTS(startPTS uint64, currentPTS uint64) bool {

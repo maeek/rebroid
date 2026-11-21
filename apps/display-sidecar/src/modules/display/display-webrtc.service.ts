@@ -34,13 +34,20 @@ type WebrtcOfferOptions = {
 };
 
 const viewerIdHeader = "x-rebroid-viewer-id";
+const peerRetirementTimeoutMs = 5_000;
+
+type PeerRetirement = { available: Promise<boolean> };
+
+type ViewerAttempt = {
+  sessionId: string;
+  sequence: number;
+  attempt?: DisplayWebrtcAttempt;
+  retirement?: PeerRetirement;
+};
 
 @Injectable()
 export class DisplayWebrtcService implements OnModuleDestroy {
-  private readonly active = new Map<
-    string,
-    { sessionId: string; sequence: number; attempt: DisplayWebrtcAttempt }
-  >();
+  private readonly active = new Map<string, ViewerAttempt>();
   private nextSequence = 0;
   private stopping = false;
   private readonly bridge: DisplayWebrtcProcess;
@@ -65,7 +72,7 @@ export class DisplayWebrtcService implements OnModuleDestroy {
   onModuleDestroy() {
     this.stopping = true;
     for (const { attempt } of this.active.values()) {
-      attempt.stop(undefined, "sidecar_shutdown");
+      attempt?.stop(undefined, "sidecar_shutdown");
     }
     this.bridge.close();
   }
@@ -119,6 +126,8 @@ export class DisplayWebrtcService implements OnModuleDestroy {
       );
     }
 
+    const entry: ViewerAttempt = { sessionId, sequence };
+    let bridgeAttemptId: string | undefined;
     const attempt = new DisplayWebrtcAttempt({
       sessionId,
       sdp,
@@ -129,13 +138,22 @@ export class DisplayWebrtcService implements OnModuleDestroy {
       iceServers: this.config.webrtcStunUrls,
       attachSource: (sink) =>
         this.scrcpy.attachStream({ ...sourceOptions, sink }, "bootstrap"),
-      launchBridge: (signal, attemptId) =>
-        this.bridge.connect(signal, attemptId),
+      waitForPeerRetirement: () => entry.retirement?.available,
+      launchBridge: (signal, attemptId) => {
+        bridgeAttemptId = attemptId;
+        return this.bridge.connect(signal, attemptId);
+      },
       executeControl: (request) => this.controls.execute(sessionId, request),
       onFinish: () => {
         signal?.removeEventListener("abort", onAbandon);
         stopWatching();
-        if (this.active.get(key)?.attempt === attempt) this.active.delete(key);
+        entry.attempt = undefined;
+        const released = bridgeAttemptId
+          ? this.bridge.retire(bridgeAttemptId)
+          : undefined;
+        if (released) this.trackPeerRetirement(key, entry, released);
+        if (!entry.retirement && this.active.get(key) === entry)
+          this.active.delete(key);
       },
     });
     const stopWatching = admission.watch(() =>
@@ -150,17 +168,42 @@ export class DisplayWebrtcService implements OnModuleDestroy {
       onAbandon();
       signal.throwIfAborted();
     }
-    this.active.set(key, { sessionId, sequence, attempt });
-    previous?.attempt.stop(undefined, "viewer_replaced");
+    previous?.attempt?.stop(undefined, "viewer_replaced");
+    entry.attempt = attempt;
+    entry.retirement = previous?.retirement;
+    this.active.set(key, entry);
     return attempt.run();
   }
 
   stopSession(sessionId: string) {
     for (const entry of this.active.values()) {
       if (entry.sessionId === sessionId) {
-        entry.attempt.stop(undefined, "display_session_closed");
+        entry.attempt?.stop(undefined, "display_session_closed");
       }
     }
+  }
+
+  private trackPeerRetirement(
+    key: string,
+    entry: ViewerAttempt,
+    released: Promise<void>,
+  ): void {
+    const available = new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), peerRetirementTimeoutMs);
+      timer.unref();
+      void released.then(() => {
+        clearTimeout(timer);
+        resolve(true);
+      });
+    });
+    const retirement = { available };
+    entry.retirement = retirement;
+    void released.then(() => {
+      const current = this.active.get(key);
+      if (current?.retirement !== retirement) return;
+      current.retirement = undefined;
+      if (!current.attempt) this.active.delete(key);
+    });
   }
 
   private sourceOptions(

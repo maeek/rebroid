@@ -7,6 +7,7 @@ import type {
   ScrcpyMediaSinkSnapshot,
   ScrcpyStreamAttachment,
   ScrcpyVideoBootstrap,
+  ScrcpyVideoReset,
 } from "./scrcpy.types";
 import { inspectScrcpyH264Configuration } from "./scrcpy-h264-profile";
 import { canReplayVideoGop } from "./scrcpy-media-queue";
@@ -33,6 +34,12 @@ interface BootstrapWaiter {
   timer: NodeJS.Timeout;
 }
 
+export class ScrcpyVideoBootstrapTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Timed out waiting ${timeoutMs}ms for H.264 configuration and IDR`);
+  }
+}
+
 function emptyQueue(awaitingKeyFrame: boolean) {
   return {
     queuedFrames: 0,
@@ -56,7 +63,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
   private readonly cachedStatuses = new Map<string, unknown>();
   private readonly bootstrapWaiters = new Set<BootstrapWaiter>();
   private actualEncoder: string | undefined;
-  private videoResetDeadlineMs = 0;
+  private videoReset?: ScrcpyVideoReset;
   private sourceVideoFrames = 0;
   private closed = false;
 
@@ -88,10 +95,10 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     this.consumers.set(consumerId, consumer);
     sink.onClose(() => this.detachConsumer(consumerId, false));
     this.replayCachedStatuses(sink);
-    if (this.videoResetDeadlineMs > Date.now()) {
-      sink.waitForVideoReset?.(this.videoResetDeadlineMs);
-    }
     const replayedGop = this.replayCachedGop(consumer);
+    if (this.videoReset && this.videoReset.deadlineMs > Date.now()) {
+      sink.setVideoReset?.(this.videoReset);
+    }
     this.onConsumerAdded();
     // SDP bootstrap needs only the current configuration and an IDR. A media
     // consumer needs the complete GOP to safely accept the next live delta.
@@ -142,14 +149,11 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     this.actualEncoder = actualEncoder;
   }
 
-  setVideoResetDeadline(deadlineMs: number): void {
-    if (this.videoResetDeadlineMs === deadlineMs) return;
-    this.videoResetDeadlineMs = deadlineMs;
-    // Existing consumers keep the original deadline while the recovery IDR
-    // drains through media queues independently of reset status messages.
-    if (deadlineMs === 0) return;
+  setVideoReset(reset?: ScrcpyVideoReset): void {
+    if (this.videoReset === reset) return;
+    this.videoReset = reset;
     for (const consumer of this.openConsumers()) {
-      consumer.sink.waitForVideoReset?.(deadlineMs);
+      consumer.sink.setVideoReset?.(reset);
     }
   }
 
@@ -354,11 +358,7 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
         reject,
         timer: setTimeout(() => {
           this.bootstrapWaiters.delete(waiter);
-          reject(
-            new Error(
-              `Timed out waiting ${timeoutMs}ms for H.264 configuration and IDR`,
-            ),
-          );
+          reject(new ScrcpyVideoBootstrapTimeoutError(timeoutMs));
         }, timeoutMs),
       };
       waiter.timer.unref?.();

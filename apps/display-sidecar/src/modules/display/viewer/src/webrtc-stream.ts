@@ -878,7 +878,7 @@ export function createWebrtcStream({
     emitViewerStreamStatus({
       code: "reconnecting",
       severity: "info",
-      blocking: false,
+      blocking: !heldPicture,
       message: reason,
       sessionId: config.sessionId,
       consumerAttemptId,
@@ -962,11 +962,10 @@ export function createWebrtcStream({
     }
 
     if (!heldPicture) {
-      ui.showStatus(
-        "Starting WebRTC...",
-        "Starting live display",
-        "Rebroid is opening the app screen.",
-      );
+      const title = retriesUsed
+        ? "Reconnecting live display"
+        : "Connecting to live display";
+      ui.showStatus(`${title}…`, title, "The app screen will appear here.");
     }
     const currentGeneration = ++peerGeneration;
     consumerAttemptId = undefined;
@@ -1120,6 +1119,13 @@ export function createWebrtcStream({
       });
       await waitForConnected(connection, signal);
       failureStage = "first-frame";
+      if (!heldPicture && !retriesUsed && isCurrent()) {
+        ui.showStatus(
+          "Waiting for the first frame…",
+          "Waiting for the first frame",
+          "The app screen will appear here.",
+        );
+      }
       await trackReady;
       await waitForFirstVideoFrame(video, signal);
       if (!isCurrent()) {

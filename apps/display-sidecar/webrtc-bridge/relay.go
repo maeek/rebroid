@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -79,8 +80,26 @@ type dataChannelWriter interface {
 	SendText(string) error
 }
 
+type dataChannelMessage struct {
+	text       string
+	deadlineMs int64
+}
+
+// Recovery notices keep the host deadline until SCTP can accept the write.
+// The browser starts its own monotonic countdown from the remaining duration.
+func (message dataChannelMessage) textAt(now time.Time) string {
+	if message.deadlineMs == 0 {
+		return message.text
+	}
+	remaining := message.deadlineMs - now.UnixMilli()
+	if remaining <= 0 {
+		return ""
+	}
+	return `{"type":"webrtc-video-reset","remainingMs":` + strconv.FormatInt(remaining, 10) + `}`
+}
+
 type controlRelay struct {
-	messages *relayMailbox[[]byte]
+	messages *relayMailbox[dataChannelMessage]
 	opened   chan dataChannelWriter
 	closed   chan struct{}
 	reliable sync.Once
@@ -88,7 +107,7 @@ type controlRelay struct {
 
 func bindControlRelay(peer *webrtc.PeerConnection, recovery *videoRecovery, emit func(stdoutMessage)) *controlRelay {
 	relay := &controlRelay{
-		messages: newRelayMailbox[[]byte](),
+		messages: newRelayMailbox[dataChannelMessage](),
 		opened:   make(chan dataChannelWriter, 1),
 		closed:   make(chan struct{}),
 	}
@@ -128,13 +147,15 @@ func bindControlRelay(peer *webrtc.PeerConnection, recovery *videoRecovery, emit
 	return relay
 }
 
-func relayDataChannel(ctx context.Context, opened <-chan dataChannelWriter, closed <-chan struct{}, queue *relayMailbox[[]byte]) error {
+func relayDataChannel(ctx context.Context, opened <-chan dataChannelWriter, closed <-chan struct{}, queue *relayMailbox[dataChannelMessage], now func() time.Time) error {
 	var channel dataChannelWriter
 	for ctx.Err() == nil {
 		if channel != nil && channel.BufferedAmount() < dataChannelBufferLimit {
 			if message, ok := queue.next(); ok {
-				if err := channel.SendText(string(message)); err != nil {
-					return fmt.Errorf("send WebRTC data channel message: %w", err)
+				if payload := message.textAt(now()); payload != "" {
+					if err := channel.SendText(payload); err != nil {
+						return fmt.Errorf("send WebRTC data channel message: %w", err)
+					}
 				}
 				continue
 			}
@@ -150,15 +171,25 @@ func relayDataChannel(ctx context.Context, opened <-chan dataChannelWriter, clos
 	return nil
 }
 
-func dataChannelReplaceKey(payload []byte) string {
-	var message struct{ Type string }
-	if json.Unmarshal(payload, &message) == nil {
-		switch message.Type {
+func (relay *controlRelay) enqueue(payload []byte) error {
+	var envelope struct {
+		Type       string
+		ID         json.RawMessage
+		DeadlineMs json.RawMessage
+	}
+	if json.Unmarshal(payload, &envelope) == nil && len(envelope.ID) == 0 {
+		switch envelope.Type {
 		case "relay-metrics", "webrtc-bridge-metrics", "heartbeat":
-			return message.Type
+			return relay.messages.put(dataChannelMessage{text: string(payload)}, envelope.Type)
+		case "webrtc-video-reset":
+			var deadlineMs int64
+			if json.Unmarshal(envelope.DeadlineMs, &deadlineMs) != nil || deadlineMs <= 0 {
+				return nil
+			}
+			return relay.messages.put(dataChannelMessage{deadlineMs: deadlineMs}, "")
 		}
 	}
-	return ""
+	return relay.messages.put(dataChannelMessage{text: string(payload)}, "")
 }
 
 func relayOutput(ctx context.Context, output io.Writer, queue *relayMailbox[stdoutMessage]) error {

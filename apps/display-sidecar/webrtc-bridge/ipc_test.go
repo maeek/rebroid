@@ -6,12 +6,15 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
+	"io"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,7 +27,7 @@ func TestConcurrentViewersShareOneUDPPort(t *testing.T) {
 		t.Fatal(err)
 	}
 	mux := webrtc.NewICEUDPMux(nil, udp)
-	defer mux.Close()
+	t.Cleanup(func() { _ = mux.Close() })
 	setting := loopbackICE()
 	setting.SetICEUDPMux(mux)
 	// macOS temporary directories can exceed the Unix socket path limit.
@@ -38,30 +41,189 @@ func TestConcurrentViewersShareOneUDPPort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan error, 1)
-	go func() { done <- servePeers(ctx, listener, 3, setting) }()
-	defer func() {
-		cancel()
-		if err := receive(t, done); err != nil {
-			t.Error(err)
-		}
-	}()
+	control := startBridgeControl(t, listener, 2, setting)
 
 	port := udp.LocalAddr().(*net.UDPAddr).Port
-	first := connectSharedPeer(t, path, port)
-	second := connectSharedPeer(t, path, port)
+	first := connectSharedPeer(t, path, port, control)
+	second := connectSharedPeer(t, path, port, control)
 	first.sendControl(t, "first")
 	second.sendControl(t, "second")
-	_ = first.stream.Close()
+	control.send(t, "register", peerID{1})
+	control.expect(t, "rejected", peerID{1})
+	control.send(t, "retire", first.id)
+	control.expect(t, "released", first.id)
 	_ = first.browser.Close()
-	replacement := connectSharedPeer(t, path, port)
+	replacement := connectSharedPeer(t, path, port, control)
 	replacement.sendControl(t, "replacement")
 	second.sendControl(t, "second still connected")
 	second.sendVideo(t)
 }
 
+type bridgeControlFixture struct {
+	commands *json.Encoder
+	events   bridgeControlEvents
+}
+
+type bridgeControlEvents chan peerControlMessage
+
+func (events bridgeControlEvents) Write(payload []byte) (int, error) {
+	var event peerControlMessage
+	if err := json.Unmarshal(payload, &event); err != nil {
+		return 0, err
+	}
+	events <- event
+	return len(payload), nil
+}
+
+func startBridgeControl(t *testing.T, listener net.Listener, capacity int, setting webrtc.SettingEngine) bridgeControlFixture {
+	t.Helper()
+	input, commands := io.Pipe()
+	events := make(bridgeControlEvents, 16)
+	done := make(chan error, 1)
+	go func() {
+		done <- servePeers(context.Background(), listener, capacity, setting, input, events)
+	}()
+	t.Cleanup(func() {
+		_ = commands.Close()
+		if err := receive(t, done); err != nil {
+			t.Error(err)
+		}
+		_ = input.Close()
+	})
+	return bridgeControlFixture{json.NewEncoder(commands), events}
+}
+
+func (control bridgeControlFixture) send(t *testing.T, action string, id peerID) {
+	t.Helper()
+	if err := control.commands.Encode(peerControlMessage{Type: action, AttemptID: id.String()}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (control bridgeControlFixture) expect(t *testing.T, event string, id peerID) {
+	t.Helper()
+	if got := receive(t, control.events); got.Type != event || got.AttemptID != id.String() {
+		t.Fatalf("expected %s for %s, received %+v", event, id, got)
+	}
+}
+
+func TestRetiredPeerCannotAttachLateSockets(t *testing.T) {
+	directory, err := os.MkdirTemp("/tmp", "rbd-rtc-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	path := filepath.Join(directory, "bridge.sock")
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	control := startBridgeControl(t, listener, 1, loopbackICE())
+	previous := peerID{1}
+	control.send(t, "register", previous)
+	control.expect(t, "registered", previous)
+	control.send(t, "retire", previous)
+	control.expect(t, "released", previous)
+
+	delayed, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer delayed.Close()
+	header := [17]byte{}
+	copy(header[:16], previous[:])
+	if _, err := delayed.Write(header[:]); err != nil {
+		t.Fatal(err)
+	}
+	_ = delayed.SetReadDeadline(time.Now().Add(time.Second))
+	if _, err := delayed.Read(header[:]); !errors.Is(err, io.EOF) {
+		t.Fatalf("expected the retired peer's late socket to close, got %v", err)
+	}
+	replacement := peerID{2}
+	control.send(t, "register", replacement)
+	control.expect(t, "registered", replacement)
+}
+
+type gatedCloseConn struct {
+	net.Conn
+	closing func()
+	release <-chan struct{}
+}
+
+func (conn gatedCloseConn) Close() error {
+	conn.closing()
+	<-conn.release
+	return conn.Conn.Close()
+}
+
+type gatedCloseListener struct {
+	net.Listener
+	closing func()
+	release <-chan struct{}
+	first   bool
+}
+
+func (listener *gatedCloseListener) Accept() (net.Conn, error) {
+	conn, err := listener.Listener.Accept()
+	if err != nil || listener.first {
+		return conn, err
+	}
+	listener.first = true
+	return gatedCloseConn{conn, listener.closing, listener.release}, nil
+}
+
+func TestRetiringPeerHoldsSlotUntilWorkersJoin(t *testing.T) {
+	directory, err := os.MkdirTemp("/tmp", "rbd-rtc-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(directory) })
+	path := filepath.Join(directory, "bridge.sock")
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	closing, release := make(chan struct{}), make(chan struct{})
+	control := startBridgeControl(t, &gatedCloseListener{
+		Listener: listener,
+		closing:  sync.OnceFunc(func() { close(closing) }),
+		release:  release,
+	}, 1, loopbackICE())
+	unblock := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(unblock)
+
+	previous, replacement := peerID{1}, peerID{2}
+	control.send(t, "register", previous)
+	control.expect(t, "registered", previous)
+	var streams [3]net.Conn
+	for index := range streams {
+		stream, err := net.Dial("unix", path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer stream.Close()
+		header := [17]byte{0: previous[0], 16: byte(index)}
+		if _, err := stream.Write(header[:]); err != nil {
+			t.Fatal(err)
+		}
+		streams[index] = stream
+	}
+	// An invalid offer makes the assembled peer enter cleanup immediately.
+	if _, err := io.WriteString(streams[0], "{}\n"); err != nil {
+		t.Fatal(err)
+	}
+	receive(t, closing)
+	control.send(t, "retire", previous)
+	control.send(t, "register", replacement)
+	control.expect(t, "rejected", replacement)
+	unblock()
+	control.expect(t, "released", previous)
+	control.send(t, "register", replacement)
+	control.expect(t, "registered", replacement)
+}
+
 type sharedPeerFixture struct {
+	id      peerID
 	browser *webrtc.PeerConnection
 	control *webrtc.DataChannel
 	stream  net.Conn
@@ -70,7 +232,7 @@ type sharedPeerFixture struct {
 	packets <-chan struct{}
 }
 
-func connectSharedPeer(t *testing.T, path string, port int) sharedPeerFixture {
+func connectSharedPeer(t *testing.T, path string, port int, bridge bridgeControlFixture) sharedPeerFixture {
 	t.Helper()
 	browser, err := webrtc.NewAPI(webrtc.WithSettingEngine(loopbackICE())).NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
@@ -103,10 +265,14 @@ func connectSharedPeer(t *testing.T, path string, port int) sharedPeerFixture {
 	}
 	receive(t, gathered)
 
-	var header [17]byte
-	if _, err := rand.Read(header[:16]); err != nil {
+	var id peerID
+	if _, err := rand.Read(id[:]); err != nil {
 		t.Fatal(err)
 	}
+	bridge.send(t, "register", id)
+	bridge.expect(t, "registered", id)
+	var header [17]byte
+	copy(header[:16], id[:])
 	var streams [3]net.Conn
 	for i := range streams {
 		stream, err := net.Dial("unix", path)
@@ -125,7 +291,7 @@ func connectSharedPeer(t *testing.T, path string, port int) sharedPeerFixture {
 	if err := json.NewEncoder(stream).Encode(offerMessage); err != nil {
 		t.Fatal(err)
 	}
-	peer := sharedPeerFixture{browser, control, stream, streams[1], json.NewDecoder(stream), packets}
+	peer := sharedPeerFixture{id, browser, control, stream, streams[1], json.NewDecoder(stream), packets}
 	answer := peer.waitEvent(t, "answer").SDP
 	count := 0
 	lines := bufio.NewScanner(strings.NewReader(answer))

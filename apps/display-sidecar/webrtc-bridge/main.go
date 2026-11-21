@@ -33,14 +33,6 @@ func runProcess() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	// The parent holds stdin open. EOF also shuts down the bridge if the
-	// sidecar exits without running its shutdown hooks.
-	go func() {
-		var unused [1]byte
-		_, _ = os.Stdin.Read(unused[:])
-		stop()
-	}()
-
 	udp, err := net.ListenUDP("udp", &net.UDPAddr{Port: port})
 	if err != nil {
 		return fmt.Errorf("bind WebRTC UDP port %d: %w", port, err)
@@ -55,5 +47,5 @@ func runProcess() error {
 		return fmt.Errorf("listen for sidecar bridge connections: %w", err)
 	}
 	fmt.Fprintln(os.Stdout, "ready")
-	return servePeers(ctx, listener, maxPeers, setting)
+	return servePeers(ctx, listener, maxPeers, setting, os.Stdin, os.Stdout)
 }

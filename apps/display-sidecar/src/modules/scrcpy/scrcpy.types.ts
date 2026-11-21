@@ -17,6 +17,11 @@ export interface ScrcpyAudioPacket {
   config: boolean;
 }
 
+export interface ScrcpyVideoReset {
+  readonly generation: number;
+  readonly deadlineMs: number;
+}
+
 export interface ScrcpyMediaSinkSnapshot {
   sourceVideoFrames: number;
   sourceVideoBytes?: number;
@@ -37,7 +42,7 @@ export interface ScrcpyMediaSink {
   isOpen: () => boolean;
   onClose: (listener: (code?: number, reason?: Buffer) => void) => void;
   sendStatus: (payload: unknown) => void;
-  waitForVideoReset?: (deadlineMs: number) => void;
+  setVideoReset?: (reset?: ScrcpyVideoReset) => void;
   writeVideo: (
     packet: ScrcpyPacket,
     completion?: (error?: Error, delivered?: boolean) => void,

@@ -5,13 +5,18 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 import { Logger, ServiceUnavailableException } from "@nestjs/common";
 import { connectWebrtcBridge } from "./display-webrtc-bridge";
+import { DisplayWebrtcPeerAdmission } from "./display-webrtc-peer-admission";
 
 const startupTimeoutMs = 5_000;
 const shutdownGraceMs = 1_000;
 
 export class DisplayWebrtcProcess {
   private readonly logger = new Logger(DisplayWebrtcProcess.name);
-  private process?: { ready: Promise<string>; stop: () => void };
+  private process?: {
+    ready: Promise<string>;
+    admission: DisplayWebrtcPeerAdmission;
+    stop: () => void;
+  };
   private stopping = false;
 
   constructor(
@@ -24,12 +29,20 @@ export class DisplayWebrtcProcess {
     signal.throwIfAborted();
     if (this.stopping)
       throw new ServiceUnavailableException("WebRTC is shutting down.");
-    this.process ??= this.start();
-    const path = await this.process.ready;
+    const process = (this.process ??= this.start());
+    const path = await process.ready;
     signal.throwIfAborted();
-    if (this.stopping)
+    if (this.stopping || this.process !== process)
       throw new ServiceUnavailableException("WebRTC is shutting down.");
+    await process.admission.register(attemptId, signal);
+    signal.throwIfAborted();
+    if (this.stopping || this.process !== process)
+      throw new ServiceUnavailableException("WebRTC bridge is unavailable.");
     return connectWebrtcBridge(path, attemptId);
+  }
+
+  retire(attemptId: string) {
+    return this.process?.admission.retire(attemptId);
   }
 
   close() {
@@ -61,6 +74,9 @@ export class DisplayWebrtcProcess {
       killTimer = setTimeout(() => child.kill("SIGKILL"), shutdownGraceMs);
       killTimer.unref();
     };
+    const admission = new DisplayWebrtcPeerAdmission((type, attemptId) => {
+      child.stdin.write(`${JSON.stringify({ type, attemptId })}\n`);
+    });
     const failure = () =>
       new ServiceUnavailableException("WebRTC bridge is unavailable.");
     let startupTimer: NodeJS.Timeout | undefined;
@@ -73,6 +89,8 @@ export class DisplayWebrtcProcess {
         if (line === "ready") {
           clearTimeout(startupTimer);
           resolve(path);
+        } else {
+          admission.receive(line);
         }
       });
       child.once("error", (error) => {
@@ -88,6 +106,7 @@ export class DisplayWebrtcProcess {
       clearTimeout(killTimer);
       clearTimeout(startupTimer);
       output.close();
+      admission.close();
       try {
         rmSync(directory, { recursive: true, force: true });
       } catch (error) {
@@ -95,7 +114,7 @@ export class DisplayWebrtcProcess {
       }
       if (this.process === processHandle) this.process = undefined;
     });
-    const processHandle = { ready, stop };
+    const processHandle = { ready, admission, stop };
     return processHandle;
   }
 }

@@ -9,6 +9,7 @@ import type {
   ScrcpyMediaSink,
   ScrcpyStreamAttachment,
   ScrcpyVideoBootstrap,
+  ScrcpyVideoReset,
 } from "../scrcpy/scrcpy.types";
 import { DisplayWebrtcAttempt } from "./display-webrtc-attempt";
 import type {
@@ -95,7 +96,6 @@ test("codec change notifies the current peer before bounded shutdown and fences 
     sendDataChannel: (message) => {
       replies.push(message);
     },
-    waitForVideoReset: () => undefined,
     writeVideo: async () => undefined,
     writeAudio: async () => undefined,
     stopAudio: () => undefined,
@@ -219,7 +219,7 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
       watchdog.beginDispatch();
       watchdog.confirmDispatch(expired);
       assert.ok(watchdog.deadlineMs);
-      source.setVideoResetDeadline(watchdog.deadlineMs);
+      source.setVideoReset({ generation: 1, deadlineMs: watchdog.deadlineMs });
       return true;
     },
   );
@@ -240,7 +240,7 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
         "hex",
       ),
     };
-    watchdog.observe(packet);
+    if (watchdog.observe(packet)) source.setVideoReset();
     source.writeVideo(packet);
   };
   writeVideo(0n, "config");
@@ -253,7 +253,6 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
   const closeListeners: Array<() => void> = [];
   const sentMedia: Buffer[] = [];
   const sendDataChannel = t.mock.fn<(message: unknown) => void>();
-  const waitForVideoReset = t.mock.fn();
   const bridge: WebrtcBridge = {
     isOpen: () => open,
     onClose: (listener) => closeListeners.push(listener),
@@ -262,7 +261,6 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
     },
     sendOffer: () => receive({ type: "answer", sdp: "answer" }),
     sendDataChannel,
-    waitForVideoReset,
     writeVideo: async (payload) => {
       sentMedia.push(payload);
     },
@@ -297,10 +295,6 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
   try {
     await attempt.run();
     receive({ type: "state", state: "connected" });
-    assert.deepEqual(
-      waitForVideoReset.mock.calls.map((call) => call.arguments),
-      [[13_000]],
-    );
     const resetNotice = sendDataChannel.mock.calls
       .flatMap((call) => call.arguments)
       .find(
@@ -312,7 +306,7 @@ test("a connected peer accepts the reset IDR after 2.85 seconds", async (t) => {
       );
     assert.deepEqual(resetNotice, {
       type: "webrtc-video-reset",
-      remainingMs: 3_000,
+      deadlineMs: 13_000,
     });
 
     t.mock.timers.tick(50);
@@ -350,7 +344,10 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
         : "missing IDR requests one reset",
       async (t) => {
         const requestReset = t.mock.fn(() => {
-          source.setVideoResetDeadline(Date.now() + 3_000);
+          source.setVideoReset({
+            generation: 1,
+            deadlineMs: Date.now() + 3_000,
+          });
           return true;
         });
         const source = new ScrcpySourceStream(
@@ -386,9 +383,9 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
         let open = true;
         const closeListeners: Array<() => void> = [];
         const sentFlags: number[] = [];
+        const videoResets: Array<ScrcpyVideoReset | undefined> = [];
         let blocked: Promise<void> | undefined;
         let releaseWrite: (() => void) | undefined;
-        const waitForVideoReset = t.mock.fn();
         const bridge: WebrtcBridge = {
           isOpen: () => open,
           onClose: (listener) => closeListeners.push(listener),
@@ -397,9 +394,9 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
           },
           sendOffer: () => receive({ type: "answer", sdp: "answer" }),
           sendDataChannel: () => undefined,
-          waitForVideoReset,
-          writeVideo: async (payload) => {
+          writeVideo: async (payload, reset) => {
             sentFlags.push(payload.readUInt16BE(6));
+            videoResets.push(reset);
             await blocked;
           },
           writeAudio: async () => undefined,
@@ -444,11 +441,6 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
           if (sameBatchIdr) writeVideo(220_000n, "idr");
           await Promise.resolve();
           assert.equal(requestReset.mock.callCount(), sameBatchIdr ? 0 : 1);
-          assert.equal(
-            waitForVideoReset.mock.callCount(),
-            sameBatchIdr ? 0 : 1,
-          );
-
           if (!sameBatchIdr) {
             writeVideo(2_000_000n, "delta");
             assert.equal(
@@ -458,6 +450,7 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
             );
             writeVideo(2_010_000n, "config");
             writeVideo(2_010_000n, "idr");
+            source.setVideoReset();
           }
           const nextDelta = sameBatchIdr ? 237_000n : 2_027_000n;
           writeVideo(nextDelta, "delta");
@@ -466,6 +459,19 @@ test("a connected peer recovers from live queue overflow without RTCP feedback",
           await new Promise<void>((resolve) => setImmediate(resolve));
 
           assert.deepEqual(sentFlags, [5, 6, 0, 5, 6, 0]);
+          assert.deepEqual(
+            videoResets.map((reset) => reset?.generation),
+            sameBatchIdr
+              ? [
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                ]
+              : [undefined, undefined, undefined, 1, 1, undefined],
+          );
           assert.equal(open, true);
           assert.equal(source.consumerCount(), 2);
           assert.equal(

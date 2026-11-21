@@ -549,7 +549,7 @@ test("rotation notices and reliable close recover only the active WebRTC peer", 
     controlChannel,
     getRelayMetrics: () => null,
     ui: {
-      showStatus: () => surfaces.push("starting"),
+      showStatus: (_text, title) => surfaces.push(title),
       showVideo: () => surfaces.push("video"),
       showFailure: () => surfaces.push("failure"),
       preserveVideoFrame: () => {
@@ -571,7 +571,11 @@ test("rotation notices and reliable close recover only the active WebRTC peer", 
   await turn();
   present(1080, 2340);
   await initial;
-  assert.deepEqual(surfaces, ["starting", "video"]);
+  assert.deepEqual(surfaces, [
+    "Connecting to live display",
+    "Waiting for the first frame",
+    "video",
+  ]);
 
   const [old] = peers[0].channels;
   const change = {
@@ -583,7 +587,12 @@ test("rotation notices and reliable close recover only the active WebRTC peer", 
   assert.equal(retries.size, 0);
   old.reply(change);
   old.reply(change);
-  assert.deepEqual(surfaces, ["starting", "video", "held"]);
+  assert.deepEqual(surfaces, [
+    "Connecting to live display",
+    "Waiting for the first frame",
+    "video",
+    "held",
+  ]);
   assert.equal(retries.size, 1);
   assert.equal(
     status.filter((event) => event.code === "reconnecting").length,

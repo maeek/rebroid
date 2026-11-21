@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,8 +26,12 @@ func (id peerID) String() string {
 }
 
 type localPeer struct {
-	streams [3]net.Conn // commands/events, video, audio
-	timer   *time.Timer
+	streams  [3]net.Conn // commands/events, video, audio
+	timer    *time.Timer
+	ctx      context.Context
+	cancel   context.CancelFunc
+	running  bool
+	retiring bool
 }
 
 func (peer *localPeer) close() {
@@ -36,15 +42,57 @@ func (peer *localPeer) close() {
 	}
 }
 
-func servePeers(parent context.Context, listener net.Listener, maxPeers int, setting webrtc.SettingEngine) error {
+type peerControlMessage struct {
+	Type      string `json:"type"`
+	AttemptID string `json:"attemptId"`
+}
+
+func servePeers(parent context.Context, listener net.Listener, maxPeers int, setting webrtc.SettingEngine, commands io.Reader, events io.Writer) error {
 	ctx, stop := context.WithCancel(parent)
 	defer stop()
 	closeListener := context.AfterFunc(ctx, func() { _ = listener.Close() })
 	defer closeListener()
 
 	var workers sync.WaitGroup
-	var mu sync.Mutex
-	peers := make(map[peerID]*localPeer)
+	var outputMu sync.Mutex
+	output := json.NewEncoder(events)
+	emit := func(event, id string) {
+		outputMu.Lock()
+		defer outputMu.Unlock()
+		if err := output.Encode(peerControlMessage{Type: event, AttemptID: id}); err != nil {
+			stop()
+		}
+	}
+	peers := peerRegistry{
+		peers:    make(map[peerID]*localPeer),
+		maxPeers: maxPeers,
+		released: func(id peerID) { emit("released", id.String()) },
+	}
+	go func() {
+		defer stop()
+		scanner := bufio.NewScanner(commands)
+		scanner.Buffer(make([]byte, 256), 1024)
+		for scanner.Scan() && ctx.Err() == nil {
+			var message peerControlMessage
+			if json.Unmarshal(scanner.Bytes(), &message) != nil {
+				continue
+			}
+			id, valid := parsePeerID(message.AttemptID)
+			if !valid {
+				continue
+			}
+			switch message.Type {
+			case "register":
+				if peers.register(ctx, id) {
+					emit("registered", id.String())
+				} else {
+					emit("rejected", id.String())
+				}
+			case "retire":
+				peers.retire(id)
+			}
+		}
+	}()
 	headers := make(chan struct{}, maxPeers*3)
 
 	handleStream := func(stream net.Conn) {
@@ -61,66 +109,21 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 		copy(id[:], header[:16])
 		_ = stream.SetReadDeadline(time.Time{})
 
-		mu.Lock()
-		if ctx.Err() != nil {
-			mu.Unlock()
+		peer, accepted := peers.attach(id, index, stream)
+		if !accepted {
 			_ = stream.Close()
 			return
 		}
-		peer := peers[id]
-		if peer == nil {
-			if len(peers) >= maxPeers {
-				mu.Unlock()
-				if index == 0 {
-					log.Printf("[webrtc-attempt:%s] bridge peer rejected reason=bridge_capacity", id)
-				}
-				_ = stream.Close()
-				return
-			}
-			peer = &localPeer{}
-			peers[id] = peer
-			peer.timer = time.AfterFunc(peerAssemblyTimeout, func() {
-				mu.Lock()
-				defer mu.Unlock()
-				if peers[id] == peer && peer.timer != nil {
-					delete(peers, id)
-					log.Printf("[webrtc-attempt:%s] bridge peer rejected reason=bridge_assembly_timeout", id)
-					peer.close()
-				}
-			})
+		if peer != nil {
+			runLocalPeer(peer.ctx, id, peer, setting)
+			peers.release(id, peer)
 		}
-		if peer.streams[index] != nil {
-			mu.Unlock()
-			_ = stream.Close()
-			return
-		}
-		peer.streams[index] = stream
-		if peer.streams[0] == nil || peer.streams[1] == nil || peer.streams[2] == nil {
-			mu.Unlock()
-			return
-		}
-		peer.timer.Stop()
-		peer.timer = nil
-		mu.Unlock()
-
-		runLocalPeer(ctx, id, peer, setting)
-		mu.Lock()
-		delete(peers, id)
-		mu.Unlock()
 	}
 
 	defer func() {
 		stop()
 		_ = listener.Close()
-		mu.Lock()
-		for _, peer := range peers {
-			if peer.timer != nil {
-				peer.timer.Stop()
-				peer.timer = nil
-				peer.close()
-			}
-		}
-		mu.Unlock()
+		peers.shutdown()
 		workers.Wait()
 	}()
 
@@ -148,20 +151,17 @@ func servePeers(parent context.Context, listener net.Listener, maxPeers int, set
 }
 
 func runLocalPeer(parent context.Context, id peerID, peer *localPeer, setting webrtc.SettingEngine) {
-	ctx, stop := context.WithCancelCause(parent)
-	defer stop(nil)
-	defer peer.close()
 	commands := peer.streams[0]
+	attempt := newPeerLifetime(parent, commands, peer.streams[1], peer.streams[2])
+	defer attempt.shutdown()
 	events := newRelayMailbox[stdoutMessage]()
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		if err := relayOutput(ctx, commands, events); err != nil {
-			stop(withPeerFailure("bridge_event_write_failed", err))
+	attempt.startWorker(func() {
+		if err := relayOutput(attempt.ctx, commands, events); err != nil {
+			attempt.stop(withPeerFailure("bridge_event_write_failed", err))
 		}
-	}()
-	err := runPeer(ctx, commands, peer.streams[1], peer.streams[2], func(message stdoutMessage) {
-		if ctx.Err() != nil {
+	})
+	err := servePeer(attempt, func(message stdoutMessage) {
+		if attempt.ctx.Err() != nil {
 			return
 		}
 		key := message.replaceKey
@@ -169,7 +169,7 @@ func runLocalPeer(parent context.Context, id peerID, peer *localPeer, setting we
 			key = "metrics"
 		}
 		if err := events.put(message, key, message.discardKey); err != nil {
-			stop(withPeerFailure("bridge_event_queue_failed", err))
+			attempt.stop(withPeerFailure("bridge_event_queue_failed", err))
 		}
 	}, setting)
 	if err != nil {
@@ -180,7 +180,4 @@ func runLocalPeer(parent context.Context, id peerID, peer *localPeer, setting we
 		}
 		log.Printf("[webrtc-attempt:%s] bridge peer ended reason=%s", id, reason)
 	}
-	stop(nil)
-	_ = commands.Close()
-	<-done
 }

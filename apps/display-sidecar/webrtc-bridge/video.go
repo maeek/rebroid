@@ -30,9 +30,10 @@ func streamH264(
 		uint32(videoClockRate),
 	)
 	var wroteFrame bool
+	video := videoInput{reader: input}
 
 	for {
-		frame, err := readMediaFrame(input, mediaKindVideo)
+		frame, reset, err := video.next()
 		if err != nil {
 			if err == io.EOF {
 				return nil
@@ -47,21 +48,34 @@ func streamH264(
 				return err
 			}
 		}
-		payload, err := recovery.accept(frame)
+		unit, err := recovery.accept(frame, reset, time.Now())
 		if err != nil {
 			return err
 		}
-		if payload == nil {
+		if unit.data == nil {
 			if !frame.config {
 				metrics.videoDropped.Add(1)
 			}
 			continue
 		}
 		packetizationStarted := time.Now()
+		payload := unit.data
+		if len(unit.config) != 0 {
+			payload = make([]byte, 0, len(unit.config)+len(unit.data))
+			payload = append(payload, unit.config...)
+			payload = append(payload, unit.data...)
+		}
 		packets := packetizer.Packetize(payload, 0)
 		metrics.packetizationLatency.observe(time.Since(packetizationStarted))
+		if len(packets) == 0 {
+			metrics.videoDropped.Add(1)
+			if err := recovery.rejectUnwrittenFrame(frame.timestampUs, time.Now()); err != nil {
+				return err
+			}
+			continue
+		}
 		writeStarted := time.Now()
-		recovery.beginFrame(rtpTimestamp)
+		recovery.beginFrame(rtpTimestamp, unit)
 		for _, packet := range packets {
 			packet.Timestamp = rtpTimestamp
 			if err := metrics.writeRTP(track, packet); err != nil {
@@ -69,7 +83,7 @@ func streamH264(
 			}
 		}
 		metrics.rtpWriteLatency.observe(time.Since(writeStarted))
-		recovery.finishFrame(time.Now())
+		recovery.finishFrame(unit, time.Now())
 		metrics.videoFrames.Add(1)
 		if !wroteFrame {
 			wroteFrame = true

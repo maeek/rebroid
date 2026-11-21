@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type stalledChannel struct {
@@ -36,7 +37,7 @@ func (channel *observedChannel) SendText(message string) error {
 }
 
 func TestSlowDataChannelCannotEvictCorrelatedReplies(t *testing.T) {
-	queue := newRelayMailbox[[]byte]()
+	queue := newRelayMailbox[dataChannelMessage]()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
@@ -44,18 +45,18 @@ func TestSlowDataChannelCannotEvictCorrelatedReplies(t *testing.T) {
 	channel := &observedChannel{observed: make(chan struct{}, 1), sent: make(chan string, relayQueueCapacity+1)}
 	channel.backlog.Store(dataChannelBufferLimit)
 	opened <- channel
-	go func() { result <- relayDataChannel(ctx, opened, nil, queue) }()
+	go func() { result <- relayDataChannel(ctx, opened, nil, queue, time.Now) }()
 	receive(t, channel.observed)
 
 	for index := 0; index < relayQueueCapacity; index++ {
-		if err := queue.put([]byte{byte(index)}, ""); err != nil {
+		if err := queue.put(dataChannelMessage{text: string([]byte{byte(index)})}, ""); err != nil {
 			t.Fatal(err)
 		}
-		if err := queue.put([]byte{byte(index)}, "metrics"); err != nil {
+		if err := queue.put(dataChannelMessage{text: string([]byte{byte(index)})}, "metrics"); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := queue.put([]byte("excess reply"), ""); !errors.Is(err, errRelayQueueFull) {
+	if err := queue.put(dataChannelMessage{text: "excess reply"}, ""); !errors.Is(err, errRelayQueueFull) {
 		t.Fatalf("expected explicit overflow: %v", err)
 	}
 	channel.backlog.Store(0)
@@ -78,20 +79,62 @@ func TestSlowDataChannelCannotEvictCorrelatedReplies(t *testing.T) {
 }
 
 func TestDataChannelSendFailureEndsRelay(t *testing.T) {
-	queue := newRelayMailbox[[]byte]()
-	if err := queue.put([]byte("reply"), ""); err != nil {
+	queue := newRelayMailbox[dataChannelMessage]()
+	if err := queue.put(dataChannelMessage{text: "reply"}, ""); err != nil {
 		t.Fatal(err)
 	}
 	opened := make(chan dataChannelWriter, 1)
 	failure := errors.New("channel closed")
 	opened <- stalledChannel{failure: failure}
-	if err := relayDataChannel(context.Background(), opened, nil, queue); !errors.Is(err, failure) {
+	if err := relayDataChannel(context.Background(), opened, nil, queue, time.Now); !errors.Is(err, failure) {
 		t.Fatalf("expected send failure, got %v", err)
 	}
 }
 
+func TestResetNoticeExpiresOrUsesRemainingTimeAfterBackpressure(t *testing.T) {
+	relay := controlRelay{messages: newRelayMailbox[dataChannelMessage]()}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	result := make(chan error, 1)
+	opened := make(chan dataChannelWriter, 1)
+	channel := &observedChannel{observed: make(chan struct{}, 1), sent: make(chan string, 3)}
+	channel.backlog.Store(dataChannelBufferLimit)
+	opened <- channel
+	var timeMs atomic.Int64
+	timeMs.Store(10_000)
+	go func() {
+		result <- relayDataChannel(ctx, opened, nil, relay.messages, func() time.Time {
+			return time.UnixMilli(timeMs.Load())
+		})
+	}()
+	receive(t, channel.observed)
+	for _, payload := range []string{
+		`{"type":"webrtc-video-reset","deadlineMs":12900}`,
+		`{"type":"webrtc-video-reset","deadlineMs":13000}`,
+		`{"id":"reply","ok":true}`,
+	} {
+		if err := relay.enqueue([]byte(payload)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	timeMs.Store(12_900)
+	channel.backlog.Store(0)
+	relay.messages.wake()
+	if got := receive(t, channel.sent); got != `{"type":"webrtc-video-reset","remainingMs":100}` {
+		t.Fatalf("expected only the unexpired reset notice with 100ms remaining, got %s", got)
+	}
+	if got := receive(t, channel.sent); got != `{"id":"reply","ok":true}` {
+		t.Fatalf("expected the reliable reply after the notice, got %s", got)
+	}
+	cancel()
+	if err := receive(t, result); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClosedDataChannelUnblocksCongestedRelay(t *testing.T) {
-	queue := newRelayMailbox[[]byte]()
+	queue := newRelayMailbox[dataChannelMessage]()
 	closed := make(chan struct{})
 	opened := make(chan dataChannelWriter, 1)
 	channel := &observedChannel{observed: make(chan struct{}, 1), sent: make(chan string, 1)}
@@ -100,7 +143,7 @@ func TestClosedDataChannelUnblocksCongestedRelay(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- relayDataChannel(ctx, opened, closed, queue) }()
+	go func() { result <- relayDataChannel(ctx, opened, closed, queue, time.Now) }()
 	receive(t, channel.observed)
 	close(closed)
 	if err := receive(t, result); err == nil {

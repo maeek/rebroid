@@ -22,9 +22,8 @@ type configMessage struct {
 }
 
 type stdinMessage struct {
-	Type       string          `json:"type"`
-	Payload    json.RawMessage `json:"payload"`
-	DeadlineMs int64           `json:"deadlineMs"`
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 type stdoutMessage struct {
@@ -66,6 +65,10 @@ func readMediaFrame(reader io.Reader, expectedKind uint8) (mediaFrame, error) {
 	if _, err := io.ReadFull(reader, header); err != nil {
 		return mediaFrame{}, err
 	}
+	return readMediaPayload(reader, expectedKind, header, nil)
+}
+
+func readMediaPayload(reader io.Reader, expectedKind uint8, header []byte, scratch *[]byte) (mediaFrame, error) {
 	if string(header[:4]) != string(mediaMagic[:]) || header[4] != mediaVersion {
 		return mediaFrame{}, errors.New("invalid RBD1 media header")
 	}
@@ -78,9 +81,23 @@ func readMediaFrame(reader io.Reader, expectedKind uint8) (mediaFrame, error) {
 	if size == 0 || size > maxMediaBytes {
 		return mediaFrame{}, errors.New("invalid RBD1 media payload length")
 	}
-	data := make([]byte, size)
+	var data []byte
+	reusable := scratch != nil && flags&(mediaFlagConfig|mediaFlagKey) == 0 && size <= maxVideoScratchBytes
+	if reusable {
+		if cap(*scratch) < int(size) {
+			capacity := min(maxVideoScratchBytes, max(int(size), 2*cap(*scratch)))
+			*scratch = make([]byte, capacity)
+		}
+		data = (*scratch)[:size]
+	} else {
+		data = make([]byte, size)
+	}
 	if _, err := io.ReadFull(reader, data); err != nil {
 		return mediaFrame{}, err
+	}
+	if reusable && hasH264ParameterSets(data) {
+		// Pion may retain an in-band SPS/PPS across access units.
+		data = append([]byte(nil), data...)
 	}
 	return mediaFrame{
 		kind:          kind,
@@ -93,21 +110,16 @@ func readMediaFrame(reader io.Reader, expectedKind uint8) (mediaFrame, error) {
 	}, nil
 }
 
-func readCommands(reader *bufio.Scanner, send func([]byte) error, waitForVideoReset func(int64)) error {
+func readCommands(reader *bufio.Scanner, send func([]byte) error) error {
 	for reader.Scan() {
 		var message stdinMessage
 		if json.Unmarshal(reader.Bytes(), &message) != nil {
 			continue
 		}
-		switch message.Type {
-		case "datachannel":
-			if len(message.Payload) > 0 {
-				if err := send(message.Payload); err != nil {
-					return err
-				}
+		if message.Type == "datachannel" && len(message.Payload) > 0 {
+			if err := send(message.Payload); err != nil {
+				return err
 			}
-		case "video-reset":
-			waitForVideoReset(message.DeadlineMs)
 		}
 	}
 	return reader.Err()

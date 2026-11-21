@@ -126,20 +126,23 @@ test("reattachment inherits the remaining reset window until the reset completes
     () => true,
   );
   t.after(() => source.close());
-  const first = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  const first = { ...fakeSink().sink, setVideoReset: t.mock.fn() };
   source.attach(first);
-  source.setVideoResetDeadline(13_000);
-  assert.deepEqual(first.waitForVideoReset.mock.calls[0]?.arguments, [13_000]);
+  const reset = { generation: 1, deadlineMs: 13_000 };
+  source.setVideoReset(reset);
+  assert.deepEqual(first.setVideoReset.mock.calls[0]?.arguments, [reset]);
 
   t.mock.timers.tick(2_850);
-  const late = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  const late = { ...fakeSink().sink, setVideoReset: t.mock.fn() };
   source.attach(late);
-  assert.deepEqual(late.waitForVideoReset.mock.calls[0]?.arguments, [13_000]);
+  assert.deepEqual(late.setVideoReset.mock.calls[0]?.arguments, [reset]);
 
-  source.setVideoResetDeadline(0);
-  const recovered = { ...fakeSink().sink, waitForVideoReset: t.mock.fn() };
+  source.setVideoReset();
+  assert.deepEqual(first.setVideoReset.mock.calls[1]?.arguments, [undefined]);
+  assert.deepEqual(late.setVideoReset.mock.calls[1]?.arguments, [undefined]);
+  const recovered = { ...fakeSink().sink, setVideoReset: t.mock.fn() };
   source.attach(recovered);
-  assert.equal(recovered.waitForVideoReset.mock.callCount(), 0);
+  assert.equal(recovered.setVideoReset.mock.callCount(), 0);
 });
 
 test("a warm consumer skips an oversized cached GOP and starts at the next IDR", async () => {

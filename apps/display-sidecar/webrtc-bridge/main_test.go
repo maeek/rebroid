@@ -74,18 +74,14 @@ func TestReadCommandsForwardsOnlyValidDataChannelMessages(t *testing.T) {
 			`{"type":"datachannel","payload":{"type":"action"}}` + "\n",
 	))
 	var messages [][]byte
-	var resetDeadline int64
 	if err := readCommands(reader, func(payload []byte) error {
 		messages = append(messages, append([]byte(nil), payload...))
 		return nil
-	}, func(deadline int64) { resetDeadline = deadline }); err != nil {
+	}); err != nil {
 		t.Fatal(err)
 	}
 	if len(messages) != 1 || string(messages[0]) != `{"type":"action"}` {
 		t.Fatalf("expected one bounded data-channel payload, got %q", messages)
-	}
-	if resetDeadline != 13_000 {
-		t.Fatalf("expected reset deadline, got %d", resetDeadline)
 	}
 }
 
@@ -180,7 +176,7 @@ func TestRTCPFeedbackRequestsGOPRecoveryAndCountsLoss(t *testing.T) {
 		Jitter:    90,
 	}}}, 11, metrics, &metrics.videoFeedback, recovery, func(stdoutMessage) {})
 
-	generation := recovery.generation.Load()
+	generation := recovery.generation
 	if metrics.nacks.Load() != 3 || metrics.plis.Load() != 2 {
 		t.Fatalf("unexpected NACK/PLI metrics: %d/%d", metrics.nacks.Load(), metrics.plis.Load())
 	}

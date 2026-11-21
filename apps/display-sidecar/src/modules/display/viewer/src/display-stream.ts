@@ -236,11 +236,12 @@ export function createDisplayStream({
       return;
     }
     if (message.type === "renderer-fallback") {
-      if (msePlayer && mseVideo && hasVisibleFrame) {
-        ui.preserveVideoFrame(mseVideo);
-      }
+      const heldPicture =
+        Boolean(msePlayer) && mseVideo && hasVisibleFrame
+          ? ui.preserveVideoFrame(mseVideo)
+          : false;
       closeMsePlayer();
-      hasVisibleFrame = false;
+      hasVisibleFrame = heldPicture;
       console.warn(
         "Firefox native WebSocket playback failed; using WebCodecs.",
         message.reason,
@@ -265,9 +266,9 @@ export function createDisplayStream({
       });
       if (!hasVisibleFrame) {
         ui.showStatus(
-          "Reconnecting...",
-          "Starting live display",
-          "Rebroid is opening the app screen.",
+          "Reconnecting…",
+          "Reconnecting live display",
+          "The app screen will resume when the connection returns.",
         );
       }
       return;
@@ -412,9 +413,9 @@ export function createDisplayStream({
 
     initialized = true;
     ui.showStatus(
-      "Waiting for the first frame...",
-      "Starting live display",
-      "Rebroid is opening the app screen.",
+      "Waiting for the first frame…",
+      "Waiting for the first frame",
+      "The app screen will appear here.",
     );
     worker = new Worker(new URL("./display-media-worker.js", import.meta.url), {
       type: "module",

@@ -5,6 +5,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { ScrcpyBootstrapSink } from "../scrcpy/scrcpy-bootstrap-sink";
+import { ScrcpyVideoBootstrapTimeoutError } from "../scrcpy/scrcpy-source-stream";
 import { supportsH264PixelRate } from "../scrcpy/scrcpy-h264-profile";
 import { createRelayMetricsSampler } from "./display-relay-metrics";
 import { QueuedScrcpyMediaSink } from "../scrcpy/scrcpy-media-sink";
@@ -22,6 +23,7 @@ import type {
   WebrtcBridgeMessage,
   WebrtcBridgeOffer,
 } from "./display-webrtc-bridge";
+import { WebrtcCommandQueueFullError } from "./display-webrtc-command-relay";
 import { findCompatibleH264Offer } from "./display-webrtc-codec";
 
 const connectTimeoutMs = 15_000;
@@ -36,9 +38,11 @@ type WebrtcTerminationReason =
   | "offer_cancelled"
   | "source_bootstrap_failed"
   | "source_codec_incompatible"
+  | "bridge_retirement_timeout"
   | "bridge_start_failed"
   | "bridge_connection_closed"
   | "bridge_input_closed"
+  | "bridge_command_queue_full"
   | "signaling_failed"
   | "peer_connect_timeout"
   | "source_codec_changed"
@@ -81,6 +85,7 @@ interface WebrtcAttemptOptions {
   allowClipboard: boolean;
   iceServers: string[];
   attachSource: (sink: ScrcpyMediaSink) => ScrcpyStreamAttachment;
+  waitForPeerRetirement?: () => Promise<boolean> | undefined;
   launchBridge: (
     signal: AbortSignal,
     attemptId: string,
@@ -115,15 +120,35 @@ export class DisplayWebrtcAttempt {
 
     try {
       signal.throwIfAborted();
+      const retirement = this.options.waitForPeerRetirement?.();
       bootstrapAttachment = this.options.attachSource(
         new ScrcpyBootstrapSink(),
       );
       this.sourceAttemptId = bootstrapAttachment.sourceAttemptId;
-      const bootstrap = await awaitAttempt(
-        bootstrapAttachment.awaitVideoBootstrap(3_000),
+      const [bootstrap] = await awaitAttempt(
+        Promise.all([
+          bootstrapAttachment.awaitVideoBootstrap(3_000),
+          retirement?.then((available) => {
+            if (!available) {
+              this.failureStage = "bridge_retirement_timeout";
+              throw new ServiceUnavailableException({
+                statusCode: 503,
+                code: "display_peer_retirement_timeout",
+                message:
+                  "The previous WebRTC peer is still closing. Retry the offer.",
+              });
+            }
+          }),
+        ]),
         signal,
       );
       signal.throwIfAborted();
+      if (retirement && !bootstrap.isCurrent()) {
+        this.failureStage = "source_codec_changed";
+        throw new ServiceUnavailableException(
+          "The video codec generation changed while waiting for WebRTC peer cleanup.",
+        );
+      }
       this.failureStage = "source_codec_incompatible";
       this.assertBootstrapHasDimensions(bootstrap);
       this.assertOfferSupportsBootstrap(sdp, bootstrap);
@@ -144,8 +169,16 @@ export class DisplayWebrtcAttempt {
         declaredLevelSupportsRequestedRate,
       );
     } catch (error) {
-      this.stop(error, this.failureStage);
-      throw error;
+      const failure =
+        error instanceof ScrcpyVideoBootstrapTimeoutError
+          ? new ServiceUnavailableException({
+              statusCode: 503,
+              code: "display_video_bootstrap_timeout",
+              message: error.message,
+            })
+          : error;
+      this.stop(failure, this.failureStage);
+      throw failure;
     }
   }
 
@@ -196,13 +229,12 @@ export class DisplayWebrtcAttempt {
       writeStatus: (payload) => bridge.sendDataChannel(JSON.parse(payload)),
       onVideoReset: (deadlineMs) => {
         if (signal.aborted || codecChangeTimer) return;
-        bridge.waitForVideoReset(deadlineMs);
         bridge.sendDataChannel({
           type: "webrtc-video-reset",
-          remainingMs: Math.max(0, deadlineMs - Date.now()),
+          deadlineMs,
         });
       },
-      writeVideo: (payload) => bridge.writeVideo(payload),
+      writeVideo: (payload, reset) => bridge.writeVideo(payload, reset),
       writeAudio: async (payload) => {
         if (audioDisabled) return;
         try {
@@ -328,10 +360,12 @@ export class DisplayWebrtcAttempt {
         );
         bridge.listen({
           signal,
-          onFailure: () =>
+          onFailure: (error) =>
             this.stop(
               new ServiceUnavailableException("WebRTC bridge input closed."),
-              "bridge_input_closed",
+              error instanceof WebrtcCommandQueueFullError
+                ? "bridge_command_queue_full"
+                : "bridge_input_closed",
             ),
           onAudioFailure: () => disableAudio(),
           onLog: (message) =>
