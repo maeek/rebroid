@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { Skeleton } from '@/components/ui/skeleton'
 import { controlSurfaceClassName } from '@/components/ui/surface'
 import { Textarea } from '@/components/ui/textarea'
+import { registerMonacoWorkers } from '@/lib/monaco/register-monaco-workers'
 import { cn } from '@/lib/utils'
 import type * as Monaco from 'monaco-editor'
 
@@ -50,6 +51,7 @@ export const DockerfileMonacoEditor = ({
 
     const initialize = async () => {
       try {
+        registerMonacoWorkers()
         const monaco = await import('monaco-editor')
         if (disposed || !containerRef.current) return
         monacoRef.current = monaco

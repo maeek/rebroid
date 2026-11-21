@@ -1,4 +1,4 @@
-export const registerAutomationMonacoWorkers = () => {
+export const registerMonacoWorkers = () => {
   if (globalThis.MonacoEnvironment?.getWorker || globalThis.MonacoEnvironment?.getWorkerUrl) return
 
   globalThis.MonacoEnvironment = {

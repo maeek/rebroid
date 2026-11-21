@@ -22,6 +22,7 @@ export interface AutomationsListPageProps {
 
 export interface AutomationEditorPageProps {
   initialAutomation?: Automation | null
+  draftOwnerUserId?: string
   initialCommands: AutomationCommand[]
   canUseAi: boolean
   canManageAi: boolean

@@ -15,11 +15,14 @@ import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Notice } from '@/components/ui/notice'
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
+import { usePickerOptions } from '@/hooks/use-picker-options'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatBytes } from '@/lib/format-bytes'
 import { getBff } from '@/lib/http/bff'
 import type { ApkChoice } from '@/shared/contracts/apk-library'
 import type { UploadedApk } from '@/shared/contracts/application'
+
+const readSavedApks = (signal: AbortSignal) => getBff<ApkChoice[]>('/api/bff/apks', signal)
 
 export const SavedApkPicker = ({
   disabled,
@@ -29,37 +32,19 @@ export const SavedApkPicker = ({
   onChoose: (apk: UploadedApk) => void | Promise<void>
 }) => {
   const [open, setOpen] = useState(false)
-  const [choices, setChoices] = useState<ApkChoice[]>([])
+  const { items: choices, loading, error: loadError, retry } = usePickerOptions(open, readSavedApks)
   const [selected, setSelected] = useState('')
-  const [loading, setLoading] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string>()
   const cancelButton = useRef<HTMLButtonElement>(null)
-  const request = useRef<AbortController | null>(null)
+  const choosing = useRef(false)
+  const canChoose = !disabled && choices?.some(choice => choice.id === selected)
 
-  const load = async () => {
-    request.current?.abort()
-    const controller = new AbortController()
-    request.current = controller
-    setLoading(true)
-    setError(undefined)
-    try {
-      const uploads = await getBff<ApkChoice[]>('/api/bff/apks', controller.signal)
-      if (!controller.signal.aborted) setChoices(uploads)
-    } catch (cause) {
-      if (!controller.signal.aborted) setError(getDisplayErrorMessage(cause, 'Could not load saved APKs.'))
-    } finally {
-      if (!controller.signal.aborted) setLoading(false)
-    }
-  }
-
-  const close = () => {
-    request.current?.abort()
-    setOpen(false)
-  }
+  const close = () => setOpen(false)
 
   const choose = async () => {
-    if (!selected || pending) return
+    if (!canChoose || choosing.current) return
+    choosing.current = true
     setPending(true)
     setError(undefined)
     try {
@@ -69,6 +54,7 @@ export const SavedApkPicker = ({
     } catch (cause) {
       setError(getDisplayErrorMessage(cause, 'This APK is unavailable. Choose another file.'))
     } finally {
+      choosing.current = false
       setPending(false)
     }
   }
@@ -84,8 +70,7 @@ export const SavedApkPicker = ({
         if (next) {
           setOpen(true)
           setSelected('')
-          setChoices([])
-          void load()
+          setError(undefined)
         } else {
           close()
         }
@@ -110,7 +95,10 @@ export const SavedApkPicker = ({
         </DialogHeader>
         <div className='scrollbar-thin grid min-h-0 content-start gap-3 overflow-y-auto transform-gpu overscroll-contain p-1 -m-1'>
           {error ? <Notice tone='danger'>{error}</Notice> : null}
-          {loading ? (
+          {loadError ? (
+            <Notice tone='danger'>{getDisplayErrorMessage(loadError, 'Could not load saved APKs.')}</Notice>
+          ) : null}
+          {loading && !choices?.length ? (
             <p
               role='status'
               className='text-sm text-foreground-muted'
@@ -118,10 +106,10 @@ export const SavedApkPicker = ({
               Loading saved APKs…
             </p>
           ) : null}
-          {!loading && !choices.length && !error ? (
+          {!loading && choices?.length === 0 && !loadError ? (
             <p className='text-sm text-foreground-muted'>You have no saved APKs available.</p>
           ) : null}
-          {choices.length ? (
+          {choices?.length ? (
             <FormField
               label='Saved APK'
               layout='vertical'
@@ -144,19 +132,19 @@ export const SavedApkPicker = ({
                 })}
                 value={selected}
                 onValueChange={setSelected}
-                disabled={pending || loading}
+                disabled={pending}
                 placeholder='Search your APKs'
               />
             </FormField>
           ) : null}
         </div>
         <DialogFooter>
-          {error && !choices.length ? (
+          {loadError ? (
             <Button
               type='button'
               variant='ghost'
-              onClick={() => void load()}
-              disabled={loading}
+              onClick={retry}
+              disabled={loading || pending}
             >
               Retry
             </Button>
@@ -174,7 +162,7 @@ export const SavedApkPicker = ({
             type='button'
             pending={pending}
             pendingLabel='Selecting…'
-            disabled={!selected || disabled}
+            disabled={!canChoose}
             onClick={() => void choose()}
           >
             Use APK

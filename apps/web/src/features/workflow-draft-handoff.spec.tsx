@@ -3,25 +3,41 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AutomationEditorPage } from '@/features/automations/automations-page/editor/automation-editor-page'
 import { buildYaml, definitionToForm } from '@/features/automations/automations-page/editor/builder-utils'
-import { validateAutomationYamlAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { sendBff } from '@/lib/http/bff'
+import { readPendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { ChatTurnSaveWorkflowAction } from './applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-chat-turn-save-action'
 import { useAiAgentWorkflowDraft } from './applications/viewer/tools/runtime-tools-panel/ai-agent/use-ai-agent-workflow-draft'
 import type { ChatTurn } from './applications/viewer/tools/runtime-tools-panel/ai-agent/ai-agent-chat-utils'
 import type { AutomationAiModelCatalogProvider } from '@/shared/contracts/ai-provider'
+import type { AutomationValidation } from '@/shared/contracts/automation'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({
-  validateAutomationYamlAction: vi.fn()
-}))
+vi.mock('@/lib/http/bff', () => ({ sendBff: vi.fn() }))
+vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({}))
 vi.mock('@/features/automations/automations-page/editor/automation-yaml-editor-section', () => ({
-  AutomationYamlEditorSection: ({ yaml }: { yaml: string }) => (
-    <textarea
-      aria-label='Workflow YAML'
-      value={yaml}
-      readOnly
-    />
+  AutomationYamlEditorSection: ({
+    yaml,
+    pending,
+    error,
+    onRetryValidation
+  }: {
+    yaml: string
+    pending?: boolean
+    error?: string | null
+    onRetryValidation?: () => void
+  }) => (
+    <>
+      <textarea
+        aria-label='Workflow YAML'
+        value={yaml}
+        readOnly
+      />
+      {pending ? <p role='status'>Checking workflow YAML…</p> : null}
+      {error ? <p role='alert'>{error}</p> : null}
+      {error && onRetryValidation ? <button onClick={onRetryValidation}>Retry validation</button> : null}
+    </>
   )
 }))
 
@@ -108,7 +124,7 @@ describe('ChatTurnSaveWorkflowAction', () => {
     expect(onSaveWorkflow).toHaveBeenCalledWith(turn)
   })
 
-  it('opens a completed run’s draft in the workflow editor and consumes the handoff once', async () => {
+  it('opens a completed run’s draft in the workflow editor immediately and keeps it through a retry', async () => {
     const definition: AutomationDefinition = {
       apiVersion: 'rebroid.io/automation/v1',
       kind: 'AndroidAutomation',
@@ -123,7 +139,10 @@ describe('ChatTurnSaveWorkflowAction', () => {
       models: [{ id: 'model-1', label: 'Test model', roles: ['planner'], settings: {}, enabled: true, defaultFor: [] }]
     }
     const draftWorkflowFromRun = vi.fn().mockResolvedValue({ yaml, definition })
-    vi.mocked(validateAutomationYamlAction).mockResolvedValue({ valid: true, errors: [], definition, yaml })
+    const validation = Promise.withResolvers<AutomationValidation>()
+    vi.mocked(sendBff)
+      .mockReturnValueOnce(validation.promise)
+      .mockResolvedValueOnce({ valid: true, errors: [], definition, yaml })
 
     function DraftHandoff() {
       const [open, setOpen] = useState(false)
@@ -137,6 +156,7 @@ describe('ChatTurnSaveWorkflowAction', () => {
       })
       return open ? (
         <AutomationEditorPage
+          draftOwnerUserId='owner-1'
           initialCommands={[]}
           canUseAi={false}
           canManageAi={false}
@@ -167,18 +187,28 @@ describe('ChatTurnSaveWorkflowAction', () => {
     try {
       const view = render(<DraftHandoff />, { wrapper })
       fireEvent.click(screen.getByRole('button', { name: 'Draft workflow' }))
+      expect(await screen.findByRole('textbox', { name: 'Workflow YAML' })).toHaveValue(yaml)
+      expect(screen.getByText('Checking workflow YAML…')).toBeVisible()
+      expect(readPendingAutomationDraft('another-owner')).toBeNull()
+      validation.reject(new Error('Validation unavailable.'))
+      expect(await screen.findByText('Validation unavailable.')).toBeVisible()
+      expect(readPendingAutomationDraft('owner-1')?.yaml).toBe(yaml)
+      fireEvent.click(screen.getByRole('button', { name: 'Retry validation' }))
       expect(await screen.findByRole('heading', { name: 'Open Android Settings' })).toBeVisible()
       expect(screen.getByRole('textbox', { name: 'Workflow YAML' })).toHaveValue(yaml)
+      expect(readPendingAutomationDraft('owner-1')).toBeNull()
       expect(draftWorkflowFromRun).toHaveBeenCalledExactlyOnceWith({
         runId: 'run-1',
         providerId: 'provider-1',
         modelId: 'model-1'
       })
-      expect(validateAutomationYamlAction).toHaveBeenCalledWith(yaml)
+      expect(sendBff).toHaveBeenCalledTimes(2)
+      expect(sendBff).toHaveBeenLastCalledWith('/api/bff/automations/validate-yaml', { yaml })
 
       view.unmount()
       render(
         <AutomationEditorPage
+          draftOwnerUserId='owner-1'
           initialCommands={[]}
           canUseAi={false}
           canManageAi={false}

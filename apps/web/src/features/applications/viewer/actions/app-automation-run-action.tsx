@@ -13,60 +13,57 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
+import { Notice } from '@/components/ui/notice'
 import { SingleSelectCombobox } from '@/components/ui/single-select-combobox'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Visible } from '@/components/ui/visible'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
+import { usePickerOptions } from '@/hooks/use-picker-options'
 import { toast } from '@/hooks/use-toast'
+import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { getBff } from '@/lib/http/bff'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { listRunnableAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { hasPermission } from '@/shared/permissions/permissions'
 import { ApplicationProfileSelect } from '@/shared/ui/application-profile/application-profile-select'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
 import type { AutomationRun, RunnableAutomationOption } from '@/shared/contracts/automation'
 
-export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: AutomationRun) => void }) => {
+const readRunnableWorkflows = (signal: AbortSignal) =>
+  getBff<RunnableAutomationOption[]>('/api/bff/automations/runnable-options', signal)
+
+export const AppAutomationRunAction = ({
+  onRunStarted
+}: {
+  onRunStarted?: (run: AutomationRun, workflowName: string | null) => void
+}) => {
   const { app, permissions, setApp } = useApplicationViewerContext()
   const mutationPending = useRef(false)
+  const cancelButton = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
-  const [automations, setAutomations] = useState<RunnableAutomationOption[]>([])
-  const [automationId, setAutomationId] = useState('')
+  const {
+    items: automations,
+    loading,
+    error: loadError,
+    retry
+  } = usePickerOptions(open && !!app?.id, readRunnableWorkflows)
+  const [automationId, setAutomationId] = useState<string>()
+  const selectedWorkflow =
+    automationId === undefined ? automations?.[0] : automations?.find(workflow => workflow.id === automationId)
   const [profileMode, setProfileMode] = useState<ApplicationProfileMode>(() => app?.profileMode ?? 'persistent')
   const [profileName, setProfileName] = useState(() => app?.profileName ?? 'default')
   const [startIfNeeded, setStartIfNeeded] = useState(true)
-  const [loading, setLoading] = useState(false)
   const [running, setRunning] = useState(false)
 
   useEffect(() => {
+    if (automationId === undefined && selectedWorkflow) setAutomationId(selectedWorkflow.id)
+  }, [automationId, selectedWorkflow])
+
+  useEffect(() => {
     if (!open) return
-    let cancelled = false
     setProfileMode(app?.profileMode ?? 'persistent')
     setProfileName(app?.profileName ?? 'default')
-    setLoading(true)
-    setAutomations([])
-    void listRunnableAutomationsAction()
-      .then(items => {
-        if (cancelled) return
-        setAutomations(items)
-        setAutomationId(current => (items.some(item => item.id === current) ? current : items[0]?.id || ''))
-      })
-      .catch(error => {
-        if (cancelled) return
-        toast({
-          title: 'Could not load workflows',
-          description: error instanceof Error ? error.message : 'Unknown error',
-          variant: 'danger'
-        })
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
   }, [app?.profileMode, app?.profileName, open])
 
   if (!app?.id) {
@@ -104,11 +101,11 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
   }
 
   const run = async () => {
-    if (!automationId || loading || mutationPending.current) return
+    if (!selectedWorkflow || mutationPending.current) return
     mutationPending.current = true
     setRunning(true)
     try {
-      const result = await runAutomationAction(automationId, {
+      const result = await runAutomationAction(selectedWorkflow.id, {
         targetApplicationId: app.id,
         profileMode,
         profileName: profileName.trim() || 'default',
@@ -119,7 +116,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         description: `Run ${result.id.slice(0, 8)} was added to the queue.`,
         variant: 'success'
       })
-      onRunStarted?.(result)
+      onRunStarted?.(result, selectedWorkflow.name)
       setOpen(false)
     } catch (error) {
       toast({
@@ -154,6 +151,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
         }}
       >
         <DialogContent
+          initialFocus={cancelButton}
           data-editor-dialog=''
           className='sm:max-w-2xl'
           showCloseButton={!running}
@@ -171,18 +169,29 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
               layout='vertical'
             >
               <SingleSelectCombobox
-                value={automationId}
-                disabled={loading || running || automations.length === 0}
+                value={selectedWorkflow?.id ?? ''}
+                disabled={running || !automations?.length}
                 onValueChange={setAutomationId}
-                placeholder={loading ? 'Loading workflows…' : 'Search workflows'}
-                options={automations.map(workflow => ({ value: workflow.id, label: workflow.name }))}
+                placeholder='Search workflows'
+                options={automations?.map(workflow => ({ value: workflow.id, label: workflow.name })) ?? []}
               />
             </FormField>
-            <Visible when={!loading && automations.length === 0}>
+            {loadError ? (
+              <Notice tone='danger'>{getDisplayErrorMessage(loadError, 'Could not load workflows.')}</Notice>
+            ) : null}
+            {loading && !automations?.length ? (
+              <p
+                role='status'
+                className='text-sm text-foreground-muted'
+              >
+                Loading workflows…
+              </p>
+            ) : null}
+            {!loading && !loadError && automations?.length === 0 ? (
               <p className='text-sm text-foreground-muted'>
                 No workflows are available. Create a workflow or ask its owner for access.
               </p>
-            </Visible>
+            ) : null}
             <ApplicationProfileSelect
               mode={profileMode}
               name={profileName}
@@ -207,7 +216,19 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
             </FormField>
           </fieldset>
           <DialogFooter>
+            {loadError ? (
+              <Button
+                type='button'
+                variant='ghost'
+                onClick={retry}
+                disabled={loading || running}
+              >
+                Retry
+              </Button>
+            ) : null}
             <Button
+              ref={cancelButton}
+              type='button'
               variant='secondary'
               disabled={running}
               onClick={() => setOpen(false)}
@@ -216,7 +237,7 @@ export const AppAutomationRunAction = ({ onRunStarted }: { onRunStarted?: (run: 
             </Button>
             <MutationButton
               animate
-              disabled={!automationId || loading || !automations.some(workflow => workflow.id === automationId)}
+              disabled={!selectedWorkflow}
               pending={running}
               pendingLabel='Queuing…'
               onClick={() => void run()}

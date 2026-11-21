@@ -41,6 +41,7 @@ export const AutomationEditorActions = ({
   saving = false,
   saved = false,
   canSaveOrExport,
+  canSave = canSaveOrExport,
   canDraftFromPrompt,
   canDelete,
   yamlOpen,
@@ -57,6 +58,7 @@ export const AutomationEditorActions = ({
   saving?: boolean
   saved?: boolean
   canSaveOrExport: boolean
+  canSave?: boolean
   canDraftFromPrompt: boolean
   canDelete: boolean
   yamlOpen: boolean
@@ -95,7 +97,7 @@ export const AutomationEditorActions = ({
         pending={saving}
         pendingLabel='Saving…'
         success={saved}
-        disabled={busy || !canSaveOrExport}
+        disabled={busy || !canSave}
         onClick={onSave}
       >
         <IconDeviceFloppy

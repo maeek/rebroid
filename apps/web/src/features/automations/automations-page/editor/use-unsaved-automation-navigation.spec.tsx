@@ -27,7 +27,7 @@ function Navigation({ dirty = true }: { dirty?: boolean }) {
         onSave={noop}
         onToggleYaml={noop}
       />
-      {navigation.pendingNavigationHref ? (
+      {navigation.pendingNavigation ? (
         <button onClick={navigation.confirmPendingNavigation}>Discard and leave</button>
       ) : null}
     </>

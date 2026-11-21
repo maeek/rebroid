@@ -1,21 +1,19 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import {
-  createAutomationAction,
-  updateAutomationAction,
-  validateAutomationYamlAction
-} from '@/server/orchestrator/automations/automation-management-actions'
+import { sendBff } from '@/lib/http/bff'
+import { saveAutomationAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { actionError, actionOk } from '@/shared/actions/action-result'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { AutomationEditorPage } from './automation-editor-page'
 import { buildYaml, defaultStep, definitionToForm, type AutomationStepForm } from './builder-utils'
-import type { Automation } from '@/shared/contracts/automation'
+import type { Automation, AutomationValidation } from '@/shared/contracts/automation'
 import type { AutomationDefinition } from '@rebroid/automation-core/definition'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('@/lib/http/bff', () => ({ sendBff: vi.fn() }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({
-  createAutomationAction: vi.fn(),
-  updateAutomationAction: vi.fn(),
+  saveAutomationAction: vi.fn(),
   validateAutomationYamlAction: vi.fn()
 }))
 vi.mock('../steps/list/automation-steps-list', () => ({
@@ -134,25 +132,17 @@ it.each([
   openActions()
   expect(exportItem()).toHaveAttribute('aria-disabled', 'true')
   fireEvent.click(exportItem())
-  expect(createAutomationAction).not.toHaveBeenCalled()
-  expect(updateAutomationAction).not.toHaveBeenCalled()
+  expect(saveAutomationAction).not.toHaveBeenCalled()
   expect(createObjectURL).not.toHaveBeenCalled()
 })
 
-it('ignores older YAML validation and uses the exact validated draft for Export and Save', async () => {
+it('ignores older YAML validation and exports the current text after its own check', async () => {
   vi.useFakeTimers()
-  const first = Promise.withResolvers<Awaited<ReturnType<typeof validateAutomationYamlAction>>>()
-  const next = Promise.withResolvers<Awaited<ReturnType<typeof validateAutomationYamlAction>>>()
-  vi.mocked(validateAutomationYamlAction).mockReturnValueOnce(first.promise).mockReturnValueOnce(next.promise)
+  const first = Promise.withResolvers<AutomationValidation>()
+  const next = Promise.withResolvers<AutomationValidation>()
+  vi.mocked(sendBff).mockReturnValueOnce(first.promise).mockReturnValueOnce(next.promise)
   const editedYaml = `${savedYaml.replace('Saved workflow', 'Edited workflow')}\n\n`
   const editedDefinition = { ...definition, metadata: { name: 'Edited workflow' } }
-  const editedWorkflow = {
-    ...savedWorkflow,
-    name: editedDefinition.metadata.name,
-    yaml: editedYaml,
-    definition: editedDefinition
-  }
-  vi.mocked(updateAutomationAction).mockResolvedValue(editedWorkflow)
   renderEditor(savedWorkflow)
 
   fireEvent.click(screen.getByRole('button', { name: 'YAML' }))
@@ -164,8 +154,7 @@ it('ignores older YAML validation and uses the exact validated draft for Export 
     await first.promise
   })
 
-  expect(saveButton()).toBeDisabled()
-  fireEvent.click(screen.getByRole('button', { name: 'Visual editor' }))
+  expect(saveButton()).toBeEnabled()
   expect(screen.getByRole('textbox', { name: 'Workflow YAML' })).toHaveValue(editedYaml)
   openActions()
   expect(exportItem()).toHaveAttribute('aria-disabled', 'true')
@@ -189,8 +178,40 @@ it('ignores older YAML validation and uses the exact validated draft for Export 
     reader.readAsText(blob)
   })
   expect(text).toBe(editedYaml)
+})
+
+it('saves the exact YAML on the first click without waiting for the background check', async () => {
+  const editedYaml = savedYaml.replace('Saved workflow', 'Edited workflow')
+  const editedDefinition = { ...definition, metadata: { name: 'Edited workflow' } }
+  const saved = { ...savedWorkflow, name: 'Edited workflow', yaml: editedYaml, definition: editedDefinition }
+  const request = Promise.withResolvers<Awaited<ReturnType<typeof saveAutomationAction>>>()
+  vi.mocked(saveAutomationAction).mockReturnValueOnce(request.promise)
+  renderEditor(savedWorkflow)
+
+  fireEvent.click(screen.getByRole('button', { name: 'YAML' }))
+  const editor = screen.getByRole('textbox', { name: 'Workflow YAML' })
+  fireEvent.change(editor, { target: { value: editedYaml } })
   fireEvent.click(saveButton())
-  await waitFor(() =>
-    expect(updateAutomationAction).toHaveBeenCalledExactlyOnceWith(savedWorkflow.id, { yaml: editedYaml })
+  expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
+  expect(saveAutomationAction).toHaveBeenCalledExactlyOnceWith(savedWorkflow.id, { yaml: editedYaml })
+  expect(sendBff).not.toHaveBeenCalled()
+
+  request.resolve(actionOk(saved))
+  await waitFor(() => expect(screen.getByRole('heading', { name: 'Edited workflow' })).toBeVisible())
+  expect(editor).toHaveValue(editedYaml)
+})
+
+it('keeps rejected YAML and puts the validation error beside the editor', async () => {
+  vi.mocked(saveAutomationAction).mockResolvedValueOnce(
+    actionError({ message: 'Editor error', code: 'validation', fieldErrors: { yaml: ['Invalid workflow root'] } })
   )
+  renderEditor(savedWorkflow)
+  fireEvent.click(screen.getByRole('button', { name: 'YAML' }))
+  const editor = screen.getByRole('textbox', { name: 'Workflow YAML' })
+  fireEvent.change(editor, { target: { value: '[' } })
+  fireEvent.click(saveButton())
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Invalid workflow root')
+  expect(editor).toHaveValue('[')
+  expect(saveButton()).toBeEnabled()
 })

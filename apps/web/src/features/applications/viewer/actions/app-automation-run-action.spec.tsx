@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { previewApp } from '@/features/applications/detail/app-resource-preview-data'
-import { listRunnableAutomationsAction } from '@/server/orchestrator/automations/automation-management-actions'
+import { getBff } from '@/lib/http/bff'
 import { runAutomationAction } from '@/server/orchestrator/automations/automation-run-actions'
 import { fullPermissions } from '@/shared/permissions/permissions'
 import { previewWorkflow } from '@/shared/testing/automation-preview'
@@ -11,9 +11,7 @@ vi.mock('@/features/applications/detail/application-viewer-context', () => ({
   useApplicationViewerContext: () => ({ app: previewApp, permissions: fullPermissions, setApp: vi.fn() })
 }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
-vi.mock('@/server/orchestrator/automations/automation-management-actions', () => ({
-  listRunnableAutomationsAction: vi.fn()
-}))
+vi.mock('@/lib/http/bff', () => ({ getBff: vi.fn() }))
 vi.mock('@/server/orchestrator/automations/automation-run-actions', () => ({ runAutomationAction: vi.fn() }))
 vi.mock('@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions', () => ({
   deleteApplicationProfileAction: vi.fn()
@@ -26,7 +24,7 @@ beforeEach(() => {
 
 describe('App run workflow dialog', () => {
   it('uses the same profile and start controls as triggers and preserves the execution payload', async () => {
-    vi.mocked(listRunnableAutomationsAction).mockResolvedValue([previewWorkflow])
+    vi.mocked(getBff).mockResolvedValue([previewWorkflow])
     let fail!: (error: Error) => void
     vi.mocked(runAutomationAction).mockImplementation(
       () =>
@@ -59,8 +57,38 @@ describe('App run workflow dialog', () => {
     expect(within(dialog).getByRole('switch', { name: 'Start app if needed' })).not.toBeChecked()
   })
 
+  it('keeps cached workflows searchable on reopen and distinguishes refresh failure from an empty list', async () => {
+    const refresh = Promise.withResolvers<unknown[]>()
+    vi.mocked(getBff)
+      .mockResolvedValueOnce([previewWorkflow])
+      .mockReturnValueOnce(refresh.promise)
+      .mockResolvedValueOnce([])
+    render(<AppAutomationRunAction />)
+    const trigger = screen.getByRole('button', { name: 'Run workflow' })
+    fireEvent.click(trigger)
+    let dialog = await screen.findByRole('dialog', { name: 'Run workflow' })
+    await waitFor(() => expect(within(dialog).getByRole('combobox', { name: 'Workflow' })).toBeEnabled())
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(trigger)
+    dialog = await screen.findByRole('dialog', { name: 'Run workflow' })
+    expect(within(dialog).getByRole('combobox', { name: 'Workflow' })).toBeEnabled()
+    expect(within(dialog).getByRole('button', { name: 'Run workflow' })).toBeEnabled()
+
+    await act(async () => {
+      refresh.reject(new Error('Could not load workflows.'))
+      await refresh.promise.catch(() => undefined)
+    })
+    expect(within(dialog).getByText('Could not load workflows.')).toBeVisible()
+    expect(within(dialog).queryByText(/No workflows are available/)).toBeNull()
+    expect(within(dialog).getByRole('combobox', { name: 'Workflow' })).toBeEnabled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Retry' }))
+    expect(await within(dialog).findByText(/No workflows are available/)).toBeVisible()
+    expect(within(dialog).getByRole('button', { name: 'Run workflow' })).toBeDisabled()
+  })
+
   it('keeps Run unavailable when no workflows are accessible', async () => {
-    vi.mocked(listRunnableAutomationsAction).mockResolvedValue([])
+    vi.mocked(getBff).mockResolvedValue([])
     render(<AppAutomationRunAction />)
     fireEvent.click(screen.getByRole('button', { name: 'Run workflow' }))
     const dialog = await screen.findByRole('dialog', { name: 'Run workflow' })

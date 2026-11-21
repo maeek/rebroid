@@ -45,7 +45,7 @@ export const useAiAgentWorkflowDraft = ({
             }
           : {})
       })
-      storePendingAutomationDraft({ yaml: draft.yaml, sourceRunId: turn.run.id })
+      storePendingAutomationDraft({ yaml: draft.yaml, ownerUserId: turn.run.ownerUserId, sourceRunId: turn.run.id })
       if (openWorkflowDraft) {
         openWorkflowDraft()
       } else {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfirmMutationDialog } from '@/components/ui/confirm-mutation-dialog'
 import { FieldChangesProvider } from '@/components/ui/field-changes'
@@ -9,13 +9,16 @@ import { useSaveFeedback } from '@/hooks/use-save-feedback'
 import { toast } from '@/hooks/use-toast'
 import { useUnsavedNavigation } from '@/hooks/use-unsaved-navigation'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import {
-  createAutomationAction,
   deleteAutomationAction,
-  validateAutomationYamlAction,
-  updateAutomationAction
+  saveAutomationAction
 } from '@/server/orchestrator/automations/automation-management-actions'
-import { consumePendingAutomationDraft } from '@/shared/model/automation-draft/pending-automation-draft'
+import {
+  clearPendingAutomationDraft,
+  readPendingAutomationDraft,
+  type PendingAutomationDraft
+} from '@/shared/model/automation-draft/pending-automation-draft'
 import { workflowTraceHref } from '@/shared/model/workflow-trace-href'
 import { UnsavedChangesDialog } from '@/shared/ui/unsaved-changes-dialog'
 import { AutomationStepsList } from '../steps/list/automation-steps-list'
@@ -44,6 +47,7 @@ import type { Automation } from '@/shared/contracts/automation'
 
 export function AutomationEditorPage({
   initialAutomation,
+  draftOwnerUserId,
   initialCommands,
   canUseAi,
   canManageAi
@@ -56,7 +60,16 @@ export function AutomationEditorPage({
       : defaultForm(preferredWorkflowAction(initialCommands, 'android.viewerCommand') ?? null)
   )
   const history = useAutomationEditorHistory(initialForm)
-  const { form, yamlOpen, yamlDraft, visualYaml, commitEditorChange, hasUnsavedChanges, markEditorSaved } = history
+  const {
+    form,
+    yamlOpen,
+    yamlDraft,
+    visualYaml,
+    commitEditorChange,
+    changeEditorView,
+    hasUnsavedChanges,
+    markEditorSaved
+  } = history
   const referenceIssues = useMemo(
     () => collectStepReferenceIssues(form.steps, initialCommands),
     [form.steps, initialCommands]
@@ -75,23 +88,32 @@ export function AutomationEditorPage({
   const [busy, setBusy] = useState(false)
   const [saving, setSaving] = useState(false)
   const importInputRef = useRef<HTMLInputElement | null>(null)
+  const restoredDraft = useRef(false)
+  const [incomingDraft, setIncomingDraft] = useState<PendingAutomationDraft | null>(null)
   const workflowId = automation?.id
   const isNew = !automation
   const title = form.name.trim() || automation?.name || 'New workflow'
-  const { currentYaml, yamlForSaveOrExport, toggleYamlEditor, visualError, yamlError, yamlPending } =
-    useAutomationEditorDraft({
-      form,
-      yamlOpen,
-      yamlDraft,
-      visualYaml,
-      hasBrokenReferences: referenceIssues.size > 0,
-      changeEditorView: history.changeEditorView
-    })
+  const draft = useAutomationEditorDraft({
+    form,
+    yamlOpen,
+    yamlDraft,
+    visualYaml,
+    hasBrokenReferences: referenceIssues.size > 0,
+    saving,
+    validateImmediately: incomingDraft?.yaml === yamlDraft,
+    changeEditorView
+  })
+  const { currentYaml, yamlForSaveOrExport, toggleYamlEditor, visualError, yamlError, yamlPending } = draft
+  const saveInFlight = useRef(false)
   const saveFeedback = useSaveFeedback(currentYaml)
   const navigation = useUnsavedNavigation({
     hasUnsavedChanges,
     push: router.push,
-    onDiscard: history.discardChanges
+    onDiscard: () => {
+      if (incomingDraft) clearPendingAutomationDraft(incomingDraft)
+      setIncomingDraft(null)
+      history.discardChanges()
+    }
   })
   const {
     aiDraftOpen,
@@ -136,35 +158,29 @@ export function AutomationEditorPage({
     downloadWorkflowYaml(form.name || title, yamlForSaveOrExport)
   }
 
-  useEffect(() => {
-    if (!isNew) return
-    const pendingDraft = consumePendingAutomationDraft()
+  useLayoutEffect(() => {
+    if (!isNew || !draftOwnerUserId || restoredDraft.current) return
+    restoredDraft.current = true
+    const pendingDraft = readPendingAutomationDraft(draftOwnerUserId)
     if (!pendingDraft) return
 
-    setBusy(true)
-    validateAutomationYamlAction(pendingDraft.yaml)
-      .then(validation => {
-        if (!validation.valid || !validation.definition) {
-          throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
-        }
-        const nextForm = definitionToForm(validation.definition, form.id)
-        resetSelectionForSteps(nextForm.steps)
-        commitEditorChange(() => ({
-          form: nextForm,
-          yamlOpen: true,
-          yamlDraft: validation.yaml ?? pendingDraft.yaml
-        }))
-        toast({ title: 'Workflow draft ready' })
+    setIncomingDraft(pendingDraft)
+    commitEditorChange(snapshot => ({ ...snapshot, yamlOpen: true, yamlDraft: pendingDraft.yaml }))
+  }, [isNew, draftOwnerUserId, commitEditorChange])
+
+  useEffect(() => {
+    if (!incomingDraft || !draft.validatedDefinition) return
+    if (yamlOpen) {
+      const nextForm = definitionToForm(draft.validatedDefinition, form.id)
+      changeEditorView(snapshot => {
+        if (!snapshot.yamlOpen || snapshot.yamlDraft !== yamlDraft) return snapshot
+        return { ...snapshot, form: nextForm }
       })
-      .catch(error => {
-        toast({
-          title: 'Could not load workflow draft',
-          description: getDisplayErrorMessage(error),
-          variant: 'danger'
-        })
-      })
-      .finally(() => setBusy(false))
-  }, [form.id, isNew, commitEditorChange, resetSelectionForSteps])
+      resetSelectionForSteps(nextForm.steps)
+    }
+    clearPendingAutomationDraft(incomingDraft)
+    setIncomingDraft(null)
+  }, [draft.validatedDefinition, form.id, changeEditorView, incomingDraft, resetSelectionForSteps, yamlDraft, yamlOpen])
 
   const updateForm = (patch: Partial<AutomationFormState>) =>
     commitEditorChange(snapshot => ({ ...snapshot, form: { ...snapshot.form, ...patch } }))
@@ -179,7 +195,20 @@ export function AutomationEditorPage({
 
   const persistAutomation = async (input: { yaml: string }) => {
     const wasNew = !automation
-    const saved = automation ? await updateAutomationAction(automation.id, input) : await createAutomationAction(input)
+    const result = await saveAutomationAction(automation?.id ?? null, input)
+    if (!result.ok) {
+      const validationError = result.error.fieldErrors?.yaml?.[0]
+      if (yamlOpen && validationError) {
+        draft.reportSaveError(validationError)
+        return
+      }
+      throw new Error(validationError ?? result.error.message)
+    }
+    if (incomingDraft) {
+      clearPendingAutomationDraft(incomingDraft)
+      setIncomingDraft(null)
+    }
+    const saved = result.data
     const savedForm = definitionToForm(saved.definition, saved.id, form.steps)
     const savedVisualYaml = buildYaml(savedForm)
     const nextForm = visualYaml === savedVisualYaml ? { ...form, id: saved.id } : savedForm
@@ -192,17 +221,18 @@ export function AutomationEditorPage({
     })
     toast({ title: wasNew ? 'Workflow created' : 'Workflow updated', variant: 'success' })
     if (wasNew) {
-      router.replace(`/automations/${saved.id}`)
+      afterClosingBackEntry(() => router.replace(`/automations/${saved.id}`))
     }
   }
 
   const save = async () => {
-    if (busy || yamlForSaveOrExport === null) return
+    if (busy || saveInFlight.current || draft.switchingToVisual || !draft.canSave) return
+    saveInFlight.current = true
     setBusy(true)
     saveFeedback.resetSaveFeedback()
     setSaving(true)
     try {
-      await persistAutomation({ yaml: yamlForSaveOrExport })
+      if (currentYaml !== null) await persistAutomation({ yaml: currentYaml })
     } catch (error) {
       toast({
         title: 'Could not save workflow',
@@ -212,6 +242,7 @@ export function AutomationEditorPage({
     } finally {
       setBusy(false)
       setSaving(false)
+      saveInFlight.current = false
     }
   }
 
@@ -221,7 +252,7 @@ export function AutomationEditorPage({
     try {
       await deleteAutomationAction(automation.id)
       toast({ title: 'Workflow deleted', variant: 'success' })
-      router.replace('/automations')
+      afterClosingBackEntry(() => router.replace('/automations'))
     } catch (error) {
       toast({
         title: 'Could not delete workflow',
@@ -250,8 +281,9 @@ export function AutomationEditorPage({
                 />
               </FieldChangesProvider>
             }
-            busy={busy}
+            busy={busy || draft.switchingToVisual}
             saving={saving}
+            canSave={draft.canSave}
             saved={saveFeedback.saved}
             canSaveOrExport={yamlForSaveOrExport !== null}
             canDraftFromPrompt={canDraftFromPrompt}
@@ -267,7 +299,7 @@ export function AutomationEditorPage({
           />
         }
         yamlOpen={yamlOpen}
-        disabled={busy}
+        disabled={busy || draft.switchingToVisual}
         onToggleYaml={toggleYamlEditor}
         history={history}
       >
@@ -277,7 +309,9 @@ export function AutomationEditorPage({
             commands={initialCommands}
             onYamlChange={yaml => commitEditorChange(snapshot => ({ ...snapshot, yamlDraft: yaml }))}
             error={yamlError}
-            pending={yamlPending}
+            errorFocusRequest={draft.errorFocusRequest}
+            pending={yamlPending || draft.switchingToVisual}
+            onRetryValidation={incomingDraft && !busy ? draft.retryYamlValidation : undefined}
           />
         ) : (
           <>

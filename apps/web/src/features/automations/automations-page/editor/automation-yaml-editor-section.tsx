@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/ui/notice'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -19,16 +21,28 @@ export function AutomationYamlEditorSection({
   commands,
   onYamlChange,
   error = null,
+  errorFocusRequest = 0,
   pending = false,
+  onRetryValidation,
   className
 }: {
   yaml: string
   commands: AutomationCommand[]
   onYamlChange: (yaml: string) => void
   error?: string | null
+  errorFocusRequest?: number
   pending?: boolean
+  onRetryValidation?: () => void
   className?: string
 }) {
+  const errorRef = useRef<HTMLDivElement>(null)
+  const displayedFocusRequest = useRef(errorFocusRequest)
+  useEffect(() => {
+    if (!error || displayedFocusRequest.current === errorFocusRequest) return
+    displayedFocusRequest.current = errorFocusRequest
+    errorRef.current?.focus()
+  }, [error, errorFocusRequest])
+
   return (
     <section
       aria-label='Workflow YAML'
@@ -56,12 +70,30 @@ export function AutomationYamlEditorSection({
             </p>
           )}
           {error && (
-            <Notice
-              tone='danger'
-              className='max-h-32 overflow-y-auto transform-gpu'
+            <div
+              ref={errorRef}
+              tabIndex={-1}
+              className='rounded-panel focus-visible:ring-2 focus-visible:ring-ring'
             >
-              {error}
-            </Notice>
+              <Notice
+                tone='danger'
+                className='max-h-32 overflow-y-auto transform-gpu'
+              >
+                <div className='flex flex-wrap items-center justify-between gap-2'>
+                  <span>{error}</span>
+                  {onRetryValidation ? (
+                    <Button
+                      type='button'
+                      size='sm'
+                      variant='ghost'
+                      onClick={onRetryValidation}
+                    >
+                      Retry validation
+                    </Button>
+                  ) : null}
+                </div>
+              </Notice>
+            </div>
           )}
         </footer>
       ) : null}

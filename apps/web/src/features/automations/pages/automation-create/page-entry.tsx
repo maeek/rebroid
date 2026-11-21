@@ -21,6 +21,7 @@ export async function AutomationCreatePageEntry() {
 
   return (
     <AutomationEditorPage
+      draftOwnerUserId={user.ownerUserId}
       initialCommands={commands}
       canUseAi={hasPermission(user.permissions, 'automations:run-ai')}
       canManageAi={user.isPlatformAdmin}

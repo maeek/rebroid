@@ -3,6 +3,8 @@
 import { AUTOMATION_DRAFT_PROMPT_MAX_LENGTH, type AutomationYamlDraft } from '@rebroid/automation-core/yaml-draft'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { runSafeAction } from '@/server/actions/safe-action'
+import { PublicActionError } from '@/server/errors/public-action-error'
 import { getCurrentUserContext } from '@/server/orchestrator/current-user'
 import { adHocAiRunPrompt, finalAiRunEvent } from '@/shared/model/ad-hoc-ai-run-events'
 import { readAutomationDraftStream } from '@/shared/model/automation-draft/read-automation-draft-stream'
@@ -161,53 +163,41 @@ export const listAutomationsGridAction = async (
   return orchestratorAutomationsClient.listGrid(user.ownerUserId, input)
 }
 
-export const listRunnableAutomationsAction = async () => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:run')
-  return orchestratorAutomationsClient.listRunnableOptions(user.ownerUserId)
-}
-
 export const getAutomationAction = async (id: string) => {
   const user = await getCurrentUserContext()
   assertAutomationPermission(user, 'automations:manage')
   return orchestratorAutomationsClient.get(user.ownerUserId, id)
 }
 
-export const createAutomationAction = async (input: SaveAutomationInput) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  const validation = await orchestratorAutomationsClient.validateYaml(input.yaml)
-  if (!validation.definition) {
-    throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
-  }
-  await assertDefinitionPermissions(user, validation.definition)
-  const automation = await orchestratorAutomationsClient.create(user.ownerUserId, {
-    ...input,
-    yaml: validation.yaml ?? input.yaml
-  })
-  revalidatePath('/automations')
-  await recordAutomationAudit('automation.create', automation.id, automation.name)
-  return automation
-}
+const saveWorkflowInput = z.object({ yaml: z.string() }).strict()
 
-export const updateAutomationAction = async (id: string, input: Partial<SaveAutomationInput>) => {
-  const user = await getCurrentUserContext()
-  assertAutomationPermission(user, 'automations:manage')
-  input = z.object({ yaml: z.string().optional() }).strict().parse(input)
-  let payload = input
-  if (input.yaml !== undefined) {
-    const validation = await orchestratorAutomationsClient.validateYaml(input.yaml)
-    if (!validation.definition) {
-      throw new Error(validation.errors[0] ?? 'Automation YAML is invalid.')
-    }
-    await assertDefinitionPermissions(user, validation.definition)
-    payload = { ...input, yaml: validation.yaml ?? input.yaml }
-  }
-  const automation = await orchestratorAutomationsClient.update(user.ownerUserId, id, payload)
-  revalidatePath('/automations')
-  await recordAutomationAudit('automation.update', automation.id, automation.name, { fields: Object.keys(input) })
-  return automation
-}
+export const saveAutomationAction = async (id: string | null, input: SaveAutomationInput) =>
+  runSafeAction(
+    async () => {
+      const user = await getCurrentUserContext()
+      assertAutomationPermission(user, 'automations:manage')
+      const { yaml } = saveWorkflowInput.parse(input)
+      const validation = await orchestratorAutomationsClient.validateYaml(yaml)
+      if (!validation.valid || !validation.definition) {
+        const message = validation.errors[0] ?? 'Automation YAML is invalid.'
+        throw new PublicActionError(message, { code: 'validation', status: 400, fieldErrors: { yaml: [message] } })
+      }
+      await assertDefinitionPermissions(user, validation.definition)
+      const payload = { yaml: validation.yaml ?? yaml }
+      const automation = id
+        ? await orchestratorAutomationsClient.update(user.ownerUserId, id, payload)
+        : await orchestratorAutomationsClient.create(user.ownerUserId, payload)
+      revalidatePath('/automations')
+      await recordAutomationAudit(
+        id ? 'automation.update' : 'automation.create',
+        automation.id,
+        automation.name,
+        id ? { fields: ['yaml'] } : undefined
+      )
+      return automation
+    },
+    { fallbackMessage: 'Could not save the workflow.', logLabel: 'saveAutomationAction failed' }
+  )
 
 export const deleteAutomationAction = async (id: string) => {
   const user = await getCurrentUserContext()

@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { Textarea } from '@/components/ui/textarea'
+import { registerMonacoWorkers } from '@/lib/monaco/register-monaco-workers'
 import { cn } from '@/lib/utils'
 import { createAutomationYamlCompletionProvider } from './language/automation-yaml-completions'
 import { validateAutomationYamlModel } from './language/automation-yaml-validation'
-import { registerAutomationMonacoWorkers } from './language/automation-yaml-workers'
 import { buildAutomationYamlSchema } from './schema/automation-yaml-schema'
 import type { AutomationCommand } from '@/shared/contracts/automation'
 import type * as Monaco from 'monaco-editor'
@@ -64,7 +64,7 @@ export function AutomationMonacoYamlEditor({
 
     const initialize = async () => {
       try {
-        registerAutomationMonacoWorkers()
+        registerMonacoWorkers()
         const monaco = await import('monaco-editor')
         if (disposed || !containerRef.current) return
         monacoRef.current = monaco
