@@ -1,38 +1,20 @@
-export type StartCodeOffset = {
-  index: number;
-  length: 3 | 4;
-};
+// Returned NAL units borrow the packet's buffer. Copy any unit retained beyond the packet.
+export function splitAnnexBPacket(bytes: Uint8Array): Uint8Array[] {
+  const nals: Uint8Array[] = [];
+  let start: number | undefined;
+  for (let index = 0; index + 2 < bytes.byteLength; index += 1) {
+    if (bytes[index] !== 0 || bytes[index + 1] !== 0) continue;
+    let length: number;
+    if (bytes[index + 2] === 1) length = 3;
+    else if (bytes[index + 2] === 0 && bytes[index + 3] === 1) length = 4;
+    else continue;
 
-export function concatBytes(
-  parts: Uint8Array<ArrayBufferLike>[],
-): Uint8Array<ArrayBuffer> {
-  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
-  const output = new Uint8Array(total);
-  let offset = 0;
-  for (const part of parts) {
-    output.set(part, offset);
-    offset += part.byteLength;
+    if (start !== undefined && start < index)
+      nals.push(bytes.subarray(start, index));
+    start = index + length;
+    index = start - 1;
   }
-  return output;
-}
-
-export function findStartCodes(
-  bytes: Uint8Array<ArrayBufferLike>,
-): StartCodeOffset[] {
-  const offsets: StartCodeOffset[] = [];
-  for (let i = 0; i < bytes.length - 3; i += 1) {
-    if (bytes[i] === 0 && bytes[i + 1] === 0 && bytes[i + 2] === 1) {
-      offsets.push({ index: i, length: 3 });
-      i += 2;
-    } else if (
-      bytes[i] === 0 &&
-      bytes[i + 1] === 0 &&
-      bytes[i + 2] === 0 &&
-      bytes[i + 3] === 1
-    ) {
-      offsets.push({ index: i, length: 4 });
-      i += 3;
-    }
-  }
-  return offsets;
+  if (start !== undefined && start < bytes.byteLength)
+    nals.push(bytes.subarray(start));
+  return nals;
 }

@@ -1,9 +1,7 @@
-import { concatBytes, findStartCodes } from "./bytes.js";
+import { splitAnnexBPacket } from "./bytes.js";
 import { h264DimensionsFromSps } from "./h264-sps.js";
 
-export function h264CodecFromSps(
-  spsBytes: Uint8Array<ArrayBufferLike>,
-): string {
+function h264CodecFromSps(spsBytes: Uint8Array<ArrayBufferLike>): string {
   if (spsBytes.byteLength < 4) {
     return "avc1.42E01F";
   }
@@ -14,31 +12,6 @@ export function h264CodecFromSps(
       .join("")
       .toUpperCase()
   );
-}
-
-export function h264NalType(nal: Uint8Array<ArrayBufferLike>): number {
-  return nal[0] & 0x1f;
-}
-
-export function splitAnnexBPacket(
-  bytes: Uint8Array<ArrayBufferLike>,
-): Uint8Array<ArrayBufferLike>[] {
-  const starts = findStartCodes(bytes);
-  if (!starts.length) {
-    return [];
-  }
-  const nals: Uint8Array<ArrayBufferLike>[] = [];
-  for (let index = 0; index < starts.length; index += 1) {
-    const current = starts[index]!;
-    const next = starts[index + 1];
-    const start = current.index + current.length;
-    const end = next ? next.index : bytes.byteLength;
-    const nal = bytes.slice(start, end);
-    if (nal.byteLength > 0) {
-      nals.push(nal);
-    }
-  }
-  return nals;
 }
 
 export function codecConfiguration(bytes: Uint8Array<ArrayBufferLike>): {
@@ -52,11 +25,11 @@ export function codecConfiguration(bytes: Uint8Array<ArrayBufferLike>): {
   let sps: Uint8Array<ArrayBufferLike> | null = null;
   let pps: Uint8Array<ArrayBufferLike> | null = null;
   for (const nal of splitAnnexBPacket(bytes)) {
-    const type = h264NalType(nal);
+    const type = nal[0]! & 0x1f;
     if (type === 7) {
-      sps = nal;
+      sps = new Uint8Array(nal);
     } else if (type === 8) {
-      pps = nal;
+      pps = new Uint8Array(nal);
     }
   }
   const codec = sps ? h264CodecFromSps(sps) : "avc1.42E01F";
@@ -72,16 +45,20 @@ export function codecConfiguration(bytes: Uint8Array<ArrayBufferLike>): {
 export function annexBToAvcSample(
   bytes: Uint8Array<ArrayBufferLike>,
 ): Uint8Array<ArrayBuffer> {
-  const parts: Uint8Array<ArrayBufferLike>[] = [];
-  for (const nal of splitAnnexBPacket(bytes)) {
-    const length = new Uint8Array(4);
-    new DataView(length.buffer).setUint32(0, nal.byteLength);
-    parts.push(length, nal);
-  }
-  if (parts.length === 0) {
+  const nals = splitAnnexBPacket(bytes);
+  if (nals.length === 0)
     throw new Error("H.264 access unit is not Annex-B framed.");
+  const output = new Uint8Array(
+    nals.reduce((size, nal) => size + 4 + nal.byteLength, 0),
+  );
+  const view = new DataView(output.buffer);
+  let offset = 0;
+  for (const nal of nals) {
+    view.setUint32(offset, nal.byteLength);
+    output.set(nal, offset + 4);
+    offset += 4 + nal.byteLength;
   }
-  return concatBytes(parts);
+  return output;
 }
 
 export function avcDecoderConfigurationRecord(

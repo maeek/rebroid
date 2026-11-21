@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { FragmentedMp4Muxer } from "../dist/modules/display/viewer/assets/fragmented-mp4.js";
-import { codecConfiguration } from "../dist/modules/display/viewer/assets/h264.js";
+import {
+  annexBToAvcSample,
+  codecConfiguration,
+} from "../dist/modules/display/viewer/assets/h264.js";
 import { inspectScrcpyH264Configuration } from "../dist/modules/scrcpy/scrcpy-h264-profile.js";
 
 const annexB = (...nals) =>
@@ -74,6 +77,23 @@ test("the browser and server builds agree on portrait SPS dimensions and level",
   assert.equal(bootstrap.profileLevelId, configuration.profileLevelId);
   assert.equal(bootstrap.width, configuration.width);
   assert.equal(bootstrap.height, configuration.height);
+});
+
+test("mixed Annex-B start codes omit empty NAL units and keep configuration independent of the packet", () => {
+  const bytes = Uint8Array.from([
+    0, 0, 1, 0x67, 0x42, 0xc0, 0x33,
+    0, 0, 0, 1, 0, 0, 1, 0x68, 0x20,
+    0, 0, 1,
+  ]);
+  const config = codecConfiguration(bytes);
+  const sample = annexBToAvcSample(bytes);
+  bytes.fill(0);
+  assert.deepEqual([...sample], [
+    0, 0, 0, 4, 0x67, 0x42, 0xc0, 0x33,
+    0, 0, 0, 2, 0x68, 0x20,
+  ]);
+  assert.deepEqual([...config.sps], [0x67, 0x42, 0xc0, 0x33]);
+  assert.deepEqual([...config.pps], [0x68, 0x20]);
 });
 
 test("a truncated SPS preserves the codec level without fabricating dimensions", () => {

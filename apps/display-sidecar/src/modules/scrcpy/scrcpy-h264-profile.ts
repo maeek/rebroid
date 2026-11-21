@@ -1,3 +1,4 @@
+import { splitAnnexBPacket } from "../display/viewer/src/bytes";
 import { h264DimensionsFromSps } from "../display/viewer/src/h264-sps";
 import type { ScrcpyPacket } from "./scrcpy-packet-parser";
 
@@ -30,31 +31,12 @@ const h264MaximumMacroblocksPerSecond = new Map<number, number>([
   [62, 16_711_680],
 ]);
 
-function annexBNals(bytes: Uint8Array): Uint8Array[] {
-  const starts: Array<{ index: number; length: number }> = [];
-  for (let index = 0; index + 3 < bytes.byteLength; index += 1) {
-    if (bytes[index] !== 0 || bytes[index + 1] !== 0) {
-      continue;
-    }
-    if (bytes[index + 2] === 1) {
-      starts.push({ index, length: 3 });
-      index += 2;
-    } else if (bytes[index + 2] === 0 && bytes[index + 3] === 1) {
-      starts.push({ index, length: 4 });
-      index += 3;
-    }
-  }
-  return starts.flatMap((start, index) => {
-    const end = starts[index + 1]?.index ?? bytes.byteLength;
-    const nal = bytes.subarray(start.index + start.length, end);
-    return nal.byteLength > 0 ? [nal] : [];
-  });
-}
-
 export function inspectScrcpyH264Configuration(
   packet: Pick<ScrcpyPacket, "data">,
 ): ScrcpyH264Configuration {
-  const sps = annexBNals(packet.data).find((nal) => (nal[0]! & 0x1f) === 7);
+  const sps = splitAnnexBPacket(packet.data).find(
+    (nal) => (nal[0]! & 0x1f) === 7,
+  );
   if (!sps || sps.byteLength < 4) {
     throw new Error("H.264 bootstrap configuration is missing SPS");
   }
