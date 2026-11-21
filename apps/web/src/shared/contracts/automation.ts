@@ -42,16 +42,8 @@ export interface AutomationsGridQuery {
   sort?: string
 }
 
-export interface AutomationTriggersGridQuery {
-  page?: number
-  pageSize?: number
-  q?: string
-  tag?: string
-  targetApplicationId?: string
+export interface AutomationTriggersGridQuery extends AutomationsGridQuery {
   enabled?: 'true' | 'false'
-  status?: AutomationLastStatus
-  lastRun?: AutomationsGridLastRunFilter
-  sort?: string
 }
 
 export interface AutomationTriggersGridPage {

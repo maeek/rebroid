@@ -5,12 +5,7 @@ import { FormField } from '@/components/ui/form-field'
 import { MutationButton } from '@/components/ui/mutation-button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DataGridWorkspace } from '@/shared/ui/data-grid/data-grid-workspace'
-import {
-  AutomationLastRunFilter,
-  AutomationLastStatusFilter,
-  AutomationTagFilter,
-  AutomationTargetApplicationFilter
-} from '../shared/automation-grid-filter-controls'
+import { AutomationGridFilterControls, automationGridFilterSummary } from '../shared/automation-grid-filter-controls'
 import { allFilterValue } from '../shared/grid-query-utils'
 import type { AndroidApplication } from '@/shared/contracts/application'
 import type { AutomationTriggersGridQuery } from '@/shared/contracts/automation'
@@ -52,53 +47,7 @@ export const AutomationTriggersToolbar = ({
     searchPlaceholder='Search triggers'
     onSearchChange={onSearchChange}
     onSearch={onSearchSubmit}
-    activeFilters={[
-      ...(gridQuery.tag
-        ? [{ id: 'tag', label: 'Tag', value: gridQuery.tag, onRemove: () => onUpdateGrid({ tag: undefined, page: 1 }) }]
-        : []),
-      ...(gridQuery.targetApplicationId
-        ? [
-            {
-              id: 'target',
-              label: 'Target',
-              value:
-                applications.find(app => app.id === gridQuery.targetApplicationId)?.name ??
-                gridQuery.targetApplicationId,
-              onRemove: () => onUpdateGrid({ targetApplicationId: undefined, page: 1 })
-            }
-          ]
-        : []),
-      ...(gridQuery.enabled
-        ? [
-            {
-              id: 'enabled',
-              label: 'State',
-              value: gridQuery.enabled === 'true' ? 'Enabled' : 'Disabled',
-              onRemove: () => onUpdateGrid({ enabled: undefined, page: 1 })
-            }
-          ]
-        : []),
-      ...(gridQuery.status
-        ? [
-            {
-              id: 'status',
-              label: 'Status',
-              value: gridQuery.status,
-              onRemove: () => onUpdateGrid({ status: undefined, page: 1 })
-            }
-          ]
-        : []),
-      ...(gridQuery.lastRun
-        ? [
-            {
-              id: 'lastRun',
-              label: 'Last run',
-              value: gridQuery.lastRun,
-              onRemove: () => onUpdateGrid({ lastRun: undefined, page: 1 })
-            }
-          ]
-        : [])
-    ]}
+    activeFilters={automationGridFilterSummary({ applications, gridQuery, onUpdateGrid })}
     onResetFilters={() =>
       onUpdateGrid({
         tag: undefined,
@@ -144,17 +93,12 @@ export const AutomationTriggersToolbar = ({
       </>
     }
     filters={
-      <>
-        <AutomationTagFilter
-          tags={tags}
-          value={gridQuery.tag}
-          onChange={tag => onUpdateGrid({ tag, page: 1 })}
-        />
-        <AutomationTargetApplicationFilter
-          applications={applications}
-          value={gridQuery.targetApplicationId}
-          onChange={targetApplicationId => onUpdateGrid({ targetApplicationId, page: 1 })}
-        />
+      <AutomationGridFilterControls
+        applications={applications}
+        gridQuery={gridQuery}
+        onUpdateGrid={onUpdateGrid}
+        tags={tags}
+      >
         <FormField
           label='State'
           layout='vertical'
@@ -178,15 +122,7 @@ export const AutomationTriggersToolbar = ({
             </SelectContent>
           </Select>
         </FormField>
-        <AutomationLastStatusFilter
-          value={gridQuery.status}
-          onChange={status => onUpdateGrid({ status, page: 1 })}
-        />
-        <AutomationLastRunFilter
-          value={gridQuery.lastRun}
-          onChange={lastRun => onUpdateGrid({ lastRun, page: 1 })}
-        />
-      </>
+      </AutomationGridFilterControls>
     }
   >
     {children}
