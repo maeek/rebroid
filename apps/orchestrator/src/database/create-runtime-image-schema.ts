@@ -1,5 +1,43 @@
 import { QueryRunner, Table } from 'typeorm';
 
+const buildRuntimeColumns = [
+  {
+    name: 'runtimeKind',
+    type: 'varchar',
+    isNullable: false,
+    default: "'redroid'",
+  },
+  { name: 'androidVersion', type: 'text', isNullable: true },
+  { name: 'architecture', type: 'text', isNullable: true },
+  {
+    name: 'gmsMode',
+    type: 'varchar',
+    isNullable: false,
+    default: "'microg'",
+  },
+  {
+    name: 'signatureSpoofing',
+    type: 'varchar',
+    isNullable: false,
+    default: "'external_required'",
+  },
+];
+
+const timestamps = [
+  {
+    name: 'createdAt',
+    type: 'datetime',
+    isNullable: false,
+    default: "datetime('now')",
+  },
+  {
+    name: 'updatedAt',
+    type: 'datetime',
+    isNullable: false,
+    default: "datetime('now')",
+  },
+];
+
 export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
   await queryRunner.createTable(
     new Table({
@@ -32,18 +70,7 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
           isNullable: false,
           default: "'not_applicable'",
         },
-        {
-          name: 'createdAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
-        {
-          name: 'updatedAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
+        ...timestamps,
       ],
     }),
   );
@@ -76,26 +103,7 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
         { name: 'name', type: 'varchar', isNullable: false },
         { name: 'targetImage', type: 'varchar', isNullable: false },
         { name: 'baseImage', type: 'varchar', isNullable: false },
-        {
-          name: 'runtimeKind',
-          type: 'varchar',
-          isNullable: false,
-          default: "'redroid'",
-        },
-        { name: 'androidVersion', type: 'text', isNullable: true },
-        { name: 'architecture', type: 'text', isNullable: true },
-        {
-          name: 'gmsMode',
-          type: 'varchar',
-          isNullable: false,
-          default: "'microg'",
-        },
-        {
-          name: 'signatureSpoofing',
-          type: 'varchar',
-          isNullable: false,
-          default: "'external_required'",
-        },
+        ...buildRuntimeColumns,
         { name: 'dockerfile', type: 'text', isNullable: false },
         {
           name: 'contextFileIdsJson',
@@ -103,18 +111,7 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
           isNullable: false,
           default: "'[]'",
         },
-        {
-          name: 'createdAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
-        {
-          name: 'updatedAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
+        ...timestamps,
       ],
     }),
   );
@@ -145,26 +142,7 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
           isNullable: false,
           default: "'queued'",
         },
-        {
-          name: 'runtimeKind',
-          type: 'varchar',
-          isNullable: false,
-          default: "'redroid'",
-        },
-        { name: 'androidVersion', type: 'text', isNullable: true },
-        { name: 'architecture', type: 'text', isNullable: true },
-        {
-          name: 'gmsMode',
-          type: 'varchar',
-          isNullable: false,
-          default: "'microg'",
-        },
-        {
-          name: 'signatureSpoofing',
-          type: 'varchar',
-          isNullable: false,
-          default: "'external_required'",
-        },
+        ...buildRuntimeColumns,
         { name: 'resolvedBaseDigest', type: 'text', isNullable: true },
         { name: 'mindTheGappsRevision', type: 'text', isNullable: true },
         { name: 'packageSha256', type: 'text', isNullable: true },
@@ -197,18 +175,7 @@ export const createRuntimeImageSchema = async (queryRunner: QueryRunner) => {
         { name: 'error', type: 'text', isNullable: true },
         { name: 'startedAt', type: 'datetime', isNullable: true },
         { name: 'finishedAt', type: 'datetime', isNullable: true },
-        {
-          name: 'createdAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
-        {
-          name: 'updatedAt',
-          type: 'datetime',
-          isNullable: false,
-          default: "datetime('now')",
-        },
+        ...timestamps,
       ],
     }),
   );

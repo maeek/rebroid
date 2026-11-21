@@ -1,16 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-import type {
-  RuntimeImageGmsMode,
-  RuntimeImageKind,
-  RuntimeImageSignatureSpoofing,
-} from '@rebroid/android-application-core/redroid-runtime';
+import { Column, Entity } from 'typeorm';
 import {
   containerImageBuildStatuses,
   type ContainerImageBuildStatus,
@@ -23,24 +12,13 @@ import {
   type ContainerImageBuildKind,
   type ContainerImageGappsBuildPhase,
 } from './container-image-gapps-build';
+import { ContainerImageBuildDefinition } from './container-image-build-definition';
 
 @Entity({ name: 'container_image_build_jobs' })
-export class ContainerImageBuildJob {
-  @ApiProperty()
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class ContainerImageBuildJob extends ContainerImageBuildDefinition {
   @ApiPropertyOptional({ nullable: true })
   @Column({ type: 'text', nullable: true })
   recipeId!: string | null;
-
-  @ApiProperty({ example: 'local/redroid-microg:14' })
-  @Column()
-  targetImage!: string;
-
-  @ApiProperty({ example: 'redroid/redroid:14.0.0-latest' })
-  @Column()
-  baseImage!: string;
 
   @ApiProperty({ enum: containerImageBuildStatuses })
   @Column({ default: 'queued' })
@@ -53,33 +31,6 @@ export class ContainerImageBuildJob {
   @ApiProperty({ enum: containerImageGappsBuildPhases })
   @Column({ default: 'queued' })
   phase!: ContainerImageGappsBuildPhase;
-
-  @ApiProperty({ enum: ['redroid', 'generic'] })
-  @Column({ default: 'redroid' })
-  runtimeKind!: RuntimeImageKind;
-
-  @ApiPropertyOptional({ type: String, example: '14', nullable: true })
-  @Column({ type: 'text', nullable: true })
-  androidVersion!: string | null;
-
-  @ApiPropertyOptional({ type: String, example: 'amd64', nullable: true })
-  @Column({ type: 'text', nullable: true })
-  architecture!: string | null;
-
-  @ApiProperty({ enum: ['none', 'microg', 'gapps'] })
-  @Column({ default: 'microg' })
-  gmsMode!: RuntimeImageGmsMode;
-
-  @ApiProperty({
-    enum: [
-      'not_applicable',
-      'external_required',
-      'present_unverified',
-      'verified',
-    ],
-  })
-  @Column({ default: 'external_required' })
-  signatureSpoofing!: RuntimeImageSignatureSpoofing;
 
   @ApiPropertyOptional({ type: String, nullable: true })
   @Column({ type: 'text', nullable: true })
@@ -101,14 +52,6 @@ export class ContainerImageBuildJob {
   @Column({ type: 'simple-json', default: '{}' })
   validationResults!: Record<string, unknown>;
 
-  @ApiProperty()
-  @Column({ type: 'text' })
-  dockerfile!: string;
-
-  @ApiProperty()
-  @Column({ type: 'text', default: '[]' })
-  contextFileIdsJson!: string;
-
   @ApiProperty({ example: 'Step 1/4 : FROM redroid/redroid:14.0.0-latest' })
   @Column({ type: 'text', default: '' })
   logTail!: string;
@@ -128,12 +71,4 @@ export class ContainerImageBuildJob {
   @ApiPropertyOptional({ type: Date, nullable: true })
   @Column({ type: 'datetime', nullable: true })
   finishedAt!: Date | null;
-
-  @ApiProperty()
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @ApiProperty()
-  @UpdateDateColumn()
-  updatedAt!: Date;
 }
