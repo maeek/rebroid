@@ -5,14 +5,11 @@ export type SavedApplicationProfile = {
   name: string
 }
 
-const keyFor = (appId: string) => `rebroid.app-profiles.${appId}`
-
-export const loadSavedApplicationProfiles = (
-  _appId: string,
-  current?: SavedApplicationProfile,
+export const savedApplicationProfiles = (
+  current: SavedApplicationProfile,
   serverProfiles: SavedApplicationProfile[] = []
 ) => {
-  const profiles = current ? [current, ...serverProfiles] : serverProfiles
+  const profiles = [current, ...serverProfiles]
   const seen = new Set<string>()
   return profiles
     .filter(
@@ -34,7 +31,9 @@ export const rememberApplicationProfile = (appId: string, profile: SavedApplicat
     return
   }
 
-  const name = profile.name.trim() || 'default'
-  const profiles = loadSavedApplicationProfiles(appId, { mode: profile.mode, name })
-  window.localStorage.setItem(keyFor(appId), JSON.stringify(profiles.slice(0, 12)))
+  try {
+    window.localStorage.setItem(`rebroid.app-profiles.${appId}`, JSON.stringify([profile]))
+  } catch {
+    // The server already accepted the start even if browser storage is unavailable.
+  }
 }

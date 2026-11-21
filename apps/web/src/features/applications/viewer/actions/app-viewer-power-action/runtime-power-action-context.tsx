@@ -4,10 +4,7 @@ import { createContext, useContext, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useApplicationViewerContext } from '@/features/applications/detail/application-viewer-context'
 import { mapAndroidApplicationToAppDefinition } from '@/features/applications/domain/app-mapper'
-import {
-  getProfileDefaults,
-  usePowerActionProfileState
-} from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
+import { usePowerActionProfileState } from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
 import { usePowerActionRuntimeHandlers } from '@/features/applications/viewer/actions/app-viewer-power-action/runtime/runtime-actions'
 import {
   getCanRestart,
@@ -16,13 +13,9 @@ import {
 import { useApplicationActionRunner } from '@/hooks/use-application-action-runner'
 import { toast } from '@/hooks/use-toast'
 import { deleteApplicationProfileAction } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
-import { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
 import { hasPermission } from '@/shared/permissions/permissions'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
-import type {
-  RuntimeMenuAction,
-  SavedApplicationProfiles
-} from '@/features/applications/viewer/actions/app-viewer-power-action/types'
+import type { RuntimeMenuAction } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
 
 type RuntimePowerActionContextValue = {
@@ -46,7 +39,7 @@ type RuntimePowerActionContextValue = {
   profileName: string
   recreateDialogOpen: boolean
   restartDialogOpen: boolean
-  savedProfiles: SavedApplicationProfiles
+  savedProfiles: AppDefinition['savedProfiles']
   stopDialogOpen: boolean
   onModeChange: (mode: ApplicationProfileMode) => void
   onNameChange: (name: string) => void
@@ -74,7 +67,7 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
   const [startDialogOpen, setStartDialogOpen] = useState(false)
   const [stopDialogOpen, setStopDialogOpen] = useState(false)
   const [restartDialogOpen, setRestartDialogOpen] = useState(false)
-  const { profileMode, profileName, savedProfiles, setProfileName, setSavedProfiles, handleProfileModeChange } =
+  const { profileMode, profileName, savedProfiles, setProfileName, handleProfileModeChange } =
     usePowerActionProfileState(app, startDialogOpen)
   const runtimeHandlers = usePowerActionRuntimeHandlers({
     app,
@@ -86,7 +79,6 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
     profileName,
     runAction,
     setRestartDialogOpen,
-    setSavedProfiles,
     setStartDialogOpen,
     setStopDialogOpen
   })
@@ -112,7 +104,6 @@ export const RuntimePowerActionProvider = ({ children }: { children: ReactNode }
         icon: current?.icon ?? updated.icon,
         ownerDisplayName: current?.ownerDisplayName ?? updated.ownerDisplayName
       }))
-      setSavedProfiles(loadSavedApplicationProfiles(updated.id, getProfileDefaults(updated), updated.savedProfiles))
       if (profileMode === 'persistent' && profileName.trim() === deletedProfileName.trim()) {
         setProfileName('default')
       }

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
-import type { loadSavedApplicationProfiles } from '@/shared/model/application-profile/profile-history'
 
 export type RuntimeActionPhase = 'starting' | 'stopping' | 'restarting' | 'recreating' | null
 
@@ -17,10 +16,6 @@ export type RuntimeActionRunner = (action: () => Promise<unknown>, title: string
 
 export type SetActionPhase = (phase: RuntimeActionPhase) => void
 
-export type SavedApplicationProfiles = ReturnType<typeof loadSavedApplicationProfiles>
-
-export type SetSavedProfiles = (profiles: SavedApplicationProfiles) => void
-
 export type PowerActionRuntimeHandlersOptions = {
   app?: AppDefinition
   canRestart: boolean
@@ -31,7 +26,6 @@ export type PowerActionRuntimeHandlersOptions = {
   profileName: string
   runAction: RuntimeActionRunner
   setRestartDialogOpen: (open: boolean) => void
-  setSavedProfiles: SetSavedProfiles
   setStartDialogOpen: (open: boolean) => void
   setStopDialogOpen: (open: boolean) => void
 }

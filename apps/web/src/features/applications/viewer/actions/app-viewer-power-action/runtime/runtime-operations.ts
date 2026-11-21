@@ -1,20 +1,16 @@
 'use client'
 
 import {
-  getStartedProfileOptions,
-  rememberStartedProfile
-} from '@/features/applications/viewer/actions/app-viewer-power-action/profile/profile-state'
-import {
   requestApplicationStartAction,
   requestApplicationStopAction
 } from '@/server/orchestrator/applications/actions/lifecycle/lifecycle-actions'
 import { unwrapActionResult } from '@/shared/actions/action-result'
+import { rememberApplicationProfile } from '@/shared/model/application-profile/profile-history'
 import { notifyRecentAppsUpdated } from '@/shared/model/recent-apps/recent-apps'
 import type { AppDefinition } from '@/features/applications/domain/app-definition'
 import type {
   RuntimeActionRunner,
-  SetActionPhase,
-  SetSavedProfiles
+  SetActionPhase
 } from '@/features/applications/viewer/actions/app-viewer-power-action/types'
 import type { ApplicationProfileMode } from '@/shared/contracts/application'
 
@@ -22,14 +18,12 @@ export const startAppRuntime = async ({
   app,
   options,
   runAction,
-  setActionPhase,
-  setSavedProfiles
+  setActionPhase
 }: {
   app?: AppDefinition
   options?: { profileMode?: ApplicationProfileMode; profileName?: string }
   runAction: RuntimeActionRunner
   setActionPhase: SetActionPhase
-  setSavedProfiles: SetSavedProfiles
 }) => {
   if (!app) {
     return false
@@ -42,10 +36,8 @@ export const startAppRuntime = async ({
   )
   setActionPhase(null)
 
-  const startedProfile = getStartedProfileOptions(started, options)
-
-  if (startedProfile) {
-    rememberStartedProfile(app.id, startedProfile, setSavedProfiles)
+  if (started && options?.profileMode) {
+    rememberApplicationProfile(app.id, { mode: options.profileMode, name: options.profileName?.trim() || 'default' })
   }
 
   return started

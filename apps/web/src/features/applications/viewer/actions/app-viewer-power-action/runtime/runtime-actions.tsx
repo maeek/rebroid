@@ -28,7 +28,6 @@ export const usePowerActionRuntimeHandlers = ({
   profileName,
   runAction,
   setRestartDialogOpen,
-  setSavedProfiles,
   setStartDialogOpen,
   setStopDialogOpen
 }: PowerActionRuntimeHandlersOptions) => {
@@ -36,7 +35,7 @@ export const usePowerActionRuntimeHandlers = ({
   const [recreateDialogOpen, setRecreateDialogOpen] = useState(false)
 
   const handleStart = (options?: { profileMode?: ApplicationProfileMode; profileName?: string }) =>
-    startAppRuntime({ app, options, runAction, setActionPhase, setSavedProfiles })
+    startAppRuntime({ app, options, runAction, setActionPhase })
 
   const handleProfileStart = () => {
     void handleStart({
