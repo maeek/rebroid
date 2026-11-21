@@ -8,13 +8,13 @@ export type MultipartUploadRequest = Readable & {
   on: IncomingMessage['on'];
 };
 
-export const isMultipartUpload = (headers: IncomingHttpHeaders) => {
+const isMultipartUpload = (headers: IncomingHttpHeaders) => {
   const contentType = headers['content-type'];
   const value = Array.isArray(contentType) ? contentType[0] : contentType;
   return value?.toLowerCase().startsWith('multipart/form-data') ?? false;
 };
 
-export const assertMultipartUpload = (request: MultipartUploadRequest) => {
+const assertMultipartUpload = (request: MultipartUploadRequest) => {
   if (!isMultipartUpload(request.headers)) {
     throw new ConflictException('A multipart file upload is required.');
   }
@@ -46,7 +46,8 @@ export const consumeSingleFileUpload = <Result>({
   assertMultipartUpload(request);
   const parser = Busboy({
     headers: request.headers,
-    limits: { files: 1, fileSize: maxBytes },
+    // Busboy emits its limit event on equality. The configured maximum is inclusive.
+    limits: { files: 1, fileSize: maxBytes + 1 },
   });
 
   return new Promise<Result>((resolve, reject) => {
@@ -60,6 +61,7 @@ export const consumeSingleFileUpload = <Result>({
     const fail = (error: unknown) => finish(() => reject(error));
 
     parser.on('file', (receivedFieldName, stream, info) => {
+      stream.on('error', fail);
       if (receivedFieldName !== fieldName || upload) {
         stream.resume();
         return;

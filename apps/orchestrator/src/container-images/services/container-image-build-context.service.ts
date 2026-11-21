@@ -111,7 +111,7 @@ export class ContainerImageBuildContextService {
         );
       }
       const sha256 = hash.digest('hex');
-      return this.files.save(
+      return await this.files.save(
         this.files.create({
           originalName,
           contextPath,
