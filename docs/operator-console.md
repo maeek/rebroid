@@ -60,7 +60,8 @@ to pull from another registry. Both options use anonymous access. Successful pul
 managed image inventory and are recorded in the audit log.
 
 On an image’s detail page, **Pull again** pulls its first listed tag or, for an untagged image,
-its first registry digest. The header shows **Pulling image…** while Docker works. On success,
+its first registry digest. Both pull actions show when Docker is waiting, contacting the registry,
+transferring layers, or registering the image locally. On success,
 the page opens the pulled reference so it shows the image the tag now points to. A local image
 with no registry tag or digest cannot be pulled again.
 
@@ -134,8 +135,11 @@ broken references before saving or exporting from Visual. You can open YAML to r
 references. In YAML, wait for validation before saving, exporting, or applying edited text to Visual.
 
 To run a saved workflow on a device, open the app's **Workflows** view and select **Run workflow**.
+The accepted run opens immediately. **Summary** shows the queue, Android preparation, and the
+current step as the run progresses. **Events** shows the recorded timeline for the same run.
 For recurring runs, open **Triggers → New trigger**, then choose a workflow, target app, profile,
 and schedule. Enable **Start app if needed** when the trigger has permission to start a stopped app.
+Using **Run now** shows queueing in that trigger's row, then links to the accepted run.
 
 Schedules saved with an advanced cron expression show that expression in workflow trigger and
 maintenance task editors. Edits to other fields preserve it. Use **Replace schedule** to choose

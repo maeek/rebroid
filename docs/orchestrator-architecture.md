@@ -243,6 +243,9 @@ ready runtime. The workflow captures Docker's start timestamp when it attaches. 
 timestamp, the container ID, and the stored profile before admitting each device command and AI capture.
 Runtime changes fence new admissions and drain work in progress. Cancellation stops new workflow
 admissions and keeps the target reserved until admitted work settles, including in-flight ADB setup.
+The runner retries the guarded cancellation write after admitted work drains. If the request's
+attempts fail, the runner keeps retrying in the background until the run is terminal or the
+orchestrator shuts down.
 Docker inventory Stop and Remove use the same gate for managed Android containers.
 An AI deadline can finish the decision while the workflow waits for a dispatched command to settle.
 Workflow CIDR additions and removals use the latest stored allowlist inside the Android policy gate.
@@ -251,6 +254,8 @@ These are correctness guarantees:
 
 - Only expected-status transitions may update a run; terminal state is never overwritten.
 - One target cannot have competing queued or running automation runs.
+- The queued reservation, its queued event and any initial AI prompt commit together.
+  A failed admission write rolls back the reservation. Step and AI events require a running row.
 - Event sequence allocation and insertion happen in the same transaction, backed by a unique run/sequence index.
   The Running transition and terminal transitions each commit with their corresponding event.
   Subscribers receive those events after commit.
@@ -305,9 +310,14 @@ The Docker image runtime owns build stream errors, progress, and cancellation fo
 and display sidecar image builds. Each caller still owns its context, validation, and job state.
 The Docker worker adapter holds the GApps slot through cancellation and bounded worker cleanup.
 APK storage serializes publication, catalog writes, and orphan removal for each content hash.
+APK deletion commits the catalog change before unlinking shared bytes. Maintenance can retry
+orphaned file cleanup.
+Synchronous and asynchronous image pulls share admission and completion for the resolved image.
 
 Settings persistence normalizes defaults; separate services own provider CRUD, connectivity checks,
 and downloads. Transport protocol stays independent from detected server flavor.
+Model downloads publish catalog entries only after the provider stream ends with a success event and a
+check that the provider still uses the endpoint that served the download.
 Runtime Restore resets only the default image, registry, inactivity timeout, APK upload limit, and
 optional service connections. Settings editors use the saved values returned by their writes.
 Feature Restore uses the same deployment-aware defaults as first boot.
@@ -316,6 +326,9 @@ Maintenance schedules reserve execution before loading the task. Completion upda
 recalculates the next run against the latest schedule. Configuration edits and removal can complete
 during execution, and a late result preserves those changes. Persistence failures release the execution
 reservation so a later manual run or cron tick can retry.
+The scheduler registers edits from the committed task snapshot, keeps an active timer when the
+schedule is unchanged, ignores ticks from superseded registrations, and unregisters a removed task
+after its deletion commits.
 
 For local commands and verification, use the [contribution guide](../CONTRIBUTING.md).
 API changes require regenerated contracts through `pnpm openapi:generate`.

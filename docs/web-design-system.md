@@ -8,14 +8,14 @@ they do not define their own visual recipes.
 
 Palette variables are private to `apps/web/src/app/globals.css`. Feature code uses semantic utilities.
 
-| Intent          | Tokens                                                                            |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Canvas and text | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.              |
-| Surfaces        | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-menu`, `surface-border`, `surface-navigation`. |
-| Floating controls | `surface-floating-control`, `shadow-floating-control`. |
-| Controls        | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.    |
-| Selection       | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                   |
-| Feedback        | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.              |
+| Intent            | Tokens                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Canvas and text   | `background`, `foreground`, `foreground-muted`, `foreground-subtle`.                                                    |
+| Surfaces          | `surface`, `surface-panel`, `surface-band`, `surface-elevated`, `surface-menu`, `surface-border`, `surface-navigation`. |
+| Floating controls | `surface-floating-control`, `shadow-floating-control`.                                                                  |
+| Controls          | `control`, `control-hover`, `control-border`, `control-border-strong`, `ring`.                                          |
+| Selection         | `primary`, `primary-foreground`, `accent`, `accent-foreground`.                                                         |
+| Feedback          | `info`, `success`, `warning`, `danger`, and matching `*-foreground`.                                                    |
 
 Literal colors and raw palette utilities are reserved for brand artwork, media/canvas rendering,
 chart series, and user-supplied tags. Use semantic radii and shadows:
@@ -26,7 +26,7 @@ chart series, and user-supplied tags. Use semantic radii and shadows:
 | Cards, sections               | `rounded-panel` — 0.875rem.    |
 | Data table header bands       | Control radius; no outer card. |
 | Dialogs, sheets, popovers     | `rounded-overlay` — 1rem.      |
-| Dropdown and context menus   | `rounded-menu` — 0.625rem.      |
+| Dropdown and context menus    | `rounded-menu` — 0.625rem.     |
 | Branded/immersive surfaces    | `rounded-feature` — 1.25rem.   |
 | Avatars, dots, genuine pills  | `rounded-full`.                |
 
@@ -63,7 +63,7 @@ UI text is at least `text-xs`.
 | Family             | Composition                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------ |
 | Standard protected | `StandardPage`, one `PageHeader`, and `PageContent`; add `PageAside` for split workspaces. |
-| Authentication     | `AuthPage` uses the console wordmark and theme controls. `AuthPanel` contains the form. |
+| Authentication     | `AuthPage` uses the console wordmark and theme controls. `AuthPanel` contains the form.    |
 | Immersive viewer   | `ImmersiveViewerPage` owns full-bleed media and floating controls.                         |
 
 The desktop sign-in page sits toward the top of the viewport, with a product introduction and
@@ -73,6 +73,8 @@ a single column.
 
 The protected layout owns sidebar offset, `main`, width, and outer gutters. Standard rhythm uses
 16 px mobile/24 px desktop gutters, 24 px primary gaps, and a 120 rem maximum width.
+Render the authenticated shell and feature-independent destinations while the initial feature manifest loads.
+Show feature-gated destinations after their availability is confirmed.
 The desktop sidebar sits in a rounded panel inset 8 px from the window’s top, left, and bottom.
 Set `surface-navigation` between the page background and editor panels, without a perimeter border. Keep the
 brand and sidebar toggle in a single row above the scrollable links. In the icon rail, use a right
@@ -97,7 +99,14 @@ More opens the navigation drawer, with the Rebroid wordmark above the scrollable
 health labels. Place the Account entry at the top, before the navigation links. Open the account view
 in the same drawer with a Back button, the signed-in identity, direct Preferences and Security links,
 and a two-column Theme picker with touch targets at least 44 px tall. Keep Log out below the theme
-choices. The drawer has a swipe-to-dismiss grip and an explicit close button.
+choices. The drawer has a swipe-to-dismiss grip and an explicit close button. The signed-in shell
+loads recent apps before More opens. A drawer opened before that read completes reserves its recent
+app rows until dismissal so later links stay in place. When a drawer link opens a destination, show
+its pending name above the dock until the navigation commits. On mobile, browser Back dismisses
+the top modal, drawer, or sheet before leaving the page. Within More it returns from Account to
+More, and within an app it returns from Device to the current section. Keep the usual focus
+restoration and pending-operation dismissal rules. Reuse that same Back behavior for dirty editors
+so Back first opens their discard confirmation.
 The shell reserves space for the bottom bar and the bottom safe area.
 Direct links keep their accessible names
 and show labels on hover and keyboard focus. Administration groups start expanded in the desktop sidebar.
@@ -223,6 +232,9 @@ or hover. Send and Stop share a circular button beside the model selector. Start
 the same button position. Acknowledgements reflect accepted submissions or explicitly queued prompts.
 Failed submissions restore an empty composer without overwriting a newer draft. Validation errors may
 expand naturally; do not add empty message rows to forms or composers.
+Show an explicitly submitted message in the transcript while history loads. Dispatch it after history
+is available. If history restores an active task, retain the prompt in order for Run next task.
+Keep pending messages visible on a failed history read and offer Retry history.
 
 Resource navigation and resource-style tabs glide their 24 px underline over 180 ms, with a
 160 ms color change. Keep tab dimensions and content rendering immediate. The first selection,
@@ -308,6 +320,9 @@ helps the task. Page-form actions belong in the header; dialog actions in the fo
 inputs and canvas/media surfaces are the native-control exceptions.
 
 ## Grids and loading
+
+Routed Docker inventories and Audit Log keep their rows and focus while a new query loads.
+Use the workspace's single live status until the results commit.
 
 Every interactive `DataGrid` uses `DataGridWorkspace` for search, active-filter chips, bulk actions,
 and optional structured filtering. Use filter sheets only for page-level datasets with
@@ -419,6 +434,8 @@ Touch users can long-press an app tile and choose Select app. The tile’s visib
 offers the same command for keyboard and pointer users. Selection replaces search controls
 with the count, bulk actions, and Done without shifting the tiles. Keep the Apps selection
 bar unboxed so its count aligns with the gallery.
+Bulk Stop and Delete keep the confirmed names and count visible while requests settle. Report
+accepted, pending, and failed requests in the dialog. App status reflects lifecycle progress.
 
 Keep the viewport at its natural scale. Shared buttons, tabs, text and selection fields, menu
 options, and the viewer control rail use a 44 CSS px minimum touch target for coarse primary pointers. Icons retain
@@ -483,8 +500,9 @@ narrow sections and put them side by side when both have room. Support dropping 
 keep the picker available for touch and keyboard. On Create app, keep the selected APK and icon
 when a replacement fails, and show the error by the affected control. Keep upload and reuse actions
 at the trailing edge of the APK preview and move them below the preview when space is limited.
-**Saved APKs** opens the account's saved APKs in a searchable dialog. Confirm the choice before
-applying it.
+**Saved APKs** opens the account's saved APKs in a searchable dialog. Saved APK and Run workflow
+pickers retain their latest authorized options while refreshing. Show a retryable list error alongside
+any retained options and check access again when applying a choice.
 
 The ReDroid display preview uses the selected screen's aspect ratio and shows dimensions and density
 beside it. It sits below the controls in narrow sections and grows into its own column beside the
@@ -554,6 +572,8 @@ import, export, and deletion in the workflow action menu at every width. Workflo
 centered dialog with Name, Tags, and Description in Visual editor mode. Closing the dialog returns
 focus to the menu button. In Run history, the workflow breadcrumb links to the editor. Preserve
 unsaved-change guards when leaving the editor and compare the draft with the last confirmed save.
+A draft handed off from the device agent opens in YAML immediately. Keep it available for the
+same account in that browser tab through validation errors, with a retry in the YAML footer.
 In Visual editor mode, the workflow heading supports inline renaming and keeps heading typography.
 Apply the rename to the draft on Enter or blur. Escape cancels.
 
@@ -564,7 +584,9 @@ explicit step selection and restore focus on dismissal. Allow moves that break s
 each affected step, and identify the unavailable outputs in its inspector. Disable Save and Export
 until the references are fixed. Use the same editor header and workspace for loading states. Workflow YAML
 fills the available width and viewport height below the toolbar, accounting for the mobile navigation
-and safe areas. It uses the page background without a wrapper panel or border.
+and safe areas. It uses the page background without a wrapper panel or border. Save and Visual editor
+validate the current text on the first click. An invalid draft stays in YAML with focus on its
+validation error. The background check controls Export availability.
 
 Show the action's effect or the first condition with its comparison in the outline. Give each
 branch one Add step control and show its drop cue during a valid drag. In the inspector, lead
@@ -609,7 +631,8 @@ and uses MultiSelectCombobox for uploaded files. Keep manual uploads behind a fl
 using FileUploadField, a relative context path, and visible progress. Deduplicate missing paths into one
 build-blocking notice and group warnings separately. Preserve all existing validation and upload bounds.
 
-Show the current build phase and completed steps without implying elapsed-time percentages. Only a real
+Show the current build phase and completed steps without implying elapsed-time percentages.
+During build submission, show uploaded context files in Build status until the build job is accepted. Only a real
 build renders logs, using LogsConsole with a stable output height and an optional follow-output control.
 Terminal results expose the built image and next actions. Prevent duplicate starts and overlapping polling;
 late running responses must never replace terminal or newly selected jobs. Default-image mutations stay scoped
@@ -681,8 +704,10 @@ The authorized clipboard dialog belongs in the display toolbar, with explicit re
 The embedded Files view opens in Downloads and uses one folder grid with visible location shortcuts, ancestor
 breadcrumbs, current-folder search, and column sorting. Upload and New folder act on the current folder.
 The upload queue uses a collapsible panel with flat rows and shows progress only during an upload.
+A download marks its file as preparing in the list and details drawer. Keep other file actions available.
 File details open in a drawer so the grid keeps its width. Log source choices size to their labels.
 
+Create app opens the app as soon as it has a confirmed app ID. Save the initial icon independently and report its outcome.
 App Configuration uses the same APK and icon rows as Create app. APK changes save immediately.
 The icon picker previews uploads and removals until Save applies them, with an unsaved marker,
 an undo action, and failure feedback next to the picker. Runtime settings pairs a copyable runtime image
@@ -734,7 +759,8 @@ failure. When the first read fails, show the failure notice and omit unavailable
 
 Maintenance tasks uses the shared QuickGlanceCard summary surfaces and flat DataGridWorkspace. Task names open their editor; built-in/custom provenance stays secondary. Combine the last result and timestamp, keep availability on the switch, and avoid repeated name/action labels or enabled badges. Loading reuses the complete scheduler page and column definitions with disabled controls.
 
-Maintenance task rows show availability once through the Enabled switch beside the task name. An unscheduled next run is an em dash. Built-in task metadata does not repeat its action label; custom tasks retain action context. Recurrence and time have predictable separate lines; execution timestamps use unambiguous month names and 24-hour local times, with the full timestamp and time zone available on hover and to assistive technology. Failure results open a read-only dialog with the complete error instead of stretching table rows.
+Maintenance task rows show availability once through the Enabled switch beside the task name. An unscheduled next run is an em dash. Built-in task metadata does not repeat its action label; custom tasks retain action context. Recurrence and time have predictable separate lines; execution timestamps use unambiguous month names and 24-hour local times, with the full timestamp and time zone available on hover and to assistive technology. While a task is running, its Last run cell shows progress. Bulk runs count settled requests and report failures separately.
+Run now reports an overlapping run explicitly. Failure results open a read-only dialog with the complete error.
 
 Runtime inventory and detail pages use the shared server-side failure classification. An unavailable read retains its
 request reference in the page notice. A missing runtime resource offers a return link. Services keeps its selected
@@ -764,7 +790,10 @@ When the connection resolves to a deployment container, Casting, Orchestrator, F
 show the container name as a link to its overview. Place **View logs**
 with the other text links below the connection details. Use a muted middle dot between adjacent links
 and let the links wrap on narrow screens. **View logs** opens the container's **Logs** tab,
-which reads a bounded log tail on demand. Long port values truncate to one line and expose the full value in a tooltip.
+which reads a bounded log tail on demand. Render the container header and tabs while Logs loads.
+Keep the last log tail visible if refresh fails and offer a retry in the Logs section. Service health
+and connection details render while optional Docker log links are resolved. System Overview renders
+host and managed Docker resources as each becomes available. Long port values truncate to one line and expose the full value in a tooltip.
 Infrastructure diagnostics and administrator-only orchestrator Docker-client limits live on the Docker view, with a
 link from Overview. Keep limit changes separate from connection drafts and runtime defaults; retain
 queues and in-flight work when limits change. Reads and mutations use authenticated BFF routes.
@@ -787,7 +816,7 @@ AI provider resources separate Models from Connection through the shared resourc
 
 Provider setup shows the selected provider, credentials, and editable base URL first. OpenAI starts with a planning model preset and uses provider generation defaults. Put connection identity, local transport choices, and local generation overrides in collapsed sections. Workflow drafting shows the selected planning model and gives users a setup path when the planner catalog is empty.
 
-Adding a model distinguishes searchable provider discovery, manual ID registration, and Ollama download. Exclude already configured IDs. Registration and download requests save immediately; model settings, availability, removal, defaults, and connection edits stay in the page draft until Save. Block immediate model operations while that draft is dirty, and expose Discard changes. Downloads retain background progress; transient progress-read failures do not mark the server job failed. Connection checks use the saved configuration and are disabled while edits are unsaved. Creation puts name and endpoint essentials first, with protocol and server compatibility in an optional group. Keep credentials masked, provider family separate from transport, and all mutations behind existing authorization.
+Adding a model distinguishes searchable provider discovery, manual ID registration, and Ollama download. Exclude already configured IDs. Model registration saves immediately and Ollama adds a downloaded model on completion. Model settings, availability, removal, defaults, and connection edits stay in the page draft until Save. Block immediate model operations while that draft is dirty, and expose Discard changes. The provider page restores active downloads when opened. Transient progress-read failures leave the last reported job status visible. Connection checks use the saved configuration and are disabled while edits are unsaved. Creation puts name and endpoint essentials first, with protocol and server compatibility in an optional group. Keep credentials masked, provider family separate from transport, and all mutations behind existing authorization.
 
 User and group editors share `AccessEditorLayout` in ready and loading states. User editors separate Account,
 Groups, Permissions, and Quotas through the shared keyboard-accessible tabs with resource-navigation styling.

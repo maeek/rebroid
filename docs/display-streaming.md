@@ -24,8 +24,13 @@ access but never relays media.
 
 The sidecar owns in-memory sessions, expiry, and capacity. Each browser viewer has its own
 WebRTC attempt within its authorized account session and display session. Retrying replaces only
-that viewer's attempt. Ending a display session closes all of its attempts. The sidecar rejects
-new WebRTC viewers before capture when its peer budget is full. Internal session management
+that viewer's attempt. The sidecar holds the viewer's reservation until the Go bridge confirms
+the old peer's workers have joined and its slot has been released. At most one replacement offer
+per viewer waits for that confirmation. Newer offers share the original five-second cleanup
+deadline. If the deadline expires, the pending offer receives a retryable 503 and the retiring
+peer still counts against capacity until Go confirms cleanup or the bridge exits. Ending a
+display session closes all of its attempts. The sidecar rejects new WebRTC viewers before capture
+when its peer budget is full. Internal session management
 requires a shared secret. Viewer URLs contain a
 session ID. The sidecar uses the same-origin browser session to verify the signed-in owner, active
 container, and capabilities with web before starting WebSocket media, WebRTC, or viewer controls.
@@ -40,6 +45,8 @@ Transport recovery reuses the current session. If the sidecar reports that the s
 both transports ask the parent viewer to refresh through the authorized web path. An automatic
 refresh is attempted once until a replacement displays video. Both viewer entry points use the
 current runtime's Ready timestamp for the startup retry window when that timestamp is available.
+The viewer shows connection and first-frame waits in the display area. During automatic reconnect
+it reports recovery and keeps any frame the transport can still present for the current session.
 
 After transport recovery stops, the web viewer keeps a **Retry display** action visible over the
 failed surface. It refreshes the viewer grant through the existing authorized web path, then
@@ -89,10 +96,18 @@ timestamps and configuration, keyframe, and discontinuity flags.
   The bridge derives RTP timing from source timestamps and continuously drains sender RTCP.
 - The Go bridge owns shutdown of its peer and media workers. A track-local audio error closes
   that input and leaves video active. A shared timestamp regression ends the peer attempt.
+  Shutdown cancels the attempt, closes its IPC sockets, joins the metrics reporter before
+  closing Pion, and joins the remaining workers before releasing the slot.
+- The Go video reader reuses up to 256 KiB of delta-frame storage per peer. Keyframes, codec
+  configuration, and in-band H.264 parameter sets retain owned storage.
 - Consumer recovery normally expires after 1.5 seconds of advancing source PTS without an IDR.
   An attached WebRTC peer can wait through a confirmed scrcpy reset. The sidecar relay, Go bridge
   and browser presentation monitor use the reset's remaining time while video waits for an IDR.
-  Repeated RTCP feedback cannot extend the reset deadline.
+  The sidecar orders each reset generation and its absolute deadline with the applicable RBD1
+  frames on the private Go video socket. The bridge applies that allowance to one peer recovery
+  and consumes it when the recovery IDR is written. Repeated RTCP feedback cannot extend it.
+  Only advancing source video triggers the bridge's recovery timeout. The Go control relay
+  drops expired browser reset notices and calculates the remaining duration when sending them.
 - A new capture must deliver configuration and an IDR before the sidecar can send scrcpy reset-video
   message `17` over its control socket. A bootstrap attachment can reuse the current
   configuration and IDR. A media attachment requests a reset only if the source cannot
@@ -161,7 +176,13 @@ and Direct ADB queues reserve room for a pointer release. Virtual surfaces requi
 because the ADB fallback targets the device's default display.
 The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
 outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
-The Go relay sends correlated replies in order and coalesces replaceable telemetry under pressure.
+The sidecar IPC writer and Go relay send correlated replies in order and coalesce replaceable
+telemetry under pressure. A full reliable queue ends that peer attempt.
+
+The web toolbar queues up to eight commands for its current display, including the command in
+flight. Volume up and down accept repeated taps. Each command shows its own pending state, while
+local controls such as keyboard capture remain usable. A failed or unconfirmed command clears
+the remaining toolbar queue. Changing the target or replacing the frame also clears it.
 
 ## Browser hardware decoding
 
