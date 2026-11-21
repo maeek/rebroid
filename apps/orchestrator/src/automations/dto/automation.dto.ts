@@ -22,6 +22,8 @@ import {
   AutomationTagDto,
 } from './automation-definition.dto';
 
+import { AutomationAiModelSelectionDto } from './automation-ai-model-selection.dto';
+
 export class CreateAutomationDto {
   @ApiProperty({ example: 'user_123' })
   @IsString()
@@ -65,7 +67,7 @@ export class DraftAutomationYamlClarificationDto {
   answer!: string;
 }
 
-export class DraftAutomationYamlDto {
+export class DraftAutomationYamlDto extends AutomationAiModelSelectionDto {
   @ApiProperty({
     example: 'Log in to the app and verify the home screen opens.',
   })
@@ -73,30 +75,6 @@ export class DraftAutomationYamlDto {
   @MinLength(1)
   @MaxLength(AUTOMATION_DRAFT_PROMPT_MAX_LENGTH)
   prompt!: string;
-
-  @ApiPropertyOptional({ example: 'local-ollama' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(80)
-  providerId?: string;
-
-  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  modelId?: string;
-
-  @ApiPropertyOptional({ example: 'local-ollama' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(80)
-  visionProviderId?: string;
-
-  @ApiPropertyOptional({ example: 'qwen2.5vl:7b' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  visionModelId?: string;
 
   @ApiPropertyOptional({
     type: String,
