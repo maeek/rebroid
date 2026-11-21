@@ -16,6 +16,16 @@ const requests: DisplayControlRequest[] = [
   { type: "clipboard", text: "hello" },
 ];
 
+const scroll = {
+  type: "scroll",
+  x: 10,
+  y: 20,
+  videoWidth: 100,
+  videoHeight: 200,
+  horizontal: 0.25,
+  vertical: -1,
+} satisfies DisplayControlRequest;
+
 const service = (
   handledByStream: boolean | Promise<boolean>,
   reconnecting = false,
@@ -37,6 +47,7 @@ const service = (
     sendViewerAction: () => handledByStream,
     sendKeyboardEvent: () => handledByStream,
     sendTouchEvent: () => handledByStream,
+    sendScrollEvent: () => handledByStream,
     sendClipboard: () => handledByStream,
     shouldWaitForStreamControl: () => reconnecting,
     hasActiveControl: () => activeControl,
@@ -57,7 +68,23 @@ test("all control kinds share stream and ADB fallback semantics", async () => {
   }
 });
 
-test("a video-only display grant denies actions, keyboard, touch and clipboard", async () => {
+test("scroll uses the live scrcpy socket on main and virtual displays", async () => {
+  for (const surface of ["main", "virtual"]) {
+    assert.equal(
+      (await service(true, false, surface).execute("session", scroll))
+        .transport,
+      "stream-control",
+    );
+    await assert.rejects(
+      service(false, false, surface).execute("session", scroll),
+      {
+        message: "Live scrolling is unavailable.",
+      },
+    );
+  }
+});
+
+test("a video-only display grant denies device controls and clipboard", async () => {
   const sessions = new DisplaySessionService(
     {
       sessionTtlSeconds: 900,
@@ -76,7 +103,7 @@ test("a video-only display grant denies actions, keyboard, touch and clipboard",
     {} as never,
     {} as never,
   );
-  for (const request of requests) {
+  for (const request of [...requests, scroll]) {
     const capability = request.type === "clipboard" ? "clipboard" : "control";
     await assert.rejects(controls.execute(grant.id, request), {
       message: `Display session does not allow ${capability}.`,

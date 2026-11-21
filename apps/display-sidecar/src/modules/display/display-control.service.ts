@@ -41,7 +41,11 @@ export class DisplayControlService {
     };
   }
 
-  async execute(sessionId: string, request: DisplayControlRequest) {
+  async execute(
+    sessionId: string,
+    request: DisplayControlRequest,
+    connection?: AbortSignal,
+  ) {
     request = validateDisplayControl(request);
     const session = this.sessions.get(sessionId);
     this.sessions.assertCapability(
@@ -50,7 +54,7 @@ export class DisplayControlService {
     );
 
     try {
-      const result = await this.route(session, request);
+      const result = await this.route(session, request, connection);
       this.sessions.touch(sessionId);
       return result;
     } catch (error) {
@@ -76,7 +80,11 @@ export class DisplayControlService {
     }
   }
 
-  private async route(session: DisplaySession, request: DisplayControlRequest) {
+  private async route(
+    session: DisplaySession,
+    request: DisplayControlRequest,
+    connection?: AbortSignal,
+  ) {
     const { id: sessionId, udid } = session;
     if (request.type === "action") {
       if (
@@ -114,9 +122,20 @@ export class DisplayControlService {
       );
     }
     if (request.type === "touch") {
+      if (
+        request.action === "pointer" &&
+        request.pointerId !== undefined &&
+        !connection
+      ) {
+        throw new BadRequestException(
+          "Live contacts require a viewer connection.",
+        );
+      }
       return this.withFallback(
         session,
-        this.scrcpy.sendTouchEvent(sessionId, request),
+        request.action === "pointer" && connection
+          ? this.scrcpy.sendLivePointer(sessionId, request, connection)
+          : this.scrcpy.sendTouchEvent(sessionId, request),
         () => {
           if (request.action === "pointer") {
             throw new ConflictException({
@@ -128,6 +147,19 @@ export class DisplayControlService {
           return this.adb.touchEvent(udid, request);
         },
       );
+    }
+    if (request.type === "scroll") {
+      if (!(await this.scrcpy.sendScrollEvent(sessionId, request))) {
+        throw new ConflictException({
+          code: "control_reconnecting",
+          message: "Live scrolling is unavailable.",
+        });
+      }
+      return {
+        command: undefined,
+        executed: true as const,
+        transport: "stream-control" as const,
+      };
     }
     if (request.type !== "clipboard") {
       throw new BadRequestException("Invalid viewer control type.");

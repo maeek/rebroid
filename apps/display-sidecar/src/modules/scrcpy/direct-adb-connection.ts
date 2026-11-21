@@ -1,7 +1,10 @@
 import { EventEmitter } from "node:events";
 import { Socket } from "node:net";
 import { ScrcpySocket } from "./scrcpy.types";
-import { SCRCPY_TOUCH_EVENT_BYTES } from "./scrcpy-control-codec";
+import {
+  MAX_LIVE_POINTERS,
+  SCRCPY_TOUCH_EVENT_BYTES,
+} from "./scrcpy-control-codec";
 import { ScrcpyControlDispatchError } from "./scrcpy-control-dispatch-error";
 import {
   confirmScrcpyControlWrite,
@@ -445,10 +448,11 @@ class DirectAdbSocket extends EventEmitter implements ScrcpySocket {
       this.sendWrite(payload, expiresAt, callback, onSubmit);
       return true;
     }
-    const maxWrites = MAX_PENDING_CONTROL_WRITES - Number(reserveReleaseSlot);
+    const maxWrites =
+      MAX_PENDING_CONTROL_WRITES - (reserveReleaseSlot ? MAX_LIVE_POINTERS : 0);
     const maxBytes =
       MAX_PENDING_CONTROL_BYTES -
-      (reserveReleaseSlot ? SCRCPY_TOUCH_EVENT_BYTES : 0);
+      (reserveReleaseSlot ? MAX_LIVE_POINTERS * SCRCPY_TOUCH_EVENT_BYTES : 0);
     if (
       this.writeQueue.size >= maxWrites ||
       this.queuedWriteBytes + payload.length > maxBytes

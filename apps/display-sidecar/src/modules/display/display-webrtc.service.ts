@@ -143,7 +143,8 @@ export class DisplayWebrtcService implements OnModuleDestroy {
         bridgeAttemptId = attemptId;
         return this.bridge.connect(signal, attemptId);
       },
-      executeControl: (request) => this.controls.execute(sessionId, request),
+      executeControl: (request, connection) =>
+        this.controls.execute(sessionId, request, connection),
       onFinish: () => {
         signal?.removeEventListener("abort", onAbandon);
         stopWatching();
@@ -172,7 +173,8 @@ export class DisplayWebrtcService implements OnModuleDestroy {
     entry.attempt = attempt;
     entry.retirement = previous?.retirement;
     this.active.set(key, entry);
-    return attempt.run();
+    const answer = await attempt.run();
+    return { ...answer, canControl: session.capabilities.includes("control") };
   }
 
   stopSession(sessionId: string) {

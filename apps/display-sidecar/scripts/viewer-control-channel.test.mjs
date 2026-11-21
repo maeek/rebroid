@@ -6,6 +6,7 @@ class FakeWebSocket extends EventTarget {
   static OPEN = 1;
   static instances = [];
   readyState = FakeWebSocket.CONNECTING;
+  bufferedAmount = 0;
   messages = [];
 
   constructor() {
@@ -80,6 +81,7 @@ test("only the parent can change presentation and compact mode releases an activ
     target,
     getVideoSize: () => ({ width: 100, height: 200 }),
     controlChannel: {
+      canSendLiveInput: () => true,
       send: async (message) => {
         sent.push(message);
       },
@@ -213,6 +215,215 @@ test("a hidden viewer closes controls and opens them once on return", async (t) 
   assert.equal(FakeWebSocket.instances.length, initialSocketCount + 3);
 });
 
+test("wheel deltas coalesce over Android content and Ctrl-wheel stays with the browser", async (t) => {
+  const { target, flushFrame, sent, dispatch } = await inputFixture(t);
+  const wheel = (properties) =>
+    dispatch("wheel", {
+      clientX: 100,
+      clientY: 100,
+      deltaMode: 0,
+      deltaX: 0,
+      deltaY: 0,
+      ...properties,
+    });
+  assert.equal(wheel({ clientX: 20, deltaY: 48 }), true, "letterbox");
+  assert.equal(wheel({ ctrlKey: true, deltaY: 48 }), true, "browser zoom");
+  assert.equal(wheel({ deltaX: 12, deltaY: 24 }), false);
+  assert.equal(wheel({ deltaX: 12, deltaY: 3, deltaMode: 1 }), false);
+  flushFrame();
+  assert.deepEqual(sent.splice(0), [
+    {
+      type: "scroll",
+      x: 50,
+      y: 100,
+      videoWidth: 100,
+      videoHeight: 200,
+      horizontal: -4.25,
+      vertical: -1.5,
+    },
+  ]);
+  wheel({ deltaY: 48 });
+  target.classList.contains = () => true;
+  flushFrame();
+  assert.deepEqual(sent, []);
+});
+
+test("touch and mouse gestures send distinct contacts and release them on cancellation", async (t) => {
+  const { flushFrame, sent, dispatch } = await inputFixture(t);
+  const pointer = (phase, id, clientX, properties) =>
+    dispatch(`pointer${phase}`, {
+      clientX,
+      clientY: 40,
+      pointerType: "touch",
+      pointerId: id,
+      button: 0,
+      ...properties,
+    });
+  pointer("down", 10, 75);
+  pointer("down", 11, 125);
+  pointer("down", 12, 95);
+  pointer("move", 10, 65);
+  pointer("move", 11, 135);
+  flushFrame();
+  pointer("up", 10, 65);
+  pointer("cancel", 11, 135);
+  const [firstId, secondId] = sent.map(({ pointerId }) => pointerId);
+  assert.notEqual(firstId, secondId);
+  assert.deepEqual(
+    sent
+      .splice(0)
+      .map(({ eventType, pointerId, x }) => [eventType, pointerId, x]),
+    [
+      ["down", firstId, 25],
+      ["down", secondId, 75],
+      ["move", firstId, 15],
+      ["move", secondId, 85],
+      ["up", firstId, 15],
+      ["cancel", secondId, 85],
+    ],
+  );
+  pointer("down", 13, 65, { pointerType: "mouse", ctrlKey: true });
+  pointer("move", 13, 75, { pointerType: "mouse", ctrlKey: false });
+  flushFrame();
+  pointer("up", 13, 75);
+  assert.deepEqual(
+    sent.map(({ eventType, x, y }) => [eventType, x, y]),
+    [
+      ["down", 15, 40],
+      ["down", 84, 159],
+      ["move", 25, 40],
+      ["move", 74, 159],
+      ["up", 25, 40],
+      ["up", 74, 159],
+    ],
+  );
+});
+
+async function inputFixture(t) {
+  const { setupTouchInput } =
+    await import("../dist/modules/display/viewer/assets/touch-input.js");
+  const previousWindow = globalThis.window;
+  const frames = new Map();
+  let nextFrame = 0;
+  globalThis.window = Object.assign(new EventTarget(), {
+    requestAnimationFrame(callback) {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    },
+    cancelAnimationFrame: (id) => frames.delete(id),
+  });
+  t.after(() => {
+    globalThis.window = previousWindow;
+  });
+  const captures = new Set();
+  const sent = [];
+  const target = Object.assign(new EventTarget(), {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 200, height: 200 }),
+    classList: { contains: () => false },
+    setPointerCapture: (id) => captures.add(id),
+    hasPointerCapture: (id) => captures.has(id),
+    releasePointerCapture: (id) => captures.delete(id),
+  });
+  setupTouchInput({
+    target,
+    getVideoSize: () => ({ width: 100, height: 200 }),
+    controlChannel: {
+      canSendLiveInput: () => true,
+      sendScroll: (payload) => sent.push({ type: "scroll", ...payload }),
+      send: async (message) => sent.push(message),
+    },
+    lifecycle: {
+      hasDemand: () => true,
+      onDemandChange() {},
+      onClose() {},
+    },
+  });
+  return {
+    target,
+    sent,
+    dispatch: (type, properties) =>
+      target.dispatchEvent(
+        Object.assign(new Event(type, { cancelable: true }), properties),
+      ),
+    flushFrame() {
+      for (const [id, callback] of frames) {
+        frames.delete(id);
+        callback();
+      }
+    },
+  };
+}
+
+test("both transports carry scroll and two contacts stay on their original live channel", async (t) => {
+  const globals = {
+    window: Object.assign(new EventTarget(), { setTimeout, clearTimeout }),
+    location: { protocol: "https:", host: "rebroid.test" },
+    WebSocket: FakeWebSocket,
+  };
+  const original = Object.fromEntries(
+    Object.keys(globals).map((key) => [key, globalThis[key]]),
+  );
+  Object.assign(globalThis, globals);
+  t.after(() => Object.assign(globalThis, original));
+
+  const { createControlChannel } =
+    await import("../dist/modules/display/viewer/assets/control-channel.js");
+  const channel = createControlChannel({
+    sessionId: "session",
+    lifecycle: {
+      hasDemand: () => true,
+      onDemandChange() {},
+      onClose() {},
+    },
+  });
+  const socket = channel.connect();
+  socket.open();
+  socket.reply({ type: "control-ready", canControl: false });
+  assert.equal(channel.canSendLiveInput(), false);
+  socket.reply({ type: "control-ready", canControl: true });
+  channel.sendScroll({ horizontal: -1, vertical: 2 });
+  assert.equal(socket.messages.at(-1).type, "scroll");
+
+  const rtc = new FakeWebSocket();
+  const movement = new FakeWebSocket();
+  rtc.readyState = movement.readyState = "open";
+  channel.useDataChannels(rtc, movement, undefined, undefined, true);
+  channel.sendScroll({ horizontal: 1, vertical: -2 });
+  assert.equal(rtc.messages.at(-1).type, "scroll");
+
+  const pointer = (eventType, pointerId) =>
+    channel.send(
+      { type: "touch", action: "pointer", eventType, pointerId },
+      "touch",
+    );
+  const down = [pointer("down", 2), pointer("down", 5)];
+  for (const message of rtc.messages.slice(-2))
+    rtc.reply({ id: message.id, ok: true });
+  await Promise.all(down);
+  await pointer("move", 2);
+  await pointer("move", 5);
+  assert.deepEqual(
+    movement.messages.map(({ pointerId }) => pointerId),
+    [2, 5],
+  );
+
+  rtc.close();
+  await pointer("up", 2);
+  await pointer("move", 5);
+  await pointer("cancel", 5);
+  assert.equal(socket.messages.length, 1);
+  assert.equal(movement.messages.length, 2);
+
+  socket.close();
+  assert.equal(channel.canSendLiveInput(), false);
+  const replacement = FakeWebSocket.instances.at(-1);
+  assert.notEqual(replacement, socket);
+  replacement.open();
+  replacement.reply({ type: "control-ready", canControl: true });
+  assert.equal(channel.canSendLiveInput(), true);
+  assert.deepEqual(replacement.messages, []);
+});
+
 test("a discrete command waits for its own reply and never retries a sent command", async (t) => {
   const original = {
     window: globalThis.window,
@@ -317,24 +528,27 @@ test("a discrete command waits for its own reply and never retries a sent comman
   const activeSocket = channel.connect();
   activeSocket.open();
   activeSocket.reply({ type: "control-ready" });
-  const pointer = (eventType) =>
-    channel.send({ type: "touch", action: "pointer", eventType }, "touch");
-  const pending = [pointer("down")];
-  for (let index = 0; index < 30; index++) {
+  const pointer = (eventType, pointerId) =>
+    channel.send(
+      { type: "touch", action: "pointer", eventType, pointerId },
+      "touch",
+    );
+  const pending = [pointer("down", 2), pointer("down", 5)];
+  for (let index = 0; index < 28; index++) {
     pending.push(channel.send({ type: "action", command: "home" }, "actions"));
   }
   await assert.rejects(
     channel.send({ type: "action", command: "home" }, "actions"),
     /queue is full/,
   );
-  pending.push(pointer("cancel"));
+  pending.push(pointer("cancel", 2), pointer("up", 5));
   await Promise.resolve();
   assert.equal(activeSocket.messages.length, 32);
   assert.deepEqual(
     activeSocket.messages
       .filter((message) => message.type === "touch")
       .map((message) => message.eventType),
-    ["down", "cancel"],
+    ["down", "down", "cancel", "up"],
   );
   for (const { id } of activeSocket.messages)
     activeSocket.reply({ id, ok: true });

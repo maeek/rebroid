@@ -79,19 +79,21 @@ export class DisplayPublicController {
     response.once("close", onClose);
     if (response.destroyed) onClose();
 
-    const { consumerAttemptId, ...answer } = await this.webrtc.createAnswer({
-      sessionId: id,
-      headers: request.headers,
-      signal: abandoned.signal,
-      sdp: body.sdp,
-      bitrate: body.bitrate,
-      maxFps: body.maxFps,
-      maxSize: body.maxSize,
-      iFrameInterval: body.iFrameInterval,
-      audio: body.audio === true,
-    });
+    const { consumerAttemptId, canControl, ...answer } =
+      await this.webrtc.createAnswer({
+        sessionId: id,
+        headers: request.headers,
+        signal: abandoned.signal,
+        sdp: body.sdp,
+        bitrate: body.bitrate,
+        maxFps: body.maxFps,
+        maxSize: body.maxSize,
+        iFrameInterval: body.iFrameInterval,
+        audio: body.audio === true,
+      });
     if (consumerAttemptId)
       reply.header("x-rebroid-webrtc-attempt", consumerAttemptId);
+    if (canControl === false) reply.header("x-rebroid-viewer-control", "0");
     return answer;
   }
 

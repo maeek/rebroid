@@ -128,9 +128,10 @@ func bindControlRelay(peer *webrtc.PeerConnection, recovery *videoRecovery, emit
 					}
 					if json.Valid(message.Data) {
 						event := stdoutMessage{Type: "control", Payload: json.RawMessage(message.Data)}
-						switch pointerEvent(message.Data) {
+						phase, key := pointerEvent(message.Data)
+						switch phase {
 						case "down", "up", "cancel":
-							event.discardKey = "pointer-move"
+							event.discardKey = key
 						}
 						emit(event)
 					}
@@ -138,8 +139,8 @@ func bindControlRelay(peer *webrtc.PeerConnection, recovery *videoRecovery, emit
 			})
 		case "rebroid-pointer":
 			channel.OnMessage(func(message webrtc.DataChannelMessage) {
-				if pointerEvent(message.Data) == "move" {
-					emit(stdoutMessage{Type: "pointer-move", Payload: json.RawMessage(message.Data), replaceKey: "pointer-move"})
+				if phase, key := pointerEvent(message.Data); phase == "move" {
+					emit(stdoutMessage{Type: "pointer-move", Payload: json.RawMessage(message.Data), replaceKey: key})
 				}
 			})
 		}

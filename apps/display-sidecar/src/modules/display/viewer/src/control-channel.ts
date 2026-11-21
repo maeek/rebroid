@@ -26,6 +26,8 @@ export function createControlChannel({
   const pressedKeys = new Set<string>();
   let controlWs: WebSocket | null = null;
   let authorizedControlWs: WebSocket | null = null;
+  let canControlWs = false;
+  let canControlRtc = false;
   let controlWsReady: Promise<boolean> | null = null;
   let reliableDataChannel: RTCDataChannel | null = null;
   let movementDataChannel: RTCDataChannel | null = null;
@@ -36,16 +38,30 @@ export function createControlChannel({
   const responseWaitMs = 6_000;
   const maxInFlight = 32;
   let inFlight = 0;
-  let pointerReleaseReserved = false;
   let demand = new AbortController();
   let connectRequested = false;
-  let activePointer:
-    | { payload: JsonRecord; dispatch: (data: string) => void }
-    | undefined;
+  const activePointers = new Map<
+    number,
+    { payload: JsonRecord; channel: RTCDataChannel | WebSocket }
+  >();
+
+  const liveChannel = () => {
+    if (canControlRtc && reliableDataChannel?.readyState === "open")
+      return reliableDataChannel;
+    if (canControlWs && authorizedControlWs?.readyState === WebSocket.OPEN)
+      return authorizedControlWs;
+    return null;
+  };
+  const canSendLiveInput = () => {
+    if (!lifecycle.hasDemand()) return false;
+    if (liveChannel()) return true;
+    if (connectRequested && !authorizedControlWs) connectControlWs();
+    return false;
+  };
 
   const readReply = (
     data: unknown,
-    onReady?: () => void,
+    onReady?: (canControl: boolean) => void,
     acceptStatus = true,
     onCodecChanged?: () => void,
     onVideoReset?: (remainingMs: number) => void,
@@ -55,7 +71,7 @@ export function createControlChannel({
       const reply: unknown = JSON.parse(data);
       if (!isRecord(reply)) return;
       if (reply.type === "control-ready") {
-        onReady?.();
+        onReady?.(reply.canControl !== false);
         return;
       }
       if (typeof reply.id === "string" && typeof reply.ok === "boolean") {
@@ -92,11 +108,11 @@ export function createControlChannel({
   };
 
   const disconnect = (reason: string) => {
-    if (activePointer) {
+    for (const { payload, channel } of activePointers.values()) {
       try {
-        activePointer.dispatch(
+        channel.send(
           JSON.stringify({
-            ...activePointer.payload,
+            ...payload,
             id: String(++controlRequestSeq),
             eventType: "cancel",
           }),
@@ -105,8 +121,7 @@ export function createControlChannel({
         // The original channel may already have closed.
       }
     }
-    activePointer = undefined;
-    pointerReleaseReserved = false;
+    activePointers.clear();
     pressedKeys.clear();
     demand.abort(new Error(reason));
     for (const finish of pending.values()) finish(new Error(reason));
@@ -190,13 +205,15 @@ export function createControlChannel({
       const timer = window.setTimeout(abort, connectionWaitMs);
       signal.addEventListener("abort", abort, { once: true });
       socket.onclose = () => {
+        forgetClosedPointers(socket);
         if (controlWs === socket) controlWs = null;
         if (authorizedControlWs === socket) authorizedControlWs = null;
         finish(false);
       };
       socket.onerror = () => finish(false);
-      const markReady = () => {
+      const markReady = (canControl: boolean) => {
         if (controlWs !== socket) return;
+        canControlWs = canControl;
         authorizedControlWs = socket;
         finish(true);
       };
@@ -214,45 +231,18 @@ export function createControlChannel({
     const signal = demand.signal;
     const id = String(++controlRequestSeq);
     const payload = { ...messagePayload, id };
-    const pointer = messagePayload.type === "touch" && messagePayload.action === "pointer";
-    const movement = pointer && messagePayload.eventType === "move";
-    if (movement) {
-      if (!pointerReleaseReserved) return;
-      if (movementDataChannel) {
-        if (
-          movementDataChannel.readyState === "open" &&
-          movementDataChannel.bufferedAmount < 16_384
-        ) {
-          movementDataChannel.send(JSON.stringify(payload));
-        }
-      } else if (
-        authorizedControlWs?.readyState === WebSocket.OPEN &&
-        authorizedControlWs.bufferedAmount < 16_384
-      ) {
-        authorizedControlWs.send(JSON.stringify(payload));
-      }
-      return;
+    if (
+      messagePayload.type === "touch" &&
+      messagePayload.action === "pointer"
+    ) {
+      return sendPointer(payload, id);
     }
-
-    const pointerDown = pointer && messagePayload.eventType === "down";
-    const pointerRelease = pointer &&
-      (messagePayload.eventType === "up" || messagePayload.eventType === "cancel");
-    if (pointerRelease) {
-      if (!pointerReleaseReserved) return;
-      pointerReleaseReserved = false;
-    } else {
-      const reserved = Number(pointerReleaseReserved || pointerDown);
-      if ((pointerDown && pointerReleaseReserved) || inFlight + reserved >= maxInFlight) {
-        throw new Error("The viewer control queue is full.");
-      }
-      if (pointerDown) pointerReleaseReserved = true;
-    }
+    if (inFlight + activePointers.size >= maxInFlight)
+      throw new Error("The viewer control queue is full.");
     inFlight += 1;
     const dispatchControl = (dispatch: (data: string) => void) => {
       signal.throwIfAborted();
       dispatch(JSON.stringify(payload));
-      if (pointerDown) activePointer = { payload, dispatch };
-      if (pointerRelease) activePointer = undefined;
     };
     try {
       const data = reliableDataChannel;
@@ -273,6 +263,64 @@ export function createControlChannel({
       }
       signal.throwIfAborted();
       await postPublic(fallbackPath, fallbackPayload ?? messagePayload, signal);
+    } finally {
+      inFlight -= 1;
+    }
+  }
+
+  function forgetClosedPointers(channel: RTCDataChannel | WebSocket) {
+    for (const [id, pointer] of activePointers) {
+      if (pointer.channel === channel) activePointers.delete(id);
+    }
+  }
+
+  async function sendPointer(payload: JsonRecord, requestId: string) {
+    const id = typeof payload.pointerId === "number" ? payload.pointerId : -1;
+    const pointer = activePointers.get(id);
+    const event = payload.eventType;
+    if (event === "move") {
+      if (!pointer) return;
+      const channel =
+        pointer.channel === reliableDataChannel
+          ? (movementDataChannel ?? pointer.channel)
+          : pointer.channel;
+      if (
+        (channel.readyState === "open" ||
+          channel.readyState === WebSocket.OPEN) &&
+        channel.bufferedAmount < 16_384
+      ) {
+        pointer.payload = payload;
+        channel.send(JSON.stringify(payload));
+      }
+      return;
+    }
+
+    const down = event === "down";
+    if (!down && !pointer) return;
+    const channel = pointer?.channel ?? liveChannel();
+    if (!channel) throw new Error("Live pointer controls are unavailable.");
+    if (down) {
+      if (
+        pointer ||
+        activePointers.size >= 2 ||
+        inFlight + activePointers.size + 1 >= maxInFlight
+      ) {
+        throw new Error("The viewer control queue is full.");
+      }
+      if (
+        [...activePointers.values()].some(
+          (active) => active.channel !== channel,
+        )
+      )
+        throw new Error("Live pointer controls are reconnecting.");
+    }
+    inFlight += 1;
+    try {
+      await sendAndConfirm(requestId, () => {
+        channel.send(JSON.stringify(payload));
+        if (down) activePointers.set(id, { payload, channel });
+        else activePointers.delete(id);
+      });
     } finally {
       inFlight -= 1;
     }
@@ -375,12 +423,34 @@ export function createControlChannel({
   });
 
   return {
+    canSendLiveInput,
+    sendScroll(payload) {
+      const channel = liveChannel();
+      if (
+        !lifecycle.hasDemand() ||
+        !channel ||
+        channel.bufferedAmount >= 16_384
+      )
+        return;
+      try {
+        channel.send(JSON.stringify({ ...payload, type: "scroll" }));
+      } catch {
+        // Scroll deltas apply only to the live surface.
+      }
+    },
     connect() {
       connectRequested = true;
       return connectControlWs();
     },
-    useDataChannels(reliable, movement, onCodecChanged, onVideoReset) {
+    useDataChannels(
+      reliable,
+      movement,
+      onCodecChanged,
+      onVideoReset,
+      canControl = true,
+    ) {
       reliableDataChannel = reliable;
+      canControlRtc = canControl;
       movementDataChannel = movement ?? null;
       reliable.onmessage = (event) =>
         readReply(
@@ -391,6 +461,7 @@ export function createControlChannel({
           onVideoReset,
         );
       reliable.onclose = () => {
+        forgetClosedPointers(reliable);
         if (reliableDataChannel === reliable) {
           reliableDataChannel = null;
         }

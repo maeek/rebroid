@@ -12,6 +12,7 @@ export interface KeyboardControlPayload {
 export interface TouchControlPayload {
   action?: "tap" | "swipe" | "pointer";
   eventType?: "down" | "move" | "up" | "cancel";
+  pointerId?: number;
   x?: number;
   y?: number;
   x1?: number;
@@ -21,4 +22,13 @@ export interface TouchControlPayload {
   videoWidth?: number;
   videoHeight?: number;
   durationMs?: number;
+}
+
+export interface ScrollControlPayload {
+  x: number;
+  y: number;
+  videoWidth: number;
+  videoHeight: number;
+  horizontal: number;
+  vertical: number;
 }

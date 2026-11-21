@@ -1,5 +1,6 @@
 import type {
   KeyboardControlPayload,
+  ScrollControlPayload,
   TouchControlPayload,
 } from "../shared/display-control.types";
 
@@ -93,4 +94,5 @@ export type DisplayControlRequest =
   | { id?: string; type: "action"; command?: string }
   | ({ id?: string; type: "keyboard" } & KeyboardControlPayload)
   | ({ id?: string; type: "touch" } & TouchControlPayload)
+  | ({ id?: string; type: "scroll" } & ScrollControlPayload)
   | { id?: string; type: "clipboard"; text?: string };

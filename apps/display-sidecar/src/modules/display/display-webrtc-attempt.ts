@@ -92,6 +92,7 @@ interface WebrtcAttemptOptions {
   ) => WebrtcBridge | Promise<WebrtcBridge>;
   executeControl: (
     request: DisplayControlRequest,
+    connection: AbortSignal,
   ) => ReturnType<DisplayControlService["execute"]>;
   onFinish: () => void;
 }
@@ -449,7 +450,8 @@ export class DisplayWebrtcAttempt {
     switch (message.type) {
       case "control":
         void this.handleControlMessage(message.payload).then((payload) => {
-          if (!this.controller.signal.aborted) bridge.sendDataChannel(payload);
+          if (payload && !this.controller.signal.aborted)
+            bridge.sendDataChannel(payload);
         });
         break;
       case "pointer-move": {
@@ -459,7 +461,9 @@ export class DisplayWebrtcAttempt {
           pointer.action === "pointer" &&
           pointer.eventType === "move"
         ) {
-          void this.options.executeControl(pointer).catch(() => undefined);
+          void this.options
+            .executeControl(pointer, this.controller.signal)
+            .catch(() => undefined);
         }
         break;
       }
@@ -493,14 +497,20 @@ export class DisplayWebrtcAttempt {
     }
     const id =
       typeof message.id === "string" ? message.id.slice(0, 128) : undefined;
+    const reply = message.type !== "scroll" || Boolean(id);
     try {
+      const result = await this.options.executeControl(
+        message,
+        this.controller.signal,
+      );
+      if (!reply) return;
       return {
         id,
         ok: true as const,
-        ...(await this.options.executeControl(message)),
+        ...result,
       };
     } catch (error) {
-      return { id, ...displayControlError(error) };
+      if (reply) return { id, ...displayControlError(error) };
     }
   }
 

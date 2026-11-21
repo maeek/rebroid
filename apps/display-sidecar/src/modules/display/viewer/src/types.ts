@@ -39,11 +39,14 @@ export type JsonRecord = Record<string, JsonValue>;
 
 export type ControlChannel = {
   connect: () => WebSocket | null;
+  canSendLiveInput: () => boolean;
+  sendScroll: (payload: JsonRecord) => void;
   useDataChannels: (
     reliable: RTCDataChannel,
     movement?: RTCDataChannel,
     onCodecChanged?: () => void,
     onVideoReset?: (remainingMs: number) => void,
+    canControl?: boolean,
   ) => void;
   send: (
     messagePayload: JsonRecord,
@@ -56,44 +59,6 @@ export type TouchPoint = {
   x: number;
   y: number;
 };
-
-export type TouchPayload =
-  | {
-      action: "tap";
-      x: number;
-      y: number;
-      videoWidth: number;
-      videoHeight: number;
-    }
-  | {
-      action: "pointer";
-      eventType: "down" | "move" | "up" | "cancel";
-      x: number;
-      y: number;
-      videoWidth: number;
-      videoHeight: number;
-    }
-  | {
-      action: "swipe";
-      x1: number;
-      y1: number;
-      x2: number;
-      y2: number;
-      durationMs: number;
-      videoWidth: number;
-      videoHeight: number;
-    };
-
-export type TouchInputPayload =
-  | Omit<Extract<TouchPayload, { action: "tap" }>, "videoWidth" | "videoHeight">
-  | Omit<
-      Extract<TouchPayload, { action: "pointer" }>,
-      "videoWidth" | "videoHeight"
-    >
-  | Omit<
-      Extract<TouchPayload, { action: "swipe" }>,
-      "videoWidth" | "videoHeight"
-    >;
 
 export type DisplayDecoder = {
   appendVideoFrame: (

@@ -13,7 +13,11 @@ test("offer cancellation follows premature response close through answer deliver
       createAnswer: async ({ signal }: { signal: AbortSignal }) => {
         signals.push(signal);
         signal.throwIfAborted();
-        return { sdp: "answer", consumerAttemptId: "attempt-1" };
+        return {
+          sdp: "answer",
+          consumerAttemptId: "attempt-1",
+          canControl: false,
+        };
       },
     } as never,
   );
@@ -26,7 +30,10 @@ test("offer cancellation follows premature response close through answer deliver
 
   const closed = new EventEmitter();
   assert.deepEqual(await offer(closed), { sdp: "answer" });
-  assert.deepEqual(headers, [["x-rebroid-webrtc-attempt", "attempt-1"]]);
+  assert.deepEqual(headers, [
+    ["x-rebroid-webrtc-attempt", "attempt-1"],
+    ["x-rebroid-viewer-control", "0"],
+  ]);
   closed.emit("close");
   assert.equal(signals[0]!.aborted, true);
   assert.equal(closed.listenerCount("finish"), 0);

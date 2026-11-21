@@ -11,9 +11,11 @@ import { type ViewerCommand } from "@rebroid/android-application-core/viewer-con
 import { SidecarConfigService } from "../shared/sidecar-config.service";
 import { DirectAdbConnection } from "./direct-adb-connection";
 import {
+  MAX_LIVE_POINTERS,
   SCRCPY_TOUCH_EVENT_BYTES,
   ScrcpyControlCodec,
 } from "./scrcpy-control-codec";
+import { ScrcpyLivePointers } from "./scrcpy-live-pointers";
 import { ScrcpyControlDispatchError } from "./scrcpy-control-dispatch-error";
 import {
   confirmScrcpyControlWrite,
@@ -52,6 +54,7 @@ import {
 } from "./scrcpy.types";
 import type {
   KeyboardControlPayload,
+  ScrollControlPayload,
   TouchControlPayload,
 } from "../shared/display-control.types";
 
@@ -85,6 +88,7 @@ interface ActiveControlSocket {
   stopAttempt: (reason?: string) => Promise<void>;
   captureReady: boolean;
   resetDispatchPending: boolean;
+  pointers?: ScrcpyLivePointers;
 }
 
 interface ScrcpyServerLaunch {
@@ -1054,6 +1058,38 @@ export class ScrcpyService implements OnModuleDestroy {
       : false;
   }
 
+  sendScrollEvent(sessionId: string, event: ScrollControlPayload) {
+    return this.writeControlMessages(
+      sessionId,
+      [this.controlCodec.scrollEventPayload(event)],
+      false,
+    );
+  }
+
+  sendLivePointer(
+    sessionId: string,
+    event: TouchControlPayload,
+    connection: AbortSignal,
+  ) {
+    const active = this.controlSockets.get(sessionId);
+    if (!active || !active.captureReady) return false;
+    if (!active.pointers) {
+      const pointers = new ScrcpyLivePointers(
+        (pointer, release) => {
+          if (this.controlSockets.get(sessionId) !== active) return false;
+          const payloads = this.controlCodec.touchEventPayloads(pointer);
+          return payloads
+            ? this.writeControlPayloads(active, payloads, undefined, release)
+            : false;
+        },
+        () => this.sources.get(sessionId)?.stream.getVideoSize(),
+      );
+      active.socket.once("close", () => pointers.clear());
+      active.pointers = pointers;
+    }
+    return active.pointers.dispatch(event, connection);
+  }
+
   sendClipboard(sessionId: string, text: string) {
     return this.writeControlMessages(sessionId, [
       this.controlCodec.clipboardPayload(text),
@@ -1889,7 +1925,8 @@ export class ScrcpyService implements OnModuleDestroy {
           socket.writableNeedDrain &&
           (!isPointerRelease ||
             socket.writableLength >=
-              socket.writableHighWaterMark + SCRCPY_TOUCH_EVENT_BYTES))
+              socket.writableHighWaterMark +
+                MAX_LIVE_POINTERS * SCRCPY_TOUCH_EVENT_BYTES))
       ) {
         reject(
           new ScrcpyControlDispatchError(

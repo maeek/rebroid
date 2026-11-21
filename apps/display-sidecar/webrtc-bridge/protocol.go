@@ -125,16 +125,21 @@ func readCommands(reader *bufio.Scanner, send func([]byte) error) error {
 	return reader.Err()
 }
 
-func pointerEvent(payload []byte) string {
+func pointerEvent(payload []byte) (phase string, movementKey string) {
 	var message struct {
 		Type      string
 		Action    string
 		EventType string
+		PointerID uint32
 	}
 	if json.Unmarshal(payload, &message) != nil || message.Type != "touch" || message.Action != "pointer" {
-		return ""
+		return "", ""
 	}
-	return message.EventType
+	// The browser alternates between two slots, with unique IDs for each contact.
+	if message.PointerID%2 == 1 {
+		return message.EventType, "pointer-move-secondary"
+	}
+	return message.EventType, "pointer-move"
 }
 
 func iceServers(urls []string) []webrtc.ICEServer {

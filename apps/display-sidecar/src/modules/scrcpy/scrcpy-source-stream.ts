@@ -126,6 +126,12 @@ export class ScrcpySourceStream implements ScrcpyMediaSink {
     return this.codecGeneration;
   }
 
+  getVideoSize() {
+    if (!this.cachedConfig) return undefined;
+    const { width, height } = inspectScrcpyH264Configuration(this.cachedConfig);
+    return width && height ? { width, height } : undefined;
+  }
+
   consumerCount(): number {
     return this.consumers.size;
   }

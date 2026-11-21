@@ -173,13 +173,18 @@ active surface. Discrete controls use reliable delivery and report correlated di
 Commands waiting for a reconnect are acknowledged after the transport write completes. They fail if
 the queue is full, the session ends, or three seconds elapse before dispatch, including time spent
 waiting for a Direct ADB acknowledgment of the preceding write. If a submitted write fails or
-its completion misses the deadline, the outcome is unknown. Live pointer phases are never queued for replay after a reconnect. The browser
-and Direct ADB queues reserve room for a pointer release. Virtual surfaces require stream control
+its completion misses the deadline, the outcome is unknown. Live pointer phases and wheel deltas apply to the current connection.
+The browser and Direct ADB queues reserve room to release both active contacts. Virtual surfaces require stream control
 because the ADB fallback targets the device's default display.
 The browser chooses a fallback before sending a command. A missing acknowledgment leaves the
-outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per animation frame.
+outcome unknown. WebRTC pointer movement uses an unordered channel and coalesces updates per contact.
 The sidecar IPC writer and Go relay send correlated replies in order and coalesce replaceable
 telemetry under pressure. A full reliable queue ends that peer attempt.
+
+Scroll the wheel or move two fingers on a trackpad over the displayed Android content to send
+horizontal and vertical scrolling. Ctrl- or Command-wheel retains browser zoom. On a touchscreen,
+use two contacts to pinch or rotate. With a mouse, hold Ctrl before pressing the primary button
+and drag to move a mirrored second contact. The Android app decides how to respond to these gestures.
 
 The web toolbar queues up to eight commands for its current display, including the command in
 flight. Volume up and down accept repeated taps. Each command shows its own pending state, while
@@ -374,7 +379,7 @@ scrcpy version, requested/effective profiles, relevant logs, and observed result
 | Android         | ReDroid 13, 14, 15, and 16; 17+ must fail clearly as unsupported.         |
 | Transport       | WebRTC and WebSocket; Chromium and Firefox.                               |
 | Media           | Video with audio enabled/disabled; audible app output, toggle/reopen, and explicit failure reasons. |
-| Controls        | Touch, keyboard, actions, clipboard, and ADB fallback.                    |
+| Controls        | Touch, keyboard, actions, clipboard, and ADB fallback. Check wheel and trackpad scrolling, touchscreen pinch and rotation, and Ctrl-drag with a mouse on each transport. Cancel with both contacts down, reconnect, and verify the next tap. |
 | Connections     | Direct, forward, and reverse tunnels, fallback, repeated create/release.   |
 | Recovery        | Disconnect, retry, reconnect, expiry, shutdown, and final cleanup.        |
 | Virtual display | Rejection while disabled; creation/release after synchronized enablement. |

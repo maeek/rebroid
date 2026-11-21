@@ -103,7 +103,7 @@ test(
     assert.deepEqual(submitted, [4]);
 
     const expiresAt = Date.now() + 3000;
-    const queued = Array.from({ length: 127 }, () => writeBefore(5, expiresAt));
+    const queued = Array.from({ length: 126 }, () => writeBefore(5, expiresAt));
     const discarded = assert.rejects(
       Promise.all(queued),
       /closed before writing/,
@@ -113,10 +113,13 @@ test(
       message: /queue is full/,
     });
     const release = assert.rejects(
-      writeBefore(7, expiresAt, true),
+      Promise.all([
+        writeBefore(7, expiresAt, true),
+        writeBefore(8, expiresAt, true),
+      ]),
       /closed before writing/,
     );
-    await assert.rejects(writeBefore(8, expiresAt, true), /queue is full/);
+    await assert.rejects(writeBefore(9, expiresAt, true), /queue is full/);
     socket.destroy();
     await Promise.all([discarded, release]);
   },

@@ -1,42 +1,49 @@
-import type {
-  ControlChannel,
-  PageLifecycle,
-  TouchInputPayload,
-  TouchPayload,
-  TouchPoint,
-} from "./types.js";
+import type { ControlChannel, PageLifecycle, TouchPoint } from "./types.js";
 import type { ViewerPresentation } from "./viewer-presentation.js";
 
+type VideoSize = { width: number; height: number };
 type TouchInputOptions = {
   target: HTMLElement;
-  getVideoSize: () => { width: number; height: number };
+  getVideoSize: () => VideoSize;
   controlChannel: ControlChannel;
   lifecycle: PageLifecycle;
   presentation?: ViewerPresentation;
 };
 
-type PointerStart = {
-  id: number;
-  point: TouchPoint;
-  lastPoint: TouchPoint;
-};
+type Contact = { id: number; point: TouchPoint; moved: boolean };
+type Pointer = { size: VideoSize; contacts: Contact[] };
+type PointerPhase = "down" | "move" | "up" | "cancel";
+let nextContact = 0;
 
-const moveMinDistance = 1;
+function sameSize(a: VideoSize, b: VideoSize) {
+  return a.width === b.width && a.height === b.height;
+}
 
 function targetPoint(
   target: HTMLElement,
-  size: { width: number; height: number },
-  event: PointerEvent,
+  size: VideoSize,
+  event: Pick<MouseEvent, "clientX" | "clientY">,
+  captured = false,
 ): TouchPoint | null {
   const rect = target.getBoundingClientRect();
-  if (!rect.width || !rect.height || !size.width || !size.height) {
+  if (!rect.width || !rect.height || !size.width || !size.height) return null;
+  // The canvas and video both use object-fit: contain.
+  const scale = Math.min(rect.width / size.width, rect.height / size.height);
+  const x =
+    (event.clientX - rect.left - (rect.width - size.width * scale) / 2) / scale;
+  const y =
+    (event.clientY - rect.top - (rect.height - size.height * scale) / 2) /
+    scale;
+  if (!captured && (x < 0 || y < 0 || x >= size.width || y >= size.height))
     return null;
-  }
-
   return {
-    x: Math.round(((event.clientX - rect.left) / rect.width) * size.width),
-    y: Math.round(((event.clientY - rect.top) / rect.height) * size.height),
+    x: Math.min(size.width - 1, Math.max(0, Math.round(x))),
+    y: Math.min(size.height - 1, Math.max(0, Math.round(y))),
   };
+}
+
+function mirror(point: TouchPoint, size: VideoSize): TouchPoint {
+  return { x: size.width - 1 - point.x, y: size.height - 1 - point.y };
 }
 
 export function setupTouchInput({
@@ -46,152 +53,224 @@ export function setupTouchInput({
   lifecycle,
   presentation,
 }: TouchInputOptions): void {
-  let pointerStart: PointerStart | null = null;
-  let pendingMove: TouchPoint | null = null;
+  const pointers = new Map<number, Pointer>();
   let moveFrame = 0;
+  const acceptsInput = () =>
+    lifecycle.hasDemand() &&
+    !presentation?.isCompact() &&
+    !target.classList.contains("hidden");
+  const clearScroll = setupWheelInput(
+    target,
+    getVideoSize,
+    controlChannel,
+    () => acceptsInput() && pointers.size === 0,
+  );
 
-  const clearPointer = () => {
-    const pointer = pointerStart;
-    pointerStart = null;
-    pendingMove = null;
-    if (moveFrame) window.cancelAnimationFrame(moveFrame);
-    moveFrame = 0;
-    if (pointer && target.hasPointerCapture(pointer.id)) {
-      target.releasePointerCapture(pointer.id);
-    }
-    return pointer;
-  };
-
-  lifecycle.onDemandChange((active) => {
-    if (!active) clearPointer();
-  });
-
-  target.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-  });
-
-  const postTouch = (payload: TouchInputPayload) => {
-    const size = getVideoSize();
-    const touchPayload: TouchPayload = {
-      ...payload,
-      videoWidth: size.width,
-      videoHeight: size.height,
-    } as TouchPayload;
-    return controlChannel.send(
-      { type: "touch", ...touchPayload },
-      "touch",
-      touchPayload,
-    );
-  };
-
-  const cancelPointer = () => {
-    const pointer = clearPointer();
-    if (pointer) {
-      postTouch({
+  const send = (contact: Contact, size: VideoSize, eventType: PointerPhase) =>
+    controlChannel.send(
+      {
+        type: "touch",
         action: "pointer",
-        eventType: "cancel",
-        ...pointer.lastPoint,
-      }).catch(() => undefined);
+        eventType,
+        pointerId: contact.id,
+        ...contact.point,
+        videoWidth: size.width,
+        videoHeight: size.height,
+      },
+      "touch",
+    );
+
+  const finishPointer = (id: number, phase: "up" | "cancel") => {
+    const pointer = pointers.get(id);
+    if (!pointer) return;
+    pointers.delete(id);
+    for (const contact of pointer.contacts)
+      void send(contact, pointer.size, phase).catch(() => undefined);
+    if (target.hasPointerCapture(id)) target.releasePointerCapture(id);
+    if (!pointers.size && moveFrame) {
+      window.cancelAnimationFrame(moveFrame);
+      moveFrame = 0;
     }
   };
 
-  const stopWatchingPresentation = presentation?.onChange((compact) => {
-    if (compact) cancelPointer();
+  const cancelInput = () => {
+    clearScroll();
+    for (const id of pointers.keys()) finishPointer(id, "cancel");
+  };
+  lifecycle.onDemandChange((active) => {
+    if (!active) cancelInput();
   });
-  if (stopWatchingPresentation) lifecycle.onClose(stopWatchingPresentation);
+  const stopWatchingPresentation = presentation?.onChange((compact) => {
+    if (compact) cancelInput();
+  });
+  window.addEventListener("blur", cancelInput);
+  lifecycle.onClose(() => {
+    cancelInput();
+    stopWatchingPresentation?.();
+    window.removeEventListener("blur", cancelInput);
+  });
+  target.addEventListener("contextmenu", (event) => event.preventDefault());
 
   target.addEventListener("pointerdown", (event) => {
     if (
-      pointerStart ||
-      !lifecycle.hasDemand() ||
-      presentation?.isCompact() ||
-      target.classList.contains("hidden") ||
-      (event.pointerType === "mouse" && event.button !== 0)
-    ) {
+      !acceptsInput() ||
+      !controlChannel.canSendLiveInput() ||
+      pointers.has(event.pointerId) ||
+      event.button !== 0
+    )
       return;
-    }
-
-    const point = targetPoint(target, getVideoSize(), event);
-    if (!point) {
-      return;
-    }
-
+    const size = getVideoSize();
+    const point = targetPoint(target, size, event);
+    if (!point) return;
+    if ([...pointers.values()].some((pointer) => !sameSize(pointer.size, size)))
+      cancelInput();
+    const mirrored = event.pointerType === "mouse" && event.ctrlKey;
+    const points = mirrored ? [point, mirror(point, size)] : [point];
+    const usedSlots = new Set(
+      [...pointers.values()].flatMap(({ contacts }) =>
+        contacts.map(({ id }) => id % 2),
+      ),
+    );
+    const freeSlots = [0, 1].filter((slot) => !usedSlots.has(slot));
+    if (points.length > freeSlots.length) return;
+    const pointer: Pointer = {
+      size,
+      contacts: points.map((position, index) => ({
+        // A slot can be reused while an old unordered move is still in flight.
+        id: nextContact++ * 2 + freeSlots[index],
+        point: position,
+        moved: false,
+      })),
+    };
     event.preventDefault();
     target.setPointerCapture(event.pointerId);
-    pointerStart = {
-      id: event.pointerId,
-      point,
-      lastPoint: point,
-    };
-    postTouch({
-      action: "pointer",
-      eventType: "down",
-      x: point.x,
-      y: point.y,
-    }).catch(() => undefined);
-  });
-
-  target.addEventListener("pointermove", (event) => {
-    if (!pointerStart || pointerStart.id !== event.pointerId) {
-      return;
-    }
-
-    const point = targetPoint(target, getVideoSize(), event);
-    if (!point) {
-      return;
-    }
-
-    event.preventDefault();
-    const distance = Math.hypot(
-      point.x - pointerStart.lastPoint.x,
-      point.y - pointerStart.lastPoint.y,
-    );
-    if (distance < moveMinDistance) {
-      return;
-    }
-
-    pointerStart.lastPoint = point;
-    pendingMove = point;
-    if (!moveFrame) {
-      moveFrame = window.requestAnimationFrame(() => {
-        moveFrame = 0;
-        const latest = pendingMove;
-        pendingMove = null;
-        if (latest) {
-          postTouch({
-            action: "pointer",
-            eventType: "move",
-            x: latest.x,
-            y: latest.y,
-          }).catch(() => undefined);
-        }
+    pointers.set(event.pointerId, pointer);
+    for (const contact of pointer.contacts) {
+      void send(contact, size, "down").catch(() => {
+        if (pointers.get(event.pointerId) === pointer) cancelInput();
       });
     }
   });
 
-  target.addEventListener("pointerup", (event) => {
-    if (!pointerStart || pointerStart.id !== event.pointerId) {
+  const updatePointer = (pointer: Pointer, event: PointerEvent) => {
+    const point = targetPoint(target, pointer.size, event, true);
+    if (!point) return;
+    pointer.contacts.forEach((contact, index) => {
+      const next = index === 0 ? point : mirror(point, pointer.size);
+      if (next.x === contact.point.x && next.y === contact.point.y) return;
+      contact.point = next;
+      contact.moved = true;
+    });
+  };
+
+  target.addEventListener("pointermove", (event) => {
+    const pointer = pointers.get(event.pointerId);
+    if (!pointer) return;
+    if (!acceptsInput() || !sameSize(pointer.size, getVideoSize())) {
+      cancelInput();
       return;
     }
-
-    const point =
-      targetPoint(target, getVideoSize(), event) ?? pointerStart.lastPoint;
-    pointerStart = null;
-    pendingMove = null;
-
     event.preventDefault();
-    postTouch({
-      action: "pointer",
-      eventType: "up",
-      x: point.x,
-      y: point.y,
-    }).catch(() => undefined);
+    updatePointer(pointer, event);
+    if (moveFrame) return;
+    moveFrame = window.requestAnimationFrame(() => {
+      moveFrame = 0;
+      if (!acceptsInput() || !sameSize(pointer.size, getVideoSize())) {
+        cancelInput();
+        return;
+      }
+      for (const { contacts, size } of pointers.values()) {
+        for (const contact of contacts) {
+          if (!contact.moved) continue;
+          contact.moved = false;
+          void send(contact, size, "move").catch(() => undefined);
+        }
+      }
+    });
   });
 
-  target.addEventListener("pointercancel", (event) => {
-    if (pointerStart?.id === event.pointerId) cancelPointer();
+  target.addEventListener("pointerup", (event) => {
+    const pointer = pointers.get(event.pointerId);
+    if (!pointer) return;
+    event.preventDefault();
+    if (!sameSize(pointer.size, getVideoSize())) {
+      cancelInput();
+      return;
+    }
+    updatePointer(pointer, event);
+    finishPointer(event.pointerId, "up");
   });
-  target.addEventListener("lostpointercapture", (event) => {
-    if (pointerStart?.id === event.pointerId) cancelPointer();
-  });
+
+  const onPointerLost = (event: PointerEvent) => {
+    if (pointers.has(event.pointerId)) cancelInput();
+  };
+  target.addEventListener("pointercancel", onPointerLost);
+  target.addEventListener("lostpointercapture", onPointerLost);
+}
+
+function setupWheelInput(
+  target: HTMLElement,
+  getVideoSize: () => VideoSize,
+  controlChannel: ControlChannel,
+  acceptsInput: () => boolean,
+) {
+  let frame = 0;
+  let pending:
+    | (TouchPoint & VideoSize & { horizontal: number; vertical: number })
+    | undefined;
+  const clear = () => {
+    if (frame) window.cancelAnimationFrame(frame);
+    frame = 0;
+    pending = undefined;
+  };
+
+  target.addEventListener(
+    "wheel",
+    (event) => {
+      if (
+        event.ctrlKey ||
+        event.metaKey ||
+        event.defaultPrevented ||
+        !acceptsInput() ||
+        !controlChannel.canSendLiveInput()
+      )
+        return;
+      const size = getVideoSize();
+      const point = targetPoint(target, size, event);
+      const mode = event.deltaMode;
+      const { deltaX, deltaY } = event;
+      if (!point || (!deltaX && !deltaY)) return;
+      event.preventDefault();
+      // A wheel notch commonly scrolls three lines. Preserve fractional trackpad deltas.
+      const scale = mode === 1 ? 1 / 3 : mode === 2 ? 8 : 1 / 48;
+      const previous = pending && sameSize(pending, size) ? pending : undefined;
+      pending = {
+        ...size,
+        ...point,
+        horizontal: (previous?.horizontal ?? 0) - deltaX * scale,
+        vertical: (previous?.vertical ?? 0) - deltaY * scale,
+      };
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        const scroll = pending;
+        frame = 0;
+        pending = undefined;
+        if (!scroll || !acceptsInput() || !sameSize(scroll, getVideoSize()))
+          return;
+        const horizontal = Math.max(-16, Math.min(16, scroll.horizontal));
+        const vertical = Math.max(-16, Math.min(16, scroll.vertical));
+        if (horizontal || vertical)
+          controlChannel.sendScroll({
+            x: scroll.x,
+            y: scroll.y,
+            videoWidth: scroll.width,
+            videoHeight: scroll.height,
+            horizontal,
+            vertical,
+          });
+      });
+    },
+    { passive: false },
+  );
+  return clear;
 }

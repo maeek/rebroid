@@ -4,6 +4,7 @@ import {
 } from "@rebroid/android-application-core/viewer-control";
 import type {
   KeyboardControlPayload,
+  ScrollControlPayload,
   TouchControlPayload,
 } from "../shared/display-control.types";
 
@@ -11,6 +12,7 @@ export const CONTROL_MESSAGE = {
   INJECT_KEYCODE: 0,
   INJECT_TEXT: 1,
   INJECT_TOUCH_EVENT: 2,
+  INJECT_SCROLL_EVENT: 3,
   BACK_OR_SCREEN_ON: 4,
   EXPAND_SETTINGS_PANEL: 6,
   COLLAPSE_PANELS: 7,
@@ -26,6 +28,7 @@ const MOTION_EVENT_ACTION_UP = 1;
 const MOTION_EVENT_ACTION_MOVE = 2;
 const POINTER_ID_GENERIC_FINGER = -2n;
 export const SCRCPY_TOUCH_EVENT_BYTES = 32;
+export const MAX_LIVE_POINTERS = 2;
 
 const ANDROID_META_SHIFT_ON = 0x1;
 const ANDROID_META_ALT_ON = 0x2;
@@ -176,6 +179,7 @@ export class ScrcpyControlCodec {
           videoWidth,
           videoHeight,
           action === MOTION_EVENT_ACTION_UP ? 0 : 1,
+          event.pointerId === undefined ? undefined : BigInt(event.pointerId),
         ),
       ];
     }
@@ -199,6 +203,31 @@ export class ScrcpyControlCodec {
         0,
       ),
     ];
+  }
+
+  scrollEventPayload(event: ScrollControlPayload) {
+    const payload = Buffer.alloc(21);
+    payload.writeUInt8(CONTROL_MESSAGE.INJECT_SCROLL_EVENT, 0);
+    payload.writeInt32BE(
+      Math.min(event.videoWidth - 1, Math.max(0, Math.round(event.x))),
+      1,
+    );
+    payload.writeInt32BE(
+      Math.min(event.videoHeight - 1, Math.max(0, Math.round(event.y))),
+      5,
+    );
+    payload.writeUInt16BE(event.videoWidth, 9);
+    payload.writeUInt16BE(event.videoHeight, 11);
+    // scrcpy encodes [-16, 16] in signed 16-bit fixed point.
+    payload.writeInt16BE(
+      Math.min(32767, Math.round(event.horizontal * 2048)),
+      13,
+    );
+    payload.writeInt16BE(
+      Math.min(32767, Math.round(event.vertical * 2048)),
+      15,
+    );
+    return payload;
   }
 
   clipboardPayload(text: string) {
@@ -303,11 +332,12 @@ export class ScrcpyControlCodec {
     videoWidth: number,
     videoHeight: number,
     pressure: number,
+    pointerId = POINTER_ID_GENERIC_FINGER,
   ) {
     const payload = Buffer.alloc(SCRCPY_TOUCH_EVENT_BYTES);
     payload.writeUInt8(CONTROL_MESSAGE.INJECT_TOUCH_EVENT, 0);
     payload.writeUInt8(action, 1);
-    payload.writeBigInt64BE(POINTER_ID_GENERIC_FINGER, 2);
+    payload.writeBigInt64BE(pointerId, 2);
     payload.writeInt32BE(x, 10);
     payload.writeInt32BE(y, 14);
     payload.writeUInt16BE(videoWidth, 18);

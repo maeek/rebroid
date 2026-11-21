@@ -30,13 +30,20 @@ export class DisplayControlGateway implements OnGatewayConnection {
       const stopWatching = admission.watch(() =>
         client.close(4404, "Display session not found."),
       );
-      client.once("close", stopWatching);
+      const connection = new AbortController();
+      client.once("close", () => {
+        stopWatching();
+        connection.abort();
+      });
       client.on("message", (raw) => {
         if (client.readyState === WebSocket.OPEN) {
-          void this.handleMessage(client, sessionId, raw);
+          void this.handleMessage(client, sessionId, raw, connection.signal);
         }
       });
-      this.send(client, { type: "control-ready" });
+      this.send(client, {
+        type: "control-ready",
+        canControl: admission.session.capabilities.includes("control"),
+      });
     } catch (error) {
       client.close(1008, this.errorMessage(error).slice(0, 120));
     }
@@ -46,6 +53,7 @@ export class DisplayControlGateway implements OnGatewayConnection {
     client: WebSocket,
     sessionId: string,
     raw: RawData,
+    connection: AbortSignal,
   ) {
     const message = this.parseMessage(raw);
     if (!message) {
@@ -60,9 +68,15 @@ export class DisplayControlGateway implements OnGatewayConnection {
     const id =
       typeof message.id === "string" ? message.id.slice(0, 128) : undefined;
     try {
-      const result = await this.controls.execute(sessionId, message);
-      this.send(client, { id, ok: true, ...result });
+      const result = await this.controls.execute(
+        sessionId,
+        message,
+        connection,
+      );
+      if (message.type !== "scroll" || id)
+        this.send(client, { id, ok: true, ...result });
     } catch (error) {
+      if (message.type === "scroll" && !id) return;
       const failure = displayControlError(error);
       this.logger.debug(
         `[display-control:${sessionId}] control message failed: ${failure.code}`,

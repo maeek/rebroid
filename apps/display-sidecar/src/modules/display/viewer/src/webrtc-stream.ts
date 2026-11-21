@@ -1001,14 +1001,6 @@ export function createWebrtcStream({
       { once: true, signal },
     );
     let videoResetDeadline = 0;
-    controlChannel.useDataChannels(
-      reliableChannel,
-      movementChannel,
-      () => recoverCurrent("WebRTC video codec configuration changed."),
-      (remainingMs) => {
-        videoResetDeadline = performance.now() + Math.min(remainingMs, 3_000);
-      },
-    );
     const videoTransceiver = connection.addTransceiver("video", {
       direction: "recvonly",
     });
@@ -1112,6 +1104,15 @@ export function createWebrtcStream({
       signal.throwIfAborted();
       if (attemptId && /^[a-z0-9-]{1,64}$/i.test(attemptId))
         consumerAttemptId = attemptId;
+      controlChannel.useDataChannels(
+        reliableChannel,
+        movementChannel,
+        () => recoverCurrent("WebRTC video codec configuration changed."),
+        (remainingMs) => {
+          videoResetDeadline = performance.now() + Math.min(remainingMs, 3_000);
+        },
+        response.headers?.get("x-rebroid-viewer-control") !== "0",
+      );
       failureStage = "connection";
       await connection.setRemoteDescription({
         type: "answer",
