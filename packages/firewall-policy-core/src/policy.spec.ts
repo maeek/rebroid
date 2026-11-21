@@ -34,7 +34,12 @@ describe("firewall policy core", () => {
 
   it("creates stable firewall chain names for agent rules", () => {
     const id = "12345678-1234-1234-1234-123456789abc";
-    assert.equal(firewallChainName(id), "RB_APP_1234567812341234");
+    const chain = firewallChainName(id);
+    assert.equal(chain, "RB_APP_1234567812341234");
+    assert.ok(
+      chain.length < 29,
+      "iptables chain names must fit the compatibility limit",
+    );
   });
 
   it("validates and deduplicates policies", () => {

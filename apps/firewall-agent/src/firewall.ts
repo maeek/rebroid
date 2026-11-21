@@ -1,8 +1,6 @@
 import { execFileSync } from "node:child_process";
 import {
   firewallChainName,
-  validatePolicies,
-  validatePolicy,
   type FirewallPolicy,
 } from "@rebroid/firewall-policy-core/policy";
 
@@ -29,7 +27,7 @@ export interface FirewallCommandRunner {
   ): { ok: boolean; output: string };
 }
 
-export class ExecFileFirewallCommandRunner implements FirewallCommandRunner {
+class ExecFileFirewallCommandRunner implements FirewallCommandRunner {
   run(
     binary: string,
     args: string[],
@@ -52,9 +50,6 @@ export class ExecFileFirewallCommandRunner implements FirewallCommandRunner {
 }
 
 const defaultCommandRunner = new ExecFileFirewallCommandRunner();
-
-export const chainName = firewallChainName;
-export { validatePolicies, validatePolicy, type FirewallPolicy };
 
 export class IptablesAdapter implements FirewallAdapter {
   readonly name: string;
@@ -83,7 +78,7 @@ export class IptablesAdapter implements FirewallAdapter {
     const updates: string[] = [];
     for (const policy of startupFirst(policies)) {
       if (!policy.enabled) continue;
-      const chain = chainName(policy.applicationId);
+      const chain = firewallChainName(policy.applicationId);
       if (activeChains.has(chain)) {
         throw new Error(`Firewall policies share the iptables chain ${chain}.`);
       }
@@ -139,7 +134,7 @@ export class IptablesAdapter implements FirewallAdapter {
   }
 }
 
-export class NftablesAdapter implements FirewallAdapter {
+class NftablesAdapter implements FirewallAdapter {
   readonly name = "nftables";
 
   constructor(

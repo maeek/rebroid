@@ -2,6 +2,7 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  mkdirSync,
   openSync,
   readFileSync,
   renameSync,
@@ -9,8 +10,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import { mkdirSync } from "node:fs";
-import { FirewallPolicy, validatePolicy } from "./firewall";
+import {
+  type FirewallPolicy,
+  validatePolicies,
+} from "@rebroid/firewall-policy-core/policy";
 
 export interface FirewallPolicyState {
   policies: Map<string, FirewallPolicy>;
@@ -58,15 +61,8 @@ export class FirewallPolicyStore {
     ) {
       throw new Error("Invalid persisted firewall policy state.");
     }
-    const policies = new Map<string, FirewallPolicy>();
-    for (const policy of stored.policies) {
-      policies.set(
-        policy.applicationId,
-        validatePolicy(policy.applicationId, policy),
-      );
-    }
     this.state = {
-      policies,
+      policies: validatePolicies(stored),
       removals: new Map(stored.removals),
       revisions: new Map(stored.revisions),
       lastReconciledAt: stored.lastReconciledAt,

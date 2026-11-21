@@ -1,6 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { FirewallPolicy, validatePolicies, validatePolicy } from "./firewall";
+import {
+  type FirewallPolicy,
+  validatePolicies,
+  validatePolicy,
+} from "@rebroid/firewall-policy-core/policy";
 import {
   firewallRecoveryPendingMessage,
   FirewallPolicyRecoveryPendingError,
@@ -31,7 +35,7 @@ const authorized = (request: IncomingMessage, getSecret: () => string) => {
   );
 };
 
-export const readJsonBody = (request: IncomingMessage) =>
+const readJsonBody = (request: IncomingMessage) =>
   new Promise<Partial<FirewallPolicy>>((resolve, reject) => {
     const chunks: Buffer[] = [];
     let bytes = 0;

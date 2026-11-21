@@ -1,4 +1,5 @@
-import type { FirewallAdapter, FirewallPolicy } from "./firewall";
+import type { FirewallPolicy } from "@rebroid/firewall-policy-core/policy";
+import type { FirewallAdapter } from "./firewall";
 import type { FirewallPolicyState, FirewallPolicyStore } from "./policy-store";
 
 // Policy IDs cannot contain JSON punctuation, so scoped and app-wide removals share the store.
