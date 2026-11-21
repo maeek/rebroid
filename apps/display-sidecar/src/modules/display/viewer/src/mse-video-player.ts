@@ -1,3 +1,4 @@
+import { summarizeFrameGaps } from "./frame-gap-metrics.js";
 import type { DisplayFrameSize } from "@rebroid/android-application-core/viewer-stream";
 
 type VideoFrameCallbackMetadata = {
@@ -51,21 +52,6 @@ const maximumHistoryMs = 500;
 const minimumTargetMs = 20;
 const maximumTargetMs = 40;
 const nominalFrameDurationMs = 1_000 / 60;
-
-function percentile(
-  values: number[],
-  percentileValue: number,
-): number | undefined {
-  if (values.length === 0) {
-    return undefined;
-  }
-  const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.max(
-    0,
-    Math.min(sorted.length - 1, Math.ceil(sorted.length * percentileValue) - 1),
-  );
-  return sorted[index];
-}
 
 export class MseVideoPlayer {
   private epoch = -1;
@@ -274,8 +260,8 @@ export class MseVideoPlayer {
       0,
       droppedFrames - this.lastReportedDroppedFrames,
     );
-    const gaps = this.frameGapsMs;
-    const gapP95 = percentile(gaps, 0.95);
+    const gapMetrics = summarizeFrameGaps(this.frameGapsMs);
+    const gapP95 = gapMetrics.frameGapP95Ms;
     if (droppedDelta > 0 || (gapP95 !== undefined && gapP95 > 40)) {
       this.stableSamples = 0;
       this.targetMs = Math.min(maximumTargetMs, this.targetMs + 10);
@@ -304,10 +290,7 @@ export class MseVideoPlayer {
       decodedFps,
       drawnFps: presentedFps,
       presentedFps,
-      frameGapP50Ms: percentile(gaps, 0.5),
-      frameGapP95Ms: gapP95,
-      frameGapP99Ms: percentile(gaps, 0.99),
-      frameGapMaxMs: gaps.length > 0 ? Math.max(...gaps) : undefined,
+      ...gapMetrics,
       mseBufferedLeadMs: this.bufferedLeadMs,
       jitterBufferTargetMs: this.targetMs,
       presentationDroppedFrames: droppedFrames,

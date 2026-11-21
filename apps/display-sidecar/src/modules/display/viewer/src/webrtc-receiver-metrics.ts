@@ -1,3 +1,4 @@
+import { summarizeFrameGaps } from "./frame-gap-metrics.js";
 import type {
   DisplaySizePresentation,
   FrameAcknowledgementStatus,
@@ -27,14 +28,7 @@ export class WebrtcFrameGapSamples {
   }
 
   takeSummary() {
-    this.gaps.sort((left, right) => left - right);
-    const length = this.gaps.length;
-    const summary = {
-      frameGapP50Ms: this.gaps.at(Math.ceil(length * 0.5) - 1),
-      frameGapP95Ms: this.gaps.at(Math.ceil(length * 0.95) - 1),
-      frameGapP99Ms: this.gaps.at(Math.ceil(length * 0.99) - 1),
-      frameGapMaxMs: this.gaps.at(-1),
-    };
+    const summary = summarizeFrameGaps(this.gaps);
     this.gaps.length = 0;
     this.nextIndex = 0;
     return summary;

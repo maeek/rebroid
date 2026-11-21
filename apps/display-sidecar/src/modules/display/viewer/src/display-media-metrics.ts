@@ -1,3 +1,5 @@
+import { summarizeFrameGaps } from "./frame-gap-metrics.js";
+
 function percentile(
   values: number[],
   percentileValue: number,
@@ -101,7 +103,6 @@ export class DisplayMediaMetrics {
     const seconds = Math.max((now - this.lastSampleAt) / 1_000, 0.001);
     const drawnFps =
       (this.totals.drawnFrames - this.previousTotals.drawnFrames) / seconds;
-    const gaps = this.frameGapsMs;
     return {
       receivedFps:
         (this.totals.receivedFrames - this.previousTotals.receivedFrames) /
@@ -115,10 +116,7 @@ export class DisplayMediaMetrics {
         ((this.totals.bytes - this.previousTotals.bytes) * 8) /
         seconds /
         1_000_000,
-      frameGapP50Ms: percentile(gaps, 0.5),
-      frameGapP95Ms: percentile(gaps, 0.95),
-      frameGapP99Ms: percentile(gaps, 0.99),
-      frameGapMaxMs: gaps.length > 0 ? Math.max(...gaps) : undefined,
+      ...summarizeFrameGaps(this.frameGapsMs),
       sourceInterFrameP95Ms: percentile(this.sourceGapsMs, 0.95),
       networkInterArrivalJitterP95Ms: percentile(this.networkJitterMs, 0.95),
       decodeP95Ms: percentile(this.decodeTimesMs, 0.95),
