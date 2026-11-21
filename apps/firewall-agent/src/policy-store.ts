@@ -71,20 +71,16 @@ export class FirewallPolicyStore {
   }
 
   snapshot(): FirewallPolicyState {
-    return {
-      policies: new Map(this.state.policies),
-      removals: new Map(this.state.removals),
-      revisions: new Map(this.state.revisions),
-      lastReconciledAt: this.state.lastReconciledAt,
-    };
+    return structuredClone(this.state);
   }
 
   save(next: FirewallPolicyState, beforeCommit?: () => void) {
+    const committed = structuredClone(next);
     const stored: StoredPolicyState = {
-      policies: [...next.policies.values()],
-      removals: [...next.removals],
-      revisions: [...next.revisions],
-      lastReconciledAt: next.lastReconciledAt,
+      policies: [...committed.policies.values()],
+      removals: [...committed.removals],
+      revisions: [...committed.revisions],
+      lastReconciledAt: committed.lastReconciledAt,
     };
     mkdirSync(dirname(this.statePath), { recursive: true });
     const temporaryPath = `${this.statePath}.${process.pid}.tmp`;
@@ -104,6 +100,6 @@ export class FirewallPolicyStore {
       } catch {}
       throw error;
     }
-    this.state = next;
+    this.state = committed;
   }
 }

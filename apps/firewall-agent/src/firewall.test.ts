@@ -160,7 +160,13 @@ test("policy storage atomically replaces and reloads desired state", () => {
     state.policies.set("app-1", policy);
     store.save(state);
     state.removals.set("app-2", 4);
+    assert.equal(store.snapshot().removals.has("app-2"), false);
     store.save(state);
+    const observed = store.snapshot();
+    observed.policies.get("app-1")!.allowCidrs.push("192.0.2.0/24");
+    assert.deepEqual(store.snapshot().policies.get("app-1")!.allowCidrs, [
+      "10.0.0.0/8",
+    ]);
     assert.equal(
       JSON.parse(readFileSync(statePath, "utf8")).policies[0].generation,
       3,

@@ -50,8 +50,7 @@ export class FirewallPolicyCommands {
   }
 
   reconcile(desired: Map<string, FirewallPolicy>, startedAt: number) {
-    this.recoverIfNeeded();
-    const state = this.store.snapshot();
+    const state = this.currentState();
     if (state.lastReconciledAt !== null && startedAt < state.lastReconciledAt) {
       return "stale";
     }
@@ -103,34 +102,12 @@ export class FirewallPolicyCommands {
   }
 
   apply(policy: FirewallPolicy) {
-    this.recoverIfNeeded();
-    const state = this.store.snapshot();
-    const id = policy.applicationId;
-    const existing = state.policies.get(id);
-    if (
-      (policy.revision ?? 0) < (state.revisions.get(id) ?? 0) ||
-      (existing &&
-        (existing.revision ?? 0) === (policy.revision ?? 0) &&
-        existing.generation > policy.generation) ||
-      this.wasRemoved(state.removals, policy, policy.generation) ||
-      (!existing &&
-        state.lastReconciledAt !== null &&
-        state.lastReconciledAt > policy.generation)
-    ) {
-      return "stale";
-    }
-
-    state.policies.set(id, policy);
-    if (policy.revision !== undefined) state.revisions.set(id, policy.revision);
-    state.removals.delete(id);
-    state.removals.delete(containerRemovalKey(id, policy.containerId));
-    this.commit(state);
-    return "applied";
+    return this.applyPolicy(this.currentState(), policy);
   }
 
   refresh(policy: FirewallPolicy) {
-    this.recoverIfNeeded();
-    const existing = this.store.snapshot().policies.get(policy.applicationId);
+    const state = this.currentState();
+    const existing = state.policies.get(policy.applicationId);
     if (
       !policy.enabled ||
       policy.startup ||
@@ -142,7 +119,7 @@ export class FirewallPolicyCommands {
     ) {
       return "stale";
     }
-    return this.apply(policy);
+    return this.applyPolicy(state, policy);
   }
 
   remove(
@@ -151,8 +128,7 @@ export class FirewallPolicyCommands {
     generation?: number,
     revision?: number,
   ) {
-    this.recoverIfNeeded();
-    const state = this.store.snapshot();
+    const state = this.currentState();
     const existing = state.policies.get(id);
     if (
       (revision ?? 0) < (state.revisions.get(id) ?? 0) ||
@@ -196,11 +172,37 @@ export class FirewallPolicyCommands {
     return "applied";
   }
 
-  private recoverIfNeeded() {
-    if (!this.needsRecovery) return;
+  private applyPolicy(state: FirewallPolicyState, policy: FirewallPolicy) {
+    const id = policy.applicationId;
+    const existing = state.policies.get(id);
+    if (
+      (policy.revision ?? 0) < (state.revisions.get(id) ?? 0) ||
+      (existing &&
+        (existing.revision ?? 0) === (policy.revision ?? 0) &&
+        existing.generation > policy.generation) ||
+      this.wasRemoved(state.removals, policy, policy.generation) ||
+      (!existing &&
+        state.lastReconciledAt !== null &&
+        state.lastReconciledAt > policy.generation)
+    ) {
+      return "stale";
+    }
+
+    state.policies.set(id, policy);
+    if (policy.revision !== undefined) state.revisions.set(id, policy.revision);
+    state.removals.delete(id);
+    state.removals.delete(containerRemovalKey(id, policy.containerId));
+    this.commit(state);
+    return "applied";
+  }
+
+  private currentState() {
+    const state = this.store.snapshot();
+    if (!this.needsRecovery) return state;
     try {
-      this.adapter.reconcile(this.store.snapshot().policies);
+      this.adapter.reconcile(state.policies);
       this.needsRecovery = false;
+      return this.store.snapshot();
     } catch (error) {
       throw new FirewallPolicyRecoveryPendingError(error);
     }
