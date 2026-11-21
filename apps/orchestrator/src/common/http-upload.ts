@@ -1,11 +1,10 @@
 import { ConflictException } from '@nestjs/common';
-import type { IncomingHttpHeaders, IncomingMessage } from 'node:http';
+import type { IncomingHttpHeaders } from 'node:http';
 import type { Readable } from 'node:stream';
 import Busboy from 'busboy';
 
 export type MultipartUploadRequest = Readable & {
   headers: IncomingHttpHeaders;
-  on: IncomingMessage['on'];
 };
 
 const isMultipartUpload = (headers: IncomingHttpHeaders) => {
@@ -52,16 +51,15 @@ export const consumeSingleFileUpload = <Result>({
 
   return new Promise<Result>((resolve, reject) => {
     let upload: Promise<Result> | null = null;
-    let settled = false;
-    const finish = (callback: () => void) => {
-      if (settled) return;
-      settled = true;
-      callback();
+    const stop = (error: Error) => {
+      reject(error);
+      request.unpipe(parser);
+      parser.destroy(error);
+      request.resume();
     };
-    const fail = (error: unknown) => finish(() => reject(error));
 
     parser.on('file', (receivedFieldName, stream, info) => {
-      stream.on('error', fail);
+      stream.on('error', stop);
       if (receivedFieldName !== fieldName || upload) {
         stream.resume();
         return;
@@ -70,21 +68,21 @@ export const consumeSingleFileUpload = <Result>({
       stream.on('limit', () => {
         exceededLimit = true;
         const error = limitError();
-        fail(error);
+        reject(error);
         stream.destroy(error);
       });
       upload = consume(stream, info.filename || 'upload', () => exceededLimit);
-      upload.catch(fail);
+      upload.catch(stop);
     });
-    parser.on('error', fail);
-    request.on('aborted', () => fail(canceledError()));
-    request.on('error', fail);
+    parser.on('error', stop);
+    request.on('aborted', () => stop(canceledError()));
+    request.on('error', stop);
     parser.on('finish', () => {
       if (!upload) {
-        fail(missingError());
+        reject(missingError());
         return;
       }
-      upload.then((result) => finish(() => resolve(result)), fail);
+      upload.then(resolve, reject);
     });
     request.pipe(parser);
   });

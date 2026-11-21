@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { text } from 'node:stream/consumers';
 import {
   consumeSingleFileUpload,
@@ -29,3 +29,28 @@ it.each(['123', '1234', '12345'])(
     else await expect(result).resolves.toBe(contents);
   },
 );
+
+it('stops the file consumer when the request is interrupted', async () => {
+  const input = new PassThrough();
+  const request = Object.assign(input, {
+    headers: { 'content-type': 'multipart/form-data; boundary=boundary' },
+  });
+  const consume = jest.fn((stream: Readable) => text(stream));
+  const result = consumeSingleFileUpload({
+    request,
+    fieldName: 'file',
+    maxBytes: 16,
+    missingError: () => new Error('missing'),
+    limitError: () => new Error('too large'),
+    canceledError: () => new Error('canceled'),
+    consume,
+  });
+  input.write(
+    '--boundary\r\nContent-Disposition: form-data; name="file"; filename="test.txt"\r\n\r\npartial',
+  );
+  const file = consume.mock.calls[0][0];
+  request.emit('aborted');
+  await expect(result).rejects.toThrow('canceled');
+  expect(file.destroyed).toBe(true);
+  input.destroy();
+});
