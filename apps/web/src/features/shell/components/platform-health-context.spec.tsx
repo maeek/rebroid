@@ -72,7 +72,7 @@ const sidebar = (optionalServicesEnabled = true, canManage = true) => (
           canCreateApp: canManage,
           canManageWorkflows: canManage
         }}
-        pollRecentApps
+        recentAppsQuery={{ data: [], isLoading: false, mutate: vi.fn() }}
       />
     </PlatformHealthProvider>
   </FeatureFlagsProvider>

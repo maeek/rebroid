@@ -1,12 +1,14 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { connection } from 'next/server'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ProtectedLayout from '@/app/(protected)/layout'
 import { getAuthenticatedUser } from '@/server/auth/authorization'
 import { requiredPasswordChangePath } from '@/server/auth/password-change-routing'
 import { loadFeatureFlags } from './features'
 import type { PublicUser } from '@/shared/contracts/auth-user'
+import type { FeatureFlagManifest } from '@/shared/contracts/feature-flags'
 
 vi.mock('next/headers', () => ({ headers: vi.fn() }))
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
@@ -18,6 +20,7 @@ describe('protected layout feature reads', () => {
   beforeEach(() => {
     vi.mocked(getAuthenticatedUser).mockResolvedValue({ passwordChangeRequired: false } as PublicUser)
     vi.mocked(headers).mockResolvedValue(new Headers({ 'x-pathname': '/apps' }))
+    vi.mocked(loadFeatureFlags).mockResolvedValue(null)
     vi.mocked(redirect).mockImplementation(path => {
       throw new Error(path)
     })
@@ -49,5 +52,13 @@ describe('protected layout feature reads', () => {
     await expect(ProtectedLayout({ children: null })).rejects.toThrow(requiredPasswordChangePath)
 
     expect(loadFeatureFlags).not.toHaveBeenCalled()
+  })
+
+  it('renders authenticated content while the manifest request remains pending', async () => {
+    const manifest = Promise.withResolvers<FeatureFlagManifest | null>()
+    vi.mocked(loadFeatureFlags).mockReturnValue(manifest.promise)
+    const result = await ProtectedLayout({ children: <h1>Preferences</h1> })
+    expect(renderToStaticMarkup(result)).toContain('<h1>Preferences</h1>')
+    manifest.resolve(null)
   })
 })

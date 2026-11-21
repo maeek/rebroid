@@ -8,12 +8,16 @@ import { EditorFormContext, EditorSectionContext } from '@/components/ui/editor-
 import { dialogSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { Visible } from '@/components/ui/visible'
 import { cn } from '@/lib/utils'
+import { useModalBack } from './use-modal-back'
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+function Dialog<Payload>(props: DialogPrimitive.Root.Props<Payload>) {
+  const controls = useModalBack<DialogPrimitive.Root.ChangeEventDetails>(props)
+
   return (
     <DialogPrimitive.Root
       data-slot='dialog'
       {...props}
+      {...controls}
     />
   )
 }

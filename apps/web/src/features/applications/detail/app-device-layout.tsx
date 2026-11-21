@@ -5,6 +5,7 @@ import { IconChevronLeft, IconDeviceMobile } from '@tabler/icons-react'
 import { Button } from '@/components/ui/button'
 import { MobileViewerHeaderSlot } from '@/features/applications/viewer/display/display-viewer-shell/mobile-viewer-header-slot'
 import { DisplayViewerVisibility } from '@/features/applications/viewer/display/display-viewer-visibility'
+import { useBackLayer } from '@/hooks/use-back-layer'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
 import { cn } from '@/lib/utils'
 import { appResourceLabels, type AppResourceView } from '@/shared/model/applications/app-resource-links'
@@ -52,6 +53,8 @@ export const AppDeviceLayout = ({
     restoreScroll.current = next === 'device' ? deviceScroll.current : (sectionScroll.current[view] ?? 0)
     setActivePane({ view, pane: next })
   }
+
+  useBackLayer(pane === 'device', () => selectPane('section'), 'screen')
 
   useLayoutEffect(() => {
     if (restoreScroll.current === null) return

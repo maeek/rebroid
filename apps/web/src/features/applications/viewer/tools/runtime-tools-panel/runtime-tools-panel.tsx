@@ -19,7 +19,14 @@ import { AppWorkflowsLoading } from './workflows/app-workflows-section'
 export const RuntimeToolsPanel = ({ toolId }: { toolId: RuntimeToolId }) => {
   const router = useRouter()
   const { app, initialSettings, permissions } = useApplicationViewerApp()
-  const { isFeatureEnabled } = useFeatureFlags()
+  const { isFeatureEnabled, isLoading } = useFeatureFlags()
+  if (
+    isLoading &&
+    toolId !== 'files' &&
+    getRuntimeTools({ permissions, isFeatureEnabled: () => true }).some(tool => tool.id === toolId)
+  ) {
+    return <RuntimeToolsPanelLoading toolId={toolId} />
+  }
   const available = getRuntimeTools({ permissions, isFeatureEnabled }).some(tool => tool.id === toolId)
   if (!available)
     return (

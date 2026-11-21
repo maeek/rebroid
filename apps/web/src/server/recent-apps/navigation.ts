@@ -1,7 +1,6 @@
 import { compareAppNames } from '@/shared/model/applications/app-sort'
+import { navigationAppsLimit } from '@/shared/model/recent-apps/recent-apps'
 import type { AndroidApplicationSummary } from '@/shared/contracts/application'
-
-export const navigationAppsLimit = 5
 
 type NavigationApp = Pick<AndroidApplicationSummary, 'currentStatus' | 'id' | 'name'>
 type StoredRecentApp = {

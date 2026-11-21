@@ -29,6 +29,7 @@ import { AppSnapshotPreview } from '@/shared/ui/app-icon/app-snapshot-preview'
 import { AppStatusIndicator } from '@/shared/ui/app-icon/app-status-indicator'
 import { NavigationHint } from './navigation-hint'
 import { variantStyles, type NavigationVariant } from './protected-navigation-config'
+import { handleShellLink, type ShellNavigationHandler } from './shell-navigation-handler'
 import type { RecentApp } from '@/shared/contracts/recent-app'
 
 export const RecentAppLink = ({
@@ -36,12 +37,14 @@ export const RecentAppLink = ({
   variant,
   isActive,
   onNavigate,
+  onClose,
   onStarted
 }: {
   app: RecentApp
   variant: NavigationVariant
   isActive: boolean
-  onNavigate?: () => void
+  onNavigate?: ShellNavigationHandler
+  onClose?: () => void
   onStarted: () => void
 }) => {
   const styles = variantStyles[variant]
@@ -78,8 +81,8 @@ export const RecentAppLink = ({
     if (!canStart || isStarting) return
 
     setIsStarting(true)
-    router.push(href)
-    onNavigate?.()
+    if (onNavigate) onNavigate(href, label)
+    else router.push(href)
     try {
       unwrapActionResult(await requestApplicationStartAction(app.id))
       onStarted()
@@ -136,8 +139,8 @@ export const RecentAppLink = ({
         title={rail || canPreviewSnapshot ? undefined : label}
         onClick={event => {
           if (contextOpen) event.preventDefault()
-          else onNavigate?.()
         }}
+        onNavigate={handleShellLink(onNavigate, href, label)}
         className={cn(
           'touch:select-none touch:[-webkit-touch-callout:none]',
           rail
@@ -199,7 +202,7 @@ export const RecentAppLink = ({
           <ContextMenuItem asChild>
             <Link
               href={href}
-              onClick={onNavigate}
+              onNavigate={handleShellLink(onNavigate, href, label)}
             >
               <IconAppWindow /> {app.ownerDisplayName ? 'View app' : 'Open app'}
             </Link>
@@ -207,7 +210,7 @@ export const RecentAppLink = ({
           <ContextMenuItem asChild>
             <Link
               href={`${href}?view=configuration`}
-              onClick={onNavigate}
+              onNavigate={handleShellLink(onNavigate, `${href}?view=configuration`, 'Configuration')}
             >
               <IconSettings /> Configuration
             </Link>
@@ -228,7 +231,7 @@ export const RecentAppLink = ({
           {app.canClone ? (
             <ContextMenuItem
               disabled={isCloning}
-              onSelect={() => void openAppAsMe(app.id, onNavigate)}
+              onSelect={() => void openAppAsMe(app.id, onClose)}
             >
               <IconCopy /> Copy to my apps
             </ContextMenuItem>

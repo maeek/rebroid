@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from 'react'
 
-const desktopViewport = '(min-width: 64rem)'
+export const desktopViewport = '(min-width: 64rem)'
 
 const subscribe = (onChange: () => void) => {
   const viewport = window.matchMedia(desktopViewport)

@@ -126,8 +126,8 @@ test('personal preferences apply immediately or have their own save action', asy
   await page.reload()
   await expect(theme).toHaveText('OLED')
 
-  await page.getByRole('link', { name: 'Profile', exact: true }).click()
-  await expect(page).toHaveURL(/#profile$/)
+  await expect(page.getByRole('navigation', { name: 'Preference sections' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Save photo' })).toBeDisabled()
   await expect(page.getByRole('region', { name: 'Multi-factor authentication' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'Change password' })).toHaveCount(0)

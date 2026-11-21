@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { RebroidIcon } from '@/shared/ui/branding/rebroid-icon'
 import { NavigationControls } from './navigation-controls/navigation-controls'
 import { NavigationHint } from './navigation-hint'
-import { ProtectedNavigation } from './protected-navigation'
+import { ProtectedNavigation, type RecentAppsQuery } from './protected-navigation'
 import type { ShellUser } from './shell-user'
 import styles from '@/shared/ui/branding/rebroid-wordmark.module.css'
 
@@ -19,12 +19,12 @@ export default function Sidebar({
   initialUser,
   collapsed,
   onToggle,
-  pollNavigation
+  recentAppsQuery
 }: {
   initialUser: ShellUser
   collapsed: boolean
   onToggle: () => void
-  pollNavigation: boolean
+  recentAppsQuery: RecentAppsQuery
 }) {
   const toggleLabel = collapsed ? 'Expand sidebar' : 'Collapse sidebar'
   const ToggleIcon = collapsed ? IconChevronRight : IconLayoutSidebarLeftCollapse
@@ -111,7 +111,7 @@ export default function Sidebar({
             <ProtectedNavigation
               variant={collapsed ? 'rail' : 'sidebar'}
               initialUser={initialUser}
-              pollRecentApps={pollNavigation}
+              recentAppsQuery={recentAppsQuery}
             />
           </div>
         </div>

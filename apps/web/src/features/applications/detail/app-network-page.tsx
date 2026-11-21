@@ -14,9 +14,32 @@ import { useApplicationViewerApp } from './application-viewer-context'
 
 export const AppNetworkPage = () => {
   const { app, permissions, isForeignOwnedApp, canViewAuditActivity, setApp } = useApplicationViewerApp()
-  const { isFeatureEnabled } = useFeatureFlags()
+  const { isFeatureEnabled, isLoading, manifest } = useFeatureFlags()
   const firewallEnabled = isFeatureEnabled('feature.firewall')
   const canConfigureEgress = hasPermission(permissions, 'applications:configure-egress')
+  let unavailableDescription = 'The Firewall feature is turned off.'
+  if (!canConfigureEgress) unavailableDescription = 'You need permission to configure app network access.'
+  else if (!manifest) unavailableDescription = 'Firewall availability could not be checked.'
+
+  let settings = (
+    <Notice
+      title='Network access settings unavailable'
+      description={unavailableDescription}
+    />
+  )
+  if (canConfigureEgress) {
+    if (isLoading) settings = <Notice loading />
+    else if (firewallEnabled) {
+      settings = (
+        <AppManageNetworkPolicySettings
+          key={app.id}
+          app={app}
+          canUseInternet={hasPermission(permissions, 'applications:use-internet')}
+          onUpdated={next => setApp(current => mergeAppConfiguration(next, current))}
+        />
+      )
+    }
+  }
 
   return (
     <EditorPage>
@@ -42,23 +65,7 @@ export const AppNetworkPage = () => {
           ) : null
         }
       >
-        {firewallEnabled && canConfigureEgress ? (
-          <AppManageNetworkPolicySettings
-            key={app.id}
-            app={app}
-            canUseInternet={hasPermission(permissions, 'applications:use-internet')}
-            onUpdated={next => setApp(current => mergeAppConfiguration(next, current))}
-          />
-        ) : (
-          <Notice
-            title='Network access settings unavailable'
-            description={
-              firewallEnabled
-                ? 'You need permission to configure app network access.'
-                : 'The Firewall feature is turned off.'
-            }
-          />
-        )}
+        {settings}
       </AppResourceLayout>
     </EditorPage>
   )

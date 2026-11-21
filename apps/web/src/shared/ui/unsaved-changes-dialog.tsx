@@ -10,12 +10,12 @@ export const UnsavedChangesDialog = ({
 }: {
   navigation: Pick<
     ReturnType<typeof useUnsavedNavigation>,
-    'confirmPendingNavigation' | 'pendingNavigationHref' | 'setPendingNavigationHref'
+    'confirmPendingNavigation' | 'pendingNavigation' | 'cancelPendingNavigation'
   >
   description?: string
 }) => (
   <ConfirmMutationDialog
-    open={Boolean(navigation.pendingNavigationHref)}
+    open={Boolean(navigation.pendingNavigation)}
     title='Leave without saving?'
     description={description}
     tone='warning'
@@ -23,7 +23,7 @@ export const UnsavedChangesDialog = ({
     confirmLabel='Leave page'
     onConfirm={navigation.confirmPendingNavigation}
     onOpenChange={open => {
-      if (!open) navigation.setPendingNavigationHref(null)
+      if (!open) navigation.cancelPendingNavigation()
     }}
   />
 )

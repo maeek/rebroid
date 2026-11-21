@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { IconArrowLeft, IconChevronRight, IconDots, IconX } from '@tabler/icons-react'
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { IconArrowLeft, IconChevronRight, IconDots, IconLoader2, IconX } from '@tabler/icons-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
-import { focusRingClassName } from '@/components/ui/surface'
+import { focusRingClassName, Surface } from '@/components/ui/surface'
+import { useBackLayer } from '@/hooks/use-back-layer'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import { cn } from '@/lib/utils'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
 import { AccountAvatar } from './navigation-controls/account-details'
 import { MobileAccount } from './navigation-controls/mobile-account'
-import { ProtectedNavigation } from './protected-navigation'
+import { ProtectedNavigation, type RecentAppsQuery } from './protected-navigation'
 import {
   appsNavigationItem,
   isNavigationDestinationActive,
@@ -35,14 +37,20 @@ const destinationIconClassName = cn(
 export const MobileNavigation = ({
   user,
   isDesktop,
-  pollNavigation
+  pollNavigation,
+  recentAppsQuery
 }: {
   user: ShellUser
   isDesktop: boolean
   pollNavigation: boolean
+  recentAppsQuery: RecentAppsQuery
 }) => {
   const [open, setOpen] = useState(false)
   const [showAccount, setShowAccount] = useState(false)
+  const [reserveRecentApps, setReserveRecentApps] = useState(false)
+  const [pendingDestination, setPendingDestination] = useState<string>()
+  const [isNavigating, startNavigation] = useTransition()
+  const router = useRouter()
   const accountEntry = useRef<HTMLButtonElement>(null)
   const accountBack = useRef<HTMLButtonElement>(null)
   const drawerScroll = useRef<HTMLDivElement>(null)
@@ -52,6 +60,14 @@ export const MobileNavigation = ({
   const destinations = isFeatureEnabled('feature.workflows')
     ? [appsNavigationItem, workflowsNavigationItem]
     : [appsNavigationItem]
+
+  useBackLayer(open && showAccount, () => setShowAccount(false))
+
+  const navigate = (href: string, label: string) => {
+    setPendingDestination(label)
+    close()
+    afterClosingBackEntry(() => startNavigation(() => router.push(href)))
+  }
 
   useEffect(() => {
     if (isDesktop) setOpen(false)
@@ -74,6 +90,19 @@ export const MobileNavigation = ({
       aria-label='Mobile navigation'
       className='fixed inset-x-3 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-40 mx-auto grid h-13 max-w-md auto-cols-fr grid-flow-col gap-1 rounded-overlay bg-surface-floating-control p-1 shadow-floating-control lg:hidden'
     >
+      {isNavigating && pendingDestination ? (
+        <Surface
+          level='floating'
+          role='status'
+          className='pointer-events-none absolute right-0 bottom-full mb-2 flex max-w-full items-center gap-2 px-3 py-2 text-sm'
+        >
+          <IconLoader2
+            aria-hidden='true'
+            className='size-4 shrink-0 motion-safe:animate-spin'
+          />
+          <span className='truncate'>Opening {pendingDestination}…</span>
+        </Surface>
+      ) : null}
       {destinations.map(({ href, Icon, name }) => {
         const isApps = href === appsNavigationItem.href
         const active =
@@ -100,8 +129,17 @@ export const MobileNavigation = ({
       })}
       <Drawer
         open={open}
-        onOpenChange={nextOpen => {
-          if (nextOpen) setShowAccount(false)
+        onOpenChange={(nextOpen, event) => {
+          if (!nextOpen && event.reason === 'close-watcher' && showAccount) {
+            event.cancel()
+            setShowAccount(false)
+            return
+          }
+          if (nextOpen) {
+            setShowAccount(false)
+            setReserveRecentApps(pollNavigation && recentAppsQuery.data === undefined)
+            if (pollNavigation) void recentAppsQuery.mutate()
+          }
           setOpen(nextOpen)
         }}
       >
@@ -190,15 +228,17 @@ export const MobileNavigation = ({
                 <ProtectedNavigation
                   variant='drawer'
                   initialUser={user}
-                  pollRecentApps={pollNavigation && open && !showAccount}
-                  onNavigate={close}
+                  recentAppsQuery={recentAppsQuery}
+                  reserveRecentApps={reserveRecentApps}
+                  onNavigate={navigate}
+                  onClose={close}
                 />
               </div>
               {showAccount ? (
                 <MobileAccount
                   user={user}
                   pathname={pathname}
-                  onNavigate={close}
+                  onNavigate={navigate}
                 />
               ) : null}
             </div>

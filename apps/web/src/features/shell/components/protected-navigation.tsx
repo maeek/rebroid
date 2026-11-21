@@ -1,12 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Visible } from '@/components/ui/visible'
-import { usePollingQuery } from '@/hooks/use-polling-query'
-import { getBff } from '@/lib/http/bff'
 import { useFeatureFlags } from '@/shared/model/features/feature-flags-context'
-import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
+import { navigationAppsLimit } from '@/shared/model/recent-apps/recent-apps'
 import { NavigationRail } from './navigation-rail-group'
 import {
   administrationEntries,
@@ -21,37 +20,40 @@ import {
 } from './protected-navigation-config'
 import { NavLink, NestedNavigationMenu, SectionHeader } from './protected-navigation-parts'
 import { RecentAppLink } from './recent-app-link'
+import type { ShellNavigationHandler } from './shell-navigation-handler'
 import type { ShellUser } from './shell-user'
 import type { RecentApp } from '@/shared/contracts/recent-app'
+
+export type RecentAppsQuery = {
+  data: RecentApp[] | undefined
+  isLoading: boolean
+  mutate: () => Promise<RecentApp[] | undefined>
+}
 
 type ProtectedNavigationProps = {
   variant: NavigationVariant
   initialUser: ShellUser
-  pollRecentApps: boolean
-  onNavigate?: () => void
+  recentAppsQuery: RecentAppsQuery
+  reserveRecentApps?: boolean
+  onNavigate?: ShellNavigationHandler
+  onClose?: () => void
 }
 
-export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNavigate }: ProtectedNavigationProps) => {
+export const ProtectedNavigation = ({
+  variant,
+  initialUser,
+  recentAppsQuery,
+  reserveRecentApps,
+  onNavigate,
+  onClose
+}: ProtectedNavigationProps) => {
   const pathname = usePathname()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const { data: recentApps = [], mutate: refreshRecentApps } = usePollingQuery<RecentApp[]>(
-    'navigation:recent-apps',
-    () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
-    { enabled: pollRecentApps, intervalMs: 5000 }
-  )
+  const { data: recentApps = [], isLoading, mutate: refreshRecentApps } = recentAppsQuery
+  const reservedRowCount = reserveRecentApps ? Math.max(0, navigationAppsLimit - recentApps.length) : 0
   const isAdmin = initialUser.isPlatformAdmin
   const { isFeatureEnabled } = useFeatureFlags()
   const styles = variantStyles[variant]
-
-  useEffect(() => {
-    if (!pollRecentApps) return
-    const onRecentAppsUpdated = () => void refreshRecentApps()
-
-    window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
-    return () => {
-      window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
-    }
-  }, [pollRecentApps, refreshRecentApps])
 
   const isActivePath = (href: string, exact = false) => isNavigationDestinationActive(pathname, href, exact)
 
@@ -120,8 +122,23 @@ export const ProtectedNavigation = ({ variant, initialUser, pollRecentApps, onNa
             variant={variant}
             isActive={pathname === `/app/${app.id}` || pathname.startsWith(`/app/${app.id}/`)}
             onNavigate={onNavigate}
+            onClose={onClose}
             onStarted={() => void refreshRecentApps()}
           />
+        ))}
+        {Array.from({ length: reservedRowCount }, (_, index) => (
+          <li
+            key={index}
+            aria-hidden='true'
+            className='flex min-h-12 items-center gap-2 px-2'
+          >
+            {isLoading ? (
+              <>
+                <Skeleton className='size-8 rounded-control' />
+                <Skeleton className='h-3 w-28' />
+              </>
+            ) : null}
+          </li>
         ))}
       </ul>
 

@@ -21,9 +21,8 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     redirect(redirectPath)
   }
 
-  const featureFlags = await loadFeatureFlags()
   return (
-    <FeatureFlagsProvider manifest={featureFlags}>
+    <FeatureFlagsProvider pendingManifest={user.passwordChangeRequired ? undefined : loadFeatureFlags()}>
       <SessionStatusMonitor />
       {children}
     </FeatureFlagsProvider>

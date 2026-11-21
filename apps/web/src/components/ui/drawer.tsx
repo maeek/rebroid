@@ -5,14 +5,21 @@ import { Drawer as DrawerPrimitive } from '@base-ui/react/drawer'
 import { getBaseChildren, getBaseRender } from '@/components/ui/base-render'
 import { dialogSurfaceClassName, overlayClassName, triggerResetClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import { useModalBack } from './use-modal-back'
 
-type DrawerProps = React.ComponentProps<typeof DrawerPrimitive.Root> & {
+type DrawerProps<Payload> = DrawerPrimitive.Root.Props<Payload> & {
   shouldScaleBackground?: boolean
 }
 
-const Drawer = ({ shouldScaleBackground: _shouldScaleBackground = true, ...props }: DrawerProps) => (
-  <DrawerPrimitive.Root {...props} />
-)
+const Drawer = <Payload,>({ shouldScaleBackground: _shouldScaleBackground = true, ...props }: DrawerProps<Payload>) => {
+  const controls = useModalBack<DrawerPrimitive.Root.ChangeEventDetails>(props)
+  return (
+    <DrawerPrimitive.Root
+      {...props}
+      {...controls}
+    />
+  )
+}
 Drawer.displayName = 'Drawer'
 
 const DrawerTrigger = ({

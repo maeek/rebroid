@@ -8,6 +8,7 @@ import { useTheme } from 'next-themes'
 import { focusRingClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
 import { variantStyles } from '../protected-navigation-config'
+import { handleShellLink, type ShellNavigationHandler } from '../shell-navigation-handler'
 import { AccountAvatar, accountDestinations } from './account-details'
 import { AccountThemeSwatch, accountThemeOptions } from './account-theme'
 import type { ShellUser } from '../shell-user'
@@ -21,7 +22,7 @@ export const MobileAccount = ({
 }: {
   user: ShellUser
   pathname: string
-  onNavigate: () => void
+  onNavigate: ShellNavigationHandler
 }) => {
   const { setTheme, theme } = useTheme()
   const themeInputName = useId()
@@ -44,7 +45,7 @@ export const MobileAccount = ({
               href={href}
               className={cn(styles.item, focusRingClassName, pathname === href && styles.activeItem)}
               aria-current={pathname === href ? 'page' : undefined}
-              onClick={onNavigate}
+              onNavigate={handleShellLink(onNavigate, href, label)}
             >
               <span className={cn(styles.iconWrap, 'text-foreground-muted')}>
                 <Icon

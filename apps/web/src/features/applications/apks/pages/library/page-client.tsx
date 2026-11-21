@@ -7,6 +7,7 @@ import { Section } from '@/components/ui/section'
 import { getDisplayErrorMessage } from '@/lib/error-utils'
 import { formatBytes } from '@/lib/format-bytes'
 import { getBff, sendBff } from '@/lib/http/bff'
+import { afterClosingBackEntry } from '@/lib/navigation/back-layers'
 import { isApplicationId } from '@/shared/model/application-id'
 import { PlatformPageRefreshButton } from '@/shared/ui/actions/platform-page-refresh-button'
 import { DataGrid } from '@/shared/ui/data-grid/data-grid'
@@ -111,7 +112,7 @@ export const ApkLibraryPageClient = ({
     const updated = new URLSearchParams(window.location.search)
     updated.delete('app')
     updated.delete('apk')
-    replaceLibraryQuery(updated)
+    afterClosingBackEntry(() => replaceLibraryQuery(updated))
   }
 
   const inspect = (entry: ApkLibraryEntry) => {

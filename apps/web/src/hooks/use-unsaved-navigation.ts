@@ -1,6 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { afterClosingBackEntry, previousPageUrl } from '@/lib/navigation/back-layers'
+import { useBackLayer } from './use-back-layer'
+
+type PendingNavigation = { href: string } | { back: true }
 
 export const shouldInterceptNavigationClick = (event: MouseEvent, currentHref: string) => {
   if (
@@ -36,28 +40,44 @@ export const useUnsavedNavigation = ({
   preservesDraft?: (destination: URL, current: URL) => boolean
   onDiscard?: () => void
 }) => {
-  const [pendingNavigationHref, setPendingNavigationHref] = useState<string | null>(null)
+  const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation | null>(null)
   const confirmedNavigationRef = useRef(false)
+  useBackLayer(
+    hasUnsavedChanges,
+    () => {
+      const destination = preservesDraft ? previousPageUrl() : null
+      if (destination && preservesDraft?.(destination, new URL(window.location.href))) return 'continue'
+      setPendingNavigation({ back: true })
+    },
+    'guard'
+  )
 
   const requestNavigation = (href: string) => {
-    if (hasUnsavedChanges) setPendingNavigationHref(href)
+    if (hasUnsavedChanges) setPendingNavigation({ href })
     else push(href)
   }
 
   const confirmPendingNavigation = useCallback(() => {
-    const href = pendingNavigationHref
-    if (!href) return
+    if (!pendingNavigation) return
 
-    setPendingNavigationHref(null)
-    onDiscard?.()
-    const url = new URL(href, window.location.href)
-    if (url.origin === window.location.origin) {
-      push(`${url.pathname}${url.search}${url.hash}`)
-      return
-    }
+    setPendingNavigation(null)
     confirmedNavigationRef.current = true
-    window.location.assign(url.href)
-  }, [onDiscard, pendingNavigationHref, push])
+    onDiscard?.()
+    afterClosingBackEntry(() => {
+      if ('back' in pendingNavigation) {
+        window.history.back()
+        return
+      }
+      const url = new URL(pendingNavigation.href, window.location.href)
+      if (url.origin === window.location.origin) {
+        push(`${url.pathname}${url.search}${url.hash}`)
+        return
+      }
+      window.location.assign(url.href)
+    })
+  }, [onDiscard, pendingNavigation, push])
+
+  const cancelPendingNavigation = () => setPendingNavigation(null)
 
   useEffect(() => {
     confirmedNavigationRef.current = false
@@ -78,7 +98,7 @@ export const useUnsavedNavigation = ({
 
       event.preventDefault()
       event.stopPropagation()
-      setPendingNavigationHref(link.href)
+      setPendingNavigation({ href: link.href })
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -92,7 +112,7 @@ export const useUnsavedNavigation = ({
   return {
     confirmPendingNavigation,
     requestNavigation,
-    pendingNavigationHref,
-    setPendingNavigationHref
+    pendingNavigation,
+    cancelPendingNavigation
   }
 }

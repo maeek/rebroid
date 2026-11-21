@@ -6,8 +6,17 @@ import { IconX } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { dialogSurfaceClassName, overlayClassName } from '@/components/ui/surface'
 import { cn } from '@/lib/utils'
+import { useModalBack } from './use-modal-back'
 
-const Sheet = SheetPrimitive.Root
+const Sheet = <Payload,>(props: SheetPrimitive.Root.Props<Payload>) => {
+  const controls = useModalBack<SheetPrimitive.Root.ChangeEventDetails>(props)
+  return (
+    <SheetPrimitive.Root
+      {...props}
+      {...controls}
+    />
+  )
+}
 const SheetTrigger = SheetPrimitive.Trigger
 
 const SheetPortal = SheetPrimitive.Portal

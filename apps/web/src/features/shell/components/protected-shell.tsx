@@ -1,12 +1,16 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useDesktopViewport } from '@/hooks/use-desktop-viewport'
+import { usePollingQuery } from '@/hooks/use-polling-query'
+import { getBff } from '@/lib/http/bff'
+import { recentAppsUpdatedEvent } from '@/shared/model/recent-apps/recent-apps'
 import { sidebarCollapsedCookie } from '@/shared/model/settings/sidebar-preference'
 import { MobileNavigation } from './mobile-navigation'
 import { PlatformHealthProvider } from './platform-health-context'
 import Sidebar from './sidebar'
 import type { ShellUser } from './shell-user'
+import type { RecentApp } from '@/shared/contracts/recent-app'
 
 const saveSidebarCollapsed = (collapsed: boolean) => {
   const secure = window.location.protocol === 'https:' ? '; Secure' : ''
@@ -27,6 +31,19 @@ export const ProtectedShell = ({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(initialSidebarCollapsed)
   const [animateSidebar, setAnimateSidebar] = useState(false)
   const isDesktop = useDesktopViewport()
+  const recentAppsQuery = usePollingQuery<RecentApp[]>(
+    'navigation:recent-apps',
+    () => getBff<RecentApp[]>('/api/bff/shell/recent-apps'),
+    { enabled: pollNavigation, intervalMs: isDesktop === true ? 5000 : null }
+  )
+  const { mutate: refreshRecentApps } = recentAppsQuery
+
+  useEffect(() => {
+    if (!pollNavigation) return
+    const onRecentAppsUpdated = () => void refreshRecentApps()
+    window.addEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
+    return () => window.removeEventListener(recentAppsUpdatedEvent, onRecentAppsUpdated)
+  }, [pollNavigation, refreshRecentApps])
 
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
@@ -41,12 +58,13 @@ export const ProtectedShell = ({
         initialUser={user}
         collapsed={sidebarCollapsed}
         onToggle={toggleSidebar}
-        pollNavigation={pollNavigation && isDesktop === true}
+        recentAppsQuery={recentAppsQuery}
       />
       <MobileNavigation
         user={user}
         isDesktop={isDesktop === true}
-        pollNavigation={pollNavigation && isDesktop === false}
+        pollNavigation={pollNavigation}
+        recentAppsQuery={recentAppsQuery}
       />
     </>
   )

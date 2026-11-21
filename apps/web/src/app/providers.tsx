@@ -1,7 +1,20 @@
 'use client'
 
-import { PropsWithChildren, useState } from 'react'
+import { PropsWithChildren, Suspense, useLayoutEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { refreshBackLayersForRoute } from '@/lib/navigation/back-layers'
+
+const BackLayerRouteSync = () => {
+  const pathname = usePathname()
+  const search = useSearchParams()
+
+  useLayoutEffect(() => {
+    refreshBackLayersForRoute()
+  }, [pathname, search])
+
+  return null
+}
 
 const Providers = ({ children }: PropsWithChildren) => {
   const [queryClient] = useState(
@@ -19,7 +32,14 @@ const Providers = ({ children }: PropsWithChildren) => {
       })
   )
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <Suspense fallback={null}>
+        <BackLayerRouteSync />
+      </Suspense>
+    </QueryClientProvider>
+  )
 }
 
 export default Providers

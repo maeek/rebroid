@@ -13,6 +13,7 @@ import {
   type NavigationItem,
   type NavigationVariant
 } from './protected-navigation-config'
+import { handleShellLink, type ShellNavigationHandler } from './shell-navigation-handler'
 
 type NavLinkProps = {
   href: string
@@ -22,7 +23,7 @@ type NavLinkProps = {
   shortcut?: NavigationItem['shortcut']
   isActive: boolean
   variant: NavigationVariant
-  onNavigate?: () => void
+  onNavigate?: ShellNavigationHandler
 }
 
 type SectionHeaderProps = {
@@ -30,7 +31,7 @@ type SectionHeaderProps = {
   variant: NavigationVariant
   actionHref?: string
   actionLabel?: string
-  onNavigate?: () => void
+  onNavigate?: ShellNavigationHandler
 }
 
 const NavigationAddLink = ({
@@ -44,7 +45,7 @@ const NavigationAddLink = ({
   label: string
   variant: NavigationVariant
   className?: string
-  onNavigate?: () => void
+  onNavigate?: ShellNavigationHandler
 }) => {
   const styles = variantStyles[variant]
   return (
@@ -53,7 +54,7 @@ const NavigationAddLink = ({
         href={href}
         className={cn(styles.sectionAction, className)}
         aria-label={label}
-        onClick={onNavigate}
+        onNavigate={handleShellLink(onNavigate, href, label)}
       >
         <IconCirclePlus className={styles.sectionActionIcon} />
       </Link>
@@ -95,7 +96,7 @@ export const NavLink = ({ href, label, Icon, healthId, isActive, shortcut, varia
         isActive && styles.activeItem,
         shortcut && !compact && 'min-w-0 flex-1 pr-9 touch:pr-2'
       )}
-      onClick={onNavigate}
+      onNavigate={handleShellLink(onNavigate, href, label)}
       aria-current={isActive ? 'page' : undefined}
       aria-description={status?.label}
     >
@@ -152,7 +153,7 @@ export const NestedNavigationMenu = ({
   isOpen: boolean
   Icon: NavigationItem['Icon']
   isActivePath: (href: string) => boolean
-  onNavigate?: () => void
+  onNavigate?: ShellNavigationHandler
   onToggle: () => void
 }) => {
   const listId = useId()
@@ -197,7 +198,7 @@ export const NestedNavigationMenu = ({
             <Link
               href={href}
               className={cn(styles.item, 'min-w-0 flex-1', linkActive && styles.activeItem)}
-              onClick={onNavigate}
+              onNavigate={handleShellLink(onNavigate, href, label)}
               aria-current={linkActive ? 'page' : undefined}
               aria-description={status?.label}
             >
@@ -246,7 +247,7 @@ export const NestedNavigationMenu = ({
                       shortcut && 'pr-9 touch:pr-2',
                       isActivePath(itemHref) && styles.nestedActiveItem
                     )}
-                    onClick={onNavigate}
+                    onNavigate={handleShellLink(onNavigate, itemHref, name)}
                     aria-current={isActivePath(itemHref) ? 'page' : undefined}
                     aria-description={itemStatus?.label}
                   >

@@ -5,7 +5,11 @@ import { usePollingQuery } from '@/hooks/use-polling-query'
 import { FeatureFlagsProvider } from '@/shared/model/features/feature-flags-context'
 import { ProtectedShell } from './protected-shell'
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/apps', useSearchParams: () => new URLSearchParams() }))
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/apps',
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ push: vi.fn() })
+}))
 vi.mock('@/hooks/use-polling-query', () => ({
   usePollingQuery: vi.fn(() => ({ isLoading: false, mutate: vi.fn() }))
 }))
@@ -31,8 +35,16 @@ describe('protected shell service health', () => {
     expect(vi.mocked(usePollingQuery).mock.calls.map(([key]) => key)).not.toContain('orchestrator:health')
   })
 
-  it('polls recent applications on mobile only while the navigation drawer is open', () => {
+  it('starts loading recent apps before the mobile drawer opens and refreshes them on open', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    const refresh = vi.fn().mockResolvedValue([])
+    vi.mocked(usePollingQuery).mockReturnValue({
+      data: undefined,
+      error: undefined,
+      isLoading: true,
+      isValidating: true,
+      mutate: refresh
+    })
     render(
       <TooltipProvider>
         <FeatureFlagsProvider manifest={null}>
@@ -42,16 +54,13 @@ describe('protected shell service health', () => {
         </FeatureFlagsProvider>
       </TooltipProvider>
     )
-    const enabledRecentReads = () =>
-      vi
-        .mocked(usePollingQuery)
-        .mock.calls.filter(([key, , options]) => key === 'navigation:recent-apps' && options?.enabled)
 
-    expect(enabledRecentReads()).toHaveLength(0)
+    expect(usePollingQuery).toHaveBeenLastCalledWith('navigation:recent-apps', expect.any(Function), {
+      enabled: true,
+      intervalMs: null
+    })
+    expect(refresh).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    expect(enabledRecentReads().length).toBeGreaterThan(0)
-    vi.mocked(usePollingQuery).mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Close navigation' }))
-    expect(enabledRecentReads()).toHaveLength(0)
+    expect(refresh).toHaveBeenCalledOnce()
   })
 })
