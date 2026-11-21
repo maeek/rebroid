@@ -39,6 +39,7 @@ it('generates a masked temporary password that meets the policy and submits the 
   const copy = screen.getByRole('button', { name: 'Copy temporary password' })
   expect(password).toHaveAttribute('type', 'password')
   expect(password).toHaveAccessibleDescription(/new password on first login/)
+  expect(screen.getByText('Change required')).toBeInstanceOf(HTMLSpanElement)
   expect(copy).toBeDisabled()
   fireEvent.click(generate)
   const firstPassword = password.value
