@@ -6,7 +6,7 @@ from PIL import Image
 
 from ocr_sidecar.config import Settings
 from ocr_sidecar.image_input import ImagePayloadError, OcrRequest, decode_image
-from ocr_sidecar.preprocessing import deduplicate, run_cascade
+from ocr_sidecar.preprocessing import run_cascade, select_detections
 
 
 def result(text: str, confidence: float):
@@ -40,12 +40,14 @@ def test_cascade_uses_fallbacks_and_returns_best_attempt():
     assert [attempt["mode"] for attempt in attempts] == ["raw", "grayscale"]
 
 
-def test_deduplication_keeps_highest_confidence_detection():
-    detections = [
-        {"text": "OK", "confidence": 0.5, "bounds": {"left": 0.1, "top": 0.2}},
-        {"text": "ok", "confidence": 0.9, "bounds": {"left": 0.1, "top": 0.2}},
+def test_selection_preserves_candidate_ids_and_first_seen_order_when_deduplicating():
+    candidates = [
+        *result("discarded", 0.1), *result("OK", 0.5), *result("Next", 0.8),
+        *result("ok", 0.9), *result("Ok", 0.9),
     ]
-    assert deduplicate(detections) == [detections[1]]
+    kept = select_detections(candidates, 0.4)
+    assert [(item["id"], item["text"]) for item in kept] == [("ocr-3", "ok"), ("ocr-2", "Next")]
+    assert kept[0]["center"] == {"x": 0.4, "y": 0.2}
 
 
 def test_decode_rejects_media_type_malformed_data_and_pixel_limit():

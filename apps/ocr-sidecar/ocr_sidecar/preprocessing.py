@@ -46,28 +46,21 @@ def preprocess(image: Image.Image, mode: str) -> Image.Image:
 
 
 def select_detections(candidates: list[TextDetection], min_confidence: float):
-    detections: list[dict[str, Any]] = []
-    for detection in candidates:
-        if detection["confidence"] < min_confidence:
-            continue
+    best: dict[tuple[str, float, float], dict[str, Any]] = {}
+    eligible = (item for item in candidates if item["confidence"] >= min_confidence)
+    for sequence, detection in enumerate(eligible, start=1):
         bounds = detection["bounds"]
-        detections.append({
+        key = (detection["text"].lower(), round(bounds["left"], 2), round(bounds["top"], 2))
+        previous = best.get(key)
+        if previous is not None and previous["confidence"] >= detection["confidence"]:
+            continue
+        best[key] = {
             **detection,
-            "id": f"ocr-{len(detections) + 1}",
+            "id": f"ocr-{sequence}",
             "label": detection["text"],
             "center": {"x": bounds["left"] + bounds["width"] / 2, "y": bounds["top"] + bounds["height"] / 2},
             "source": "ocr",
-        })
-    return deduplicate(detections)
-
-
-def deduplicate(detections: list[dict[str, Any]]):
-    best: dict[tuple[str, float, float], dict[str, Any]] = {}
-    for detection in detections:
-        bounds = detection["bounds"]
-        key = (detection["text"].lower(), round(bounds["left"], 2), round(bounds["top"], 2))
-        if key not in best or detection["confidence"] > best[key]["confidence"]:
-            best[key] = detection
+        }
     return list(best.values())
 
 
