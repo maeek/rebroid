@@ -230,7 +230,10 @@ export class ContainerImageGappsBuilderService
       phase: 'resolving_sources',
     });
     signal.throwIfAborted();
-    const revision = await this.sources.resolveRevision(preset.sourceBranch);
+    const revision = await this.sources.resolveRevision(
+      preset.sourceBranch,
+      signal,
+    );
     await this.jobs.updateBuildDetails(id, { mindTheGappsRevision: revision });
     let cached = await this.cache.findVerified(androidVersion, revision);
     let packagePath: string;
